@@ -1,6 +1,6 @@
 // src/engine/gameEngine.ts
 
-import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet } from '@/engine/models';
+import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, WorldContent } from '@/engine/models';
 import { repositories } from '@/engine/repositories';
 
 const getCPforNextLevel = (level: number): number => {
@@ -26,11 +26,14 @@ type SkillCheckResult = {
 
 export class GameEngine {
     private qualities: PlayerQualities;
+    private worldContent: WorldContent; // Store the world data
+
 
     private resolutionPruneTargets: Record<string, string> = {};
 
-    constructor(initialQualities: PlayerQualities) {
+    constructor(initialQualities: PlayerQualities, worldContent: WorldContent) {
         this.qualities = JSON.parse(JSON.stringify(initialQualities));
+        this.worldContent = worldContent;
     }
 
     public getQualities(): PlayerQualities {
@@ -57,7 +60,7 @@ export class GameEngine {
         };
     }
 
-    private evaluateCondition(expression?: string, isSkillCheck: boolean = false): boolean | SkillCheckResult { // Return type is now a union
+    public evaluateCondition(expression?: string, isSkillCheck: boolean = false): boolean | SkillCheckResult { // Return type is now a union
         if (!expression) return true;
         
         const finalExpression = this.evaluateBlock(expression);
@@ -124,7 +127,7 @@ export class GameEngine {
         }
     }
 
-    private evaluateBlock(content: string): string {
+    public evaluateBlock(content: string): string {
         if (!content) return "";
         let currentExpression = content.trim();
 
@@ -168,7 +171,7 @@ export class GameEngine {
     }
 
 
-    private getQualityValue(id: string): number {
+    public getQualityValue(id: string): number {
         const state = this.qualities[id];
         return (state && 'level' in state) ? state.level : 0;
     }

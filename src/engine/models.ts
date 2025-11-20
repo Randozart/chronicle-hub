@@ -120,13 +120,13 @@ export type QualityState =
 export type PlayerQualities = Record<string, QualityState>;
 
 export interface CharacterDocument {
-    _id?: any; // ObjectId from MongoDB
+    _id?: any;
     userId: string;
-    worldId: string; // The ID of the world this character belongs to
+    storyId: string; // <-- Standardize on this name
     qualities: PlayerQualities;
+    currentLocationId: string;
     
     // New fields for the Opportunity Deck mechanic
-    currentLocationId: string;
     opportunityHand: string[]; // Array of opportunity IDs
     drawDeck: string[]; // Array of opportunity IDs
     discardPile: string[]; // Array of opportunity IDs

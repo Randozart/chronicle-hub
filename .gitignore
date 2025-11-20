@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+public/images/storylets/village_img.png
+public/images/storylets/village_well_img.png

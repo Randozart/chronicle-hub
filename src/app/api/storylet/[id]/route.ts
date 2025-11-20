@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Could not determine storylet ID from URL' }, { status: 400 });
         }
 
-        const storylet = repositories.getStorylet(storyletId);
+        const storylet = repositories.getEvent(storyletId);
 
         if (!storylet) {
             return NextResponse.json({ error: `Storylet with ID '${storyletId}' not found` }, { status: 404 });

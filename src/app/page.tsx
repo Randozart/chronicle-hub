@@ -1,18 +1,17 @@
 // src/app/page.tsx
 
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth/next'; 
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; 
-import { repositories } from "@/engine/repositories";
-import StoryletDisplay from "@/components/StoryletDisplay";
-import { PlayerQualities, StringQualityState, PyramidalQualityState, QualityType } from "@/engine/models";
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { loadGameData } from "@/engine/dataLoader";
-import { getPlayer, savePlayerQualities } from "@/engine/playerService";
-import { getOrCreateCharacter } from '@/engine/characterService'; 
+import { getOrCreateCharacter } from '@/engine/characterService';
+import { repositories } from "@/engine/repositories";
+import { Opportunity } from '@/engine/models';
 
-const newPlayerQualities: PlayerQualities = { /* ... your new player data ... */ };
+import GameHub from '@/components/GameHub';
+import LocationStorylets from '@/components/LocationStorylets'; 
+
 const STORY_ID = 'trader_johns_world';
-// const TEST_USER_ID = 'test_user_01'; 
 
 export default async function Home() {
     const session = await getServerSession(authOptions);
@@ -25,21 +24,34 @@ export default async function Home() {
     const gameData = loadGameData();
     repositories.initialize(gameData);
 
-    const character = await getOrCreateCharacter(userId, STORY_ID, username);
+    const characterFromDB = await getOrCreateCharacter(userId, STORY_ID, gameData);
 
-    // The initial storylet is now the one saved on the character.
-    const initialStorylet = repositories.getStorylet(character.currentStoryletId);
-
-    if (!initialStorylet) {
-        return <div>Error: Could not load storylet.</div>;
+    const initialLocation = repositories.getLocation(characterFromDB.currentLocationId);
+    if (!initialLocation) {
+        return <div>Error: Player is in an unknown location.</div>;
     }
 
-    return (
+    const initialHand: Opportunity[] = characterFromDB.opportunityHand
+        .map(id => repositories.getEvent(id) as Opportunity)
+        .filter(Boolean);
+
+    const locationStorylets = Object.values(gameData.storylets).filter(
+        storylet => storylet.location === characterFromDB.currentLocationId
+    );
+
+    const plainInitialCharacter = {
+        ...characterFromDB,
+        _id: characterFromDB._id.toString(), // Convert ObjectId to a string
+    };
+
+     return (
         <main className="container">
-            <StoryletDisplay 
-                initialStorylet={initialStorylet} 
-                initialQualities={character.qualities} // <-- Pass character qualities
-                allQualities={gameData.qualities}
+            <GameHub
+                initialCharacter={plainInitialCharacter}
+                initialLocation={initialLocation}
+                initialHand={initialHand}
+                locationStorylets={locationStorylets} // This was missing
+                gameData={gameData}
             />
         </main>
     );

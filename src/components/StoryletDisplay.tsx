@@ -1,14 +1,16 @@
+// src/components/StoryletDisplay.tsx
 'use client';
 
-import { Storylet, PlayerQualities, ResolveOption, QualityDefinition } from '@/engine/models';
+import { Storylet, PlayerQualities, ResolveOption, Opportunity, WorldContent } from '@/engine/models';
 import { useState, useEffect } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
 import { repositories } from '@/engine/repositories';
 
 interface StoryletDisplayProps {
-    initialStorylet: Storylet;
+    eventData: Storylet | Opportunity;
     initialQualities: PlayerQualities;
-    allQualities: Record<string, QualityDefinition>;
+    onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
+    gameData: WorldContent;
 }
 
 type DisplayOption = ResolveOption & {
@@ -31,85 +33,64 @@ type ResolutionState = {
 };
 
 export default function StoryletDisplay({ 
-    initialStorylet, 
+    eventData, 
     initialQualities, 
-    allQualities 
+    onFinish,
+    gameData 
 }: StoryletDisplayProps) {
 
     useEffect(() => {
-        repositories.initialize({ qualities: allQualities, storylets: {} });
-    }, [allQualities]);
+        repositories.initialize(gameData);
+    }, [gameData]);
     
-    const [storylet, setStorylet] = useState(initialStorylet);
+    const [storylet, setStorylet] = useState(eventData);
     const [qualities, setQualities] = useState(initialQualities);
     const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    
+    useEffect(() => {
+        setStorylet(eventData); // Sync the internal state with the new prop
+        setQualities(initialQualities); // Also reset qualities to the latest from the parent
+        setResolution(null); // Ensure we're not stuck on a resolution screen
+    }, [eventData, initialQualities]);
 
-    const navigateToStorylet = async (id: string | undefined) => {
-        if (!id) return;
+    const handleOptionClick = async (option: ResolveOption) => {
+        if (isLoading) return;
         setIsLoading(true);
         try {
-            const response = await fetch(`/api/storylet/${id}`);
-            if (!response.ok) {
-                throw new Error(`Storylet '${id}' not found.`);
+            const response = await fetch('/api/resolve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id })
+            });
+            if (!response.ok) throw new Error(await response.text());
+
+            const data = await response.json();
+            const isInstant = option.properties?.includes('instant_redirect');
+            
+            console.log('[handleOptionClick] Instant Redirect Triggered. API Result:', data.result);
+
+            if (isInstant) {
+                onFinish(data.newQualities, data.result.redirectId);
+            } else {
+                setQualities(data.newQualities);
+                setResolution({ ...data.result, image_code: option.image_code });
             }
-            const nextStorylet: Storylet = await response.json();
-            setStorylet(nextStorylet);
         } catch (error) {
-            console.error("Failed to navigate:", error);
+            console.error("API Error:", error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleOptionClick = async (option: ResolveOption) => {
-        if (isLoading) return;
-        setIsLoading(true);
-
-        const response = await fetch('/api/resolve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ storyletId: storylet.id, optionId: option.id })
-        });
-
-        setIsLoading(false);
-        if (!response.ok) {
-            console.error("API Error:", await response.text());
-            return;
-        }
-
-        const data = await response.json();
-        setQualities(data.newQualities);
-                const isInstant = option.properties?.includes('instant_redirect');
-
-        if (isInstant && data.result.redirectId) {
-            navigateToStorylet(data.result.redirectId);
-        } else {
-            setResolution({
-                ...data.result,
-                image_code: option.image_code,
-            });
-            setIsLoading(false); 
-        }
-    };
-
-
     const handleContinue = () => {
         if (!resolution) return;
-        const redirectId = resolution.redirectId;
-        
-        if (!redirectId) {
-            setResolution(null);
-            return;
-        }
-
-        navigateToStorylet(redirectId);
-        
-        setResolution(null);
+        // When finished, call the onFinish prop with the final state and any redirect
+        onFinish(qualities, resolution.redirectId);
     };
 
-    const getReturnTarget = (currentStorylet: Storylet): string | null => {
-        if (currentStorylet.return) return currentStorylet.return;
+    const getReturnTarget = (currentStorylet: Storylet | Opportunity): string | null => {
+        if ('return' in currentStorylet && currentStorylet.return) return currentStorylet.return;
         if (currentStorylet.properties) {
             const match = currentStorylet.properties.match(/return\[(.*?)\]/);
             if (match?.[1]) return match[1];
@@ -117,6 +98,7 @@ export default function StoryletDisplay({
         return null;
     };
     const returnTargetId = getReturnTarget(storylet);
+    
 
     if (resolution) {
         return (
@@ -274,13 +256,15 @@ export default function StoryletDisplay({
                 ))}
             </div>
 
-             {returnTargetId && (
-                <div className="footer-actions">
-                    <button className="option-button return-button" onClick={() => navigateToStorylet(returnTargetId)}>
-                        Return
-                    </button>
-                </div>
-            )}
+            <div className="footer-actions">
+                <button 
+                    className="option-button return-button" 
+
+                    onClick={() => onFinish(qualities, returnTargetId ?? undefined)}
+                >
+                    {returnTargetId ? `Return to ${repositories.getEvent(returnTargetId)?.name}` : 'Return to Location'}
+                </button>
+            </div>
         </div>
     );
 }
