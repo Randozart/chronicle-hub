@@ -1,0 +1,29 @@
+{
+  "at_the_well": {
+    "name": "At the Village Well",
+    "image_code": "village_well_img",
+    "short": "A nice stroll in the village square",
+    "text": "You are having a nice stroll near the center of the village. There stands a well. What would be going on there today?",
+    "deck": "village_deck",
+    "options": [
+      {
+        "id": "at_the_well_trader_john",
+        "name": "Run into Trader John",
+        "image_code": "trader_john_img",
+        "short": "He is taking a stroll, you could strike up a conversation",
+        "visible_if": "$trader_john_known > 2",
+        "random": "$fellowship >= 30",
+        "pass_long": "You strike up a conversation and get gossip",
+        "fail_long": "You try to strike up a conversation, but John is disinterested",
+        "pass_quality_change": "$trader_john_affordance++, $gossip[source:was shared by John at the well] += 5"
+      },
+      {
+        "id": "at_the_well_have_drink",
+        "name": "Have a fresh drink",
+        "image_code": "village_well_img",
+        "short": "Just a drink. Fresh water from the well",
+        "pass_long": "You drink some of the fresh water. How wonderful!"
+      }
+    ]
+  }
+}

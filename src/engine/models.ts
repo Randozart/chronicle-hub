@@ -8,6 +8,9 @@ export enum QualityType {
     String = 'S',
 }
 
+// --- STATIC DEFINITIONS ---
+// These interfaces describe the data loaded from your JSON files.
+
 export interface QualityDefinition {
     id: string;
     name?: string;
@@ -20,13 +23,13 @@ export interface QualityDefinition {
 export interface ResolveOption {
     id: string;
     name: string;
-    image_code: string;
-    short?: string;
+    image_code?: string;
+    short?: string; // This was your 'short_desc'
     meta?: string;
     visible_if?: string;
     unlock_if?: string;
     pass_long: string;
-    fail_long: string;
+    fail_long?: string;
     pass_redirect?: string;
     fail_redirect?: string;
     pass_quality_change?: string;
@@ -35,25 +38,61 @@ export interface ResolveOption {
     properties?: string;
 }
 
-export interface Storylet {
+// Storylets and Opportunities are very similar, so they can share a base
+interface BaseStorylet {
     id: string;
     name: string;
-    image_code: string;
+    image_code?: string;
+    short?: string;
     text: string;
     metatext?: string;
-    options: ResolveOption[];
+    visible_if?: string;
+    unlock_if?: string;
     properties?: string;
-    return?: string;
+    options: ResolveOption[];
 }
 
-// --- REVISED QUALITY STATE MODELS ---
+export interface Storylet extends BaseStorylet {
+    return?: string;
+    location?: string;
+}
+
+export interface Opportunity extends BaseStorylet {
+    deck: string; // Which deck this opportunity/card belongs to
+}
+
+export interface LocationDefinition {
+    id: string;
+    name: string;
+    image: string;
+    deck: string;
+    hand_size: string; // e.g., "$hand_size"
+    deck_size: string; // e.g., "$deck_size"
+    store?: string;
+    map?: string;
+    properties?: string;
+}
+
+// This represents the entire content of a "world"
+export interface WorldContent {
+    storylets: Record<string, Storylet>;
+    qualities: Record<string, QualityDefinition>;
+    opportunities: Record<string, Opportunity>;
+    locations: Record<string, LocationDefinition>;
+    starting: Record<string, string>;
+}
+
+
+// --- DYNAMIC PLAYER/CHARACTER STATE ---
+// This is the data saved in the database for each character.
 
 interface BaseQualityState {
     qualityId: string;
+    type: QualityType;
 }
 
 export interface CounterQualityState extends BaseQualityState {
-    type: QualityType.Counter;
+    type: QualityType.Counter | QualityType.Tracker;
     level: number;
 }
 export interface PyramidalQualityState extends BaseQualityState {
@@ -71,17 +110,24 @@ export interface StringQualityState extends BaseQualityState {
     type: QualityType.String;
     stringValue: string;
 }
-export interface TrackerQualityState extends BaseQualityState {
-    type: QualityType.Tracker;
-    level: number;
-}
 
-// The Discriminated Union - each state now has a 'type' property.
 export type QualityState = 
     | CounterQualityState 
     | PyramidalQualityState 
     | ItemQualityState 
-    | StringQualityState 
-    | TrackerQualityState;
+    | StringQualityState;
 
 export type PlayerQualities = Record<string, QualityState>;
+
+export interface CharacterDocument {
+    _id?: any; // ObjectId from MongoDB
+    userId: string;
+    worldId: string; // The ID of the world this character belongs to
+    qualities: PlayerQualities;
+    
+    // New fields for the Opportunity Deck mechanic
+    currentLocationId: string;
+    opportunityHand: string[]; // Array of opportunity IDs
+    drawDeck: string[]; // Array of opportunity IDs
+    discardPile: string[]; // Array of opportunity IDs
+}
