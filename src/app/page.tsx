@@ -21,7 +21,7 @@ export default async function Home() {
     const userId = (session.user as any).id;
     const username = session.user.name || 'Adventurer';
 
-    const gameData = loadGameData();
+    const gameData = await loadGameData();
     repositories.initialize(gameData);
 
     const characterFromDB = await getOrCreateCharacter(userId, STORY_ID, gameData);
@@ -38,10 +38,12 @@ export default async function Home() {
     const locationStorylets = Object.values(gameData.storylets).filter(
         storylet => storylet.location === characterFromDB.currentLocationId
     );
+    
+    console.log("[SERVER] locationStorylets being passed to client:", JSON.stringify(locationStorylets, null, 2));
 
     const plainInitialCharacter = {
         ...characterFromDB,
-        _id: characterFromDB._id.toString(), // Convert ObjectId to a string
+        _id: characterFromDB._id.toString(), 
     };
 
      return (
@@ -50,7 +52,7 @@ export default async function Home() {
                 initialCharacter={plainInitialCharacter}
                 initialLocation={initialLocation}
                 initialHand={initialHand}
-                locationStorylets={locationStorylets} // This was missing
+                locationStorylets={locationStorylets} 
                 gameData={gameData}
             />
         </main>

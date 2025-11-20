@@ -22,12 +22,15 @@ export default function OpportunityHand({ hand, onCardClick, qualities, onDrawCl
             <div className="card-container">
                 {hand.length > 0 ? (
                     hand.map(card => (
-                        <button key={card.id} className="card" onClick={() => onCardClick(card.id)}>
+                        <button 
+                            key={card.id} 
+                            className="card" 
+                            onClick={() => onCardClick(card.id)}
+                        >
                             {card.image_code && (
                                 <img src={`/images/storylets/${card.image_code}.png`} alt="" className="card-image" />
                             )}
                             <div className="card-text">
-                                {/* The calls to evaluateText now only need two arguments */}
                                 <h3>{evaluateText(card.name, qualities)}</h3>
                                 {card.short && <p>{evaluateText(card.short, qualities)}</p>}
                             </div>

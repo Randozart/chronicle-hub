@@ -1,7 +1,7 @@
 // src/components/GameHub.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PlayerQualities, Storylet, Opportunity, WorldContent, LocationDefinition, CharacterDocument } from '@/engine/models';
 import { repositories } from '@/engine/repositories';
 
@@ -34,7 +34,7 @@ export default function GameHub({
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const showEvent = (eventId: string | null) => {
+    const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) {
             setActiveEvent(null);
             return;
@@ -42,9 +42,9 @@ export default function GameHub({
         // Data is pre-loaded, so we can get it directly from the initialized repository.
         const eventData = repositories.getEvent(eventId);
         setActiveEvent(eventData ?? null);
-    };
+    }, []);
 
-    const handleDrawCard = async () => {
+    const handleDrawCard = useCallback(async () => {
         if (isLoading) return;
         setIsLoading(true);
         try {
@@ -59,12 +59,13 @@ export default function GameHub({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [isLoading]);
 
-    const handleEventFinish = (newQualities: PlayerQualities, redirectId?: string) => {
+    const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
         setCharacter(prev => ({ ...prev!, qualities: newQualities }));
         showEvent(redirectId ?? null);
-    };
+    }, [showEvent]);
+
     if (isLoading) {
         return <div className="storylet-container loading-container"><p>Loading...</p></div>;
     }
@@ -81,7 +82,7 @@ export default function GameHub({
     }
     
     return (
-        <>
+        <div>
             <LocationHeader location={location} />
             <LocationStorylets
                 storylets={locationStorylets}
@@ -95,6 +96,6 @@ export default function GameHub({
                 isLoading={isLoading}
                 qualities={character.qualities}
             />
-        </>
+        </div>
     );
 }

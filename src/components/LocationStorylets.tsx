@@ -12,6 +12,8 @@ interface LocationStoryletsProps {
 }
 
 export default function LocationStorylets({ storylets, onStoryletClick, qualities }: LocationStoryletsProps) {
+    console.log("[CLIENT] LocationStorylets received props:", JSON.stringify(storylets, null, 2));
+
     if (storylets.length === 0) return null;
 
     return (
@@ -20,7 +22,7 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
             <div className="storylet-list-container">
                 {storylets.map(storylet => (
                     <button 
-                        key={storylet.id} 
+                        key={storylet.id}
                         className="option-button"
                         onClick={() => onStoryletClick(storylet.id)}
                     >
@@ -35,7 +37,6 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                 </div>
                             )}
                              <div className="option-text-wrapper">
-                                {/* --- FIX THE CALLS TO evaluateText --- */}
                                 <h3>{evaluateText(storylet.name, qualities)}</h3>
                                 {storylet.short && <p className="option-short-desc">{evaluateText(storylet.short, qualities)}</p>}
                             </div>

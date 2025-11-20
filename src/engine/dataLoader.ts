@@ -1,42 +1,54 @@
 // src/engine/dataLoader.ts
 
-import fs from 'fs';
-import path from 'path';
+import { cache } from 'react';
 import { WorldContent } from '@/engine/models';
+import clientPromise from '@/engine/database';
 
-let cachedData: WorldContent | null = null;
+export const loadGameData = cache(async (worldId: string = 'trader_johns_world'): Promise<WorldContent> => {
+    console.log(`[Data Loader] Loading data for world '${worldId}'...`);
 
-// This function now loads all data for a given world.
-// For now, it's hardcoded, but later `worldId` could be a parameter.
-export const loadGameData = (worldId: string = 'default'): WorldContent => {
-    if (cachedData) {
-        return cachedData;
+    try {
+        const client = await clientPromise;
+        const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
+        const collection = db.collection('worlds');
+        const worldDocument = await collection.findOne({ worldId: worldId });
+
+        if (!worldDocument || !worldDocument.content) {
+            throw new Error(`World with ID '${worldId}' not found in the database.`);
+        }
+
+        const rawContent = worldDocument.content;
+
+        // --- THIS IS THE FIX ---
+        // Create a new, corrected WorldContent object.
+        const processedContent: WorldContent = {
+            qualities: {},
+            storylets: {},
+            opportunities: {},
+            locations: {},
+            starting: rawContent.starting,
+        };
+
+        // Iterate over each item and add the 'id' property from its key.
+        for (const key in rawContent.qualities) {
+            processedContent.qualities[key] = { ...rawContent.qualities[key], id: key };
+        }
+        for (const key in rawContent.storylets) {
+            processedContent.storylets[key] = { ...rawContent.storylets[key], id: key };
+        }
+        for (const key in rawContent.opportunities) {
+            processedContent.opportunities[key] = { ...rawContent.opportunities[key], id: key };
+        }
+        for (const key in rawContent.locations) {
+            processedContent.locations[key] = { ...rawContent.locations[key], id: key };
+        }
+        // --- END OF FIX ---
+
+        console.log(`[Data Loader] Data successfully processed from DB.`);
+        return processedContent; // Return the new object with IDs
+
+    } catch (error) {
+        console.error("Failed to load game data from DB:", error);
+        throw error;
     }
-
-    const dataPath = path.join(process.cwd(), 'data'); // Base data folder
-
-    const qualitiesJson = JSON.parse(fs.readFileSync(path.join(dataPath, 'qualities.json'), 'utf8'));
-    const storyletsJson = JSON.parse(fs.readFileSync(path.join(dataPath, 'storylets.json'), 'utf8'));
-    const opportunitiesJson = JSON.parse(fs.readFileSync(path.join(dataPath, 'opportunities.json'), 'utf8'));
-    const locationsJson = JSON.parse(fs.readFileSync(path.join(dataPath, 'locations.json'), 'utf8'));
-    const startingJson = JSON.parse(fs.readFileSync(path.join(dataPath, 'starting.json'), 'utf8'));
-
-    const worldContent: WorldContent = {
-        qualities: {},
-        storylets: {},
-        opportunities: {},
-        locations: {},
-        starting: startingJson, // This one is already in the right format
-    };
-
-    // Populate with IDs
-    for (const key in qualitiesJson) worldContent.qualities[key] = { ...qualitiesJson[key], id: key };
-    for (const key in storyletsJson) worldContent.storylets[key] = { ...storyletsJson[key], id: key };
-    for (const key in opportunitiesJson) worldContent.opportunities[key] = { ...opportunitiesJson[key], id: key };
-    for (const key in locationsJson) worldContent.locations[key] = { ...locationsJson[key], id: key };
-
-    cachedData = worldContent;
-    console.log(`[Data Loader] Loaded world '${worldId}' successfully.`);
-    
-    return cachedData;
-};
+});

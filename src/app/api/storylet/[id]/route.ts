@@ -6,7 +6,7 @@ import { repositories } from '@/engine/repositories';
 
 export async function GET(request: NextRequest) {
     try {
-        const gameData = loadGameData();
+        const gameData = await loadGameData();
         repositories.initialize(gameData);
 
         const context = { params: { id: request.nextUrl.pathname.split('/').pop() } };

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
     const userId = (session.user as any).id;
 
-    const gameData = loadGameData();
+    const gameData = await loadGameData();
     repositories.initialize(gameData);    
 
     const { storyletId, optionId } = await request.json();
