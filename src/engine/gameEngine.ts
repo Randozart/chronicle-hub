@@ -1,0 +1,429 @@
+// src/engine/gameEngine.ts
+
+import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet } from '@/engine/models';
+import { repositories } from '@/engine/repositories';
+
+const getCPforNextLevel = (level: number): number => {
+    // Formula: (Current Level + 1) * 10.
+    // Level 0 -> 1 requires 1 CP. Level 1 -> 2 requires 2 CP.
+    return level + 1;
+};
+
+const evaluateSimpleExpression = (expr: string): number | boolean => {
+    try {
+        const sanitizedExpr = expr.replace(/==/g, '===');
+        if (/[^a-zA-Z0-9_+\-/*%&|=!<>.\s()]/.test(sanitizedExpr)) return false;
+        return new Function(`return ${sanitizedExpr}`)();
+    } catch { return false; }
+};
+
+type SkillCheckResult = {
+    wasSuccess: boolean;
+    roll: number;
+    target: number;
+    description: string;
+};
+
+export class GameEngine {
+    private qualities: PlayerQualities;
+
+    private resolutionPruneTargets: Record<string, string> = {};
+
+    constructor(initialQualities: PlayerQualities) {
+        this.qualities = JSON.parse(JSON.stringify(initialQualities));
+    }
+
+    public getQualities(): PlayerQualities {
+        return this.qualities;
+    }
+    
+    public resolveOption(storylet: Storylet, option: ResolveOption) {
+        const wasSuccess = this.evaluateCondition(option.random, true);
+        const changeString = wasSuccess ? option.pass_quality_change : option.fail_quality_change;
+
+        const qualitiesBefore = JSON.parse(JSON.stringify(this.qualities));
+        
+        if (changeString) {
+            this.evaluateEffects(changeString);
+        }
+        
+        const descriptions = this.parseQualityChangesForDisplay(changeString, qualitiesBefore);
+        
+        return {
+            wasSuccess,
+            body: wasSuccess ? option.pass_long : option.fail_long,
+            redirectId: wasSuccess ? option.pass_redirect : option.fail_redirect,
+            qualityChanges: descriptions,
+        };
+    }
+
+    private evaluateCondition(expression?: string, isSkillCheck: boolean = false): boolean | SkillCheckResult { // Return type is now a union
+        if (!expression) return true;
+        
+        const finalExpression = this.evaluateBlock(expression);
+
+        if (isSkillCheck) {
+            const skillCheckMatch = finalExpression.match(/^\s*\$(.*?)\s*(>=|<=)\s*(\d+)(?:\s*\[(\d+)\])?\s*$/);
+            if (skillCheckMatch) {
+                // Pass the result object straight through
+                return this.performSkillCheck(skillCheckMatch);
+            }
+            console.warn(`[evaluateCondition] Could not parse skill check format: "${finalExpression}". Assuming success.`);
+            return true;
+        }
+
+        const replaced = finalExpression.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
+        const result = evaluateSimpleExpression(replaced);
+        return typeof result === 'boolean' ? result : Number(result) > 0;
+    }
+
+    
+    private evaluateEffects(effects: string): void {
+        const individualEffects = effects.split(',');
+        for (const effect of individualEffects) {
+            this.applyEffect(effect.trim());
+        }
+    }
+
+
+    private applyEffect(effect: string): void {
+        const conditionalMatch = effect.match(/^{\s*(.*?)\s*:\s*(.*?)(?:\s*\|\s*(.*))?\s*}$/);
+        if (conditionalMatch) {
+            const [, condition, effectIfTrue, effectIfFalse] = conditionalMatch;
+            if (this.evaluateCondition(condition)) {
+                this.evaluateEffects(effectIfTrue);
+            } else if (effectIfFalse) {
+                this.evaluateEffects(effectIfFalse);
+            }
+            return;
+        }
+
+        // Handle ++ and -- operators first, as they have no value part.
+        const incrementDecrementMatch = effect.match(/^\s*\$([a-zA-Z0-9_]+)\s*(\+\+|--)\s*$/);
+        if (incrementDecrementMatch) {
+            const [, qid, op] = incrementDecrementMatch;
+            // We pass a value of 1, and the operator will tell changeQuality what to do.
+            this.changeQuality(qid, op, 1);
+            return; // We're done with this effect.
+        }
+
+        const simpleMatch = effect.match(/^\s*\$([a-zA-Z0-9_]+)(?:\[source:([^\]]+)\])?\s*(\+=|-=|=)\s*(.*)\s*$/);
+        if (simpleMatch) {
+            const [, qid, source, op, valueStr] = simpleMatch;
+            
+            const evaluatedValue = this.evaluateBlock(valueStr);
+            
+            let value: number | string;
+            if (isNaN(parseInt(evaluatedValue, 10)) || valueStr.includes('"')) {
+                value = evaluatedValue.replace(/"/g, '');
+            } else {
+                value = parseInt(evaluatedValue, 10);
+            }
+
+            this.changeQuality(qid, op, value, source);
+        }
+    }
+
+    private evaluateBlock(content: string): string {
+        if (!content) return "";
+        let currentExpression = content.trim();
+
+        // Iteratively resolve the deepest nested blocks first, working our way outwards.
+        // Loop with a safety break to prevent infinite loops on malformed input.
+        for (let i = 0; i < 10; i++) {
+            // This regex finds the innermost block (one with no '{' or '}' inside it).
+            const innermostBlockMatch = currentExpression.match(/\{([^{}]+?)\}/);
+            
+            if (!innermostBlockMatch) {
+                break; // No more blocks to resolve, exit the loop.
+            }
+
+            const blockWithBraces = innermostBlockMatch[0]; // e.g., "{5 ~ 35}" or "{10 + 5}"
+            const innerContent = innermostBlockMatch[1].trim(); // e.g., "5 ~ 35" or "10 + 5"
+
+            let evaluatedValue: string;
+
+            // Priority 1: Check for random number range.
+            const randomMatch = innerContent.match(/^(\d+)\s*~\s*(\d+)$/);
+            if (randomMatch) {
+                const min = parseInt(randomMatch[1], 10);
+                const max = parseInt(randomMatch[2], 10);
+                evaluatedValue = (Math.floor(Math.random() * (max - min + 1)) + min).toString();
+            } else {
+                // Priority 2: It's a calculation.
+                // Replace quality variables within this specific block.
+                let processedContent = innerContent.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
+                
+                const result = evaluateSimpleExpression(processedContent);
+                evaluatedValue = (result === false) ? "0" : result.toString();
+            }
+
+            // Replace the block in the main expression with its calculated value.
+            currentExpression = currentExpression.replace(blockWithBraces, evaluatedValue);
+        }
+
+        // After all blocks are resolved, return the final string.
+        // If the original content had no blocks, it will be returned as-is.
+        return currentExpression;
+    }
+
+
+    private getQualityValue(id: string): number {
+        const state = this.qualities[id];
+        return (state && 'level' in state) ? state.level : 0;
+    }
+    
+    private changeQuality(qid: string, op: string, value: number | string, source?: string): void {
+        const def = repositories.getQuality(qid);
+        if (!def) return;
+
+        const previousLevel = this.getQualityValue(qid);
+        if (!this.qualities[qid]) {
+            this.qualities[qid] = this.createInitialState(qid, def.type);
+        }
+
+        const qState = this.qualities[qid];
+
+        if (qState.type === QualityType.String) {
+            if (typeof value === 'string' && op === '=') { qState.stringValue = value; }
+            return;
+        }
+
+        if (typeof value !== 'number') return;
+
+        if (qState.type === QualityType.Pyramidal) {
+            if (op === '=') {
+                qState.level = value;
+                qState.changePoints = 0;
+            } else {
+                switch(op) {
+                    // Because we pass `1` for `++` and `--`, we need to treat them like `+=` and `-=`
+                    case '++': 
+                    case '+=': qState.changePoints += value; break;
+                    case '--': 
+                    case '-=': qState.changePoints -= value; break;
+                }
+                this.updatePyramidalLevel(qState);
+            }
+            return;
+        }
+        
+        if (qState.type === QualityType.Item) {
+             switch(op) {
+                case '++': qState.level++; break;
+                case '--': qState.level--; break;
+                case '=': 
+                    qState.level = value; 
+                    qState.sources = []; 
+                    qState.spentTowardsPrune = 0; 
+                    break;
+                case '+=': qState.level += value; break;
+                case '-=': qState.level -= value; break;
+            }
+            if (source) qState.sources.push(source);
+
+            // NEW: Trigger pruning logic on decrease
+            if(qState.level < previousLevel){
+                this.pruneItemSourcesIfNeeded(qid, previousLevel - qState.level);
+            }
+            return;
+        }
+        
+        if ('level' in qState) {
+            switch(op) {
+                case '++': qState.level++; break;
+                case '--': qState.level--; break;
+                case '=': qState.level = value; break;
+                case '+=': qState.level += value; break;
+                case '-=': qState.level -= value; break;
+            }
+        }
+    }
+
+    private createInitialState(qid: string, type: QualityType): QualityState {
+        switch (type) {
+            case QualityType.String:
+                return { qualityId: qid, type, stringValue: "" };
+            case QualityType.Item:
+                return { qualityId: qid, type, level: 0, sources: [], spentTowardsPrune: 0 };
+            case QualityType.Pyramidal:
+                return { qualityId: qid, type, level: 0, changePoints: 0 };
+            case QualityType.Counter:
+            case QualityType.Tracker:
+                return { qualityId: qid, type, level: 0 };
+        }
+    }
+
+    private performSkillCheck(match: RegExpMatchArray): boolean {
+        const [, qualitiesPart, operator, targetStr, marginStr] = match;
+        const target = parseInt(targetStr, 10);
+        const margin = marginStr ? parseInt(marginStr, 10) : target;
+
+        // 1. Replace the $quality names with their numerical values.
+        const skillExpression = qualitiesPart.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
+        
+        // 2. Use our existing math evaluator to get the final number.
+        const skillLevelResult = evaluateSimpleExpression(skillExpression);
+        const skillLevel = typeof skillLevelResult === 'number' ? skillLevelResult : 0;
+        
+        const lowerBound = target - margin;
+        const upperBound = target + margin;
+
+        let successChance = 0.0;
+        if (skillLevel <= lowerBound) {
+            successChance = 0.0;
+        } else if (skillLevel >= upperBound) {
+            successChance = 1.0;
+        } else {
+            if (skillLevel < target) {
+                const denominator = target - lowerBound;
+                if (denominator <= 0) {
+                    successChance = 0.5;
+                } else {
+                    const progress = (skillLevel - lowerBound) / denominator;
+                    successChance = progress * 0.5;
+                }
+            } else { // skillLevel >= target
+                const denominator = upperBound - target;
+                if (denominator <= 0) {
+                    successChance = 0.5;
+                } else {
+                    const progress = (skillLevel - target) / denominator;
+                    successChance = 0.5 + (progress * 0.5);
+                }
+            }
+        }
+        
+        if (operator === '<=') {
+            successChance = 1.0 - successChance;
+        }
+
+        const finalChance = Math.max(0.0, Math.min(1.0, successChance));
+        
+        const targetPercent = Math.round(finalChance * 100);
+        const rollPercent = Math.floor(Math.random() * 101);
+        const wasSuccess = rollPercent <= targetPercent;
+
+        console.log('--- SKILL CHECK ---');
+        console.log(`Player's effective skill level: ${skillLevel}`); // This will now be a number
+        console.log(`Target: ${target}, Margin: ${marginStr || target}`);
+        console.log(`Calculated Success Chance: ${targetPercent}%`);
+        console.log(`Dice Roll (0-100): ${rollPercent}`);
+        console.log(`Result: ${wasSuccess ? 'SUCCESS' : 'FAILURE'}`);
+        console.log('-------------------');
+
+        return wasSuccess;
+    }
+    
+    private updatePyramidalLevel(qState: QualityState) {
+        if (qState.type !== QualityType.Pyramidal) return;
+
+        // Loop to handle multiple level ups from a single large CP gain
+        let cpNeeded = getCPforNextLevel(qState.level);
+        while (qState.changePoints >= cpNeeded && cpNeeded > 0) {
+            qState.level++;
+            qState.changePoints -= cpNeeded;
+            cpNeeded = getCPforNextLevel(qState.level);
+        }
+
+        // Handle level downs
+        while (qState.changePoints < 0) {
+            if (qState.level === 0) {
+                qState.changePoints = 0; // Can't go below level 0
+                break;
+            }
+            const cpForPrevious = getCPforNextLevel(qState.level - 1);
+            qState.changePoints += cpForPrevious;
+            qState.level--;
+        }
+    }
+
+    private pruneItemSourcesIfNeeded(id: string, amountDecreased: number): void {
+        const qState = this.qualities[id];
+        if (qState?.type !== QualityType.Item || qState.sources.length <= 1) return;
+
+        qState.spentTowardsPrune += amountDecreased;
+        
+        const itemsBeforeDecrease = qState.level + amountDecreased;
+        const itemsPerSource = itemsBeforeDecrease / qState.sources.length;
+
+        if (itemsPerSource <= 0 || qState.spentTowardsPrune < itemsPerSource) return;
+
+        let sourcesToPrune = Math.floor(qState.spentTowardsPrune / itemsPerSource);
+        
+        for (let i = 0; i < sourcesToPrune; i++) {
+            if (qState.sources.length <= 1) break;
+
+            const primaryTarget = this.resolutionPruneTargets[id];
+            let removed = false;
+
+            if (primaryTarget && qState.sources.includes(primaryTarget)) {
+                const index = qState.sources.indexOf(primaryTarget);
+                qState.sources.splice(index, 1);
+                delete this.resolutionPruneTargets[id];
+                removed = true;
+            } else {
+                const counts = qState.sources.reduce((acc, val) => acc.set(val, (acc.get(val) || 0) + 1), new Map<string, number>());
+                const duplicate = Array.from(counts.entries()).find(([_, count]) => count > 1);
+                if (duplicate) {
+                    const index = qState.sources.indexOf(duplicate[0]);
+                    qState.sources.splice(index, 1);
+                    removed = true;
+                }
+            }
+
+            if (removed) {
+                qState.spentTowardsPrune -= itemsPerSource;
+            } else {
+                break;
+            }
+        }
+    }
+
+    private parseQualityChangesForDisplay(effects?: string, qualitiesBefore?: PlayerQualities): string[] {
+        if (!effects) return [];
+        
+        const descriptions: string[] = [];
+        const effectParts = effects.split(/,\s*/);
+
+        for (const part of effectParts) {
+            const effect = part.trim();
+            if (!effect) continue;
+
+            // NEW LOGIC: We don't re-evaluate the condition. We just parse out the effect part.
+            const conditionalMatch = effect.match(/^{\s*.*?\s*:\s*(.*?)(?:\s*\|.*)?\s*}$/);
+
+            if (conditionalMatch) {
+                // If it's a conditional, we assume the 'true' branch was taken and parse its contents.
+                // This is a simplification, but it will work for your current case.
+                const effectIfTrue = conditionalMatch[1];
+                const innerDescriptions = this.parseQualityChangesForDisplay(effectIfTrue);
+                descriptions.push(...innerDescriptions);
+            } else {
+                // This is the same simple match logic that works.
+                const simpleMatch = effect.match(/^\s*\$([a-zA-Z0-9_]+)\s*(\+\+|--|\+=|-=|=)\s*(.*)\s*$/);
+                
+                if (simpleMatch) {
+                    const [, qid, op] = simpleMatch;
+                    const def = repositories.getQuality(qid);
+                    if (!def) continue;
+
+                    const finalState = this.qualities[qid];
+                    let finalValue = '';
+                    if (finalState) {
+                        if ('level' in finalState) finalValue = finalState.level.toString();
+                        else if ('stringValue' in finalState) finalValue = finalState.stringValue;
+                    }
+
+                    let desc = `${def.name} has changed.`;
+                    if (op === '++' || op === '+=') desc = `${def.name} has increased.`;
+                    else if (op === '--' || op === '-=') desc = `${def.name} has decreased.`;
+                    else if (op === '=') desc = `${def.name} is now ${finalValue}.`;
+                    
+                    descriptions.push(desc);
+                }
+            }
+        }
+        return descriptions;
+    }
+}
