@@ -1,6 +1,6 @@
 // src/engine/gameEngine.ts
 
-import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, WorldContent } from '@/engine/models';
+import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, WorldContent, QualityChangeInfo } from '@/engine/models';
 import { repositories } from '@/engine/repositories';
 
 const getCPforNextLevel = (level: number): number => {
@@ -27,7 +27,7 @@ type SkillCheckResult = {
 export class GameEngine {
     private qualities: PlayerQualities;
     private worldContent: WorldContent; // Store the world data
-
+    private changes: QualityChangeInfo[] = [];
 
     private resolutionPruneTargets: Record<string, string> = {};
 
@@ -41,22 +41,23 @@ export class GameEngine {
     }
     
     public resolveOption(storylet: Storylet, option: ResolveOption) {
+        // Clear the changes array at the start of every action
+        this.changes = []; 
+        
         const wasSuccess = this.evaluateCondition(option.random, true);
         const changeString = wasSuccess ? option.pass_quality_change : option.fail_quality_change;
-
-        const qualitiesBefore = JSON.parse(JSON.stringify(this.qualities));
         
         if (changeString) {
             this.evaluateEffects(changeString);
         }
         
-        const descriptions = this.parseQualityChangesForDisplay(changeString, qualitiesBefore);
-        
+        // The return object no longer needs `qualityChanges` as text.
+        // It will now return our detailed `changes` array.
         return {
             wasSuccess,
             body: wasSuccess ? option.pass_long : option.fail_long,
             redirectId: wasSuccess ? option.pass_redirect : option.fail_redirect,
-            qualityChanges: descriptions,
+            qualityChanges: this.changes, // <-- RETURN THE DETAILED OBJECTS
         };
     }
 
@@ -180,67 +181,100 @@ export class GameEngine {
         const def = repositories.getQuality(qid);
         if (!def) return;
 
-        const previousLevel = this.getQualityValue(qid);
+        const stateBefore = this.qualities[qid] ? JSON.parse(JSON.stringify(this.qualities[qid])) : null;
+        const previousLevel = (stateBefore && 'level' in stateBefore) ? stateBefore.level : 0;
+
         if (!this.qualities[qid]) {
             this.qualities[qid] = this.createInitialState(qid, def.type);
         }
 
         const qState = this.qualities[qid];
 
+        // --- SECTION 1: Perform all state changes ---
+        
         if (qState.type === QualityType.String) {
             if (typeof value === 'string' && op === '=') { qState.stringValue = value; }
-            return;
+            // REMOVED `return;`
         }
-
-        if (typeof value !== 'number') return;
-
-        if (qState.type === QualityType.Pyramidal) {
-            if (op === '=') {
-                qState.level = value;
-                qState.changePoints = 0;
-            } else {
-                switch(op) {
-                    // Because we pass `1` for `++` and `--`, we need to treat them like `+=` and `-=`
-                    case '++': 
-                    case '+=': qState.changePoints += value; break;
-                    case '--': 
-                    case '-=': qState.changePoints -= value; break;
+        else if (typeof value === 'number') { // Added else if for clarity
+            if (qState.type === QualityType.Pyramidal) {
+                if (op === '=') {
+                    qState.level = value;
+                    qState.changePoints = 0;
+                } else {
+                    switch(op) {
+                        case '++': case '+=': qState.changePoints += value; break;
+                        case '--': case '-=': qState.changePoints -= value; break;
+                    }
+                    this.updatePyramidalLevel(qState);
                 }
-                this.updatePyramidalLevel(qState);
+                // REMOVED `return;`
             }
-            return;
+            else if (qState.type === QualityType.Item) {
+                switch(op) {
+                    case '++': qState.level++; break;
+                    case '--': qState.level--; break;
+                    case '=': qState.level = value; qState.sources = []; qState.spentTowardsPrune = 0; break;
+                    case '+=': qState.level += value; break;
+                    case '-=': qState.level -= value; break;
+                }
+                if (source) qState.sources.push(source);
+                if(qState.level < previousLevel){
+                    this.pruneItemSourcesIfNeeded(qid, previousLevel - qState.level);
+                }
+                // REMOVED `return;`
+            }
+            else if ('level' in qState) { // For Counter and Tracker
+                switch(op) {
+                    case '++': qState.level++; break;
+                    case '--': qState.level--; break;
+                    case '=': qState.level = value; break;
+                    case '+=': qState.level += value; break;
+                    case '-=': qState.level -= value; break;
+                }
+            }
         }
-        
-        if (qState.type === QualityType.Item) {
-             switch(op) {
-                case '++': qState.level++; break;
-                case '--': qState.level--; break;
-                case '=': 
-                    qState.level = value; 
-                    qState.sources = []; 
-                    qState.spentTowardsPrune = 0; 
-                    break;
-                case '+=': qState.level += value; break;
-                case '-=': qState.level -= value; break;
-            }
-            if (source) qState.sources.push(source);
 
-            // NEW: Trigger pruning logic on decrease
-            if(qState.level < previousLevel){
-                this.pruneItemSourcesIfNeeded(qid, previousLevel - qState.level);
-            }
-            return;
+        // --- SECTION 2: Generate the report based on the final state ---
+        // This block is now guaranteed to run for all quality types.
+        
+        const stateAfter = this.qualities[qid]; // Re-fetch the final state for clarity
+
+        const levelBefore = (stateBefore && 'level' in stateBefore) ? stateBefore.level : 0;
+        const cpBefore = (stateBefore && 'changePoints' in stateBefore) ? stateBefore.changePoints : 0;
+        const levelAfter = (stateAfter && 'level' in stateAfter) ? stateAfter.level : 0;
+        const cpAfter = (stateAfter && 'changePoints' in stateAfter) ? stateAfter.changePoints : 0;
+
+        let changeText = `${def.name} has changed.`;
+
+        // TypeScript can now evaluate these conditions correctly because it hasn't
+        // prematurely narrowed the type of `qState` in an exited code path.
+        if (levelAfter > levelBefore) {
+            changeText = `${def.name} has increased to ${levelAfter}!`;
+        } else if (levelAfter < levelBefore) {
+            changeText = `${def.name} has decreased to ${levelAfter}.`;
+        } else if (qState.type === QualityType.Pyramidal && 'changePoints' in stateAfter && cpAfter > cpBefore) {
+            changeText = `${def.name} has increased...`;
+        } else if (qState.type === QualityType.Pyramidal && 'changePoints' in stateAfter && cpAfter < cpBefore) {
+            changeText = `${def.name} has decreased...`;
+        } else if (qState.type === QualityType.String && 'stringValue' in stateAfter) {
+            changeText = `${def.name} is now ${stateAfter.stringValue}.`;
         }
         
-        if ('level' in qState) {
-            switch(op) {
-                case '++': qState.level++; break;
-                case '--': qState.level--; break;
-                case '=': qState.level = value; break;
-                case '+=': qState.level += value; break;
-                case '-=': qState.level -= value; break;
-            }
-        }
+        // Safety check `stringValue` for the push
+        const stringValueAfter = ('stringValue' in stateAfter) ? stateAfter.stringValue : undefined;
+
+        this.changes.push({
+            qid,
+            qualityName: def.name || qid,
+            type: def.type,
+            levelBefore,
+            cpBefore,
+            levelAfter,
+            cpAfter,
+            stringValue: stringValueAfter,
+            changeText,
+        });
     }
 
     private createInitialState(qid: string, type: QualityType): QualityState {

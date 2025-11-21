@@ -1,10 +1,11 @@
 // src/components/StoryletDisplay.tsx
 'use client';
 
-import { Storylet, PlayerQualities, ResolveOption, Opportunity, WorldContent } from '@/engine/models';
+import { Storylet, PlayerQualities, ResolveOption, Opportunity, WorldContent, QualityChangeInfo } from '@/engine/models';
 import { useState, useEffect } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
 import { repositories } from '@/engine/repositories';
+import QualityChangeBar from './QualityChangeBar';
 
 interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
@@ -23,13 +24,13 @@ type DisplayOption = ResolveOption & {
 type ResolutionState = {
     title: string;
     body: string;
-    qualityChanges: string[];
     redirectId?: string;
     image_code?: string;
     wasSuccess?: boolean; 
     skillCheckDetails?: { 
         description: string;
     };
+    qualityChanges: QualityChangeInfo[];
 };
 
 export default function StoryletDisplay({ 
@@ -120,11 +121,13 @@ export default function StoryletDisplay({
                 </div>
 
                 {resolution.qualityChanges && resolution.qualityChanges.length > 0 && 
-                    <div className="quality-changes">
-                        {resolution.qualityChanges.map((change, i) => <p key={i}>{change}</p>)}
+                    <div className="quality-changes-container">
+                        {resolution.qualityChanges.map((change) => (
+                            <QualityChangeBar key={change.qid} change={change} />
+                        ))}
                     </div>
                 }
-                
+                    
                 <button className="option-button continue-button" onClick={handleContinue}>
                     Continue
                 </button>

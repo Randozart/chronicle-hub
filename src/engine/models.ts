@@ -125,3 +125,15 @@ export interface CharacterDocument {
     currentStoryletId: string;
     opportunityHand: string[];
 }
+
+export interface QualityChangeInfo {
+    qid: string;
+    qualityName: string;
+    type: QualityType;
+    levelBefore: number;
+    cpBefore: number;
+    levelAfter: number;
+    cpAfter: number;
+    stringValue?: string;
+    changeText: string;
+}
