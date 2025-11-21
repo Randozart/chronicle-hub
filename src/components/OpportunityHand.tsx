@@ -12,9 +12,10 @@ interface OpportunityHandProps {
     qualities: PlayerQualities;
     onDrawClick: () => void;
     isLoading: boolean;
+    gameData: WorldContent; 
 }
 
-export default function OpportunityHand({ hand, onCardClick, qualities, onDrawClick, isLoading }: OpportunityHandProps) {
+export default function OpportunityHand({ hand, onCardClick, qualities, onDrawClick, isLoading, gameData }: OpportunityHandProps) {
     
     return (
         <div className="opportunity-hand">

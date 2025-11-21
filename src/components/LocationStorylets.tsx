@@ -9,6 +9,7 @@ interface LocationStoryletsProps {
     storylets: Storylet[];
     onStoryletClick: (storyletId: string) => void;
     qualities: PlayerQualities;
+    gameData: WorldContent; 
 }
 
 export default function LocationStorylets({ storylets, onStoryletClick, qualities }: LocationStoryletsProps) {

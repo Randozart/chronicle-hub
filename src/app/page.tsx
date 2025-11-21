@@ -47,7 +47,7 @@ export default async function Home() {
     };
 
      return (
-        <main className="container">
+        <main>
             <GameHub
                 initialCharacter={plainInitialCharacter}
                 initialLocation={initialLocation}

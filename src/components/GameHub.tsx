@@ -9,6 +9,7 @@ import LocationHeader from './LocationHeader';
 import OpportunityHand from './OpportunityHand';
 import StoryletDisplay from './StoryletDisplay';
 import LocationStorylets from './LocationStorylets';
+import CharacterSheet from './CharacterSheet'; 
 
 export default function GameHub({
     initialCharacter,
@@ -23,9 +24,12 @@ export default function GameHub({
     locationStorylets: Storylet[];
     gameData: WorldContent;
 }) {
-    // This is the single point of initialization for the client-side.
+    
+    const [isClientReady, setIsClientReady] = useState(false);
+
     useEffect(() => {
         repositories.initialize(gameData);
+        setIsClientReady(true);
     }, [gameData]);
 
     const [character, setCharacter] = useState(initialCharacter);
@@ -82,32 +86,67 @@ export default function GameHub({
         return <div className="storylet-container loading-container"><p>Loading...</p></div>;
     }
 
-    if (activeEvent) {
-        return (
-            <StoryletDisplay
-                eventData={activeEvent}
-                initialQualities={character.qualities}
-                onFinish={handleEventFinish}
-                gameData={gameData}
-            />
-        );
-    }
+    // if (activeEvent) {
+    //     return (
+    //         <StoryletDisplay
+    //             eventData={activeEvent}
+    //             initialQualities={character.qualities}
+    //             onFinish={handleEventFinish}
+    //             gameData={gameData}
+    //         />
+    //     );
+    // }
     
     return (
-        <div>
-            <LocationHeader location={location} />
-            <LocationStorylets
-                storylets={locationStorylets}
-                onStoryletClick={showEvent}
-                qualities={character.qualities}
-            />
-            <OpportunityHand 
-                hand={hand} 
-                onCardClick={showEvent}
-                onDrawClick={handleDrawCard}
-                isLoading={isLoading}
-                qualities={character.qualities}
-            />
+        <div className="hub-layout">
+            
+            {/* The left sidebar with the Character Sheet is always rendered. */}
+            <div className="sidebar-column left">
+                {/* It only appears when the client is ready to prevent hydration crashes. */}
+                {isClientReady && <CharacterSheet qualities={character.qualities} gameData={gameData} />}
+            </div>
+            
+            <div className="main-content-column">
+                {/* 
+                    This is the only place where we decide what to show in the middle.
+                    The layout itself is now permanent.
+                */}
+                {isLoading ? (
+                    <div className="storylet-container loading-container"><p>Loading...</p></div>
+                ) : activeEvent ? (
+                    <StoryletDisplay
+                        eventData={activeEvent}
+                        initialQualities={character.qualities} // Use the most up-to-date qualities
+                        onFinish={handleEventFinish}
+                        gameData={gameData}
+                    />
+                ) : isClientReady ? ( // Don't show hub until client is ready
+                    <>
+                        <LocationHeader location={location} />
+                        <LocationStorylets
+                            storylets={locationStorylets}
+                            onStoryletClick={showEvent}
+                            qualities={character.qualities}
+                            gameData={gameData}
+                        />
+                        <OpportunityHand 
+                            hand={hand} 
+                            onCardClick={showEvent}
+                            onDrawClick={handleDrawCard}
+                            isLoading={isLoading} 
+                            qualities={character.qualities}
+                            gameData={gameData}
+                        />
+                    </>
+                ) : (
+                    // On initial server-render and first client-render, show a loading state
+                    <div className="storylet-container loading-container"><p>Initializing...</p></div>
+                )}
+            </div>
+
+            <div className="sidebar-column right">
+                {/* The empty right sidebar is always rendered for layout stability. */}
+            </div>
         </div>
     );
 }
