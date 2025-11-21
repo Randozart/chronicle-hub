@@ -130,6 +130,7 @@ export interface QualityChangeInfo {
     qid: string;
     qualityName: string;
     type: QualityType;
+    category?: string;
     levelBefore: number;
     cpBefore: number;
     levelAfter: number;

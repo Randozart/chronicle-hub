@@ -194,8 +194,8 @@ export class GameEngine {
         
         if (qState.type === QualityType.String) {
             if (typeof value === 'string' && op === '=') { qState.stringValue = value; }
-            // REMOVED `return;`
         }
+        
         else if (typeof value === 'number') { // Added else if for clarity
             if (qState.type === QualityType.Pyramidal) {
                 if (op === '=') {
@@ -208,8 +208,8 @@ export class GameEngine {
                     }
                     this.updatePyramidalLevel(qState);
                 }
-                // REMOVED `return;`
             }
+
             else if (qState.type === QualityType.Item) {
                 switch(op) {
                     case '++': qState.level++; break;
@@ -222,8 +222,8 @@ export class GameEngine {
                 if(qState.level < previousLevel){
                     this.pruneItemSourcesIfNeeded(qid, previousLevel - qState.level);
                 }
-                // REMOVED `return;`
             }
+
             else if ('level' in qState) { // For Counter and Tracker
                 switch(op) {
                     case '++': qState.level++; break;
@@ -236,7 +236,6 @@ export class GameEngine {
         }
 
         // --- SECTION 2: Generate the report based on the final state ---
-        // This block is now guaranteed to run for all quality types.
         
         const stateAfter = this.qualities[qid]; // Re-fetch the final state for clarity
 
@@ -247,8 +246,6 @@ export class GameEngine {
 
         let changeText = `${def.name} has changed.`;
 
-        // TypeScript can now evaluate these conditions correctly because it hasn't
-        // prematurely narrowed the type of `qState` in an exited code path.
         if (levelAfter > levelBefore) {
             changeText = `${def.name} has increased to ${levelAfter}!`;
         } else if (levelAfter < levelBefore) {
@@ -268,6 +265,7 @@ export class GameEngine {
             qid,
             qualityName: def.name || qid,
             type: def.type,
+            category: def.category, 
             levelBefore,
             cpBefore,
             levelAfter,

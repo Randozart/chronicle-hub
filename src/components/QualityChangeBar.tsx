@@ -1,48 +1,57 @@
+// src/components/QualityChangeBar.tsx
 'use client';
 
-import { QualityChangeInfo, QualityType } from "@/engine/models"; // Assuming QualityChangeInfo is in models
+import { QualityChangeInfo, QualityType } from "@/engine/models";
 import { useEffect, useState } from "react";
 
-// The same helper function from the engine
 const getCPforNextLevel = (level: number): number => level + 1;
 
 export default function QualityChangeBar({ change }: { change: QualityChangeInfo }) {
     const [fillWidth, setFillWidth] = useState('0%');
 
-    const isPyramidal = change.type === QualityType.Pyramidal;
-    const cpNeededBefore = isPyramidal ? getCPforNextLevel(change.levelBefore) : 1;
-    const cpNeededAfter = isPyramidal ? getCPforNextLevel(change.levelAfter) : 1;
+    // For non-Pyramidal types, just show the text.
+    if (change.type !== QualityType.Pyramidal) {
+        return <p className="quality-change-text simple-change">{change.changeText}</p>;
+    }
+
+    const leveledUp = change.levelAfter > change.levelBefore;
+    const leveledDown = change.levelAfter < change.levelBefore;
     
-    // Calculate percentages for the bar fill
-    const startPercent = isPyramidal ? (change.cpBefore / cpNeededBefore) * 100 : change.levelBefore;
-    const endPercent = isPyramidal ? (change.cpAfter / cpNeededAfter) * 100 : change.levelAfter;
+    // Determine the initial state of the bar for the animation's start point.
+    // If you leveled down, the bar starts full. Otherwise, it starts from your previous CP.
+    const startPercent = leveledDown ? 100 : (change.cpBefore / getCPforNextLevel(change.levelBefore)) * 100;
+    
+    // Determine the target state of the bar.
+    // If you leveled up, the bar fills to 100%. Otherwise, it goes to your new CP value.
+    const endPercent = leveledUp ? 100 : (change.cpAfter / getCPforNextLevel(change.levelAfter)) * 100;
 
-    // Animate the bar after the component mounts
+    const isMenace = change.category?.includes('menace');
+    const fillClassName = isMenace ? 'quality-bar-fill menace' : 'quality-bar-fill';
+
+    if (change.type !== QualityType.Pyramidal) {
+        return <p className={`quality-change-text simple-change ${isMenace ? 'menace-text' : ''}`}>{change.changeText}</p>;
+    }
+
     useEffect(() => {
-        // Start the bar at the "before" state
+        // Set initial width instantly.
         setFillWidth(`${startPercent}%`);
-        // Use a timeout to allow the initial state to render, then trigger the animation
-        const timer = setTimeout(() => {
-            setFillWidth(`${endPercent}%`);
-        }, 100);
-
+        // Trigger animation to the end width after a short delay.
+        const timer = setTimeout(() => setFillWidth(`${endPercent}%`), 100);
         return () => clearTimeout(timer);
     }, [startPercent, endPercent]);
 
-
-    // Don't show a bar for non-numerical qualities
-    if (change.type === QualityType.String) {
-        return <p className="quality-change-text">{change.changeText}</p>;
-    }
-    
     return (
         <div className="quality-change-item">
             <p className="quality-change-text">{change.changeText}</p>
-            <div className="quality-bar-background">
-                <div 
-                    className="quality-bar-fill" 
-                    style={{ width: fillWidth }}
-                />
+            <div className="bar-wrapper">
+                <span className="bar-level-label left">{leveledDown ? change.levelAfter : change.levelBefore}</span>
+                <div className="quality-bar-background">
+                    <div 
+                        className={fillClassName}
+                        style={{ width: fillWidth }}
+                    />
+                </div>
+                <span className="bar-level-label right">{leveledDown ? change.levelAfter + 1 : change.levelBefore + 1}</span>
             </div>
         </div>
     );
