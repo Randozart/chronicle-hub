@@ -58,7 +58,9 @@ export interface Storylet extends BaseStorylet {
 }
 
 export interface Opportunity extends BaseStorylet {
-    deck: string; // Which deck this opportunity/card belongs to
+    deck: string;
+    draw_condition?: string;
+    frequency: "Always" | "Frequent" | "Standard" | "Infrequent" | "Rare";
 }
 
 export interface LocationDefinition {
@@ -73,7 +75,6 @@ export interface LocationDefinition {
     properties?: string;
 }
 
-// This represents the entire content of a "world"
 export interface WorldContent {
     storylets: Record<string, Storylet>;
     qualities: Record<string, QualityDefinition>;
@@ -81,10 +82,6 @@ export interface WorldContent {
     locations: Record<string, LocationDefinition>;
     starting: Record<string, string>;
 }
-
-
-// --- DYNAMIC PLAYER/CHARACTER STATE ---
-// This is the data saved in the database for each character.
 
 interface BaseQualityState {
     qualityId: string;
@@ -122,12 +119,9 @@ export type PlayerQualities = Record<string, QualityState>;
 export interface CharacterDocument {
     _id?: any;
     userId: string;
-    storyId: string; // <-- Standardize on this name
+    storyId: string;
     qualities: PlayerQualities;
     currentLocationId: string;
-    
-    // New fields for the Opportunity Deck mechanic
-    opportunityHand: string[]; // Array of opportunity IDs
-    drawDeck: string[]; // Array of opportunity IDs
-    discardPile: string[]; // Array of opportunity IDs
+    currentStoryletId: string;
+    opportunityHand: string[];
 }

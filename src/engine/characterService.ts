@@ -1,22 +1,12 @@
 // src/engine/characterService.ts
 
 import clientPromise from '@/engine/database';
-import { PlayerQualities, QualityState, WorldContent, QualityType } from '@/engine/models';
+import { PlayerQualities, QualityState, WorldContent, QualityType, CharacterDocument } from '@/engine/models';
+
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 const COLLECTION_NAME = 'characters';
 
-export interface CharacterDocument {
-    _id?: any;
-    userId: string;
-    storyId: string;
-    qualities: PlayerQualities;
-    currentLocationId: string;
-    currentStoryletId: string;
-    opportunityHand: string[];
-    drawDeck: string[];
-    discardPile: string[];
-}
 
 // Gets the character for a given user playing a specific story
 export const getCharacter = async (userId: string, storyId: string): Promise<CharacterDocument | null> => {
@@ -88,8 +78,6 @@ export const getOrCreateCharacter = async (
         currentLocationId: startingLocationId,
         currentStoryletId: "",
         opportunityHand: [],
-        drawDeck: [],
-        discardPile: [],
     };
 
     try {

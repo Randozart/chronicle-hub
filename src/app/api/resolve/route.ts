@@ -4,9 +4,10 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { GameEngine } from '@/engine/gameEngine';
 import { loadGameData } from '@/engine/dataLoader';
-import { getCharacter, saveCharacterState, CharacterDocument } from '@/engine/characterService';
+import { getCharacter, saveCharacterState } from '@/engine/characterService';
 import { repositories } from '@/engine/repositories'; // Stateless functions
 import { evaluateText } from '@/engine/textProcessor'; // Server-side text evaluation
+import { CharacterDocument } from '@/engine/models';
 
 const STORY_ID = 'trader_johns_world';
 
@@ -51,6 +52,10 @@ export async function POST(request: NextRequest) {
         qualities: newQualities,
         currentStoryletId: nextStoryletId,
     };
+
+    if (gameData.opportunities[storyletId]) {
+        updatedCharacter.opportunityHand = character.opportunityHand.filter(id => id !== storyletId);
+    }
     
     await saveCharacterState(updatedCharacter);
 

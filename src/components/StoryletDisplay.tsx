@@ -259,10 +259,11 @@ export default function StoryletDisplay({
             <div className="footer-actions">
                 <button 
                     className="option-button return-button" 
-
                     onClick={() => onFinish(qualities, returnTargetId ?? undefined)}
                 >
-                    {returnTargetId ? `Return to ${repositories.getEvent(returnTargetId)?.name}` : 'Return to Location'}
+                    {returnTargetId 
+                        ? `Return to ${evaluateText(repositories.getEvent(returnTargetId)?.name, qualities)}` 
+                        : 'Return to Location'}
                 </button>
             </div>
         </div>

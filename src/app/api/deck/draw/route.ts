@@ -5,11 +5,19 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { loadGameData } from '@/engine/dataLoader';
 import { getCharacter, saveCharacterState } from '@/engine/characterService';
-import { repositories } from '@/engine/repositories';
 import { GameEngine } from '@/engine/gameEngine';
 import { CharacterDocument } from '@/engine/models';
 
 const STORY_ID = 'trader_johns_world';
+
+// Define the "ticket" values for each frequency
+const FREQUENCY_WEIGHTS = {
+    "Always": Infinity,
+    "Frequent": 10,
+    "Standard": 5,
+    "Infrequent": 2,
+    "Rare": 1,
+};
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -19,58 +27,64 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id;
 
     const gameData = await loadGameData();
-    repositories.initialize(gameData);
-
-    const character = await getCharacter(userId, STORY_ID);
+    let character = await getCharacter(userId, STORY_ID);
     if (!character) {
         return NextResponse.json({ error: 'Character not found' }, { status: 404 });
     }
 
-    // --- DECK DRAWING LOGIC ---
-    let updatedCharacter = { ...character };
-
-    const location = repositories.getLocation(character.currentLocationId);
-    if (!location) {
-        return NextResponse.json({ error: 'Current location has no deck' }, { status: 400 });
-    }
-
-    // Determine hand size from qualities
+    // Use a GameEngine instance for evaluating conditions
     const engineForCheck = new GameEngine(character.qualities, gameData);
-    const handSize = parseInt(engineForCheck.evaluateBlock(location.hand_size), 10) || 1;
+    const handSize = engineForCheck.getQualityValue('hand_size') || 1;
 
-    // Check if hand is full
     if (character.opportunityHand.length >= handSize) {
         return NextResponse.json({ error: 'Your hand is full' }, { status: 400 });
     }
 
-    // If draw deck is empty, reshuffle discard pile (minus any "sticky" cards)
-    if (character.drawDeck.length === 0) {
-        console.log("Reshuffling discard pile into draw deck.");
-        updatedCharacter.drawDeck = [...character.discardPile];
-        updatedCharacter.discardPile = [];
+    const location = gameData.locations[character.currentLocationId];
+    if (!location) {
+        return NextResponse.json({ error: 'Current location has no deck' }, { status: 400 });
     }
-    
+
+    // 1. Get the "universe" of all cards for this location's deck
     const allCardsInDeck = Object.values(gameData.opportunities)
         .filter(opp => opp.deck === location.deck);
 
+    // 2. Filter for cards the player is currently eligible to draw
     const eligibleCards = allCardsInDeck.filter(card => {
-        const alreadyPresent = updatedCharacter.opportunityHand.includes(card.id) || updatedCharacter.drawDeck.includes(card.id);
-        // 3. Use the public method to check conditions.
-        const meetsConditions = engineForCheck.evaluateCondition(card.visible_if);
-        return !alreadyPresent && meetsConditions;
+        const meetsConditions = engineForCheck.evaluateCondition(card.draw_condition);
+        const notInHand = !character.opportunityHand.includes(card.id);
+        return meetsConditions && notInHand;
     });
 
-    if (eligibleCards.length > 0) {
-        const drawnCard = eligibleCards[Math.floor(Math.random() * eligibleCards.length)];
-        updatedCharacter.opportunityHand.push(drawnCard.id);
-        console.log(`User ${userId} drew card: ${drawnCard.id}`);
-    } else {
-        console.log(`User ${userId} had no eligible cards to draw.`);
-        // 4. Correct the response format.
-        return NextResponse.json({ message: 'No cards available to draw.', character: updatedCharacter });
+    if (eligibleCards.length === 0) {
+        return NextResponse.json({ message: 'No cards available to draw.', character });
     }
-    // --- END OF FIX ---
+    
+    // 3. Perform the Weighted Draw
+    let drawnCardId: string | undefined = undefined;
 
-    await saveCharacterState(updatedCharacter);
-    return NextResponse.json(updatedCharacter);
+    const alwaysCard = eligibleCards.find(card => card.frequency === "Always");
+    if (alwaysCard) {
+        drawnCardId = alwaysCard.id;
+    } else {
+        const lotteryPool: string[] = [];
+        for (const card of eligibleCards) {
+            const weight = FREQUENCY_WEIGHTS[card.frequency] || 1;
+            for (let i = 0; i < weight; i++) {
+                lotteryPool.push(card.id);
+            }
+        }
+        
+        if (lotteryPool.length > 0) {
+            drawnCardId = lotteryPool[Math.floor(Math.random() * lotteryPool.length)];
+        }
+    }
+    
+    if (drawnCardId) {
+    character.opportunityHand.push(drawnCardId);
+        await saveCharacterState(character);
+        return NextResponse.json(character); 
+    } else {
+        return NextResponse.json(character); 
+    }
 }

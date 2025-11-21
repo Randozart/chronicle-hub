@@ -39,7 +39,6 @@ export default function GameHub({
             setActiveEvent(null);
             return;
         }
-        // Data is pre-loaded, so we can get it directly from the initialized repository.
         const eventData = repositories.getEvent(eventId);
         setActiveEvent(eventData ?? null);
     }, []);
@@ -49,13 +48,26 @@ export default function GameHub({
         setIsLoading(true);
         try {
             const response = await fetch('/api/deck/draw', { method: 'POST' });
-            if (!response.ok) throw new Error(await response.text());
+            const data = await response.json(); // Always expect a JSON response
+
+            if (!response.ok) {
+                throw new Error(data.error || "Could not draw a card.");
+            }
             
-            const updatedCharacter: CharacterDocument = await response.json();
-            setCharacter(updatedCharacter);
-            setHand(updatedCharacter.opportunityHand.map(id => repositories.getEvent(id) as Opportunity).filter(Boolean));
+            const updatedCharacter: CharacterDocument = data.character || data;
+
+            if (updatedCharacter?.opportunityHand) {
+                setCharacter(updatedCharacter);
+                setHand(updatedCharacter.opportunityHand.map(id => repositories.getEvent(id) as Opportunity).filter(Boolean));
+            }
+
+            if (data.message) {
+                alert(data.message);
+            }
+
         } catch (error) {
             console.error("Failed to draw card:", error);
+            alert((error as Error).message);
         } finally {
             setIsLoading(false);
         }
