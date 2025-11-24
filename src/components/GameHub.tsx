@@ -72,17 +72,16 @@ export default function GameHub({
             
             // --- THIS IS THE FIX ---
             const updatedCharacter: CharacterDocument = data.character;
-            if (!updatedCharacter?.opportunityHand) {
-                throw new Error("Received invalid character data from server.");
-            }
+            
+            const currentDeckId = location.deck; 
+            const newHandIds = updatedCharacter.opportunityHands?.[currentDeckId] || [];
 
-            // We no longer use the client-side repo. Fetch the full card data for the new hand.
+            // Fetch the full data for the new cards in hand.
             const newHandData: Opportunity[] = await Promise.all(
-                updatedCharacter.opportunityHand.map(id => 
+                newHandIds.map(id => 
                     fetch(`/api/storylet/${id}`).then(res => res.json())
                 )
             ).then(results => results.filter(Boolean));
-            // --- END OF FIX ---
 
             setCharacter(updatedCharacter);
             setHand(newHandData);
@@ -122,7 +121,7 @@ export default function GameHub({
                         qualities={character.qualities}
                         onFinish={handleEventFinish}
                         qualityDefs={qualityDefs}
-                        storyletDefs={storyletDefs} 
+                        storyletDefs={storyletDefs} // <-- Pass it down
                         opportunityDefs={opportunityDefs} 
                         settings={settings}
                     />

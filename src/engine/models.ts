@@ -160,7 +160,9 @@ export interface CharacterDocument {
     qualities: PlayerQualities;
     currentLocationId: string;
     currentStoryletId: string;
-    opportunityHand: string[];
+    opportunityHands: Record<string, string[]>; 
+    deckCharges: Record<string, number>;
+    lastDeckUpdate: Record<string, Date>;
     lastActionTimestamp?: Date; 
     equipment: Record<string, string | null>; // e.g., { body: "thick_coat", head: null }
 }

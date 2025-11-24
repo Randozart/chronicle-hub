@@ -9,12 +9,28 @@ const getCPforNextLevel = (level: number): number => {
     return level + 1;
 };
 
-const evaluateSimpleExpression = (expr: string): number | boolean => {
+const evaluateSimpleExpression = (expr: string): number | boolean | string => {
+    const sanitizedExpr = expr.trim();
+    if (sanitizedExpr === "") {
+        return 0; // Handle empty expressions gracefully
+    }
     try {
-        const sanitizedExpr = expr.replace(/==/g, '===');
-        if (/[^a-zA-Z0-9_+\-/*%&|=!<>.\s()]/.test(sanitizedExpr)) return false;
-        return new Function(`return ${sanitizedExpr}`)();
-    } catch { return false; }
+        // A basic security check to only allow expected characters
+        if (/[^a-zA-Z0-9_+\-/*%&|=!<>.\s'"]/.test(sanitizedExpr)) {
+             console.warn(`[evaluateSimpleExpression] Potentially unsafe or invalid expression detected: "${sanitizedExpr}"`);
+             return sanitizedExpr; // Return as literal string if unsafe
+        }
+        const result = new Function(`return ${sanitizedExpr}`)();
+        
+        // Explicitly handle null/undefined results
+        if (result === null || result === undefined) {
+            return 0;
+        }
+        return result;
+    } catch (e) {
+        // If it's not valid JS (like "Evelyn + Burrows"), return the original string
+        return expr;
+    }
 };
 
 type SkillCheckResult = {
@@ -102,6 +118,33 @@ export class GameEngine {
             return;
         }
 
+        // Regex to match: $all[category_name] = 0
+        const allMatch = effect.match(/^\s*\$all\[(.*?)\]\s*(\+=|-=|=)\s*(.*)\s*$/);
+        if (allMatch) {
+            const [, category, op, valueStr] = allMatch;
+            const targetCategory = category.trim();
+
+            console.log(`[GameEngine] Applying '$all' effect to category '${targetCategory}'`);
+
+            // Find all qualities that belong to the target category
+            const affectedQids = Object.keys(this.worldContent.qualities).filter(qid => {
+                const def = this.worldContent.qualities[qid];
+                return def.category?.split(',').map(c => c.trim()).includes(targetCategory);
+            });
+            
+            if (affectedQids.length > 0) {
+                // Loop through each affected quality ID and apply the simple effect
+                for (const qid of affectedQids) {
+                    // Reconstruct the simple effect string (e.g., "$quality_name = 0")
+                    const simpleEffect = `$${qid} ${op} ${valueStr}`;
+                    // Recursively call applyEffect with the simple string.
+                    // This is powerful because it reuses all our existing parsing logic.
+                    this.applyEffect(simpleEffect);
+                }
+            }
+            return; // We're done with this effect.
+        }
+
         // Handle ++ and -- operators first, as they have no value part.
         const incrementDecrementMatch = effect.match(/^\s*\$([a-zA-Z0-9_]+)\s*(\+\+|--)\s*$/);
         if (incrementDecrementMatch) {
@@ -131,43 +174,43 @@ export class GameEngine {
     public evaluateBlock(content: string): string {
         if (!content) return "";
         let currentExpression = content.trim();
+        
+        console.log(`[evaluateBlock ENTRY] Processing: "${currentExpression}"`); // DEBUG
 
-        // Iteratively resolve the deepest nested blocks first, working our way outwards.
-        // Loop with a safety break to prevent infinite loops on malformed input.
+        if (!currentExpression.startsWith('{') || !currentExpression.endsWith('}')) {
+            return currentExpression;
+        }
+
+        // Iteratively resolve blocks
         for (let i = 0; i < 10; i++) {
-            // This regex finds the innermost block (one with no '{' or '}' inside it).
             const innermostBlockMatch = currentExpression.match(/\{([^{}]+?)\}/);
-            
-            if (!innermostBlockMatch) {
-                break; // No more blocks to resolve, exit the loop.
-            }
+            if (!innermostBlockMatch) break;
 
-            const blockWithBraces = innermostBlockMatch[0]; // e.g., "{5 ~ 35}" or "{10 + 5}"
-            const innerContent = innermostBlockMatch[1].trim(); // e.g., "5 ~ 35" or "10 + 5"
+            const blockWithBraces = innermostBlockMatch[0];
+            const innerContent = innermostBlockMatch[1].trim();
 
             let evaluatedValue: string;
+            console.log(`[evaluateBlock LOOP] Evaluating inner block: "${innerContent}"`); // DEBUG
 
-            // Priority 1: Check for random number range.
             const randomMatch = innerContent.match(/^(\d+)\s*~\s*(\d+)$/);
             if (randomMatch) {
                 const min = parseInt(randomMatch[1], 10);
                 const max = parseInt(randomMatch[2], 10);
                 evaluatedValue = (Math.floor(Math.random() * (max - min + 1)) + min).toString();
             } else {
-                // Priority 2: It's a calculation.
-                // Replace quality variables within this specific block.
                 let processedContent = innerContent.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
                 
                 const result = evaluateSimpleExpression(processedContent);
-                evaluatedValue = (result === false) ? "0" : result.toString();
+                console.log(`[evaluateBlock LOOP] Simple expression "${processedContent}" evaluated to:`, result); // DEBUG
+                
+                // This is now safe because result cannot be undefined
+                evaluatedValue = result.toString();
             }
-
-            // Replace the block in the main expression with its calculated value.
+            console.log(`[evaluateBlock LOOP] Replacing "${blockWithBraces}" with "${evaluatedValue}"`); // DEBUG
             currentExpression = currentExpression.replace(blockWithBraces, evaluatedValue);
         }
-
-        // After all blocks are resolved, return the final string.
-        // If the original content had no blocks, it will be returned as-is.
+        
+        console.log(`[evaluateBlock EXIT] Final result: "${currentExpression}"`); // DEBUG
         return currentExpression;
     }
 

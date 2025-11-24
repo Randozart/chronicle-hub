@@ -74,8 +74,21 @@ export async function POST(request: NextRequest) {
         currentStoryletId: engineResult.redirectId || storyletId,
     };
 
-    if (gameData.opportunities[storyletId]) {
-        updatedCharacter.opportunityHand = character.opportunityHand.filter(id => id !== storyletId);
+    const playedCard = gameData.opportunities[storyletId];
+    if (playedCard) {
+        const deckId = playedCard.deck;
+        
+        // Ensure the hands dictionary exists.
+        if (!updatedCharacter.opportunityHands) {
+            updatedCharacter.opportunityHands = {};
+        }
+        // Ensure the hand for this specific deck exists.
+        if (!updatedCharacter.opportunityHands[deckId]) {
+            updatedCharacter.opportunityHands[deckId] = [];
+        }
+
+        // Remove the played card from the correct hand.
+        updatedCharacter.opportunityHands[deckId] = character.opportunityHands[deckId].filter((id: string) => id !== storyletId);
     }
     
     await saveCharacterState(updatedCharacter);

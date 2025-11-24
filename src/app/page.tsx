@@ -21,8 +21,12 @@ export default async function Home() {
     const initialLocation = gameData.locations[character.currentLocationId];
     if (!initialLocation) return <div>Error: Player in unknown location.</div>;
 
-    const initialHand: Opportunity[] = Object.values(gameData.opportunities).filter(opp => character.opportunityHand.includes(opp.id));
-
+    const initialHandIds = character.opportunityHands?.[initialLocation.deck] || [];
+    
+    const initialHand: Opportunity[] = initialHandIds
+        .map(id => gameData.opportunities[id])
+        .filter(Boolean);
+        
     const locationStorylets = Object.values(gameData.storylets).filter(s => s.location === character.currentLocationId);
 
     const plainInitialCharacter = { ...character, _id: character._id.toString() };

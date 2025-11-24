@@ -87,15 +87,28 @@ export const getOrCreateCharacter = async (
         }
     }
 
+    const initialDeckCharges: Record<string, number> = {};
+    const initialLastDeckUpdate: Record<string, Date> = {};
+
+    for (const deckId in worldContent.decks) {
+        const deckDef = worldContent.decks[deckId];
+        const tempEngine = new GameEngine(initialQualities, worldContent);
+        initialDeckCharges[deckId] = parseInt(tempEngine.evaluateBlock(`{${deckDef.deck_size}}`), 10) || 0;
+        initialLastDeckUpdate[deckId] = new Date();
+    }
+
     const newCharacter: CharacterDocument = {
         userId,
         storyId,
         qualities: initialQualities,
         currentLocationId: startingLocationId,
         currentStoryletId: "",
-        opportunityHand: [],
+        equipment: initialEquipment, 
         lastActionTimestamp: new Date(),
-        equipment: initialEquipment,
+
+        opportunityHands: {},
+        deckCharges: initialDeckCharges,
+        lastDeckUpdate: initialLastDeckUpdate,
     };
 
     try {

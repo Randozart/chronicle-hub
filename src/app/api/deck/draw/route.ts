@@ -7,6 +7,8 @@ import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/ch
 import { getWorldContent } from '@/engine/worldService'; // We need the full content for the engine
 import { GameEngine } from '@/engine/gameEngine';
 import { CharacterDocument, Opportunity } from '@/engine/models';
+import { regenerateDeckCharges } from '@/engine/deckService'; // <-- IMPORT THE NEW SERVICE
+
 
 const STORY_ID = 'trader_johns_world';
 
@@ -30,7 +32,6 @@ export async function POST(request: NextRequest) {
     let character = await getCharacter(userId, STORY_ID);
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
-    // --- Action Economy Check (No changes needed, this logic is fine) ---
     if (gameData.settings.useActionEconomy && gameData.settings.deckDrawCostsAction) {
         character = await regenerateActions(character); // Simplified call
         
@@ -48,21 +49,36 @@ export async function POST(request: NextRequest) {
         }
     }
     
-    // --- Deck Drawing Logic ---
     const engineForCheck = new GameEngine(character.qualities, gameData);
-    const handSize = engineForCheck.getQualityValue('hand_size') || 1;
-    if (character.opportunityHand.length >= handSize) {
-        return NextResponse.json({ character, message: 'Your hand is full.' });
-    }
 
     const location = gameData.locations[character.currentLocationId];
-    if (!location) return NextResponse.json({ error: 'Current location has no deck' }, { status: 400 });
+    if (!location) return NextResponse.json({ character, message: 'Current location is invalid.' });
+    
+    const deckDef = gameData.decks[location.deck];
+    if (!deckDef) return NextResponse.json({ character, message: 'Location has no valid deck.' });
+
+    // 1. Regenerate charges based on time passed. This mutates the character object.
+    regenerateDeckCharges(character, deckDef, gameData);
+    
+    const handSize = parseInt(engineForCheck.evaluateBlock(`{${deckDef.hand_size}}`), 10) || 1;
+    const deckId = deckDef.id;
+    const currentCharges = character.deckCharges?.[deckId] ?? 0;
+    const currentHand = character.opportunityHands?.[deckId] ?? [];
+
+    // 2. Check if player can draw.
+    if (currentHand.length >= handSize) {
+        return NextResponse.json({ character, message: 'Your hand for this deck is full.' });
+    }
+    if (deckDef.deck_size && currentCharges <= 0) { // Only check charges for timed decks
+        return NextResponse.json({ character, message: 'No draws available for this deck right now.' });
+    }
+    // --- END NEW LOGIC ---
 
     const allCardsInDeck = Object.values(gameData.opportunities).filter(opp => opp.deck === location.deck);
 
     const eligibleCards = allCardsInDeck.filter(card => {
-        const meetsConditions = engineForCheck.evaluateCondition(card.draw_condition, false);
-        const notInHand = !character!.opportunityHand.includes(card.id);
+        const meetsConditions = engineForCheck.evaluateCondition(card.draw_condition);
+        const notInHand = !currentHand.includes(card.id);
         return notInHand && meetsConditions;
     });
 
@@ -88,11 +104,24 @@ export async function POST(request: NextRequest) {
     }
     
     if (drawnCardId) {
-        character.opportunityHand.push(drawnCardId);
+        // Spend the charge and add the card to the correct hand
+        if (deckDef.deck_size) character.deckCharges[deckId]--;
+        if (!character.opportunityHands) character.opportunityHands = {};
+        if (!character.opportunityHands[deckId]) character.opportunityHands[deckId] = [];
+        character.opportunityHands[deckId].push(drawnCardId);
+        
+        // NOW we spend the action, since the draw was successful.
+        if (gameData.settings.useActionEconomy && gameData.settings.deckDrawCostsAction) {
+            const actionQid = gameData.settings.actionId.replace('$', '');
+            if(character.qualities[actionQid] && 'level' in character.qualities[actionQid]) {
+                (character.qualities[actionQid] as any).level--;
+            }
+        }
+        
         await saveCharacterState(character);
-        return NextResponse.json({ character }); // Return a consistent object
+        return NextResponse.json(character); 
     } else {
         await saveCharacterState(character);
-        return NextResponse.json({ character }); // Return a consistent object
+        return NextResponse.json(character);
     }
 }
