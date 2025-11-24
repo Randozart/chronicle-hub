@@ -1,7 +1,7 @@
 // src/engine/gameEngine.ts
 
 import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, WorldContent, QualityChangeInfo } from '@/engine/models';
-import { repositories } from '@/engine/repositories';
+// import { repositories } from '@/engine/repositories';
 
 const getCPforNextLevel = (level: number): number => {
     // Formula: (Current Level + 1) * 10.
@@ -26,9 +26,8 @@ type SkillCheckResult = {
 
 export class GameEngine {
     private qualities: PlayerQualities;
-    private worldContent: WorldContent; // Store the world data
+    private worldContent: WorldContent;
     private changes: QualityChangeInfo[] = [];
-
     private resolutionPruneTargets: Record<string, string> = {};
 
     constructor(initialQualities: PlayerQualities, worldContent: WorldContent) {
@@ -178,7 +177,7 @@ export class GameEngine {
     }
     
     private changeQuality(qid: string, op: string, value: number | string, source?: string): void {
-        const def = repositories.getQuality(qid);
+        const def = this.worldContent.qualities[qid];
         if (!def) return;
 
         const stateBefore = this.qualities[qid] ? JSON.parse(JSON.stringify(this.qualities[qid])) : null;
@@ -442,7 +441,7 @@ export class GameEngine {
                 
                 if (simpleMatch) {
                     const [, qid, op] = simpleMatch;
-                    const def = repositories.getQuality(qid);
+                    const def = this.worldContent.qualities[qid];
                     if (!def) continue;
 
                     const finalState = this.qualities[qid];

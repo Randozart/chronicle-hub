@@ -1,7 +1,7 @@
 // src/components/LocationStorylets.tsx
 'use client';
 
-import { Storylet, PlayerQualities, WorldContent } from "@/engine/models";
+import { Storylet, PlayerQualities, WorldContent, QualityDefinition } from "@/engine/models";
 import { evaluateText } from "@/engine/textProcessor";
 
 // --- UPDATE THE PROPS INTERFACE ---
@@ -9,10 +9,10 @@ interface LocationStoryletsProps {
     storylets: Storylet[];
     onStoryletClick: (storyletId: string) => void;
     qualities: PlayerQualities;
-    gameData: WorldContent; 
+    qualityDefs: Record<string, QualityDefinition>;
 }
 
-export default function LocationStorylets({ storylets, onStoryletClick, qualities }: LocationStoryletsProps) {
+export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs }: LocationStoryletsProps) {
     console.log("[CLIENT] LocationStorylets received props:", JSON.stringify(storylets, null, 2));
 
     if (storylets.length === 0) return null;
@@ -38,8 +38,8 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                 </div>
                             )}
                              <div className="option-text-wrapper">
-                                <h3>{evaluateText(storylet.name, qualities)}</h3>
-                                {storylet.short && <p className="option-short-desc">{evaluateText(storylet.short, qualities)}</p>}
+                                <h3>{evaluateText(storylet.name, qualities, qualityDefs)}</h3>
+                                {storylet.short && <p className="option-short-desc">{evaluateText(storylet.short, qualities, qualityDefs)}</p>}
                             </div>
                         </div>
                     </button>

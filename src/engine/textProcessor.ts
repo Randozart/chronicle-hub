@@ -1,124 +1,153 @@
 // src/engine/textProcessor.ts
 
-import { PlayerQualities, QualityState, QualityType } from './models'; // Simplified import
-import { repositories } from './repositories';
+import { PlayerQualities, QualityDefinition, QualityType } from './models';
+//import { repositories } from './repositories';
 
-const getQualityDisplayValue = (qid: string, qualities: PlayerQualities): string => {
-    const state = qualities[qid];
-    if (!state) return "0"; // Default to 0 if quality doesn't exist
+// const getQualityDisplayValue = (qid: string, qualities: PlayerQualities): string => {
+//     const state = qualities[qid];
+//     if (!state) return "0"; // Default to 0 if quality doesn't exist
 
-    const def = repositories.getQuality(qid);
+//     const def = repositories.getQuality(qid);
 
-    // Safely check for stringValue
-    if ('stringValue' in state) {
-        return state.stringValue;
-    }
+//     // Safely check for stringValue
+//     if ('stringValue' in state) {
+//         return state.stringValue;
+//     }
 
-    // Fallback for string qualities that might use their definition as a default value
-    if (def?.type === 'S' && def.description) {
-        return def.description;
-    }
+//     // Fallback for string qualities that might use their definition as a default value
+//     if (def?.type === 'S' && def.description) {
+//         return def.description;
+//     }
 
-    // Safely check for level
-    if ('level' in state) {
-        return state.level.toString();
-    }
+//     // Safely check for level
+//     if ('level' in state) {
+//         return state.level.toString();
+//     }
     
-    return "[Unknown Quality Type]";
-};
+//     return "[Unknown Quality Type]";
+// };
 
-const resolveQualityReference = (match: string, qualities: PlayerQualities): string => {
-    const refMatch = match.match(/^\$([a-zA-Z0-9_]+)(?:\.([a-zA-Z_]+))?$/);
-    if (!refMatch) return match;
+// const resolveQualityReference = (match: string, qualities: PlayerQualities): string => {
+//     const refMatch = match.match(/^\$([a-zA-Z0-9_]+)(?:\.([a-zA-Z_]+))?$/);
+//     if (!refMatch) return match;
 
-    const [, qid, property] = refMatch;
-    const state = qualities[qid];
-    const def = repositories.getQuality(qid);
+//     const [, qid, property] = refMatch;
+//     const state = qualities[qid];
+//     const def = repositories.getQuality(qid);
 
-    if (property) {
-        // Handle explicit property access like .description
-        if (property.toLowerCase() === 'description') {
-            return def?.description ?? '';
-        }
-        // Handle explicit property access for stringValue (e.g., $player_name.stringValue)
-        if (property.toLowerCase() === 'stringvalue') {
-            return (state && state.type === QualityType.String) ? state.stringValue : '';
-        }
-        return `[${qid}.${property}]`;
-    }
+//     if (property) {
+//         // Handle explicit property access like .description
+//         if (property.toLowerCase() === 'description') {
+//             return def?.description ?? '';
+//         }
+//         // Handle explicit property access for stringValue (e.g., $player_name.stringValue)
+//         if (property.toLowerCase() === 'stringvalue') {
+//             return (state && state.type === QualityType.String) ? state.stringValue : '';
+//         }
+//         return `[${qid}.${property}]`;
+//     }
 
-    // Handle direct value access like "$gossip" or "$player_name"
-    if (!state || !def) return "0";
+//     // Handle direct value access like "$gossip" or "$player_name"
+//     if (!state || !def) return "0";
 
-    // If it's a String quality, its default value IS its stringValue.
-    if (state.type === QualityType.String) {
-        return state.stringValue;
-    }
+//     // If it's a String quality, its default value IS its stringValue.
+//     if (state.type === QualityType.String) {
+//         return state.stringValue;
+//     }
 
-    if ('level' in state) {
-        return state.level.toString();
-    }
+//     if ('level' in state) {
+//         return state.level.toString();
+//     }
     
-    return "[Unknown Quality]";
-};
+//     return "[Unknown Quality]";
+// };
 
 // Main evaluation function
-export const evaluateText = (input: string | undefined, qualities: PlayerQualities): string => {
+export const evaluateText = (
+    input: string | undefined, 
+    qualities: PlayerQualities, 
+    qualityDefs: Record<string, QualityDefinition>
+): string => {
     if (!input) return '';
 
-    let processedText = input.replace(/\$([a-zA-Z0-9_]+)\.([a-zA-Z_]+)/g, (_, qid, property) => {
-        const def = repositories.getQuality(qid);
-        if (property.toLowerCase() === 'description') {
-            return def?.description ?? '';
-        }
-        return `[${qid}.${property}]`;
-    });
+    // Simplified recursive evaluator
+    const blockRegex = /\{([^{}]*?)\}/g;
+    let currentPass = input;
+    for(let i=0; i < 10 && currentPass.includes('{'); i++) {
+        currentPass = currentPass.replace(blockRegex, (_, content) => 
+            evaluateBlock(content, qualities, qualityDefs)
+        );
+    }
     
-    return evaluateRecursive(processedText, qualities);
+    // Final pass for any remaining $variables, including .property access
+    return currentPass.replace(/\$([a-zA-Z0-9_.]+)/g, (match) => {
+        const refMatch = match.match(/^\$([a-zA-Z0-9_]+)(?:\.([a-zA-Z_]+))?$/);
+        if (!refMatch) return match;
+
+        const [, qid, property] = refMatch;
+        const state = qualities[qid];
+        const def = qualityDefs[qid];
+
+        if (property) {
+            if (property.toLowerCase() === 'description') return def?.description ?? '';
+            return `[${qid}.${property}]`;
+        }
+
+        if (!state || !def) return "0";
+
+        if (state.type === QualityType.String) return state.stringValue;
+        if ('level' in state) return state.level.toString();
+        
+        return "[Unknown]";
+    });
 };
 
 // Recursive parser for {blocks}
-const evaluateRecursive = (input: string, qualities: PlayerQualities): string => {
-    // A simplified regex that is less prone to catastrophic backtracking on complex strings
-    const blockRegex = /\{([^{}]*?)\}/g;
+// const evaluateRecursive = (input: string, qualities: PlayerQualities): string => {
+//     // A simplified regex that is less prone to catastrophic backtracking on complex strings
+//     const blockRegex = /\{([^{}]*?)\}/g;
     
-    let lastPass = "";
-    let currentPass = input;
-    // We might need a depth counter for truly nested blocks, but this handles most cases.
-    for(let i=0; i < 10 && currentPass !== lastPass; i++) { // Loop limit prevents infinite loops
-        lastPass = currentPass;
-        currentPass = currentPass.replace(blockRegex, (_, content) => evaluateBlock(content, qualities));
-    }
+//     let lastPass = "";
+//     let currentPass = input;
+//     // We might need a depth counter for truly nested blocks, but this handles most cases.
+//     for(let i=0; i < 10 && currentPass !== lastPass; i++) { // Loop limit prevents infinite loops
+//         lastPass = currentPass;
+//         currentPass = currentPass.replace(blockRegex, (_, content) => evaluateBlock(content, qualities));
+//     }
     
-    // Final pass for any remaining simple $quality variables
-    return currentPass.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => {
-        return getQualityDisplayValue(qid, qualities);
-    });
-};
+//     // Final pass for any remaining simple $quality variables
+//     return currentPass.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => {
+//         return getQualityDisplayValue(qid, qualities);
+//     });
+// };
 
 // Evaluates the content inside a single {block}
-const evaluateBlock = (content: string, qualities: PlayerQualities): string => {
+const evaluateBlock = (
+    content: string, 
+    qualities: PlayerQualities,
+    qualityDefs: Record<string, QualityDefinition>
+): string => {
     const trimmedContent = content.trim();
 
-    if (trimmedContent.includes(':') || trimmedContent.includes('|')) {
+    if (trimmedContent.includes('|') || trimmedContent.includes(':')) {
         const branches = trimmedContent.split('|'); 
         for (const branch of branches) {
             const parts = branch.split(':');
             if (parts.length > 1) {
                 const condition = parts[0].trim();
                 const text = parts.slice(1).join(':').trim();
-                if (evaluateCondition(condition, qualities)) {
-                    return evaluateRecursive(text, qualities);
+                // evaluateCondition doesn't need qualityDefs, so this call is simple
+                if (evaluateCondition(condition, qualities)) { 
+                    return evaluateText(text, qualities, qualityDefs);
                 }
             } else {
-                return evaluateRecursive(branch.trim(), qualities);
+                return evaluateText(branch.trim(), qualities, qualityDefs);
             }
         }
         return '';
     }
     
-    // If not conditional, it's a simple variable to be replaced
-    return evaluateRecursive(trimmedContent, qualities);
+    return evaluateText(trimmedContent, qualities, qualityDefs);
 };
 
 export const evaluateCondition = (expression: string | undefined, qualities: PlayerQualities): boolean => {
@@ -170,23 +199,28 @@ export const evaluateCondition = (expression: string | undefined, qualities: Pla
 
 export const calculateSkillCheckChance = (
     expression: string | undefined, 
-    qualities: PlayerQualities
-): number | null => {
-    if (!expression) return null;
+    qualities: PlayerQualities,
+    qualityDefs: Record<string, QualityDefinition> // Accepts the static definitions
+): { chance: number | null; text: string } => { // Correct return type
+    
+    if (!expression) return { chance: null, text: '' };
 
-    // This logic mirrors the server's performSkillCheck, but returns a percentage.
-    // It is designed to parse YOUR expressive format: $qualities >= target [margin]
     const match = expression.match(/^\s*\$(.*?)\s*(>=|<=)\s*(\d+)(?:\s*\[(\d+)\])?\s*$/);
-    if (!match) return null; // Not a valid skill check format
+    if (!match) return { chance: null, text: '' };
 
     const [, qualitiesPart, operator, targetStr, marginStr] = match;
     const target = parseInt(targetStr, 10);
     const margin = marginStr ? parseInt(marginStr, 10) : target;
 
-    // Helper to evaluate just the skill part (e.g., "scholar + fellowship")
+    const testedQualityNames = qualitiesPart.replace(/\$/g, '') 
+        .split('+')
+        .map(qid => qid.trim())
+        .filter(qid => qid)
+        .map(qid => qualityDefs[qid]?.name ?? qid); // Look up in the passed-in object
+    const text = `A test of ${testedQualityNames.join(' + ')}`;
+
     const evaluatePart = (part: string): number => {
         let total = 0;
-        // This regex finds numbers or $quality names
         const tokens = part.match(/\$?([a-zA-Z0-9_]+)/g) || [];
         for (const token of tokens) {
             if (token.startsWith('$')) {
@@ -194,7 +228,6 @@ export const calculateSkillCheckChance = (
                 const state = qualities[qid];
                 total += (state && 'level' in state) ? state.level : 0;
             } else if (!isNaN(parseInt(token, 10))) {
-                // This case handles if a raw number is in the expression, e.g. "$scholar + 5"
                 total += parseInt(token, 10);
             }
         }
@@ -234,7 +267,8 @@ export const calculateSkillCheckChance = (
     }
     
     const finalChance = Math.max(0.0, Math.min(1.0, successChance));
+    const chance = Math.round(finalChance * 100); 
 
     // Return as a whole number percentage (e.g., 75)
-    return Math.round(finalChance * 100); 
+    return { chance, text };
 };

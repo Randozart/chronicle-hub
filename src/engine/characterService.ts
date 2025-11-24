@@ -2,8 +2,9 @@
 
 import clientPromise from '@/engine/database';
 import { PlayerQualities, WorldContent, QualityType, CharacterDocument, WorldSettings } from '@/engine/models';
-import { GameEngine } from './gameEngine'; // <-- Import GameEngine
-
+//import { GameEngine } from './gameEngine'; // <-- Import GameEngine
+import { getWorldContent, getSettings } from './worldService';
+import { GameEngine } from './gameEngine';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 const COLLECTION_NAME = 'characters';
@@ -25,18 +26,21 @@ export const getCharacter = async (userId: string, storyId: string): Promise<Cha
 
 export const getOrCreateCharacter = async (
     userId: string, 
-    storyId: string, 
-    worldContent: WorldContent
+    storyId: string
+    // `worldContent` is no longer needed as a parameter
 ): Promise<CharacterDocument> => {
     
     const existingCharacter = await getCharacter(userId, storyId);
-    if (existingCharacter) {
-        return existingCharacter;
-    }
+    if (existingCharacter) return existingCharacter;
+
+    console.log(`[CharacterService] No character found for user ${userId} in story ${storyId}. Creating a new one...`);
+    
+    // Fetch the necessary world data on-demand
+    const worldContent = await getWorldContent(storyId);
 
     const initialQualities: PlayerQualities = {};
     
-     for (const qidWithPrefix in worldContent.char_create) {
+    for (const qidWithPrefix in worldContent.char_create) {
         const qid = qidWithPrefix.replace('$', '');
         const value = worldContent.char_create[qidWithPrefix];
         const def = worldContent.qualities[qid];
@@ -47,44 +51,36 @@ export const getOrCreateCharacter = async (
 
         switch (def.type) {
             case QualityType.String:
-                initialQualities[qid] = { qualityId: qid, type: QualityType.String, stringValue: value };
-                break;
+                initialQualities[qid] = { qualityId: qid, type: QualityType.String, stringValue: value }; break;
             case QualityType.Pyramidal:
-                initialQualities[qid] = { qualityId: qid, type: QualityType.Pyramidal, level: numValue, changePoints: 0 };
-                break;
+                initialQualities[qid] = { qualityId: qid, type: QualityType.Pyramidal, level: numValue, changePoints: 0 }; break;
             case QualityType.Item:
-                initialQualities[qid] = { qualityId: qid, type: QualityType.Item, level: numValue, sources: [], spentTowardsPrune: 0 };
-                break;
+                initialQualities[qid] = { qualityId: qid, type: QualityType.Item, level: numValue, sources: [], spentTowardsPrune: 0 }; break;
+            case QualityType.Equipable:
+                initialQualities[qid] = { qualityId: qid, type: QualityType.Equipable, level: numValue }; break;
             case QualityType.Counter:
             case QualityType.Tracker:
-                 initialQualities[qid] = { qualityId: qid, type: def.type, level: numValue };
-                 break;
+                 initialQualities[qid] = { qualityId: qid, type: def.type, level: numValue }; break;
         }
     }
 
     if (worldContent.settings.useActionEconomy) {
-        // Resolve the maxActions value BEFORE creating the quality.
-        const maxActionsValue = typeof worldContent.settings.maxActions === 'string'
-            ? 0 // Start at 0 if it's dynamic, let the engine calculate the real value later.
-            : worldContent.settings.maxActions;
+        const maxActionsValue = typeof worldContent.settings.maxActions === 'number'
+            ? worldContent.settings.maxActions
+            : 0;
             
         const actionQid = worldContent.settings.actionId.replace('$', '');
-
         initialQualities[actionQid] = {
             qualityId: actionQid,
             type: QualityType.Counter,
-            level: maxActionsValue // Now it's guaranteed to be a number.
+            level: maxActionsValue
         };
     }
     
-    // Determine starting location. It assumes 'location' is a String quality.
-    let startingLocationId = 'village'; // Default fallback
     const locQuality = initialQualities['location'];
-    if (locQuality && locQuality.type === QualityType.String) {
-        startingLocationId = locQuality.stringValue;
-    }
+    const startingLocationId = (locQuality?.type === QualityType.String) ? locQuality.stringValue : 'village';
 
-     const initialEquipment: Record<string, string | null> = {};
+    const initialEquipment: Record<string, string | null> = {};
     if (worldContent.settings.equipCategories) {
         for (const category of worldContent.settings.equipCategories) {
             initialEquipment[category] = null;
@@ -99,7 +95,7 @@ export const getOrCreateCharacter = async (
         currentStoryletId: "",
         opportunityHand: [],
         lastActionTimestamp: new Date(),
-        equipment: initialEquipment, 
+        equipment: initialEquipment,
     };
 
     try {
@@ -148,30 +144,33 @@ export const saveCharacterState = async (character: CharacterDocument): Promise<
     }
 };
 
-export const regenerateActions = (character: CharacterDocument, settings: WorldSettings, gameData: WorldContent): CharacterDocument => {
+export const regenerateActions = async (character: CharacterDocument): Promise<CharacterDocument> => {
+    // This function now fetches its own dependencies.
+    const settings = await getSettings(character.storyId);
     if (!settings.useActionEconomy) return character;
-
-    const tempEngine = new GameEngine(character.qualities, gameData);
-
-    const maxActions = typeof settings.maxActions === 'string'
-        ? parseInt(tempEngine.evaluateBlock(`{${settings.maxActions}}`), 10)
-        : settings.maxActions;
     
+    let maxActions: number;
+    if (typeof settings.maxActions === 'string') {
+        // If maxActions is a string like "$stamina", we need the full world content
+        // to create an engine to evaluate it.
+        const worldContent = await getWorldContent(character.storyId);
+        const tempEngine = new GameEngine(character.qualities, worldContent);
+        maxActions = parseInt(tempEngine.evaluateBlock(`{${settings.maxActions}}`), 10);
+    } else {
+        maxActions = settings.maxActions;
+    }
+
     const lastTimestamp = character.lastActionTimestamp || new Date();
     const now = new Date();
-    // Use the correct property name from the interface
     const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
     const actionsToRegen = Math.floor(minutesPassed / settings.regenIntervalInMinutes);
 
     if (actionsToRegen > 0) {
         const actionQid = settings.actionId.replace('$', '');
         const actionsState = character.qualities[actionQid];
-
         if (actionsState && 'level' in actionsState) {
-            // Also use regenAmount from settings
             const newActionTotal = Math.min(maxActions, actionsState.level + (actionsToRegen * settings.regenAmount));
             actionsState.level = newActionTotal;
-            // Use the correct property name again here
             character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * settings.regenIntervalInMinutes * 60 * 1000);
         }
     }

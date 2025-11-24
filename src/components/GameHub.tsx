@@ -1,37 +1,31 @@
-// src/components/GameHub.tsx
 'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import { PlayerQualities, Storylet, Opportunity, WorldContent, LocationDefinition, CharacterDocument } from '@/engine/models';
-import { repositories } from '@/engine/repositories';
+import { useState, useCallback } from 'react';
+import { PlayerQualities, Storylet, Opportunity, LocationDefinition, CharacterDocument, QualityDefinition, WorldSettings } from '@/engine/models';
 
 import LocationHeader from './LocationHeader';
 import OpportunityHand from './OpportunityHand';
 import StoryletDisplay from './StoryletDisplay';
 import LocationStorylets from './LocationStorylets';
-import CharacterSheet from './CharacterSheet'; 
+import CharacterSheet from './CharacterSheet';
+
+interface GameHubProps {
+    initialCharacter: CharacterDocument;
+    initialLocation: LocationDefinition;
+    initialHand: Opportunity[];
+    locationStorylets: Storylet[];
+    qualityDefs: Record<string, QualityDefinition>;
+    settings: WorldSettings;
+}
 
 export default function GameHub({
     initialCharacter,
     initialLocation,
     initialHand,
     locationStorylets,
-    gameData,
-}: {
-    initialCharacter: CharacterDocument;
-    initialLocation: LocationDefinition;
-    initialHand: Opportunity[];
-    locationStorylets: Storylet[];
-    gameData: WorldContent;
-}) {
+    qualityDefs,
+    settings,
+}: GameHubProps) {
     
-    const [isClientReady, setIsClientReady] = useState(false);
-
-    useEffect(() => {
-        repositories.initialize(gameData);
-        setIsClientReady(true);
-    }, [gameData]);
-
     const [character, setCharacter] = useState(initialCharacter);
     const [location, setLocation] = useState(initialLocation);
     const [hand, setHand] = useState(initialHand);
@@ -40,94 +34,85 @@ export default function GameHub({
 
     const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) {
-            setActiveEvent(null);
-            return;
+            setActiveEvent(null); return;
         }
-        const eventData = repositories.getEvent(eventId);
-        setActiveEvent(eventData ?? null);
-    }, []);
+        setIsLoading(true);
+        try {
+            const preloadedEvent = locationStorylets.find(s => s.id === eventId) || hand.find(o => o.id === eventId);
+            if (preloadedEvent) {
+                setActiveEvent(preloadedEvent);
+            } else {
+                const response = await fetch(`/api/storylet/${eventId}`);
+                if (!response.ok) throw new Error(`Event ${eventId} not found.`);
+                const eventData = await response.json();
+                setActiveEvent(eventData);
+            }
+        } catch (error) {
+            console.error(error);
+            setActiveEvent(null);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [hand, locationStorylets]);
 
     const handleDrawCard = useCallback(async () => {
         if (isLoading) return;
         setIsLoading(true);
         try {
             const response = await fetch('/api/deck/draw', { method: 'POST' });
-            const data = await response.json(); // Always expect a JSON response
-
-            if (!response.ok) {
-                throw new Error(data.error || "Could not draw a card.");
-            }
+            if (!response.ok) throw new Error(await response.json().then(d => d.error));
             
-            const updatedCharacter: CharacterDocument = data.character || data;
+            const updatedCharacter: CharacterDocument = await response.json();
+            
+            // We need to fetch the full data for the new cards in hand.
+            const newHandData: Opportunity[] = await Promise.all(
+                updatedCharacter.opportunityHand.map(id => 
+                    fetch(`/api/storylet/${id}`).then(res => res.json())
+                )
+            ).then(results => results.filter(Boolean));
 
-            if (updatedCharacter?.opportunityHand) {
-                setCharacter(updatedCharacter);
-                setHand(updatedCharacter.opportunityHand.map(id => repositories.getEvent(id) as Opportunity).filter(Boolean));
-            }
-
-            if (data.message) {
-                alert(data.message);
-            }
-
+            setCharacter(updatedCharacter);
+            setHand(newHandData);
         } catch (error) {
             console.error("Failed to draw card:", error);
-            alert((error as Error).message);
         } finally {
             setIsLoading(false);
         }
     }, [isLoading]);
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
-        setCharacter(prev => ({ ...prev!, qualities: newQualities }));
+        setCharacter(prev => ({ ...prev, qualities: newQualities } as CharacterDocument));
         showEvent(redirectId ?? null);
     }, [showEvent]);
 
-    if (isLoading) {
-        return <div className="storylet-container loading-container"><p>Loading...</p></div>;
-    }
-
-    // if (activeEvent) {
-    //     return (
-    //         <StoryletDisplay
-    //             eventData={activeEvent}
-    //             initialQualities={character.qualities}
-    //             onFinish={handleEventFinish}
-    //             gameData={gameData}
-    //         />
-    //     );
-    // }
-    
-    return (
+     return (
         <div className="hub-layout">
-            
-            {/* The left sidebar with the Character Sheet is always rendered. */}
             <div className="sidebar-column left">
-                {/* It only appears when the client is ready to prevent hydration crashes. */}
-                {isClientReady && <CharacterSheet qualities={character.qualities} gameData={gameData} />}
+                <CharacterSheet 
+                    qualities={character.qualities} 
+                    qualityDefs={qualityDefs}
+                    settings={settings}
+                />
             </div>
             
             <div className="main-content-column">
-                {/* 
-                    This is the only place where we decide what to show in the middle.
-                    The layout itself is now permanent.
-                */}
-                {isLoading ? (
-                    <div className="storylet-container loading-container"><p>Loading...</p></div>
-                ) : activeEvent ? (
+                {isLoading ? ( <div className="storylet-container loading-container"><p>Loading...</p></div> ) 
+                : activeEvent ? (
                     <StoryletDisplay
                         eventData={activeEvent}
-                        initialQualities={character.qualities} // Use the most up-to-date qualities
+                        qualities={character.qualities}
                         onFinish={handleEventFinish}
-                        gameData={gameData}
+                        qualityDefs={qualityDefs}
+                        settings={settings}
                     />
-                ) : isClientReady ? ( // Don't show hub until client is ready
+                ) : (
                     <>
                         <LocationHeader location={location} />
                         <LocationStorylets
                             storylets={locationStorylets}
                             onStoryletClick={showEvent}
                             qualities={character.qualities}
-                            gameData={gameData}
+                            qualityDefs={qualityDefs}
                         />
                         <OpportunityHand 
                             hand={hand} 
@@ -135,18 +120,12 @@ export default function GameHub({
                             onDrawClick={handleDrawCard}
                             isLoading={isLoading} 
                             qualities={character.qualities}
-                            gameData={gameData}
+                            qualityDefs={qualityDefs}
                         />
                     </>
-                ) : (
-                    // On initial server-render and first client-render, show a loading state
-                    <div className="storylet-container loading-container"><p>Initializing...</p></div>
                 )}
             </div>
-
-            <div className="sidebar-column right">
-                {/* The empty right sidebar is always rendered for layout stability. */}
-            </div>
+            <div className="sidebar-column right"></div>
         </div>
     );
 }

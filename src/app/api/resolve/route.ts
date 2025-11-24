@@ -1,25 +1,25 @@
 // src/app/api/resolve/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { GameEngine } from '@/engine/gameEngine';
-import { loadGameData } from '@/engine/dataLoader';
+import { getWorldContent } from '@/engine/worldService'; // Use new service
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
-import { repositories } from '@/engine/repositories'; // Stateless functions
-import { evaluateText } from '@/engine/textProcessor'; // Server-side text evaluation
-import { CharacterDocument } from '@/engine/models';
+import { evaluateText } from '@/engine/textProcessor';
+import { CharacterDocument, ResolveOption } from '@/engine/models';
 
 const STORY_ID = 'trader_johns_world';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = (session.user as any).id;
 
-    const gameData = await loadGameData();
-    repositories.initialize(gameData);    
+    // Load static game data for this request
+    const gameData = await getWorldContent(STORY_ID);
 
     const { storyletId, optionId } = await request.json();
     
@@ -28,83 +28,50 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Character not found for this user and story.' }, { status: 404 });
     }
 
-    const storylet = repositories.getEvent(storyletId); // Use getEvent to check both storylets and opportunities
+    const storylet = gameData.storylets[storyletId] || gameData.opportunities[storyletId];
     if (!storylet) {
         return NextResponse.json({ error: `Event with ID '${storyletId}' not found` }, { status: 404 });
     }
 
-    const option = storylet.options.find(o => o.id === optionId);
+    const option = storylet.options.find((o: ResolveOption) => o.id === optionId);
     if (!option) {
         return NextResponse.json({ error: 'Option not found' }, { status: 404 });
     }
 
-    // const costsAction = request.nextUrl.pathname.includes('/deck/draw') 
-    //     ? gameData.settings.deckDrawCostsAction 
-    //     : true;
-
-    // if (gameData.settings.useActionEconomy && costsAction) {
-    //     // We'll need a function to handle regeneration here
-    //     character = await regenerateActions(character, gameData.settings);
-        
-    //     const actionsState = character.qualities['actions'];
-    //     const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
-
-    //     if (currentActions <= 0) {
-    //         return NextResponse.json({ error: 'You are out of actions.' }, { status: 429 }); // 429 Too Many Requests
-    //     }
-        
-    //     // Decrement the actions quality
-    //     if (actionsState && 'level' in actionsState) {
-    //         actionsState.level--;
-    //     }
-    // }
-
     if (gameData.settings.useActionEconomy) {
-        // Step 1: Regenerate actions before we check the cost.
-        character = regenerateActions(character, gameData.settings, gameData);
+        // Pass the required `gameData` argument
+        character = await regenerateActions(character);
         
-        // Step 2: Determine the cost. Default to 1.
         let actionCost = 1; 
-        
-        // Check for an override on the option. Your Excel uses ACTION_COST, which becomes action_cost.
-        // @ts-ignore - The `action_cost` property isn't formally on the ResolveOption model yet.
-        if (option.action_cost !== undefined && option.action_cost !== null && option.action_cost !== '') {
-            const costOverride = parseInt(option.action_cost, 10);
-            if (!isNaN(costOverride)) {
-                actionCost = costOverride;
-            }
+        // @ts-ignore - We will fix the model in a moment to add this optional property
+        if (option.action_cost && !isNaN(parseInt(option.action_cost, 10))) {
+            actionCost = parseInt(option.action_cost, 10);
         }
 
-        // Step 3: Check if the player can afford it.
-        const actionQualityId = gameData.settings.actionId.replace('$', '');
-        const actionsState = character.qualities[actionQualityId];
+        const actionQid = gameData.settings.actionId.replace('$', '');
+        const actionsState = character.qualities[actionQid];
         const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
 
         if (currentActions < actionCost) {
             return NextResponse.json({ error: 'You do not have enough actions.' }, { status: 429 });
         }
         
-        // Step 4: Decrement the actions quality by the determined cost.
         if (actionsState && 'level' in actionsState) {
             actionsState.level -= actionCost;
-            // Also update the last action timestamp for regeneration
             character.lastActionTimestamp = new Date();
         }
     }
 
-    console.log(`--- [STARTING ENGINE for user ${userId}] ---`);
-    console.log(`Qualities BEFORE:`, JSON.stringify(character.qualities, null, 2));
-
+    // --- RUN THE ENGINE ---
     const engine = new GameEngine(character.qualities, gameData);
     const engineResult = engine.resolveOption(storylet, option);
     const newQualities = engine.getQualities();
 
-    const nextStoryletId = engineResult.redirectId || storyletId;
-
+    // --- PREPARE & SAVE UPDATED STATE ---
     const updatedCharacter: CharacterDocument = {
         ...character,
         qualities: newQualities,
-        currentStoryletId: nextStoryletId,
+        currentStoryletId: engineResult.redirectId || storyletId,
     };
 
     if (gameData.opportunities[storyletId]) {
@@ -113,11 +80,12 @@ export async function POST(request: NextRequest) {
     
     await saveCharacterState(updatedCharacter);
 
+    // --- PREPARE CLIENT RESPONSE ---
     const finalResult = {
         ...engineResult, 
-        // Use stateless text processor
-        title: evaluateText(option.name, newQualities),
-        body: evaluateText(engineResult.body, newQualities),
+        // Use the stateless text processor with 3 arguments
+        title: evaluateText(option.name, newQualities, gameData.qualities),
+        body: evaluateText(engineResult.body, newQualities, gameData.qualities),
     };
 
     return NextResponse.json({ newQualities, result: finalResult });

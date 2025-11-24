@@ -1,9 +1,9 @@
 // src/components/OpportunityHand.tsx
 
 'use client';
-import { Opportunity, PlayerQualities, WorldContent } from "@/engine/models";
+import { Opportunity, PlayerQualities, WorldContent, QualityDefinition } from "@/engine/models";
 import { evaluateText } from "@/engine/textProcessor";
-import { repositories } from "@/engine/repositories";
+//import { repositories } from "@/engine/repositories";
 import { useEffect } from "react";
 
 interface OpportunityHandProps {
@@ -12,10 +12,10 @@ interface OpportunityHandProps {
     qualities: PlayerQualities;
     onDrawClick: () => void;
     isLoading: boolean;
-    gameData: WorldContent; 
+    qualityDefs: Record<string, QualityDefinition>;
 }
 
-export default function OpportunityHand({ hand, onCardClick, qualities, onDrawClick, isLoading, gameData }: OpportunityHandProps) {
+export default function OpportunityHand({ hand, onCardClick, qualities, onDrawClick, isLoading, qualityDefs }: OpportunityHandProps) {
     
     return (
         <div className="opportunity-hand">
@@ -32,8 +32,8 @@ export default function OpportunityHand({ hand, onCardClick, qualities, onDrawCl
                                 <img src={`/images/storylets/${card.image_code}.png`} alt="" className="card-image" />
                             )}
                             <div className="card-text">
-                                <h3>{evaluateText(card.name, qualities)}</h3>
-                                {card.short && <p>{evaluateText(card.short, qualities)}</p>}
+                                <h3>{evaluateText(card.name, qualities, qualityDefs)}</h3>
+                                {card.short && <p>{evaluateText(card.short, qualities, qualityDefs)}</p>}
                             </div>
                         </button>
                     ))

@@ -1,59 +1,43 @@
 // src/components/StoryletDisplay.tsx
 'use client';
 
-import { Storylet, PlayerQualities, ResolveOption, Opportunity, WorldContent, QualityChangeInfo } from '@/engine/models';
-import { useState, useEffect } from 'react';
+import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings } from '@/engine/models';
+import { useState } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
-import { repositories } from '@/engine/repositories';
 import QualityChangeBar from './QualityChangeBar';
 
+// New, lean props interface
 interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
-    initialQualities: PlayerQualities;
+    qualities: PlayerQualities;
+    qualityDefs: Record<string, QualityDefinition>;
+    settings: WorldSettings;
     onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
-    gameData: WorldContent;
 }
 
-type DisplayOption = ResolveOption & {
-    isLocked: boolean;
-    lockReason: string;
-    skillCheckText: string; 
-    chance: number | null;    
-};
-
+type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
 type ResolutionState = {
-    title: string;
-    body: string;
-    redirectId?: string;
-    image_code?: string;
-    wasSuccess?: boolean; 
-    skillCheckDetails?: { 
-        description: string;
-    };
+    // We need to store the new qualities in the resolution state
+    // to correctly evaluate the result text.
+    qualities: PlayerQualities;
+    title: string; body: string; redirectId?: string; image_code?: string;
+    wasSuccess?: boolean; skillCheckDetails?: { description: string; };
     qualityChanges: QualityChangeInfo[];
 };
 
 export default function StoryletDisplay({ 
     eventData, 
-    initialQualities, 
+    qualities, // This is the LIVE quality state from GameHub
     onFinish,
-    gameData 
+    qualityDefs,
+    settings
 }: StoryletDisplayProps) {
 
-    useEffect(() => {
-        repositories.initialize(gameData);
-    }, [gameData]);
-    
-    const [storylet, setStorylet] = useState(eventData);
-    const [qualities, setQualities] = useState(initialQualities);
+    // This component only manages its own temporary UI state.
     const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     
-    useEffect(() => {
-        setStorylet(eventData); // Sync the internal state with the new prop
-        setQualities(initialQualities); // Also reset qualities to the latest from the parent
-        setResolution(null); // Ensure we're not stuck on a resolution screen
-    }, [eventData, initialQualities]);
+    const storylet = eventData; // Use the prop directly. No more `useState(eventData)`.
 
     const handleOptionClick = async (option: ResolveOption) => {
         if (isLoading) return;
@@ -68,14 +52,12 @@ export default function StoryletDisplay({
 
             const data = await response.json();
             const isInstant = option.properties?.includes('instant_redirect');
-            
-            console.log('[handleOptionClick] Instant Redirect Triggered. API Result:', data.result);
 
             if (isInstant) {
                 onFinish(data.newQualities, data.result.redirectId);
             } else {
-                setQualities(data.newQualities);
-                setResolution({ ...data.result, image_code: option.image_code });
+                // When showing the result, we save the NEW qualities to the resolution state
+                setResolution({ ...data.result, image_code: option.image_code, qualities: data.newQualities });
             }
         } catch (error) {
             console.error("API Error:", error);
@@ -86,8 +68,8 @@ export default function StoryletDisplay({
 
     const handleContinue = () => {
         if (!resolution) return;
-        // When finished, call the onFinish prop with the final state and any redirect
-        onFinish(qualities, resolution.redirectId);
+        // On continue, we pass the NEW qualities from the resolution state up to the GameHub
+        onFinish(resolution.qualities, resolution.redirectId);
     };
 
     const getReturnTarget = (currentStorylet: Storylet | Opportunity): string | null => {
@@ -101,7 +83,7 @@ export default function StoryletDisplay({
     const returnTargetId = getReturnTarget(storylet);
     
 
-    if (resolution) {
+     if (resolution) {
         return (
             <div className="storylet-container">
                 <div className="storylet-main-content">
@@ -109,28 +91,26 @@ export default function StoryletDisplay({
                         <div className="storylet-image-container">
                             <img 
                                 src={`/images/storylets/${resolution.image_code}.png`} 
-                                alt={evaluateText(resolution.title, qualities)} 
+                                // Evaluate text with the NEW qualities
+                                alt={evaluateText(resolution.title, resolution.qualities, qualityDefs)} 
                                 className="storylet-image"
                             />
                         </div>
                     )}
                     <div className="storylet-text-content">
-                        <h1>{evaluateText(resolution.title, qualities)}</h1>
-                        <p className="storylet-text">{evaluateText(resolution.body, qualities)}</p>
+                        <h1>{evaluateText(resolution.title, resolution.qualities, qualityDefs)}</h1>
+                        <p className="storylet-text">{evaluateText(resolution.body, resolution.qualities, qualityDefs)}</p>
                     </div>
                 </div>
 
-                {resolution.qualityChanges && resolution.qualityChanges.length > 0 && 
+                {resolution.qualityChanges?.length > 0 && 
                     <div className="quality-changes-container">
                         {resolution.qualityChanges.map((change) => (
                             <QualityChangeBar key={change.qid} change={change} />
                         ))}
                     </div>
                 }
-                    
-                <button className="option-button continue-button" onClick={handleContinue}>
-                    Continue
-                </button>
+                <button className="option-button continue-button" onClick={handleContinue}>Continue</button>
             </div>
         );
     }
@@ -140,7 +120,7 @@ export default function StoryletDisplay({
         if (!match) return `A requirement is not met.`;
         
         const [, qid, op, val] = match;
-        const qualityName = repositories.getQuality(qid)?.name ?? qid;
+        const qualityName = qualityDefs[qid]?.name ?? qid; // Use the passed-in qualityDefs
         const state = qualities[qid];
         const currentVal = (state && 'level' in state) ? state.level : 0;
         return `Requires ${qualityName} ${op} ${val} (You have ${currentVal})`;
@@ -152,64 +132,38 @@ export default function StoryletDisplay({
             const isLocked = !evaluateCondition(option.unlock_if, qualities);
             const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
 
-            // Calculate skill check info separately
-            let skillCheckText = '';
-            const chance = calculateSkillCheckChance(option.random, qualities);
+            // Pass qualityDefs to the calculator
+            const { chance, text } = calculateSkillCheckChance(option.random, qualities, qualityDefs);
+            const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}% chance]` : '';
 
-            if (chance !== null && !isLocked) {
-                const qualitiesMatch = option.random?.match(/^\s*\$(.*?)\s*(>=|<=)/);
-                
-                if (qualitiesMatch) {
-                    const qualitiesPart = qualitiesMatch[1].trim(); // "scholar + fellowship"
-
-                    // First, remove all '$' characters, then split.
-                    const testedQualityNames = qualitiesPart.replace(/\$/g, '') 
-                        .split('+')
-                        .map(qid => qid.trim())
-                        .filter(qid => qid)
-                        .map(qid => repositories.getQuality(qid)?.name ?? qid);
-
-                    const testedQualitiesString = testedQualityNames.join(' + ');
-                    skillCheckText = `A test of ${testedQualitiesString}. [${chance}% chance]`;
-                } else {
-                    skillCheckText = `[A ${chance}% chance]`;
-                }
-            }
-
-            return {
-                ...option,
-                isLocked,
-                lockReason,
-                skillCheckText, 
-                chance,         
-            };
+            return { ...option, isLocked, lockReason, skillCheckText, chance, };
         });
     
-    if (isLoading && !resolution) {
-        return (
-            <div className="storylet-container loading-container">
-                <p>Loading...</p>
-            </div>
-        );
-    }
+    // if (isLoading && !resolution) {
+    //     return (
+    //         <div className="storylet-container loading-container">
+    //             <p>Loading...</p>
+    //         </div>
+    //     );
+    // }
 
-    return (
+ return (
         <div className="storylet-container">
             <div className="storylet-main-content">
                 {storylet.image_code && (
                     <div className="storylet-image-container">
+                        {/* All calls to evaluateText now pass qualityDefs */}
                         <img 
                             src={`/images/storylets/${storylet.image_code}.png`} 
-                            alt={evaluateText(storylet.name, qualities)} 
+                            alt={evaluateText(storylet.name, qualities, qualityDefs)} 
                             className="storylet-image"
                         />
                     </div>
                 )}
-
                 <div className="storylet-text-content">
-                    <h1>{evaluateText(storylet.name, qualities)}</h1>
-                    <p className="storylet-text">{evaluateText(storylet.text, qualities)}</p>
-                    {storylet.metatext && <p className="metatext">{evaluateText(storylet.metatext, qualities)}</p>}
+                    <h1>{evaluateText(storylet.name, qualities, qualityDefs)}</h1>
+                    <p className="storylet-text">{evaluateText(storylet.text, qualities, qualityDefs)}</p>
+                    {storylet.metatext && <p className="metatext">{evaluateText(storylet.metatext, qualities, qualityDefs)}</p>}
                 </div>
             </div>
 
@@ -232,15 +186,15 @@ export default function StoryletDisplay({
                             </div>
                         )}
                         <div className="option-text-wrapper">
-                            <h3>{evaluateText(option.name, qualities)}</h3>
+                            <h3>{evaluateText(option.name, qualities, qualityDefs)}</h3>
                             {option.short && (
                                 <p className="option-short-desc">
-                                    {evaluateText(option.short, qualities)}
+                                    {evaluateText(option.short, qualities, qualityDefs)}
                                 </p>
                             )}
                             {option.meta && (
                                 <p className="option-meta-text">
-                                    {evaluateText(option.meta, qualities)}
+                                    {evaluateText(option.meta, qualities, qualityDefs)}
                                 </p>
                             )}
                             {option.skillCheckText && (
@@ -260,13 +214,8 @@ export default function StoryletDisplay({
             </div>
 
             <div className="footer-actions">
-                <button 
-                    className="option-button return-button" 
-                    onClick={() => onFinish(qualities, returnTargetId ?? undefined)}
-                >
-                    {returnTargetId 
-                        ? `Return to ${evaluateText(repositories.getEvent(returnTargetId)?.name, qualities)}` 
-                        : 'Return to Location'}
+                <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId ?? undefined)}>
+                    {returnTargetId ? `Return to ${qualityDefs[returnTargetId]?.name ?? returnTargetId}` : 'Return to Location'}
                 </button>
             </div>
         </div>

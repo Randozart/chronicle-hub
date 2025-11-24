@@ -1,41 +1,29 @@
-// src/components/CharacterSheet.tsx
 'use client';
-
-import { useEffect } from 'react';
-import { PlayerQualities, WorldContent, QualityType } from "@/engine/models";
-import { repositories } from "@/engine/repositories";
+import { PlayerQualities, QualityDefinition, WorldSettings, QualityType } from "@/engine/models";
 
 interface CharacterSheetProps {
     qualities: PlayerQualities;
-    gameData: WorldContent; 
+    qualityDefs: Record<string, QualityDefinition>;
+    settings: WorldSettings;
 }
-
 const getCPforNextLevel = (level: number): number => level + 1;
 
-export default function CharacterSheet({ qualities, gameData }: CharacterSheetProps) {
-    useEffect(() => {
-        repositories.initialize(gameData);
-    }, [gameData]);
+export default function CharacterSheet({ qualities, qualityDefs, settings }: CharacterSheetProps) {
     
-    const categoriesToDisplay = gameData.settings.characterSheetCategories || [];
+    const categoriesToDisplay = settings.characterSheetCategories || [];
 
     const characterQualities = Object.keys(qualities)
         .map(qid => {
-            const definition = repositories.getQuality(qid);
+            const definition = qualityDefs[qid]; // Use the prop
             const state = qualities[qid];
             
-            const categories = (definition?.category ?? "")
-            .split(",")
-            .map(s => s.trim());
-
+            const categories = (definition?.category ?? "").split(",").map(s => s.trim());
             const shouldDisplay = categoriesToDisplay.some(c => categories.includes(c));
             return shouldDisplay ? { ...definition, ...state } : null;
         })
-        .filter(Boolean);
+        .filter(Boolean as any);
 
-    if (characterQualities.length === 0) {
-        return null;
-    }
+    if (characterQualities.length === 0) return null;
 
     return (
         <aside className="character-sheet">
