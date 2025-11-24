@@ -16,16 +16,22 @@ export default function CharacterSheet({ qualities, gameData }: CharacterSheetPr
     useEffect(() => {
         repositories.initialize(gameData);
     }, [gameData]);
+    
+    const categoriesToDisplay = gameData.settings.characterSheetCategories || [];
 
-    // 1. Filter for character qualities that the player actually possesses.
     const characterQualities = Object.keys(qualities)
         .map(qid => {
             const definition = repositories.getQuality(qid);
             const state = qualities[qid];
-            // Return a combined object if it's a 'character' quality
-            return (definition?.category?.includes('character')) ? { ...definition, ...state } : null;
+            
+            const categories = (definition?.category ?? "")
+            .split(",")
+            .map(s => s.trim());
+
+            const shouldDisplay = categoriesToDisplay.some(c => categories.includes(c));
+            return shouldDisplay ? { ...definition, ...state } : null;
         })
-        .filter(Boolean); // Filter out any nulls
+        .filter(Boolean);
 
     if (characterQualities.length === 0) {
         return null;

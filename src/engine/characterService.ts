@@ -1,7 +1,7 @@
 // src/engine/characterService.ts
 
 import clientPromise from '@/engine/database';
-import { PlayerQualities, QualityState, WorldContent, QualityType, CharacterDocument } from '@/engine/models';
+import { PlayerQualities, QualityState, WorldContent, QualityType, CharacterDocument, WorldSettings } from '@/engine/models';
 
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
@@ -63,6 +63,14 @@ export const getOrCreateCharacter = async (
                  break;
         }
     }
+
+    if (worldContent.settings.useActionEconomy) {
+        initialQualities['actions'] = {
+            qualityId: 'actions',
+            type: QualityType.Counter, // Assuming 'C' for actions
+            level: worldContent.settings.maxActions
+        };
+    }
     
     // Determine starting location. It assumes 'location' is a String quality.
     let startingLocationId = 'village'; // Default fallback
@@ -78,6 +86,7 @@ export const getOrCreateCharacter = async (
         currentLocationId: startingLocationId,
         currentStoryletId: "",
         opportunityHand: [],
+        lastActionTimestamp: new Date(),
     };
 
     try {
@@ -125,3 +134,27 @@ export const saveCharacterState = async (character: CharacterDocument): Promise<
         return false;
     }
 };
+
+export const regenerateActions = (character: CharacterDocument, settings: WorldSettings): CharacterDocument => {
+    if (!settings.useActionEconomy) {
+        return character;
+    }
+
+    const lastTimestamp = character.lastActionTimestamp || new Date();
+    const now = new Date();
+    
+    const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
+    const actionsToRegen = Math.floor(minutesPassed / settings.actionRegenMinutes);
+
+    if (actionsToRegen > 0) {
+        const actionsState = character.qualities['actions'];
+        if (actionsState && 'level' in actionsState) {
+            const newActionTotal = Math.min(settings.maxActions, actionsState.level + actionsToRegen);
+            actionsState.level = newActionTotal;
+            // Update the timestamp to the last time an action would have been earned
+            character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * settings.actionRegenMinutes * 60 * 1000);
+        }
+    }
+    
+    return character;
+}

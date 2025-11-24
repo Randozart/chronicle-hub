@@ -75,12 +75,21 @@ export interface LocationDefinition {
     properties?: string;
 }
 
+export interface WorldSettings {
+    useActionEconomy: boolean;
+    maxActions: number;
+    actionRegenMinutes: number;
+    deckDrawCostsAction: boolean;
+    characterSheetCategories: string[];
+}
+
 export interface WorldContent {
     storylets: Record<string, Storylet>;
     qualities: Record<string, QualityDefinition>;
     opportunities: Record<string, Opportunity>;
     locations: Record<string, LocationDefinition>;
     starting: Record<string, string>;
+    settings: WorldSettings; 
 }
 
 interface BaseQualityState {
@@ -124,6 +133,7 @@ export interface CharacterDocument {
     currentLocationId: string;
     currentStoryletId: string;
     opportunityHand: string[];
+    lastActionTimestamp?: Date; 
 }
 
 export interface QualityChangeInfo {

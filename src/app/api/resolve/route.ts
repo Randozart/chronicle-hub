@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { GameEngine } from '@/engine/gameEngine';
 import { loadGameData } from '@/engine/dataLoader';
-import { getCharacter, saveCharacterState } from '@/engine/characterService';
+import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { repositories } from '@/engine/repositories'; // Stateless functions
 import { evaluateText } from '@/engine/textProcessor'; // Server-side text evaluation
 import { CharacterDocument } from '@/engine/models';
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     const { storyletId, optionId } = await request.json();
     
-    const character = await getCharacter(userId, STORY_ID);
+    let character = await getCharacter(userId, STORY_ID);
     if (!character) {
         return NextResponse.json({ error: 'Character not found for this user and story.' }, { status: 404 });
     }
@@ -36,6 +36,27 @@ export async function POST(request: NextRequest) {
     const option = storylet.options.find(o => o.id === optionId);
     if (!option) {
         return NextResponse.json({ error: 'Option not found' }, { status: 404 });
+    }
+
+    const costsAction = request.nextUrl.pathname.includes('/deck/draw') 
+        ? gameData.settings.deckDrawCostsAction 
+        : true;
+
+    if (gameData.settings.useActionEconomy && costsAction) {
+        // We'll need a function to handle regeneration here
+        character = await regenerateActions(character, gameData.settings);
+        
+        const actionsState = character.qualities['actions'];
+        const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
+
+        if (currentActions <= 0) {
+            return NextResponse.json({ error: 'You are out of actions.' }, { status: 429 }); // 429 Too Many Requests
+        }
+        
+        // Decrement the actions quality
+        if (actionsState && 'level' in actionsState) {
+            actionsState.level--;
+        }
     }
 
     console.log(`--- [STARTING ENGINE for user ${userId}] ---`);

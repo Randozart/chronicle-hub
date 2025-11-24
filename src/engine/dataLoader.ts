@@ -19,17 +19,15 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
 
         const rawContent = worldDocument.content;
 
-        // --- THIS IS THE FIX ---
-        // Create a new, corrected WorldContent object.
         const processedContent: WorldContent = {
             qualities: {},
             storylets: {},
             opportunities: {},
             locations: {},
             starting: rawContent.starting,
+            settings: worldDocument.settings,
         };
 
-        // Iterate over each item and add the 'id' property from its key.
         for (const key in rawContent.qualities) {
             processedContent.qualities[key] = { ...rawContent.qualities[key], id: key };
         }
@@ -42,7 +40,7 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
         for (const key in rawContent.locations) {
             processedContent.locations[key] = { ...rawContent.locations[key], id: key };
         }
-        // --- END OF FIX ---
+        
 
         console.log(`[Data Loader] Data successfully processed from DB.`);
         return processedContent; // Return the new object with IDs

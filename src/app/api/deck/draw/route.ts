@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { loadGameData } from '@/engine/dataLoader';
-import { getCharacter, saveCharacterState } from '@/engine/characterService';
+import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { GameEngine } from '@/engine/gameEngine';
 import { CharacterDocument } from '@/engine/models';
 
@@ -31,6 +31,27 @@ export async function POST(request: NextRequest) {
     if (!character) {
         return NextResponse.json({ error: 'Character not found' }, { status: 404 });
     }
+
+    const costsAction = request.nextUrl.pathname.includes('/deck/draw') 
+        ? gameData.settings.deckDrawCostsAction 
+        : true;
+
+    if (gameData.settings.useActionEconomy && costsAction) {
+        character = await regenerateActions(character, gameData.settings);
+        
+        const actionsState = character.qualities['actions'];
+        const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
+
+        if (currentActions <= 0) {
+            return NextResponse.json({ error: 'You are out of actions.' }, { status: 429 }); // 429 Too Many Requests
+        }
+        
+        // Decrement the actions quality
+        if (actionsState && 'level' in actionsState) {
+            actionsState.level--;
+        }
+    }
+
 
     // Use a GameEngine instance for evaluating conditions
     const engineForCheck = new GameEngine(character.qualities, gameData);
