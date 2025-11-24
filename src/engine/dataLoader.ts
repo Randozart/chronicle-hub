@@ -24,7 +24,8 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
             storylets: {},
             opportunities: {},
             locations: {},
-            starting: rawContent.starting,
+            decks: {},
+            char_create: rawContent.starting,
             settings: worldDocument.settings,
         };
 

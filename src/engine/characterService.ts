@@ -1,7 +1,8 @@
 // src/engine/characterService.ts
 
 import clientPromise from '@/engine/database';
-import { PlayerQualities, QualityState, WorldContent, QualityType, CharacterDocument, WorldSettings } from '@/engine/models';
+import { PlayerQualities, WorldContent, QualityType, CharacterDocument, WorldSettings } from '@/engine/models';
+import { GameEngine } from './gameEngine'; // <-- Import GameEngine
 
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
@@ -35,14 +36,11 @@ export const getOrCreateCharacter = async (
 
     const initialQualities: PlayerQualities = {};
     
-    for (const qid in worldContent.starting) {
-        const value = worldContent.starting[qid];
+     for (const qidWithPrefix in worldContent.char_create) {
+        const qid = qidWithPrefix.replace('$', '');
+        const value = worldContent.char_create[qidWithPrefix];
         const def = worldContent.qualities[qid];
-        
-        if (!def) {
-            console.warn(`Warning: Starting quality '${qid}' not found in qualities.json`);
-            continue;
-        }
+        if (!def) continue;
 
         const isNumeric = !isNaN(parseInt(value, 10));
         const numValue = isNumeric ? parseInt(value, 10) : 0;
@@ -65,10 +63,17 @@ export const getOrCreateCharacter = async (
     }
 
     if (worldContent.settings.useActionEconomy) {
-        initialQualities['actions'] = {
-            qualityId: 'actions',
-            type: QualityType.Counter, // Assuming 'C' for actions
-            level: worldContent.settings.maxActions
+        // Resolve the maxActions value BEFORE creating the quality.
+        const maxActionsValue = typeof worldContent.settings.maxActions === 'string'
+            ? 0 // Start at 0 if it's dynamic, let the engine calculate the real value later.
+            : worldContent.settings.maxActions;
+            
+        const actionQid = worldContent.settings.actionId.replace('$', '');
+
+        initialQualities[actionQid] = {
+            qualityId: actionQid,
+            type: QualityType.Counter,
+            level: maxActionsValue // Now it's guaranteed to be a number.
         };
     }
     
@@ -79,6 +84,13 @@ export const getOrCreateCharacter = async (
         startingLocationId = locQuality.stringValue;
     }
 
+     const initialEquipment: Record<string, string | null> = {};
+    if (worldContent.settings.equipCategories) {
+        for (const category of worldContent.settings.equipCategories) {
+            initialEquipment[category] = null;
+        }
+    }
+
     const newCharacter: CharacterDocument = {
         userId,
         storyId,
@@ -87,6 +99,7 @@ export const getOrCreateCharacter = async (
         currentStoryletId: "",
         opportunityHand: [],
         lastActionTimestamp: new Date(),
+        equipment: initialEquipment, 
     };
 
     try {
@@ -135,24 +148,31 @@ export const saveCharacterState = async (character: CharacterDocument): Promise<
     }
 };
 
-export const regenerateActions = (character: CharacterDocument, settings: WorldSettings): CharacterDocument => {
-    if (!settings.useActionEconomy) {
-        return character;
-    }
+export const regenerateActions = (character: CharacterDocument, settings: WorldSettings, gameData: WorldContent): CharacterDocument => {
+    if (!settings.useActionEconomy) return character;
 
+    const tempEngine = new GameEngine(character.qualities, gameData);
+
+    const maxActions = typeof settings.maxActions === 'string'
+        ? parseInt(tempEngine.evaluateBlock(`{${settings.maxActions}}`), 10)
+        : settings.maxActions;
+    
     const lastTimestamp = character.lastActionTimestamp || new Date();
     const now = new Date();
-    
+    // Use the correct property name from the interface
     const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
-    const actionsToRegen = Math.floor(minutesPassed / settings.actionRegenMinutes);
+    const actionsToRegen = Math.floor(minutesPassed / settings.regenIntervalInMinutes);
 
     if (actionsToRegen > 0) {
-        const actionsState = character.qualities['actions'];
+        const actionQid = settings.actionId.replace('$', '');
+        const actionsState = character.qualities[actionQid];
+
         if (actionsState && 'level' in actionsState) {
-            const newActionTotal = Math.min(settings.maxActions, actionsState.level + actionsToRegen);
+            // Also use regenAmount from settings
+            const newActionTotal = Math.min(maxActions, actionsState.level + (actionsToRegen * settings.regenAmount));
             actionsState.level = newActionTotal;
-            // Update the timestamp to the last time an action would have been earned
-            character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * settings.actionRegenMinutes * 60 * 1000);
+            // Use the correct property name again here
+            character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * settings.regenIntervalInMinutes * 60 * 1000);
         }
     }
     

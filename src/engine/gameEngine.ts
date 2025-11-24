@@ -283,6 +283,8 @@ export class GameEngine {
                 return { qualityId: qid, type, level: 0, sources: [], spentTowardsPrune: 0 };
             case QualityType.Pyramidal:
                 return { qualityId: qid, type, level: 0, changePoints: 0 };
+            case QualityType.Equipable:
+                return { qualityId: qid, type, level: 0 }; // Equipables are like items but simpler state
             case QualityType.Counter:
             case QualityType.Tracker:
                 return { qualityId: qid, type, level: 0 };

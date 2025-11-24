@@ -6,6 +6,7 @@ export enum QualityType {
     Tracker = 'T',
     Item = 'I',
     String = 'S',
+    Equipable = 'E', // <-- Added 'E' type
 }
 
 // --- STATIC DEFINITIONS ---
@@ -18,6 +19,9 @@ export interface QualityDefinition {
     type: QualityType;
     category?: string;
     properties?: string;
+    bonus?: string; // For Equipables
+    storylet?: string; // For clickable items
+    max?: string; // For max value constraints
 }
 
 export interface ResolveOption {
@@ -36,6 +40,7 @@ export interface ResolveOption {
     fail_quality_change?: string;
     random?: string;
     properties?: string;
+    action_cost?: string; // <-- ADDED THIS PROPERTY
 }
 
 // Storylets and Opportunities are very similar, so they can share a base
@@ -50,6 +55,7 @@ interface BaseStorylet {
     unlock_if?: string;
     properties?: string;
     options: ResolveOption[];
+    autofire_if?: string; // <-- ADDED THIS PROPERTY
 }
 
 export interface Storylet extends BaseStorylet {
@@ -63,13 +69,20 @@ export interface Opportunity extends BaseStorylet {
     frequency: "Always" | "Frequent" | "Standard" | "Infrequent" | "Rare";
 }
 
+export interface DeckDefinition {
+    id: string;
+    saved: string; // 'True'/'False'
+    timer?: string;
+    draw_cost?: string;
+    hand_size: string;
+    deck_size?: string;
+}
+
 export interface LocationDefinition {
     id: string;
     name: string;
     image: string;
     deck: string;
-    hand_size: string; // e.g., "$hand_size"
-    deck_size: string; // e.g., "$deck_size"
     store?: string;
     map?: string;
     properties?: string;
@@ -77,10 +90,18 @@ export interface LocationDefinition {
 
 export interface WorldSettings {
     useActionEconomy: boolean;
-    maxActions: number;
-    actionRegenMinutes: number;
-    deckDrawCostsAction: boolean;
+    maxActions: number | string; // Can be number or soft-defined
+    actionId: string;
+    actionUseOperator: string;
+    regenIntervalInMinutes: number;
+    regenAmount: number;
+    regenOperator: string;
     characterSheetCategories: string[];
+    playerName: string;
+    playerImage: string;
+    equipCategories: string[];
+    deckDrawCostsAction?: boolean; // Make this optional for backward compatibility
+    alwaysPurgeHandOnTravel?: boolean; // Make this optional
 }
 
 export interface WorldContent {
@@ -88,7 +109,8 @@ export interface WorldContent {
     qualities: Record<string, QualityDefinition>;
     opportunities: Record<string, Opportunity>;
     locations: Record<string, LocationDefinition>;
-    starting: Record<string, string>;
+    decks: Record<string, DeckDefinition>; // <-- ADDED DECKS
+    char_create: Record<string, string>; // <-- ADDED CHAR_CREATE
     settings: WorldSettings; 
 }
 
@@ -117,11 +139,17 @@ export interface StringQualityState extends BaseQualityState {
     stringValue: string;
 }
 
+export interface EquipableQualityState extends BaseQualityState {
+    type: QualityType.Equipable;
+    level: number; 
+}
+
 export type QualityState = 
     | CounterQualityState 
     | PyramidalQualityState 
     | ItemQualityState 
-    | StringQualityState;
+    | StringQualityState
+    | EquipableQualityState; 
 
 export type PlayerQualities = Record<string, QualityState>;
 
@@ -134,6 +162,7 @@ export interface CharacterDocument {
     currentStoryletId: string;
     opportunityHand: string[];
     lastActionTimestamp?: Date; 
+    equipment: Record<string, string | null>; // e.g., { body: "thick_coat", head: null }
 }
 
 export interface QualityChangeInfo {

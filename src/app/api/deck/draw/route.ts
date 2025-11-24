@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
         : true;
 
     if (gameData.settings.useActionEconomy && costsAction) {
-        character = await regenerateActions(character, gameData.settings);
-        
+        character = regenerateActions(character, gameData.settings, gameData);
+
         const actionsState = character.qualities['actions'];
         const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
 

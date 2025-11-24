@@ -38,24 +38,57 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Option not found' }, { status: 404 });
     }
 
-    const costsAction = request.nextUrl.pathname.includes('/deck/draw') 
-        ? gameData.settings.deckDrawCostsAction 
-        : true;
+    // const costsAction = request.nextUrl.pathname.includes('/deck/draw') 
+    //     ? gameData.settings.deckDrawCostsAction 
+    //     : true;
 
-    if (gameData.settings.useActionEconomy && costsAction) {
-        // We'll need a function to handle regeneration here
-        character = await regenerateActions(character, gameData.settings);
+    // if (gameData.settings.useActionEconomy && costsAction) {
+    //     // We'll need a function to handle regeneration here
+    //     character = await regenerateActions(character, gameData.settings);
         
-        const actionsState = character.qualities['actions'];
+    //     const actionsState = character.qualities['actions'];
+    //     const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
+
+    //     if (currentActions <= 0) {
+    //         return NextResponse.json({ error: 'You are out of actions.' }, { status: 429 }); // 429 Too Many Requests
+    //     }
+        
+    //     // Decrement the actions quality
+    //     if (actionsState && 'level' in actionsState) {
+    //         actionsState.level--;
+    //     }
+    // }
+
+    if (gameData.settings.useActionEconomy) {
+        // Step 1: Regenerate actions before we check the cost.
+        character = regenerateActions(character, gameData.settings, gameData);
+        
+        // Step 2: Determine the cost. Default to 1.
+        let actionCost = 1; 
+        
+        // Check for an override on the option. Your Excel uses ACTION_COST, which becomes action_cost.
+        // @ts-ignore - The `action_cost` property isn't formally on the ResolveOption model yet.
+        if (option.action_cost !== undefined && option.action_cost !== null && option.action_cost !== '') {
+            const costOverride = parseInt(option.action_cost, 10);
+            if (!isNaN(costOverride)) {
+                actionCost = costOverride;
+            }
+        }
+
+        // Step 3: Check if the player can afford it.
+        const actionQualityId = gameData.settings.actionId.replace('$', '');
+        const actionsState = character.qualities[actionQualityId];
         const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
 
-        if (currentActions <= 0) {
-            return NextResponse.json({ error: 'You are out of actions.' }, { status: 429 }); // 429 Too Many Requests
+        if (currentActions < actionCost) {
+            return NextResponse.json({ error: 'You do not have enough actions.' }, { status: 429 });
         }
         
-        // Decrement the actions quality
+        // Step 4: Decrement the actions quality by the determined cost.
         if (actionsState && 'level' in actionsState) {
-            actionsState.level--;
+            actionsState.level -= actionCost;
+            // Also update the last action timestamp for regeneration
+            character.lastActionTimestamp = new Date();
         }
     }
 
