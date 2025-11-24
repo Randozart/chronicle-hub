@@ -35,6 +35,8 @@ export default async function Home() {
                 initialHand={initialHand}
                 locationStorylets={locationStorylets}
                 qualityDefs={gameData.qualities}
+                storyletDefs={gameData.storylets}
+                opportunityDefs={gameData.opportunities} 
                 settings={gameData.settings}
             />
         </main>

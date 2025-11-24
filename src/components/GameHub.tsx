@@ -14,6 +14,8 @@ interface GameHubProps {
     initialHand: Opportunity[];
     locationStorylets: Storylet[];
     qualityDefs: Record<string, QualityDefinition>;
+    storyletDefs: Record<string, Storylet>;
+    opportunityDefs: Record<string, Opportunity>; 
     settings: WorldSettings;
 }
 
@@ -23,6 +25,8 @@ export default function GameHub({
     initialHand,
     locationStorylets,
     qualityDefs,
+    storyletDefs,
+    opportunityDefs,
     settings,
 }: GameHubProps) {
     
@@ -60,21 +64,36 @@ export default function GameHub({
         setIsLoading(true);
         try {
             const response = await fetch('/api/deck/draw', { method: 'POST' });
-            if (!response.ok) throw new Error(await response.json().then(d => d.error));
+            const data = await response.json(); // This will now be { character, message? }
+
+            if (!response.ok) {
+                throw new Error(data.error || "Could not draw a card.");
+            }
             
-            const updatedCharacter: CharacterDocument = await response.json();
-            
-            // We need to fetch the full data for the new cards in hand.
+            // --- THIS IS THE FIX ---
+            const updatedCharacter: CharacterDocument = data.character;
+            if (!updatedCharacter?.opportunityHand) {
+                throw new Error("Received invalid character data from server.");
+            }
+
+            // We no longer use the client-side repo. Fetch the full card data for the new hand.
             const newHandData: Opportunity[] = await Promise.all(
                 updatedCharacter.opportunityHand.map(id => 
                     fetch(`/api/storylet/${id}`).then(res => res.json())
                 )
             ).then(results => results.filter(Boolean));
+            // --- END OF FIX ---
 
             setCharacter(updatedCharacter);
             setHand(newHandData);
+
+            if (data.message) {
+                alert(data.message);
+            }
+
         } catch (error) {
             console.error("Failed to draw card:", error);
+            alert((error as Error).message);
         } finally {
             setIsLoading(false);
         }
@@ -103,6 +122,8 @@ export default function GameHub({
                         qualities={character.qualities}
                         onFinish={handleEventFinish}
                         qualityDefs={qualityDefs}
+                        storyletDefs={storyletDefs} 
+                        opportunityDefs={opportunityDefs} 
                         settings={settings}
                     />
                 ) : (

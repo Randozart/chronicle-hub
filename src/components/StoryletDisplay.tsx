@@ -11,6 +11,8 @@ interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
     qualities: PlayerQualities;
     qualityDefs: Record<string, QualityDefinition>;
+    storyletDefs: Record<string, Storylet>;
+    opportunityDefs: Record<string, Opportunity>;
     settings: WorldSettings;
     onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
 }
@@ -30,6 +32,8 @@ export default function StoryletDisplay({
     qualities, // This is the LIVE quality state from GameHub
     onFinish,
     qualityDefs,
+    storyletDefs,
+    opportunityDefs,
     settings
 }: StoryletDisplayProps) {
 
@@ -126,6 +130,10 @@ export default function StoryletDisplay({
         return `Requires ${qualityName} ${op} ${val} (You have ${currentVal})`;
     };
 
+    const getEventName = (id: string) => {
+        return storyletDefs[id]?.name || opportunityDefs[id]?.name || id;
+    };
+
     const optionsToDisplay: DisplayOption[] = storylet.options
         .filter(option => evaluateCondition(option.visible_if, qualities))
         .map(option => {
@@ -215,7 +223,9 @@ export default function StoryletDisplay({
 
             <div className="footer-actions">
                 <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId ?? undefined)}>
-                    {returnTargetId ? `Return to ${qualityDefs[returnTargetId]?.name ?? returnTargetId}` : 'Return to Location'}
+                    {returnTargetId 
+                    ? `Return to ${evaluateText(getEventName(returnTargetId), qualities, qualityDefs)}` 
+                    : 'Return to Location'}
                 </button>
             </div>
         </div>

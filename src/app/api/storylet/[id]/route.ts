@@ -1,28 +1,29 @@
 // src/app/api/storylet/[id]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { loadGameData } from '@/engine/dataLoader';
-import { repositories } from '@/engine/repositories';
+import { getEvent } from '@/engine/worldService'; // <-- Use the new, efficient service
+
+const STORY_ID = 'trader_johns_world'; // Assume a single story for now
 
 export async function GET(request: NextRequest) {
     try {
-        const gameData = await loadGameData();
-        repositories.initialize(gameData);
+        // Manually parse the ID from the request URL's pathname.
+        // request.nextUrl.pathname is '/api/storylet/trader_john_convo'
+        // .split('/') splits it into ['', 'api', 'storylet', 'trader_john_convo']
+        // .pop() gets the very last element.
+        const storyletId = request.nextUrl.pathname.split('/').pop();
 
-        const context = { params: { id: request.nextUrl.pathname.split('/').pop() } };
-        const storyletId = context.params.id;
-        
         if (!storyletId) {
-            return NextResponse.json({ error: 'Could not determine storylet ID from URL' }, { status: 400 });
+            return NextResponse.json({ error: 'Could not determine Storylet ID from URL.' }, { status: 400 });
         }
 
-        const storylet = repositories.getEvent(storyletId);
+        const event = await getEvent(STORY_ID, storyletId);
 
-        if (!storylet) {
-            return NextResponse.json({ error: `Storylet with ID '${storyletId}' not found` }, { status: 404 });
+        if (!event) {
+            return NextResponse.json({ error: `Event with ID '${storyletId}' not found` }, { status: 404 });
         }
 
-        return NextResponse.json(storylet);
+        return NextResponse.json(event);
 
     } catch (error) {
         console.error(`[API /api/storylet]`, error);

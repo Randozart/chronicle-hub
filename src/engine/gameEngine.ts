@@ -39,6 +39,7 @@ export class GameEngine {
         return this.qualities;
     }
     
+    
     public resolveOption(storylet: Storylet, option: ResolveOption) {
         // Clear the changes array at the start of every action
         this.changes = []; 
