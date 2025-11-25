@@ -88,3 +88,53 @@ const injectIds = <T>(dict: Record<string, T> | undefined): Record<string, T> =>
     }
     return newDict;
 };
+
+export const updateWorldConfigItem = async (
+    worldId: string, 
+    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings', 
+    itemId: string, 
+    data: any
+): Promise<boolean> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+
+    // 1. Handle Settings (Top level, no ID)
+    if (category === 'settings') {
+        const result = await db.collection('worlds').updateOne(
+            { worldId },
+            { $set: { settings: data } }
+        );
+        return result.acknowledged;
+    }
+
+    // 2. Handle Collections (Qualities, Locations, etc.)
+    // We use dot notation to target the specific key: "content.qualities.my_quality_id"
+    // WARNING: itemId cannot contain dots (.) or start with $. Ensure validation in UI.
+    const path = `content.${category}.${itemId}`;
+
+    const result = await db.collection('worlds').updateOne(
+        { worldId },
+        { $set: { [path]: data } }
+    );
+
+    return result.acknowledged;
+};
+
+// Helper to DELETE an item
+export const deleteWorldConfigItem = async (
+    worldId: string, 
+    category: 'qualities' | 'locations' | 'decks' | 'images', 
+    itemId: string
+): Promise<boolean> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const path = `content.${category}.${itemId}`;
+
+    // $unset removes the key entirely
+    const result = await db.collection('worlds').updateOne(
+        { worldId },
+        { $unset: { [path]: "" } }
+    );
+
+    return result.acknowledged;
+};
