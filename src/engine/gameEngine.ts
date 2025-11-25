@@ -1,6 +1,6 @@
 // src/engine/gameEngine.ts
 
-import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, WorldContent, QualityChangeInfo } from '@/engine/models';
+import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, WorldContent, QualityChangeInfo, WorldConfig } from '@/engine/models';
 // import { repositories } from '@/engine/repositories';
 
 const getCPforNextLevel = (level: number): number => {
@@ -38,14 +38,14 @@ type SkillCheckResult = {
 
 export class GameEngine {
     private qualities: PlayerQualities;
-    private worldContent: WorldContent;
+    private worldContent: WorldConfig;
     private changes: QualityChangeInfo[] = [];
     private resolutionPruneTargets: Record<string, string> = {};
     private equipment: Record<string, string | null>; 
 
     constructor(
         initialQualities: PlayerQualities, 
-        worldContent: WorldContent, 
+        worldContent: WorldConfig, 
         currentEquipment: Record<string, string | null> = {} // Default to empty
     ) {
         this.qualities = JSON.parse(JSON.stringify(initialQualities));
@@ -192,13 +192,16 @@ export class GameEngine {
         if (simpleMatch) {
             const [, qid, source, op, valueStr] = simpleMatch;
             
-            const evaluatedValue = this.evaluateBlock(valueStr);
+            const resolvedStr = this.evaluateBlock(valueStr);
             
             let value: number | string;
-            if (isNaN(parseInt(evaluatedValue, 10)) || valueStr.includes('"')) {
-                value = evaluatedValue.replace(/"/g, '');
-            } else {
-                value = parseInt(evaluatedValue, 10);
+
+            if (valueStr.includes('"') || valueStr.includes("'")) {
+                value = resolvedStr.replace(/['"]/g, '');
+            } 
+            else {
+                const mathResult = evaluateSimpleExpression(resolvedStr);
+                value = typeof mathResult === 'number' ? Math.floor(mathResult) : mathResult.toString();
             }
 
             this.changeQuality(qid, op, value, source);

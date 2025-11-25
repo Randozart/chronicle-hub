@@ -5,6 +5,7 @@ import { getContent, getAutofireStorylets } from '@/engine/contentCache'; // Use
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { GameEngine } from '@/engine/gameEngine';
 import { evaluateText, calculateSkillCheckChance } from '@/engine/textProcessor';
+import { getEvent } from '@/engine/worldService'; // Import this!
 
 
 export async function POST(request: NextRequest) {
@@ -14,30 +15,34 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id;
     const { storyletId, optionId, storyId } = await request.json(); // Pass storyId from client
     
-    // 1. Efficient Data Load
+// 1. Efficient Data Load (Config only)
     const gameData = await getContent(storyId || 'trader_johns_world');
     let character = await getCharacter(userId, storyId || 'trader_johns_world');
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
-    // 2. CONTEXT VALIDATION (Security)
-    // Ensure the player is physically allowed to trigger this storylet
-    const storyletDef = gameData.storylets[storyletId] || gameData.opportunities[storyletId];
+    // 2. CONTEXT VALIDATION
+    // FETCH THE EVENT FROM DB
+    const storyletDef = await getEvent(storyId || 'trader_johns_world', storyletId);
+    
     if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
     // A. Location Check
-    if (storyletDef.location && character.currentLocationId !== storyletDef.location) {
-        return NextResponse.json({ error: 'You are not in the correct location.' }, { status: 403 });
+    if ('location' in storyletDef && storyletDef.location) {
+        if (character.currentLocationId !== storyletDef.location) {
+            return NextResponse.json({ error: 'You are not in the correct location.' }, { status: 403 });
+        }
     }
-    
+
     // B. Hand Check (if it's a card)
-    if (gameData.opportunities[storyletId]) {
-         const deck = gameData.opportunities[storyletId].deck;
+    if ('deck' in storyletDef) {
+         const deck = storyletDef.deck;
          const hand = character.opportunityHands?.[deck] || [];
-         if (!hand.includes(storyletId)) {
+         if (!hand.includes(storyletDef.id)) {
              return NextResponse.json({ error: 'This card is not in your hand.' }, { status: 403 });
          }
     }
+
 
     // 3. Process Action Economy (Existing logic...)
     if (gameData.settings.useActionEconomy) {
@@ -59,9 +64,10 @@ export async function POST(request: NextRequest) {
     character.qualities = engine.getQualities();
     
     // Handle Card Discard
-    if (gameData.opportunities[storyletId]) {
-        const deck = gameData.opportunities[storyletId].deck;
-        character.opportunityHands[deck] = character.opportunityHands[deck].filter(id => id !== storyletId);
+    if ('deck' in storyletDef) {
+        const deck = storyletDef.deck;
+        // Fix the type error by adding (id: string)
+        character.opportunityHands[deck] = character.opportunityHands[deck].filter((id: string) => id !== storyletId);
     }
 
     // 6. AUTOFIRE CHECK (The "Must" Event System)

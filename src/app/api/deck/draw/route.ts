@@ -4,10 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
-import { getWorldContent } from '@/engine/worldService'; // We need the full content for the engine
+import { getWorldContent, getOpportunitiesForDeck } from '@/engine/worldService'; // We need the full content for the engine
 import { GameEngine } from '@/engine/gameEngine';
 import { CharacterDocument, Opportunity } from '@/engine/models';
 import { regenerateDeckCharges } from '@/engine/deckService'; // <-- IMPORT THE NEW SERVICE
+import { getContent } from '@/engine/contentCache';
 
 
 const STORY_ID = 'trader_johns_world';
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id;
 
     // We fetch the world content once for this request's logic
-    const gameData = await getWorldContent(STORY_ID);
+    const gameData = await getContent(STORY_ID); // Loads config (decks definition)
     
     let character = await getCharacter(userId, STORY_ID);
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
     // --- END NEW LOGIC ---
 
-    const allCardsInDeck = Object.values(gameData.opportunities).filter(opp => opp.deck === location.deck);
+    const allCardsInDeck = await getOpportunitiesForDeck(STORY_ID, location.deck);
 
     const eligibleCards = allCardsInDeck.filter(card => {
         const meetsConditions = engineForCheck.evaluateCondition(card.draw_condition);

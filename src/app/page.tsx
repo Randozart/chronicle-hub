@@ -3,11 +3,17 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getCharacter } from '@/engine/characterService';
-import { getWorldContent, getLocation, getEvent, getLocationStorylets, getQualityDefinitions } from '@/engine/worldService';
-import { Opportunity } from '@/engine/models';
+import { getContent } from '@/engine/contentCache'; 
+import { getLocationStorylets, getEvent } from '@/engine/worldService'; // Import these!
+import { Storylet, Opportunity } from '@/engine/models'; // Import types
 import GameHub from '@/components/GameHub';
 
+
 const STORY_ID = 'trader_johns_world';
+
+const sanitize = (obj: any) => {
+    return JSON.parse(JSON.stringify(obj));
+};
 
 export default async function Home() {
     const session = await getServerSession(authOptions);
@@ -21,32 +27,46 @@ export default async function Home() {
         redirect(`/creation?storyId=${STORY_ID}`);
     }
     
-    const gameData = await getWorldContent(STORY_ID); // Fetch full data ONCE on the server
+    const gameData = await getContent(STORY_ID); // Config only
     
      const initialLocation = gameData.locations[character.currentLocationId];
     if (!initialLocation) return <div>Error: Player in unknown location.</div>;
 
     const initialHandIds = character.opportunityHands?.[initialLocation.deck] || [];
     
-    const initialHand: Opportunity[] = initialHandIds
-        .map((id: string) => gameData.opportunities[id])
-        .filter(Boolean);
+    const initialHand = (await Promise.all(
+        initialHandIds.map((id: string) => getEvent(STORY_ID, id))
+    )).filter((item): item is Opportunity => item !== null && 'deck' in item);
         
-    const locationStorylets = Object.values(gameData.storylets).filter(s => s.location === character.currentLocationId);
+    const locationStorylets = await getLocationStorylets(STORY_ID, character.currentLocationId);
 
-    const plainInitialCharacter = { ...character, _id: character._id.toString() };
+    // 3. BUILD MINI DICTIONARIES
+    // We create a map of { [id]: object } for just the things we are showing.
+    // This satisfies GameHub's requirement without loading the whole DB.
+    const visibleStoryletsMap: Record<string, Storylet> = {};
+    locationStorylets.forEach(s => visibleStoryletsMap[s.id] = s);
+
+    const visibleOpportunitiesMap: Record<string, Opportunity> = {};
+    initialHand.forEach(o => visibleOpportunitiesMap[o.id] = o);
+    
+    const plainInitialCharacter = sanitize({ ...character });
+    const plainLocation = sanitize(initialLocation);
+    const plainHand = sanitize(initialHand);
+    const plainLocationStorylets = sanitize(locationStorylets);
+    const plainStoryletDefs = sanitize(visibleStoryletsMap);
+    const plainOpportunityDefs = sanitize(visibleOpportunitiesMap);
 
     return (
         <main>
             <GameHub
                 initialCharacter={plainInitialCharacter}
-                initialLocation={initialLocation}
-                initialHand={initialHand}
-                locationStorylets={locationStorylets}
-                qualityDefs={gameData.qualities}
-                storyletDefs={gameData.storylets}
-                opportunityDefs={gameData.opportunities} 
-                settings={gameData.settings}
+                initialLocation={plainLocation}
+                initialHand={plainHand}
+                locationStorylets={plainLocationStorylets}
+                qualityDefs={sanitize(gameData.qualities)}
+                storyletDefs={plainStoryletDefs}
+                opportunityDefs={plainOpportunityDefs} 
+                settings={sanitize(gameData.settings)}
             />
         </main>
     );

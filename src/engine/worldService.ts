@@ -2,130 +2,88 @@
 
 import { cache } from 'react';
 import clientPromise from '@/engine/database';
-import { WorldContent, WorldSettings, Storylet, Opportunity, LocationDefinition, QualityDefinition } from './models';
+import { WorldConfig, Storylet, Opportunity, LocationDefinition, QualityDefinition, WorldSettings } from './models';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
-const WORLDS_COLLECTION = 'worlds';
 
-/**
- * The core function to fetch a world document. All other functions will use this.
- * It uses React's `cache` to ensure we only hit the database once per world, per request.
- * It uses projection to avoid fetching overly large fields unless necessary.
- */
-const getWorldDocument = cache(async (worldId: string) => {
-    console.log(`[WorldService] DB CALL: Fetching document for world '${worldId}'...`);
-    try {
-        const client = await clientPromise;
-        const db = client.db(DB_NAME);
-        const worldDocument = await db.collection(WORLDS_COLLECTION).findOne({ worldId });
+// 1. Get "Hot" Config (Qualities, Decks, Locations)
+export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    
+    const worldDoc = await db.collection('worlds').findOne(
+        { worldId },
+        { projection: { 'content.storylets': 0, 'content.opportunities': 0 } }
+    );
 
-        if (!worldDocument) {
-            throw new Error(`World with ID '${worldId}' not found in the database.`);
-        }
-        return worldDocument;
-    } catch (error) {
-        console.error(`Failed to fetch world document for '${worldId}':`, error);
-        throw error;
-    }
-});
+    if (!worldDoc || !worldDoc.content) throw new Error(`World ${worldId} not found`);
 
-
-// === High-Level Content Functions ===
-
-/**
- * Fetches the entire WorldContent object for a given worldId.
- * This is a heavy operation, processed from the full document.
- * Primarily for use by the server-side GameEngine.
- */
-export const getWorldContent = async (worldId: string): Promise<WorldContent> => {
-    const worldDocument = await getWorldDocument(worldId);
-    if (!worldDocument.content || !worldDocument.settings) {
-        throw new Error(`World '${worldId}' is malformed (missing content or settings).`);
-    }
-
-    // Process the raw content to add IDs to each object
-    const rawContent = worldDocument.content;
-    const processedContent: WorldContent = {
-        qualities: {}, storylets: {}, opportunities: {}, locations: {}, decks: {}, char_create: {},
-        settings: worldDocument.settings,
+    return {
+        // Use the helper here:
+        qualities: injectIds(worldDoc.content.qualities),
+        locations: injectIds(worldDoc.content.locations),
+        decks: injectIds(worldDoc.content.decks),
+        settings: worldDoc.settings,
+        char_create: worldDoc.content.char_create || {}
     };
-    for (const key in rawContent.qualities) processedContent.qualities[key] = { ...rawContent.qualities[key], id: key };
-    for (const key in rawContent.storylets) processedContent.storylets[key] = { ...rawContent.storylets[key], id: key };
-    for (const key in rawContent.opportunities) processedContent.opportunities[key] = { ...rawContent.opportunities[key], id: key };
-    for (const key in rawContent.locations) processedContent.locations[key] = { ...rawContent.locations[key], id: key };
-    for (const key in rawContent.decks) processedContent.decks[key] = { ...rawContent.decks[key], id: key };
-    processedContent.char_create = rawContent.char_create || {};
-    
-    return processedContent;
-};
-
-
-// === Targeted, Lightweight "Getter" Functions ===
-
-/**
- * Fetches ONLY the settings object for a given world. Very fast.
- */
-export const getSettings = async (worldId: string): Promise<WorldSettings> => {
-    const worldDocument = await getWorldDocument(worldId);
-    if (!worldDocument.settings) throw new Error(`Settings for world '${worldId}' not found.`);
-    return worldDocument.settings;
-};
-
-/**
- * Fetches a single event (Storylet or Opportunity) definition from the database.
- */
-export const getEvent = async (worldId: string, eventId: string): Promise<Storylet | Opportunity | null> => {
-    const worldDocument = await getWorldDocument(worldId);
-    const eventData = worldDocument?.content?.storylets?.[eventId] || worldDocument?.content?.opportunities?.[eventId];
-    
-    if (!eventData) return null;
-    
-    return { ...eventData, id: eventId };
-};
-
-/**
- * Fetches a single location definition from the database.
- */
-export const getLocation = async (worldId: string, locationId: string): Promise<LocationDefinition | null> => {
-    const worldDocument = await getWorldDocument(worldId);
-    const locationData = worldDocument?.content?.locations?.[locationId];
-
-    if (!locationData) return null;
-
-    return { ...locationData, id: locationId };
-};
-
-/**
- * Fetches the definitions for a specific list of quality IDs.
- */
-export const getQualityDefinitions = async (worldId: string, qids: string[]): Promise<Record<string, QualityDefinition>> => {
-    const worldDocument = await getWorldDocument(worldId);
-    const allDefs = worldDocument?.content?.qualities;
-    if (!allDefs) return {};
-
-    const requestedDefs: Record<string, QualityDefinition> = {};
-    for (const qid of qids) {
-        if (allDefs[qid]) {
-            requestedDefs[qid] = { ...allDefs[qid], id: qid };
-        }
-    }
-    return requestedDefs;
-};
-
-export const getLocationStorylets = cache(async (worldId: string, locationId: string): Promise<Storylet[]> => {
-    console.log(`[WorldService] Fetching location storylets for '${locationId}'...`);
-    try {
-        const worldDocument = await getWorldDocument(worldId);
-        if (!worldDocument?.content?.storylets) return [];
-        
-        const allStorylets = worldDocument.content.storylets;
-        const locationStorylets = Object.keys(allStorylets)
-            .filter(key => allStorylets[key].location === locationId)
-            .map(key => ({ ...allStorylets[key], id: key }));
-
-        return locationStorylets;
-    } catch (error) {
-        console.error(`Failed to get location storylets for '${locationId}':`, error);
-        throw error;
-    }
 });
+
+// Alias for backward compatibility (renaming it helps migration)
+export const getContent = getWorldConfig; 
+export const getWorldContent = getWorldConfig; // Satisfies 'characterService' imports
+
+export const getSettings = async (worldId: string): Promise<WorldSettings> => {
+    const config = await getWorldConfig(worldId);
+    return config.settings;
+};
+
+// 2. Fetch Single Event (Storylet or Opportunity)
+export const getEvent = async (worldId: string, eventId: string): Promise<Storylet | Opportunity | null> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    
+    // Cast to unknown first to fix the "overlap" error
+    const storylet = await db.collection('storylets').findOne({ worldId, id: eventId });
+    if (storylet) return storylet as unknown as Storylet;
+
+    const opportunity = await db.collection('opportunities').findOne({ worldId, id: eventId });
+    if (opportunity) return opportunity as unknown as Opportunity;
+
+    return null;
+};
+
+// 3. Fetch Location Storylets
+export const getLocationStorylets = async (worldId: string, locationId: string): Promise<Storylet[]> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const docs = await db.collection('storylets').find({ worldId, location: locationId }).toArray();
+    return docs as unknown as Storylet[];
+};
+
+// 4. Fetch Autofire Candidates
+export const getAutofireStorylets = async (worldId: string): Promise<Storylet[]> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const docs = await db.collection('storylets').find(
+        { worldId, autofire_if: { $exists: true, $ne: null } },
+        { projection: { id: 1, autofire_if: 1 } }
+    ).toArray();
+    return docs as unknown as Storylet[];
+};
+
+// 5. Fetch Cards for a specific Deck
+export const getOpportunitiesForDeck = async (worldId: string, deckId: string): Promise<Opportunity[]> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const docs = await db.collection('opportunities').find({ worldId, deck: deckId }).toArray();
+    return docs as unknown as Opportunity[];
+};
+
+const injectIds = <T>(dict: Record<string, T> | undefined): Record<string, T> => {
+    if (!dict) return {};
+    const newDict: Record<string, any> = {};
+    for (const key in dict) {
+        newDict[key] = { ...dict[key], id: key };
+    }
+    return newDict;
+};

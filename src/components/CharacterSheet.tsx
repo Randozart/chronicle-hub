@@ -62,12 +62,14 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
     }, [qualities, equipment, qualityDefs, categoriesToDisplay]);
 
     if (characterQualities.length === 0) return null;
+    
+    const validQualities = characterQualities.filter(q => q !== null);
 
     return (
         <aside className="character-sheet">
             <h2>Character</h2>
             <ul>
-                {characterQualities.map(q => {
+                {validQualities.map(q => {
                     if (!q) return null; 
 
                     const changePoints = ('changePoints' in q) ? q.changePoints : 0;
@@ -85,7 +87,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
                     const bonusText = bonusDiff > 0 ? `(+${bonusDiff})` : bonusDiff < 0 ? `(${bonusDiff})` : '';
                     const bonusClass = bonusDiff > 0 ? 'text-green-400' : 'text-red-400';
-
+                    
                     return (
                         <li key={q.id} className="quality-item">
                             <p className="quality-header">

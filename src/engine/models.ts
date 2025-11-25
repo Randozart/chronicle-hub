@@ -75,14 +75,26 @@ export interface DeckDefinition {
     deck_size?: string;
 }
 
+interface MapRegion {
+    id: string;
+    name: string;
+    settingId: string; // e.g. "london_surface"
+    backgroundImage: string;
+    gridWidth: number;  // For visual placement
+    gridHeight: number;
+}
+
 export interface LocationDefinition {
     id: string;
     name: string;
     image: string;
     deck: string;
     store?: string;
-    map?: string;
+    map?: string; // Links to MapRegion
     properties?: string;
+    coordinates: { x: number, y: number }; // Where it sits on the map
+    unlockCondition?: string; // e.g., "$route_to_docks >= 1"
+    isHidden?: boolean; // If true, doesn't show on map until visited
 }
 
 export interface WorldSettings {
@@ -101,15 +113,15 @@ export interface WorldSettings {
     alwaysPurgeHandOnTravel?: boolean; // Make this optional
 }
 
-export interface WorldContent {
-    storylets: Record<string, Storylet>;
-    qualities: Record<string, QualityDefinition>;
-    opportunities: Record<string, Opportunity>;
-    locations: Record<string, LocationDefinition>;
-    decks: Record<string, DeckDefinition>; // <-- ADDED DECKS
-    char_create: Record<string, string>; // <-- ADDED CHAR_CREATE
-    settings: WorldSettings; 
-}
+// export interface WorldContent {
+//     storylets: Record<string, Storylet>;
+//     qualities: Record<string, QualityDefinition>;
+//     opportunities: Record<string, Opportunity>;
+//     locations: Record<string, LocationDefinition>;
+//     decks: Record<string, DeckDefinition>; // <-- ADDED DECKS
+//     char_create: Record<string, string>; // <-- ADDED CHAR_CREATE
+//     settings: WorldSettings; 
+// }
 
 interface BaseQualityState {
     qualityId: string;
@@ -176,3 +188,16 @@ export interface QualityChangeInfo {
     stringValue?: string;
     changeText: string;
 }
+
+// Base config needed for math and logic
+export interface WorldConfig {
+    qualities: Record<string, QualityDefinition>;
+    locations: Record<string, LocationDefinition>;
+    decks: Record<string, DeckDefinition>;
+    settings: WorldSettings;
+    char_create: Record<string, string>;
+    storylets?: Record<string, Storylet>;
+    opportunities?: Record<string, Opportunity>;
+}
+
+export type WorldContent = WorldConfig;

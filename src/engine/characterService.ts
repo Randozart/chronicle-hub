@@ -4,7 +4,7 @@ import clientPromise from '@/engine/database';
 import { PlayerQualities, CharacterDocument, WorldContent, QualityType } from '@/engine/models';
 // If you implemented contentCache, use that. Otherwise use worldService.
 // import { getContent, getSettings } from '@/engine/contentCache'; 
-import { getWorldContent, getSettings } from '@/engine/worldService'; 
+import { getWorldConfig, getSettings } from '@/engine/worldService'; 
 import { GameEngine } from './gameEngine';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
@@ -60,7 +60,7 @@ export const getOrCreateCharacter = async (
 
     // 2. Load World Data
     // NOTE: If you are using contentCache, change this to getContent(storyId)
-    const worldContent = await getWorldContent(storyId);
+    const worldContent = await getWorldConfig(storyId);
     
     const initialQualities: PlayerQualities = {};
     const rules = worldContent.char_create;
@@ -177,8 +177,8 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
     
     let maxActions: number;
     if (typeof settings.maxActions === 'string') {
-        const worldContent = await getWorldContent(character.storyId);
-        const tempEngine = new GameEngine(character.qualities, worldContent);
+        const worldConfig = await getWorldConfig(character.storyId);
+        const tempEngine = new GameEngine(character.qualities, worldConfig);
         maxActions = parseInt(tempEngine.evaluateBlock(`{${settings.maxActions}}`), 10);
     } else {
         maxActions = settings.maxActions;
