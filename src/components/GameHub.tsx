@@ -115,6 +115,20 @@ export default function GameHub({
         showEvent(redirectId ?? null);
     }, [showEvent]);
 
+    const handleCardPlayed = useCallback((cardId: string) => {
+        setHand(prevHand => prevHand.filter(card => card.id !== cardId));
+        
+        // Also update character ref to be safe
+        setCharacter(prev => {
+             const deckId = initialLocation.deck; // Simplified assumption
+             const newHands = { ...prev.opportunityHands };
+             if(newHands[deckId]) {
+                 newHands[deckId] = newHands[deckId].filter(id => id !== cardId);
+             }
+             return { ...prev, opportunityHands: newHands };
+        });
+    }, [initialLocation]);
+
     return (
         <div className="hub-layout">
             <div className="sidebar-column left">
@@ -163,6 +177,7 @@ export default function GameHub({
                             qualities={character.qualities}
                             onFinish={handleEventFinish}
                             onQualitiesUpdate={handleQualitiesUpdate}
+                            onCardPlayed={handleCardPlayed}
                             qualityDefs={qualityDefs}
                             storyletDefs={storyletDefs}
                             opportunityDefs={opportunityDefs} 

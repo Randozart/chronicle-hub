@@ -16,6 +16,7 @@ interface StoryletDisplayProps {
     settings: WorldSettings;
     onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
     onQualitiesUpdate: (newQualities: PlayerQualities) => void; // <--- ADD THIS
+    onCardPlayed?: (cardId: string) => void;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -36,7 +37,8 @@ export default function StoryletDisplay({
     qualityDefs,
     storyletDefs,
     opportunityDefs,
-    settings
+    settings,
+    onCardPlayed
 }: StoryletDisplayProps) {
 
     // This component only manages its own temporary UI state.
@@ -55,10 +57,15 @@ export default function StoryletDisplay({
                 body: JSON.stringify({ storyletId: storylet.id, optionId: option.id })
             });
             if (!response.ok) throw new Error(await response.text());
+            
 
             const data = await response.json();
 
             onQualitiesUpdate(data.newQualities); 
+            
+            if (onCardPlayed && 'deck' in eventData) {
+                onCardPlayed(eventData.id);
+            }
 
             const isInstant = option.properties?.includes('instant_redirect');
 

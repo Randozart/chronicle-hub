@@ -1,17 +1,22 @@
 // src/engine/dataLoader.ts
 
 import { cache } from 'react';
-import { WorldContent } from '@/engine/models';
+import { WorldConfig } from '@/engine/models'; // Changed from WorldContent to WorldConfig
 import clientPromise from '@/engine/database';
 
-export const loadGameData = cache(async (worldId: string = 'trader_johns_world'): Promise<WorldContent> => {
-    console.log(`[Data Loader] Loading data for world '${worldId}'...`);
+export const loadGameData = cache(async (worldId: string = 'trader_johns_world'): Promise<WorldConfig> => {
+    console.log(`[Data Loader] Loading config for world '${worldId}'...`);
 
     try {
         const client = await clientPromise;
         const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
         const collection = db.collection('worlds');
-        const worldDocument = await collection.findOne({ worldId: worldId });
+        
+        // We use projection to ensure we don't accidentally fetch heavy data
+        const worldDocument = await collection.findOne(
+            { worldId: worldId },
+            { projection: { 'content.storylets': 0, 'content.opportunities': 0 } }
+        );
 
         if (!worldDocument || !worldDocument.content) {
             throw new Error(`World with ID '${worldId}' not found in the database.`);
@@ -19,32 +24,34 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
 
         const rawContent = worldDocument.content;
 
-        const processedContent: WorldContent = {
+        // We only initialize the properties that exist on WorldConfig
+        const processedContent: WorldConfig = {
             qualities: {},
-            storylets: {},
-            opportunities: {},
             locations: {},
             decks: {},
-            char_create: rawContent.starting,
+            char_create: rawContent.char_create || rawContent.starting || {},
             settings: worldDocument.settings,
         };
 
+        // Inject IDs into the config objects
         for (const key in rawContent.qualities) {
             processedContent.qualities[key] = { ...rawContent.qualities[key], id: key };
-        }
-        for (const key in rawContent.storylets) {
-            processedContent.storylets[key] = { ...rawContent.storylets[key], id: key };
-        }
-        for (const key in rawContent.opportunities) {
-            processedContent.opportunities[key] = { ...rawContent.opportunities[key], id: key };
         }
         for (const key in rawContent.locations) {
             processedContent.locations[key] = { ...rawContent.locations[key], id: key };
         }
+        // Check if decks exist before iterating
+        if (rawContent.decks) {
+            for (const key in rawContent.decks) {
+                processedContent.decks[key] = { ...rawContent.decks[key], id: key };
+            }
+        }
         
+        // REMOVED: The loops for storylets and opportunities.
+        // These are now fetched on-demand by worldService.ts and should not be loaded here.
 
-        console.log(`[Data Loader] Data successfully processed from DB.`);
-        return processedContent; // Return the new object with IDs
+        console.log(`[Data Loader] Config successfully processed from DB.`);
+        return processedContent;
 
     } catch (error) {
         console.error("Failed to load game data from DB:", error);

@@ -70,6 +70,12 @@ export async function POST(request: NextRequest) {
         character.opportunityHands[deck] = character.opportunityHands[deck].filter((id: string) => id !== storyletId);
     }
 
+    const isCard = 'deck' in storyletDef;
+    if (isCard) {
+        const deck = storyletDef.deck;
+        character.opportunityHands[deck] = character.opportunityHands[deck].filter((id: string) => id !== storyletId);
+    }
+
     // 6. AUTOFIRE CHECK (The "Must" Event System)
     // Check if the player should be forced somewhere else (e.g., Menace area)
 
@@ -89,13 +95,24 @@ export async function POST(request: NextRequest) {
     }
     
     // If an autofire triggered, it overrides the result's redirect
-    const finalRedirectId = forcedRedirectId || engineResult.redirectId || character.currentStoryletId;
+    let finalRedirectId: string | undefined = undefined;
 
-    // Update the character's location/storylet based on the result
-    // Note: If forcedRedirectId is set, they are trapped in that storylet until they play an option that moves them.
-    if (finalRedirectId) {
-        character.currentStoryletId = finalRedirectId;
+    if (forcedRedirectId) {
+        // Must go to autofire event
+        finalRedirectId = forcedRedirectId;
+    } else if (engineResult.redirectId) {
+        // Result explicitly sends us somewhere
+        finalRedirectId = engineResult.redirectId;
+    } else if (!isCard) {
+        // If it's a Location Storylet and we didn't redirect, we stay here.
+        // BUT if it's a Card, we do NOT default to currentStoryletId.
+        // We default to undefined (returning to hub).
+        finalRedirectId = character.currentStoryletId;
     }
+
+    // Update the character's location/storylet
+    // If finalRedirectId is undefined, we clear the current storylet (return to hub)
+    character.currentStoryletId = finalRedirectId || ""; 
     
     await saveCharacterState(character);
 
@@ -106,12 +123,13 @@ export async function POST(request: NextRequest) {
 
 
     return NextResponse.json({ 
-        newQualities: character.qualities, 
+        newQualities: character.qualities,
+        updatedHand: isCard ? character.opportunityHands : undefined, 
         result: {
             ...engineResult,
             title: cleanTitle,
             body: cleanBody,
-            redirectId: finalRedirectId // <--- Use the calculated final ID
+            redirectId: finalRedirectId 
         }
     });
 }
