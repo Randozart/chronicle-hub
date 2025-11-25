@@ -6,6 +6,7 @@ import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/ch
 import { GameEngine } from '@/engine/gameEngine';
 import { evaluateText, calculateSkillCheckChance } from '@/engine/textProcessor';
 import { getEvent } from '@/engine/worldService'; // Import this!
+import { getWorldConfig } from '@/engine/worldService';
 
 
 export async function POST(request: NextRequest) {
@@ -110,9 +111,50 @@ export async function POST(request: NextRequest) {
         finalRedirectId = character.currentStoryletId;
     }
 
-    // Update the character's location/storylet
-    // If finalRedirectId is undefined, we clear the current storylet (return to hub)
-    character.currentStoryletId = finalRedirectId || ""; 
+        const newLocationId = (engineResult as any).moveToId;
+
+    if (newLocationId) {
+        const config = await getWorldConfig(storyId || 'trader_johns_world');
+        const oldLoc = config.locations[character.currentLocationId];
+        const newLoc = config.locations[newLocationId];
+
+        if (newLoc) {
+            // Update the character's location
+            character.currentLocationId = newLocationId;
+            
+            // Logic: Handle Deck Persistence
+            if (oldLoc && oldLoc.deck !== newLoc.deck) {
+                // The deck has changed. 
+                // Check if the OLD deck is "Saved" (Persistent)
+                const oldDeckDef = config.decks[oldLoc.deck];
+                
+                // If the deck is NOT saved (e.g., 'saved': 'False'), wipe the hand.
+                // If it IS saved, we do nothing. The cards stay in 'opportunityHands[oldDeck]',
+                // but won't be visible in the new location.
+                if (oldDeckDef && oldDeckDef.saved === 'False') {
+                    if (character.opportunityHands[oldLoc.deck]) {
+                        character.opportunityHands[oldLoc.deck] = [];
+                    }
+                }
+            }
+        }
+    }
+
+    if (forcedRedirectId) {
+        finalRedirectId = forcedRedirectId;
+    } else if (engineResult.redirectId) {
+        finalRedirectId = engineResult.redirectId;
+    } else if (!isCard) {
+        // If we MOVED, we usually shouldn't stay in the old storylet.
+        // If pass_redirect was NOT set, but pass_move_to WAS set, default to null (Hub).
+        if (newLocationId && !engineResult.redirectId) {
+            finalRedirectId = undefined; // Go to Hub of new location
+        } else {
+            finalRedirectId = character.currentStoryletId;
+        }
+    }
+    
+    character.currentStoryletId = finalRedirectId || "";
     
     await saveCharacterState(character);
 

@@ -38,6 +38,8 @@ export interface ResolveOption {
     random?: string;
     properties?: string;
     action_cost?: string; // <-- ADDED THIS PROPERTY
+    pass_move_to?: string; // New: ID of the location to move to on success
+    fail_move_to?: string; // New: ID of the location to move to on failure
 }
 
 // Storylets and Opportunities are very similar, so they can share a base

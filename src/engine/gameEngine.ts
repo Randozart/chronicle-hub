@@ -98,6 +98,10 @@ export class GameEngine {
             wasSuccess: isSuccess,
             body: isSuccess ? option.pass_long : option.fail_long,
             redirectId: isSuccess ? option.pass_redirect : option.fail_redirect,
+            
+            // Pass the movement target through
+            moveToId: isSuccess ? option.pass_move_to : option.fail_move_to,
+            
             qualityChanges: this.changes,
         };
     }
