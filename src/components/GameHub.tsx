@@ -7,6 +7,8 @@ import OpportunityHand from './OpportunityHand';
 import StoryletDisplay from './StoryletDisplay';
 import LocationStorylets from './LocationStorylets';
 import CharacterSheet from './CharacterSheet';
+import Possessions from './Possessions'; 
+
 
 interface GameHubProps {
     initialCharacter: CharacterDocument;
@@ -35,10 +37,15 @@ export default function GameHub({
     const [hand, setHand] = useState(initialHand);
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState<'story' | 'possessions'>('story');
 
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
         setCharacter(prev => ({ ...prev, qualities: newQualities } as CharacterDocument));
     }, []);
+
+    const handleCharacterUpdate = (updatedCharacter: CharacterDocument) => {
+        setCharacter(updatedCharacter);
+    };
 
     const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) {
@@ -108,47 +115,78 @@ export default function GameHub({
         showEvent(redirectId ?? null);
     }, [showEvent]);
 
-     return (
+    return (
         <div className="hub-layout">
             <div className="sidebar-column left">
                 <CharacterSheet 
                     qualities={character.qualities} 
+                    equipment={character.equipment} // <--- ADD THIS PROP
                     qualityDefs={qualityDefs}
                     settings={settings}
                 />
             </div>
             
             <div className="main-content-column">
-                {isLoading ? ( <div className="storylet-container loading-container"><p>Loading...</p></div> ) 
-                : activeEvent ? (
-                    <StoryletDisplay
-                        eventData={activeEvent}
+                
+                {/* --- NAVIGATION TABS --- */}
+                <div className="hub-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444' }}>
+                    <button 
+                        onClick={() => setActiveTab('story')}
+                        style={{ padding: '0.5rem 1rem', background: activeTab === 'story' ? '#3e4451' : 'transparent', color: 'white', border: 'none', cursor: 'pointer' }}
+                    >
+                        Story
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('possessions')}
+                        style={{ padding: '0.5rem 1rem', background: activeTab === 'possessions' ? '#3e4451' : 'transparent', color: 'white', border: 'none', cursor: 'pointer' }}
+                    >
+                        Possessions
+                    </button>
+                </div>
+
+                {/* --- CONDITIONAL RENDERING --- */}
+                {activeTab === 'possessions' ? (
+                    <Possessions 
                         qualities={character.qualities}
-                        onFinish={handleEventFinish}
-                        onQualitiesUpdate={handleQualitiesUpdate} // <--- PASS THIS PROP
+                        equipment={character.equipment}
                         qualityDefs={qualityDefs}
-                        storyletDefs={storyletDefs} // <-- Pass it down
-                        opportunityDefs={opportunityDefs} 
-                        settings={settings}
+                        equipCategories={settings.equipCategories || []}
+                        onUpdateCharacter={handleCharacterUpdate}
+                        storyId={character.storyId}
                     />
                 ) : (
-                    <>
-                        <LocationHeader location={location} />
-                        <LocationStorylets
-                            storylets={locationStorylets}
-                            onStoryletClick={showEvent}
+                    /* Existing Story View Logic */
+                    isLoading ? ( <div className="storylet-container loading-container"><p>Loading...</p></div> ) 
+                    : activeEvent ? (
+                        <StoryletDisplay
+                            eventData={activeEvent}
                             qualities={character.qualities}
+                            onFinish={handleEventFinish}
+                            onQualitiesUpdate={handleQualitiesUpdate}
                             qualityDefs={qualityDefs}
+                            storyletDefs={storyletDefs}
+                            opportunityDefs={opportunityDefs} 
+                            settings={settings}
                         />
-                        <OpportunityHand 
-                            hand={hand} 
-                            onCardClick={showEvent}
-                            onDrawClick={handleDrawCard}
-                            isLoading={isLoading} 
-                            qualities={character.qualities}
-                            qualityDefs={qualityDefs}
-                        />
-                    </>
+                    ) : (
+                        <>
+                            <LocationHeader location={location} />
+                            <LocationStorylets
+                                storylets={locationStorylets}
+                                onStoryletClick={showEvent}
+                                qualities={character.qualities}
+                                qualityDefs={qualityDefs}
+                            />
+                            <OpportunityHand 
+                                hand={hand} 
+                                onCardClick={showEvent}
+                                onDrawClick={handleDrawCard}
+                                isLoading={isLoading} 
+                                qualities={character.qualities}
+                                qualityDefs={qualityDefs}
+                            />
+                        </>
+                    )
                 )}
             </div>
             <div className="sidebar-column right"></div>

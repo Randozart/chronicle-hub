@@ -529,3 +529,95 @@ body {
     border-radius: 3px;
     transition: width 0.3s ease-out;
 }
+
+.equipment-slots {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #444;
+}
+
+.equip-slot {
+    background: #1e2127;
+    border: 1px solid #444;
+    padding: 1rem;
+    border-radius: 4px;
+    width: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.slot-label {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.equipped-item {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.inventory-item {
+    padding: 1rem;
+    background: #3e4451;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.item-count {
+    background: #282c34;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.item-desc {
+    font-size: 0.9rem;
+    color: #ccc;
+    margin-bottom: 0.5rem;
+}
+
+.item-bonus {
+    font-size: 0.8rem;
+    color: #98c379; /* Greenish */
+    font-style: italic;
+    margin-bottom: 0.5rem;
+}
+
+.equip-btn, .unequip-btn {
+    width: 100%;
+    padding: 0.3rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.equip-btn {
+    background: #2a3e5c;
+    color: white;
+    border: none;
+}
+
+.unequip-btn {
+    background: #b53838;
+    color: white;
+    border: none;
+}
