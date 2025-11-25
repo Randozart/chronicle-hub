@@ -15,6 +15,7 @@ interface StoryletDisplayProps {
     opportunityDefs: Record<string, Opportunity>;
     settings: WorldSettings;
     onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
+    onQualitiesUpdate: (newQualities: PlayerQualities) => void; // <--- ADD THIS
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -31,6 +32,7 @@ export default function StoryletDisplay({
     eventData, 
     qualities, // This is the LIVE quality state from GameHub
     onFinish,
+    onQualitiesUpdate, // <--- Destructure here
     qualityDefs,
     storyletDefs,
     opportunityDefs,
@@ -55,6 +57,9 @@ export default function StoryletDisplay({
             if (!response.ok) throw new Error(await response.text());
 
             const data = await response.json();
+
+            onQualitiesUpdate(data.newQualities); 
+
             const isInstant = option.properties?.includes('instant_redirect');
 
             if (isInstant) {
@@ -102,8 +107,8 @@ export default function StoryletDisplay({
                         </div>
                     )}
                     <div className="storylet-text-content">
-                        <h1>{evaluateText(resolution.title, resolution.qualities, qualityDefs)}</h1>
-                        <p className="storylet-text">{evaluateText(resolution.body, resolution.qualities, qualityDefs)}</p>
+                        <h1>{resolution.title}</h1> 
+                        <p className="storylet-text">{resolution.body}</p>
                     </div>
                 </div>
 

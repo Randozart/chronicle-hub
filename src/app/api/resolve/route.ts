@@ -1,105 +1,111 @@
-// src/app/api/resolve/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { GameEngine } from '@/engine/gameEngine';
-import { getWorldContent } from '@/engine/worldService'; // Use new service
+import { getContent, getAutofireStorylets } from '@/engine/contentCache'; // Use CACHE
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
-import { evaluateText } from '@/engine/textProcessor';
-import { CharacterDocument, ResolveOption } from '@/engine/models';
+import { GameEngine } from '@/engine/gameEngine';
+import { evaluateText, calculateSkillCheckChance } from '@/engine/textProcessor';
 
-const STORY_ID = 'trader_johns_world';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
     const userId = (session.user as any).id;
-
-    // Load static game data for this request
-    const gameData = await getWorldContent(STORY_ID);
-
-    const { storyletId, optionId } = await request.json();
+    const { storyletId, optionId, storyId } = await request.json(); // Pass storyId from client
     
-    let character = await getCharacter(userId, STORY_ID);
-    if (!character) {
-        return NextResponse.json({ error: 'Character not found for this user and story.' }, { status: 404 });
+    // 1. Efficient Data Load
+    const gameData = await getContent(storyId || 'trader_johns_world');
+    let character = await getCharacter(userId, storyId || 'trader_johns_world');
+    
+    if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+
+    // 2. CONTEXT VALIDATION (Security)
+    // Ensure the player is physically allowed to trigger this storylet
+    const storyletDef = gameData.storylets[storyletId] || gameData.opportunities[storyletId];
+    if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+
+    // A. Location Check
+    if (storyletDef.location && character.currentLocationId !== storyletDef.location) {
+        return NextResponse.json({ error: 'You are not in the correct location.' }, { status: 403 });
+    }
+    
+    // B. Hand Check (if it's a card)
+    if (gameData.opportunities[storyletId]) {
+         const deck = gameData.opportunities[storyletId].deck;
+         const hand = character.opportunityHands?.[deck] || [];
+         if (!hand.includes(storyletId)) {
+             return NextResponse.json({ error: 'This card is not in your hand.' }, { status: 403 });
+         }
     }
 
-    const storylet = gameData.storylets[storyletId] || gameData.opportunities[storyletId];
-    if (!storylet) {
-        return NextResponse.json({ error: `Event with ID '${storyletId}' not found` }, { status: 404 });
-    }
-
-    const option = storylet.options.find((o: ResolveOption) => o.id === optionId);
-    if (!option) {
-        return NextResponse.json({ error: 'Option not found' }, { status: 404 });
-    }
-
+    // 3. Process Action Economy (Existing logic...)
     if (gameData.settings.useActionEconomy) {
-        // Pass the required `gameData` argument
         character = await regenerateActions(character);
-        
-        let actionCost = 1; 
-        // @ts-ignore - We will fix the model in a moment to add this optional property
-        if (option.action_cost && !isNaN(parseInt(option.action_cost, 10))) {
-            actionCost = parseInt(option.action_cost, 10);
-        }
-
         const actionQid = gameData.settings.actionId.replace('$', '');
-        const actionsState = character.qualities[actionQid];
-        const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
-
-        if (currentActions < actionCost) {
-            return NextResponse.json({ error: 'You do not have enough actions.' }, { status: 429 });
-        }
-        
-        if (actionsState && 'level' in actionsState) {
-            actionsState.level -= actionCost;
-            character.lastActionTimestamp = new Date();
-        }
+        const actionsState = character.qualities[actionQid] as any;
+        if (actionsState.level < 1) return NextResponse.json({ error: 'No actions.' }, { status: 429 });
+        actionsState.level -= 1;
     }
 
-    // --- RUN THE ENGINE ---
-    const engine = new GameEngine(character.qualities, gameData);
-    const engineResult = engine.resolveOption(storylet, option);
-    const newQualities = engine.getQualities();
+    // 4. Resolve Option
+    const option = storyletDef.options.find(o => o.id === optionId);
+    if (!option) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
 
-    // --- PREPARE & SAVE UPDATED STATE ---
-    const updatedCharacter: CharacterDocument = {
-        ...character,
-        qualities: newQualities,
-        currentStoryletId: engineResult.redirectId || storyletId,
-    };
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    const engineResult = engine.resolveOption(storyletDef, option);
+    
+    // 5. Update Character State
+    character.qualities = engine.getQualities();
+    
+    // Handle Card Discard
+    if (gameData.opportunities[storyletId]) {
+        const deck = gameData.opportunities[storyletId].deck;
+        character.opportunityHands[deck] = character.opportunityHands[deck].filter(id => id !== storyletId);
+    }
 
-    const playedCard = gameData.opportunities[storyletId];
-    if (playedCard) {
-        const deckId = playedCard.deck;
+    // 6. AUTOFIRE CHECK (The "Must" Event System)
+    // Check if the player should be forced somewhere else (e.g., Menace area)
+
+    const autofireEvents = await getAutofireStorylets(storyId || 'trader_johns_world');
+    let forcedRedirectId: string | null = null;
+
+    for (const event of autofireEvents) {
+        // We use the engine to evaluate the condition against the NEW qualities
+        // Note: We create a new engine instance with the *new* qualities to be safe
+        const checkEngine = new GameEngine(character.qualities, gameData);
         
-        // Ensure the hands dictionary exists.
-        if (!updatedCharacter.opportunityHands) {
-            updatedCharacter.opportunityHands = {};
+        if (checkEngine.evaluateCondition(event.autofire_if)) {
+            console.log(`[Autofire] Triggered: ${event.id}`);
+            forcedRedirectId = event.id;
+            break; // Trigger the first valid one we find
         }
-        // Ensure the hand for this specific deck exists.
-        if (!updatedCharacter.opportunityHands[deckId]) {
-            updatedCharacter.opportunityHands[deckId] = [];
-        }
-
-        // Remove the played card from the correct hand.
-        updatedCharacter.opportunityHands[deckId] = character.opportunityHands[deckId].filter((id: string) => id !== storyletId);
     }
     
-    await saveCharacterState(updatedCharacter);
+    // If an autofire triggered, it overrides the result's redirect
+    const finalRedirectId = forcedRedirectId || engineResult.redirectId || character.currentStoryletId;
 
-    // --- PREPARE CLIENT RESPONSE ---
-    const finalResult = {
-        ...engineResult, 
-        // Use the stateless text processor with 3 arguments
-        title: evaluateText(option.name, newQualities, gameData.qualities),
-        body: evaluateText(engineResult.body, newQualities, gameData.qualities),
-    };
+    // Update the character's location/storylet based on the result
+    // Note: If forcedRedirectId is set, they are trapped in that storylet until they play an option that moves them.
+    if (finalRedirectId) {
+        character.currentStoryletId = finalRedirectId;
+    }
+    
+    await saveCharacterState(character);
 
-    return NextResponse.json({ newQualities, result: finalResult });
+    const rawTitle = option.name; 
+    
+    const cleanTitle = evaluateText(rawTitle, character.qualities, gameData.qualities);
+    const cleanBody = evaluateText(engineResult.body, character.qualities, gameData.qualities);
+
+
+    return NextResponse.json({ 
+        newQualities: character.qualities, 
+        result: {
+            ...engineResult,
+            title: cleanTitle,
+            body: cleanBody,
+            redirectId: finalRedirectId // <--- Use the calculated final ID
+        }
+    });
 }

@@ -36,6 +36,10 @@ export default function GameHub({
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
+    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
+        setCharacter(prev => ({ ...prev, qualities: newQualities } as CharacterDocument));
+    }, []);
+
     const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) {
             setActiveEvent(null); return;
@@ -121,6 +125,7 @@ export default function GameHub({
                         eventData={activeEvent}
                         qualities={character.qualities}
                         onFinish={handleEventFinish}
+                        onQualitiesUpdate={handleQualitiesUpdate} // <--- PASS THIS PROP
                         qualityDefs={qualityDefs}
                         storyletDefs={storyletDefs} // <-- Pass it down
                         opportunityDefs={opportunityDefs} 

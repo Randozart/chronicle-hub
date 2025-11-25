@@ -11,25 +11,21 @@ const getCPforNextLevel = (level: number): number => {
 
 const evaluateSimpleExpression = (expr: string): number | boolean | string => {
     const sanitizedExpr = expr.trim();
-    if (sanitizedExpr === "") {
-        return 0; // Handle empty expressions gracefully
-    }
+    if (!sanitizedExpr) return 0;
+
     try {
-        // A basic security check to only allow expected characters
-        if (/[^a-zA-Z0-9_+\-/*%&|=!<>.\s'"]/.test(sanitizedExpr)) {
-             console.warn(`[evaluateSimpleExpression] Potentially unsafe or invalid expression detected: "${sanitizedExpr}"`);
-             return sanitizedExpr; // Return as literal string if unsafe
+        // ALLOW STRINGS: If the expression looks like "Hello " + "World", let it run.
+        // We do basic sanitization but allow quotes for strings.
+        if (/[^a-zA-Z0-9_+\-/*%&|=!<>.\s'"()]/.test(sanitizedExpr)) {
+             console.warn(`Unsafe expression: "${sanitizedExpr}"`);
+             return sanitizedExpr; 
         }
-        const result = new Function(`return ${sanitizedExpr}`)();
         
-        // Explicitly handle null/undefined results
-        if (result === null || result === undefined) {
-            return 0;
-        }
-        return result;
+        // This evaluates "10 + 10" -> 20, and "'John' + ' ' + 'Doe'" -> "John Doe"
+        const result = new Function(`return ${sanitizedExpr}`)();
+        return (result === null || result === undefined) ? 0 : result;
     } catch (e) {
-        // If it's not valid JS (like "Evelyn + Burrows"), return the original string
-        return expr;
+        return expr; 
     }
 };
 
@@ -45,10 +41,48 @@ export class GameEngine {
     private worldContent: WorldContent;
     private changes: QualityChangeInfo[] = [];
     private resolutionPruneTargets: Record<string, string> = {};
+    private equipment: Record<string, string | null>; 
 
-    constructor(initialQualities: PlayerQualities, worldContent: WorldContent) {
+    constructor(
+        initialQualities: PlayerQualities, 
+        worldContent: WorldContent, 
+        currentEquipment: Record<string, string | null> = {} // Default to empty
+    ) {
         this.qualities = JSON.parse(JSON.stringify(initialQualities));
         this.worldContent = worldContent;
+        this.equipment = currentEquipment;
+    }
+
+    public getEffectiveLevel(qid: string): number {
+        const baseState = this.qualities[qid];
+        let total = (baseState && 'level' in baseState) ? baseState.level : 0;
+
+        // Loop through equipped items
+        for (const slot in this.equipment) {
+            const itemId = this.equipment[slot];
+            if (!itemId) continue;
+
+            const itemDef = this.worldContent.qualities[itemId];
+            if (!itemDef || !itemDef.bonus) continue;
+
+            // Parse the bonus string. Example: "$mettle + 3, $fellowship + 1"
+            const bonuses = itemDef.bonus.split(',');
+            for (const bonus of bonuses) {
+                // Check if this bonus applies to the requested QID
+                // Matches "$mettle + 3" or "$mettle - 1"
+                const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
+                if (match) {
+                    const [, targetQid, op, value] = match;
+                    if (targetQid === qid) {
+                        const numVal = parseInt(value, 10);
+                        if (op === '+') total += numVal;
+                        if (op === '-') total -= numVal;
+                    }
+                }
+            }
+        }
+        
+        return total;
     }
 
     public getQualities(): PlayerQualities {
@@ -215,9 +249,16 @@ export class GameEngine {
     }
 
 
-    public getQualityValue(id: string): number {
+    public getQualityValue(id: string): number | string {
         const state = this.qualities[id];
-        return (state && 'level' in state) ? state.level : 0;
+        
+        // Return string literals for names, etc.
+        if (state?.type === 'S' && 'stringValue' in state) {
+             return `'${state.stringValue.replace(/'/g, "\\'")}'`;
+        }
+
+        // For everything else, calculate the effective level (Base + Gear)
+        return this.getEffectiveLevel(id);
     }
     
     private changeQuality(qid: string, op: string, value: number | string, source?: string): void {

@@ -9,9 +9,6 @@ export enum QualityType {
     Equipable = 'E', // <-- Added 'E' type
 }
 
-// --- STATIC DEFINITIONS ---
-// These interfaces describe the data loaded from your JSON files.
-
 export interface QualityDefinition {
     id: string;
     name?: string;

@@ -1,16 +1,17 @@
 // src/engine/characterService.ts
 
 import clientPromise from '@/engine/database';
-import { PlayerQualities, WorldContent, QualityType, CharacterDocument, WorldSettings } from '@/engine/models';
-//import { GameEngine } from './gameEngine'; // <-- Import GameEngine
-import { getWorldContent, getSettings } from './worldService';
+import { PlayerQualities, CharacterDocument, WorldContent, QualityType } from '@/engine/models';
+// If you implemented contentCache, use that. Otherwise use worldService.
+// import { getContent, getSettings } from '@/engine/contentCache'; 
+import { getWorldContent, getSettings } from '@/engine/worldService'; 
 import { GameEngine } from './gameEngine';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 const COLLECTION_NAME = 'characters';
 
+// --- RETRIEVAL FUNCTIONS ---
 
-// Gets the character for a given user playing a specific story
 export const getCharacter = async (userId: string, storyId: string): Promise<CharacterDocument | null> => {
     try {
         const client = await clientPromise;
@@ -24,46 +25,104 @@ export const getCharacter = async (userId: string, storyId: string): Promise<Cha
     }
 };
 
+// --- CREATION FUNCTIONS ---
+
+// Helper to determine type from JSON definition
+const getQualityType = (content: WorldContent, qid: string): QualityType => {
+    return content.qualities[qid]?.type || QualityType.Counter;
+};
+
+// Helper to standardise state creation
+function createQualityState(qid: string, type: QualityType, value: string | number) {
+    const numVal = Number(value);
+    switch (type) {
+        case QualityType.String: return { qualityId: qid, type, stringValue: String(value) };
+        case QualityType.Pyramidal: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal, changePoints: 0 };
+        case QualityType.Item: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal, sources: [], spentTowardsPrune: 0 };
+        case QualityType.Equipable: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal }; 
+        default: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal };
+    }
+}
+
 export const getOrCreateCharacter = async (
     userId: string, 
-    storyId: string
-    // `worldContent` is no longer needed as a parameter
+    storyId: string,
+    choices?: Record<string, string>
 ): Promise<CharacterDocument> => {
     
-    const existingCharacter = await getCharacter(userId, storyId);
+    // 1. Check if character exists
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
+    const existingCharacter = await collection.findOne({ userId, storyId });
+    
     if (existingCharacter) return existingCharacter;
 
-    console.log(`[CharacterService] No character found for user ${userId} in story ${storyId}. Creating a new one...`);
-    
-    // Fetch the necessary world data on-demand
+    // 2. Load World Data
+    // NOTE: If you are using contentCache, change this to getContent(storyId)
     const worldContent = await getWorldContent(storyId);
-
-    const initialQualities: PlayerQualities = {};
     
-    for (const qidWithPrefix in worldContent.char_create) {
-        const qid = qidWithPrefix.replace('$', '');
-        const value = worldContent.char_create[qidWithPrefix];
-        const def = worldContent.qualities[qid];
-        if (!def) continue;
+    const initialQualities: PlayerQualities = {};
+    const rules = worldContent.char_create;
+    
+    // 3. PHASE 1: Apply User Choices & Static Values
+    for (const key in rules) {
+        const qid = key.replace('$', '');
+        const rule = rules[key];
+        const type = getQualityType(worldContent, qid);
 
-        const isNumeric = !isNaN(parseInt(value, 10));
-        const numValue = isNumeric ? parseInt(value, 10) : 0;
+        let value: string | number | null = null;
 
-        switch (def.type) {
-            case QualityType.String:
-                initialQualities[qid] = { qualityId: qid, type: QualityType.String, stringValue: value }; break;
-            case QualityType.Pyramidal:
-                initialQualities[qid] = { qualityId: qid, type: QualityType.Pyramidal, level: numValue, changePoints: 0 }; break;
-            case QualityType.Item:
-                initialQualities[qid] = { qualityId: qid, type: QualityType.Item, level: numValue, sources: [], spentTowardsPrune: 0 }; break;
-            case QualityType.Equipable:
-                initialQualities[qid] = { qualityId: qid, type: QualityType.Equipable, level: numValue }; break;
-            case QualityType.Counter:
-            case QualityType.Tracker:
-                 initialQualities[qid] = { qualityId: qid, type: def.type, level: numValue }; break;
+        // Is it a user input? (Defined as 'string' or choice 'A|B' in JSON)
+        if (rule === 'string' || rule.includes('|')) {
+            const userChoice = choices?.[qid];
+            if (userChoice) value = userChoice;
+            else value = rule.includes('|') ? rule.split('|')[0].trim() : ""; // Default fallback
+        } 
+        // Is it a static number?
+        else if (!isNaN(Number(rule))) {
+            value = Number(rule);
+        }
+
+        // Apply if we found a direct value
+        if (value !== null) {
+            initialQualities[qid] = createQualityState(qid, type, value);
         }
     }
 
+    // 4. PHASE 2: Calculate Derived Values (e.g., "$player_name")
+    // We instantiate a temporary engine populated with Phase 1 data
+    const tempEngine = new GameEngine(initialQualities, worldContent);
+
+    for (const key in rules) {
+        const qid = key.replace('$', '');
+        const rule = rules[key];
+        
+        // Skip things we already processed
+        if (initialQualities[qid]) continue;
+
+        // If it involves other variables (contains '$'), evaluate it
+        if (rule.includes('$')) {
+            const result = tempEngine.evaluateBlock(`{${rule}}`);
+            const type = getQualityType(worldContent, qid);
+            initialQualities[qid] = createQualityState(qid, type, result);
+        }
+    }
+
+    // 5. Setup System Defaults
+    const initialDeckCharges: Record<string, number> = {};
+    const initialLastDeckUpdate: Record<string, Date> = {};
+    
+    for (const deckId in worldContent.decks) {
+        const deckDef = worldContent.decks[deckId];
+        const sizeStr = tempEngine.evaluateBlock(`{${deckDef.deck_size || '0'}}`);
+        initialDeckCharges[deckId] = parseInt(sizeStr) || 0;
+        initialLastDeckUpdate[deckId] = new Date();
+    }
+
+    const startingLocation = choices?.['location'] || worldContent.char_create['$location'] || 'village';
+
+    // 6. Action Economy Setup
     if (worldContent.settings.useActionEconomy) {
         const maxActionsValue = typeof worldContent.settings.maxActions === 'number'
             ? worldContent.settings.maxActions
@@ -76,80 +135,35 @@ export const getOrCreateCharacter = async (
             level: maxActionsValue
         };
     }
-    
-    const locQuality = initialQualities['location'];
-    const startingLocationId = (locQuality?.type === QualityType.String) ? locQuality.stringValue : 'village';
-
-    const initialEquipment: Record<string, string | null> = {};
-    if (worldContent.settings.equipCategories) {
-        for (const category of worldContent.settings.equipCategories) {
-            initialEquipment[category] = null;
-        }
-    }
-
-    const initialDeckCharges: Record<string, number> = {};
-    const initialLastDeckUpdate: Record<string, Date> = {};
-
-    for (const deckId in worldContent.decks) {
-        const deckDef = worldContent.decks[deckId];
-        const tempEngine = new GameEngine(initialQualities, worldContent);
-        initialDeckCharges[deckId] = parseInt(tempEngine.evaluateBlock(`{${deckDef.deck_size}}`), 10) || 0;
-        initialLastDeckUpdate[deckId] = new Date();
-    }
 
     const newCharacter: CharacterDocument = {
         userId,
         storyId,
         qualities: initialQualities,
-        currentLocationId: startingLocationId,
+        currentLocationId: startingLocation,
         currentStoryletId: "",
-        equipment: initialEquipment, 
-        lastActionTimestamp: new Date(),
-
         opportunityHands: {},
         deckCharges: initialDeckCharges,
         lastDeckUpdate: initialLastDeckUpdate,
+        equipment: {},
+        lastActionTimestamp: new Date()
     };
 
-    try {
-        const client = await clientPromise;
-        const db = client.db(DB_NAME);
-        await db.collection<CharacterDocument>(COLLECTION_NAME).insertOne(newCharacter);
-        console.log(`Created new character for user ${userId} in world ${storyId}`);
-        return newCharacter;
-    } catch (error) {
-        console.error("Failed to save new character:", error);
-        throw error;
-    }
+    await collection.insertOne(newCharacter);
+    return newCharacter;
 };
 
-// Saves the character's state
-export const saveCharacterState = async (character: CharacterDocument): Promise<boolean> => {
-    // We need the userId and storyId for the filter, and the rest for the update.
-    const { userId, storyId, ...characterDataToSet } = character;
+// --- UPDATE FUNCTIONS ---
 
-    if (!userId || !storyId) {
-        console.error("saveCharacterState failed: missing userId or storyId");
-        return false;
-    }
+export const saveCharacterState = async (character: CharacterDocument): Promise<boolean> => {
+    const { userId, storyId, ...characterDataToSet } = character;
+    if (!userId || !storyId) return false;
 
     try {
         const client = await clientPromise;
         const db = client.db(DB_NAME);
         const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
-
-        // The filter finds the correct document to update.
-        const filter = { userId, storyId };
-
-        // The `$set` operator updates only the fields provided in characterDataToSet.
-        // This includes qualities, currentLocationId, opportunityHand, etc.
-        const updateDoc = {
-            $set: characterDataToSet
-        };
-
-        const result = await collection.updateOne(filter, updateDoc);
-        
-        // Return true if a document was found and modified.
+        const result = await collection.updateOne({ userId, storyId }, { $set: characterDataToSet });
         return result.modifiedCount > 0;
     } catch (e) {
         console.error('Database error saving character state:', e);
@@ -158,14 +172,11 @@ export const saveCharacterState = async (character: CharacterDocument): Promise<
 };
 
 export const regenerateActions = async (character: CharacterDocument): Promise<CharacterDocument> => {
-    // This function now fetches its own dependencies.
     const settings = await getSettings(character.storyId);
     if (!settings.useActionEconomy) return character;
     
     let maxActions: number;
     if (typeof settings.maxActions === 'string') {
-        // If maxActions is a string like "$stamina", we need the full world content
-        // to create an engine to evaluate it.
         const worldContent = await getWorldContent(character.storyId);
         const tempEngine = new GameEngine(character.qualities, worldContent);
         maxActions = parseInt(tempEngine.evaluateBlock(`{${settings.maxActions}}`), 10);
