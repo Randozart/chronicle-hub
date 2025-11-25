@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import '../globals.css'; // Ensure CSS is loaded
+import CheatSheet from './components/CheatSheet'; // We will create this
+
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -21,8 +23,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Link href="/" className="admin-link">Back to Game</Link>
                 </div>
             </aside>
-            <main className="admin-main">
-                {children}
+            {/* Main Content Area */}
+            <main className="admin-main" style={{ display: 'flex', padding: 0 }}>
+                
+                {/* The Page Content (List + Editor) */}
+                <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+                    {children}
+                </div>
+
+                {/* Right Sidebar (Reference) */}
+                <aside className="admin-help-sidebar">
+                    <CheatSheet />
+                </aside>
+
             </main>
         </div>
     );

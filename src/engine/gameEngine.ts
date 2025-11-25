@@ -83,12 +83,56 @@ export class GameEngine {
     public resolveOption(storylet: Storylet, option: ResolveOption) {
         this.changes = []; 
         
-        const wasSuccess = this.evaluateCondition(option.random, true);
-        
-        // Handle result being an object or boolean
-        const isSuccess = typeof wasSuccess === 'boolean' ? wasSuccess : wasSuccess.wasSuccess;
+        // 1. Determine basic Success/Failure
+        const wasSuccessResult = this.evaluateCondition(option.random, true);
+        const isSuccess = typeof wasSuccessResult === 'boolean' ? wasSuccessResult : wasSuccessResult.wasSuccess;
 
-        const changeString = isSuccess ? option.pass_quality_change : option.fail_quality_change;
+        // 2. Determine Rare Outcome (Alternative)
+        let isRare = false;
+        let outcomeType: 'pass' | 'fail' | 'rare_pass' | 'rare_fail' = isSuccess ? 'pass' : 'fail';
+
+        const rareChance = isSuccess ? option.rare_pass_chance : option.rare_fail_chance;
+        
+        if (rareChance && rareChance > 0) {
+            const roll = Math.random() * 100;
+            if (roll < rareChance) {
+                isRare = true;
+                outcomeType = isSuccess ? 'rare_pass' : 'rare_fail';
+            }
+        }
+
+        // 3. Select the correct text/changes based on outcomeType
+        let body = "";
+        let changeString: string | undefined = undefined;
+        let redirectId: string | undefined = undefined;
+        let moveId: string | undefined = undefined;
+
+        switch (outcomeType) {
+            case 'pass':
+                body = option.pass_long;
+                changeString = option.pass_quality_change;
+                redirectId = option.pass_redirect;
+                moveId = option.pass_move_to;
+                break;
+            case 'rare_pass':
+                body = option.rare_pass_long || option.pass_long; // Fallback
+                changeString = option.rare_pass_quality_change || option.pass_quality_change;
+                redirectId = option.rare_pass_redirect || option.pass_redirect;
+                moveId = option.pass_move_to; // Assume movement stays same usually
+                break;
+            case 'fail':
+                body = option.fail_long || "";
+                changeString = option.fail_quality_change;
+                redirectId = option.fail_redirect;
+                moveId = option.fail_move_to;
+                break;
+            case 'rare_fail':
+                body = option.rare_fail_long || option.fail_long || "";
+                changeString = option.rare_fail_quality_change || option.fail_quality_change;
+                redirectId = option.rare_fail_redirect || option.fail_redirect;
+                moveId = option.fail_move_to;
+                break;
+        }
         
         if (changeString) {
             this.evaluateEffects(changeString);
@@ -96,12 +140,10 @@ export class GameEngine {
         
         return {
             wasSuccess: isSuccess,
-            body: isSuccess ? option.pass_long : option.fail_long,
-            redirectId: isSuccess ? option.pass_redirect : option.fail_redirect,
-            
-            // Pass the movement target through
-            moveToId: isSuccess ? option.pass_move_to : option.fail_move_to,
-            
+            isRare: isRare, // Pass this to frontend if you want special FX
+            body,
+            redirectId,
+            moveToId: moveId,
             qualityChanges: this.changes,
         };
     }

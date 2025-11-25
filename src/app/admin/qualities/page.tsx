@@ -34,7 +34,7 @@ export default function QualitiesAdmin() {
         const newQuality: QualityDefinition = {
             id: newId,
             name: "New Quality",
-            type: "P" as any, // Cast to ensure TS is happy with initial value
+            type: "P" as any,
             description: ""
         };
 
@@ -42,16 +42,21 @@ export default function QualitiesAdmin() {
         setSelectedId(newId);
     };
 
-    // 3. Save Logic (Updates local list after successful API call)
+    // 3. Save Logic
     const handleSaveSuccess = (updatedItem: QualityDefinition) => {
         setQualities(prev => prev.map(q => q.id === updatedItem.id ? updatedItem : q));
+    };
+
+    // 4. Delete Logic
+    const handleDeleteSuccess = (deletedId: string) => {
+        setQualities(prev => prev.filter(q => q.id !== deletedId));
+        setSelectedId(null);
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     return (
         <div className="admin-split-view">
-            {/* Left Column: List */}
             <div className="admin-list-col">
                 <div className="list-header">
                     <span>Qualities</span>
@@ -71,12 +76,12 @@ export default function QualitiesAdmin() {
                 </div>
             </div>
 
-            {/* Right Column: Editor */}
             <div className="admin-editor-col">
                 {selectedId ? (
                     <QualityEditor 
                         initialData={qualities.find(q => q.id === selectedId)!} 
                         onSave={handleSaveSuccess}
+                        onDelete={handleDeleteSuccess}
                     />
                 ) : (
                     <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>
@@ -88,13 +93,10 @@ export default function QualitiesAdmin() {
     );
 }
 
-// --- SUB COMPONENT ---
-
-function QualityEditor({ initialData, onSave }: { initialData: QualityDefinition, onSave: (d: any) => void }) {
+function QualityEditor({ initialData, onSave, onDelete }: { initialData: QualityDefinition, onSave: (d: any) => void, onDelete: (id: string) => void }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
-    // IMPORTANT: Update form when a different item is selected from the list
     useEffect(() => setForm(initialData), [initialData]);
 
     const handleChange = (field: string, val: string) => {
@@ -128,6 +130,27 @@ function QualityEditor({ initialData, onSave }: { initialData: QualityDefinition
         }
     };
 
+    const handleDelete = async () => {
+        if (!confirm(`Are you sure you want to delete "${form.id}"?`)) return;
+        
+        setIsSaving(true);
+        try {
+            const res = await fetch(`/api/admin/config?storyId=trader_johns_world&category=qualities&itemId=${form.id}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                onDelete(form.id);
+            } else {
+                alert("Failed to delete.");
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div>
             <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
@@ -136,31 +159,18 @@ function QualityEditor({ initialData, onSave }: { initialData: QualityDefinition
             
             <div className="form-group">
                 <label className="form-label">ID</label>
-                <input 
-                    value={form.id} 
-                    disabled 
-                    className="form-input" 
-                    style={{ opacity: 0.5, cursor: 'not-allowed' }} 
-                />
+                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5, cursor: 'not-allowed' }} />
             </div>
 
             <div className="form-group">
                 <label className="form-label">Name</label>
-                <input 
-                    value={form.name || ''} 
-                    onChange={e => handleChange('name', e.target.value)}
-                    className="form-input"
-                />
+                <input value={form.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" />
             </div>
 
             <div className="form-row">
                 <div className="form-group">
                     <label className="form-label">Type</label>
-                    <select 
-                        value={form.type}
-                        onChange={e => handleChange('type', e.target.value)}
-                        className="form-select"
-                    >
+                    <select value={form.type} onChange={e => handleChange('type', e.target.value)} className="form-select">
                         <option value="P">Pyramidal (Level)</option>
                         <option value="C">Counter (Currency)</option>
                         <option value="I">Item</option>
@@ -170,47 +180,25 @@ function QualityEditor({ initialData, onSave }: { initialData: QualityDefinition
                 </div>
                 <div className="form-group">
                     <label className="form-label">Category</label>
-                    <input 
-                        value={form.category || ''} 
-                        onChange={e => handleChange('category', e.target.value)}
-                        className="form-input"
-                    />
+                    <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" />
                 </div>
             </div>
 
             <div className="form-group">
                 <label className="form-label">Description</label>
-                <textarea 
-                    value={form.description || ''} 
-                    onChange={e => handleChange('description', e.target.value)}
-                    className="form-textarea"
-                    rows={4}
-                />
+                <textarea value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-textarea" rows={4} />
             </div>
 
             {form.type === 'E' && (
                 <div className="form-group" style={{ border: '1px solid #2a3e5c', padding: '1rem', borderRadius: '4px' }}>
                     <label className="form-label" style={{ color: '#61afef' }}>Equip Bonus</label>
-                    <input 
-                        value={form.bonus || ''} 
-                        onChange={e => handleChange('bonus', e.target.value)}
-                        placeholder="$mettle + 1"
-                        className="form-input"
-                    />
-                    <small style={{ color: '#777', display: 'block', marginTop: '0.5rem' }}>
-                        Format: $quality_id + 1, $other - 2
-                    </small>
+                    <input value={form.bonus || ''} onChange={e => handleChange('bonus', e.target.value)} placeholder="$mettle + 1" className="form-input" />
                 </div>
             )}
 
             <div style={{ marginTop: '2rem', display: 'flow-root' }}>
-                <button 
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="save-btn"
-                >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
+                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ width: 'auto', padding: '0.75rem 1.5rem', float: 'left', borderRadius: '4px' }}>Delete</button>
+                <button onClick={handleSave} disabled={isSaving} className="save-btn"> {isSaving ? 'Saving...' : 'Save Changes'} </button>
             </div>
         </div>
     );
