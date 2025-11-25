@@ -138,8 +138,13 @@ export default function OptionEditor({ data, onChange, onDelete }: Props) {
                 )}
             </div>
 
-            {/* --- 3. OUTCOMES GRID --- */}
-            <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '10px' }}>
+            {/* --- 3. OUTCOMES GRID (Using CSS Grid) --- */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                gap: '1rem',
+                width: '100%' 
+            }}>
                 
                 <OutcomeColumn 
                     title="STANDARD SUCCESS"
@@ -192,7 +197,10 @@ export default function OptionEditor({ data, onChange, onDelete }: Props) {
 
 function OutcomeColumn({ title, color, data, prefix, onChange, chanceField }: any) {
     return (
-        <div style={{ minWidth: '300px', flex: 1, border: `1px solid ${color}`, borderRadius: '4px', padding: '0.75rem', background: `${color}0D` }}>
+        <div className="outcome-column" style={{ 
+            border: `1px solid ${color}`, 
+            background: `${color}0D` 
+        }}>
             <h4 style={{ color: color, margin: '0 0 0.5rem 0', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
                 {title}
                 {chanceField && (

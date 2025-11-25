@@ -740,13 +740,15 @@ body {
     color: #777;
 }
 
-/* Admin Editor Form */
 .admin-editor-col {
     flex: 1;
     background-color: #21252b;
     border: 1px solid #333;
     border-radius: 4px;
     padding: 1.5rem;
+    overflow: hidden; /* Prevent outer scrollbar */
+    display: flex;
+    flex-direction: column;
 }
 
 .form-group {
@@ -768,6 +770,18 @@ body {
     padding: 0.5rem;
     border-radius: 4px;
     font-family: inherit;
+}
+
+.form-textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box; /* Critical for padding not adding to width */
+    resize: vertical; /* Allow user to resize height only */
+}
+
+.form-input {
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .form-input:focus, .form-textarea:focus {
@@ -943,4 +957,12 @@ body {
     color: #aaa;
     margin-top: 0.5rem;
     margin-bottom: 0;
+}
+
+.outcome-column {
+    min-width: 300px;
+    flex: 1;
+    border-radius: 4px;
+    padding: 0.75rem;
+    box-sizing: border-box; /* Keep padding inside */
 }

@@ -20,7 +20,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
     };
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="h-full flex flex-col">
             
             {/* 1. HEADER ACTIONS */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
@@ -32,7 +32,8 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
             </div>
 
             {/* 2. SCROLLABLE CONTENT */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
+
                 
                 {/* TITLE & LOCATION */}
                 <div className="form-row">
