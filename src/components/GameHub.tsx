@@ -64,39 +64,40 @@ export default function GameHub({
         setIsLoading(true);
         try {
             const response = await fetch('/api/deck/draw', { method: 'POST' });
-            const data = await response.json(); // This will now be { character, message? }
+            const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.error || "Could not draw a card.");
+            const updatedCharacter: CharacterDocument = data.character || data;
+            
+            if (!response.ok && data.error) {
+                throw new Error(data.error);
             }
             
-            // --- THIS IS THE FIX ---
-            const updatedCharacter: CharacterDocument = data.character;
-            
-            const currentDeckId = location.deck; 
-            const newHandIds = updatedCharacter.opportunityHands?.[currentDeckId] || [];
-
-            // Fetch the full data for the new cards in hand.
-            const newHandData: Opportunity[] = await Promise.all(
-                newHandIds.map(id => 
-                    fetch(`/api/storylet/${id}`).then(res => res.json())
-                )
-            ).then(results => results.filter(Boolean));
-
-            setCharacter(updatedCharacter);
-            setHand(newHandData);
-
             if (data.message) {
                 alert(data.message);
             }
 
+            
+            if (updatedCharacter) {
+                setCharacter(updatedCharacter);
+
+                const currentDeckId = location.deck; 
+                const newHandIds = updatedCharacter.opportunityHands?.[currentDeckId] || [];
+
+                const newHandData: Opportunity[] = await Promise.all(
+                    newHandIds.map(id => 
+                        fetch(`/api/storylet/${id}`).then(res => res.json())
+                    )
+                ).then(results => results.filter(Boolean));
+
+                setHand(newHandData);
+            }
         } catch (error) {
             console.error("Failed to draw card:", error);
             alert((error as Error).message);
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading]);
+    }, [isLoading, location]); // <-- `location` is now a dependency
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
         setCharacter(prev => ({ ...prev, qualities: newQualities } as CharacterDocument));
