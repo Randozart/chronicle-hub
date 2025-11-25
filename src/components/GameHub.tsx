@@ -8,6 +8,8 @@ import StoryletDisplay from './StoryletDisplay';
 import LocationStorylets from './LocationStorylets';
 import CharacterSheet from './CharacterSheet';
 import Possessions from './Possessions'; 
+import ActionTimer from './ActionTimer';
+
 
 
 interface GameHubProps {
@@ -129,9 +131,51 @@ export default function GameHub({
         });
     }, [initialLocation]);
 
+    const handleActionRegen = () => {
+        const actionQid = settings.actionId.replace('$', ''); // e.g., "actions"
+        
+        setCharacter(prev => {
+            const currentActions = prev.qualities[actionQid];
+            if (!currentActions || !('level' in currentActions)) return prev;
+
+            // Don't go over max
+            const max = typeof settings.maxActions === 'number' ? settings.maxActions : 20; 
+            if (currentActions.level >= max) return prev;
+
+            return {
+                ...prev,
+                qualities: {
+                    ...prev.qualities,
+                    [actionQid]: {
+                        ...currentActions,
+                        level: currentActions.level + 1
+                    }
+                },
+                // We fake the timestamp update so the timer resets visually
+                lastActionTimestamp: new Date() 
+            };
+        });
+    };
+    
+    const actionQid = settings.actionId.replace('$', '');
+    const actionState = character.qualities[actionQid];
+    const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
+    const maxActions = typeof settings.maxActions === 'number' ? settings.maxActions : 20;
+
     return (
         <div className="hub-layout">
             <div className="sidebar-column left">
+                <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: '#2c3e50', borderRadius: '4px' }}>
+                    <h3>Actions: {currentActions} / {maxActions}</h3>
+                    <ActionTimer 
+                        currentActions={currentActions}
+                        maxActions={maxActions}
+                        lastTimestamp={character.lastActionTimestamp || new Date()}
+                        regenIntervalMinutes={settings.regenIntervalInMinutes || 10}
+                        onRegen={handleActionRegen}
+                    />
+                </div>
+
                 <CharacterSheet 
                     qualities={character.qualities} 
                     equipment={character.equipment} // <--- ADD THIS PROP
