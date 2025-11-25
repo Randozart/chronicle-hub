@@ -1,6 +1,6 @@
 'use client';
 import { useState, useCallback } from 'react';
-import { PlayerQualities, Storylet, Opportunity, LocationDefinition, CharacterDocument, QualityDefinition, WorldSettings } from '@/engine/models';
+import { PlayerQualities, Storylet, Opportunity, LocationDefinition, CharacterDocument, QualityDefinition, WorldSettings, ImageDefinition } from '@/engine/models';
 
 import LocationHeader from './LocationHeader';
 import OpportunityHand from './OpportunityHand';
@@ -21,6 +21,7 @@ interface GameHubProps {
     storyletDefs: Record<string, Storylet>;
     opportunityDefs: Record<string, Opportunity>; 
     settings: WorldSettings;
+    imageLibrary: Record<string, ImageDefinition>; // Add type
 }
 
 export default function GameHub({
@@ -32,6 +33,7 @@ export default function GameHub({
     storyletDefs,
     opportunityDefs,
     settings,
+    imageLibrary,
 }: GameHubProps) {
     
     const [character, setCharacter] = useState(initialCharacter);
@@ -211,6 +213,7 @@ export default function GameHub({
                         equipCategories={settings.equipCategories || []}
                         onUpdateCharacter={handleCharacterUpdate}
                         storyId={character.storyId}
+                        imageLibrary={imageLibrary}
                     />
                 ) : (
                     /* Existing Story View Logic */
@@ -226,15 +229,17 @@ export default function GameHub({
                             storyletDefs={storyletDefs}
                             opportunityDefs={opportunityDefs} 
                             settings={settings}
+                            imageLibrary={imageLibrary}
                         />
                     ) : (
                         <>
-                            <LocationHeader location={location} />
+                            <LocationHeader location={location} imageLibrary={imageLibrary} />
                             <LocationStorylets
                                 storylets={locationStorylets}
                                 onStoryletClick={showEvent}
                                 qualities={character.qualities}
                                 qualityDefs={qualityDefs}
+                                imageLibrary={imageLibrary}
                             />
                             <OpportunityHand 
                                 hand={hand} 
@@ -243,6 +248,7 @@ export default function GameHub({
                                 isLoading={isLoading} 
                                 qualities={character.qualities}
                                 qualityDefs={qualityDefs}
+                                imageLibrary={imageLibrary}
                             />
                         </>
                     )

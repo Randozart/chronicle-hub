@@ -1,10 +1,12 @@
 // src/components/StoryletDisplay.tsx
 'use client';
 
-import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings } from '@/engine/models';
+import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition } from '@/engine/models';
 import { useState } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
+import GameImage from './GameImage';
+import { resolveTxt } from 'dns';
 
 // New, lean props interface
 interface StoryletDisplayProps {
@@ -17,6 +19,7 @@ interface StoryletDisplayProps {
     onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
     onQualitiesUpdate: (newQualities: PlayerQualities) => void; // <--- ADD THIS
     onCardPlayed?: (cardId: string) => void;
+    imageLibrary: Record<string, ImageDefinition>; // Add type
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -38,7 +41,8 @@ export default function StoryletDisplay({
     storyletDefs,
     opportunityDefs,
     settings,
-    onCardPlayed
+    onCardPlayed,
+    imageLibrary
 }: StoryletDisplayProps) {
 
     // This component only manages its own temporary UI state.
@@ -105,10 +109,11 @@ export default function StoryletDisplay({
                 <div className="storylet-main-content">
                     {resolution.image_code && (
                         <div className="storylet-image-container">
-                            <img 
-                                src={`/images/storylets/${resolution.image_code}.png`} 
-                                // Evaluate text with the NEW qualities
-                                alt={evaluateText(resolution.title, resolution.qualities, qualityDefs)} 
+                            <GameImage 
+                                code={resolution?.image_code || storylet.image_code} 
+                                imageLibrary={imageLibrary} 
+                                type="storylet" // or "icon" depending on component
+                                alt={storylet.name}
                                 className="storylet-image"
                             />
                         </div>
@@ -173,9 +178,11 @@ export default function StoryletDisplay({
                 {storylet.image_code && (
                     <div className="storylet-image-container">
                         {/* All calls to evaluateText now pass qualityDefs */}
-                        <img 
-                            src={`/images/storylets/${storylet.image_code}.png`} 
-                            alt={evaluateText(storylet.name, qualities, qualityDefs)} 
+                        <GameImage 
+                            code={storylet.image_code} 
+                            imageLibrary={imageLibrary} 
+                            type="storylet" // or "icon" depending on component
+                            alt={storylet.name}
                             className="storylet-image"
                         />
                     </div>
@@ -198,9 +205,11 @@ export default function StoryletDisplay({
                         <div className="option-content-wrapper">
                         {option.image_code && (
                             <div className="option-image-container">
-                                <img 
-                                    src={`/images/storylets/${option.image_code}.png`} 
-                                    alt="" // Alt text can be empty for decorative images
+                                <GameImage 
+                                    code={option.image_code} 
+                                    imageLibrary={imageLibrary} 
+                                    type="icon" // or "icon" depending on component
+                                    alt={option.name}
                                     className="option-image"
                                 />
                             </div>

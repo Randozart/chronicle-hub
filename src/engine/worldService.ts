@@ -24,7 +24,8 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
         locations: injectIds(worldDoc.content.locations),
         decks: injectIds(worldDoc.content.decks),
         settings: worldDoc.settings,
-        char_create: worldDoc.content.char_create || {}
+        char_create: worldDoc.content.char_create || {},
+        images: injectIds(worldDoc.content.images) || {} 
     };
 });
 

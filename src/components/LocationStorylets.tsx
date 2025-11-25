@@ -1,8 +1,9 @@
 // src/components/LocationStorylets.tsx
 'use client';
 
-import { Storylet, PlayerQualities, WorldContent, QualityDefinition } from "@/engine/models";
+import { Storylet, PlayerQualities, WorldContent, QualityDefinition, ImageDefinition } from "@/engine/models";
 import { evaluateText } from "@/engine/textProcessor";
+import GameImage from "./GameImage";
 
 // --- UPDATE THE PROPS INTERFACE ---
 interface LocationStoryletsProps {
@@ -10,9 +11,10 @@ interface LocationStoryletsProps {
     onStoryletClick: (storyletId: string) => void;
     qualities: PlayerQualities;
     qualityDefs: Record<string, QualityDefinition>;
+    imageLibrary: Record<string, ImageDefinition>;
 }
 
-export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs }: LocationStoryletsProps) {
+export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs, imageLibrary }: LocationStoryletsProps) {
     console.log("[CLIENT] LocationStorylets received props:", JSON.stringify(storylets, null, 2));
 
     if (storylets.length === 0) return null;
@@ -30,9 +32,11 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                         <div className="option-content-wrapper">
                             {storylet.image_code && (
                                 <div className="option-image-container">
-                                    <img 
-                                        src={`/images/storylets/${storylet.image_code}.png`} 
-                                        alt=""
+                                    <GameImage 
+                                        code={storylet.image_code} 
+                                        imageLibrary={imageLibrary} 
+                                        type="storylet" // or "icon" depending on component
+                                        alt={storylet.name}
                                         className="option-image"
                                     />
                                 </div>

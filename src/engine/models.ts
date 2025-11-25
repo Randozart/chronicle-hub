@@ -191,6 +191,12 @@ export interface QualityChangeInfo {
     changeText: string;
 }
 
+export interface ImageDefinition {
+    id: string; // The code, e.g. "trader_john"
+    url: string; // "/images/local.png" OR "https://cloudinary..."
+    alt?: string; // Default alt text
+}
+
 // Base config needed for math and logic
 export interface WorldConfig {
     qualities: Record<string, QualityDefinition>;
@@ -200,6 +206,7 @@ export interface WorldConfig {
     char_create: Record<string, string>;
     storylets?: Record<string, Storylet>;
     opportunities?: Record<string, Opportunity>;
+    images: Record<string, ImageDefinition>; 
 }
 
 export type WorldContent = WorldConfig;

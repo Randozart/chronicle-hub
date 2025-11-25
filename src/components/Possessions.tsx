@@ -1,6 +1,6 @@
 'use client';
 
-import { PlayerQualities, QualityDefinition } from "@/engine/models";
+import { ImageDefinition, PlayerQualities, QualityDefinition } from "@/engine/models";
 import { useState } from "react";
 
 interface PossessionsProps {
@@ -10,6 +10,7 @@ interface PossessionsProps {
     equipCategories: string[];
     onUpdateCharacter: (character: any) => void; // Callback to update parent state
     storyId: string;
+    imageLibrary: Record<string, ImageDefinition>;
 }
 
 const formatBonus = (bonusStr: string, qualityDefs: Record<string, QualityDefinition>) => {
@@ -32,7 +33,8 @@ export default function Possessions({
     qualityDefs, 
     equipCategories,
     onUpdateCharacter,
-    storyId
+    storyId,
+    imageLibrary
 }: PossessionsProps) {
     
     const [isLoading, setIsLoading] = useState(false);

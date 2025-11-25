@@ -1,10 +1,11 @@
 // src/components/OpportunityHand.tsx
 
 'use client';
-import { Opportunity, PlayerQualities, WorldContent, QualityDefinition } from "@/engine/models";
+import { Opportunity, PlayerQualities, WorldContent, QualityDefinition, ImageDefinition } from "@/engine/models";
 import { evaluateText } from "@/engine/textProcessor";
 //import { repositories } from "@/engine/repositories";
 import { useEffect } from "react";
+import GameImage from "./GameImage";
 
 interface OpportunityHandProps {
     hand: Opportunity[];
@@ -13,9 +14,10 @@ interface OpportunityHandProps {
     onDrawClick: () => void;
     isLoading: boolean;
     qualityDefs: Record<string, QualityDefinition>;
+    imageLibrary: Record<string, ImageDefinition>; 
 }
 
-export default function OpportunityHand({ hand, onCardClick, qualities, onDrawClick, isLoading, qualityDefs }: OpportunityHandProps) {
+export default function OpportunityHand({ hand, onCardClick, qualities, onDrawClick, isLoading, qualityDefs, imageLibrary }: OpportunityHandProps) {
     
     return (
         <div className="opportunity-hand">
@@ -29,7 +31,13 @@ export default function OpportunityHand({ hand, onCardClick, qualities, onDrawCl
                             onClick={() => onCardClick(card.id)}
                         >
                             {card.image_code && (
-                                <img src={`/images/storylets/${card.image_code}.png`} alt="" className="card-image" />
+                                <GameImage 
+                                    code={card.image_code} 
+                                    imageLibrary={imageLibrary} 
+                                    type="storylet" // or "icon" depending on component
+                                    alt={card.name}
+                                    className="card-image"
+                                />
                             )}
                             <div className="card-text">
                                 <h3>{evaluateText(card.name, qualities, qualityDefs)}</h3>

@@ -67,6 +67,7 @@ export default async function Home() {
                 storyletDefs={plainStoryletDefs}
                 opportunityDefs={plainOpportunityDefs} 
                 settings={sanitize(gameData.settings)}
+                imageLibrary={gameData.images || {}}
             />
         </main>
     );
