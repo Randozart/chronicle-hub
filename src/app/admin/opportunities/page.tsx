@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Opportunity } from '@/engine/models';
 import OpportunityMainForm from './components/OpportunityMainForm';
+import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
 export default function OpportunitiesAdmin() {
     const [opportunities, setOpportunities] = useState<Partial<Opportunity>[]>([]); 
@@ -83,25 +84,18 @@ export default function OpportunitiesAdmin() {
 
     return (
         <div className="admin-split-view">
-            {/* LEFT: List */}
-            <div className="admin-list-col">
-                <div className="list-header">
-                    <span>Cards ({opportunities.length})</span>
-                    <button className="new-btn" onClick={handleCreate}>+ New</button>
-                </div>
-                <div className="list-items">
-                    {opportunities.map(s => (
-                        <div 
-                            key={s.id} 
-                            onClick={() => setSelectedId(s.id!)}
-                            className={`list-item ${selectedId === s.id ? 'active' : ''}`}
-                        >
-                            <span className="item-title">{s.name || s.id}</span>
-                            <span className="item-subtitle">{s.id}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            <AdminListSidebar 
+                title="Cards"
+                items={opportunities as any}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={handleCreate}
+                groupOptions={[
+                    { label: "Deck", key: "deck" },
+                    { label: "Frequency", key: "frequency" }
+                ]}
+                defaultGroupByKey="deck"
+            />
 
             {/* RIGHT: Editor */}
             <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

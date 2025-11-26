@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Storylet } from '@/engine/models';
 import StoryletMainForm from './components/StoryletMainForm'; // We'll create this next
+import AdminListSidebar from './components/AdminListSidebar';
 
 export default function StoryletsAdmin() {
     const [storylets, setStorylets] = useState<Partial<Storylet>[]>([]); // List only has partial data
@@ -84,27 +85,18 @@ export default function StoryletsAdmin() {
 
     return (
         <div className="admin-split-view">
-            {/* LEFT: List */}
-            <div className="admin-list-col">
-                <div className="list-header">
-                    <span>Storylets ({storylets.length})</span>
-                    <button className="new-btn" onClick={handleCreate}>+ New</button>
-                </div>
-                <div className="list-items">
-                    {storylets.map(s => (
-                        <div 
-                            key={s.id} 
-                            onClick={() => setSelectedId(s.id!)}
-                            className={`list-item ${selectedId === s.id ? 'active' : ''}`}
-                        >
-                            <span className="item-title">{s.name || s.id}</span>
-                            <span className="item-subtitle">{s.id}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            <AdminListSidebar 
+                title="Storylets"
+                items={storylets as any} // Cast because partial
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={handleCreate}
+                groupOptions={[
+                    { label: "Location", key: "location" }
+                ]}
+                defaultGroupByKey="location"
+            />
 
-            {/* RIGHT: Editor */}
             <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {isLoadingDetail ? (
                     <div>Loading detail...</div>

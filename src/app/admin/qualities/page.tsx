@@ -73,7 +73,11 @@ export default function QualitiesAdmin() {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onCreate={handleCreate}
-                // Optional: Custom renderer if you want to show Type icons
+                groupOptions={[
+                    { label: "Category (Tree)", key: "category" },
+                    { label: "Type", key: "type" }
+                ]}
+                defaultGroupByKey="category"
                 renderItem={(q) => (
                     <div>
                         <div style={{ fontWeight: 'bold', color: '#fff' }}>{q.name || q.id}</div>
