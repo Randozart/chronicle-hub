@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { QualityDefinition } from '@/engine/models';
+import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
 const toggleTag = (currentTags: string | undefined, tag: string): string => {
     const tags = (currentTags || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -66,24 +67,20 @@ export default function QualitiesAdmin() {
 
     return (
         <div className="admin-split-view">
-            <div className="admin-list-col">
-                <div className="list-header">
-                    <span>Qualities</span>
-                    <button className="new-btn" onClick={handleCreate}>+ New</button>
-                </div>
-                <div className="list-items">
-                    {qualities.map(q => (
-                        <div 
-                            key={q.id} 
-                            onClick={() => setSelectedId(q.id)}
-                            className={`list-item ${selectedId === q.id ? 'active' : ''}`}
-                        >
-                            <span className="item-title">{q.name || q.id}</span>
-                            <span className="item-subtitle">{q.id} • {q.type}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            <AdminListSidebar 
+                title="Qualities"
+                items={qualities}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={handleCreate}
+                // Optional: Custom renderer if you want to show Type icons
+                renderItem={(q) => (
+                    <div>
+                        <div style={{ fontWeight: 'bold', color: '#fff' }}>{q.name || q.id}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#777' }}>{q.id} <span style={{ color: '#61afef' }}>[{q.type}]</span></div>
+                    </div>
+                )}
+            />
 
             <div className="admin-editor-col">
                 {selectedId ? (
