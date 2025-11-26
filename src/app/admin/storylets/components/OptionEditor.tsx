@@ -24,6 +24,14 @@ export default function OptionEditor({ data, onChange, onDelete }: Props) {
     const toggleDifficulty = () => handleChange('random', hasDifficulty ? undefined : "$luck >= 50");
     const toggleRarePass = () => handleChange('rare_pass_chance', hasRarePass ? undefined : 10);
     const toggleRareFail = () => handleChange('rare_fail_chance', hasRareFail ? undefined : 10);
+    
+    const toggleTag = (tags: string | undefined, tag: string) => {
+        const tagList = (tags || '').split(',').map(s => s.trim()).filter(Boolean);
+        const newTags = tagList.includes(tag) 
+            ? tagList.filter(t => t !== tag) 
+            : [...tagList, tag];
+        handleChange('properties', newTags.join(', '));
+    };
 
     return (
         <div className="space-y-4">
@@ -47,6 +55,27 @@ export default function OptionEditor({ data, onChange, onDelete }: Props) {
                         style={{ opacity: 0.6 }} 
                     />
                 </div>
+            </div>
+
+            <div className="toggle-row">
+                <label className="toggle-label">
+                    <input 
+                        type="checkbox" 
+                        checked={(data.properties || '').includes('instant_redirect')}
+                        onChange={() => toggleTag(data.properties, 'instant_redirect')}
+                    />
+                    Instant Redirect (No Result Text)
+                </label>
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Custom Tags</label>
+                <input 
+                    placeholder="other_tag"
+                    value={data.properties || ''} 
+                    onChange={e => handleChange('properties', e.target.value)}
+                    className="form-input"
+                />
             </div>
 
             <div className="form-row">

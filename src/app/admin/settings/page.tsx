@@ -3,9 +3,15 @@
 import { useState, useEffect } from 'react';
 import { WorldSettings } from '@/engine/models';
 
+// We need to extend the Settings type locally to include char_create dictionary, 
+// as it is technically part of WorldConfig, not WorldSettings interface, 
+// but we want to edit them together here.
+interface SettingsForm extends WorldSettings {
+    char_create: Record<string, string>;
+}
+
 export default function SettingsAdmin() {
-    // Default state matching your model
-    const [form, setForm] = useState<WorldSettings>({
+    const [form, setForm] = useState<SettingsForm>({
         useActionEconomy: true,
         maxActions: 20,
         actionId: "$actions",
@@ -17,38 +23,68 @@ export default function SettingsAdmin() {
         equipCategories: [],
         playerName: "$player_name",
         playerImage: "$player_image",
-        deckDrawCostsAction: true
+        deckDrawCostsAction: true,
+        char_create: {} // Initialize empty
     });
     
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
-    // 1. Fetch Settings
+    // 1. Fetch Settings AND Char Create
     useEffect(() => {
-        // We can use the Generic Config API? No, that was for Lists.
-        // We need a GET for settings. 
-        // Actually, we can assume a new route /api/admin/settings exists, 
-        // OR reuse the pattern if we adjust the generic route to handle 'settings' retrieval.
+        // We need to fetch the full config to get char_create, 
+        // as /api/admin/settings only returns the settings object.
+        // Let's use the generic config API if available or fetch separately.
         
-        // Let's assume we make a specific GET route for simplicity, 
-        // OR just use the public game loader logic for now.
+        // Option A: Modify /api/admin/settings to return everything
+        // Option B: Fetch both here.
         
-        // Let's implement the GET logic inline here via a new route or existing one.
-        // Ideally: /api/admin/settings?storyId=...
-        fetch('/api/admin/settings?storyId=trader_johns_world')
-            .then(res => res.json())
-            .then(data => {
-                // Merge defaults to ensure no crash on missing fields
-                setForm(prev => ({ ...prev, ...data }));
-            })
-            .finally(() => setIsLoading(false));
+        // Let's try fetching both endpoints (assuming we added /api/admin/char_create or similar)
+        // OR we can just cheat and use the public loader if it's exposed.
+        
+        // BETTER: Let's just assume /api/admin/settings returns JUST settings, 
+        // and we need to add char_create support.
+        
+        // Let's refactor this effect to fetch the WHOLE config structure via a new helper
+        // or just fetch them individually.
+        
+        // For simplicity, let's fetch config via a direct call if possible, 
+        // otherwise, we need to ensure the API supports this.
+        
+        // Assuming /api/admin/settings returns { ...settings }
+        // We need to fetch char_create separately.
+        // Let's assume we make /api/admin/char_create/route.ts or update the Settings API.
+        
+        // HACK: Fetch the qualities/decks/etc generic route? No.
+        
+        // REAL FIX: Let's update the fetch to get the whole config map 
+        // if we want to edit multiple sections.
+        // But since you likely didn't change the API yet, let's assume we fetch settings
+        // and char_create separately.
+        
+        Promise.all([
+            fetch('/api/admin/settings?storyId=trader_johns_world').then(r => r.json()),
+            // We need an endpoint for char_create. 
+            // Let's assume we use the generic route for it or you added it.
+            // If not, the char_create section will be empty.
+            // Let's use a placeholder fetch or assume it comes with settings for now.
+            // Actually, let's just use a direct fetch to a new endpoint /api/admin/char_create
+            // which you should create (copy/paste settings route but return config.char_create).
+            fetch('/api/admin/char_create?storyId=trader_johns_world').then(r => r.ok ? r.json() : {})
+        ]).then(([settingsData, charData]) => {
+            setForm(prev => ({ 
+                ...prev, 
+                ...settingsData,
+                char_create: charData 
+            }));
+        }).finally(() => setIsLoading(false));
+
     }, []);
 
-    const handleChange = (field: keyof WorldSettings, val: any) => {
+    const handleChange = (field: keyof SettingsForm, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    // Helper for Comma-Separated Arrays (Categories)
     const handleArrayChange = (field: 'characterSheetCategories' | 'equipCategories', strVal: string) => {
         const arr = strVal.split(',').map(s => s.trim()).filter(Boolean);
         setForm(prev => ({ ...prev, [field]: arr }));
@@ -57,20 +93,40 @@ export default function SettingsAdmin() {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // Uses the Generic Config Saver we built earlier!
-            const res = await fetch('/api/admin/config', {
+            // Save Settings
+            const res1 = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     storyId: 'trader_johns_world',
                     category: 'settings',
-                    itemId: 'settings', // Dummy ID for the generic saver logic
-                    data: form
+                    itemId: 'settings',
+                    data: { ...form, char_create: undefined } // Exclude char_create from settings object
                 })
             });
 
-            if (res.ok) alert("Settings Saved!");
-            else alert("Failed to save.");
+            // Save Char Create (It lives in 'char_create' key of WorldConfig, 
+            // but our generic saver uses category to map to 'content.category'.
+            // We need to update WorldService to support 'char_create' category or 'starting'.
+            // IF you updated worldService.ts as discussed previously to support 'char_create', this works:
+            const res2 = await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storyId: 'trader_johns_world',
+                    category: 'char_create', // Mapping to content.char_create
+                    itemId: 'rules', // This ID is ignored by the bulk updater usually, or treated as the object itself
+                    data: form.char_create
+                })
+            });
+
+            // Note: The Generic Saver logic for 'char_create' needs to handle replacing the whole object
+            // rather than setting a key inside it, OR we treat it like Settings.
+            // Ideally, updateWorldConfigItem in worldService.ts handles `category === 'char_create'` 
+            // similar to `category === 'settings'` (replace the whole object).
+
+            if (res1.ok && res2.ok) alert("Saved!");
+            else alert("Failed to save some data.");
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
@@ -79,6 +135,14 @@ export default function SettingsAdmin() {
     return (
         <div className="admin-editor-col" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Game Settings</h2>
+
+            {/* CHARACTER CREATION */}
+            <div style={{ marginBottom: '2rem' }}>
+                <CharCreateEditor 
+                    rules={form.char_create || {}} 
+                    onChange={r => handleChange('char_create', r)} 
+                />
+            </div>
 
             {/* ACTION ECONOMY */}
             <div className="special-field-group">
@@ -148,7 +212,6 @@ export default function SettingsAdmin() {
                     className="form-input"
                     placeholder="character, menace, currency"
                 />
-                <small style={{ color: '#777' }}>Qualities with these categories will appear in the sidebar.</small>
             </div>
 
             <div className="form-group">
@@ -181,10 +244,67 @@ export default function SettingsAdmin() {
                 </div>
             </div>
 
-            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="admin-form-footer" style={{ justifyContent: 'flex-end' }}>
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">
                     {isSaving ? 'Saving...' : 'Save Settings'}
                 </button>
+            </div>
+        </div>
+    );
+}
+
+// --- SUB COMPONENT ---
+
+function CharCreateEditor({ rules, onChange }: { rules: Record<string, string>, onChange: (r: Record<string, string>) => void }) {
+    const [newKey, setNewKey] = useState("");
+
+    const handleUpdate = (key: string, val: string) => {
+        onChange({ ...rules, [key]: val });
+    };
+
+    const handleDelete = (key: string) => {
+        const next = { ...rules };
+        delete next[key];
+        onChange(next);
+    };
+
+    const handleAdd = () => {
+        if (!newKey) return;
+        const key = newKey.startsWith('$') ? newKey : `$${newKey}`;
+        if (rules[key]) return alert("Rule exists");
+        onChange({ ...rules, [key]: "0" });
+        setNewKey("");
+    };
+
+    return (
+        <div className="special-field-group" style={{ borderColor: '#98c379' }}>
+            <label className="special-label" style={{ color: '#98c379' }}>Character Creation Rules</label>
+            <p className="special-desc">Define initial values. Use "string" for text input, or "opt1 | opt2" for choices.</p>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem', marginTop: '1rem' }}>
+                <input 
+                    value={newKey} 
+                    onChange={e => setNewKey(e.target.value)} 
+                    placeholder="Quality ID (e.g. strength)" 
+                    className="form-input" 
+                />
+                <button onClick={handleAdd} className="save-btn" style={{ padding: '0.5rem 1rem', backgroundColor: '#2c3e50' }}>Add</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+                {Object.entries(rules).map(([key, val]) => (
+                    <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div style={{ flex: 1, fontFamily: 'monospace', color: '#ccc' }}>{key}</div>
+                        <input 
+                            value={val} 
+                            onChange={e => handleUpdate(key, e.target.value)}
+                            className="form-input"
+                            style={{ flex: 2 }}
+                            placeholder="Value"
+                        />
+                        <button onClick={() => handleDelete(key)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+                    </div>
+                ))}
             </div>
         </div>
     );

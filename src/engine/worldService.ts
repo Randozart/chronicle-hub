@@ -91,7 +91,7 @@ const injectIds = <T>(dict: Record<string, T> | undefined): Record<string, T> =>
 
 export const updateWorldConfigItem = async (
     worldId: string, 
-    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings', 
+    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings' | 'char_create', 
     itemId: string, 
     data: any
 ): Promise<boolean> => {
@@ -103,6 +103,14 @@ export const updateWorldConfigItem = async (
         const result = await db.collection('worlds').updateOne(
             { worldId },
             { $set: { settings: data } }
+        );
+        return result.acknowledged;
+    }
+
+    if (category === 'char_create') {
+        const result = await db.collection('worlds').updateOne(
+            { worldId },
+            { $set: { "content.char_create": data } } // Note: content.char_create path
         );
         return result.acknowledged;
     }

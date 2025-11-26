@@ -3,6 +3,15 @@
 import { useState, useEffect } from 'react';
 import { QualityDefinition } from '@/engine/models';
 
+const toggleTag = (currentTags: string | undefined, tag: string): string => {
+    const tags = (currentTags || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (tags.includes(tag)) {
+        return tags.filter(t => t !== tag).join(', ');
+    } else {
+        return [...tags, tag].join(', ');
+    }
+};
+
 export default function QualitiesAdmin() {
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -166,6 +175,40 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
                 <label className="form-label">Name</label>
                 <input value={form.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" />
             </div>
+            <div className="form-group">
+                <label className="form-label">
+                    Description 
+                    <span className="property-hint">($id.description)</span>
+                </label>
+                <textarea 
+                    value={form.description || ''} 
+                    onChange={e => handleChange('description', e.target.value)}
+                    className="form-textarea"
+                    rows={4}
+                />
+            </div>
+
+            <div className="toggle-row">
+                <label className="toggle-label">
+                    <input 
+                        type="checkbox" 
+                        checked={(form.properties || '').includes('hidden')}
+                        onChange={() => handleChange('properties', toggleTag(form.properties, 'hidden'))}
+                    />
+                    Hidden (Sidebar)
+                </label>
+                {/* You can add more standard tags here */}
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Raw Properties</label>
+                <input 
+                    value={form.properties || ''} 
+                    onChange={e => handleChange('properties', e.target.value)} 
+                    className="form-input"
+                    placeholder="custom_tag_1, custom_tag_2"
+                />
+            </div>
 
             <div className="form-row">
                 <div className="form-group">
@@ -196,9 +239,13 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
                 </div>
             )}
 
-            <div style={{ marginTop: '2rem', display: 'flow-root' }}>
-                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ width: 'auto', padding: '0.75rem 1.5rem', float: 'left', borderRadius: '4px' }}>Delete</button>
-                <button onClick={handleSave} disabled={isSaving} className="save-btn"> {isSaving ? 'Saving...' : 'Save Changes'} </button>
+            <div className="admin-form-footer">
+                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem' }}>
+                    Delete Quality
+                </button>
+                <button onClick={handleSave} disabled={isSaving} className="save-btn">
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
             </div>
         </div>
     );
