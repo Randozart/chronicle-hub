@@ -966,3 +966,42 @@ body {
     padding: 0.75rem;
     box-sizing: border-box; /* Keep padding inside */
 }
+
+/* Admin Form Footer */
+.admin-form-footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Property Hint Text */
+.property-hint {
+    font-size: 0.7rem;
+    color: #61afef;
+    font-family: monospace;
+    margin-left: 0.5rem;
+    opacity: 0.8;
+}
+
+/* Toggle Checkbox Row */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
+.toggle-label {
+    font-size: 0.85rem;
+    color: #ccc;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
