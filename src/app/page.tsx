@@ -79,6 +79,8 @@ export default async function Home() {
                 settings={sanitize(gameData.settings)}
                 imageLibrary={gameData.images || {}}
                 categories={sanitize(gameData.categories || {})}
+                locations={sanitize(gameData.locations)} 
+                regions={sanitize(gameData.regions || {})}
             />
         </main>
     );

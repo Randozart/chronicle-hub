@@ -89,13 +89,12 @@ export interface DeckDefinition {
     deck_size?: string;
 }
 
-interface MapRegion {
+export interface MapRegion {
     id: string;
     name: string;
-    settingId: string; // e.g. "london_surface"
-    backgroundImage: string;
-    gridWidth: number;  // For visual placement
-    gridHeight: number;
+    image?: string; // The Map background image code
+    width?: number; // Optional, for scrolling maps (default 100%)
+    height?: number;
 }
 
 export interface LocationDefinition {
@@ -104,7 +103,7 @@ export interface LocationDefinition {
     image: string;
     deck: string;
     store?: string;
-    map?: string; // Links to MapRegion
+    regionId?: string; // Links to MapRegion
     properties?: string;
     coordinates: { x: number, y: number }; // Where it sits on the map
     unlockCondition?: string; // e.g., "$route_to_docks >= 1"
@@ -196,7 +195,7 @@ export interface QualityChangeInfo {
     changeText: string;
 }
 
-export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'uncategorized';
+export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'location' | 'uncategorized';
 
 export interface ImageDefinition {
     id: string;
@@ -222,6 +221,7 @@ export interface WorldConfig {
     opportunities?: Record<string, Opportunity>;
     images: Record<string, ImageDefinition>; 
     categories?: Record<string, CategoryDefinition>;
+    regions: Record<string, MapRegion>; // NEW
 }
 
 export type WorldContent = WorldConfig;

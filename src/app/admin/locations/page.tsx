@@ -29,7 +29,7 @@ export default function LocationsAdmin() {
             name: "New Location",
             image: "",
             deck: "village_deck",
-            map: "default", 
+            regionId: "default", 
             coordinates: { x: 0, y: 0 } 
         };
         setLocations(prev => [...prev, newLoc]);
@@ -143,7 +143,7 @@ function LocationEditor({ initialData, onSave, onDelete }: { initialData: Locati
                 <div className="form-group">
                     <label className="form-label">Region ID</label>
                     <input 
-                        value={form.map || ''} 
+                        value={form.regionId || ''} 
                         onChange={e => handleChange('regionId', e.target.value)} 
                         className="form-input" 
                         placeholder="london"

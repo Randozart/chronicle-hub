@@ -31,7 +31,8 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
             decks: {},
             char_create: rawContent.char_create || rawContent.starting || {},
             settings: worldDocument.settings,
-            images: worldDocument.images
+            images: worldDocument.images,
+            regions: {}
         };
 
         // Inject IDs into the config objects
@@ -47,10 +48,12 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
                 processedContent.decks[key] = { ...rawContent.decks[key], id: key };
             }
         }
+        if (rawContent.regions) {
+            for (const key in rawContent.regions) {
+                processedContent.regions[key] = { ...rawContent.regions[key], id: key };
+            }
+        }
         
-        // REMOVED: The loops for storylets and opportunities.
-        // These are now fetched on-demand by worldService.ts and should not be loaded here.
-
         console.log(`[Data Loader] Config successfully processed from DB.`);
         return processedContent;
 

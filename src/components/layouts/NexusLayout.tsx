@@ -63,7 +63,11 @@ export default function NexusLayout(props: LayoutProps) {
 
         return (
             <>
-                <LocationHeader location={props.location} imageLibrary={props.imageLibrary} />
+                <LocationHeader 
+                    location={props.location} 
+                    imageLibrary={props.imageLibrary} 
+                    onOpenMap={props.onOpenMap} // <--- Pass it
+                />
                 <LocationStorylets
                     storylets={props.locationStorylets}
                     onStoryletClick={props.onOptionClick}

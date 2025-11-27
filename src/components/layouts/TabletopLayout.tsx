@@ -15,7 +15,6 @@ export default function TabletopLayout(props: LayoutProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
     const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
 
-    // Action Logic
     const actionQid = props.settings.actionId.replace('$', '');
     const actionState = props.character.qualities[actionQid];
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
@@ -23,16 +22,13 @@ export default function TabletopLayout(props: LayoutProps) {
     const handleActionRegen = () => props.onQualitiesUpdate({ ...props.character.qualities, [actionQid]: { ...actionState, level: currentActions + 1 } as any });
 
     const parallaxEnabled = props.settings.enableParallax !== false;
-
-    // Parallax Logic
     const handleMouseMove = (e: React.MouseEvent) => {
-        if (!parallaxEnabled) return; // Skip if disabled
+        if (!parallaxEnabled) return;
         const x = e.clientX / window.innerWidth;
         const y = e.clientY / window.innerHeight;
         setMousePos({ x, y });
     };
     
-    // Calculate Offset (Zero if disabled)
     const moveX = parallaxEnabled ? (mousePos.x - 0.5) * -15 : 0;
     const moveY = parallaxEnabled ? (mousePos.y - 0.5) * -15 : 0;
 
@@ -95,16 +91,7 @@ export default function TabletopLayout(props: LayoutProps) {
             className="tabletop-container"
             style={{ height: '100vh', display: 'flex', background: '#121212', color: '#ccc', overflow: 'hidden' }}
         >
-            
-            {/* --- LEFT: STATS (Fixed Sidebar) --- */}
-            <div style={{ 
-                width: '280px', 
-                flexShrink: 0, // Prevent shrinking
-                borderRight: '1px solid #333', 
-                background: '#181a1f', 
-                display: 'flex', 
-                flexDirection: 'column' 
-            }}>
+            <div style={{ width: '280px', flexShrink: 0, borderRight: '1px solid #333', background: '#181a1f', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid #333', background: '#21252b' }}>
                     <h3 style={{ margin: 0, color: '#98c379', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Character</h3>
                 </div>
@@ -117,59 +104,47 @@ export default function TabletopLayout(props: LayoutProps) {
                 </div>
             </div>
 
-            {/* --- CENTER: SCENE (Portrait) --- */}
-            <div style={{ 
-                flex: '0 0 30%', // Take up 30% of width, don't grow/shrink wildly
-                minWidth: '250px',
-                maxWidth: '500px',
-                background: '#000', 
-                position: 'relative', 
-                overflow: 'hidden', 
-                borderRight: '1px solid #333', 
-                boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)',
-                zIndex: 1
-            }}>
-                <div style={{ 
-                    position: 'absolute', top: '-20px', bottom: '-20px', left: '-20px', right: '-20px', 
-                    transform: `translate3d(${moveX}px, ${moveY}px, 0)`, // Will be 0,0 if disabled
-                    transition: 'transform 0.1s ease-out'
-                }}>
+            <div style={{ flex: '0 0 30%', minWidth: '250px', maxWidth: '500px', background: '#000', position: 'relative', overflow: 'hidden', borderRight: '1px solid #333', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)', zIndex: 1 }}>
+                <div style={{ position: 'absolute', top: '-20px', bottom: '-20px', left: '-20px', right: '-20px', transform: `translate3d(${moveX}px, ${moveY}px, 0)`, transition: 'transform 0.1s ease-out' }}>
                     <GameImage 
                         code={props.location.image} 
                         imageLibrary={props.imageLibrary} 
                         type="location" 
                         alt=""
-                        className="w-full h-full object-cover" // This relies on your global CSS utility or style prop
-                        // Fallback inline style if className fails:
-                        // style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                        className="w-full h-full object-cover"
                     />
                 </div>
                 <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, transparent 40%, #000 120%)' }} />
+                
+                {/* TRAVEL BUTTON */}
+                <div style={{ position: 'absolute', bottom: '2rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+                    <button 
+                        onClick={props.onOpenMap}
+                        style={{ 
+                            background: '#000', border: '1px solid #98c379', 
+                            color: '#98c379', padding: '0.5rem 1.5rem', 
+                            cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px',
+                            boxShadow: '0 0 10px rgba(0,0,0,0.8)'
+                        }}
+                        className="hover:bg-[#98c379] hover:text-black transition"
+                    >
+                        Travel
+                    </button>
+                </div>
             </div>
 
-            {/* --- RIGHT: NARRATIVE (Scrollable) --- */}
-            <div style={{ 
-                flex: 1, // Take remaining space
-                display: 'flex', 
-                flexDirection: 'column', 
-                background: '#1e1e1e',
-                minWidth: '400px' // Prevent squishing text
-            }}>                
-            {/* Tabs */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#1e1e1e', minWidth: '400px' }}>
                 <div style={{ display: 'flex', borderBottom: '1px solid #333', background: '#252525' }}>
                     <button onClick={() => setActiveTab('story')} style={{ padding: '1rem 2rem', background: activeTab === 'story' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'story' ? '#fff' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>STORY</button>
                     <button onClick={() => setActiveTab('possessions')} style={{ padding: '1rem 2rem', background: activeTab === 'possessions' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'possessions' ? '#fff' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>INVENTORY</button>
                     <button onClick={() => setActiveTab('profile')} style={{ padding: '1rem 2rem', background: activeTab === 'profile' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'profile' ? '#fff' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>PROFILE</button>
                 </div>
-
-                {/* Content */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '3rem 4rem' }}>
                     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                         {renderRightPanel()}
                     </div>
                 </div>
             </div>
-
         </div>
     );
 }

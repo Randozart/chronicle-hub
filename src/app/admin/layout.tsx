@@ -15,6 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <AdminLink href="/admin/storylets" label="Storylets" />
                         <AdminLink href="/admin/opportunities" label="Opportunities" />
                         <AdminLink href="/admin/locations" label="Locations" />
+                        <AdminLink href="/admin/regions" label="Map Regions" />
                         <AdminLink href="/admin/decks" label="Decks" />
                         <AdminLink href="/admin/images" label="Image Library" />
                         <AdminLink href="/admin/settings" label="Settings" />

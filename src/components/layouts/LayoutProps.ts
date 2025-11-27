@@ -23,4 +23,5 @@ export interface LayoutProps {
     onEventFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
     onQualitiesUpdate: (newQualities: PlayerQualities) => void;
     onCardPlayed: (cardId: string) => void;
+    onOpenMap: () => void; // New Handler
 }

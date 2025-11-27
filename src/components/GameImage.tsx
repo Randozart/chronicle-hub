@@ -1,14 +1,12 @@
 'use client';
 
-import { ImageDefinition } from "@/engine/models";
+import { ImageCategory, ImageDefinition } from "@/engine/models";
 
 interface GameImageProps {
     code?: string; 
     alt?: string;
-    type?: 'storylet' | 'icon' | 'location'; // Fallback type
+    type?: ImageCategory; // Use the shared type instead of a hardcoded union
     className?: string;
-    
-    // NEW: The library is passed down from the page root
     imageLibrary: Record<string, ImageDefinition>;
 }
 
