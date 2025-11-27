@@ -6,7 +6,7 @@ export enum QualityType {
     Tracker = 'T',
     Item = 'I',
     String = 'S',
-    Equipable = 'E', // <-- Added 'E' type
+    Equipable = 'E', 
 }
 
 export interface QualityDefinition {
@@ -19,6 +19,7 @@ export interface QualityDefinition {
     bonus?: string; // For Equipables
     storylet?: string; // For clickable items
     max?: string; // For max value constraints
+    image?: string; // New Field (Image Code)
 }
 
 export interface ResolveOption {

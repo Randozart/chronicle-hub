@@ -16,26 +16,22 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id;
     const { storyletId, optionId, storyId } = await request.json(); // Pass storyId from client
     
-// 1. Efficient Data Load (Config only)
     const gameData = await getContent(storyId || 'trader_johns_world');
     let character = await getCharacter(userId, storyId || 'trader_johns_world');
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
-    // 2. CONTEXT VALIDATION
-    // FETCH THE EVENT FROM DB
+
     const storyletDef = await getEvent(storyId || 'trader_johns_world', storyletId);
     
     if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
-    // A. Location Check
     if ('location' in storyletDef && storyletDef.location) {
         if (character.currentLocationId !== storyletDef.location) {
             return NextResponse.json({ error: 'You are not in the correct location.' }, { status: 403 });
         }
     }
 
-    // B. Hand Check (if it's a card)
     if ('deck' in storyletDef) {
          const deck = storyletDef.deck;
          const hand = character.opportunityHands?.[deck] || [];
@@ -47,25 +43,42 @@ export async function POST(request: NextRequest) {
     const option = storyletDef.options.find(o => o.id === optionId);
     if (!option) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
 
-    // 3. Process Action Economy (Existing logic...)
     if (gameData.settings.useActionEconomy) {
         character = await regenerateActions(character);
         
         const checkEngine = new GameEngine(character.qualities, gameData, character.equipment);
         
-        let actionCost = 1; 
+        let actionCost = 1; // Default
         
+        const isInstant = option.properties?.includes('instant_redirect');
+
         if (option.action_cost) {
-            // Use evaluateBlock to handle "$cost_variable" or formulas
             const resolvedCost = checkEngine.evaluateBlock(option.action_cost);
-            actionCost = parseInt(resolvedCost, 10);
-            if (isNaN(actionCost)) actionCost = 1;
-        }        
+            const parsed = parseInt(resolvedCost, 10);
+            actionCost = isNaN(parsed) ? 1 : parsed;
+        } else if (isInstant) {
+            actionCost = 0;
+        }
 
         const actionQid = gameData.settings.actionId.replace('$', '');
+        // (We need to cast qualities because we don't have strict typing on the specific QID here)
         const actionsState = character.qualities[actionQid] as any;
-        if (actionsState.level < 1) return NextResponse.json({ error: 'No actions.' }, { status: 429 });
-        actionsState.level -= 1;
+        
+        // Safety check: does the action quality exist?
+        const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
+
+        if (currentActions < actionCost) {
+            return NextResponse.json({ error: 'You do not have enough actions.' }, { status: 429 });
+        }
+        
+        if (actionsState && 'level' in actionsState) {
+            actionsState.level -= actionCost;
+            // Only update timestamp if we actually spent actions and weren't already full
+            // (Optional optimization, but safe to just update)
+            if (actionCost > 0) {
+                character.lastActionTimestamp = new Date();
+            }
+        }
     }
 
     const engine = new GameEngine(character.qualities, gameData, character.equipment);

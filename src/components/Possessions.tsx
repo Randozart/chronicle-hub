@@ -101,7 +101,7 @@ export default function Possessions({
                                 <div className="equipped-item">
                                     <div style={{ margin: '0.5rem auto', width: '60px' }}>
                                         <GameImage 
-                                            code={equippedItem.id} // Assume ID matches image code if not specified
+                                            code={equippedItem.image || equippedItem.id} 
                                             imageLibrary={imageLibrary}
                                             alt=""
                                             type="icon"
@@ -164,7 +164,7 @@ export default function Possessions({
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <div style={{ width: '50px', flexShrink: 0 }}>
                                             <GameImage 
-                                                code={item.id} 
+                                                code={item.image || item.id} // Use Image Property
                                                 imageLibrary={imageLibrary} 
                                                 alt="" 
                                                 type="icon" 

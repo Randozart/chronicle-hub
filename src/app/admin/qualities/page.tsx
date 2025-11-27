@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { QualityDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import GameImage from '@/components/GameImage';
 
 const toggleTag = (currentTags: string | undefined, tag: string): string => {
     const tags = (currentTags || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -187,6 +188,32 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
                     className="form-textarea"
                     rows={4}
                 />
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Image Code</label>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <input 
+                        value={form.image || ''} 
+                        onChange={e => handleChange('image', e.target.value)} 
+                        className="form-input"
+                        placeholder="sword_icon"
+                        style={{ flex: 1 }}
+                    />
+                    {/* Tiny Preview */}
+                    {form.image && (
+                        <div style={{ width: '40px', height: '40px', border: '1px solid #444' }}>
+                            <GameImage 
+                                code={form.image} 
+                                imageLibrary={{}} // Need to pass library here if we want real preview, 
+                                                  // or just rely on URL fallback if applicable.
+                                                  // Ideally, fetch library in parent and pass down.
+                                type="icon" 
+                                className="option-image"
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="toggle-row">

@@ -619,11 +619,16 @@ export class GameEngine {
                 if (rOpt.short) rOpt.short = this.evaluateBlock(rOpt.short);
                 if (rOpt.meta) rOpt.meta = this.evaluateBlock(rOpt.meta);
                 
+                const isInstant = rOpt.properties?.includes('instant_redirect');
+
                 if (rOpt.action_cost) {
                     const val = this.evaluateBlock(rOpt.action_cost);
                     rOpt.computed_action_cost = parseInt(val, 10) || 0;
+                } else if (isInstant) {
+                    // Default for Redirects = 0 (Free)
+                    rOpt.computed_action_cost = 0;
                 } else {
-                    // Default is 1.
+                    // Default for Standard Actions = 1
                     rOpt.computed_action_cost = 1;
                 }
                 

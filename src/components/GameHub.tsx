@@ -215,6 +215,7 @@ export default function GameHub({
                     <ProfilePanel 
                         qualities={character.qualities}
                         qualityDefs={qualityDefs}
+                        imageLibrary={imageLibrary} // <--- Pass this!
                     />
                 ) : activeTab === 'possessions' ? (
                     <Possessions 
