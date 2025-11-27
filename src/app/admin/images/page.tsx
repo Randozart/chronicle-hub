@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ImageDefinition } from '@/engine/models';
+import { ImageDefinition, ImageCategory } from '@/engine/models';
 import GameImage from '@/components/GameImage';
+import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
 export default function ImagesAdmin() {
     const [images, setImages] = useState<ImageDefinition[]>([]);
@@ -20,12 +21,16 @@ export default function ImagesAdmin() {
     }, []);
 
     const handleCreate = () => {
-        const newId = prompt("Enter unique Image Key (e.g. 'sword_icon'):");
+        const newId = prompt("Enter unique Image Key:");
         if (!newId) return;
-        if (newId.includes('.') || newId.includes(' ')) { alert("Invalid ID"); return; }
         if (images.find(q => q.id === newId)) { alert("Exists"); return; }
 
-        const newImage: ImageDefinition = { id: newId, url: "/images/placeholder.png", alt: "New Image" };
+        const newImage: ImageDefinition = {
+            id: newId,
+            url: "/images/placeholder.png",
+            alt: "New Image",
+            category: 'uncategorized'
+        };
         setImages(prev => [...prev, newImage]);
         setSelectedId(newId);
     };
@@ -43,28 +48,40 @@ export default function ImagesAdmin() {
 
     return (
         <div className="admin-split-view">
-            <div className="admin-list-col">
-                <div className="list-header">
-                    <span>Image Library</span>
-                    <button className="new-btn" onClick={handleCreate}>+ New</button>
-                </div>
-                <div className="list-items">
-                    {images.map(img => (
-                        <div key={img.id} onClick={() => setSelectedId(img.id)} className={`list-item ${selectedId === img.id ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '30px', height: '30px', flexShrink: 0 }}>
-                                <GameImage code={img.id} imageLibrary={{ [img.id]: img }} alt="" type="icon" className="option-image" />
-                            </div>
-                            <span className="item-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{img.id}</span>
+            {/* Sidebar with Grouping by Category */}
+            <AdminListSidebar 
+                title="Assets"
+                items={images}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={handleCreate}
+                groupOptions={[{ label: "Category", key: "category" }]}
+                defaultGroupByKey="category"
+                renderItem={(img) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '24px', height: '24px', flexShrink: 0, overflow: 'hidden', borderRadius: '3px' }}>
+                            <GameImage 
+                                code={img.id} 
+                                imageLibrary={{ [img.id]: img }} 
+                                alt="" 
+                                type="icon"
+                                className="option-image" // Just to fill container
+                            />
                         </div>
-                    ))}
-                </div>
-            </div>
+                        <span className="item-title" style={{ fontSize: '0.85rem' }}>{img.id}</span>
+                    </div>
+                )}
+            />
 
             <div className="admin-editor-col">
                 {selectedId ? (
-                    <ImageEditor initialData={images.find(q => q.id === selectedId)!} onSave={handleSaveSuccess} onDelete={handleDeleteSuccess} />
+                    <ImageEditor 
+                        initialData={images.find(q => q.id === selectedId)!} 
+                        onSave={handleSaveSuccess} 
+                        onDelete={handleDeleteSuccess}
+                    />
                 ) : (
-                    <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select an asset to edit</div>
+                    <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select an asset</div>
                 )}
             </div>
         </div>
@@ -74,10 +91,29 @@ export default function ImagesAdmin() {
 function ImageEditor({ initialData, onSave, onDelete }: { initialData: ImageDefinition, onSave: (d: any) => void, onDelete: (id: string) => void }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Coordinate Tracker State (For Maps)
+    const [coords, setCoords] = useState<{x:number, y:number} | null>(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    useEffect(() => setForm(initialData), [initialData]);
+    useEffect(() => { 
+        setForm(initialData); 
+        setCoords(null); 
+    }, [initialData]);
 
-    const handleChange = (field: string, val: string) => setForm(prev => ({ ...prev, [field]: val }));
+    const handleChange = (field: string, val: any) => {
+        setForm(prev => ({ ...prev, [field]: val }));
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width; // 0 to 1
+        const y = (e.clientY - rect.top) / rect.height; // 0 to 1
+        setMousePos({ x, y });
+    };
+
+    const moveX = (mousePos.x - 0.5) * 20; 
+    const moveY = (mousePos.y - 0.5) * 20;
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -96,22 +132,50 @@ function ImageEditor({ initialData, onSave, onDelete }: { initialData: ImageDefi
         setIsSaving(true);
         try {
             const res = await fetch(`/api/admin/config?storyId=trader_johns_world&category=images&itemId=${form.id}`, { method: 'DELETE' });
-            if (res.ok) onDelete(form.id); else alert("Failed.");
+            if (res.ok) onDelete(form.id);
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
+    };
+
+    const handleMapClick = (e: React.MouseEvent<HTMLImageElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = Math.round(e.clientX - rect.left);
+        const y = Math.round(e.clientY - rect.top);
+        setCoords({ x, y });
+        navigator.clipboard.writeText(`{ x: ${x}, y: ${y} }`);
     };
 
     return (
         <div>
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Edit Asset: <span style={{ color: '#61afef' }}>{form.id}</span></h2>
+            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
+                Edit Asset: {form.id}
+            </h2>
             
-            <div className="form-group">
-                <label className="form-label">Asset Key (ID)</label>
-                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5, cursor: 'not-allowed' }} />
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">Image URL</label>
-                <input value={form.url || ''} onChange={e => handleChange('url', e.target.value)} className="form-input" placeholder="https://..." />
+            <div className="form-row">
+                <div className="form-group" style={{ flex: 2 }}>
+                    <label className="form-label">Image URL</label>
+                    <input 
+                        value={form.url || ''} 
+                        onChange={e => handleChange('url', e.target.value)}
+                        className="form-input"
+                        placeholder="https://..."
+                    />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Category</label>
+                    <select 
+                        value={form.category || 'uncategorized'} 
+                        onChange={e => handleChange('category', e.target.value)}
+                        className="form-select"
+                    >
+                        <option value="uncategorized">Uncategorized</option>
+                        <option value="storylet">Storylet (3:4)</option>
+                        <option value="icon">Icon (Square)</option>
+                        <option value="banner">Banner (Wide)</option>
+                        <option value="background">Elysium Background (Parallax)</option>
+                        <option value="portrait">Portrait</option>
+                        <option value="map">Map (Full)</option>
+                    </select>
+                </div>
             </div>
 
             <div className="form-group">
@@ -119,27 +183,93 @@ function ImageEditor({ initialData, onSave, onDelete }: { initialData: ImageDefi
                 <input value={form.alt || ''} onChange={e => handleChange('alt', e.target.value)} className="form-input" />
             </div>
 
+            {/* --- CONTEXTUAL PREVIEW --- */}
             <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#181a1f', borderRadius: '8px', border: '1px solid #333' }}>
-                <label className="form-label" style={{ marginBottom: '1rem', textAlign: 'center', display: 'block' }}>Live Preview</label>
-                <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '150px', position: 'relative', border: '1px solid #444', margin: '0 auto' }}>
+                <label className="form-label" style={{ marginBottom: '1rem', textAlign: 'center', display: 'block', color: '#61afef' }}>
+                    Context Preview: {form.category?.toUpperCase() || 'RAW'}
+                </label>
+                
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    
+                    {/* MAP VIEW (Special) */}
+                    {form.category === 'map' ? (
+                        <div style={{ position: 'relative', border: '2px solid #444', cursor: 'crosshair' }}>
+                            <img 
+                                src={form.url} 
+                                alt="Map Preview"
+                                style={{ maxWidth: '100%', display: 'block' }}
+                                onClick={handleMapClick}
+                            />
+                            {coords && (
+                                <div style={{ 
+                                    position: 'absolute', left: coords.x, top: coords.y, 
+                                    width: '10px', height: '10px', background: 'red', borderRadius: '50%', 
+                                    transform: 'translate(-50%, -50%)', pointerEvents: 'none' 
+                                }} />
+                            )}
+                            {coords && (
+                                <div style={{ marginTop: '10px', textAlign: 'center', color: '#98c379' }}>
+                                    Selected: X: {coords.x}, Y: {coords.y} <br/>
+                                    <span style={{ fontSize: '0.8rem', color: '#777' }}>(Copy these to Location Editor)</span>
+                                </div>
+                            )}
+                        </div>
+                    ) : 
+                    /* BACKGROUND VIEW (Parallax) */
+                    form.category === 'background' ? (
+                        <div 
+                            onMouseMove={handleMouseMove}
+                            style={{ 
+                                width: '100%', height: '300px', 
+                                position: 'relative', overflow: 'hidden', 
+                                border: '1px solid #444', cursor: 'default' 
+                            }}
+                        >
+                            {/* Scaled up slightly to allow movement without showing edges */}
+                            <img 
+                                src={form.url} 
+                                alt="Parallax Preview"
+                                style={{ 
+                                    width: '110%', height: '110%', 
+                                    objectFit: 'cover',
+                                    transform: `translate(calc(-5% + ${-moveX}px), calc(-5% + ${-moveY}px))`
+                                }}
+                            />
+                            <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>
+                                Move mouse to test parallax
+                            </div>
+                        </div>
+                    ) :
+                    /* BANNER VIEW */
+                    form.category === 'banner' ? (
+                        <div style={{ width: '100%', height: '200px', position: 'relative', border: '1px solid #444', overflow: 'hidden', background: '#000' }}>
+                            {/* We use a standard img tag for the preview to ensure we see exactly what URL is doing */}
+                            <img 
+                                src={form.url} 
+                                alt="Preview"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                            />
+                        </div>
+                    ) :
+                    /* ICON VIEW */
+                    form.category === 'icon' ? (
+                        <div style={{ width: '64px', height: '64px', border: '1px solid #444' }}>
+                            <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="icon" className="option-image" />
+                        </div>
+                    ) :
+
+                    /* DEFAULT STORYLET VIEW */
+                    (
+                        <div style={{ width: '200px', border: '1px solid #444' }}>
                             <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="storylet" className="storylet-image" />
                         </div>
-                        <span style={{ fontSize: '0.8rem', color: '#777' }}>Storylet (3:4)</span>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '200px', position: 'relative', border: '1px solid #444', margin: '0 auto' }}>
-                            <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="storylet" className="card-image" />
-                        </div>
-                        <span style={{ fontSize: '0.8rem', color: '#777' }}>Card (3:2)</span>
-                    </div>
+                    )}
                 </div>
             </div>
 
-            <div style={{ marginTop: '2rem', display: 'flow-root' }}>
-                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ width: 'auto', padding: '0.75rem 1.5rem', float: 'left', borderRadius: '4px' }}>Delete</button>
-                <button onClick={handleSave} disabled={isSaving} className="save-btn"> {isSaving ? 'Saving...' : 'Save Changes'} </button>
+            <div className="admin-form-footer">
+                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem' }}>Delete</button>
+                <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>
         </div>
     );

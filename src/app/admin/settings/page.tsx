@@ -218,8 +218,23 @@ export default function SettingsAdmin() {
                         <option value="nexus">Classic (Icon Header)</option>
                         <option value="london">Cinematic (Full Banner)</option>
                         <option value="elysium">Immersive (Split View)</option>
+                        <option value="tabletop">Tabletop (Three Column)</option>
                     </select>
                 </div>
+
+                {(form.layoutStyle === 'elysium' || form.layoutStyle === 'tabletop') && (
+                    <div style={{ marginTop: '1rem' }}>
+                        <label className="toggle-label">
+                            <input 
+                                type="checkbox" 
+                                checked={form.enableParallax !== false} // Default true if undefined
+                                onChange={e => handleChange('enableParallax', e.target.checked)}
+                            />
+                            Enable Parallax Effect
+                        </label>
+                        <p className="special-desc">Moves background image with mouse cursor.</p>
+                    </div>
+                )}
             </div>
 
             {/* CATEGORIES */}

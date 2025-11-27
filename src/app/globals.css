@@ -1059,3 +1059,14 @@ body {
     height: 100%;
     background: #3498db;
 }
+
+.london-banner img, .banner-bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 20%; 
+}
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.object-cover { object-fit: cover; }

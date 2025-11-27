@@ -127,6 +127,7 @@ export interface WorldSettings {
     alwaysPurgeHandOnTravel?: boolean; // Make this optional
     layoutStyle: LayoutStyle; // Default: "nexus"
     bannerHeight?: number; // For London
+    enableParallax?: boolean; // New setting
 }
 
 interface BaseQualityState {
@@ -195,10 +196,13 @@ export interface QualityChangeInfo {
     changeText: string;
 }
 
+export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'uncategorized';
+
 export interface ImageDefinition {
-    id: string; // The code, e.g. "trader_john"
-    url: string; // "/images/local.png" OR "https://cloudinary..."
-    alt?: string; // Default alt text
+    id: string;
+    url: string;
+    alt?: string;
+    category?: ImageCategory;
 }
 
 export interface CategoryDefinition {
@@ -221,4 +225,4 @@ export interface WorldConfig {
 }
 
 export type WorldContent = WorldConfig;
-export type LayoutStyle = "nexus" | "london" | "elysium";
+export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";

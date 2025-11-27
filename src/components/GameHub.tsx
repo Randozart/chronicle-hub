@@ -6,6 +6,7 @@ import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import { LayoutProps } from './layouts/LayoutProps';
 import ElysiumLayout from './layouts/ElysiumLayout';
+import TabletopLayout from './layouts/TabletopLayout';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument;
@@ -115,5 +116,6 @@ export default function GameHub({
 
     if (style === 'london') return <LondonLayout {...layoutProps} />;
     if (style === 'elysium') return <ElysiumLayout {...layoutProps} />;
+    if (style === 'tabletop') return <TabletopLayout {...layoutProps} />;
     return <NexusLayout {...layoutProps} />;
 }

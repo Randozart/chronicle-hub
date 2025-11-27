@@ -72,21 +72,20 @@ export default function LondonLayout(props: LayoutProps) {
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             
-            {/* --- FULL WIDTH BANNER --- */}
-            {/* Removed 'rounded-lg' and 'marginBottom' constraints */}
+
             <div style={{ 
                 position: 'relative', 
                 height: '300px', // Made slightly taller
                 overflow: 'hidden', 
                 borderBottom: '1px solid #444'
             }}>
-                <div style={{ position: 'absolute', inset: 0 }}>
+<               div className="london-banner" style={{ position: 'relative', height: '300px', overflow: 'hidden' }}>
                     <GameImage 
                         code={props.location.image} 
                         imageLibrary={props.imageLibrary} 
                         type="location" 
                         alt=""
-                        className="w-full h-full object-cover" 
+                        className="banner-bg-image"
                     />
                 </div>
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #181a1f, transparent)' }} />
