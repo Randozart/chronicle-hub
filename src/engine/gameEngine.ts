@@ -619,8 +619,14 @@ export class GameEngine {
                 if (rOpt.short) rOpt.short = this.evaluateBlock(rOpt.short);
                 if (rOpt.meta) rOpt.meta = this.evaluateBlock(rOpt.meta);
                 
-                // Note: We don't render result text (pass_long) here, 
-                // that happens only when the option is clicked.
+                if (rOpt.action_cost) {
+                    const val = this.evaluateBlock(rOpt.action_cost);
+                    rOpt.computed_action_cost = parseInt(val, 10) || 0;
+                } else {
+                    // Default is 1.
+                    rOpt.computed_action_cost = 1;
+                }
+                
                 return rOpt;
             });
         }

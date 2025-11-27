@@ -50,6 +50,8 @@ export interface ResolveOption {
     rare_fail_long?: string;
     rare_fail_quality_change?: string;
     rare_fail_redirect?: string;
+
+    computed_action_cost?: number; 
 }
 
 interface BaseStorylet {

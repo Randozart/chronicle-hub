@@ -50,6 +50,7 @@ export default function StoryletDisplay({
     const [isLoading, setIsLoading] = useState(false);
     
     const storylet = eventData; // Use the prop directly. No more `useState(eventData)`.
+    
 
     const handleOptionClick = async (option: ResolveOption) => {
         if (isLoading) return;
@@ -151,11 +152,12 @@ export default function StoryletDisplay({
         return storyletDefs[id]?.name || opportunityDefs[id]?.name || id;
     };
 
-    const optionsToDisplay: DisplayOption[] = storylet.options
+        const optionsToDisplay: DisplayOption[] = storylet.options
         .filter(option => evaluateCondition(option.visible_if, qualities))
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities);
             const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
+            
 
             // Pass qualityDefs to the calculator
             const { chance, text } = calculateSkillCheckChance(option.random, qualities, qualityDefs);
@@ -163,25 +165,16 @@ export default function StoryletDisplay({
 
             return { ...option, isLocked, lockReason, skillCheckText, chance, };
         });
-    
-    // if (isLoading && !resolution) {
-    //     return (
-    //         <div className="storylet-container loading-container">
-    //             <p>Loading...</p>
-    //         </div>
-    //     );
-    // }
-
- return (
+        
+    return (
         <div className="storylet-container">
             <div className="storylet-main-content">
                 {storylet.image_code && (
                     <div className="storylet-image-container">
-                        {/* All calls to evaluateText now pass qualityDefs */}
                         <GameImage 
                             code={storylet.image_code} 
                             imageLibrary={imageLibrary} 
-                            type="storylet" // or "icon" depending on component
+                            type="storylet"
                             alt={storylet.name}
                             className="storylet-image"
                         />
@@ -195,57 +188,77 @@ export default function StoryletDisplay({
             </div>
 
             <div className="options-container">
-                {optionsToDisplay.map((option) => (
-                    <button 
-                        key={option.id} 
-                        className={`option-button ${option.isLocked ? 'locked' : ''}`}
-                        onClick={() => handleOptionClick(option)}
-                        disabled={option.isLocked || isLoading}
-                    >
-                        <div className="option-content-wrapper">
-                        {option.image_code && (
-                            <div className="option-image-container">
-                                <GameImage 
-                                    code={option.image_code} 
-                                    imageLibrary={imageLibrary} 
-                                    type="icon" // or "icon" depending on component
-                                    alt={option.name}
-                                    className="option-image"
-                                />
+                {optionsToDisplay.map((option) => {
+                    
+                    const cost = option.computed_action_cost ?? 1;
+                    const showCost = settings.useActionEconomy;
+
+                    return (
+                        <button 
+                            key={option.id} 
+                            className={`option-button ${option.isLocked ? 'locked' : ''}`}
+                            onClick={() => handleOptionClick(option)}
+                            disabled={option.isLocked || isLoading}
+                        >
+                            <div className="option-content-wrapper">
+                                {option.image_code && (
+                                    <div className="option-image-container">
+                                        <GameImage 
+                                            code={option.image_code} 
+                                            imageLibrary={imageLibrary} 
+                                            type="icon" 
+                                            alt={option.name}
+                                            className="option-image"
+                                        />
+                                    </div>
+                                )}
+                                <div className="option-text-wrapper">
+                                    
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <h3 style={{ margin: 0 }}>{option.name}</h3>
+                                        
+                                        {showCost && (
+                                            <span style={{ 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 'bold', 
+                                                color: cost > 0 ? '#e06c75' : '#98c379', 
+                                                background: 'rgba(0,0,0,0.3)',
+                                                padding: '2px 6px',
+                                                borderRadius: '4px',
+                                                marginLeft: '10px',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                {cost > 0 ? `${cost} Actions` : 'Free'}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {option.short && <p className="option-short-desc">{option.short}</p>}
+                                    
+                                    {option.meta && <p className="option-meta-text">{option.meta}</p>}
+                                    
+                                    {option.skillCheckText && (
+                                        <p className="option-skill-check" style={getChanceColor(option.chance)}>
+                                            {option.skillCheckText}
+                                        </p>
+                                    )}
+                                    
+                                    {option.isLocked && (
+                                        <p className="option-locked-reason">
+                                            {option.lockReason}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                        )}
-                        <div className="option-text-wrapper">
-                            <h3>{evaluateText(option.name, qualities, qualityDefs)}</h3>
-                            {option.short && (
-                                <p className="option-short-desc">
-                                    {evaluateText(option.short, qualities, qualityDefs)}
-                                </p>
-                            )}
-                            {option.meta && (
-                                <p className="option-meta-text">
-                                    {evaluateText(option.meta, qualities, qualityDefs)}
-                                </p>
-                            )}
-                            {option.skillCheckText && (
-                                <p className="option-skill-check" style={getChanceColor(option.chance)}>
-                                    {option.skillCheckText}
-                                </p>
-                            )}
-                            {option.isLocked && (
-                                <p className="option-locked-reason">
-                                    {option.lockReason}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                    </button>
-                ))}
+                        </button>
+                    );
+                })}
             </div>
 
             <div className="footer-actions">
                 <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId ?? undefined)}>
                     {returnTargetId 
-                    ? `Return to ${evaluateText(getEventName(returnTargetId), qualities, qualityDefs)}` 
+                    ? `Return to ${getEventName(returnTargetId)}` 
                     : 'Return to Location'}
                 </button>
             </div>
