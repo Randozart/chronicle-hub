@@ -74,7 +74,7 @@ export default function LondonLayout(props: LayoutProps) {
                 position: 'relative', 
                 height: '300px', 
                 overflow: 'hidden', 
-                borderBottom: '1px solid #444',
+                borderBottom: '1px solid var(--border-color)',
                 marginBottom: '2rem'
             }}>
                 <div style={{ position: 'absolute', inset: 0 }}>
@@ -98,8 +98,8 @@ export default function LondonLayout(props: LayoutProps) {
                     <button 
                         onClick={props.onOpenMap}
                         style={{ 
-                            background: 'rgba(0,0,0,0.6)', border: '1px solid #fff', 
-                            color: '#fff', padding: '0.5rem 1.5rem', borderRadius: '4px',
+                            background: 'rgba(0,0,0,0.6)', border: '1px solid var(--text-primary)', 
+                            color: 'var(--text-primary)', padding: '0.5rem 1.5rem', borderRadius: '4px',
                             cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold',
                             backdropFilter: 'blur(5px)', marginBottom: '10px'
                         }}
@@ -113,7 +113,7 @@ export default function LondonLayout(props: LayoutProps) {
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem', width: '100%', flex: 1 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '3rem' }}>
                     <div>
-                        <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: '#1e2127', borderRadius: '8px', border: '1px solid #444' }}>
+                        <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-panel)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
                             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Actions: {currentActions} / {maxActions}</h3>
                             <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={handleActionRegen} />
                         </div>
@@ -121,10 +121,10 @@ export default function LondonLayout(props: LayoutProps) {
                     </div>
 
                     <div>
-                        <div className="hub-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444' }}>
-                            <button onClick={() => setActiveTab('story')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'story' ? '2px solid #fff' : '2px solid transparent', color: activeTab === 'story' ? '#fff' : '#777', cursor: 'pointer' }}>Story</button>
-                            <button onClick={() => setActiveTab('possessions')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'possessions' ? '2px solid #fff' : '2px solid transparent', color: activeTab === 'possessions' ? '#fff' : '#777', cursor: 'pointer' }}>Possessions</button>
-                            <button onClick={() => setActiveTab('profile')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'profile' ? '2px solid #fff' : '2px solid transparent', color: activeTab === 'profile' ? '#fff' : '#777', cursor: 'pointer' }}>Myself</button>
+                        <div className="hub-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                            <button onClick={() => setActiveTab('story')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'story' ? '2px solid var(--text-primary)' : '2px solid transparent', color: activeTab === 'story' ? 'var(--text-primary)' : '#777', cursor: 'pointer' }}>Story</button>
+                            <button onClick={() => setActiveTab('possessions')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'possessions' ? '2px solid var(--text-primary)' : '2px solid transparent', color: activeTab === 'possessions' ? 'var(--text-primary)' : '#777', cursor: 'pointer' }}>Possessions</button>
+                            <button onClick={() => setActiveTab('profile')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'profile' ? '2px solid var(--text-primary)' : '2px solid transparent', color: activeTab === 'profile' ? 'var(--text-primary)' : '#777', cursor: 'pointer' }}>Myself</button>
                         </div>
                         {renderContent()}
                     </div>

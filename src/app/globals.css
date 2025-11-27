@@ -1,9 +1,243 @@
-/* src/app/globals.css */
+/* --- THEME DEFINITIONS --- */
+:root {
+    /* DEFAULT (DARK IDE) THEME */
+    --bg-main: #282c34;
+    --bg-panel: #1e2127;
+    --bg-item: #3e4451;
+    --bg-item-hover: #525968;
+    
+    --border-color: #444;
+    --border-light: #555;
+    
+    --text-primary: #abb2bf;
+    --text-secondary: #8f96a3;
+    --text-muted: #5c6370;
+    
+    --accent-primary: #2a3e5c;
+    --accent-hover: #3e5a8a;
+    --accent-highlight: #61afef; /* Blue */
+    
+    --success-color: #98c379; /* Green */
+    --danger-color: #e06c75; /* Red */
+    
+    --progress-bg: #2c3e50;
+    --progress-fill: #3498db;
+    
+    --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --border-radius: 8px;
+}
+
+/* --- THEME 1: VICTORIAN (Fallen London) --- */
+[data-theme='victorian'] {
+    --bg-main: #0b0f0b url('/themes/victorian/bg.png'); /* Subtle textured background */
+    --bg-panel: #131814;
+    --bg-item: #1f2621;
+    --bg-item-hover: #2a332c;
+    
+    --border-color: #3d4c42;
+    --border-light: #526358;
+    
+    --text-primary: #e3dccb;
+    --text-secondary: #a8b5ad;
+    --text-muted: #6b7d72;
+    
+    --accent-primary: #3d2e18;
+    --accent-hover: #5c4826;
+    --accent-highlight: #c5a059; /* Gold */
+    
+    --success-color: #c5a059;
+    --danger-color: #8a3b3b;
+    
+    --progress-bg: #1f2621;
+    --progress-fill: #c5a059;
+    
+    --font-main: "Georgia", "Times New Roman", serif;
+    --border-radius: 2px;
+}
+
+/* --- THEME 2: TERMINAL (Sci-Fi) --- */
+[data-theme='terminal'] {
+    --bg-main: #000000;
+    --bg-panel: #0a0a0a;
+    --bg-item: #111;
+    --bg-item-hover: #222;
+    
+    --border-color: #33ff00;
+    --border-light: #008f11;
+    
+    --text-primary: #33ff00;
+    --text-secondary: #00cc00;
+    --text-muted: #006600;
+    
+    --accent-primary: #003300;
+    --accent-hover: #004400;
+    --accent-highlight: #33ff00;
+    
+    --success-color: #33ff00;
+    --danger-color: #ff0000;
+    
+    --progress-bg: #111;
+    --progress-fill: #33ff00;
+    
+    --font-main: "Courier New", monospace;
+    --border-radius: 0px;
+}
+
+/* --- THEME 3: PARCHMENT (Fantasy / D&D) --- */
+[data-theme='parchment'] {
+    --bg-main: #f4e4bc url('/themes/parchment/bg.jpg');
+    --bg-panel: rgba(253, 246, 227, 0.8); /* Translucent paper */
+    --bg-item: rgba(230, 220, 190, 0.6);
+    --bg-item-hover: rgba(210, 200, 170, 0.8);
+    
+    --border-color: #8d6e63; /* Brown */
+    --border-light: #a1887f;
+    
+    --text-primary: #3e2723; /* Dark Brown Ink */
+    --text-secondary: #5d4037;
+    --text-muted: #795548;
+    
+    --accent-primary: #795548;
+    --accent-hover: #5d4037;
+    --accent-highlight: #8d2d2d; /* Wax Seal Red */
+    
+    --success-color: #2e7d32; /* Forest Green */
+    --danger-color: #c62828; /* Blood Red */
+    
+    --progress-bg: #d7ccc8;
+    --progress-fill: #8d2d2d;
+    
+    --font-main: "Georgia", serif;
+    --border-radius: 3px;
+}
+
+/* --- THEME 4: NOIR (Detective) --- */
+[data-theme='noir'] {
+    --bg-main: #1a1a1a;
+    --bg-panel: #222222;
+    --bg-item: #333333;
+    --bg-item-hover: #444444;
+    
+    --border-color: #555555;
+    --border-light: #666666;
+    
+    --text-primary: #e0e0e0;
+    --text-secondary: #aaaaaa;
+    --text-muted: #777777;
+    
+    --accent-primary: #616161;
+    --accent-hover: #757575;
+    --accent-highlight: #ffc107; /* Amber */
+    
+    --success-color: #ffffff;
+    --danger-color: #ef5350;
+    
+    --progress-bg: #424242;
+    --progress-fill: #ffc107;
+    
+    --font-main: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --border-radius: 4px;
+}
+
+/* --- CYBERPUNK --- */
+[data-theme='cyberpunk'] {
+    --bg-main: #0d1117;
+    --bg-panel: rgba(22, 27, 34, 0.8);
+    --bg-item: #161b22;
+    --bg-item-hover: #21262d;
+
+    --border-color: #30363d;
+    --border-light: #8b949e;
+
+    --text-primary: #e6f1ff;
+    --text-secondary: #8892b0;
+    --text-muted: #484f58;
+
+    --accent-primary: #238636;
+    --accent-hover: #2ea043;
+    --accent-highlight: #ff64c4; /* Magenta */
+
+    --success-color: #238636; /* GitHub Green */
+    --success-bg: rgba(35, 134, 54, 0.15);
+
+    --danger-color: #da3633; /* GitHub Red */
+    --danger-bg: rgba(218, 54, 51, 0.15);
+
+    --progress-bg: #161b22;
+    --progress-fill: #1f6feb; /* GitHub Blue */
+
+    --font-main: "Fira Code", "Roboto Mono", monospace;
+    --border-radius: 6px;
+}
+
+/* --- DARK FANTASY (HORROR) --- */
+[data-theme='dark-fantasy'] {
+    --bg-main: #121010;
+    --bg-panel: #1a1818;
+    --bg-item: #2a2828;
+    --bg-item-hover: #3a3838;
+
+    --border-color: #4a4444;
+    --border-light: #6b6666;
+
+    --text-primary: #a39e9e;
+    --text-secondary: #7a7575;
+    --text-muted: #5b5858;
+
+    --accent-primary: #3a2e2e;
+    --accent-hover: #5c4848;
+    --accent-highlight: #b42020; /* Blood Red */
+
+    --success-color: #8c9d8c; /* Faded Green */
+    --success-bg: rgba(140, 157, 140, 0.1);
+
+    --danger-color: #b42020;
+    --danger-bg: rgba(180, 32, 32, 0.1);
+
+    --progress-bg: #2a2828;
+    --progress-fill: #8c9d8c;
+
+    --font-main: "Crimson Text", "IM Fell English", serif;
+    --border-radius: 2px;
+}
+
+/* --- PIRATE (NAUTICAL) --- */
+[data-theme='pirate'] {
+    --bg-main: #5e4a3a;
+    --bg-panel: #fdf6e3;
+    --bg-item: #e8dcc4;
+    --bg-item-hover: #d2c3a9;
+
+    --border-color: #8d6e63;
+    --border-light: #a1887f;
+
+    --text-primary: #4e342e;
+    --text-secondary: #6d4c41;
+    --text-muted: #795548;
+
+    --accent-primary: #795548;
+    --accent-hover: #5d4037;
+    --accent-highlight: #d9a025; /* Gold Coin */
+
+    --success-color: #2e7d32;
+    --success-bg: rgba(46, 125, 50, 0.1);
+
+    --danger-color: #b71c1c;
+    --danger-bg: rgba(183, 28, 28, 0.1);
+
+    --progress-bg: #d7ccc8;
+    --progress-fill: #8d2d2d;
+
+    --font-main: "Georgia", serif;
+    --border-radius: 4px;
+}
+
+/* --- GLOBAL STYLES --- */
 
 body {
-    background-color: #282c34;
-    color: white;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-main);
     padding: 2rem 0;
     margin: 0;
 }
@@ -14,16 +248,16 @@ body {
 }
 
 .storylet-container {
-    background-color: #1e2127;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
     padding: 2rem;
-    border-radius: 8px;
+    border-radius: var(--border-radius);
 }
 
 .storylet-text {
     white-space: pre-wrap;
     line-height: 1.6;
-    color: #ccc;
+    color: var(--text-secondary);
 }
 
 .options-container {
@@ -34,19 +268,21 @@ body {
 }
 
 .option-button {
-    background-color: #3e4451;
-    border: 1px solid #555;
-    color: white;
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
     padding: 0;
-    border-radius: 5px;
+    border-radius: var(--border-radius);
     text-align: left;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
     font-size: 1rem;
+    font-family: var(--font-main);
 }
 
 .option-button:hover {
-    background-color: #525968;
+    background-color: var(--bg-item-hover);
+    border-color: var(--accent-highlight);
 }
 
 .option-button h3 {
@@ -55,22 +291,22 @@ body {
 
 .option-button p {
     margin: 0;
-    color: #bbb;
+    color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
 .quality-changes {
     margin-top: 1rem;
     padding: 1rem;
-    background-color: rgba(0, 255, 136, 0.1);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    border-radius: 5px;
+    background-color: var(--success-bg);
+    border: 1px solid var(--success-color);
+    border-radius: var(--border-radius);
 }
 
 .metatext {
     font-style: italic;
-    color: #a0a0a0;
-    border-left: 3px solid #555;
+    color: var(--text-muted);
+    border-left: 3px solid var(--border-light);
     padding-left: 1rem;
     margin-top: 1.5rem;
 }
@@ -78,7 +314,7 @@ body {
 .option-short-desc {
     margin-top: 0.5rem;
     margin-bottom: 0.5rem;
-    color: #bbb;
+    color: var(--text-secondary);
     font-size: 1rem;
     font-weight: normal;
 }
@@ -86,50 +322,55 @@ body {
 .footer-actions {
     margin-top: 2rem;
     padding-top: 1rem;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--border-color);
 }
 
 .return-button, .continue-button {
     width: 100%;
     text-align: center;
-    background-color: #2a3e5c;
+    background-color: var(--accent-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
 }
 
 .return-button:hover, .continue-button:hover {
-    background-color: #3e5a8a;
+    background-color: var(--accent-hover);
 }
 
 .option-button.locked {
-    background-color: #333842;
+    background-color: var(--bg-panel);
     cursor: not-allowed;
     opacity: 0.6;
+    border-color: var(--border-color);
 }
 
 .option-button.locked:hover {
-    background-color: #333842; /* Prevent hover effect on locked buttons */
+    background-color: var(--bg-panel);
 }
 
 .option-skill-check {
     margin: 0.75rem 0 0 0;
     font-size: 0.9rem;
     font-weight: bold;
-    /* The color will be set dynamically via inline styles */
 }
 
-/* Optional: Make the locked reason stand out more */
 .option-locked-reason {
     margin-top: 0.75rem;
-    color: #e74c3c; /* Use the same deep red for locks */
+    color: var(--danger-color);
     font-weight: bold;
     font-size: 0.85rem;
 }
 
 .option-meta-text {
     margin: 0.75rem 0 0 0;
-    color: #8c9eff; /* A distinct color for meta text */
+    color: var(--accent-highlight);
     font-size: 0.85rem;
     font-weight: bold;
-    border-top: 1px dashed #4a5568; /* Separator line */
+    border-top: 1px dashed var(--border-light);
     padding-top: 0.75rem;
 }
 
@@ -141,8 +382,8 @@ body {
 }
 
 .storylet-image-container {
-    flex-shrink: 0; /* Prevent the image from shrinking */
-    width: 210px; /* Base width (3 * 70) */
+    flex-shrink: 0;
+    width: 210px;
     position: relative;
 }
 
@@ -150,89 +391,85 @@ body {
     width: 100%;
     height: auto;
     display: block;
-    border-radius: 4px;
-    border: 1px solid #555;
-    aspect-ratio: 3 / 4; /* Enforce the 3:4 aspect ratio */
-    object-fit: cover; /* Ensure image covers the area without distortion */
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-light);
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
 }
 
 .storylet-text-content {
-    flex-grow: 1; /* Allow the text to take up remaining space */
+    flex-grow: 1;
 }
 
-/* Optional: Adjust heading margin when an image is present */
 .storylet-text-content h1 {
     margin-top: 0;
+    color: var(--text-primary);
 }
 
 .result-title {
     padding: 0.5rem 1rem;
-    border-radius: 4px;
+    border-radius: var(--border-radius);
     margin-bottom: 1rem;
     display: inline-block;
 }
 
 .result-title.success {
-    background-color: rgba(46, 204, 113, 0.2);
-    border-left: 4px solid #2ecc71; /* Green */
+    background-color: var(--success-bg);
+    border-left: 4px solid var(--success-color);
 }
 
 .result-title.failure {
-    background-color: rgba(231, 76, 60, 0.2);
-    border-left: 4px solid #e74c3c; /* Red */
+    background-color: var(--danger-bg);
+    border-left: 4px solid var(--danger-color);
 }
 
 .skill-check-result {
     margin-top: 1.5rem;
     padding: 1rem;
-    background-color: #2c3e50;
-    border: 1px solid #34495e;
-    border-radius: 5px;
+    background-color: var(--bg-main);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius);
     text-align: center;
     font-style: italic;
-    color: #bdc3c7;
+    color: var(--text-secondary);
 }
 
 .loading-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 400px; /* Give it some height */
+    min-height: 400px;
     font-style: italic;
-    color: #888;
+    color: var(--text-muted);
 }
 
 .option-content-wrapper {
     display: flex;
-    align-items: flex-start; /* Align items to the top */
+    align-items: flex-start;
     gap: 1rem;
-    padding: 1rem 1.5rem; /* Apply the padding here instead of the button */
+    padding: 1rem 1.5rem;
 }
 
-/* Container for the option image */
 .option-image-container {
-    flex-shrink: 0; /* Prevent image container from shrinking */
-    width: 60px; /* Set a fixed width for the thumbnail (3 * 20) */
+    flex-shrink: 0;
+    width: 60px;
 }
 
-/* The option image itself */
 .option-image {
     width: 100%;
     display: block;
-    aspect-ratio: 3 / 4; /* Enforce 3:4 aspect ratio */
+    aspect-ratio: 3 / 4;
     object-fit: cover;
-    border-radius: 3px;
-    border: 1px solid #555;
+    border-radius: calc(var(--border-radius) / 2);
+    border: 1px solid var(--border-light);
 }
 
-/* Wrapper for all the text content */
 .option-text-wrapper {
-    flex-grow: 1; /* Allow text to take up the remaining space */
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
 }
 
-/* Small tweak to ensure headings and paragraphs inside the wrapper have no top margin */
 .option-text-wrapper > h3,
 .option-text-wrapper > p {
     margin-top: 0;
@@ -244,43 +481,43 @@ body {
     gap: 1.5rem;
     margin-bottom: 2rem;
     padding-bottom: 2rem;
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .location-image-container {
     flex-shrink: 0;
-    width: 150px; /* Smaller image for the header */
+    width: 150px;
 }
 
 .location-image {
     width: 100%;
-    aspect-ratio: 1 / 1; /* Square for location images */
+    aspect-ratio: 1 / 1;
     object-fit: cover;
-    border-radius: 50%; /* Make it circular */
-    border: 2px solid #555;
+    border-radius: 50%;
+    border: 2px solid var(--border-light);
 }
 
 .location-text h2 {
     margin: 0;
     font-size: 1rem;
     font-weight: normal;
-    color: #aaa;
+    color: var(--text-muted);
 }
 
 .location-text h1 {
     margin: 0;
     font-size: 2.5rem;
+    color: var(--text-primary);
 }
 
-
-/* --- OPPORTUNITY DECK STYLES --- */
+/* --- OPPORTUNITY DECK --- */
 .opportunity-hand {
     margin-top: 2rem;
 }
 
 .opportunity-hand h2 {
     font-size: 1.5rem;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
     margin-bottom: 1.5rem;
 }
@@ -292,14 +529,14 @@ body {
 }
 
 .card {
-    background-color: #3e4451;
-    border: 1px solid #555;
-    color: white;
-    border-radius: 8px;
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
     text-align: left;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
-    overflow: hidden; /* Important for the image */
+    overflow: hidden;
     padding: 0;
     display: flex;
     flex-direction: column;
@@ -308,11 +545,12 @@ body {
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-highlight);
 }
 
 .card-image {
     width: 100%;
-    aspect-ratio: 3 / 2; /* A wider aspect ratio for card art */
+    aspect-ratio: 3 / 2;
     object-fit: cover;
 }
 
@@ -327,12 +565,12 @@ body {
 .card-text p {
     margin: 0;
     font-size: 0.9rem;
-    color: #ccc;
+    color: var(--text-secondary);
     font-style: italic;
 }
 
 .no-cards-text {
-    color: #888;
+    color: var(--text-muted);
     font-style: italic;
 }
 
@@ -342,11 +580,11 @@ body {
 }
 
 .deck-button {
-    background-color: #2a3e5c;
-    color: white;
+    background-color: var(--accent-primary);
+    color: var(--text-primary);
     border: none;
     padding: 1rem 2rem;
-    border-radius: 5px;
+    border-radius: var(--border-radius);
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
@@ -354,7 +592,7 @@ body {
 }
 
 .deck-button:hover {
-    background-color: #3e5a8a;
+    background-color: var(--accent-hover);
 }
 
 .location-storylets {
@@ -363,7 +601,7 @@ body {
 
 .location-storylets h2 {
     font-size: 1.5rem;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
     margin-bottom: 1.5rem;
 }
@@ -379,7 +617,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--border-color);
     padding-top: 1.5rem;
 }
 
@@ -390,32 +628,29 @@ body {
 .quality-change-text {
     margin: 0 0 0.25rem 0;
     font-size: 0.9rem;
-    color: #ccc;
+    color: var(--text-secondary);
 }
 
 .quality-bar-background {
     width: 100%;
     height: 12px;
-    background-color: #2c3e50; /* Dark blue-grey background */
-    border-radius: 6px;
+    background-color: var(--progress-bg);
+    border-radius: var(--border-radius);
     overflow: hidden;
-    border: 1px solid #34495e;
+    border: 1px solid var(--border-light);
 }
 
 .quality-bar-fill {
     height: 100%;
-    background-color: #2ecc71; /* Green fill */
-    border-radius: 6px;
-    transition: width 0.75s ease-in-out; /* The animation! */
+    background-color: var(--success-color);
+    border-radius: var(--border-radius);
+    transition: width 0.75s ease-in-out;
 }
 
-
-/* Style for simple, non-bar text changes */
 .quality-change-text.simple-change {
     padding: 0.5rem 0;
 }
 
-/* New wrapper for the bar and its labels */
 .bar-wrapper {
     display: flex;
     align-items: center;
@@ -425,24 +660,24 @@ body {
 .bar-level-label {
     font-size: 0.8rem;
     font-weight: bold;
-    color: #888;
+    color: var(--text-muted);
 }
 
 .quality-bar-background {
     flex-grow: 1; 
     height: 12px;
-    background-color: #2c3e50;
-    border-radius: 6px;
+    background-color: var(--progress-bg);
+    border-radius: var(--border-radius);
     overflow: hidden;
-    border: 1px solid #34495e;
+    border: 1px solid var(--border-light);
 }
 
 .quality-bar-fill.menace {
-    background-color: #e74c3c; /* A strong red */
+    background-color: var(--danger-color);
 }
 
 .simple-change.menace-text {
-    color: #ff9a9a;
+    color: var(--danger-color);
     font-weight: bold;
 }
 
@@ -450,45 +685,39 @@ body {
     width: 100%;
 }
 
-
 .sidebar-column {
     width: 280px;
 }
 
 .main-content-column > .storylet-container {
     width: 100%;
-    max-width: 800px; /* Constrain the storylet width */
-    margin: 0 auto;  /* Center the storylet within the middle column */
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .hub-layout {
     display: grid;
-    /* Define 3 columns. The middle one will take up most of the space. */
-    /* `minmax(0, 1fr)` prevents the middle column from overflowing. */
     grid-template-columns: 280px minmax(0, 1fr) 280px; 
     gap: 2rem;
     align-items: flex-start;
-    
-    /* Center the whole layout, but allow it to use the full page width */
     width: 100%;
     max-width: 1600px;
     margin: 0 auto;
-    padding: 0 2rem; /* Add horizontal padding to the layout itself */
-    box-sizing: border-box; /* Include padding in the width calculation */
+    padding: 0 2rem;
+    box-sizing: border-box;
 }
 
 .character-sheet {
-    /* This will be the content for the first column */
-    background-color: #1e2127;
-    border: 1px solid #444;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
     padding: 1.5rem;
-    border-radius: 8px;
+    border-radius: var(--border-radius);
 }
 
 .character-sheet h2 {
     margin-top: 0;
     text-align: center;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 1rem;
     margin-bottom: 1.5rem;
 }
@@ -504,28 +733,28 @@ body {
 
 .quality-name {
     font-weight: bold;
-    color: #eee;
+    color: var(--text-primary);
     font-size: 1.1rem; 
 }
 
 .quality-level {
     font-size: 1.1rem; 
     font-weight: bold;
-    color: #2ecc71;
+    color: var(--success-color);
 }
 
 .quality-cp-bar-background {
     height: 6px;
     width: 100%;
-    background-color: #2c3e50;
+    background-color: var(--progress-bg);
     border-radius: 3px;
-    border: 1px solid #34495e;
+    border: 1px solid var(--border-light);
     overflow: hidden;
 }
 
 .quality-cp-bar-fill {
     height: 100%;
-    background-color: #3498db; /* Blue for CP */
+    background-color: var(--progress-fill);
     border-radius: 3px;
     transition: width 0.3s ease-out;
 }
@@ -535,14 +764,14 @@ body {
     gap: 1rem;
     margin-bottom: 2rem;
     padding-bottom: 2rem;
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .equip-slot {
-    background: #1e2127;
-    border: 1px solid #444;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
     padding: 1rem;
-    border-radius: 4px;
+    border-radius: var(--border-radius);
     width: 150px;
     display: flex;
     flex-direction: column;
@@ -552,7 +781,7 @@ body {
 
 .slot-label {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--text-muted);
     text-transform: uppercase;
     font-weight: bold;
 }
@@ -572,9 +801,9 @@ body {
 
 .inventory-item {
     padding: 1rem;
-    background: #3e4451;
-    border: 1px solid #555;
-    border-radius: 4px;
+    background: var(--bg-item);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius);
 }
 
 .item-header {
@@ -584,7 +813,7 @@ body {
 }
 
 .item-count {
-    background: #282c34;
+    background: var(--bg-main);
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
     font-size: 0.8rem;
@@ -592,13 +821,13 @@ body {
 
 .item-desc {
     font-size: 0.9rem;
-    color: #ccc;
+    color: var(--text-secondary);
     margin-bottom: 0.5rem;
 }
 
 .item-bonus {
     font-size: 0.8rem;
-    color: #98c379; /* Greenish */
+    color: var(--success-text);
     font-style: italic;
     margin-bottom: 0.5rem;
 }
@@ -608,19 +837,98 @@ body {
     padding: 0.3rem;
     font-size: 0.9rem;
     cursor: pointer;
+    border-radius: var(--border-radius);
 }
 
 .equip-btn {
-    background: #2a3e5c;
-    color: white;
+    background: var(--accent-primary);
+    color: var(--text-primary);
     border: none;
 }
 
 .unequip-btn {
-    background: #b53838;
+    background: var(--danger-color);
     color: white;
     border: none;
 }
+
+/* --- ADMIN --- */
+/* (Admin styles use standard colors as they are part of the platform, not the game) */
+/* However, to keep it clean, we can reuse variables or hardcode them to keep admin distinct from game theme */
+/* For now, let's leave Admin styles hardcoded so themes don't break the editor interface */
+
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: #181a1f;
+    color: white;
+}
+/* ... (Rest of Admin styles remain hardcoded for stability) ... */
+
+/* PROFILE PANEL */
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.quality-category-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+}
+
+.profile-quality-item {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.profile-quality-item:last-child {
+    border-bottom: none;
+}
+
+.q-name {
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.q-val {
+    font-weight: bold;
+    color: var(--accent-highlight);
+}
+
+.q-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0 0;
+    line-height: 1.4;
+}
+
+.mini-progress-bar {
+    height: 4px;
+    background: var(--progress-bg);
+    margin-top: 0.5rem;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.mini-progress-bar .fill {
+    height: 100%;
+    background: var(--progress-fill);
+}
+
+.london-banner img, .banner-bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 20%; 
+}
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.object-cover { object-fit: cover; }
 
 /* --- ADMIN PANEL STYLES --- */
 .admin-layout {
@@ -1005,68 +1313,3 @@ body {
     align-items: center;
     gap: 0.5rem;
 }
-
-/* PROFILE PANEL */
-.profile-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
-}
-
-.quality-category-card {
-    background: #1e2127;
-    border: 1px solid #444;
-    border-radius: 4px;
-    padding: 1.5rem;
-}
-
-.profile-quality-item {
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #2c313a;
-}
-
-.profile-quality-item:last-child {
-    border-bottom: none;
-}
-
-.q-name {
-    font-weight: bold;
-    color: #fff;
-}
-
-.q-val {
-    font-weight: bold;
-    color: #61afef;
-}
-
-.q-desc {
-    font-size: 0.85rem;
-    color: #aaa;
-    margin: 0.25rem 0 0 0;
-    line-height: 1.4;
-}
-
-.mini-progress-bar {
-    height: 4px;
-    background: #333;
-    margin-top: 0.5rem;
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.mini-progress-bar .fill {
-    height: 100%;
-    background: #3498db;
-}
-
-.london-banner img, .banner-bg-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center 20%; 
-}
-
-.w-full { width: 100%; }
-.h-full { height: 100%; }
-.object-cover { object-fit: cover; }

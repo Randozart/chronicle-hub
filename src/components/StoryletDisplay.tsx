@@ -227,7 +227,7 @@ export default function StoryletDisplay({
                                             <span style={{ 
                                                 fontSize: '0.75rem', 
                                                 fontWeight: 'bold', 
-                                                color: cost > 0 ? '#e06c75' : '#98c379', 
+                                                color: cost > 0 ? 'var(--danger-color)' : 'var(--success-color)', 
                                                 background: 'rgba(0,0,0,0.3)',
                                                 padding: '2px 6px',
                                                 borderRadius: '4px',

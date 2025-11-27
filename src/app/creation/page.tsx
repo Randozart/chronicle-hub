@@ -24,7 +24,7 @@ export default async function CreationPage(props: CreationPageProps) {
     
     return (
         <div className="container" style={{ padding: '2rem' }}>
-            <h1 style={{ fontSize: '2rem', marginBottom: '1rem', borderBottom: '1px solid #444' }}>
+            <h1 style={{ fontSize: '2rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                 Create Your Character
             </h1>
             <CreationForm storyId={storyId} rules={creationRules} />

@@ -159,10 +159,16 @@ export default function GameHub({
             case 'tabletop': return <TabletopLayout {...layoutProps} />;
             default: return <NexusLayout {...layoutProps} />;
         }
+
+        
     };
 
     return (
-        <>
+        <div 
+            data-theme={settings.visualTheme || 'default'} 
+            className="theme-wrapper" // Ensure this div wraps everything
+            style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}
+        >
             {renderLayout()}
 
             {showMap && (
@@ -175,6 +181,6 @@ export default function GameHub({
                     onClose={() => setShowMap(false)}
                 />
             )}
-        </>
+        </div>
     );
 }

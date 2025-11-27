@@ -23,7 +23,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
         <div className="h-full flex flex-col">
             
             {/* 1. HEADER ACTIONS */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                 <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={() => onDelete(form.id)} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete</button>
@@ -151,7 +151,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                 </div>
 
                 {/* OPTIONS (Placeholder for now) */}
-                <div style={{ marginTop: '2rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
+                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                     <h3 style={{ fontSize: '1.1rem', color: '#98c379', marginBottom: '1rem' }}>
                         Options ({form.options?.length || 0})
                     </h3>

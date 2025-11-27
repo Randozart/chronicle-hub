@@ -209,6 +209,25 @@ export default function SettingsAdmin() {
                 <label className="special-label" style={{ color: '#c678dd' }}>Interface Theme</label>
                 
                 <div className="form-group">
+                    <label className="form-label">Visual Theme</label>
+                    <select 
+                        value={form.visualTheme || 'default'} 
+                        onChange={e => handleChange('visualTheme', e.target.value)}
+                        className="form-select"
+                    >
+                        <option value="default">Default</option>
+                        <option value="victorian">Victorian</option>
+                        <option value="terminal">Terminal</option>
+                        <option value="parchment">Parchment</option>
+                        <option value="noir">Noir</option>
+                        <option value="cyberpunk">Cyberpunk</option>
+                        <option value="dark-fantasy">Dark Fantasy</option>
+                        <option value="pirate">Pirate</option>
+
+                    </select>
+                </div>
+
+                <div className="form-group">
                     <label className="form-label">Layout Style</label>
                     <select 
                         value={form.layoutStyle || 'nexus'} 

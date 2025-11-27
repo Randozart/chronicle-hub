@@ -36,12 +36,12 @@ export default function LocationHeader({ location, imageLibrary, onOpenMap }: Lo
             <button 
                 onClick={onOpenMap}
                 style={{
-                    background: '#2a3e5c', color: 'white', border: 'none',
+                    background: 'var(--accent-primary)', color: 'white', border: 'none',
                     padding: '0.75rem 1.5rem', borderRadius: '4px',
                     fontWeight: 'bold', cursor: 'pointer',
                     fontSize: '1rem', height: 'fit-content'
                 }}
-                className="hover:bg-[#3e5a8a] transition"
+                className="hover:bg-[var(--accent-hover)] transition"
             >
                 Travel
             </button>

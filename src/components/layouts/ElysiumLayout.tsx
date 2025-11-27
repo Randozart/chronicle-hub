@@ -77,7 +77,7 @@ export default function ElysiumLayout(props: LayoutProps) {
                     </button>
                 </div>
                 
-                <div style={{ background: 'rgba(20, 20, 30, 0.6)', backdropFilter: 'blur(10px)', padding: '2rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ background: 'rgba(20, 20, 30, 0.6)', backdropFilter: 'blur(10px)', padding: '2rem', borderRadius: 'var(--border-radius)', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <LocationStorylets
                         storylets={props.locationStorylets}
                         onStoryletClick={props.onOptionClick}
@@ -112,9 +112,9 @@ export default function ElysiumLayout(props: LayoutProps) {
             <div style={{ width: '350px', borderRight: '1px solid rgba(255,255,255,0.1)', background: 'rgba(10, 10, 15, 0.7)', backdropFilter: 'blur(15px)', display: 'flex', flexDirection: 'column', zIndex: 10, boxShadow: '5px 0 20px rgba(0,0,0,0.5)' }}>
                 <div style={{ padding: '2rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                        <button onClick={() => setActiveTab('story')} style={{ background: 'none', border: 'none', color: activeTab === 'story' ? '#fff' : '#666', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px', borderBottom: activeTab === 'story' ? '2px solid #fff' : '2px solid transparent', paddingBottom: '5px' }}>Story</button>
-                        <button onClick={() => setActiveTab('possessions')} style={{ background: 'none', border: 'none', color: activeTab === 'possessions' ? '#fff' : '#666', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px', borderBottom: activeTab === 'possessions' ? '2px solid #fff' : '2px solid transparent', paddingBottom: '5px' }}>Items</button>
-                        <button onClick={() => setActiveTab('profile')} style={{ background: 'none', border: 'none', color: activeTab === 'profile' ? '#fff' : '#666', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px', borderBottom: activeTab === 'profile' ? '2px solid #fff' : '2px solid transparent', paddingBottom: '5px' }}>Stats</button>
+                        <button onClick={() => setActiveTab('story')} style={{ background: 'none', border: 'none', color: activeTab === 'story' ? 'var(--text-primary)' : '#666', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px', borderBottom: activeTab === 'story' ? '2px solid var(--text-primary)' : '2px solid transparent', paddingBottom: '5px' }}>Story</button>
+                        <button onClick={() => setActiveTab('possessions')} style={{ background: 'none', border: 'none', color: activeTab === 'possessions' ? 'var(--text-primary)' : '#666', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px', borderBottom: activeTab === 'possessions' ? '2px solid var(--text-primary)' : '2px solid transparent', paddingBottom: '5px' }}>Items</button>
+                        <button onClick={() => setActiveTab('profile')} style={{ background: 'none', border: 'none', color: activeTab === 'profile' ? 'var(--text-primary)' : '#666', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px', borderBottom: activeTab === 'profile' ? '2px solid var(--text-primary)' : '2px solid transparent', paddingBottom: '5px' }}>Stats</button>
                     </div>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '2rem' }}>

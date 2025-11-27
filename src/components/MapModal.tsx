@@ -44,9 +44,9 @@ export default function MapModal({
             
             {/* MODAL BOX */}
             <div style={{ 
-                backgroundColor: '#1e2127', 
-                border: '1px solid #444', 
-                borderRadius: '8px', 
+                backgroundColor: 'var(--bg-panel)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 'var(--border-radius)', 
                 width: '100%', 
                 maxWidth: '900px', 
                 display: 'flex', 
@@ -55,9 +55,9 @@ export default function MapModal({
             }}>
                 
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid #444' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', margin: 0 }}>
-                        Travel: <span style={{ color: '#98c379' }}>{region?.name || "Local Area"}</span>
+                        Travel: <span style={{ color: 'var(--success-color)' }}>{region?.name || "Local Area"}</span>
                     </h2>
                     <button 
                         onClick={onClose} 
@@ -93,15 +93,15 @@ export default function MapModal({
                                         style={{
                                             padding: '1rem', 
                                             borderRadius: '4px', 
-                                            border: `1px solid ${isCurrent ? '#2ecc71' : '#555'}`,
-                                            backgroundColor: isCurrent ? 'rgba(46, 204, 113, 0.1)' : '#282c34',
+                                            border: `1px solid ${isCurrent ? '#2ecc71' : 'var(--border-light)'}`,
+                                            backgroundColor: isCurrent ? 'rgba(46, 204, 113, 0.1)' : 'var(--bg-main)',
                                             display: 'flex', alignItems: 'center', gap: '1rem',
                                             cursor: isCurrent ? 'default' : 'pointer',
                                             textAlign: 'left'
                                         }}
                                         className={!isCurrent ? "hover-bg-lighter" : ""}
                                     >
-                                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '1px solid #555' }}>
+                                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border-light)' }}>
                                             <GameImage 
                                                 code={loc.image} 
                                                 imageLibrary={imageLibrary} 

@@ -127,6 +127,7 @@ export interface WorldSettings {
     layoutStyle: LayoutStyle; // Default: "nexus"
     bannerHeight?: number; // For London
     enableParallax?: boolean; // New setting
+    visualTheme?: "default" | "victorian" | "terminal" | "parchment" | "noir" | 'pirate' | 'dark-fantasy' | 'cyberpunk';
 }
 
 interface BaseQualityState {

@@ -38,7 +38,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     return (
         <div className="profile-container">
             {/* HEADER CONTROLS */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #444', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
                 <input 
                     value={search}
                     onChange={e => setSearch(e.target.value)}
@@ -63,7 +63,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                     // Note: 'cat' might be "npc.trader" or just "npc" depending on your grouping logic.
                     // We try to find exact match, or fallback to default.
                     const catDef = categories[cat];
-                    const headerColor = catDef?.color || '#98c379'; 
+                    const headerColor = catDef?.color || 'var(--success-color)'; 
 
                     return (
                         <div key={cat} className="quality-category-card">
@@ -72,7 +72,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                 fontSize: '0.9rem', 
                                 marginBottom: '1rem', 
                                 paddingBottom: '0.5rem',
-                                // Apply Color Styles
                                 color: headerColor, 
                                 borderBottom: `1px solid ${headerColor}40` // 25% opacity border
                             }}>
@@ -85,8 +84,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                     
                                     <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                                         
-                                        {/* OPTIONAL ICON */}
-                                        {/* Only show if explicitly defined or if you want defaults for everything */}
                                         {q.image && (
                                             <div style={{ width: '30px', flexShrink: 0 }}>
                                                 <GameImage 

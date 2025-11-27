@@ -84,13 +84,13 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
 
                     // DETERMINE BAR COLOR
                     // 1. Get config color
-                    // 2. Fallback to default Blue (#3498db)
+                    // 2. Fallback to default Blue (var(--progress-fill))
                     // Note: We check the primary category. 
                     // If q.category is "menace, something", we grab the first one or try both.
                     // Let's just try exact match or first split.
                     const primaryCat = (q.category || "").split(',')[0].trim();
                     const catDef = categories[primaryCat];
-                    const barColor = catDef?.color || '#3498db';
+                    const barColor = catDef?.color || 'var(--progress-fill)';
 
                     return (
                         <li key={q.id} className="quality-item">

@@ -92,7 +92,7 @@ export default function NexusLayout(props: LayoutProps) {
         <div className="hub-layout">
             <div className="sidebar-column left">
                 {/* Action Timer */}
-                <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: '#1e2127', borderRadius: '8px', border: '1px solid #444' }}>
+                <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-panel)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Actions: {currentActions} / {maxActions}</h3>
                     <ActionTimer 
                         currentActions={currentActions}
@@ -113,12 +113,12 @@ export default function NexusLayout(props: LayoutProps) {
             </div>
             
             <div className="main-content-column">
-                <div className="hub-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444' }}>
+                <div className="hub-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                     <button 
                         onClick={() => setActiveTab('story')} 
                         style={{ 
                             padding: '0.5rem 1rem', 
-                            background: activeTab === 'story' ? '#3e4451' : 'transparent', // Active BG
+                            background: activeTab === 'story' ? 'var(--bg-item)' : 'transparent', // Active BG
                             color: 'white', // Always white text
                             border: 'none', 
                             cursor: 'pointer',
@@ -131,7 +131,7 @@ export default function NexusLayout(props: LayoutProps) {
                         onClick={() => setActiveTab('possessions')} 
                         style={{ 
                             padding: '0.5rem 1rem', 
-                            background: activeTab === 'possessions' ? '#3e4451' : 'transparent', 
+                            background: activeTab === 'possessions' ? 'var(--bg-item)' : 'transparent', 
                             color: 'white', 
                             border: 'none', 
                             cursor: 'pointer',
@@ -144,7 +144,7 @@ export default function NexusLayout(props: LayoutProps) {
                         onClick={() => setActiveTab('profile')} 
                         style={{ 
                             padding: '0.5rem 1rem', 
-                            background: activeTab === 'profile' ? '#3e4451' : 'transparent', 
+                            background: activeTab === 'profile' ? 'var(--bg-item)' : 'transparent', 
                             color: 'white', 
                             border: 'none', 
                             cursor: 'pointer',

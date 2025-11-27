@@ -58,7 +58,7 @@ export default function TabletopLayout(props: LayoutProps) {
 
         return (
             <>
-                <div style={{ borderBottom: '1px solid #444', paddingBottom: '1rem', marginBottom: '2rem' }}>
+                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '2rem' }}>
                     <h1 style={{ fontSize: '2.5rem', margin: 0, fontFamily: 'serif' }}>{props.location.name}</h1>
                 </div>
                 
@@ -93,10 +93,10 @@ export default function TabletopLayout(props: LayoutProps) {
         >
             <div style={{ width: '280px', flexShrink: 0, borderRight: '1px solid #333', background: '#181a1f', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid #333', background: '#21252b' }}>
-                    <h3 style={{ margin: 0, color: '#98c379', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Character</h3>
+                    <h3 style={{ margin: 0, color: 'var(--success-color)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Character</h3>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
-                    <div className="action-display" style={{ marginBottom: '2rem', textAlign: 'center', padding: '1rem', border: '1px dashed #444', borderRadius: '4px' }}>
+                    <div className="action-display" style={{ marginBottom: '2rem', textAlign: 'center', padding: '1rem', border: '1px dashed var(--border-color)', borderRadius: '4px' }}>
                         <h3 style={{ fontSize: '1.5rem', margin: 0 }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={handleActionRegen} />
                     </div>
@@ -121,12 +121,12 @@ export default function TabletopLayout(props: LayoutProps) {
                     <button 
                         onClick={props.onOpenMap}
                         style={{ 
-                            background: '#000', border: '1px solid #98c379', 
-                            color: '#98c379', padding: '0.5rem 1.5rem', 
+                            background: '#000', border: '1px solid var(--success-color)', 
+                            color: 'var(--success-color)', padding: '0.5rem 1.5rem', 
                             cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px',
                             boxShadow: '0 0 10px rgba(0,0,0,0.8)'
                         }}
-                        className="hover:bg-[#98c379] hover:text-black transition"
+                        className="hover:bg-[var(--success-color)] hover:text-black transition"
                     >
                         Travel
                     </button>
@@ -135,9 +135,9 @@ export default function TabletopLayout(props: LayoutProps) {
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#1e1e1e', minWidth: '400px' }}>
                 <div style={{ display: 'flex', borderBottom: '1px solid #333', background: '#252525' }}>
-                    <button onClick={() => setActiveTab('story')} style={{ padding: '1rem 2rem', background: activeTab === 'story' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'story' ? '#fff' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>STORY</button>
-                    <button onClick={() => setActiveTab('possessions')} style={{ padding: '1rem 2rem', background: activeTab === 'possessions' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'possessions' ? '#fff' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>INVENTORY</button>
-                    <button onClick={() => setActiveTab('profile')} style={{ padding: '1rem 2rem', background: activeTab === 'profile' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'profile' ? '#fff' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>PROFILE</button>
+                    <button onClick={() => setActiveTab('story')} style={{ padding: '1rem 2rem', background: activeTab === 'story' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'story' ? 'var(--text-primary)' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>STORY</button>
+                    <button onClick={() => setActiveTab('possessions')} style={{ padding: '1rem 2rem', background: activeTab === 'possessions' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'possessions' ? 'var(--text-primary)' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>INVENTORY</button>
+                    <button onClick={() => setActiveTab('profile')} style={{ padding: '1rem 2rem', background: activeTab === 'profile' ? '#1e1e1e' : 'transparent', border: 'none', borderRight: '1px solid #333', color: activeTab === 'profile' ? 'var(--text-primary)' : '#777', cursor: 'pointer', fontWeight: 'bold' }}>PROFILE</button>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '3rem 4rem' }}>
                     <div style={{ maxWidth: '800px', margin: '0 auto' }}>

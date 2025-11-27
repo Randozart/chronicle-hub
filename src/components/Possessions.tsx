@@ -118,7 +118,7 @@ export default function Possessions({
                                     </button>
                                 </div>
                             ) : (
-                                <span className="empty-slot" style={{ padding: '1rem', color: '#555', fontStyle: 'italic' }}>Empty</span>
+                                <span className="empty-slot" style={{ padding: '1rem', color: 'var(--border-light)', fontStyle: 'italic' }}>Empty</span>
                             )}
                         </div>
                     );
@@ -126,7 +126,7 @@ export default function Possessions({
             </div>
 
             {/* INVENTORY HEADER & FILTERS */}
-            <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #444', paddingBottom: '1rem', marginBottom: '1rem' }}>
+            <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>Inventory</h2>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <input 
@@ -151,7 +151,7 @@ export default function Possessions({
             {/* INVENTORY GRID */}
             {groups.map(group => (
                 <div key={group} style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '0.9rem', color: '#98c379', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid #98c379', paddingLeft: '0.5rem' }}>{group}</h3>
+                    <h3 style={{ fontSize: '0.9rem', color: 'var(--success-color)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--success-color)', paddingLeft: '0.5rem' }}>{group}</h3>
                     
                     <div className="inventory-grid">
                         {grouped[group].map((item: any) => {
