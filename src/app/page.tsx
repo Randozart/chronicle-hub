@@ -78,6 +78,7 @@ export default async function Home() {
                 opportunityDefs={plainOpportunityDefs} 
                 settings={sanitize(gameData.settings)}
                 imageLibrary={gameData.images || {}}
+                categories={sanitize(gameData.categories || {})}
             />
         </main>
     );

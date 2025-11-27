@@ -24,7 +24,8 @@ export default function SettingsAdmin() {
         playerName: "$player_name",
         playerImage: "$player_image",
         deckDrawCostsAction: true,
-        char_create: {} // Initialize empty
+        char_create: {}, // Initialize empty
+        layoutStyle: 'nexus'
     });
     
     const [isLoading, setIsLoading] = useState(true);
@@ -201,6 +202,24 @@ export default function SettingsAdmin() {
                         </label>
                     </div>
                 )}
+            </div>
+
+            {/* LAYOUT & THEME */}
+            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                <label className="special-label" style={{ color: '#c678dd' }}>Interface Theme</label>
+                
+                <div className="form-group">
+                    <label className="form-label">Layout Style</label>
+                    <select 
+                        value={form.layoutStyle || 'nexus'} 
+                        onChange={e => handleChange('layoutStyle', e.target.value)}
+                        className="form-select"
+                    >
+                        <option value="nexus">Classic (Icon Header)</option>
+                        <option value="london">Cinematic (Full Banner)</option>
+                        <option value="elysium">Immersive (Split View)</option>
+                    </select>
+                </div>
             </div>
 
             {/* CATEGORIES */}

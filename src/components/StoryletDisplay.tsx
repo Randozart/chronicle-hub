@@ -1,7 +1,7 @@
 // src/components/StoryletDisplay.tsx
 'use client';
 
-import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition } from '@/engine/models';
+import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition } from '@/engine/models';
 import { useState } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
@@ -20,6 +20,7 @@ interface StoryletDisplayProps {
     onQualitiesUpdate: (newQualities: PlayerQualities) => void; // <--- ADD THIS
     onCardPlayed?: (cardId: string) => void;
     imageLibrary: Record<string, ImageDefinition>; // Add type
+    categories: Record<string, CategoryDefinition>;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -42,7 +43,8 @@ export default function StoryletDisplay({
     opportunityDefs,
     settings,
     onCardPlayed,
-    imageLibrary
+    imageLibrary,
+    categories
 }: StoryletDisplayProps) {
 
     // This component only manages its own temporary UI state.
@@ -128,7 +130,11 @@ export default function StoryletDisplay({
                 {resolution.qualityChanges?.length > 0 && 
                     <div className="quality-changes-container">
                         {resolution.qualityChanges.map((change) => (
-                            <QualityChangeBar key={change.qid} change={change} />
+                            <QualityChangeBar 
+                                key={change.qid} 
+                                change={change} 
+                                categoryDef={categories[change.category || ""]} 
+                            />
                         ))}
                     </div>
                 }

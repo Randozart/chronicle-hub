@@ -125,17 +125,9 @@ export interface WorldSettings {
     equipCategories: string[];
     deckDrawCostsAction?: boolean; // Make this optional for backward compatibility
     alwaysPurgeHandOnTravel?: boolean; // Make this optional
+    layoutStyle: LayoutStyle; // Default: "nexus"
+    bannerHeight?: number; // For London
 }
-
-// export interface WorldContent {
-//     storylets: Record<string, Storylet>;
-//     qualities: Record<string, QualityDefinition>;
-//     opportunities: Record<string, Opportunity>;
-//     locations: Record<string, LocationDefinition>;
-//     decks: Record<string, DeckDefinition>; // <-- ADDED DECKS
-//     char_create: Record<string, string>; // <-- ADDED CHAR_CREATE
-//     settings: WorldSettings; 
-// }
 
 interface BaseQualityState {
     qualityId: string;
@@ -209,7 +201,13 @@ export interface ImageDefinition {
     alt?: string; // Default alt text
 }
 
-// Base config needed for math and logic
+export interface CategoryDefinition {
+    id: string; // "menace"
+    name?: string; // "Current Threats" (Display Name)
+    color?: string; // "#e74c3c"
+    description?: string; // Optional tooltip
+}
+
 export interface WorldConfig {
     qualities: Record<string, QualityDefinition>;
     locations: Record<string, LocationDefinition>;
@@ -219,6 +217,8 @@ export interface WorldConfig {
     storylets?: Record<string, Storylet>;
     opportunities?: Record<string, Opportunity>;
     images: Record<string, ImageDefinition>; 
+    categories?: Record<string, CategoryDefinition>;
 }
 
 export type WorldContent = WorldConfig;
+export type LayoutStyle = "nexus" | "london" | "elysium";

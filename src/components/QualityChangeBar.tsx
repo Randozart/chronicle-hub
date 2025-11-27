@@ -1,12 +1,17 @@
 // src/components/QualityChangeBar.tsx
 'use client';
 
-import { QualityChangeInfo, QualityType } from "@/engine/models";
+import { CategoryDefinition, QualityChangeInfo, QualityType } from "@/engine/models";
 import { useEffect, useState } from "react";
 
 const getCPforNextLevel = (level: number): number => level + 1;
 
-export default function QualityChangeBar({ change }: { change: QualityChangeInfo }) {
+interface Props {
+    change: QualityChangeInfo;
+    categoryDef?: CategoryDefinition; // NEW PROP
+}
+
+export default function QualityChangeBar({ change, categoryDef }: Props) {
     const [fillWidth, setFillWidth] = useState('0%');
 
     // For non-Pyramidal types, just show the text.
@@ -31,7 +36,7 @@ export default function QualityChangeBar({ change }: { change: QualityChangeInfo
     if (change.type !== QualityType.Pyramidal) {
         return <p className={`quality-change-text simple-change ${isMenace ? 'menace-text' : ''}`}>{change.changeText}</p>;
     }
-
+    
     useEffect(() => {
         // Set initial width instantly.
         setFillWidth(`${startPercent}%`);
@@ -40,15 +45,22 @@ export default function QualityChangeBar({ change }: { change: QualityChangeInfo
         return () => clearTimeout(timer);
     }, [startPercent, endPercent]);
 
+    let barColor = '#2ecc71'; 
+    if (categoryDef?.color) barColor = categoryDef.color;
+    else if (change.category?.includes('menace')) barColor = '#e74c3c';
+
     return (
         <div className="quality-change-item">
-            <p className="quality-change-text">{change.changeText}</p>
+            <p className="quality-change-text" style={{ color: barColor }}>{change.changeText}</p>
             <div className="bar-wrapper">
                 <span className="bar-level-label left">{leveledDown ? change.levelAfter : change.levelBefore}</span>
                 <div className="quality-bar-background">
                     <div 
-                        className={fillClassName}
-                        style={{ width: fillWidth }}
+                        className="quality-bar-fill"
+                        style={{ 
+                            width: fillWidth,
+                            backgroundColor: barColor
+                        }}
                     />
                 </div>
                 <span className="bar-level-label right">{leveledDown ? change.levelAfter + 1 : change.levelBefore + 1}</span>

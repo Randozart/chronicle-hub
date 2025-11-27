@@ -1,6 +1,6 @@
 'use client';
 
-import { PlayerQualities, QualityDefinition, QualityType, ImageDefinition } from "@/engine/models";
+import { PlayerQualities, QualityDefinition, QualityType, ImageDefinition, CategoryDefinition } from "@/engine/models";
 import { useState, useMemo } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
@@ -8,10 +8,11 @@ import GameImage from "./GameImage";
 interface ProfilePanelProps {
     qualities: PlayerQualities;
     qualityDefs: Record<string, QualityDefinition>;
-    imageLibrary: Record<string, ImageDefinition>; // Added
+    imageLibrary: Record<string, ImageDefinition>;
+    categories: Record<string, CategoryDefinition>;
 }
 
-export default function ProfilePanel({ qualities, qualityDefs, imageLibrary }: ProfilePanelProps) {
+export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, categories }: ProfilePanelProps) {
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category"); 
 
@@ -57,18 +58,30 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary }: P
             </div>
 
             <div className="profile-grid">
-                {groups.map(cat => (
-                    <div key={cat} className="quality-category-card">
-                        <h3 style={{ 
-                            textTransform: 'uppercase', color: '#98c379', fontSize: '0.9rem', 
-                            marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' 
-                        }}>
-                            {cat}
-                        </h3>
-                        
-                        <div className="quality-list">
-                            {grouped[cat].map((q: any) => (
-                                <div key={q.id} className="profile-quality-item">
+                {groups.map(cat => {
+                    // Lookup Color
+                    // Note: 'cat' might be "npc.trader" or just "npc" depending on your grouping logic.
+                    // We try to find exact match, or fallback to default.
+                    const catDef = categories[cat];
+                    const headerColor = catDef?.color || '#98c379'; 
+
+                    return (
+                        <div key={cat} className="quality-category-card">
+                            <h3 style={{ 
+                                textTransform: 'uppercase', 
+                                fontSize: '0.9rem', 
+                                marginBottom: '1rem', 
+                                paddingBottom: '0.5rem',
+                                // Apply Color Styles
+                                color: headerColor, 
+                                borderBottom: `1px solid ${headerColor}40` // 25% opacity border
+                            }}>
+                                {cat}
+                            </h3>
+                            
+                            <div className="quality-list">
+                                {grouped[cat].map((q: any) => (
+                                    <div key={q.id} className="profile-quality-item">
                                     
                                     <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                                         
@@ -106,11 +119,12 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary }: P
                                             )}
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                 </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 
                 {groups.length === 0 && <p style={{ color: '#777' }}>No qualities found.</p>}
             </div>

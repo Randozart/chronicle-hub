@@ -1,30 +1,29 @@
 'use client';
-import { PlayerQualities, QualityDefinition, WorldSettings, QualityType } from "@/engine/models";
-import { useMemo } from "react";
+import { PlayerQualities, QualityDefinition, WorldSettings, QualityType, CategoryDefinition } from "@/engine/models"; 
+import { useMemo } from "react"; 
 
 interface CharacterSheetProps {
     qualities: PlayerQualities;
-    equipment: Record<string, string | null>; // <--- New Prop
+    equipment: Record<string, string | null>; 
     qualityDefs: Record<string, QualityDefinition>;
     settings: WorldSettings;
+    categories: Record<string, CategoryDefinition>;
 }
+
 const getCPforNextLevel = (level: number): number => level + 1;
 
-export default function CharacterSheet({ qualities, equipment, qualityDefs, settings }: CharacterSheetProps) {
+export default function CharacterSheet({ qualities, equipment, qualityDefs, settings, categories }: CharacterSheetProps) {
     
     const categoriesToDisplay = settings.characterSheetCategories || [];
 
     // Helper to calculate effective stats
     const getEffectiveLevel = (qid: string, baseLevel: number) => {
         let total = baseLevel;
-        
-        // Loop through equipment slots
         Object.values(equipment || {}).forEach(itemId => {
             if (!itemId) return;
             const itemDef = qualityDefs[itemId];
             if (!itemDef || !itemDef.bonus) return;
 
-            // Parse bonus string (same regex as GameEngine)
             const bonuses = itemDef.bonus.split(',');
             for (const bonus of bonuses) {
                 const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
@@ -41,6 +40,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
         return total;
     };
 
+    // Calculate display values
     const characterQualities = useMemo(() => {
         return Object.keys(qualities)
         .map(qid => {
@@ -61,9 +61,9 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
         .filter(Boolean as any);
     }, [qualities, equipment, qualityDefs, categoriesToDisplay]);
 
-    if (characterQualities.length === 0) return null;
-    
     const validQualities = characterQualities.filter(q => q !== null);
+
+    if (validQualities.length === 0) return null;
 
     return (
         <aside className="character-sheet">
@@ -75,19 +75,23 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     const changePoints = ('changePoints' in q) ? q.changePoints : 0;
                     const isPyramidal = q.type === QualityType.Pyramidal;
                     
-                    // Use effectiveLevel for display/CP calculation? 
-                    // Usually CP is based on Base Level, but Display is Effective.
-                    // Let's stick to CP based on BASE level (standard RPG practice), 
-                    // but display the Effective level.
-                    
                     const cpNeeded = isPyramidal ? getCPforNextLevel(q.baseLevel) : 0;
                     const cpPercent = cpNeeded > 0 ? (changePoints / cpNeeded) * 100 : 0;
 
-                    // Calculate the bonus difference for display (e.g., "10 (+3)")
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
                     const bonusText = bonusDiff > 0 ? `(+${bonusDiff})` : bonusDiff < 0 ? `(${bonusDiff})` : '';
                     const bonusClass = bonusDiff > 0 ? 'text-green-400' : 'text-red-400';
-                    
+
+                    // DETERMINE BAR COLOR
+                    // 1. Get config color
+                    // 2. Fallback to default Blue (#3498db)
+                    // Note: We check the primary category. 
+                    // If q.category is "menace, something", we grab the first one or try both.
+                    // Let's just try exact match or first split.
+                    const primaryCat = (q.category || "").split(',')[0].trim();
+                    const catDef = categories[primaryCat];
+                    const barColor = catDef?.color || '#3498db';
+
                     return (
                         <li key={q.id} className="quality-item">
                             <p className="quality-header">
@@ -102,7 +106,10 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                                 <div className="quality-cp-bar-background">
                                     <div 
                                         className="quality-cp-bar-fill"
-                                        style={{ width: `${cpPercent}%` }}
+                                        style={{ 
+                                            width: `${cpPercent}%`,
+                                            backgroundColor: barColor // DYNAMIC COLOR
+                                        }}
                                     />
                                 </div>
                             )}

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import '../globals.css'; // Ensure CSS is loaded
-import CheatSheet from './components/CheatSheet'; // We will create this
+import '../globals.css'; 
+import CheatSheet from './components/CheatSheet';
 
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -11,6 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <nav className="admin-nav">
                     <ul>
                         <AdminLink href="/admin/qualities" label="Qualities" />
+                        <AdminLink href="/admin/categories" label="Categories" /> {/* NEW */}
                         <AdminLink href="/admin/storylets" label="Storylets" />
                         <AdminLink href="/admin/opportunities" label="Opportunities" />
                         <AdminLink href="/admin/locations" label="Locations" />
