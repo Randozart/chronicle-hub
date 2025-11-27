@@ -1313,3 +1313,14 @@ body {
     align-items: center;
     gap: 0.5rem;
 }
+
+.theme-wrapper {
+    color: var(--text-primary);
+    background: var(--bg-main);
+    font-family: var(--font-main);
+
+    --_bg-panel: var(--bg-panel);
+    --_bg-item: var(--bg-item);
+    --_text-primary: var(--text-primary);
+    --_border-color: var(--border-color);
+}
