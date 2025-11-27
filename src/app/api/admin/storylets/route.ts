@@ -40,11 +40,13 @@ export async function POST(request: NextRequest) {
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+        
+    const { _id, ...cleanData } = data;
 
     // Upsert (Update if exists, Insert if new)
     const result = await db.collection('storylets').updateOne(
         { worldId: storyId, id: data.id },
-        { $set: { ...data, worldId: storyId } }, // Ensure worldId is set
+        { $set: { ...cleanData, worldId: storyId } }, // Ensure worldId is set
         { upsert: true }
     );
 

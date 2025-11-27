@@ -168,18 +168,18 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
             </h2>
             
             <div className="form-group">
-                <label className="form-label">ID</label>
+                <label className="form-label">ID</label> <span className="property-hint">($quality.id)</span>
                 <input value={form.id} disabled className="form-input" style={{ opacity: 0.5, cursor: 'not-allowed' }} />
             </div>
 
             <div className="form-group">
-                <label className="form-label">Name</label>
+                <label className="form-label">Name</label> <span className="property-hint">($quality.name)</span>
                 <input value={form.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" />
             </div>
             <div className="form-group">
                 <label className="form-label">
                     Description 
-                    <span className="property-hint">($id.description)</span>
+                    <span className="property-hint">($quality.description)</span>
                 </label>
                 <textarea 
                     value={form.description || ''} 
@@ -196,7 +196,7 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
                         checked={(form.properties || '').includes('hidden')}
                         onChange={() => handleChange('properties', toggleTag(form.properties, 'hidden'))}
                     />
-                    Hidden (Sidebar)
+                    Hidden
                 </label>
                 {/* You can add more standard tags here */}
             </div>
@@ -228,15 +228,54 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
                 </div>
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-textarea" rows={4} />
+            <div className="form-row">
+                <div className="form-group">
+                    <label className="form-label">
+                        Max Value 
+                        <span className="property-hint">($quality.max)</span>
+                    </label>
+                    <input 
+                        value={form.max || ''} 
+                        onChange={e => handleChange('max', e.target.value)}
+                        className="form-input"
+                        placeholder="e.g. 100 or $level_cap"
+                    />
+                </div>
             </div>
 
-            {form.type === 'E' && (
-                <div className="form-group" style={{ border: '1px solid #2a3e5c', padding: '1rem', borderRadius: '4px' }}>
-                    <label className="form-label" style={{ color: '#61afef' }}>Equip Bonus</label>
-                    <input value={form.bonus || ''} onChange={e => handleChange('bonus', e.target.value)} placeholder="$mettle + 1" className="form-input" />
+            {/* Show for Equipables (E) AND Items (I) */}
+            {(form.type === 'E' || form.type === 'I') && (
+                <div className="special-field-group" style={{ borderColor: '#61afef' }}>
+                    <label className="special-label" style={{ color: '#61afef' }}>Item Settings</label>
+                    
+                    {/* Bonus only for Equipables */}
+                    {form.type === 'E' && (
+                        <div className="form-group">
+                            <label className="form-label">Stat Bonus</label>
+                            <input 
+                                value={form.bonus || ''} 
+                                onChange={e => handleChange('bonus', e.target.value)} 
+                                placeholder="$mettle + 1" 
+                                className="form-input" 
+                            />
+                        </div>
+                    )}
+                    
+                    {/* Storylet for both */}
+                    <div className="form-group">
+                        <label className="form-label">On-Use Storylet ID</label>
+                        <input 
+                            value={form.storylet || ''} 
+                            onChange={e => handleChange('storylet', e.target.value)} 
+                            placeholder="open_box_event" 
+                            className="form-input" 
+                        />
+                        <p className="special-desc">
+                            {form.type === 'E' 
+                                ? "If set, shows 'Use' button alongside 'Equip'." 
+                                : "If set, adds a 'Use' button to the item in inventory."}
+                        </p>
+                    </div>
                 </div>
             )}
 

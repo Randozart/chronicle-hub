@@ -34,9 +34,11 @@ export async function POST(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
+    const { _id, ...cleanData } = data;
+
     await db.collection('opportunities').updateOne(
         { worldId: storyId, id: data.id },
-        { $set: { ...data, worldId: storyId } },
+        { $set: { ...cleanData, worldId: storyId } }, // Use cleanData
         { upsert: true }
     );
     return NextResponse.json({ success: true });

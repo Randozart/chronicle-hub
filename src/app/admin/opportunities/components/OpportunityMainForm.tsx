@@ -11,9 +11,18 @@ interface Props {
 }
 
 export default function OpportunityMainForm({ initialData, onSave, onDelete }: Props) {
-    const [form, setForm] = useState(initialData);
+
+    const [form, setForm] = useState<Opportunity>({
+        ...initialData,
+        frequency: initialData.frequency || "Standard"
+    });
     
-    useEffect(() => setForm(initialData), [initialData]);
+    useEffect(() => {
+        setForm({
+            ...initialData,
+            frequency: initialData.frequency || "Standard"
+        });
+    }, [initialData]);
 
     const handleChange = (field: string, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));

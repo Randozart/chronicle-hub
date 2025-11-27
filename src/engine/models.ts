@@ -52,7 +52,6 @@ export interface ResolveOption {
     rare_fail_redirect?: string;
 }
 
-// Storylets and Opportunities are very similar, so they can share a base
 interface BaseStorylet {
     id: string;
     name: string;
@@ -64,7 +63,7 @@ interface BaseStorylet {
     unlock_if?: string;
     properties?: string;
     options: ResolveOption[];
-    autofire_if?: string; // <-- ADDED THIS PROPERTY
+    autofire_if?: string; 
 }
 
 export interface Storylet extends BaseStorylet {
