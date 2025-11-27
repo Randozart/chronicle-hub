@@ -1,6 +1,6 @@
 // src/engine/gameEngine.ts
 
-import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, QualityChangeInfo, WorldConfig } from '@/engine/models';
+import { PlayerQualities, QualityState, QualityType, ResolveOption, Storylet, QualityChangeInfo, WorldConfig, Opportunity } from '@/engine/models';
 
 const getCPforNextLevel = (level: number): number => {
     // Formula: (Current Level + 1) * 10.
@@ -154,7 +154,7 @@ export class GameEngine {
         const finalExpression = this.evaluateBlock(expression);
 
         if (isSkillCheck) {
-            const skillCheckMatch = finalExpression.match(/^\s*\$(.*?)\s*(>=|<=)\s*(\d+)(?:\s*\[(\d+)\])?\s*$/);
+            const skillCheckMatch = finalExpression.match(/^\s*\$(.*?)\s*(>=|<=)\s*([^\[]+)(?:\s*\[([^\]]+)\])?\s*$/);
             if (skillCheckMatch) {
                 return this.performSkillCheck(skillCheckMatch);
             }
@@ -287,19 +287,46 @@ export class GameEngine {
         return this.getEffectiveLevel(id);
     }
     
-    // --- MISSING METHOD RESTORED HERE ---
     private performSkillCheck(match: RegExpMatchArray): SkillCheckResult {
-        const [, qualitiesPart, operator, targetStr, marginStr] = match;
-        const target = parseInt(targetStr, 10);
-        const margin = marginStr ? parseInt(marginStr, 10) : target;
-
-        // 1. Replace the $quality names with their numerical values.
-        const skillExpression = qualitiesPart.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
+        const [, qualitiesPart, operator, targetStr, bracketContent] = match;
         
-        // 2. Use our existing math evaluator to get the final number.
+        // 1. Evaluate Target (might be a variable or calculation)
+        const target = parseInt(this.evaluateBlock(targetStr), 10);
+
+        // 2. Parse Brackets: [Margin, Min%, Max%]
+        let margin = target; // Default margin = target (Narrow difficulty)
+        let minChance = 0;
+        let maxChance = 100;
+
+        if (bracketContent) {
+            const args = bracketContent.split(',').map(s => s.trim());
+            
+            // Resolve Margin (Arg 0)
+            if (args[0]) {
+                const val = this.evaluateBlock(args[0]);
+                margin = parseInt(val, 10);
+            }
+            
+            // Resolve Min Chance (Arg 1)
+            if (args[1]) {
+                const val = this.evaluateBlock(args[1]);
+                minChance = parseInt(val, 10);
+            }
+
+            // Resolve Max Chance (Arg 2)
+            if (args[2]) {
+                const val = this.evaluateBlock(args[2]);
+                maxChance = parseInt(val, 10);
+            }
+        }
+
+        // 3. Evaluate Skill Level
+        // Support addition in skill part: "$strength + $sword"
+        const skillExpression = qualitiesPart.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
         const skillLevelResult = evaluateSimpleExpression(skillExpression);
         const skillLevel = typeof skillLevelResult === 'number' ? skillLevelResult : 0;
         
+        // 4. Calculate Broad Difficulty Probability
         const lowerBound = target - margin;
         const upperBound = target + margin;
 
@@ -310,47 +337,45 @@ export class GameEngine {
             successChance = 1.0;
         } else {
             if (skillLevel < target) {
+                // Range: [Lower ... Target] -> 0% ... 50%
                 const denominator = target - lowerBound;
-                if (denominator <= 0) {
-                    successChance = 0.5;
-                } else {
+                if (denominator <= 0) successChance = 0.5;
+                else {
                     const progress = (skillLevel - lowerBound) / denominator;
                     successChance = progress * 0.5;
                 }
-            } else { // skillLevel >= target
+            } else { 
+                // Range: [Target ... Upper] -> 50% ... 100%
                 const denominator = upperBound - target;
-                if (denominator <= 0) {
-                    successChance = 0.5;
-                } else {
+                if (denominator <= 0) successChance = 0.5;
+                else {
                     const progress = (skillLevel - target) / denominator;
                     successChance = 0.5 + (progress * 0.5);
                 }
             }
         }
         
+        // Invert if operator is <= (Roll UNDER)
         if (operator === '<=') {
             successChance = 1.0 - successChance;
         }
 
-        const finalChance = Math.max(0.0, Math.min(1.0, successChance));
+        // 5. Apply Clamps (Min/Max Chance)
+        // Convert 0.0-1.0 to 0-100 for clamping
+        let finalPercent = successChance * 100;
         
-        const targetPercent = Math.round(finalChance * 100);
-        const rollPercent = Math.floor(Math.random() * 101);
+        // Clamp
+        finalPercent = Math.max(minChance, Math.min(maxChance, finalPercent));
+        
+        const targetPercent = Math.round(finalPercent);
+        const rollPercent = Math.floor(Math.random() * 101); // 0-100
         const wasSuccess = rollPercent <= targetPercent;
-
-        console.log('--- SKILL CHECK ---');
-        console.log(`Player's effective skill level: ${skillLevel}`); 
-        console.log(`Target: ${target}, Margin: ${marginStr || target}`);
-        console.log(`Calculated Success Chance: ${targetPercent}%`);
-        console.log(`Dice Roll (0-100): ${rollPercent}`);
-        console.log(`Result: ${wasSuccess ? 'SUCCESS' : 'FAILURE'}`);
-        console.log('-------------------');
 
         return {
             wasSuccess,
             roll: rollPercent,
             target: targetPercent,
-            description: `Rolled ${rollPercent} vs ${targetPercent}%`
+            description: `Rolled ${rollPercent} vs ${targetPercent}% (Clamped: ${minChance}-${maxChance}%)`
         };
     }
 
@@ -545,5 +570,32 @@ export class GameEngine {
 
     private parseQualityChangesForDisplay(effects?: string, qualitiesBefore?: PlayerQualities): string[] {
         return [];
+    }
+
+    public renderStorylet(storylet: Storylet | Opportunity): Storylet | Opportunity {
+        // Deep copy to avoid mutating the cache
+        const rendered = JSON.parse(JSON.stringify(storylet));
+
+        // 1. Render Main Fields
+        rendered.name = this.evaluateBlock(rendered.name);
+        rendered.text = this.evaluateBlock(rendered.text);
+        if (rendered.short) rendered.short = this.evaluateBlock(rendered.short);
+        if (rendered.metatext) rendered.metatext = this.evaluateBlock(rendered.metatext);
+
+        // 2. Render Options
+        if (rendered.options) {
+            rendered.options = rendered.options.map((opt: ResolveOption) => {
+                const rOpt = { ...opt };
+                rOpt.name = this.evaluateBlock(rOpt.name);
+                if (rOpt.short) rOpt.short = this.evaluateBlock(rOpt.short);
+                if (rOpt.meta) rOpt.meta = this.evaluateBlock(rOpt.meta);
+                
+                // Note: We don't render result text (pass_long) here, 
+                // that happens only when the option is clicked.
+                return rOpt;
+            });
+        }
+
+        return rendered;
     }
 }

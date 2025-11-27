@@ -7,6 +7,7 @@ import { getContent } from '@/engine/contentCache';
 import { getLocationStorylets, getEvent } from '@/engine/worldService'; // Import these!
 import { Storylet, Opportunity } from '@/engine/models'; // Import types
 import GameHub from '@/components/GameHub';
+import { GameEngine } from '@/engine/gameEngine';
 
 
 const STORY_ID = 'trader_johns_world';
@@ -28,18 +29,27 @@ export default async function Home() {
     }
     
     const gameData = await getContent(STORY_ID); // Config only
-    
-     const initialLocation = gameData.locations[character.currentLocationId];
+
+    const initialLocation = gameData.locations[character.currentLocationId];
     if (!initialLocation) return <div>Error: Player in unknown location.</div>;
 
+    // Setup Engine
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+
+    // 1. Fetch & Render Hand
     const initialHandIds = character.opportunityHands?.[initialLocation.deck] || [];
-    
-    const initialHand = (await Promise.all(
+    const rawHand = (await Promise.all(
         initialHandIds.map((id: string) => getEvent(STORY_ID, id))
     )).filter((item): item is Opportunity => item !== null && 'deck' in item);
-        
-    const locationStorylets = await getLocationStorylets(STORY_ID, character.currentLocationId);
+    
+    // FIX: Cast the result of renderStorylet back to Opportunity
+    const initialHand = rawHand.map(card => engine.renderStorylet(card) as Opportunity);
 
+    // 2. Fetch & Render Location Storylets
+    const rawStorylets = await getLocationStorylets(STORY_ID, character.currentLocationId);
+    // FIX: Cast result to Storylet
+    const locationStorylets = rawStorylets.map(s => engine.renderStorylet(s) as Storylet);
+    
     // 3. BUILD MINI DICTIONARIES
     // We create a map of { [id]: object } for just the things we are showing.
     // This satisfies GameHub's requirement without loading the whole DB.

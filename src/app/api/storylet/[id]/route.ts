@@ -1,32 +1,43 @@
 // src/app/api/storylet/[id]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getEvent } from '@/engine/worldService'; // <-- Use the new, efficient service
-
-const STORY_ID = 'trader_johns_world'; // Assume a single story for now
+import { getEvent, getWorldConfig } from '@/engine/worldService';
+import { getCharacter } from '@/engine/characterService';
+import { GameEngine } from '@/engine/gameEngine';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(request: NextRequest) {
+    // 1. We need the User Session to get their Qualities for parsing
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = (session.user as any).id;
+
+    // 2. Get params
+    const id = request.nextUrl.pathname.split('/').pop();
+    const { searchParams } = new URL(request.url);
+    const storyId = searchParams.get('storyId') || 'trader_johns_world';
+
+    if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+
     try {
-        // Manually parse the ID from the request URL's pathname.
-        // request.nextUrl.pathname is '/api/storylet/trader_john_convo'
-        // .split('/') splits it into ['', 'api', 'storylet', 'trader_john_convo']
-        // .pop() gets the very last element.
-        const storyletId = request.nextUrl.pathname.split('/').pop();
+        // 3. Load Data
+        const event = await getEvent(storyId, id);
+        if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-        if (!storyletId) {
-            return NextResponse.json({ error: 'Could not determine Storylet ID from URL.' }, { status: 400 });
-        }
+        const character = await getCharacter(userId, storyId);
+        if (!character) return NextResponse.json({ error: 'No character' }, { status: 404 });
+        
+        const config = await getWorldConfig(storyId);
 
-        const event = await getEvent(STORY_ID, storyletId);
+        // 4. PRE-RENDER with Game Engine
+        const engine = new GameEngine(character.qualities, config, character.equipment);
+        const renderedEvent = engine.renderStorylet(event);
 
-        if (!event) {
-            return NextResponse.json({ error: `Event with ID '${storyletId}' not found` }, { status: 404 });
-        }
-
-        return NextResponse.json(event);
+        return NextResponse.json(renderedEvent);
 
     } catch (error) {
-        console.error(`[API /api/storylet]`, error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error(error);
+        return NextResponse.json({ error: 'Server Error' }, { status: 500 });
     }
 }

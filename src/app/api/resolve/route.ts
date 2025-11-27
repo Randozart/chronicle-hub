@@ -44,19 +44,29 @@ export async function POST(request: NextRequest) {
          }
     }
 
+    const option = storyletDef.options.find(o => o.id === optionId);
+    if (!option) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
 
     // 3. Process Action Economy (Existing logic...)
     if (gameData.settings.useActionEconomy) {
         character = await regenerateActions(character);
+        
+        const checkEngine = new GameEngine(character.qualities, gameData, character.equipment);
+        
+        let actionCost = 1; 
+        
+        if (option.action_cost) {
+            // Use evaluateBlock to handle "$cost_variable" or formulas
+            const resolvedCost = checkEngine.evaluateBlock(option.action_cost);
+            actionCost = parseInt(resolvedCost, 10);
+            if (isNaN(actionCost)) actionCost = 1;
+        }        
+
         const actionQid = gameData.settings.actionId.replace('$', '');
         const actionsState = character.qualities[actionQid] as any;
         if (actionsState.level < 1) return NextResponse.json({ error: 'No actions.' }, { status: 429 });
         actionsState.level -= 1;
     }
-
-    // 4. Resolve Option
-    const option = storyletDef.options.find(o => o.id === optionId);
-    if (!option) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
 
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
     const engineResult = engine.resolveOption(storyletDef, option);
