@@ -262,15 +262,45 @@ export class GameEngine {
             let evaluatedValue: string;
 
             const randomMatch = innerContent.match(/^(\d+)\s*~\s*(\d+)$/);
+            
+            let processedContent = innerContent.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
+
             if (randomMatch) {
                 const min = parseInt(randomMatch[1], 10);
                 const max = parseInt(randomMatch[2], 10);
                 evaluatedValue = (Math.floor(Math.random() * (max - min + 1)) + min).toString();
-            } else {
-                let processedContent = innerContent.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
+            } 
+            else if (processedContent.includes(':') || processedContent.includes('|')) {
+                const parts = processedContent.split('|');
+                let foundMatch = false;
+                evaluatedValue = ""; // Default empty
+
+                for (const part of parts) {
+                    const colonIndex = part.indexOf(':');
+                    if (colonIndex > -1) {
+                        const condition = part.substring(0, colonIndex).trim();
+                        const text = part.substring(colonIndex + 1).trim();
+                        
+                        const result = evaluateSimpleExpression(condition);
+                        const isTrue = typeof result === 'boolean' ? result : Number(result) > 0;
+                        
+                        if (isTrue) {
+                            evaluatedValue = text;
+                            foundMatch = true;
+                            break;
+                        }
+                    } else {
+                        evaluatedValue = part.trim();
+                        foundMatch = true;
+                        break;
+                    }
+                }
+            }
+            else {
                 const result = evaluateSimpleExpression(processedContent);
                 evaluatedValue = result.toString();
             }
+            
             currentExpression = currentExpression.replace(blockWithBraces, evaluatedValue);
         }
         
@@ -290,7 +320,6 @@ export class GameEngine {
     private performSkillCheck(match: RegExpMatchArray): SkillCheckResult {
         const [, qualitiesPart, operator, targetStr, bracketContent] = match;
         
-        // 1. Evaluate Target (might be a variable or calculation)
         const target = parseInt(this.evaluateBlock(targetStr), 10);
 
         // 2. Parse Brackets: [Margin, Min%, Max%]
@@ -326,7 +355,7 @@ export class GameEngine {
         const skillLevelResult = evaluateSimpleExpression(skillExpression);
         const skillLevel = typeof skillLevelResult === 'number' ? skillLevelResult : 0;
         
-        // 4. Calculate Broad Difficulty Probability
+        // 4. Calculate Difficulty Probability
         const lowerBound = target - margin;
         const upperBound = target + margin;
 

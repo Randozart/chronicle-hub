@@ -9,6 +9,7 @@ import LocationStorylets from './LocationStorylets';
 import CharacterSheet from './CharacterSheet';
 import Possessions from './Possessions'; 
 import ActionTimer from './ActionTimer';
+import ProfilePanel from './ProfilePanel';
 
 
 
@@ -41,7 +42,7 @@ export default function GameHub({
     const [hand, setHand] = useState(initialHand);
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'story' | 'possessions'>('story');
+    const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
 
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
         setCharacter(prev => ({ ...prev, qualities: newQualities } as CharacterDocument));
@@ -202,10 +203,20 @@ export default function GameHub({
                     >
                         Possessions
                     </button>
+                    <button 
+                        onClick={() => setActiveTab('profile')}
+                        style={{ padding: '0.5rem 1rem', background: activeTab === 'profile' ? '#3e4451' : 'transparent', color: 'white', border: 'none', cursor: 'pointer' }}
+                    >
+                        Myself
+                    </button>
                 </div>
 
-                {/* --- CONDITIONAL RENDERING --- */}
-                {activeTab === 'possessions' ? (
+                {activeTab === 'profile' ? (
+                    <ProfilePanel 
+                        qualities={character.qualities}
+                        qualityDefs={qualityDefs}
+                    />
+                ) : activeTab === 'possessions' ? (
                     <Possessions 
                         qualities={character.qualities}
                         equipment={character.equipment}
