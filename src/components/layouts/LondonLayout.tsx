@@ -90,7 +90,7 @@ export default function LondonLayout(props: LayoutProps) {
                 
                 {/* Banner Content */}
                 <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', padding: '2rem', textAlign: 'center', width: '100%', maxWidth: '1200px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', fontFamily: 'serif', letterSpacing: '2px' }}>
+                    <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', fontFamily: 'inherit', letterSpacing: '2px' }}>
                         {props.location.name}
                     </h1>
                     

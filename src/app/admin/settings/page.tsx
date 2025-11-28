@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { WorldSettings } from '@/engine/models';
+import ThemePreview from './components/ThemePreview';
 
 // We need to extend the Settings type locally to include char_create dictionary, 
 // as it is technically part of WorldConfig, not WorldSettings interface, 
@@ -208,6 +209,85 @@ export default function SettingsAdmin() {
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd' }}>Interface Theme</label>
                 
+                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                    {/* Left: Controls */}
+                    <div style={{ flex: 1, minWidth: '250px' }}>
+                        <div className="form-group">
+                            <label className="form-label">Layout Style</label>
+                            <select 
+                                value={form.layoutStyle || 'nexus'} 
+                                onChange={e => handleChange('layoutStyle', e.target.value)}
+                                className="form-select"
+                            >
+                                <option value="nexus">Classic (Icon Header)</option>
+                                <option value="london">Cinematic (Full Banner)</option>
+                                <option value="elysium">Immersive (Split View)</option>
+                                <option value="tabletop">Tabletop (Three Column)</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Visual Theme</label>
+                            <select 
+                                value={form.visualTheme || 'default'} 
+                                onChange={e => handleChange('visualTheme', e.target.value)}
+                                className="form-select"
+                                size={10} // Show list box for easier browsing
+                            >
+                                <option value="default">Default</option>
+                                <option value="victorian">Victorian</option>
+                                <option value="terminal">Terminal</option>
+                                <option value="parchment">Parchment</option>
+                                <option value="noir">Noir</option>
+                                <option value="cyberpunk">Cyberpunk</option>
+                                <option value="dark-fantasy">Dark Fantasy</option>
+                                <option value="pirate">Pirate</option>
+                                <option value="solarpunk">Solarpunk</option>
+                                <option value="lab">Laboratory</option>
+                                <option value="druidic">Druidic</option>
+                                <option value="neo-tokyo">Synthwave</option>
+                                <option value="gothic">Gothic</option>
+                                <option value="western">Western</option>
+                                <option value="grimdark-sci-fi">Dark Sci-Fi</option>
+                                <option value="jrpg-bright">Bright JRPG</option>
+                                <option value="abyssal">Abyssal</option>
+                                <option value="arcanotech">Magitech</option>
+                                <option value="terminal-amber">VT220</option>
+                                <option value="arabesque">Arabesque</option>
+                                <option value="art-deco">Art Deco</option>
+                                <option value="steampunk">Steampunk</option>
+                                <option value="candy">Bubblegum</option>
+                                <option value="stone-dwarven">Mountain Dwarf</option>
+                                <option value="classic-scifi">Classic Sci-Fi</option>
+                                <option value="revolutionary">Revolutionary</option>
+                                <option value="solar">Utopia</option>
+                                <option value="occult-academic">Occult Academia</option>
+                                <option value="renaissance">Renaissance</option>
+                                <option value="ink-brass">Dieselpunk</option>
+                                <option value="ukiyoe">Ukiyo-e</option>
+                                <option value="imperial-rome">Imperial Rome</option>
+                                <option value="corpocracy">Corpocracy</option>
+                                <option value="witch-folk">Witch Folk</option>
+                                <option value="vaporwave">Vaporwave</option>
+                                <option value="nordic">Nordic</option>
+                                <option value="frontier">Frontier</option>
+                                <option value="bayou">Bayou</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Right: Preview */}
+                    <div style={{ flex: 1, minWidth: '300px' }}>
+                        <ThemePreview theme={form.visualTheme || 'default'} />
+                    </div>
+                </div>
+            
+
+
+
+            {/* <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                <label className="special-label" style={{ color: '#c678dd' }}>Interface Theme</label>
+                
                 <div className="form-group">
                     <label className="form-label">Visual Theme</label>
                     <select 
@@ -223,6 +303,37 @@ export default function SettingsAdmin() {
                         <option value="cyberpunk">Cyberpunk</option>
                         <option value="dark-fantasy">Dark Fantasy</option>
                         <option value="pirate">Pirate</option>
+                        <option value="solarpunk">Solarpunk</option>
+                        <option value="lab">Laboratory</option>
+                        <option value="druidic">Druidic</option>
+                        <option value="neo-tokyo">Synthwave</option>
+                        <option value="gothic">Gothic</option>
+                        <option value="western">Western</option>
+                        <option value="grimdark-sci-fi">Dark Sci-Fi</option>
+                        <option value="jrpg-bright">Bright JRPG</option>
+                        <option value="abyssal">Abyssal</option>
+                        <option value="arcanotech">Magitech</option>
+                        <option value="terminal-amber">VT220</option>
+                        <option value="arabesque">Arabesque</option>
+                        <option value="art-deco">Art Deco</option>
+                        <option value="steampunk">Steampunk</option>
+                        <option value="candy">Bubblegum</option>
+                        <option value="stone-dwarven">Mountain Dwarf</option>
+                        <option value="classic-scifi">Classic Sci-Fi</option>
+                        <option value="revolutionary">Revolutionary</option>
+                        <option value="solar">Utopia</option>
+                        <option value="occult-academic">Occult Academia</option>
+                        <option value="renaissance">Renaissance</option>
+                        <option value="ink-brass">Dieselpunk</option>
+                        <option value="ukiyoe">Ukiyo-e</option>
+                        <option value="imperial-rome">Imperial Rome</option>
+                        <option value="corpocracy">Corpocracy</option>
+                        <option value="witch-folk">Witch Folk</option>
+                        <option value="vaporwave">Vaporwave</option>
+                        <option value="nordic">Nordic</option>
+                        <option value="frontier">Frontier</option>
+                        <option value="bayou">Bayou</option>
+                       
 
                     </select>
                 </div>
@@ -239,7 +350,7 @@ export default function SettingsAdmin() {
                         <option value="elysium">Immersive (Split View)</option>
                         <option value="tabletop">Tabletop (Three Column)</option>
                     </select>
-                </div>
+                </div> */}
 
                 {(form.layoutStyle === 'elysium' || form.layoutStyle === 'tabletop') && (
                     <div style={{ marginTop: '1rem' }}>

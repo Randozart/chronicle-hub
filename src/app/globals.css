@@ -1,3 +1,13 @@
+@keyframes glitch {
+  0% { text-shadow: 0.05em 0 0 #00fffa, -0.05em 0 0 #ff0055; }
+  14% { text-shadow: 0.05em 0 0 #00fffa, -0.05em 0 0 #ff0055; }
+  15% { text-shadow: -0.05em -0.025em 0 #00fffa, 0.025em 0.025em 0 #ff0055; }
+  49% { text-shadow: -0.05em -0.025em 0 #00fffa, 0.025em 0.025em 0 #ff0055; }
+  50% { text-shadow: 0.025em 0.05em 0 #00fffa, 0.05em 0 0 #ff0055; }
+  99% { text-shadow: 0.025em 0.05em 0 #00fffa, 0.05em 0 0 #ff0055; }
+  100% { text-shadow: -0.025em 0 0 #00fffa, -0.05em -0.025em 0 #ff0055; }
+}
+
 /* --- THEME DEFINITIONS --- */
 :root {
     /* DEFAULT (DARK IDE) THEME */
@@ -23,38 +33,35 @@
     --progress-bg: #2c3e50;
     --progress-fill: #3498db;
     
-    --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-main: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; /* Using Inter as a modern default */
     --border-radius: 8px;
 }
 
 /* --- THEME 1: VICTORIAN (Fallen London) --- */
 [data-theme='victorian'] {
-    --bg-main: #0b0f0b url('/themes/victorian/bg.png'); /* Subtle textured background */
+    --bg-main: #0b0f0b url('/themes/victorian/bg.png');
     --bg-panel: #131814;
     --bg-item: #1f2621;
     --bg-item-hover: #2a332c;
-    
     --border-color: #3d4c42;
     --border-light: #526358;
-    
     --text-primary: #e3dccb;
     --text-secondary: #a8b5ad;
     --text-muted: #6b7d72;
-    
-    --accent-primary: #3d2e18;
-    --accent-hover: #5c4826;
-    --accent-highlight: #c5a059; /* Gold */
-    
-    --success-color: #c5a059;
+    --accent-primary: #4a381f; /* Deeper brass */
+    --accent-hover: #634f2d;
+    --accent-highlight: #b89a56; /* Tarnished Gold/Brass */
+    --success-color: #b89a56;
     --danger-color: #8a3b3b;
-    
     --progress-bg: #1f2621;
-    --progress-fill: #c5a059;
-    
-    --font-main: "Georgia", "Times New Roman", serif;
+    --progress-fill: #b89a56;
+    --font-main: var(--font-im-fell), "Times New Roman", serif;
     --border-radius: 2px;
 }
 
+[data-theme='terminal'] .text-class { /* Example selector */
+   text-shadow: 0 0 3px rgba(51, 255, 0, 0.4);
+}
 /* --- THEME 2: TERMINAL (Sci-Fi) --- */
 [data-theme='terminal'] {
     --bg-main: #000000;
@@ -79,7 +86,7 @@
     --progress-bg: #111;
     --progress-fill: #33ff00;
     
-    --font-main: "Courier New", monospace;
+    --font-main: var(--font-jetbrains), monospace;
     --border-radius: 0px;
 }
 
@@ -107,7 +114,7 @@
     --progress-bg: #d7ccc8;
     --progress-fill: #8d2d2d;
     
-    --font-main: "Georgia", serif;
+    --font-main: var(--font-garamond), "Georgia", serif;
     --border-radius: 3px;
 }
 
@@ -117,26 +124,20 @@
     --bg-panel: #222222;
     --bg-item: #333333;
     --bg-item-hover: #444444;
-    
     --border-color: #555555;
     --border-light: #666666;
-    
     --text-primary: #e0e0e0;
     --text-secondary: #aaaaaa;
     --text-muted: #777777;
-    
     --accent-primary: #616161;
     --accent-hover: #757575;
-    --accent-highlight: #ffc107; /* Amber */
-    
-    --success-color: #ffffff;
+    --accent-highlight: #d9a404; /* Moodier Amber */
+    --success-color: #cccccc;
     --danger-color: #ef5350;
-    
     --progress-bg: #424242;
-    --progress-fill: #ffc107;
-    
-    --font-main: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    --border-radius: 4px;
+    --progress-fill: #d9a404;
+    --font-main: var(--font-special-elite), monospace;
+    --border-radius: 2px; /* Sharper corners */
 }
 
 /* --- CYBERPUNK --- */
@@ -166,7 +167,7 @@
     --progress-bg: #161b22;
     --progress-fill: #1f6feb; /* GitHub Blue */
 
-    --font-main: "Fira Code", "Roboto Mono", monospace;
+    --font-main: var(--font-fira-code), "Roboto Mono", monospace;
     --border-radius: 6px;
 }
 
@@ -197,39 +198,812 @@
     --progress-bg: #2a2828;
     --progress-fill: #8c9d8c;
 
-    --font-main: "Crimson Text", "IM Fell English", serif;
+    --font-main: var(--font-crimson-text), var(--font-im-fell), serif;
     --border-radius: 2px;
 }
 
 /* --- PIRATE (NAUTICAL) --- */
 [data-theme='pirate'] {
-    --bg-main: #5e4a3a;
-    --bg-panel: #fdf6e3;
+    --bg-main: #3a2e22 url('/themes/pirate/wood-plank.png'); /* Dark wood bg */
+    --bg-panel: #fdf6e3; /* Parchment panel */
     --bg-item: #e8dcc4;
     --bg-item-hover: #d2c3a9;
-
-    --border-color: #8d6e63;
+    --border-color: #8d6e63; /* Rope/leather color */
     --border-light: #a1887f;
-
-    --text-primary: #4e342e;
+    --text-primary: #4e342e; /* Dark ink on parchment */
     --text-secondary: #6d4c41;
     --text-muted: #795548;
-
     --accent-primary: #795548;
     --accent-hover: #5d4037;
     --accent-highlight: #d9a025; /* Gold Coin */
-
-    --success-color: #2e7d32;
-    --success-bg: rgba(46, 125, 50, 0.1);
-
-    --danger-color: #b71c1c;
-    --danger-bg: rgba(183, 28, 28, 0.1);
-
+    --success-color: #2e7d32; /* Emerald/Jungle green */
+    --danger-color: #b71c1c; /* Blood red */
     --progress-bg: #d7ccc8;
-    --progress-fill: #8d2d2d;
+    --progress-fill: #d9a025;
+    --font-main: var(--font-pirata), serif;
+    --border-radius: 3px;
+}
 
-    --font-main: "Georgia", serif;
+[data-theme='solarpunk'] {
+    --bg-main: #f0f7e9; 
+    --bg-panel: #ffffff;
+    --bg-item: #e7f2dd;
+    --bg-item-hover: #d9eccc;
+
+    --border-color: #b5c9a9;
+    --border-light: #cfe1c2;
+
+    --text-primary: #355834;
+    --text-secondary: #4a7550;
+    --text-muted: #7b9a78;
+
+    --accent-primary: #6bbb8a;      /* Leaf green */
+    --accent-hover: #5aa674;
+    --accent-highlight: #ffb347;    /* Solar orange */
+
+    --success-color: #6bbb8a;
+    --danger-color: #d65555;
+
+    --progress-bg: #d9eccc;
+    --progress-fill: #6bbb8a;
+
+    --font-main: var(--font-inter), "Segoe UI", sans-serif;
+    --border-radius: 10px;
+}
+
+[data-theme='lab'] {
+    --bg-main: #e5ecef;
+    --bg-panel: #f8fbfc;
+    --bg-item: #e2e8ea;
+    --bg-item-hover: #d5dfe2;
+
+    --border-color: #b8c3c7;
+    --border-light: #d0dadf;
+
+    --text-primary: #1a2428;
+    --text-secondary: #43525a;
+    --text-muted: #7c8a90;
+
+    --accent-primary: #1db7d5;      /* Cyan tech */
+    --accent-hover: #199eb7;
+    --accent-highlight: #00e5ff;
+
+    --success-color: #28a745;
+    --danger-color: #d9534f;
+
+    --progress-bg: #cfd8dc;
+    --progress-fill: #1db7d5;
+
+    --font-main: var(--font-inter), "Segoe UI", sans-serif;
+    --border-radius: 6px;
+}
+
+[data-theme='druidic'] {
+    --bg-main: #0e1a12;
+    --bg-panel: #14251a;
+    --bg-item: #1c3a28;
+    --bg-item-hover: #254c35;
+
+    --border-color: #3d5f47;
+    --border-light: #527c5e;
+
+    --text-primary: #d2eada;
+    --text-secondary: #9dbfad;
+    --text-muted: #6e8b7a;
+
+    --accent-primary: #3f7f59;
+    --accent-hover: #519f73;
+    --accent-highlight: #b8ff66; /* Bioluminescent green */
+
+    --success-color: #7ed957;
+    --danger-color: #c0392b;
+
+    --progress-bg: #1c3a28;
+    --progress-fill: #3f7f59;
+
+    --font-main: var(--font-uncial), var(--font-im-fell), serif; /* Uncial is perfect for this */
+    --border-radius: 3px;
+}
+
+[data-theme='neo-tokyo'] {
+    --bg-main: #060013;
+    --bg-panel: #240046;
+    --bg-item: #32006b;
+    --bg-item-hover: #400080;
+
+    --border-color: #8234c9;
+    --border-light: #b875ff;
+
+    --text-primary: #f0d4ff;
+    --text-secondary: #bfa3d9;
+    --text-muted: #8669a6;
+
+    --accent-primary: #ff5ea6;     /* Neon pink */
+    --accent-hover: #ff7ec4;
+    --accent-highlight: #42e7ff;   /* Cyan neon */
+
+    --success-color: #42e7aa;
+    --danger-color: #ff467d;
+
+    --progress-bg: #32006b;
+    --progress-fill: #ff5ea6;
+
+    --font-main: var(--font-montserrat), sans-serif;
+    --border-radius: 6px;
+}
+
+[data-theme='gothic'] {
+    --bg-main: #0c0d0f;
+    --bg-panel: #16181b;
+    --bg-item: #1f2125;
+    --bg-item-hover: #2a2d33;
+    --border-color: #4a0e1c; /* Deep wine/blood border */
+    --border-light: #6c2333;
+    --text-primary: #d5d2cd;
+    --text-secondary: #a8a4a0;
+    --text-muted: #777572;
+    --accent-primary: #4b1a1a;
+    --accent-hover: #6a2525;
+    --accent-highlight: #b32a2a; /* Blood crimson */
+    --success-color: #7da27d;
+    --danger-color: #b32a2a;
+    --progress-bg: #1f2125;
+    --progress-fill: #b32a2a;
+    --font-main: var(--font-grenze), serif; /* CHANGED */
+    --border-radius: 0px; /* Sharp, architectural corners */
+}
+
+[data-theme='western'] {
+    --bg-main: #4b3621; /* Dark wood, like a bar */
+    --bg-panel: #fff8ef; /* Lighter, like a wanted poster */
+    --bg-item: #e7d3bb;
+    --bg-item-hover: #d8bea0;
+    --border-color: #b08968;
+    --border-light: #d4a276;
+    --text-primary: #3a291b; /* Dark text on light panel */
+    --text-secondary: #5b442f;
+    --text-muted: #7a634d;
+    --accent-primary: #8c4f2b; /* Leather */
+    --accent-hover: #a06339;
+    --accent-highlight: #4691d9; /* Denim blue */
+    --progress-bg: #d8bea0;
+    --progress-fill: #8c4f2b;
+    --font-main: var(--font-roboto-slab), serif;
+    --border-radius: 3px;
+}
+
+[data-theme='grimdark-sci-fi'] {
+    --bg-main: #0a0d0f;
+    --bg-panel: #101418;
+    --bg-item: #171c21;
+    --bg-item-hover: #1f262d;
+
+    --border-color: #2a3036;
+    --border-light: #3a424a;
+
+    --text-primary: #c9d2d8;
+    --text-secondary: #88949c;
+    --text-muted: #586168;
+
+    --accent-primary: #24424f;
+    --accent-hover: #2e5968;
+    --accent-highlight: #53c0da; /* cold cyan */
+
+    --success-color: #7bb39e; /* pale green */
+    --danger-color: #b66363; /* desaturated blood red */
+
+    --progress-bg: #171c21;
+    --progress-fill: #53c0da;
+
+    --font-main: var(--font-orbitron), sans-serif;
+    --border-radius: 2px;
+}
+
+[data-theme='jrpg-bright'] {
+    --bg-main: #f0f6ff;
+    --bg-panel: #ffffff;
+    --bg-item: #e7f0ff;
+    --bg-item-hover: #d8e7ff;
+
+    --border-color: #aac6ff;
+    --border-light: #c7dbff;
+
+    --text-primary: #1c2d5a;
+    --text-secondary: #425a93;
+    --text-muted: #788ab3;
+
+    --accent-primary: #3a72ff;
+    --accent-hover: #1d5aff;
+    --accent-highlight: #ffca3a; /* JRPG gold */
+
+    --success-color: #2ecc71;
+    --danger-color: #e74c3c;
+
+    --progress-bg: #d8e7ff;
+    --progress-fill: #3a72ff;
+
+    --font-main: var(--font-nunito), "Helvetica", sans-serif;
+    --border-radius: 10px;
+}
+
+[data-theme='abyssal'] {
+    --bg-main: #040d14;
+    --bg-panel: #07141f;
+    --bg-item: #0a1c28;
+    --bg-item-hover: #0f2534;
+
+    --border-color: #123047;
+    --border-light: #1f4b6d;
+
+    --text-primary: #c3eaff;
+    --text-secondary: #88b8d4;
+    --text-muted: #4e6f84;
+
+    --accent-primary: #0c425c;
+    --accent-hover: #145c80;
+    --accent-highlight: #27f2da; /* bioluminescent teal */
+
+    --success-color: #27f2da;
+    --danger-color: #ff4f67;
+
+    --progress-bg: #0a1c28;
+    --progress-fill: #27f2da;
+
+    --font-main: var(--font-inter), sans-serif;
     --border-radius: 4px;
+}
+[data-theme='arcanotech'] .panel-class { /* Example selector */
+    box-shadow: 0 0 8px rgba(141, 216, 255, 0.2); /* Uses --accent-highlight color */
+}
+
+[data-theme='arcanotech'] {
+    --bg-main: #0c0e14;
+    --bg-panel: #141722;
+    --bg-item: #1c2230;
+    --bg-item-hover: #252d3f;
+
+    --border-color: #394b66;
+    --border-light: #52688a;
+
+    --text-primary: #d5e6ff;
+    --text-secondary: #9fb7d6;
+    --text-muted: #6f7f99;
+
+    --accent-primary: #2e4aa8;
+    --accent-hover: #3c60d4;
+    --accent-highlight: #8dd8ff; /* mana glow */
+    --accent-highlight-rgb: 141, 216, 255; /* NEW: RGB version for box-shadow */
+
+    --success-color: #7ecfff;
+    --danger-color: #db5e7e;
+
+    --progress-bg: #1c2230;
+    --progress-fill: #8dd8ff;
+
+    --font-main: var(--font-cinzel), serif;
+    --border-radius: 3px;
+}
+
+[data-theme='terminal-amber'] {
+    --bg-main: #000000;
+    --bg-panel: #0a0a00;
+    --bg-item: #111100;
+    --bg-item-hover: #222200;
+
+    --border-color: #ffb000;
+    --border-light: #ffcc33;
+
+    --text-primary: #ffcc66;
+    --text-secondary: #ffb84d;
+    --text-muted: #996600;
+
+    --accent-primary: #664400;
+    --accent-hover: #886600;
+    --accent-highlight: #ffdd88;
+
+    --success-color: #ffee99;
+    --danger-color: #ff5500;
+
+    --progress-bg: #111100;
+    --progress-fill: #ffcc66;
+
+    --font-main: var(--font-jetbrains), "Courier New", monospace;
+    --border-radius: 0;
+}
+
+[data-theme='arabesque'] {
+    --bg-main: #f0e8d8;
+    --bg-panel: #faf4e6;
+    --bg-item: #efe3c9;
+    --bg-item-hover: #e2d2b0;
+
+    --border-color: #c8a97e;
+    --border-light: #e0c9a1;
+
+    --text-primary: #5a3b1e;
+    --text-secondary: #7a5632;
+    --text-muted: #9c7a52;
+
+    --accent-primary: #a67c36;
+    --accent-hover: #c29448;
+    --accent-highlight: #e8c15c; /* bright desert gold */
+
+    --success-color: #3f8d6b;
+    --danger-color: #a33f3f;
+
+    --progress-bg: #e2d2b0;
+    --progress-fill: #e8c15c;
+
+    --font-main: var(--font-cormorant), serif;
+    --border-radius: 6px;
+}
+
+[data-theme='art-deco'] {
+    --bg-main: #111111;
+    --bg-panel: #1a1a1a;
+    --bg-item: #222222;
+    --bg-item-hover: #2a2a2a;
+    --border-color: #bfa76f; /* Strong gold border */
+    --border-light: #e6d8a5;
+    --text-primary: #f5ecd7;
+    --text-secondary: #c7b999;
+    --text-muted: #8f846c;
+    --accent-primary: #a88949;
+    --accent-hover: #c2a35b;
+    --accent-highlight: #f5d88a; /* Shimmering gold */
+    --success-color: #d5c48b;
+    --danger-color: #d66f6f;
+    --progress-bg: #222222;
+    --progress-fill: #f5d88a;
+    --font-main: var(--font-righteous), sans-serif; /* CHANGED */
+    --border-radius: 0;
+}
+
+[data-theme='steampunk'] {
+    --bg-main: #2c231a;
+    --bg-panel: #3b2f23;
+    --bg-item: #4a3b2c;
+    --bg-item-hover: #5a4a36;
+
+    --border-color: #8f6a42;
+    --border-light: #c49a6c;
+
+    --text-primary: #f1e4c7;
+    --text-secondary: #d2c1a4;
+    --text-muted: #a59072;
+
+    --accent-primary: #704b2d;
+    --accent-hover: #8d603a;
+    --accent-highlight: #e3b56f; /* brass */
+
+    --success-color: #7ebf78;
+    --danger-color: #b75a4a;
+
+    --progress-bg: #4a3b2c;
+    --progress-fill: #e3b56f;
+
+    --font-main: var(--font-im-fell), var(--font-garamond), serif;
+    --border-radius: 2px;
+}
+
+[data-theme='candy'] {
+    --bg-main: #fff7fc;
+    --bg-panel: #ffffff;
+    --bg-item: #fdeaff;
+    --bg-item-hover: #fbd6ff;
+
+    --border-color: #ffb7f5;
+    --border-light: #ffd1fa;
+
+    --text-primary: #66336b;
+    --text-secondary: #8f4a96;
+    --text-muted: #b66ebf;
+
+    --accent-primary: #ff6ad5; /* bubblegum pink */
+    --accent-hover: #ff82dd;
+    --accent-highlight: #6ae2ff; /* cotton-candy blue */
+
+    --success-color: #8be379;
+    --danger-color: #ff6b6b;
+
+    --progress-bg: #fdeaff;
+    --progress-fill: #ff6ad5;
+
+    --font-main: var(--font-poppins), var(--font-comic-neue), sans-serif;
+    --border-radius: 12px;
+}
+
+[data-theme='stone-dwarven'] {
+    --bg-main: #1c1c1c url('/themes/dwarf/stone-texture.png'); /* Add a subtle stone bg texture */
+    --bg-panel: #242424;
+    --bg-item: #2f2f2f;
+    --bg-item-hover: #3a3a3a;
+    --border-color: #595959;
+    --border-light: #7a7a7a;
+    --text-primary: #e0d9cf;
+    --text-secondary: #b3aba1;
+    --text-muted: #7d766e;
+    --accent-primary: #8a5529; /* copper */
+    --accent-hover: #a96c36;
+    --accent-highlight: #ff9a3c; /* molten orange */
+    --success-color: #8fbf6e;
+    --danger-color: #c16666;
+    --progress-bg: #2f2f2f;
+    --progress-fill: #ff9a3c;
+    --font-main: var(--font-roboto-slab), var(--font-cinzel), serif;
+    --border-radius: 1px;
+
+    /* NEW: Variables for the shadow effect */
+    --shadow-dark: #111;
+    --shadow-light: #444;
+}
+
+[data-theme='classic-scifi'] {
+    --bg-main: #e7ebee;
+    --bg-panel: #f8fafc;
+    --bg-item: #d8dce0;
+    --bg-item-hover: #c9cdd2;
+
+    --border-color: #9aa0a6;
+    --border-light: #c5c9ce;
+
+    --text-primary: #1d242b;
+    --text-secondary: #3b4753;
+    --text-muted: #6a7885;
+
+    --accent-primary: #ff6b00; /* NASA orange */
+    --accent-hover: #cc5600;
+    --accent-highlight: #007bff; /* Bright CRT blue */
+
+    --success-color: #2e8b57;
+    --danger-color: #b22222;
+
+    --progress-bg: #cfd4d8;
+    --progress-fill: #007bff;
+
+    --font-main: var(--font-orbitron), sans-serif;
+    --border-radius: 4px;
+}
+
+[data-theme='revolutionary'] {
+    --bg-main: #f5efe2; /* parchment cream */
+    --bg-panel: #faf7f0;
+    --bg-item: #ede6d8;
+    --bg-item-hover: #e2d8c5;
+
+    --border-color: #7a5e47;
+    --border-light: #9c836b;
+
+    --text-primary: #2a1f1a; /* ink brown */
+    --text-secondary: #4a3a32;
+    --text-muted: #6f5b4e;
+
+    --accent-primary: #b61b1b; /* revolution red */
+    --accent-hover: #8d1414;
+    --accent-highlight: #dbb34b; /* gold leaf */
+
+    --success-color: #386641;
+    --danger-color: #9e2a2b;
+
+    --progress-bg: #ddd2be;
+    --progress-fill: #b61b1b;
+
+    --font-main: var(--font-garamond), serif;
+    --border-radius: 2px;
+}
+
+[data-theme='solar'] {
+    --bg-main: linear-gradient(180deg, #0b0f28, #142f52 40%, #175b6b);
+    --bg-panel: rgba(255, 255, 255, 0.12);
+    --bg-item: rgba(255, 255, 255, 0.08);
+    --bg-item-hover: rgba(255, 255, 255, 0.16);
+
+    --border-color: #7bd3ff;
+    --border-light: #a3e9ff;
+
+    --text-primary: #dff6ff;
+    --text-secondary: #8bc5d3;
+    --text-muted: #5e8b99;
+
+    --accent-primary: #7ee8fa; /* glowing aqua */
+    --accent-hover: #63d1df;
+    --accent-highlight: #ffe084; /* sunlight gold */
+
+    --success-color: #7cf2aa;
+    --danger-color: #ff6e6e;
+
+    --progress-bg: rgba(255,255,255,0.15);
+    --progress-fill: #7ee8fa;
+
+    --font-main: var(--font-inter), sans-serif;
+    --border-radius: 10px;
+}
+
+[data-theme='occult-academic'] {
+    --bg-main: #1a1318;
+    --bg-panel: #231a22;
+    --bg-item: #2f242d;
+    --bg-item-hover: #3b2f39;
+
+    --border-color: #775c69;
+    --border-light: #9d8290;
+
+    --text-primary: #e9dfe7;
+    --text-secondary: #c5b4c1;
+    --text-muted: #8f7b8a;
+
+    --accent-primary: #8c3d65; /* wine */
+    --accent-hover: #a3507c;
+    --accent-highlight: #d2a86e; /* brass */
+
+    --success-color: #7da87b;
+    --danger-color: #b34a5a;
+
+    --progress-bg: #3b2f39;
+    --progress-fill: #a3507c;
+
+    --font-main: var(--font-merriweather), serif;
+    --border-radius: 3px;
+}
+
+[data-theme='renaissance'] {
+    --bg-main: #f7f3ec;
+    --bg-panel: #fffdf8;
+    --bg-item: #efe8da;
+    --bg-item-hover: #e2d9c7;
+
+    --border-color: #b89b6c; /* gold/burnished bronze */
+    --border-light: #d4c19a;
+
+    --text-primary: #3d2c1e;
+    --text-secondary: #5c4733;
+    --text-muted: #85715a;
+
+    --accent-primary: #1d3b78; /* lapis */
+    --accent-hover: #254c99;
+    --accent-highlight: #c19a4c; /* gold leaf */
+
+    --success-color: #3c7a4a;
+    --danger-color: #a63d40;
+
+    --progress-bg: #d9cfbd;
+    --progress-fill: #c19a4c;
+
+    --font-main: var(--font-garamond), serif;
+    --border-radius: 3px;
+}
+
+[data-theme='ink-brass'] {
+    --bg-main: #111416;
+    --bg-panel: #1a1e21;
+    --bg-item: #22272a;
+    --bg-item-hover: #2e353a;
+
+    --border-color: #6a5640; /* brass */
+    --border-light: #8b7558;
+
+    --text-primary: #dcd2c4;
+    --text-secondary: #b5a897;
+    --text-muted: #7a7065;
+
+    --accent-primary: #8b5e34; /* tarnished copper */
+    --accent-hover: #a67645;
+    --accent-highlight: #cba268; /* polished brass */
+
+    --success-color: #5c8f65;
+    --danger-color: #b34539;
+
+    --progress-bg: #2f363a;
+    --progress-fill: #cba268;
+
+    --font-main: var(--font-roboto-slab), serif;
+    --border-radius: 2px;
+}
+
+[data-theme='ukiyoe'] {
+    --bg-main: #f5f2e9; /* rice paper */
+    --bg-panel: #faf7f0;
+    --bg-item: #e7e1d1;
+    --bg-item-hover: #dcd5c2;
+    --border-color: #7a6a5b; /* warm wood */
+    --border-light: #9b8a77;
+    --text-primary: #2c1f17; /* sumi ink */
+    --text-secondary: #4a3a2e;
+    --text-muted: #6d5a4a;
+    --accent-primary: #3a5a78; /* indigo */
+    --accent-hover: #50749c;
+    --accent-highlight: #c33f3f; /* vermillion */
+    --success-color: #3d7a4e;
+    --danger-color: #a63a3a;
+    --progress-bg: #d6cec0;
+    --progress-fill: #3a5a78;
+    --font-main: var(--font-noto-serif-jp), serif;
+    --border-radius: 0px;
+}
+
+[data-theme='imperial-rome'] {
+    --bg-main: #f2eee9; /* marble */
+    --bg-panel: #fbf9f6;
+    --bg-item: #e7e1db;
+    --bg-item-hover: #d8d1c9;
+
+    --border-color: #8b6b47;
+    --border-light: #b19063;
+
+    --text-primary: #2e251c;
+    --text-secondary: #4c3f32;
+    --text-muted: #7b6a57;
+
+    --accent-primary: #6a1f58; /* imperial purple */
+    --accent-hover: #8a2c73;
+    --accent-highlight: #c89e3f; /* gold */
+
+    --success-color: #4c7c44; /* laurel green */
+    --danger-color: #992e2e; /* roman red */
+
+    --progress-bg: #d7cec5;
+    --progress-fill: #c89e3f;
+
+    --font-main: var(--font-cinzel), var(--font-garamond), serif;
+    --border-radius: 2px;
+}
+
+[data-theme='corpocracy'] {
+    /* NEW: A subtle, dark background makes the glass effect pop */
+    --bg-main: #0e0d16 url('/themes/corp/grid-bg.png');
+    --bg-panel: rgba(200, 205, 255, 0.08); /* Must be semi-transparent */
+    --bg-item: rgba(200, 205, 255, 0.1);
+    --bg-item-hover: rgba(200, 205, 255, 0.16);
+
+    --border-color: #6f7aff;
+    --border-light: #9fa6ff;
+    --text-primary: #e5e8ff;
+    --text-secondary: #b4b8e0;
+    --text-muted: #7d80a8;
+    --accent-primary: #7f5af0;
+    --accent-hover: #956ef5;
+    --accent-highlight: #23d9d1; /* neon cyan */
+    --success-color: #45ffb0;
+    --danger-color: #ff4e78;
+    --progress-bg: rgba(255,255,255,0.12);
+    --progress-fill: #23d9d1;
+    --font-main: var(--font-inter), sans-serif;
+    --border-radius: 8px; /* Slightly larger radius works well with glass */
+}
+
+[data-theme='witch-folk'] {
+    --bg-main: #1b1d17;
+    --bg-panel: #23251f;
+    --bg-item: #2a2d25;
+    --bg-item-hover: #35382f;
+
+    --border-color: #5a5e4c;
+    --border-light: #7e826c;
+
+    --text-primary: #e0e2d9;
+    --text-secondary: #b9bcae;
+    --text-muted: #7f8376;
+
+    --accent-primary: #6b2e2e; /* dried blood */
+    --accent-hover: #853939;
+    --accent-highlight: #a8b76c; /* pale moss */
+
+    --success-color: #7c8f66;
+    --danger-color: #8c3d3d;
+
+    --progress-bg: #2a2d25;
+    --progress-fill: #a8b76c;
+
+    --font-main: var(--font-crimson-text), serif;
+    --border-radius: 2px;
+}
+
+[data-theme='vaporwave'] {
+    --bg-main: #241b2f;
+    --bg-panel: #2e2440;
+    --bg-item: #3b2f55;
+    --bg-item-hover: #4c3b6c;
+
+    --border-color: #ff77ff;
+    --border-light: #ffc8ff;
+
+    --text-primary: #ffeefe;
+    --text-secondary: #d6bbff;
+    --text-muted: #a38cc4;
+
+    --accent-primary: #ff4ecb; /* neon pink */
+    --accent-hover: #ff72d8;
+    --accent-highlight: #72f6ff; /* aqua */
+
+    --success-color: #89ffc4;
+    --danger-color: #ff7e7e;
+
+    --progress-bg: #4c3b6c;
+    --progress-fill: #72f6ff;
+
+    --font-main: var(--font-josefin), sans-serif;
+    --border-radius: 6px;
+}
+
+[data-theme='nordic'] {
+    --bg-main: #0f1417;
+    --bg-panel: #171d21;
+    --bg-item: #1e262b;
+    --bg-item-hover: #283238;
+
+    --border-color: #445159;
+    --border-light: #6a7983;
+
+    --text-primary: #d7dde1;
+    --text-secondary: #a9b3ba;
+    --text-muted: #78848b;
+
+    --accent-primary: #375c6c; /* fjord blue */
+    --accent-hover: #447789;
+    --accent-highlight: #c2a878; /* bronze */
+
+    --success-color: #5f8d6a;
+    --danger-color: #8d4e4e;
+
+    --progress-bg: #1e262b;
+    --progress-fill: #375c6c;
+
+    --font-main: var(--font-crimson-text), serif;
+    --border-radius: 3px;
+}
+
+[data-theme='frontier'] {
+    --bg-main: #f0e4d2;
+    --bg-panel: #fdf8f0;
+    --bg-item: #e4d4b8;
+    --bg-item-hover: #d6c4a4;
+
+    --border-color: #8b6947;
+    --border-light: #a88a67;
+
+    --text-primary: #3a291b;
+    --text-secondary: #5b442f;
+    --text-muted: #7a634d;
+
+    --accent-primary: #b05c2e; /* saddle leather */
+    --accent-hover: #c9723d;
+    --accent-highlight: #d4b26e; /* prairie gold */
+
+    --success-color: #4b7d47;
+    --danger-color: #923d2e;
+
+    --progress-bg: #d1c0a5;
+    --progress-fill: #b05c2e;
+
+    --font-main: var(--font-roboto-slab), serif;
+    --border-radius: 3px;
+}
+
+[data-theme='bayou'] {
+    --bg-main: #0d120f;
+    --bg-panel: #141a16;
+    --bg-item: #1a221d;
+    --bg-item-hover: #253029;
+
+    --border-color: #506054;
+    --border-light: #748778;
+
+    --text-primary: #d6e1d7;
+    --text-secondary: #b4c2b7;
+    --text-muted: #87978d;
+
+    --accent-primary: #4a6d52; /* marsh green */
+    --accent-hover: #5e8a67;
+    --accent-highlight: #7df0ff; /* eerie blue flame */
+
+    --success-color: #76a97a;
+    --danger-color: #9d4f43;
+
+    --progress-bg: #1a221d;
+    --progress-fill: #4a6d52;
+
+    --font-main: var(--font-merriweather), serif;
+    --border-radius: 2px;
 }
 
 /* --- GLOBAL STYLES --- */
@@ -1323,4 +2097,112 @@ body {
     --_bg-item: var(--bg-item);
     --_text-primary: var(--text-primary);
     --_border-color: var(--border-color);
+}
+
+button, input, textarea, select, h1 {
+    font-family: inherit; /* Inherit var(--font-main) from body */
+    color: inherit;
+}
+
+[data-theme='terminal'] h1,
+[data-theme='terminal'] h2,
+[data-theme='terminal'] h3,
+[data-theme='terminal'] p,
+[data-theme='terminal'] .storylet-text,
+[data-theme='terminal'] .option-short-desc,
+[data-theme='terminal'] .quality-name,
+[data-theme='terminal'] .quality-level,
+[data-theme='terminal'] button {
+    text-shadow: 0 0 5px rgba(51, 255, 0, 0.5), 0 0 10px rgba(51, 255, 0, 0.3);
+}
+
+[data-theme='arcanotech'] .storylet-container,
+[data-theme='arcanotech'] .card,
+[data-theme='arcanotech'] .character-sheet,
+[data-theme='arcanotech'] .quality-category-card,
+[data-theme='arcanotech'] .equip-slot {
+    border-color: rgba(var(--accent-highlight-rgb), 0.4);
+    box-shadow: 0 0 12px rgba(var(--accent-highlight-rgb), 0.15);
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* Make the glow stronger on hover for interactive elements */
+[data-theme='arcanotech'] .card:hover {
+    border-color: rgba(var(--accent-highlight-rgb), 0.8);
+    box-shadow: 0 0 16px rgba(var(--accent-highlight-rgb), 0.3);
+}
+
+/* REVISED and CORRECTED RULE: Art Deco panels using four corner masks */
+[data-theme='art-deco'] .storylet-container,
+[data-theme='art-deco'] .character-sheet,
+[data-theme='art-deco'] .quality-category-card {
+    position: relative;
+    padding: 2rem;
+    
+    /* Create the straight border lines with a gradient */
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-image: linear-gradient(45deg, #f5d88a, #a88949);
+    border-image-slice: 1;
+}
+
+/* This pseudo-element will hold ALL FOUR corner graphics */
+[data-theme='art-deco'] .storylet-container::before,
+[data-theme='art-deco'] .character-sheet::before,
+[data-theme='art-deco'] .quality-category-card::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px; /* Align with the border edge */
+    right: -2px; bottom: -2px;
+    
+    /* Use the gold gradient for the corners' color */
+    background: linear-gradient(45deg, #f5d88a, #a88949);
+
+    /* The magic: use the FOUR SVGs as masks */
+    mask-image: url('/themes/art-deco/corner-tl.svg'), /* Top Left */
+                url('/themes/art-deco/corner-tr.svg'), /* Top Right */
+                url('/themes/art-deco/corner-bl.svg'), /* Bottom Left */
+                url('/themes/art-deco/corner-br.svg'); /* Bottom Right */
+                
+    mask-size: 20px 20px; /* The size of our SVG graphic */
+    mask-repeat: no-repeat;
+    
+    /* Position each of the four masks */
+    mask-position: top left, top right, bottom left, bottom right;
+    
+    /* NO TRANSFORM NEEDED! */
+}
+
+[data-theme='stone-dwarven'] .storylet-container,
+[data-theme='stone-dwarven'] .character-sheet,
+[data-theme='stone-dwarven'] .option-button,
+[data-theme='stone-dwarven'] .card {
+    border: 1px solid var(--shadow-dark);
+    box-shadow: -2px -2px 5px var(--shadow-light), 
+                2px 2px 5px var(--shadow-dark);
+    text-shadow: 1px 1px 2px var(--shadow-dark);
+    transition: box-shadow 0.1s ease-out;
+}
+
+[data-theme='stone-dwarven'] .option-button:active,
+[data-theme='stone-dwarven'] .card:active {
+    /* Inset shadow: Dark on top/left, Light on bottom/right creates a depressed look */
+    box-shadow: inset 2px 2px 5px var(--shadow-dark), 
+                inset -2px -2px 5px var(--shadow-light);
+}
+
+[data-theme='corpocracy'] .storylet-container,
+[data-theme='corpocracy'] .character-sheet,
+[data-theme='corpocracy'] .card,
+[data-theme='corpocracy'] .option-button {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px); /* For Safari */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Faint white border */
+}
+
+[data-theme='cyberpunk'] .option-button:hover h3,
+[data-theme='cyberpunk'] .card:hover h3,
+[data-theme='cyberpunk'] .deck-button:hover,
+[data-theme='cyberpunk'] .continue-button:hover {
+    animation: glitch 0.35s infinite linear;
 }
