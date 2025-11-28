@@ -272,6 +272,7 @@ export default function SettingsAdmin() {
                                 <option value="nordic">Nordic</option>
                                 <option value="frontier">Frontier</option>
                                 <option value="bayou">Bayou</option>
+                                <option value="starship">Starship</option>
                             </select>
                         </div>
                     </div>

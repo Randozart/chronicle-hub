@@ -1,0 +1,32 @@
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="brass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f1e4c7"/>
+      <stop offset="30%" stop-color="#e3b56f"/>
+      <stop offset="100%" stop-color="#8d603a"/>
+    </linearGradient>
+    <g id="gear-teeth">
+      <!-- Generate 8 teeth for a gear -->
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(0 0 0)"/>
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(45 0 0)"/>
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(90 0 0)"/>
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(135 0 0)"/>
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(180 0 0)"/>
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(225 0 0)"/>
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(270 0 0)"/>
+      <path d="M -5 -15 H 5 V -12 H -5 Z" transform="rotate(315 0 0)"/>
+    </g>
+    <g id="full-gear">
+      <circle r="12" fill="url(#brass)"/>
+      <use href="#gear-teeth" transform="translate(0 0)"/>
+    </g>
+  </defs>
+  <!-- Draw half gears on the edges and one full in the middle for slicing -->
+  <use href="#full-gear" transform="translate(0 50)" clip-path="url(#clipHalf)"/>
+  <use href="#full-gear" transform="translate(100 50)" clip-path="url(#clipHalf)"/>
+  <use href="#full-gear" transform="translate(50 0)" clip-path="url(#clipHalf)"/>
+  <use href="#full-gear" transform="translate(50 100)" clip-path="url(#clipHalf)"/>
+  <use href="#full-gear" transform="translate(50 50)"/>
+  <!-- Clip path to cut gears in half -->
+  <clipPath id="clipHalf"><rect x="-20" y="-20" width="20" height="40"/></clipPath>
+</svg>

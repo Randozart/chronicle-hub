@@ -8,6 +8,76 @@
   100% { text-shadow: -0.025em 0 0 #00fffa, -0.05em -0.025em 0 #ff0055; }
 }
 
+@keyframes cyberpunk-pulse {
+  0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 3px var(--accent-highlight)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 8px var(--accent-highlight)); }
+}
+
+@keyframes scroll-scanlines {
+  from { background-position-y: 0; }
+  to { background-position-y: 200px; } /* Animate the background position instead of the whole element */
+}
+
+@keyframes film-grain-flicker {
+  0% { opacity: 0.08; }
+  25% { opacity: 0.12; }
+  50% { opacity: 0.07; }
+  75% { opacity: 0.14; }
+  100% { opacity: 0.09; }
+}
+
+@keyframes synthwave-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 0 200px; } /* Scrolls the grid vertically */
+}
+
+@keyframes drift-particles {
+  from { transform: translateX(0px) translateY(0px); }
+  to { transform: translateX(-50px) translateY(-100px); }
+}
+
+@keyframes drift-particles-2 {
+  from { transform: translateX(0px) translateY(0px); }
+  to { transform: translateX(70px) translateY(-80px); }
+}
+
+[data-theme='neo-tokyo']::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* Create the grid with two repeating gradients */
+    background-image: 
+        repeating-linear-gradient(0deg, transparent, transparent 2px, var(--accent-primary) 3px, var(--accent-primary) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 2px, var(--accent-primary) 3px, var(--accent-primary) 4px);
+    background-size: 50px 50px;
+    
+    opacity: 0.5;
+    z-index: -1; /* Place it behind the content */
+    
+    /* The 3D effect */
+    perspective: 300px;
+    transform: rotateX(60deg) translateY(25%);
+    
+    /* The animation */
+    animation: synthwave-scroll 4s linear infinite;
+}
+
+body[data-theme='witch-folk']::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: url('/themes/witch-folk/noise.png'); /* You'll need a subtle noise/grain texture image */
+    opacity: 0.1;
+    pointer-events: none; /* Allows clicks to pass through */
+    z-index: -1;
+}
+
+
 /* --- THEME DEFINITIONS --- */
 :root {
     /* DEFAULT (DARK IDE) THEME */
@@ -666,30 +736,32 @@
 }
 
 [data-theme='revolutionary'] {
-    --bg-main: #f5efe2; /* parchment cream */
-    --bg-panel: #faf7f0;
-    --bg-item: #ede6d8;
-    --bg-item-hover: #e2d8c5;
+    --bg-main: #f2eadd; /* Aged, slightly rough paper */
+    --bg-panel: #fbf5ef;
+    --bg-item: #e9e0d4;
+    --bg-item-hover: #dcd0bf;
 
     --border-color: #7a5e47;
     --border-light: #9c836b;
 
-    --text-primary: #2a1f1a; /* ink brown */
+    --text-primary: #1e1a17; /* Stark, almost black ink */
     --text-secondary: #4a3a32;
     --text-muted: #6f5b4e;
 
-    --accent-primary: #b61b1b; /* revolution red */
-    --accent-hover: #8d1414;
-    --accent-highlight: #dbb34b; /* gold leaf */
+    /* THE NEW TRICOLOR PALETTE */
+    --accent-primary: #9d2323;   /* A deeper, richer Revolution Red */
+    --accent-secondary: #2a3d64; /* Revolutionary Blue */
+    --accent-highlight: #c7a448; /* Gilded/Mustard Yellow */
 
+    --accent-hover: #7b1c1c;
     --success-color: #386641;
-    --danger-color: #9e2a2b;
+    --danger-color: #9d2323; /* Danger is now the primary red */
 
     --progress-bg: #ddd2be;
-    --progress-fill: #b61b1b;
+    --progress-fill: var(--accent-secondary); /* Use blue for progress */
 
-    --font-main: var(--font-garamond), serif;
-    --border-radius: 2px;
+    --font-main: var(--font-roboto-slab), serif;
+    --border-radius: 0px;
 }
 
 [data-theme='solar'] {
@@ -830,7 +902,7 @@
     --border-color: #8b6b47;
     --border-light: #b19063;
 
-    --text-primary: #2e251c;
+    --text-primary: #4c3f32; /* Make base text a bit darker to help the shadow pop */
     --text-secondary: #4c3f32;
     --text-muted: #7b6a57;
 
@@ -872,28 +944,24 @@
 }
 
 [data-theme='witch-folk'] {
-    --bg-main: #1b1d17;
+    /* UPDATED: The gradient from a mossy floor to a dark canopy */
+    --bg-main: linear-gradient(to top, #2a2d25 0%, #1b1d17 100%);
     --bg-panel: #23251f;
     --bg-item: #2a2d25;
     --bg-item-hover: #35382f;
 
     --border-color: #5a5e4c;
     --border-light: #7e826c;
-
     --text-primary: #e0e2d9;
     --text-secondary: #b9bcae;
     --text-muted: #7f8376;
-
     --accent-primary: #6b2e2e; /* dried blood */
     --accent-hover: #853939;
     --accent-highlight: #a8b76c; /* pale moss */
-
     --success-color: #7c8f66;
     --danger-color: #8c3d3d;
-
     --progress-bg: #2a2d25;
     --progress-fill: #a8b76c;
-
     --font-main: var(--font-crimson-text), serif;
     --border-radius: 2px;
 }
@@ -923,6 +991,9 @@
 
     --font-main: var(--font-josefin), sans-serif;
     --border-radius: 6px;
+
+    position: relative; /* Important for the overlay */
+    overflow: hidden; /* Prevents scrollbars from the pseudo-element */
 }
 
 [data-theme='nordic'] {
@@ -2205,4 +2276,312 @@ button, input, textarea, select, h1 {
 [data-theme='cyberpunk'] .deck-button:hover,
 [data-theme='cyberpunk'] .continue-button:hover {
     animation: glitch 0.35s infinite linear;
+}
+
+[data-theme='witch-folk'] .storylet-container,
+[data-theme='witch-folk'] .character-sheet,
+[data-theme='witch-folk'] .quality-category-card {
+    border-style: solid;
+    border-width: 15px;
+    border-image-source: url('/themes/witch-folk/border.svg');
+    border-image-slice: 20;
+    border-image-repeat: round;
+    padding: 2rem;
+}
+
+/* NEW: Add a subtle mossy glow on hover for interactive cards */
+[data-theme='witch-folk'] .card:hover {
+    box-shadow: 0 0 15px rgba(168, 183, 108, 0.2); /* Use the --accent-highlight color */
+}
+
+[data-theme='jrpg-bright'] .option-button,
+[data-theme='jrpg-bright'] .card {
+    position: relative; /* Needed to position the pseudo-element */
+}
+
+[data-theme='jrpg-bright'] .option-button:hover::before,
+[data-theme='jrpg-bright'] .card:hover::before {
+    content: '►'; /* A classic pointer character */
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent-highlight); /* JRPG Gold */
+    font-size: 1.2rem;
+    animation: bounce-right 0.6s infinite;
+}
+
+/* NEW: Animation for the pointer */
+@keyframes bounce-right {
+  0%, 100% { transform: translateY(-50%) translateX(0); }
+  50% { transform: translateY(-50%) translateX(5px); }
+}
+
+/* NEW: Adjust padding on buttons to make space for the pointer */
+[data-theme='jrpg-bright'] .option-content-wrapper {
+    padding-left: 2.5rem;
+}
+[data-theme='jrpg-bright'] .card-text {
+    padding-left: 2.5rem;
+}
+
+/* NEW: The scan line overlay */
+[data-theme='vaporwave']::after {
+    content: '';
+    position: fixed; /* Fixed position covers the entire viewport */
+    top: 0;
+    left: 0;
+    width: 100vw; /* Use viewport units for full coverage */
+    height: 100vh;
+    pointer-events: none; /* Allows clicks to pass through */
+    z-index: 9999; /* High z-index to ensure it's on top of everything */
+    
+    /* A more defined and controllable background for the lines */
+    background-image: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0) 0px,
+        rgba(0, 0, 0, 0) 2px,
+        rgba(255, 255, 255, 0.05) 3px, /* A faint white/cyan glow */
+        rgba(0, 0, 0, 0.2) 4px
+    );
+    background-size: 100% 4px; /* Explicitly set the size of the repeating pattern */
+    
+    animation: scroll-scanlines 20s linear infinite;
+    opacity: 0.4; /* Soften the overall effect */
+}
+
+[data-theme='parchment'] .storylet-container,
+[data-theme='parchment'] .character-sheet,
+[data-theme='parchment'] .card {
+    border: 1px solid #c8bca2;
+    /* Multiple inset shadows create a layered, singed look */
+    box-shadow: inset 0 0 5px #a1887f, /* Inner light brown */
+                inset 0 0 10px #795548, /* Darker brown */
+                inset 0 0 15px #3e2723; /* Almost black char */
+}
+
+/* For interactive items, make the burn more intense on hover */
+[data-theme='parchment'] .card:hover {
+    box-shadow: inset 0 0 8px #a1887f,
+                inset 0 0 15px #795548,
+                inset 0 0 25px #3e2723,
+                0 0 10px rgba(62, 39, 35, 0.3); /* Add a subtle outer glow */
+}
+
+/* [data-theme='noir']::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="10" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>');
+    background-size: 100px 100px;    pointer-events: none;
+    z-index: 9999;
+    animation: film-grain-flicker 0.2s infinite;
+} */
+
+[data-theme='imperial-rome'] h1,
+[data-theme='imperial-rome'] h2,
+[data-theme='imperial-rome'] h3,
+[data-theme='imperial-rome'] .location-text h1,
+[data-theme='imperial-rome'] .quality-name {
+    /* The text shadow creates a highlight and a shadow, giving a 3D inset look */
+    text-shadow: -1px -1px 1px rgba(0, 0, 0, 0.4), 
+                 -1px 1px 1px rgba(255, 255, 255, 0.4);
+    color: var(--text-primary);
+}
+
+/* [data-theme='cyberpunk'] .storylet-container,
+[data-theme='cyberpunk'] .character-sheet,
+[data-theme='cyberpunk'] .quality-category-card {
+    position: relative;
+    border: none;
+    padding: 1.75rem;
+} */
+
+/* [data-theme='druidic'] .storylet-container,
+[data-theme='druidic'] .character-sheet,
+[data-theme='druidic'] .quality-category-card {
+    border-style: solid;
+    border-width: 12px;
+    border-image-source: url('/themes/druidic/knot-border.svg');
+    border-image-slice: 10;
+    border-image-repeat: round;
+    padding: 1.5rem;
+} */
+
+
+[data-theme='arabesque'] .storylet-container,
+[data-theme='arabesque'] .character-sheet,
+[data-theme='arabesque'] .quality-category-card {
+    background-image: url('/themes/arabesque/tile.svg');
+    background-size: 50px 50px;
+    background-color: var(--bg-panel);
+}
+
+[data-theme='revolutionary'] .storylet-container,
+[data-theme='revolutionary'] .character-sheet {
+    position: relative;
+    padding: 2rem;
+    border: 2px solid var(--accent-primary);
+}
+
+
+/* NEW: Apply the ink texture overlay */
+[data-theme='revolutionary'] .storylet-container::after,
+[data-theme='revolutionary'] .character-sheet::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--accent-primary);
+    opacity: 0.1;
+    filter: url('/themes/revolutionary/ink-texture.svg'); /* Use the SVG filter */
+    pointer-events: none;
+}
+
+[data-theme='abyssal']::before,
+[data-theme='abyssal']::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 1px; /* The element itself is tiny */
+    height: 1px;
+    border-radius: 50%;
+    z-index: 1;
+}
+
+/* Layer 1: Slower, larger particles */
+[data-theme='abyssal']::before {
+    animation: drift-particles 90s linear infinite;
+    /* Generate 50 particles with a huge box-shadow */
+    box-shadow: 23vw 84vh 1px 1px #27f2da, 69vw 8vh 1px 1px #27f2da, 59vw 74vh 0px 0px #27f2da, 55vw 52vh 1px 1px #27f2da, 4vw 77vh 1px 1px #27f2da, 32vw 73vh 1px 1px #27f2da, 94vw 9vh 1px 1px #27f2da, 95vw 82vh 1px 1px #27f2da, 5vw 92vh 0px 0px #27f2da, 18vw 36vh 1px 1px #27f2da, 54vw 4vh 1px 1px #27f2da, 48vw 33vh 0px 0px #27f2da, 49vw 10vh 1px 1px #27f2da, 62vw 18vh 1px 1px #27f2da, 7vw 3vh 1px 1px #27f2da, 16vw 21vh 0px 0px #27f2da, 82vw 35vh 1px 1px #27f2da, 49vw 82vh 0px 0px #27f2da, 53vw 38vh 1px 1px #27f2da, 58vw 7vh 1px 1px #27f2da, 5vw 55vh 1px 1px #27f2da, 15vw 91vh 1px 1px #27f2da, 87vw 81vh 1px 1px #27f2da, 60vw 62vh 1px 1px #27f2da, 34vw 59vh 1px 1px #27f2da;
+}
+
+/* Layer 2: Faster, smaller particles */
+[data-theme='abyssal']::after {
+    animation: drift-particles-2 60s linear infinite;
+    box-shadow: 20vw 15vh 0px 0px #27f2da, 6vw 48vh 0px 0px #27f2da, 36vw 98vh 0px 0px #27f2da, 96vw 24vh 0px 0px #27f2da, 78vw 80vh 0px 0px #27f2da, 56vw 90vh 0px 0px #27f2da, 64vw 54vh 0px 0px #27f2da, 44vw 2vh 0px 0px #27f2da, 3vw 16vh 0px 0px #27f2da, 8vw 27vh 0px 0px #27f2da, 53vw 3vh 0px 0px #27f2da, 28vw 46vh 0px 0px #27f2da, 30vw 23vh 0px 0px #27f2da, 1vw 76vh 0px 0px #27f2da, 93vw 60vh 0px 0px #27f2da, 89vw 44vh 0px 0px #27f2da, 73vw 12vh 0px 0px #27f2da, 83vw 95vh 0px 0px #27f2da, 41vw 66vh 0px 0px #27f2da, 12vw 63vh 0px 0px #27f2da, 25vw 88vh 0px 0px #27f2da, 98vw 1vh 0px 0px #27f2da, 9vw 99vh 0px 0px #27f2da, 33vw 85vh 0px 0px #27f2da, 10vw 8vh 0px 0px #27f2da;
+}
+
+/* NEW: Apply the rough paper texture to the whole page */
+html[data-theme='revolutionary']::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('/themes/revolutionary/paper-texture.svg');
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* NEW: Apply the bold, asymmetric color blocks */
+[data-theme='revolutionary'] .storylet-container,
+[data-theme='revolutionary'] .character-sheet {
+    position: relative;
+    border: 2px solid var(--text-primary);
+    padding: 2rem;
+    overflow: hidden; /* Crucial to contain the pseudo-elements */
+}
+
+/* Red block - ::before */
+[data-theme='revolutionary'] .storylet-container::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    left: -10%;
+    width: 60%;
+    height: 50%;
+    background: var(--accent-primary);
+    transform: rotate(-15deg);
+    opacity: 0.8;
+    z-index: -1;
+}
+
+/* Blue block - ::after */
+[data-theme='revolutionary'] .storylet-container::after {
+    content: '';
+    position: absolute;
+    bottom: -25%;
+    right: -15%;
+    width: 70%;
+    height: 60%;
+    background: var(--accent-secondary);
+    transform: rotate(10deg);
+    opacity: 0.8;
+    z-index: -1;
+}
+
+/* We can add a different layout for the smaller character sheet */
+[data-theme='revolutionary'] .character-sheet::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 25%;
+    background: var(--accent-primary);
+    clip-path: polygon(0 0, 100% 30%, 100% 100%, 0% 100%);
+    opacity: 0.8;
+    z-index: -1;
+}
+
+/* Use the highlight yellow for titles and important elements */
+[data-theme='revolutionary'] .option-button:hover h3 {
+    color: var(--text-primary);
+    /* Add a yellow "stamped" background */
+    background: var(--accent-highlight);
+    padding: 0.1em 0.3em;
+    box-shadow: 3px 3px 0px var(--accent-secondary); /* Add a blue drop shadow */
+    display: inline; /* Allows background to wrap tightly */
+}
+
+@keyframes data-flicker {
+  0%, 100% { color: var(--text-primary); }
+  50% { color: var(--accent-highlight); }
+}
+
+/* --- STARSHIP BRIDGE --- */
+[data-theme='starship'] {
+    --bg-main: #000000;
+    --bg-panel: #000000;
+    --bg-item: #1a1a1a;
+    --bg-item-hover: #333333;
+    --border-color: #6666cc; /* LCARS Blue */
+    --border-light: #9999ff;
+    --text-primary: #ffcc99; /* LCARS Peach */
+    --text-secondary: #ccccff;
+    --text-muted: #9999cc;
+    --accent-primary: #cc6666; /* LCARS Red/Orange */
+    --accent-hover: #ff9999;
+    --accent-highlight: #ffff99; /* Yellow for highlights */
+    --success-color: #99ff99;
+    --danger-color: #ff6666;
+    --progress-bg: #1a1a1a;
+    --progress-fill: #9999ff;
+    --font-main: var(--font-montserrat), sans-serif;
+    --border-radius: 4px;
+}
+
+
+/* The side "elbow" piece */
+[data-theme='starship'] .storylet-container::before {
+    content: '';
+    background: var(--accent-primary);
+    border-radius: 5px 0 0 0;
+}
+
+/* Container for the main text */
+[data-theme='starship'] .storylet-main-content {
+    background: var(--bg-item);
+    padding: 1rem;
+}
+
+/* Apply the data flicker to some elements */
+[data-theme='starship'] .quality-level,
+[data-theme='starship'] .item-count {
+    animation: data-flicker 10s infinite;
+    /* Stagger the animation for a more natural look */
+    animation-delay: calc(var(--i, 1) * 0.7s);
 }

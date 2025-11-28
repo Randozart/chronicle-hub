@@ -90,7 +90,7 @@ export default function LondonLayout(props: LayoutProps) {
                 
                 {/* Banner Content */}
                 <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', padding: '2rem', textAlign: 'center', width: '100%', maxWidth: '1200px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', fontFamily: 'inherit', letterSpacing: '2px' }}>
+                    <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', fontFamily: 'inherit', letterSpacing: '2px', color: '#f7f7f7ff' }}>
                         {props.location.name}
                     </h1>
                     
@@ -98,8 +98,8 @@ export default function LondonLayout(props: LayoutProps) {
                     <button 
                         onClick={props.onOpenMap}
                         style={{ 
-                            background: 'rgba(0,0,0,0.6)', border: '1px solid var(--text-primary)', 
-                            color: 'var(--text-primary)', padding: '0.5rem 1.5rem', borderRadius: '4px',
+                            background: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-primary)', 
+                            color: '#f7f7f7ff', padding: '0.5rem 1.5rem', borderRadius: '4px',
                             cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold',
                             backdropFilter: 'blur(5px)', marginBottom: '10px'
                         }}

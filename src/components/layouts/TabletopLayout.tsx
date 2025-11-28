@@ -59,7 +59,7 @@ export default function TabletopLayout(props: LayoutProps) {
         return (
             <>
                 <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '2rem' }}>
-                    <h1 style={{ fontSize: '2.5rem', margin: 0, fontFamily: 'serif' }}>{props.location.name}</h1>
+                    <h1 style={{ fontSize: '2.5rem', margin: 0 }}>{props.location.name}</h1>
                 </div>
                 
                 <LocationStorylets

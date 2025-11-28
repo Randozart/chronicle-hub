@@ -60,7 +60,7 @@ export default function ElysiumLayout(props: LayoutProps) {
         return (
             <>
                 <div style={{ marginBottom: '3rem', textAlign: 'center', marginTop: '4rem' }}>
-                    <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 4px 20px rgba(0,0,0,0.9)', fontFamily: 'serif', letterSpacing: '1px' }}>
+                    <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 4px 20px rgba(0,0,0,0.9)', letterSpacing: '1px', color: '#f7f7f7ff' }}>
                         {props.location.name}
                     </h1>
                     {/* TRAVEL BUTTON */}
