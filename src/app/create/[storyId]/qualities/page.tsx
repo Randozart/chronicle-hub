@@ -123,7 +123,7 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    storyId: {storyId},
+                    storyId: storyId,
                     category: 'qualities',
                     itemId: form.id,
                     data: form

@@ -101,7 +101,7 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: {storyId}, category: 'locations', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId: storyId, category: 'locations', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }

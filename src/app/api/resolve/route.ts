@@ -16,13 +16,13 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id;
     const { storyletId, optionId, storyId } = await request.json(); // Pass storyId from client
     
-    const gameData = await getContent(storyId || {storyId});
-    let character = await getCharacter(userId, storyId || {storyId});
+    const gameData = await getContent(storyId || storyId);
+    let character = await getCharacter(userId, storyId || storyId);
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
 
-    const storyletDef = await getEvent(storyId || {storyId}, storyletId);
+    const storyletDef = await getEvent(storyId || storyId, storyletId);
     
     if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // 6. AUTOFIRE CHECK (The "Must" Event System)
     // Check if the player should be forced somewhere else (e.g., Menace area)
 
-    const autofireEvents = await getAutofireStorylets(storyId || {storyId});
+    const autofireEvents = await getAutofireStorylets(storyId || storyId);
     let forcedRedirectId: string | null = null;
 
     for (const event of autofireEvents) {
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         const newLocationId = (engineResult as any).moveToId;
 
     if (newLocationId) {
-        const config = await getWorldConfig(storyId || {storyId});
+        const config = await getWorldConfig(storyId || storyId);
         const oldLoc = config.locations[character.currentLocationId];
         const newLoc = config.locations[newLocationId];
 

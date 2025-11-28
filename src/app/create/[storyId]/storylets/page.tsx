@@ -62,7 +62,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
             const res = await fetch('/api/admin/storylets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: {storyId}, data })
+                body: JSON.stringify({ storyId: storyId, data })
             });
             if (res.ok) {
                 alert("Saved!");

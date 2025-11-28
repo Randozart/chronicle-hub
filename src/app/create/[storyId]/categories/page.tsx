@@ -75,7 +75,7 @@ function CategoryEditor({ initialData, onSave, storyId }: { initialData: Categor
             await fetch('/api/admin/config', {
                 method: 'POST',
                 body: JSON.stringify({
-                    storyId: {storyId},
+                    storyId: storyId,
                     category: 'categories',
                     itemId: form.id,
                     data: form

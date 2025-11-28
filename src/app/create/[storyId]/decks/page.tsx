@@ -90,7 +90,7 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: {storyId}, category: 'decks', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId: storyId, category: 'decks', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }

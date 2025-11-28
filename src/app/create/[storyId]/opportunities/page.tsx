@@ -62,7 +62,7 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
             const res = await fetch('/api/admin/opportunities', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: {storyId}, data })
+                body: JSON.stringify({ storyId: storyId, data })
             });
             if (res.ok) {
                 alert("Saved!");

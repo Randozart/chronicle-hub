@@ -69,7 +69,7 @@ function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData:
         try {
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
-                body: JSON.stringify({ storyId: {storyId}, category: 'regions', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId: storyId, category: 'regions', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); alert("Saved!"); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }

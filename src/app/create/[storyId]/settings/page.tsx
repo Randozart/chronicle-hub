@@ -67,6 +67,18 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         
         Promise.all([
             fetch(`/api/admin/settings?storyId=${storyId}`).then(r => r.json()),
+            fetch(`/api/admin/char_create?storyId=${storyId}`).then(r => r.ok ? r.json() : {})
+        ]).then(([settingsData, charData]) => {
+            setForm(prev => ({ 
+                ...prev, 
+                ...settingsData,
+                // EXPLICIT DEFAULTS
+                characterSheetCategories: settingsData.characterSheetCategories || [],
+                equipCategories: settingsData.equipCategories || [],
+                char_create: charData || {}
+            }));
+        }).finally(() => setIsLoading(false));Promise.all([
+            fetch(`/api/admin/settings?storyId=${storyId}`).then(r => r.json()),
             // We need an endpoint for char_create. 
             // Let's assume we use the generic route for it or you added it.
             // If not, the char_create section will be empty.
@@ -101,7 +113,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    storyId: {storyId},
+                    storyId: storyId,
                     category: 'settings',
                     itemId: 'settings',
                     data: { ...form, char_create: undefined } // Exclude char_create from settings object
@@ -116,7 +128,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    storyId: {storyId},
+                    storyId: storyId,
                     category: 'char_create', // Mapping to content.char_create
                     itemId: 'rules', // This ID is ignored by the bulk updater usually, or treated as the object itself
                     data: form.char_create
@@ -283,76 +295,6 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         <ThemePreview theme={form.visualTheme || 'default'} />
                     </div>
                 </div>
-            
-
-
-
-            {/* <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
-                <label className="special-label" style={{ color: '#c678dd' }}>Interface Theme</label>
-                
-                <div className="form-group">
-                    <label className="form-label">Visual Theme</label>
-                    <select 
-                        value={form.visualTheme || 'default'} 
-                        onChange={e => handleChange('visualTheme', e.target.value)}
-                        className="form-select"
-                    >
-                        <option value="default">Default</option>
-                        <option value="victorian">Victorian</option>
-                        <option value="terminal">Terminal</option>
-                        <option value="parchment">Parchment</option>
-                        <option value="noir">Noir</option>
-                        <option value="cyberpunk">Cyberpunk</option>
-                        <option value="dark-fantasy">Dark Fantasy</option>
-                        <option value="pirate">Pirate</option>
-                        <option value="solarpunk">Solarpunk</option>
-                        <option value="lab">Laboratory</option>
-                        <option value="druidic">Druidic</option>
-                        <option value="neo-tokyo">Synthwave</option>
-                        <option value="gothic">Gothic</option>
-                        <option value="western">Western</option>
-                        <option value="grimdark-sci-fi">Dark Sci-Fi</option>
-                        <option value="jrpg-bright">Bright JRPG</option>
-                        <option value="abyssal">Abyssal</option>
-                        <option value="arcanotech">Magitech</option>
-                        <option value="terminal-amber">VT220</option>
-                        <option value="arabesque">Arabesque</option>
-                        <option value="art-deco">Art Deco</option>
-                        <option value="steampunk">Steampunk</option>
-                        <option value="candy">Bubblegum</option>
-                        <option value="stone-dwarven">Mountain Dwarf</option>
-                        <option value="classic-scifi">Classic Sci-Fi</option>
-                        <option value="revolutionary">Revolutionary</option>
-                        <option value="solar">Utopia</option>
-                        <option value="occult-academic">Occult Academia</option>
-                        <option value="renaissance">Renaissance</option>
-                        <option value="ink-brass">Dieselpunk</option>
-                        <option value="ukiyoe">Ukiyo-e</option>
-                        <option value="imperial-rome">Imperial Rome</option>
-                        <option value="corpocracy">Corpocracy</option>
-                        <option value="witch-folk">Witch Folk</option>
-                        <option value="vaporwave">Vaporwave</option>
-                        <option value="nordic">Nordic</option>
-                        <option value="frontier">Frontier</option>
-                        <option value="bayou">Bayou</option>
-                       
-
-                    </select>
-                </div>
-
-                <div className="form-group">
-                    <label className="form-label">Layout Style</label>
-                    <select 
-                        value={form.layoutStyle || 'nexus'} 
-                        onChange={e => handleChange('layoutStyle', e.target.value)}
-                        className="form-select"
-                    >
-                        <option value="nexus">Classic (Icon Header)</option>
-                        <option value="london">Cinematic (Full Banner)</option>
-                        <option value="elysium">Immersive (Split View)</option>
-                        <option value="tabletop">Tabletop (Three Column)</option>
-                    </select>
-                </div> */}
 
                 {(form.layoutStyle === 'elysium' || form.layoutStyle === 'tabletop') && (
                     <div style={{ marginTop: '1rem' }}>

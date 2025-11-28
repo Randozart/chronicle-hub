@@ -25,7 +25,7 @@ export default async function GamePage({ params }: { params: Promise<{ storyId: 
     const character = await getCharacter(userId, storyId);
 
     if (!character) {
-        redirect(`/play/${storyId}/creation`);
+        redirect(`/play/$storyId/creation`);
     }
     
     const gameData = await getContent(storyId); // Config only

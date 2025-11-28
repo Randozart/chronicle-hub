@@ -101,11 +101,14 @@ export const updateWorldConfigItem = async (
     const db = client.db(DB_NAME);
 
     // 1. Handle Settings (Top level, no ID)
+    console.log(`[Config] Updating ${category} for ${worldId}`);
+    
     if (category === 'settings') {
         const result = await db.collection('worlds').updateOne(
             { worldId },
             { $set: { settings: data } }
         );
+        console.log(`[Config] Match: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
         return result.acknowledged;
     }
 

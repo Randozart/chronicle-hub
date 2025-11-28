@@ -8,7 +8,7 @@ dotenv.config({ path: '.env.local' });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
-const WORLD_ID = {storyId}; // Target world
+const WORLD_ID = storyId; // Target world
 
 if (!MONGODB_URI) {
     console.error('Please define the MONGODB_URI environment variable inside .env.local');
