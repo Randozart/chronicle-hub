@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
     
     // Fetch details for played worlds (excluding owned ones to avoid dupes if you play your own game)
     const playedWorlds = await db.collection('worlds')
-        .find({ worldId: { $in: playedIds, $ne: myWorlds.map(w => w.worldId) } })
+        .find({ 
+            worldId: { $in: playedIds, $ne: myWorlds.map(w => w.worldId) },
+            published: true
+        })
         .project({ worldId: 1, title: 1, summary: 1 })
         .toArray();
 

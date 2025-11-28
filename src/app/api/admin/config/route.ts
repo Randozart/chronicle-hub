@@ -5,29 +5,26 @@ import { updateWorldConfigItem, deleteWorldConfigItem } from '@/engine/worldServ
 import { verifyWorldAccess } from '@/engine/accessControl';
 
 export async function POST(request: NextRequest) {
-    const body = await request.json();
-    const { storyId } = body; // We need storyId before anything else
-
-    // SECURITY CHECK
-    if (!await verifyWorldAccess(storyId, 'owner')) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    
     try {
-        const { storyId, category, itemId, data } = await request.json();
+        // 1. Read Body ONCE
+        const body = await request.json();
+        const { storyId, category, itemId, data } = body;
 
-        if (!storyId || !category || !itemId || !data) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        // 2. Validation (Allow data to be boolean false)
+        if (!storyId || !category || !itemId || data === undefined) {
+             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Basic Validation for MongoDB Key safety
-        if (itemId.includes('.') || itemId.startsWith('$')) {
-            return NextResponse.json({ error: 'ID cannot contain "." or start with "$"' }, { status: 400 });
+        // 3. Security Check (Pass ID, not Request)
+        if (!await verifyWorldAccess(storyId, 'owner')) {
+             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
+        // 4. Execute
         const success = await updateWorldConfigItem(storyId, category, itemId, data);
         
         return NextResponse.json({ success });
+
     } catch (error) {
         console.error("Admin Save Error:", error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -9,6 +9,7 @@ import ThemePreview from '@/app/create/[storyId]/settings/components/ThemePrevie
 // but we want to edit them together here.
 interface SettingsForm extends WorldSettings {
     char_create: Record<string, string>;
+    isPublished?: boolean; 
 }
 
 export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
@@ -108,7 +109,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // Save Settings
+            // 1. Save Settings (Game Rules)
             const res1 = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -116,33 +117,50 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     storyId: storyId,
                     category: 'settings',
                     itemId: 'settings',
-                    data: { ...form, char_create: undefined } // Exclude char_create from settings object
+                    // Exclude UI-only fields like char_create and isPublished from the settings object
+                    data: { 
+                        ...form, 
+                        char_create: undefined, 
+                        isPublished: undefined 
+                    }
                 })
             });
 
-            // Save Char Create (It lives in 'char_create' key of WorldConfig, 
-            // but our generic saver uses category to map to 'content.category'.
-            // We need to update WorldService to support 'char_create' category or 'starting'.
-            // IF you updated worldService.ts as discussed previously to support 'char_create', this works:
+            // 2. Save Char Create
             const res2 = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     storyId: storyId,
-                    category: 'char_create', // Mapping to content.char_create
-                    itemId: 'rules', // This ID is ignored by the bulk updater usually, or treated as the object itself
+                    category: 'char_create',
+                    itemId: 'rules',
                     data: form.char_create
                 })
             });
 
-            // Note: The Generic Saver logic for 'char_create' needs to handle replacing the whole object
-            // rather than setting a key inside it, OR we treat it like Settings.
-            // Ideally, updateWorldConfigItem in worldService.ts handles `category === 'char_create'` 
-            // similar to `category === 'settings'` (replace the whole object).
+            // 3. Save Published Status (Root Field)
+            const res3 = await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storyId: storyId,
+                    category: 'root',    // This targets top-level fields
+                    itemId: 'published', // The field name in MongoDB
+                    data: form.isPublished
+                })
+            });
 
-            if (res1.ok && res2.ok) alert("Saved!");
-            else alert("Failed to save some data.");
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
+            if (res1.ok && res2.ok && res3.ok) {
+                alert("Saved!");
+            } else {
+                alert("Failed to save some data.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error saving settings.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
@@ -150,6 +168,28 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     return (
         <div className="admin-editor-col" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Game Settings</h2>
+            
+            {/* HEADER & PUBLISH STATUS */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid #444', paddingBottom: '1rem' }}>
+                <h2 style={{ margin: 0 }}>Game Settings</h2>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ 
+                        color: form.isPublished ? '#2ecc71' : '#e74c3c', 
+                        fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.8rem' 
+                    }}>
+                        {form.isPublished ? 'LIVE' : 'PRIVATE'}
+                    </span>
+                    <label className="toggle-label">
+                        <input 
+                            type="checkbox" 
+                            checked={form.isPublished || false} 
+                            onChange={e => handleChange('isPublished', e.target.checked)}
+                        />
+                        Publish World
+                    </label>
+                </div>
+            </div>
 
             {/* CHARACTER CREATION */}
             <div style={{ marginBottom: '2rem' }}>
