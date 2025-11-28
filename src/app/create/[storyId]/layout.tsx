@@ -1,13 +1,23 @@
-'use client'
-
 import Link from 'next/link';
 import '@/app/globals.css';
 import CheatSheet from './components/CheatSheet';
-import { use } from 'react';
+import { verifyWorldAccess } from '@/engine/accessControl';
+import { redirect } from 'next/navigation';
 
 
-export default function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
-    const { storyId } = use(params); // <--- AWAIT THIS
+export default async function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
+    const { storyId } = await params;
+    
+    const hasAccess = await verifyWorldAccess(storyId, 'writer'); // 'writer' allows collaborators too
+    
+    if (!hasAccess) {
+        // Option A: Redirect to Dashboard
+        redirect('/?error=forbidden');
+        
+        // Option B: 404 (Pretend it doesn't exist)
+        // notFound();
+    }
+  
     const base = `/create/${storyId}`;
     
     return (

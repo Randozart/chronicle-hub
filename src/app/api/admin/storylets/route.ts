@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/engine/database';
 import { ObjectId } from 'mongodb';
+import { verifyWorldAccess } from '@/engine/accessControl';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
@@ -33,7 +34,12 @@ export async function GET(request: NextRequest) {
 // POST: Create or Update a Storylet
 export async function POST(request: NextRequest) {
     const body = await request.json();
-    const { storyId, data } = body;
+    const { storyId, data } = body; // We need storyId before anything else
+
+    // SECURITY CHECK
+    if (!await verifyWorldAccess(storyId, 'owner')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     
     // Validation
     if (!storyId || !data.id) return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
@@ -54,10 +60,14 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
+const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
     const id = searchParams.get('id');
 
+    if (!storyId || !await verifyWorldAccess(storyId, 'owner')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }    
+    
     if (!storyId || !id) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
 
     const client = await clientPromise;
