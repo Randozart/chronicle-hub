@@ -15,7 +15,12 @@ export async function GET(request: NextRequest) {
 
     // Fetch My Worlds
     const myWorlds = await db.collection('worlds')
-        .find({ ownerId: userId })
+        .find({ 
+            $or: [
+                { ownerId: userId },
+                { collaborators: { $elemMatch: { userId: userId } } } 
+            ]
+        })        
         .project({ worldId: 1, title: 1, summary: 1, published: 1 })
         .toArray();
 

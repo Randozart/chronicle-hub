@@ -4,7 +4,7 @@ import clientPromise from '@/engine/database';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
-export async function verifyWorldAccess(worldId: string, requiredRole: 'owner' | 'writer' = 'owner'): Promise<boolean> {
+export async function verifyWorldAccess(worldId: string, requiredRole: 'owner' | 'writer' | 'admin' = 'owner'): Promise<boolean> {
     const session = await getServerSession(authOptions);
     if (!session?.user) return false;
     const userId = (session.user as any).id;
@@ -26,10 +26,17 @@ export async function verifyWorldAccess(worldId: string, requiredRole: 'owner' |
     // 3. Check Owner
     if (world.ownerId === userId) return true;
 
-    // 4. Check Collaborators (Future Proofing)
-    if (requiredRole === 'writer' && world.collaborators) {
+    // 4. Check Collaborators
+    if (world.collaborators) {
         const colab = world.collaborators.find((c: any) => c.userId === userId);
-        if (colab) return true; // Any collaborator can write for now
+        if (colab) {
+            // Owners allow everything. 
+            // If requiredRole is 'owner', only owners pass.
+            // If requiredRole is 'writer', writers and admins pass.
+            
+            if (requiredRole === 'writer') return true; 
+            if (requiredRole === 'admin' && colab.role === 'admin') return true;
+        }
     }
 
     return false;

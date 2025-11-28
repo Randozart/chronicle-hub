@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { WorldSettings } from '@/engine/models';
 import ThemePreview from '@/app/create/[storyId]/settings/components/ThemePreview';
+import CollaboratorManager from './components/CollaboratorManager';
 
 // We need to extend the Settings type locally to include char_create dictionary, 
 // as it is technically part of WorldConfig, not WorldSettings interface, 
@@ -166,9 +167,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     return (
-        <div className="admin-editor-col" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Game Settings</h2>
-            
+        <div className="admin-editor-col" style={{ maxWidth: '800px', margin: '0 auto' }}>            
             {/* HEADER & PUBLISH STATUS */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid #444', paddingBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>Game Settings</h2>
@@ -390,6 +389,10 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         className="form-input" 
                     />
                 </div>
+            </div>
+            
+            <div style={{ marginBottom: '2rem' }}>
+                <CollaboratorManager storyId={storyId} />
             </div>
 
             <div className="admin-form-footer" style={{ justifyContent: 'flex-end' }}>
