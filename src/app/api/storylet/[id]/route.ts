@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     // 2. Get params
     const id = request.nextUrl.pathname.split('/').pop();
     const { searchParams } = new URL(request.url);
-    const storyId = searchParams.get('storyId') || 'trader_johns_world';
+    const storyId = searchParams.get('storyId') || {storyId};
 
     if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
 

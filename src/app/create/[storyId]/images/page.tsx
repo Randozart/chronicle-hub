@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { ImageDefinition, ImageCategory } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
-export default function ImagesAdmin() {
+export default function ImagesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [images, setImages] = useState<ImageDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/admin/images?storyId=trader_johns_world')
+        fetch(`/api/admin/images?storyId=${storyId}`) // Dynamic!
             .then(res => res.json())
             .then(data => {
                 const arr = Object.keys(data).map(key => ({ ...data[key], id: key }));
@@ -79,6 +80,7 @@ export default function ImagesAdmin() {
                         initialData={images.find(q => q.id === selectedId)!} 
                         onSave={handleSaveSuccess} 
                         onDelete={handleDeleteSuccess}
+                        storyId={storyId}
                     />
                 ) : (
                     <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select an asset</div>
@@ -88,7 +90,7 @@ export default function ImagesAdmin() {
     );
 }
 
-function ImageEditor({ initialData, onSave, onDelete }: { initialData: ImageDefinition, onSave: (d: any) => void, onDelete: (id: string) => void }) {
+function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: ImageDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
     
@@ -121,7 +123,7 @@ function ImageEditor({ initialData, onSave, onDelete }: { initialData: ImageDefi
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: 'trader_johns_world', category: 'images', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId: storyId, category: 'images', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
@@ -131,7 +133,7 @@ function ImageEditor({ initialData, onSave, onDelete }: { initialData: ImageDefi
         if (!confirm(`Delete "${form.id}"?`)) return;
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/admin/config?storyId=trader_johns_world&category=images&itemId=${form.id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=images&itemId=${form.id}`, { method: 'DELETE' });
             if (res.ok) onDelete(form.id);
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Storylet } from '@/engine/models';
 import StoryletMainForm from './components/StoryletMainForm'; // We'll create this next
 import AdminListSidebar from './components/AdminListSidebar';
 
-export default function StoryletsAdmin() {
+export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [storylets, setStorylets] = useState<Partial<Storylet>[]>([]); // List only has partial data
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeStorylet, setActiveStorylet] = useState<Storylet | null>(null);
@@ -14,7 +15,7 @@ export default function StoryletsAdmin() {
 
     // 1. Fetch List (Summary)
     useEffect(() => {
-        fetch('/api/admin/storylets?storyId=trader_johns_world')
+        fetch(`/api/admin/storylets?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => setStorylets(data))
             .finally(() => setIsLoadingList(false));
@@ -27,7 +28,7 @@ export default function StoryletsAdmin() {
             return;
         }
         setIsLoadingDetail(true);
-        fetch(`/api/admin/storylets?storyId=trader_johns_world&id=${selectedId}`)
+        fetch(`/api/admin/storylets?storyId=${storyId}&id=${selectedId}`)
             .then(res => res.json())
             .then(data => setActiveStorylet(data))
             .catch(e => console.error(e))
@@ -61,7 +62,7 @@ export default function StoryletsAdmin() {
             const res = await fetch('/api/admin/storylets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: 'trader_johns_world', data })
+                body: JSON.stringify({ storyId: {storyId}, data })
             });
             if (res.ok) {
                 alert("Saved!");
@@ -78,7 +79,7 @@ export default function StoryletsAdmin() {
     // 5. Delete Handler
     const handleDelete = async (id: string) => {
         if(!confirm("Delete this storylet?")) return;
-        await fetch(`/api/admin/storylets?storyId=trader_johns_world&id=${id}`, { method: 'DELETE' });
+        await fetch(`/api/admin/storylets?storyId=${storyId}&id=${id}`, { method: 'DELETE' });
         setStorylets(prev => prev.filter(s => s.id !== id));
         setSelectedId(null);
     };

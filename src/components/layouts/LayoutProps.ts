@@ -16,6 +16,7 @@ export interface LayoutProps {
     imageLibrary: Record<string, ImageDefinition>;
     categories: Record<string, CategoryDefinition>;
     locationStorylets: Storylet[];
+    storyId: string;
 
     // Handlers
     onOptionClick: (storyletId: string) => void; // This maps to 'showEvent'

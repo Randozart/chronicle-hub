@@ -231,3 +231,27 @@ export interface WorldConfig {
 
 export type WorldContent = WorldConfig;
 export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";
+
+export interface WorldDocument {
+    _id?: any; // MongoDB ID
+    worldId: string; // Unique URL slug (e.g. 'trader_johns_world')
+    ownerId: string; // User ID
+    title: string;
+    summary?: string;
+    published: boolean;
+    createdAt: Date;
+    
+    // The "Hot Config" we've been using
+    settings: WorldSettings;
+    content: {
+        qualities: Record<string, QualityDefinition>;
+        locations: Record<string, LocationDefinition>;
+        decks: Record<string, DeckDefinition>;
+        regions: Record<string, MapRegion>;
+        images: Record<string, ImageDefinition>;
+        char_create: Record<string, string>;
+    };
+    
+    // Optional: Collaborators array for future RBAC
+    collaborators?: { userId: string, role: 'admin' | 'writer' }[];
+}

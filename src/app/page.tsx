@@ -1,87 +1,127 @@
-// src/app/page.tsx
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getCharacter } from '@/engine/characterService';
-import { getContent } from '@/engine/contentCache'; 
-import { getLocationStorylets, getEvent } from '@/engine/worldService'; // Import these!
-import { Storylet, Opportunity } from '@/engine/models'; // Import types
-import GameHub from '@/components/GameHub';
-import { GameEngine } from '@/engine/gameEngine';
+'use client';
 
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
-const STORY_ID = 'trader_johns_world';
+export default function Dashboard() {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+    const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | null>(null);
+    const [showCreate, setShowCreate] = useState(false);
 
-const sanitize = (obj: any) => {
-    return JSON.parse(JSON.stringify(obj));
-};
+    useEffect(() => {
+        if (status === 'unauthenticated') router.push('/login');
+        if (status === 'authenticated') {
+            fetch('/api/worlds').then(r => r.json()).then(setData);
+        }
+    }, [status, router]);
 
-export default async function Home() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) redirect('/login');
-    
-    const userId = (session.user as any).id;
-    
-    const character = await getCharacter(userId, STORY_ID);
-
-    if (!character) {
-        redirect(`/creation?storyId=${STORY_ID}`);
-    }
-    
-    const gameData = await getContent(STORY_ID); // Config only
-
-    const initialLocation = gameData.locations[character.currentLocationId];
-    if (!initialLocation) return <div>Error: Player in unknown location.</div>;
-
-    // Setup Engine
-    const engine = new GameEngine(character.qualities, gameData, character.equipment);
-
-    // 1. Fetch & Render Hand
-    const initialHandIds = character.opportunityHands?.[initialLocation.deck] || [];
-    const rawHand = (await Promise.all(
-        initialHandIds.map((id: string) => getEvent(STORY_ID, id))
-    )).filter((item): item is Opportunity => item !== null && 'deck' in item);
-    
-    // FIX: Cast the result of renderStorylet back to Opportunity
-    const initialHand = rawHand.map(card => engine.renderStorylet(card) as Opportunity);
-
-    // 2. Fetch & Render Location Storylets
-    const rawStorylets = await getLocationStorylets(STORY_ID, character.currentLocationId);
-    // FIX: Cast result to Storylet
-    const locationStorylets = rawStorylets.map(s => engine.renderStorylet(s) as Storylet);
-    
-    // 3. BUILD MINI DICTIONARIES
-    // We create a map of { [id]: object } for just the things we are showing.
-    // This satisfies GameHub's requirement without loading the whole DB.
-    const visibleStoryletsMap: Record<string, Storylet> = {};
-    locationStorylets.forEach(s => visibleStoryletsMap[s.id] = s);
-
-    const visibleOpportunitiesMap: Record<string, Opportunity> = {};
-    initialHand.forEach(o => visibleOpportunitiesMap[o.id] = o);
-    
-    const plainInitialCharacter = sanitize({ ...character });
-    const plainLocation = sanitize(initialLocation);
-    const plainHand = sanitize(initialHand);
-    const plainLocationStorylets = sanitize(locationStorylets);
-    const plainStoryletDefs = sanitize(visibleStoryletsMap);
-    const plainOpportunityDefs = sanitize(visibleOpportunitiesMap);
+    if (status === 'loading' || !data) return <div className="p-8 text-white">Loading Dashboard...</div>;
 
     return (
-        <main>
-            <GameHub
-                initialCharacter={plainInitialCharacter}
-                initialLocation={plainLocation}
-                initialHand={plainHand}
-                locationStorylets={plainLocationStorylets}
-                qualityDefs={sanitize(gameData.qualities)}
-                storyletDefs={plainStoryletDefs}
-                opportunityDefs={plainOpportunityDefs} 
-                settings={sanitize(gameData.settings)}
-                imageLibrary={gameData.images || {}}
-                categories={sanitize(gameData.categories || {})}
-                locations={sanitize(gameData.locations)} 
-                regions={sanitize(gameData.regions || {})}
-            />
-        </main>
+        <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', color: '#fff' }}>
+            <h1 style={{ fontSize: '2rem', borderBottom: '1px solid #444', paddingBottom: '1rem', marginBottom: '2rem' }}>
+                Chronicle Hub
+            </h1>
+
+            {/* MY WORLDS */}
+            <div style={{ marginBottom: '3rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h2 style={{ color: '#98c379' }}>My Worlds</h2>
+                    <button 
+                        onClick={() => setShowCreate(true)}
+                        className="save-btn" // Reuse your global button class
+                        style={{ fontSize: '0.9rem' }}
+                    >
+                        + Create New
+                    </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    {data.myWorlds.map((w: any) => (
+                        <div key={w.worldId} style={{ background: '#1e2127', border: '1px solid #444', borderRadius: '8px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{w.title}</h3>
+                                <div style={{ fontSize: '0.8rem', color: '#777', fontFamily: 'monospace' }}>{w.worldId}</div>
+                            </div>
+                            <p style={{ color: '#ccc', fontSize: '0.9rem', flex: 1 }}>{w.summary || "No description."}</p>
+                            
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <Link href={`/play/${w.worldId}`} className="deck-button" style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}>
+                                    Play
+                                </Link>
+                                <Link href={`/create/${w.worldId}/qualities`} className="unequip-btn" style={{ flex: 1, textAlign: 'center', textDecoration: 'none', background: '#3e4451' }}>
+                                    Edit
+                                </Link>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* PLAYED WORLDS */}
+            {data.playedWorlds.length > 0 && (
+                <div>
+                    <h2 style={{ color: '#61afef', marginBottom: '1rem' }}>Adventures</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                        {data.playedWorlds.map((w: any) => (
+                            <div key={w.worldId} style={{ background: '#1e2127', border: '1px solid #444', borderRadius: '8px', padding: '1.5rem' }}>
+                                <h3 style={{ margin: 0 }}>{w.title}</h3>
+                                <Link href={`/play/${w.worldId}`} className="deck-button" style={{ display: 'block', marginTop: '1rem', textAlign: 'center', textDecoration: 'none' }}>
+                                    Continue
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* CREATE MODAL */}
+            {showCreate && <CreateWorldModal onClose={() => setShowCreate(false)} />}
+        </div>
+    );
+}
+
+function CreateWorldModal({ onClose }: { onClose: () => void }) {
+    const [title, setTitle] = useState("");
+    const [id, setId] = useState("");
+    
+    const handleCreate = async () => {
+        const res = await fetch('/api/worlds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, worldId: id })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            window.location.href = `/create/${data.worldId}/settings`; // Redirect to editor
+        } else {
+            alert(data.error);
+        }
+    };
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#21252b', padding: '2rem', borderRadius: '8px', width: '400px', border: '1px solid #444' }}>
+                <h3 style={{ margin: '0 0 1.5rem 0' }}>Create New World</h3>
+                
+                <div className="form-group">
+                    <label className="form-label">Title</label>
+                    <input value={title} onChange={e => setTitle(e.target.value)} className="form-input" placeholder="My Epic RPG" />
+                </div>
+                
+                <div className="form-group">
+                    <label className="form-label">ID (URL Safe)</label>
+                    <input value={id} onChange={e => setId(e.target.value)} className="form-input" placeholder="my_epic_rpg" />
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={handleCreate} className="save-btn">Create</button>
+                </div>
+            </div>
+        </div>
     );
 }

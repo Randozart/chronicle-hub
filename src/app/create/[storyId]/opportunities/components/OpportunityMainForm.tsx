@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Opportunity } from '@/engine/models';
-import OptionList from '@/app/admin/storylets/components/OptionList'; // Reuse this!
+import OptionList from '../../storylets/components/OptionList';
 
 interface Props {
     initialData: Opportunity;

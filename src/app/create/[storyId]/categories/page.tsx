@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { CategoryDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
-export default function CategoriesAdmin() {
+export default function CategoriesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [categories, setCategories] = useState<CategoryDefinition[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/admin/categories?storyId=trader_johns_world')
+        fetch(`/api/admin/categories?storyId=${storyId}`) // Dynamic!
             .then(r => r.json())
             .then(data => setCategories(Object.values(data).map((c: any) => c)));
-    }, []);
+    }, [storyId]);
 
     const handleCreate = () => {
         const newId = prompt("Category ID (e.g. 'menace'):");
@@ -53,6 +54,7 @@ export default function CategoriesAdmin() {
                     <CategoryEditor 
                         initialData={categories.find(c => c.id === selectedId)!} 
                         onSave={handleSaveSuccess} 
+                        storyId={storyId}
                     />
                 ) : <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a category</div>}
             </div>
@@ -60,7 +62,7 @@ export default function CategoriesAdmin() {
     );
 }
 
-function CategoryEditor({ initialData, onSave }: { initialData: CategoryDefinition, onSave: (d: any) => void }) {
+function CategoryEditor({ initialData, onSave, storyId }: { initialData: CategoryDefinition, onSave: (d: any) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -73,7 +75,7 @@ function CategoryEditor({ initialData, onSave }: { initialData: CategoryDefiniti
             await fetch('/api/admin/config', {
                 method: 'POST',
                 body: JSON.stringify({
-                    storyId: 'trader_johns_world',
+                    storyId: {storyId},
                     category: 'categories',
                     itemId: form.id,
                     data: form

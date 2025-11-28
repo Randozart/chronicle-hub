@@ -57,6 +57,7 @@ export default function NexusLayout(props: LayoutProps) {
                     settings={props.settings}
                     imageLibrary={props.imageLibrary}
                     categories={props.categories}
+                    storyId={props.storyId}
                 />
             );
         }

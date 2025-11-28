@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { DeckDefinition } from '@/engine/models';
 
-export default function DecksAdmin() {
+export default function DecksAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [decks, setDecks] = useState<DeckDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
         // Assumes you created /api/admin/decks/route.ts
-        fetch('/api/admin/decks?storyId=trader_johns_world')
+        fetch(`/api/admin/decks?storyId=${storyId}`) // Dynamic!
             .then(res => res.json())
             .then(data => {
                 const arr = Object.values(data).map((q: any) => q);
@@ -68,6 +69,7 @@ export default function DecksAdmin() {
                         initialData={decks.find(d => d.id === selectedId)!} 
                         onSave={handleSaveSuccess}
                         onDelete={handleDeleteSuccess}
+                        storyId={storyId}
                     />
                 ) : <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select a deck</div>}
             </div>
@@ -75,7 +77,7 @@ export default function DecksAdmin() {
     );
 }
 
-function DeckEditor({ initialData, onSave, onDelete }: { initialData: DeckDefinition, onSave: (d: any) => void, onDelete: (id: string) => void }) {
+function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: DeckDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -88,7 +90,7 @@ function DeckEditor({ initialData, onSave, onDelete }: { initialData: DeckDefini
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: 'trader_johns_world', category: 'decks', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId: {storyId}, category: 'decks', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
@@ -98,7 +100,7 @@ function DeckEditor({ initialData, onSave, onDelete }: { initialData: DeckDefini
         if (!confirm(`Delete "${form.id}"?`)) return;
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/admin/config?storyId=trader_johns_world&category=decks&itemId=${form.id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=decks&itemId=${form.id}`, { method: 'DELETE' });
             if (res.ok) onDelete(form.id);
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };

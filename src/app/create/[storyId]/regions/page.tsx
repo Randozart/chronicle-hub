@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { MapRegion } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
-export default function RegionsAdmin() {
+export default function RegionsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [regions, setRegions] = useState<MapRegion[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     // 1. Fetch
     useEffect(() => {
-        fetch('/api/admin/regions?storyId=trader_johns_world')
+        fetch(`/api/admin/regions?storyId=${storyId}`)
             .then(r => r.json())
             .then(data => setRegions(Object.values(data).map((r: any) => r)));
     }, []);
@@ -48,6 +49,7 @@ export default function RegionsAdmin() {
                         initialData={regions.find(r => r.id === selectedId)!} 
                         onSave={handleSaveSuccess}
                         onDelete={handleDeleteSuccess}
+                        storyId={storyId}
                     />
                 ) : <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select a region</div>}
             </div>
@@ -55,7 +57,7 @@ export default function RegionsAdmin() {
     );
 }
 
-function RegionEditor({ initialData, onSave, onDelete }: { initialData: MapRegion, onSave: (d: any) => void, onDelete: (id: string) => void }) {
+function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData: MapRegion, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -67,7 +69,7 @@ function RegionEditor({ initialData, onSave, onDelete }: { initialData: MapRegio
         try {
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
-                body: JSON.stringify({ storyId: 'trader_johns_world', category: 'regions', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId: {storyId}, category: 'regions', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); alert("Saved!"); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
@@ -76,7 +78,7 @@ function RegionEditor({ initialData, onSave, onDelete }: { initialData: MapRegio
     const handleDelete = async () => {
         if (!confirm("Delete?")) return;
         try {
-            await fetch(`/api/admin/config?storyId=trader_johns_world&category=regions&itemId=${form.id}`, { method: 'DELETE' });
+            await fetch(`/api/admin/config?storyId=${storyId}&category=regions&itemId=${form.id}`, { method: 'DELETE' });
             onDelete(form.id);
         } catch (e) { console.error(e); }
     };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { QualityDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import GameImage from '@/components/GameImage';
@@ -14,14 +14,15 @@ const toggleTag = (currentTags: string | undefined, tag: string): string => {
     }
 };
 
-export default function QualitiesAdmin() {
+export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     // 1. Fetch Data
     useEffect(() => {
-        fetch('/api/admin/qualities?storyId=trader_johns_world')
+        fetch(`/api/admin/qualities?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => {
                 const arr = Object.values(data).map((q: any) => q);
@@ -93,6 +94,7 @@ export default function QualitiesAdmin() {
                         initialData={qualities.find(q => q.id === selectedId)!} 
                         onSave={handleSaveSuccess}
                         onDelete={handleDeleteSuccess}
+                        storyId={storyId}
                     />
                 ) : (
                     <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>
@@ -104,7 +106,7 @@ export default function QualitiesAdmin() {
     );
 }
 
-function QualityEditor({ initialData, onSave, onDelete }: { initialData: QualityDefinition, onSave: (d: any) => void, onDelete: (id: string) => void }) {
+function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData: QualityDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -121,7 +123,7 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    storyId: 'trader_johns_world',
+                    storyId: {storyId},
                     category: 'qualities',
                     itemId: form.id,
                     data: form
@@ -146,7 +148,7 @@ function QualityEditor({ initialData, onSave, onDelete }: { initialData: Quality
         
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/admin/config?storyId=trader_johns_world&category=qualities&itemId=${form.id}`, {
+            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=qualities&itemId=${form.id}`, {
                 method: 'DELETE',
             });
 

@@ -21,6 +21,7 @@ interface StoryletDisplayProps {
     onCardPlayed?: (cardId: string) => void;
     imageLibrary: Record<string, ImageDefinition>; // Add type
     categories: Record<string, CategoryDefinition>;
+    storyId: string;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -44,7 +45,8 @@ export default function StoryletDisplay({
     settings,
     onCardPlayed,
     imageLibrary,
-    categories
+    categories,
+    storyId
 }: StoryletDisplayProps) {
 
     // This component only manages its own temporary UI state.
@@ -61,7 +63,7 @@ export default function StoryletDisplay({
             const response = await fetch('/api/resolve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id })
+                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId })
             });
             if (!response.ok) throw new Error(await response.text());
             

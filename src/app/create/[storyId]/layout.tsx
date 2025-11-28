@@ -1,24 +1,30 @@
+'use client'
+
 import Link from 'next/link';
-import '../globals.css'; 
+import '@/app/globals.css';
 import CheatSheet from './components/CheatSheet';
+import { use } from 'react';
 
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params); // <--- AWAIT THIS
+    const base = `/create/${storyId}`;
+    
     return (
         <div className="admin-layout">
             <aside className="admin-sidebar">
                 <div className="admin-header">Creator Studio</div>
                 <nav className="admin-nav">
                     <ul>
-                        <AdminLink href="/admin/qualities" label="Qualities" />
-                        <AdminLink href="/admin/categories" label="Categories" /> {/* NEW */}
-                        <AdminLink href="/admin/storylets" label="Storylets" />
-                        <AdminLink href="/admin/opportunities" label="Opportunities" />
-                        <AdminLink href="/admin/locations" label="Locations" />
-                        <AdminLink href="/admin/regions" label="Map Regions" />
-                        <AdminLink href="/admin/decks" label="Decks" />
-                        <AdminLink href="/admin/images" label="Image Library" />
-                        <AdminLink href="/admin/settings" label="Settings" />
+                        <AdminLink href={`${base}/qualities`} label="Qualities" />
+                        <AdminLink href={`${base}/categories`} label="Categories" /> {/* NEW */}
+                        <AdminLink href={`${base}/storylets`} label="Storylets" />
+                        <AdminLink href={`${base}/opportunities`} label="Opportunities" />
+                        <AdminLink href={`${base}/locations`} label="Locations" />
+                        <AdminLink href={`${base}/regions`} label="Map Regions" />
+                        <AdminLink href={`${base}/decks`} label="Decks" />
+                        <AdminLink href={`${base}/images`} label="Image Library" />
+                        <AdminLink href={`${base}/settings`} label="Settings" />
                     </ul>
                 </nav>
                 <div style={{ padding: '1rem', borderTop: '1px solid #333' }}>

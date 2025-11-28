@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { LocationDefinition } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 
-export default function LocationsAdmin() {
+export default function LocationsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [locations, setLocations] = useState<LocationDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('/api/admin/locations?storyId=trader_johns_world')
+        fetch(`/api/admin/locations?storyId=${storyId}`) // Dynamic!
             .then(res => res.json())
             .then(data => {
                 const arr = Object.values(data).map((q: any) => q);
@@ -74,6 +75,7 @@ export default function LocationsAdmin() {
                         initialData={locations.find(l => l.id === selectedId)!} 
                         onSave={handleSaveSuccess}
                         onDelete={handleDeleteSuccess}
+                        storyId={storyId}
                     />
                 ) : (
                     <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select a location</div>
@@ -83,7 +85,7 @@ export default function LocationsAdmin() {
     );
 }
 
-function LocationEditor({ initialData, onSave, onDelete }: { initialData: LocationDefinition, onSave: (d: any) => void, onDelete: (id: string) => void }) {
+function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialData: LocationDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -99,7 +101,7 @@ function LocationEditor({ initialData, onSave, onDelete }: { initialData: Locati
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: 'trader_johns_world', category: 'locations', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId: {storyId}, category: 'locations', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
@@ -109,7 +111,7 @@ function LocationEditor({ initialData, onSave, onDelete }: { initialData: Locati
         if (!confirm(`Delete "${form.id}"?`)) return;
         setIsSaving(true);
         try {
-            const res = await fetch(`/api/admin/config?storyId=trader_johns_world&category=locations&itemId=${form.id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=locations&itemId=${form.id}`, { method: 'DELETE' });
             if (res.ok) onDelete(form.id);
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };

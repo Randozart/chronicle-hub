@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Opportunity } from '@/engine/models';
 import OpportunityMainForm from './components/OpportunityMainForm';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
-export default function OpportunitiesAdmin() {
+export default function OpportunitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [opportunities, setOpportunities] = useState<Partial<Opportunity>[]>([]); 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeOpportunity, setActiveOpportunity] = useState<Opportunity | null>(null);
@@ -14,7 +15,7 @@ export default function OpportunitiesAdmin() {
 
     // 1. Fetch List (Summary)
     useEffect(() => {
-        fetch('/api/admin/opportunities?storyId=trader_johns_world')
+        fetch(`/api/admin/opportunities?storyId=${storyId}`) // Dynamic!
             .then(res => res.json())
             .then(data => setOpportunities(data))
             .finally(() => setIsLoadingList(false));
@@ -27,7 +28,7 @@ export default function OpportunitiesAdmin() {
             return;
         }
         setIsLoadingDetail(true);
-        fetch(`/api/admin/opportunities?storyId=trader_johns_world&id=${selectedId}`)
+        fetch(`/api/admin/opportunities?storyId=${storyId}&id=${selectedId}`)
             .then(res => res.json())
             .then(data => setActiveOpportunity(data))
             .catch(e => console.error(e))
@@ -61,7 +62,7 @@ export default function OpportunitiesAdmin() {
             const res = await fetch('/api/admin/opportunities', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: 'trader_johns_world', data })
+                body: JSON.stringify({ storyId: {storyId}, data })
             });
             if (res.ok) {
                 alert("Saved!");
@@ -86,7 +87,7 @@ export default function OpportunitiesAdmin() {
     // 5. Delete Handler
     const handleDelete = async (id: string) => {
         if(!confirm("Delete this opportunity?")) return;
-        await fetch(`/api/admin/opportunities?storyId=trader_johns_world&id=${id}`, { method: 'DELETE' });
+        await fetch(`/api/admin/opportunities?storyId=${storyId}&id=${id}`, { method: 'DELETE' });
         setOpportunities(prev => prev.filter(s => s.id !== id));
         setSelectedId(null);
     };

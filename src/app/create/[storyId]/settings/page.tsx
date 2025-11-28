@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { WorldSettings } from '@/engine/models';
-import ThemePreview from './components/ThemePreview';
+import ThemePreview from '@/app/create/[storyId]/settings/components/ThemePreview';
 
 // We need to extend the Settings type locally to include char_create dictionary, 
 // as it is technically part of WorldConfig, not WorldSettings interface, 
@@ -11,7 +11,8 @@ interface SettingsForm extends WorldSettings {
     char_create: Record<string, string>;
 }
 
-export default function SettingsAdmin() {
+export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     const [form, setForm] = useState<SettingsForm>({
         useActionEconomy: true,
         maxActions: 20,
@@ -65,14 +66,14 @@ export default function SettingsAdmin() {
         // and char_create separately.
         
         Promise.all([
-            fetch('/api/admin/settings?storyId=trader_johns_world').then(r => r.json()),
+            fetch(`/api/admin/settings?storyId=${storyId}`).then(r => r.json()),
             // We need an endpoint for char_create. 
             // Let's assume we use the generic route for it or you added it.
             // If not, the char_create section will be empty.
             // Let's use a placeholder fetch or assume it comes with settings for now.
             // Actually, let's just use a direct fetch to a new endpoint /api/admin/char_create
             // which you should create (copy/paste settings route but return config.char_create).
-            fetch('/api/admin/char_create?storyId=trader_johns_world').then(r => r.ok ? r.json() : {})
+            fetch(`/api/admin/char_create?storyId=${storyId}`).then(r => r.ok ? r.json() : {})
         ]).then(([settingsData, charData]) => {
             setForm(prev => ({ 
                 ...prev, 
@@ -100,7 +101,7 @@ export default function SettingsAdmin() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    storyId: 'trader_johns_world',
+                    storyId: {storyId},
                     category: 'settings',
                     itemId: 'settings',
                     data: { ...form, char_create: undefined } // Exclude char_create from settings object
@@ -115,7 +116,7 @@ export default function SettingsAdmin() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    storyId: 'trader_johns_world',
+                    storyId: {storyId},
                     category: 'char_create', // Mapping to content.char_create
                     itemId: 'rules', // This ID is ignored by the bulk updater usually, or treated as the object itself
                     data: form.char_create

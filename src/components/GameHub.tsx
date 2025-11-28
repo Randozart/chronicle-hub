@@ -127,6 +127,7 @@ export default function GameHub({
     }, []);
 
     // --- LAYOUT ---
+    const storyId = character.storyId;
 
     const layoutProps: LayoutProps = {
         character,
@@ -141,6 +142,7 @@ export default function GameHub({
         imageLibrary,
         categories,
         locationStorylets,
+        storyId,
         
         onOptionClick: showEvent,
         onDrawClick: handleDrawCard,

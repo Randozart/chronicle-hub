@@ -8,11 +8,8 @@ interface CreationPageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function CreationPage(props: CreationPageProps) {
-    
-    // 1. Await the searchParams promise
-    const searchParams = await props.searchParams;
-    const storyId = searchParams.storyId;
+export default async function CreationPage({props, params}: {props: CreationPageProps, params: { storyId: string }}) {
+    const storyId = await params.storyId;
 
     if (!storyId || typeof storyId !== 'string') {
         return <div>Error: No story specified or storyId is invalid.</div>;
