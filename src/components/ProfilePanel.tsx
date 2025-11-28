@@ -63,7 +63,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                     // Note: 'cat' might be "npc.trader" or just "npc" depending on your grouping logic.
                     // We try to find exact match, or fallback to default.
                     const catDef = categories[cat];
-                    const headerColor = catDef?.color || 'var(--success-color)'; 
+                    const headerColor = catDef?.color || 'var(--accent-highlight)'; 
 
                     return (
                         <div key={cat} className="quality-category-card">

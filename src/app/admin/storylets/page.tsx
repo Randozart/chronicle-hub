@@ -66,7 +66,9 @@ export default function StoryletsAdmin() {
             if (res.ok) {
                 alert("Saved!");
                 // Update list view in case Name changed
-                setStorylets(prev => prev.map(s => s.id === data.id ? { ...s, name: data.name } : s));
+                setStorylets(prev => prev.map(s => 
+                    s.id === data.id ? { ...s, name: data.name, location: data.location, folder: data.folder, status: data.status } : s
+                ));
             } else {
                 alert("Error saving.");
             }
@@ -92,9 +94,10 @@ export default function StoryletsAdmin() {
                 onSelect={setSelectedId}
                 onCreate={handleCreate}
                 groupOptions={[
+                    { label: "Folder", key: "folder" },
                     { label: "Location", key: "location" }
                 ]}
-                defaultGroupByKey="location"
+                defaultGroupByKey="folder" 
             />
 
             <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

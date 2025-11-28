@@ -55,6 +55,8 @@ export interface ResolveOption {
     computed_action_cost?: number; 
 }
 
+export type PublishStatus = 'draft' | 'published' | 'archived';
+
 interface BaseStorylet {
     id: string;
     name: string;
@@ -67,6 +69,8 @@ interface BaseStorylet {
     properties?: string;
     options: ResolveOption[];
     autofire_if?: string; 
+    status?: PublishStatus; // Default: 'draft'
+    folder?: string; // e.g. "Chapter 1/Prologue"
 }
 
 export interface Storylet extends BaseStorylet {
@@ -127,7 +131,7 @@ export interface WorldSettings {
     layoutStyle: LayoutStyle; // Default: "nexus"
     bannerHeight?: number; // For London
     enableParallax?: boolean; // New setting
-    visualTheme?: "default" | "victorian" | "terminal" | "parchment" | "noir" | 'pirate' | 'dark-fantasy' | 'cyberpunk' | 'solarpunk' | 'lab' | 'druidic' | 'gothic' | 'neo-tokyo' | 'western';
+    visualTheme?: string;
 }
 
 interface BaseQualityState {

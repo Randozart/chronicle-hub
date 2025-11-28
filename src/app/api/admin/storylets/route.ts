@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         // Fetch LIST summary
         const storylets = await db.collection('storylets')
             .find({ worldId: storyId })
-            .project({ id: 1, name: 1, location: 1 }) // Light payload
+            .project({ id: 1, name: 1, location: 1, folder: 1, status: 1 }) // <--- Add folder + status
             .sort({ id: 1 })
             .toArray();
         return NextResponse.json(storylets);

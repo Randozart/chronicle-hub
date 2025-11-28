@@ -69,8 +69,6 @@ function CategoryEditor({ initialData, onSave }: { initialData: CategoryDefiniti
 
     const handleSave = async () => {
         setIsSaving(true);
-        // ... Standard Save Logic (category: 'categories') ...
-        // (Use the generic /api/admin/config endpoint)
         try {
             await fetch('/api/admin/config', {
                 method: 'POST',

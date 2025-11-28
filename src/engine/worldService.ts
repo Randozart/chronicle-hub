@@ -59,7 +59,7 @@ export const getEvent = async (worldId: string, eventId: string): Promise<Storyl
 export const getLocationStorylets = async (worldId: string, locationId: string): Promise<Storylet[]> => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    const docs = await db.collection('storylets').find({ worldId, location: locationId }).toArray();
+    const docs = await db.collection('storylets').find({ worldId, location: locationId, status: 'published' }).toArray();
     return docs as unknown as Storylet[];
 };
 
@@ -78,7 +78,7 @@ export const getAutofireStorylets = async (worldId: string): Promise<Storylet[]>
 export const getOpportunitiesForDeck = async (worldId: string, deckId: string): Promise<Opportunity[]> => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    const docs = await db.collection('opportunities').find({ worldId, deck: deckId }).toArray();
+    const docs = await db.collection('opportunities').find({ worldId, deck: deckId, status: 'published' }).toArray();
     return docs as unknown as Opportunity[];
 };
 
@@ -93,7 +93,7 @@ const injectIds = <T>(dict: Record<string, T> | undefined): Record<string, T> =>
 
 export const updateWorldConfigItem = async (
     worldId: string, 
-    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings' | 'char_create', 
+    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings' | 'char_create' | 'categories', 
     itemId: string, 
     data: any
 ): Promise<boolean> => {

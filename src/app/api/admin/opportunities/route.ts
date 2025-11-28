@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     } else {
         const items = await db.collection('opportunities')
             .find({ worldId: storyId })
-            .project({ id: 1, name: 1, deck: 1 }) // Fetch Deck for sorting
+            .project({ id: 1, name: 1, deck: 1, frequency: 1, folder: 1, status: 1 }) // <--- Add folder + status
             .sort({ id: 1 })
             .toArray();
         return NextResponse.json(items);

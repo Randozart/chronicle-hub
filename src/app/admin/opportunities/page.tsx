@@ -65,7 +65,18 @@ export default function OpportunitiesAdmin() {
             });
             if (res.ok) {
                 alert("Saved!");
-                setOpportunities(prev => prev.map(s => s.id === data.id ? { ...s, name: data.name } : s));
+                setOpportunities(prev => prev.map(s => 
+                    s.id === data.id 
+                    ? { 
+                        ...s, 
+                        name: data.name, 
+                        deck: data.deck, 
+                        frequency: data.frequency,
+                        folder: data.folder, 
+                        status: data.status 
+                      } 
+                    : s
+                ));            
             } else {
                 alert("Error saving.");
             }
@@ -91,10 +102,11 @@ export default function OpportunitiesAdmin() {
                 onSelect={setSelectedId}
                 onCreate={handleCreate}
                 groupOptions={[
+                    { label: "Folder", key: "folder" }, 
                     { label: "Deck", key: "deck" },
                     { label: "Frequency", key: "frequency" }
                 ]}
-                defaultGroupByKey="deck"
+                defaultGroupByKey="folder"
             />
 
             {/* RIGHT: Editor */}

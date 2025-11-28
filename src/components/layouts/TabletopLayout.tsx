@@ -121,12 +121,12 @@ export default function TabletopLayout(props: LayoutProps) {
                     <button 
                         onClick={props.onOpenMap}
                         style={{ 
-                            background: '#000', border: '1px solid var(--success-color)', 
-                            color: 'var(--success-color)', padding: '0.5rem 1.5rem', 
+                            background: '#000', border: '1px solid var(--accent-highlight)', 
+                            color: 'var(--accent-highlight)', padding: '0.5rem 1.5rem', 
                             cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px',
                             boxShadow: '0 0 10px rgba(0,0,0,0.8)'
                         }}
-                        className="hover:bg-[var(--success-color)] hover:text-black transition"
+                        className="hover:bg-[var(--accent-highlight)] hover:text-black transition"
                     >
                         Travel
                     </button>

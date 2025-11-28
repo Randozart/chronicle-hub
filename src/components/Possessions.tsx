@@ -151,7 +151,7 @@ export default function Possessions({
             {/* INVENTORY GRID */}
             {groups.map(group => (
                 <div key={group} style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--success-color)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--success-color)', paddingLeft: '0.5rem' }}>{group}</h3>
+                    <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--accent-highlight)', paddingLeft: '0.5rem' }}>{group}</h3>
                     
                     <div className="inventory-grid">
                         {grouped[group].map((item: any) => {

@@ -31,12 +31,38 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
     return (
         <div className="h-full flex flex-col">
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    
+                    {/* STATUS TOGGLE */}
+                    <select 
+                        value={form.status || 'draft'} 
+                        onChange={e => handleChange('status', e.target.value)}
+                        style={{ 
+                            background: form.status === 'published' ? '#2ecc71' : '#f1c40f',
+                            color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px'
+                        }}
+                    >
+                        <option value="draft">DRAFT</option>
+                        <option value="published">PUBLISHED</option>
+                    </select>
+
                     <button onClick={() => onDelete(form.id)} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete</button>
                     <button onClick={() => onSave(form)} className="save-btn" style={{ padding: '0.5rem 1rem' }}>Save</button>
                 </div>
+            </div>
+
+             {/* FOLDER FIELD */}
+            <div className="form-group">
+                <label className="form-label">Folder / Category</label>
+                <input 
+                    value={form.folder || ''} 
+                    onChange={e => handleChange('folder', e.target.value)}
+                    className="form-input"
+                    placeholder="Chapter 1/Prologue"
+                />
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>

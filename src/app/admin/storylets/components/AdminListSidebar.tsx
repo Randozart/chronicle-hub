@@ -54,8 +54,9 @@ export default function AdminListSidebar<T extends ListItem>({
             }
 
             // Split by dot if it's a category, otherwise just use the value as a folder
-            const path = rawPath.split('.').filter(Boolean);
-            
+            const normalizedPath = rawPath.replace(/\./g, '/'); 
+            const path = normalizedPath.split('/').filter(Boolean); 
+                       
             let current = root;
             for (const folder of path) {
                 if (!current[folder]) current[folder] = { _files: [] };

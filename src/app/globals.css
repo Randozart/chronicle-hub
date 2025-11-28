@@ -1585,7 +1585,7 @@ body {
 .quality-level {
     font-size: 1.1rem; 
     font-weight: bold;
-    color: var(--success-color);
+    color: var(--accent-highlight);
 }
 
 .quality-cp-bar-background {
