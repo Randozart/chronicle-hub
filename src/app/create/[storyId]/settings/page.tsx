@@ -11,6 +11,8 @@ import CollaboratorManager from './components/CollaboratorManager';
 interface SettingsForm extends WorldSettings {
     char_create: Record<string, string>;
     isPublished?: boolean; 
+    coverImage?: string;
+    tags?: string[];    
 }
 
 export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
@@ -102,7 +104,10 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    const handleArrayChange = (field: 'characterSheetCategories' | 'equipCategories', strVal: string) => {
+    const handleArrayChange = (
+        field: 'characterSheetCategories' | 'equipCategories' | 'tags', // <--- Add 'tags'
+        strVal: string
+    ) => {
         const arr = strVal.split(',').map(s => s.trim()).filter(Boolean);
         setForm(prev => ({ ...prev, [field]: arr }));
     };
@@ -145,9 +150,9 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     storyId: storyId,
-                    category: 'root',    // This targets top-level fields
-                    itemId: 'published', // The field name in MongoDB
-                    data: form.isPublished
+                    category: 'root',    
+                    itemId: 'published', 
+                    data: form.isPublished // Boolean
                 })
             });
 
@@ -188,6 +193,23 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         Publish World
                     </label>
                 </div>
+            </div>
+
+            {/* META DATA */}
+            <div className="form-group">
+                <label className="form-label">Cover Image</label>
+                <input value={form.coverImage || ''} onChange={e => handleChange('coverImage', e.target.value)} className="form-input" />
+            </div>
+
+            {/* NEW: TAGS FIELD */}
+            <div className="form-group">
+                <label className="form-label">Tags (Comma Separated)</label>
+                <input 
+                    defaultValue={form.tags?.join(', ')}
+                    onBlur={e => handleArrayChange('tags', e.target.value)} 
+                    className="form-input"
+                    placeholder="Fantasy, Mystery, Noir"
+                />
             </div>
 
             {/* CHARACTER CREATION */}
@@ -460,3 +482,4 @@ function CharCreateEditor({ rules, onChange }: { rules: Record<string, string>, 
         </div>
     );
 }
+

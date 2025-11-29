@@ -240,7 +240,10 @@ export interface WorldDocument {
     summary?: string;
     published: boolean;
     createdAt: Date;
-    
+    coverImage?: string; 
+    playerCount?: number;
+    tags?: string[]; // ["Fantasy", "Horror"]
+
     // The "Hot Config" we've been using
     settings: WorldSettings;
     content: {

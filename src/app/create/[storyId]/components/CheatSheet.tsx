@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 
 export default function CheatSheet() {
@@ -204,8 +205,18 @@ export default function CheatSheet() {
                         Drain one stat to fuel another in a single click.
                     </p>
                 </div>
+
+                
             </Accordion>
+            
+            <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #333', textAlign: 'center' }}>
+                <Link href="/docs" target="_blank" style={{ color: '#61afef', textDecoration: 'none' }}>
+                    Open Full Documentation ↗
+                </Link>
+            </div>
         </div>
+
+        
     );
 }
 
