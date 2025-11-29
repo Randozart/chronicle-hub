@@ -3,6 +3,7 @@ import '@/app/globals.css';
 import CheatSheet from './components/CheatSheet';
 import { verifyWorldAccess } from '@/engine/accessControl';
 import { redirect } from 'next/navigation';
+import VisualFilters from '@/components/VisualFilters';
 
 
 export default async function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
@@ -35,6 +36,7 @@ export default async function AdminLayout({ children, params }: { children: Reac
                         <AdminLink href={`${base}/decks`} label="Decks" />
                         <AdminLink href={`${base}/images`} label="Image Library" />
                         <AdminLink href={`${base}/settings`} label="Settings" />
+                        <AdminLink href={`${base}/players`} label="Player Monitor" /> {/* <--- NEW LINK */}
                     </ul>
                 </nav>
                 <div style={{ padding: '1rem', borderTop: '1px solid #333' }}>

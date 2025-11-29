@@ -4,6 +4,8 @@ import { useState, useEffect, use } from 'react';
 import { ImageDefinition, ImageCategory } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import ImageUploader from './components/ImageUploader';
+
 
 export default function ImagesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -20,6 +22,11 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             })
             .finally(() => setIsLoading(false));
     }, []);
+    
+    const handleUploadSuccess = (newImage: ImageDefinition) => {
+        setImages(prev => [...prev, newImage]);
+        setSelectedId(newImage.id);
+    };
 
     const handleCreate = () => {
         const newId = prompt("Enter unique Image Key:");
@@ -75,6 +82,8 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             />
 
             <div className="admin-editor-col">
+                <ImageUploader storyId={storyId} onUploadComplete={handleUploadSuccess} />
+                <hr style={{ borderColor: '#333', margin: '1.5rem 0' }} />
                 {selectedId ? (
                     <ImageEditor 
                         initialData={images.find(q => q.id === selectedId)!} 
