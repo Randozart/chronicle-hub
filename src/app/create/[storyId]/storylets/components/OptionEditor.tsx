@@ -1,277 +1,174 @@
 'use client';
 
+import { useState } from 'react';
 import { ResolveOption } from '@/engine/models';
+import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
+import GameImage from '@/components/GameImage'; // Assuming you want previews
+import ScribeAssistant from '../../components/ScribeAssistant';
 
 interface Props {
     data: ResolveOption;
     onChange: (data: ResolveOption) => void;
     onDelete: () => void;
+    storyId: string;
 }
 
-export default function OptionEditor({ data, onChange, onDelete }: Props) {
+export default function OptionEditor({ data, onChange, onDelete, storyId }: Props) {
     
-    // Toggle States
-    const hasDifficulty = !!data.random; 
-    const hasRarePass = (data.rare_pass_chance || 0) > 0;
-    const hasRareFail = (data.rare_fail_chance || 0) > 0;
+    // Assistant State
+    const [assistantTarget, setAssistantTarget] = useState<{ field: keyof ResolveOption, mode: 'condition' | 'effect' } | null>(null);
 
     const handleChange = (field: keyof ResolveOption, val: any) => {
-        if (field === 'random' && val === '') val = undefined;
         onChange({ ...data, [field]: val });
     };
 
-    // Helpers
-    const toggleDifficulty = () => handleChange('random', hasDifficulty ? undefined : "$luck >= 50");
-    const toggleRarePass = () => handleChange('rare_pass_chance', hasRarePass ? undefined : 10);
-    const toggleRareFail = () => handleChange('rare_fail_chance', hasRareFail ? undefined : 10);
-    
-    const toggleTag = (tags: string | undefined, tag: string) => {
-        const tagList = (tags || '').split(',').map(s => s.trim()).filter(Boolean);
-        const newTags = tagList.includes(tag) 
-            ? tagList.filter(t => t !== tag) 
-            : [...tagList, tag];
-        handleChange('properties', newTags.join(', '));
+    const handlePropToggle = (prop: string) => {
+        const newProps = toggleProperty(data.properties, prop);
+        handleChange('properties', newProps);
     };
 
-    return (
-        <div className="space-y-4">
+    const handleAssistantInsert = (text: string) => {
+        if (!assistantTarget) return;
+        const currentVal = (data[assistantTarget.field] as string) || "";
+        
+        // Smart separators
+        const isEffect = assistantTarget.mode === 'effect';
+        const separator = isEffect ? ', ' : ' && ';
+        
+        const newVal = currentVal.length > 0 
+            ? currentVal.trim().endsWith(isEffect ? ',' : '&') 
+                ? currentVal + " " + text 
+                : currentVal + separator + text
+            : text;
             
-            {/* --- 1. MAIN INFO --- */}
+        handleChange(assistantTarget.field, newVal);
+    };
+
+    // Helper for the lightning button
+    const AssistantBtn = ({ field, mode }: { field: keyof ResolveOption, mode: 'condition' | 'effect' }) => (
+        <button 
+            onClick={() => setAssistantTarget({ field, mode })}
+            style={{ position: 'absolute', right: 5, top: 24, background: 'none', border: 'none', cursor: 'pointer', color: '#f1c40f' }}
+            title="Insert Logic"
+        >
+            ⚡
+        </button>
+    );
+
+    return (
+        <div className="space-y-4" style={{ position: 'relative' }}>
+            
+            {/* ASSISTANT POPUP */}
+            {assistantTarget && (
+                <div style={{ position: 'absolute', top: '50px', right: 0, zIndex: 100 }}>
+                    <ScribeAssistant 
+                        storyId={storyId} 
+                        mode={assistantTarget.mode} 
+                        onInsert={handleAssistantInsert} 
+                        onClose={() => setAssistantTarget(null)} 
+                    />
+                </div>
+            )}
+
+            {/* MAIN INFO */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
-                    <label className="form-label">Button Label (Name)</label>
-                    <input 
-                        value={data.name} 
-                        onChange={e => handleChange('name', e.target.value)}
-                        className="form-input"
-                    />
+                    <label className="form-label">Label</label>
+                    <input value={data.name} onChange={e => handleChange('name', e.target.value)} className="form-input" />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Option ID</label>
-                    <input 
-                        value={data.id} 
-                        disabled 
-                        className="form-input" 
-                        style={{ opacity: 0.6 }} 
-                    />
+                    <label className="form-label">Cost</label>
+                    <input value={data.action_cost || ''} onChange={e => handleChange('action_cost', e.target.value)} className="form-input" placeholder="1" />
                 </div>
             </div>
 
-            <div className="toggle-row">
-                <label className="toggle-label">
-                    <input 
-                        type="checkbox" 
-                        checked={(data.properties || '').includes('instant_redirect')}
-                        onChange={() => toggleTag(data.properties, 'instant_redirect')}
-                    />
-                    Instant Redirect (No Result Text)
-                </label>
+            {/* BEHAVIOR (Checkboxes) */}
+            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                <label className="special-label" style={{ color: '#c678dd', marginBottom: '0.5rem' }}>Behavior</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <label className="toggle-label">
+                        <input type="checkbox" checked={hasProperty(data.properties, 'instant_redirect')} onChange={() => handlePropToggle('instant_redirect')} />
+                        Instant Redirect
+                    </label>
+                    <label className="toggle-label">
+                        <input type="checkbox" checked={hasProperty(data.properties, 'no_return')} onChange={() => handlePropToggle('no_return')} />
+                        No Return
+                    </label>
+                    <label className="toggle-label">
+                        <input type="checkbox" checked={hasProperty(data.properties, 'dangerous')} onChange={() => handlePropToggle('dangerous')} />
+                        Dangerous (Red)
+                    </label>
+                    <label className="toggle-label">
+                        <input type="checkbox" checked={!!data.random} onChange={() => handleChange('random', data.random ? undefined : '$luck >= 50')} />
+                        Has Difficulty
+                    </label>
+                </div>
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Custom Tags</label>
-                <input 
-                    placeholder="other_tag"
-                    value={data.properties || ''} 
-                    onChange={e => handleChange('properties', e.target.value)}
-                    className="form-input"
-                />
-            </div>
-
+            {/* LOGIC GATES */}
             <div className="form-row">
-                <div className="form-group">
-                    <label className="form-label">Image Code</label>
-                    <input 
-                        value={data.image_code || ''} 
-                        onChange={e => handleChange('image_code', e.target.value)}
-                        className="form-input"
-                    />
+                <div className="form-group" style={{ position: 'relative' }}>
+                    <label className="form-label">Visible If</label>
+                    <input value={data.visible_if || ''} onChange={e => handleChange('visible_if', e.target.value)} className="form-input" />
+                    <AssistantBtn field="visible_if" mode="condition" />
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Action Cost</label>
-                    <input 
-                        value={data.action_cost || ''} 
-                        onChange={e => handleChange('action_cost', e.target.value)}
-                        className="form-input"
-                        placeholder="1"
-                    />
-                </div>
-                <div className="form-group" style={{ flex: 2 }}>
-                    <label className="form-label">Properties (Tags)</label>
-                    <input 
-                        placeholder="e.g. instant_redirect"
-                        value={data.properties || ''} 
-                        onChange={e => handleChange('properties', e.target.value)}
-                        className="form-input"
-                    />
+                <div className="form-group" style={{ position: 'relative' }}>
+                    <label className="form-label">Unlock If</label>
+                    <input value={data.unlock_if || ''} onChange={e => handleChange('unlock_if', e.target.value)} className="form-input" />
+                    <AssistantBtn field="unlock_if" mode="condition" />
                 </div>
             </div>
-            
-            <div className="form-group">
-                <label className="form-label">Short Description (Tooltip)</label>
-                <input 
-                    value={data.short || ''} 
-                    onChange={e => handleChange('short', e.target.value)}
-                    className="form-input"
-                />
-            </div>
 
-            <div className="form-group">
-                <label className="form-label">Meta Text (Instruction)</label>
-                <input 
-                    value={data.meta || ''} 
-                    onChange={e => handleChange('meta', e.target.value)}
-                    className="form-input"
-                    placeholder="e.g. 'This will consume your items'"
-                    style={{ fontStyle: 'italic', color: '#aaa' }}
-                />
-            </div>
-
-            {/* --- 2. REQUIREMENTS & LOGIC --- */}
-            <div className="form-group" style={{ background: '#181a1f', padding: '0.75rem', borderRadius: '4px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <label className="form-label">Logic & Outcomes</label>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <label style={{ fontSize: '0.8rem', color: '#aaa', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <input type="checkbox" checked={hasDifficulty} onChange={toggleDifficulty} /> 
-                            Skill Check / Difficulty
-                        </label>
-                        <label style={{ fontSize: '0.8rem', color: '#aaa', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <input type="checkbox" checked={hasRarePass} onChange={toggleRarePass} /> 
-                            Rare Success
-                        </label>
-                        {hasDifficulty && (
-                            <label style={{ fontSize: '0.8rem', color: '#aaa', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <input type="checkbox" checked={hasRareFail} onChange={toggleRareFail} /> 
-                                Rare Failure
-                            </label>
-                        )}
-                    </div>
+            {/* SKILL CHECK */}
+            {data.random !== undefined && (
+                <div className="form-group" style={{ position: 'relative' }}>
+                    <label className="form-label" style={{ color: '#f1c40f' }}>Challenge Logic</label>
+                    <input value={data.random} onChange={e => handleChange('random', e.target.value)} className="form-input" placeholder="$stat >= 50 [10]" />
                 </div>
+            )}
 
-                <div className="form-row">
-                    <input placeholder="Visible If..." value={data.visible_if || ''} onChange={e => handleChange('visible_if', e.target.value)} className="form-input" />
-                    <input placeholder="Unlock If..." value={data.unlock_if || ''} onChange={e => handleChange('unlock_if', e.target.value)} className="form-input" />
-                </div>
-
-                {hasDifficulty && (
-                    <div style={{ marginTop: '0.5rem' }}>
-                        <input 
-                            placeholder="Skill Check (e.g. $stat >= 50 [10])" 
-                            value={data.random || ''} 
-                            onChange={e => handleChange('random', e.target.value)}
-                            className="form-input"
-                            style={{ borderColor: '#d19a66', borderLeftWidth: '4px' }} 
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* --- 3. OUTCOMES GRID (Using CSS Grid) --- */}
-            <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-                gap: '1rem',
-                width: '100%' 
-            }}>
+            {/* RESULTS GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                 
-                <OutcomeColumn 
-                    title="STANDARD SUCCESS"
-                    color="#2ecc71"
-                    data={data}
-                    prefix="pass" 
-                    onChange={handleChange}
-                />
+                {/* SUCCESS */}
+                <div className="outcome-column" style={{ background: 'rgba(46, 204, 113, 0.05)', border: '1px solid #2ecc71' }}>
+                    <h4 style={{ color: '#2ecc71', marginTop: 0 }}>Success</h4>
+                    <textarea className="form-textarea" rows={3} value={data.pass_long} onChange={e => handleChange('pass_long', e.target.value)} placeholder="Result text..." />
+                    
+                    <div style={{ position: 'relative', marginTop: '0.5rem' }}>
+                        <label className="form-label">Effects</label>
+                        <input className="form-input" value={data.pass_quality_change || ''} onChange={e => handleChange('pass_quality_change', e.target.value)} />
+                        <AssistantBtn field="pass_quality_change" mode="effect" />
+                    </div>
 
-                {hasRarePass && (
-                    <OutcomeColumn 
-                        title={`RARE SUCCESS (${data.rare_pass_chance}%)`}
-                        color="#f1c40f"
-                        data={data}
-                        prefix="rare_pass"
-                        onChange={handleChange}
-                        chanceField="rare_pass_chance"
-                    />
-                )}
+                    <div style={{ marginTop: '0.5rem' }}>
+                        <label className="form-label">Move To (Location ID)</label>
+                        <input className="form-input" value={data.pass_move_to || ''} onChange={e => handleChange('pass_move_to', e.target.value)} />
+                    </div>
+                </div>
 
-                {hasDifficulty && (
-                    <OutcomeColumn 
-                        title="FAILURE"
-                        color="#e74c3c"
-                        data={data}
-                        prefix="fail"
-                        onChange={handleChange}
-                    />
-                )}
-
-                {hasDifficulty && hasRareFail && (
-                    <OutcomeColumn 
-                        title={`RARE FAILURE (${data.rare_fail_chance}%)`}
-                        color="#c0392b"
-                        data={data}
-                        prefix="rare_fail"
-                        onChange={handleChange}
-                        chanceField="rare_fail_chance"
-                    />
+                {/* FAILURE (Only if Difficulty is on) */}
+                {data.random !== undefined && (
+                    <div className="outcome-column" style={{ background: 'rgba(231, 76, 60, 0.05)', border: '1px solid #e74c3c' }}>
+                        <h4 style={{ color: '#e74c3c', marginTop: 0 }}>Failure</h4>
+                        <textarea className="form-textarea" rows={3} value={data.fail_long || ''} onChange={e => handleChange('fail_long', e.target.value)} placeholder="Result text..." />
+                        
+                        <div style={{ position: 'relative', marginTop: '0.5rem' }}>
+                            <label className="form-label">Effects</label>
+                            <input className="form-input" value={data.fail_quality_change || ''} onChange={e => handleChange('fail_quality_change', e.target.value)} />
+                            <AssistantBtn field="fail_quality_change" mode="effect" />
+                        </div>
+                         <div style={{ marginTop: '0.5rem' }}>
+                            <label className="form-label">Move To (Location ID)</label>
+                            <input className="form-input" value={data.fail_move_to || ''} onChange={e => handleChange('fail_move_to', e.target.value)} />
+                        </div>
+                    </div>
                 )}
             </div>
 
-            {/* --- FOOTER --- */}
-            <div style={{ paddingTop: '1rem', borderTop: '1px solid #333', display: 'flex', justifyContent: 'space-between' }}>
-                <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.3rem 1rem', fontSize: '0.8rem' }}>Delete Option</button>
+            <div style={{ paddingTop: '1rem', borderTop: '1px solid #333', display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.3rem 1rem' }}>Delete Option</button>
             </div>
-        </div>
-    );
-}
-
-function OutcomeColumn({ title, color, data, prefix, onChange, chanceField }: any) {
-    return (
-        <div className="outcome-column" style={{ 
-            border: `1px solid ${color}`, 
-            background: `${color}0D` 
-        }}>
-            <h4 style={{ color: color, margin: '0 0 0.5rem 0', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
-                {title}
-                {chanceField && (
-                    <input 
-                        type="number" 
-                        value={data[chanceField]} 
-                        onChange={e => onChange(chanceField, parseInt(e.target.value))}
-                        style={{ width: '50px', background: '#181a1f', border: '1px solid #333', color: '#fff', fontSize: '0.8rem' }} 
-                    />
-                )}
-            </h4>
-            
-            <label className="form-label">Result Text</label>
-            <textarea 
-                value={data[`${prefix}_long`] || ''} 
-                onChange={e => onChange(`${prefix}_long`, e.target.value)}
-                className="form-textarea"
-                rows={4}
-            />
-
-            <label className="form-label" style={{ marginTop: '0.5rem' }}>Quality Changes</label>
-            <textarea 
-                value={data[`${prefix}_quality_change`] || ''} 
-                onChange={e => onChange(`${prefix}_quality_change`, e.target.value)}
-                className="form-textarea"
-                placeholder="$gold += 10"
-                rows={2}
-            />
-
-            <label className="form-label" style={{ marginTop: '0.5rem' }}>Redirect To (ID)</label>
-            <input 
-                value={data[`${prefix}_redirect`] || ''} 
-                onChange={e => onChange(`${prefix}_redirect`, e.target.value)}
-                className="form-input"
-            />
-
-            <label className="form-label" style={{ marginTop: '0.5rem' }}>Move To (Location ID)</label>
-            <input 
-                value={data[`${prefix}_move_to`] || ''} 
-                onChange={e => onChange(`${prefix}_move_to`, e.target.value)}
-                className="form-input"
-            />
         </div>
     );
 }
