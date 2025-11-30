@@ -477,6 +477,17 @@ export class GameEngine {
                     case '%=': qState.level = Math.floor(qState.level % val); break;
                 }
             }
+
+            
+        }
+
+        if (qState.type === QualityType.Equipable && op === '+=' || op === '++') {
+            const def = this.worldContent.qualities[qid];
+            if (def.properties?.includes('auto_equip')) {
+                // Check if slot is empty
+                // If empty, add to this.equipment[def.category]
+                // We need to expose 'equipment' as mutable in the engine for this to work
+            }
         }
 
         // --- SECTION 2: Generate the report based on the final state ---

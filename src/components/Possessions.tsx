@@ -92,6 +92,11 @@ export default function Possessions({
                 {equipCategories.map(slot => {
                     const equippedId = equipment[slot];
                     const equippedItem = equippedId ? qualityDefs[equippedId] : null;
+                    // Look up the definition to check properties
+                    const equippedDef = equippedId ? qualityDefs[equippedId] : null;
+
+                    // Check for 'cursed' property (assuming properties is a comma-separated string)
+                    const isCursed = equippedDef?.properties?.includes('cursed');
 
                     return (
                         <div key={slot} className="equip-slot">
@@ -109,13 +114,16 @@ export default function Possessions({
                                         />
                                     </div>
                                     <strong>{equippedItem.name}</strong>
-                                    <button 
-                                        className="unequip-btn"
-                                        onClick={() => handleEquipToggle(slot, null)}
-                                        disabled={isLoading}
-                                    >
-                                        Unequip
-                                    </button>
+                                    {equippedId && (
+                                        <button 
+                                            className="unequip-btn"
+                                            onClick={() => handleEquipToggle(slot, null)}
+                                            disabled={isLoading || isCursed} // Disable if cursed
+                                            style={isCursed ? { opacity: 0.5, cursor: 'not-allowed', background: '#555' } : {}}
+                                        >
+                                            {isCursed ? "Cursed" : "Unequip"}
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <span className="empty-slot" style={{ padding: '1rem', color: 'var(--border-light)', fontStyle: 'italic' }}>Empty</span>

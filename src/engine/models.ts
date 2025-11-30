@@ -132,6 +132,7 @@ export interface WorldSettings {
     bannerHeight?: number; // For London
     enableParallax?: boolean; // New setting
     visualTheme?: string;
+    currencyQualities: string[]; // e.g. ["gold", "jade", "favours"]
 }
 
 interface BaseQualityState {

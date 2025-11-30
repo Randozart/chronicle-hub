@@ -14,15 +14,25 @@ export async function POST(request: NextRequest) {
     const character = await getCharacter(userId, storyId);
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
+    const gameData = await getContent(storyId);
+
     // If itemId is null, we are UNEQUIPPING
     if (!itemId) {
+        const currentItem = character.equipment[slot];
+        if (currentItem) {
+            const currentDef = gameData.qualities[currentItem];
+            // SECURITY CHECK: Is it cursed?
+            if (currentDef?.properties?.includes('cursed')) {
+                 return NextResponse.json({ error: 'You cannot unequip a cursed item.' }, { status: 403 });
+            }
+        }
+        
         character.equipment[slot] = null;
         await saveCharacterState(character);
         return NextResponse.json({ success: true, character });
     }
 
     // If itemId is present, we are EQUIPPING
-    const gameData = await getContent(storyId);
     const itemDef = gameData.qualities[itemId];
 
     if (!itemDef) {

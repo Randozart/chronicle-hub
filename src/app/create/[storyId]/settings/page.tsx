@@ -28,7 +28,8 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         playerImage: "$player_portrait",
         deckDrawCostsAction: true,
         char_create: {},
-        layoutStyle: 'nexus'
+        layoutStyle: 'nexus',
+        currencyQualities: [] // e.g. ["gold", "jade", "favours"]
     });
     
     const [isLoading, setIsLoading] = useState(true);

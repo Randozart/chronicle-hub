@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     const gameData = await getContent(storyId || storyId);
     let character = await getCharacter(userId, storyId || storyId);
     
+    
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
 
@@ -85,8 +86,31 @@ export async function POST(request: NextRequest) {
     const engineResult = engine.resolveOption(storyletDef, option);
     
     // 5. Update Character State
+    const changes = engineResult.qualityChanges; 
+
+    for (const change of changes) {
+        // Only care if we GAINED the item (Level increased from 0)
+        // AND it is an Equipable type
+        if (change.levelBefore === 0 && change.levelAfter > 0 && change.type === 'E') {
+            
+            const itemDef = gameData.qualities[change.qid];
+            
+            // Check for "auto_equip" property
+            if (itemDef?.properties?.includes('auto_equip')) {
+                const slot = itemDef.category; // e.g., "body"
+                
+                // Check if the slot exists in settings AND is currently empty
+                // (We don't auto-equip if player is already wearing something)
+                if (slot && !character.equipment[slot]) {
+                    character.equipment[slot] = change.qid;
+                    console.log(`[AutoEquip] Equipped ${change.qid} to ${slot}`);
+                }
+            }
+        }
+    }
+
     character.qualities = engine.getQualities();
-    
+
     // Handle Card Discard
     if ('deck' in storyletDef) {
         const deck = storyletDef.deck;
