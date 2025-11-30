@@ -64,18 +64,18 @@ interface BaseStorylet {
     short?: string;
     text: string;
     metatext?: string;
-    visible_if?: string;
-    unlock_if?: string;
     properties?: string;
     options: ResolveOption[];
     autofire_if?: string; 
     status?: PublishStatus; // Default: 'draft'
     folder?: string; // e.g. "Chapter 1/Prologue"
+    return?: string;
 }
 
 export interface Storylet extends BaseStorylet {
-    return?: string;
     location?: string;
+    visible_if?: string;
+    unlock_if?: string;
 }
 
 export interface Opportunity extends BaseStorylet {

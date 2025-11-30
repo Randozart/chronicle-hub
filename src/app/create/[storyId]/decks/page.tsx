@@ -123,8 +123,32 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
             </div>
 
             <div className="form-group">
-                <label className="form-label">Timer (Minutes)</label>
-                <input value={form.timer || ''} onChange={e => handleChange('timer', e.target.value)} className="form-input" placeholder="e.g. 10 or @regenInterval" />
+                <label className="form-label">Regeneration Timer</label>
+                <select 
+                    value={form.timer === 'sync_actions' ? 'sync_actions' : 'custom'}
+                    onChange={(e) => {
+                        if (e.target.value === 'sync_actions') handleChange('timer', 'sync_actions');
+                        else handleChange('timer', '10'); // Default custom value
+                    }}
+                    className="form-select"
+                    style={{ marginBottom: '0.5rem' }}
+                >
+                    <option value="sync_actions">Sync with Main Actions</option>
+                    <option value="custom">Custom Duration</option>
+                </select>
+                
+                {form.timer !== 'sync_actions' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <input 
+                            type="number" 
+                            value={form.timer} 
+                            onChange={e => handleChange('timer', e.target.value)} 
+                            className="form-input" 
+                            style={{ width: '100px' }}
+                        />
+                        <span style={{ color: '#aaa', fontSize: '0.9rem' }}>minutes</span>
+                    </div>
+                )}
             </div>
 
             <div className="form-group">

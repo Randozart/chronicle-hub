@@ -5,9 +5,6 @@ import { WorldSettings } from '@/engine/models';
 import ThemePreview from '@/app/create/[storyId]/settings/components/ThemePreview';
 import CollaboratorManager from './components/CollaboratorManager';
 
-// We need to extend the Settings type locally to include char_create dictionary, 
-// as it is technically part of WorldConfig, not WorldSettings interface, 
-// but we want to edit them together here.
 interface SettingsForm extends WorldSettings {
     char_create: Record<string, string>;
     isPublished?: boolean; 
@@ -19,7 +16,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const { storyId } = use(params);
     const [form, setForm] = useState<SettingsForm>({
         useActionEconomy: true,
-        maxActions: 20,
+        maxActions: 20, // Can be number or string
         actionId: "$actions",
         actionUseOperator: "-=",
         regenIntervalInMinutes: 10,
@@ -28,47 +25,16 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         characterSheetCategories: [],
         equipCategories: [],
         playerName: "$player_name",
-        playerImage: "$player_image",
+        playerImage: "$player_portrait",
         deckDrawCostsAction: true,
-        char_create: {}, // Initialize empty
+        char_create: {},
         layoutStyle: 'nexus'
     });
     
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
-    // 1. Fetch Settings AND Char Create
     useEffect(() => {
-        // We need to fetch the full config to get char_create, 
-        // as /api/admin/settings only returns the settings object.
-        // Let's use the generic config API if available or fetch separately.
-        
-        // Option A: Modify /api/admin/settings to return everything
-        // Option B: Fetch both here.
-        
-        // Let's try fetching both endpoints (assuming we added /api/admin/char_create or similar)
-        // OR we can just cheat and use the public loader if it's exposed.
-        
-        // BETTER: Let's just assume /api/admin/settings returns JUST settings, 
-        // and we need to add char_create support.
-        
-        // Let's refactor this effect to fetch the WHOLE config structure via a new helper
-        // or just fetch them individually.
-        
-        // For simplicity, let's fetch config via a direct call if possible, 
-        // otherwise, we need to ensure the API supports this.
-        
-        // Assuming /api/admin/settings returns { ...settings }
-        // We need to fetch char_create separately.
-        // Let's assume we make /api/admin/char_create/route.ts or update the Settings API.
-        
-        // HACK: Fetch the qualities/decks/etc generic route? No.
-        
-        // REAL FIX: Let's update the fetch to get the whole config map 
-        // if we want to edit multiple sections.
-        // But since you likely didn't change the API yet, let's assume we fetch settings
-        // and char_create separately.
-        
         Promise.all([
             fetch(`/api/admin/settings?storyId=${storyId}`).then(r => r.json()),
             fetch(`/api/admin/char_create?storyId=${storyId}`).then(r => r.ok ? r.json() : {})
@@ -76,38 +42,18 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             setForm(prev => ({ 
                 ...prev, 
                 ...settingsData,
-                // EXPLICIT DEFAULTS
                 characterSheetCategories: settingsData.characterSheetCategories || [],
                 equipCategories: settingsData.equipCategories || [],
                 char_create: charData || {}
             }));
-        }).finally(() => setIsLoading(false));Promise.all([
-            fetch(`/api/admin/settings?storyId=${storyId}`).then(r => r.json()),
-            // We need an endpoint for char_create. 
-            // Let's assume we use the generic route for it or you added it.
-            // If not, the char_create section will be empty.
-            // Let's use a placeholder fetch or assume it comes with settings for now.
-            // Actually, let's just use a direct fetch to a new endpoint /api/admin/char_create
-            // which you should create (copy/paste settings route but return config.char_create).
-            fetch(`/api/admin/char_create?storyId=${storyId}`).then(r => r.ok ? r.json() : {})
-        ]).then(([settingsData, charData]) => {
-            setForm(prev => ({ 
-                ...prev, 
-                ...settingsData,
-                char_create: charData 
-            }));
         }).finally(() => setIsLoading(false));
-
-    }, []);
+    }, [storyId]);
 
     const handleChange = (field: keyof SettingsForm, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    const handleArrayChange = (
-        field: 'characterSheetCategories' | 'equipCategories' | 'tags', // <--- Add 'tags'
-        strVal: string
-    ) => {
+    const handleArrayChange = (field: 'characterSheetCategories' | 'equipCategories' | 'tags', strVal: string) => {
         const arr = strVal.split(',').map(s => s.trim()).filter(Boolean);
         setForm(prev => ({ ...prev, [field]: arr }));
     };
@@ -115,321 +61,320 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // 1. Save Settings (Game Rules)
-            const res1 = await fetch('/api/admin/config', {
+            // Save Settings
+            await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    storyId: storyId,
-                    category: 'settings',
-                    itemId: 'settings',
-                    // Exclude UI-only fields like char_create and isPublished from the settings object
-                    data: { 
-                        ...form, 
-                        char_create: undefined, 
-                        isPublished: undefined 
-                    }
-                })
+                body: JSON.stringify({ storyId, category: 'settings', itemId: 'settings', data: { ...form, char_create: undefined, isPublished: undefined } })
             });
-
-            // 2. Save Char Create
-            const res2 = await fetch('/api/admin/config', {
+            // Save Char Create
+            await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    storyId: storyId,
-                    category: 'char_create',
-                    itemId: 'rules',
-                    data: form.char_create
-                })
+                body: JSON.stringify({ storyId, category: 'char_create', itemId: 'rules', data: form.char_create })
             });
-
-            // 3. Save Published Status (Root Field)
-            const res3 = await fetch('/api/admin/config', {
+            // Save Root
+            await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    storyId: storyId,
-                    category: 'root',    
-                    itemId: 'published', 
-                    data: form.isPublished // Boolean
-                })
+                body: JSON.stringify({ storyId, category: 'root', itemId: 'published', data: form.isPublished })
+            });
+            // Save Meta
+            await fetch('/api/admin/config', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ storyId, category: 'root', itemId: 'coverImage', data: form.coverImage })
+             });
+             await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'root', itemId: 'tags', data: form.tags })
             });
 
-            if (res1.ok && res2.ok && res3.ok) {
-                alert("Saved!");
-            } else {
-                alert("Failed to save some data.");
-            }
+            alert("Saved!");
         } catch (e) {
             console.error(e);
-            alert("Error saving settings.");
+            alert("Error saving.");
         } finally {
             setIsSaving(false);
         }
     };
 
+    
+
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     return (
-        <div className="admin-editor-col" style={{ maxWidth: '800px', margin: '0 auto' }}>            
-            {/* HEADER & PUBLISH STATUS */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid #444', paddingBottom: '1rem' }}>
-                <h2 style={{ margin: 0 }}>Game Settings</h2>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ 
-                        color: form.isPublished ? '#2ecc71' : '#e74c3c', 
-                        fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.8rem' 
-                    }}>
-                        {form.isPublished ? 'LIVE' : 'PRIVATE'}
-                    </span>
-                    <label className="toggle-label">
-                        <input 
-                            type="checkbox" 
-                            checked={form.isPublished || false} 
-                            onChange={e => handleChange('isPublished', e.target.checked)}
-                        />
-                        Publish World
-                    </label>
+        <div className="admin-editor-col" style={{ maxWidth: '900px', margin: '0 auto' }}>            
+            
+            {/* --- 1. HEADER & META DATA (Moved to Top) --- */}
+            <div style={{ borderBottom: '1px solid #444', paddingBottom: '2rem', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h2 style={{ margin: 0 }}>Game Settings</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: form.isPublished ? '#2ecc71' : '#e74c3c', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.8rem' }}>
+                            {form.isPublished ? 'LIVE' : 'PRIVATE'}
+                        </span>
+                        <label className="toggle-label">
+                            <input type="checkbox" checked={form.isPublished || false} onChange={e => handleChange('isPublished', e.target.checked)} />
+                            Publish World
+                        </label>
+                    </div>
+                </div>
+
+                <div className="form-row">
+                    <div className="form-group">
+                        <label className="form-label">Cover Image URL</label>
+                        <input value={form.coverImage || ''} onChange={e => handleChange('coverImage', e.target.value)} className="form-input" placeholder="https://..." />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Tags (Comma Separated)</label>
+                        <input defaultValue={form.tags?.join(', ')} onBlur={e => handleArrayChange('tags', e.target.value)} className="form-input" placeholder="Fantasy, Mystery, Noir" />
+                    </div>
                 </div>
             </div>
 
-            {/* META DATA */}
-            <div className="form-group">
-                <label className="form-label">Cover Image</label>
-                <input value={form.coverImage || ''} onChange={e => handleChange('coverImage', e.target.value)} className="form-input" />
-            </div>
+            {/* --- 2. SYSTEM BINDINGS (The New "Keys" Section) --- */}
+            <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
+                <label className="special-label" style={{ color: '#e5c07b' }}>System Bindings</label>
+                <p className="special-desc">
+                    Tell the engine which of your Qualities represent core system features. 
+                    This allows you to use variables like <code>$actions</code> or <code>$player_name</code> in your narrative.
+                </p>
 
-            {/* NEW: TAGS FIELD */}
-            <div className="form-group">
-                <label className="form-label">Tags (Comma Separated)</label>
-                <input 
-                    defaultValue={form.tags?.join(', ')}
-                    onBlur={e => handleArrayChange('tags', e.target.value)} 
-                    className="form-input"
-                    placeholder="Fantasy, Mystery, Noir"
-                />
-            </div>
-
-            {/* CHARACTER CREATION */}
-            <div style={{ marginBottom: '2rem' }}>
-                <CharCreateEditor 
-                    rules={form.char_create || {}} 
-                    onChange={r => handleChange('char_create', r)} 
-                />
-            </div>
-
-            {/* ACTION ECONOMY */}
-            <div className="special-field-group">
-                <label className="special-label">Action Economy</label>
-                
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <div className="form-row" style={{ marginTop: '1.5rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Action Counter ID</label>
                         <input 
-                            type="checkbox" 
-                            checked={form.useActionEconomy} 
-                            onChange={e => handleChange('useActionEconomy', e.target.checked)} 
+                            value={form.actionId} 
+                            onChange={e => handleChange('actionId', e.target.value)} 
+                            className="form-input" 
+                            placeholder="$actions"
                         />
-                        Enable Actions
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Player Name ID</label>
+                        <input 
+                            value={form.playerName} 
+                            onChange={e => handleChange('playerName', e.target.value)} 
+                            className="form-input" 
+                            placeholder="$player_name"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Player Portrait ID</label>
+                        <input 
+                            value={form.playerImage} 
+                            onChange={e => handleChange('playerImage', e.target.value)} 
+                            className="form-input" 
+                            placeholder="$player_portrait"
+                        />
+                    </div>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#666', fontStyle: 'italic', marginTop: '0.5rem' }}>
+                    * Ensure these IDs exist in your Qualities list and are initialized in "Character Creation" below.
+                </p>
+            </div>
+
+            {/* --- 3. GAME MECHANICS (Actions) --- */}
+            <div className="special-field-group" style={{ borderColor: '#61afef' }}>
+                <label className="special-label" style={{ color: '#61afef' }}>Game Rules</label>
+                
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <label className="toggle-label" style={{ marginBottom: '0.5rem' }}>
+                        <input type="checkbox" checked={form.useActionEconomy} onChange={e => handleChange('useActionEconomy', e.target.checked)} />
+                        Enable Action Economy
                     </label>
+                    <p className="special-desc">Limits how many moves a player can make.</p>
                 </div>
 
                 {form.useActionEconomy && (
-                    <div className="form-row">
+                    <div className="form-row" style={{ borderTop: '1px dashed #444', paddingTop: '1rem' }}>
                         <div className="form-group">
                             <label className="form-label">Max Actions</label>
                             <input 
+                                // Allow number OR string logic
                                 value={form.maxActions} 
-                                onChange={e => handleChange('maxActions', parseInt(e.target.value) || 0)} 
+                                onChange={e => handleChange('maxActions', e.target.value)} 
                                 className="form-input" 
-                                type="number"
+                                placeholder="20 or $stamina * 2"
                             />
+                            <p className="special-desc">
+                                Hard limit. Can be a number or logic. <br/>
+                                <em>Tip: Use the 'max' property on the Quality itself for UI bars.</em>
+                            </p>
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Regen Time (Minutes)</label>
-                            <input 
-                                value={form.regenIntervalInMinutes} 
-                                onChange={e => handleChange('regenIntervalInMinutes', parseInt(e.target.value) || 1)} 
-                                className="form-input" 
-                                type="number"
-                            />
+                            <label className="form-label">Regen Rate (Minutes)</label>
+                            <input type="number" value={form.regenIntervalInMinutes} onChange={e => handleChange('regenIntervalInMinutes', parseInt(e.target.value))} className="form-input" />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Action Quality ID</label>
-                            <input 
-                                value={form.actionId} 
-                                onChange={e => handleChange('actionId', e.target.value)} 
-                                className="form-input" 
-                            />
+                             <label className="form-label" style={{visibility: 'hidden'}}>Draw Cost</label>
+                             <label className="toggle-label">
+                                <input type="checkbox" checked={form.deckDrawCostsAction} onChange={e => handleChange('deckDrawCostsAction', e.target.checked)} />
+                                Drawing Cards Costs Action
+                            </label>
                         </div>
                     </div>
                 )}
-                 {form.useActionEconomy && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                            <input 
-                                type="checkbox" 
-                                checked={form.deckDrawCostsAction} 
-                                onChange={e => handleChange('deckDrawCostsAction', e.target.checked)} 
-                            />
-                            Drawing cards costs an action
-                        </label>
-                    </div>
-                )}
-            </div>
-
-            {/* LAYOUT & THEME */}
-            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
-                <label className="special-label" style={{ color: '#c678dd' }}>Interface Theme</label>
                 
-                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                    {/* Left: Controls */}
-                    <div style={{ flex: 1, minWidth: '250px' }}>
-                        <div className="form-group">
-                            <label className="form-label">Layout Style</label>
-                            <select 
-                                value={form.layoutStyle || 'nexus'} 
-                                onChange={e => handleChange('layoutStyle', e.target.value)}
-                                className="form-select"
-                            >
-                                <option value="nexus">Classic (Icon Header)</option>
-                                <option value="london">Cinematic (Full Banner)</option>
-                                <option value="elysium">Immersive (Split View)</option>
-                                <option value="tabletop">Tabletop (Three Column)</option>
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Visual Theme</label>
-                            <select 
-                                value={form.visualTheme || 'default'} 
-                                onChange={e => handleChange('visualTheme', e.target.value)}
-                                className="form-select"
-                                size={10} // Show list box for easier browsing
-                            >
-                                <option value="default">Default</option>
-                                <option value="victorian">Victorian</option>
-                                <option value="terminal">Terminal</option>
-                                <option value="parchment">Parchment</option>
-                                <option value="noir">Noir</option>
-                                <option value="cyberpunk">Cyberpunk</option>
-                                <option value="dark-fantasy">Dark Fantasy</option>
-                                <option value="pirate">Pirate</option>
-                                <option value="solarpunk">Solarpunk</option>
-                                <option value="lab">Laboratory</option>
-                                <option value="druidic">Druidic</option>
-                                <option value="neo-tokyo">Synthwave</option>
-                                <option value="gothic">Gothic</option>
-                                <option value="western">Western</option>
-                                <option value="grimdark-sci-fi">Dark Sci-Fi</option>
-                                <option value="jrpg-bright">Bright JRPG</option>
-                                <option value="abyssal">Abyssal</option>
-                                <option value="arcanotech">Magitech</option>
-                                <option value="terminal-amber">VT220</option>
-                                <option value="arabesque">Arabesque</option>
-                                <option value="art-deco">Art Deco</option>
-                                <option value="steampunk">Steampunk</option>
-                                <option value="candy">Bubblegum</option>
-                                <option value="stone-dwarven">Mountain Dwarf</option>
-                                <option value="classic-scifi">Classic Sci-Fi</option>
-                                <option value="revolutionary">Revolutionary</option>
-                                <option value="solar">Utopia</option>
-                                <option value="occult-academic">Occult Academia</option>
-                                <option value="renaissance">Renaissance</option>
-                                <option value="ink-brass">Dieselpunk</option>
-                                <option value="ukiyoe">Ukiyo-e</option>
-                                <option value="imperial-rome">Imperial Rome</option>
-                                <option value="corpocracy">Corpocracy</option>
-                                <option value="witch-folk">Witch Folk</option>
-                                <option value="vaporwave">Vaporwave</option>
-                                <option value="nordic">Nordic</option>
-                                <option value="frontier">Frontier</option>
-                                <option value="bayou">Bayou</option>
-                                <option value="starship">Starship</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Right: Preview */}
-                    <div style={{ flex: 1, minWidth: '300px' }}>
-                        <ThemePreview theme={form.visualTheme || 'default'} />
-                    </div>
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label className="form-label">Sidebar Categories (Comma Separated)</label>
+                    <input defaultValue={form.characterSheetCategories.join(', ')} onBlur={e => handleArrayChange('characterSheetCategories', e.target.value)} className="form-input" placeholder="character, menace, currency" />
                 </div>
-
-                {(form.layoutStyle === 'elysium' || form.layoutStyle === 'tabletop') && (
-                    <div style={{ marginTop: '1rem' }}>
-                        <label className="toggle-label">
-                            <input 
-                                type="checkbox" 
-                                checked={form.enableParallax !== false} // Default true if undefined
-                                onChange={e => handleChange('enableParallax', e.target.checked)}
-                            />
-                            Enable Parallax Effect
-                        </label>
-                        <p className="special-desc">Moves background image with mouse cursor.</p>
-                    </div>
-                )}
-            </div>
-
-            {/* CATEGORIES */}
-            <div className="form-group">
-                <label className="form-label">Sidebar Categories (Comma Separated)</label>
-                <input 
-                    defaultValue={form.characterSheetCategories.join(', ')}
-                    onBlur={e => handleArrayChange('characterSheetCategories', e.target.value)}
-                    className="form-input"
-                    placeholder="character, menace, currency"
-                />
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">Equipment Slots (Comma Separated)</label>
-                <input 
-                    defaultValue={form.equipCategories?.join(', ')}
-                    onBlur={e => handleArrayChange('equipCategories', e.target.value)}
-                    className="form-input"
-                    placeholder="head, body, weapon, boots"
-                />
-            </div>
-
-            {/* PLAYER DEFAULTS */}
-            <div className="form-row">
+                
                 <div className="form-group">
-                    <label className="form-label">Player Name ID</label>
-                    <input 
-                        value={form.playerName} 
-                        onChange={e => handleChange('playerName', e.target.value)} 
-                        className="form-input" 
-                    />
+                    <label className="form-label">Equipment Slots</label>
+                    <input defaultValue={form.equipCategories?.join(', ')} onBlur={e => handleArrayChange('equipCategories', e.target.value)} className="form-input" placeholder="head, body, weapon" />
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Player Image ID</label>
-                    <input 
-                        value={form.playerImage} 
-                        onChange={e => handleChange('playerImage', e.target.value)} 
-                        className="form-input" 
-                    />
+            </div>
+
+            {/* --- 4. VISUALS --- */}
+            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                <label className="special-label" style={{ color: '#c678dd' }}>Interface & Theme</label>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label className="form-label">Layout Style</label>
+                        <select value={form.layoutStyle || 'nexus'} onChange={e => handleChange('layoutStyle', e.target.value)} className="form-select">
+                            <option value="nexus">Classic (Icon Header)</option>
+                            <option value="london">Cinematic (Full Banner)</option>
+                            <option value="elysium">Immersive (Split View)</option>
+                            <option value="tabletop">Tabletop (Three Column)</option>
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Visual Theme</label>
+                        <select value={form.visualTheme || 'default'} onChange={e => handleChange('visualTheme', e.target.value)} className="form-select">
+                            <option value="default">Default</option>
+                            <option value="victorian">Victorian</option>
+                            <option value="terminal">Terminal</option>
+                            <option value="parchment">Parchment</option>
+                            <option value="noir">Noir</option>
+                            <option value="cyberpunk">Cyberpunk</option>
+                            <option value="dark-fantasy">Dark Fantasy</option>
+                            <option value="pirate">Pirate</option>
+                            <option value="solarpunk">Solarpunk</option>
+                            <option value="lab">Laboratory</option>
+                            <option value="druidic">Druidic</option>
+                            <option value="neo-tokyo">Synthwave</option>
+                            <option value="gothic">Gothic</option>
+                            <option value="western">Western</option>
+                            <option value="grimdark-sci-fi">Dark Sci-Fi</option>
+                            <option value="jrpg-bright">Bright JRPG</option>
+                            <option value="abyssal">Abyssal</option>
+                            <option value="arcanotech">Magitech</option>
+                            <option value="terminal-amber">VT220</option>
+                            <option value="arabesque">Arabesque</option>
+                            <option value="art-deco">Art Deco</option>
+                            <option value="steampunk">Steampunk</option>
+                            <option value="candy">Bubblegum</option>
+                            <option value="stone-dwarven">Mountain Dwarf</option>
+                            <option value="classic-scifi">Classic Sci-Fi</option>
+                            <option value="revolutionary">Revolutionary</option>
+                            <option value="solar">Utopia</option>
+                            <option value="occult-academic">Occult Academia</option>
+                            <option value="renaissance">Renaissance</option>
+                            <option value="ink-brass">Dieselpunk</option>
+                            <option value="ukiyoe">Ukiyo-e</option>
+                            <option value="imperial-rome">Imperial Rome</option>
+                            <option value="corpocracy">Corpocracy</option>
+                            <option value="witch-folk">Witch Folk</option>
+                            <option value="vaporwave">Vaporwave</option>
+                            <option value="nordic">Nordic</option>
+                            <option value="frontier">Frontier</option>
+                            <option value="bayou">Bayou</option>
+                            <option value="starship">Starship</option>
+                        </select>
+                    </div>
                 </div>
+                <div style={{ marginTop: '1rem' }}>
+                    <label className="toggle-label">
+                        <input type="checkbox" checked={form.enableParallax !== false} onChange={e => handleChange('enableParallax', e.target.checked)} />
+                        Enable Mouse Parallax Effect
+                    </label>
+                </div>
+            </div>
+
+            {/* --- 5. CHARACTER INITIALIZATION --- */}
+            <div style={{ marginBottom: '3rem' }}>
+                <CharCreateEditor 
+                    rules={form.char_create || {}} 
+                    onChange={r => handleChange('char_create', r)} 
+                    systemKeys={{
+                        actions: form.actionId,
+                        name: form.playerName,
+                        image: form.playerImage
+                    }}
+                />
             </div>
             
-            <div style={{ marginBottom: '2rem' }}>
-                <CollaboratorManager storyId={storyId} />
-            </div>
+            <CollaboratorManager storyId={storyId} />
 
             <div className="admin-form-footer" style={{ justifyContent: 'flex-end' }}>
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">
-                    {isSaving ? 'Saving...' : 'Save Settings'}
+                    {isSaving ? 'Saving...' : 'Save All Settings'}
                 </button>
             </div>
         </div>
     );
 }
 
-// --- SUB COMPONENT ---
+// --- HELPER COMPONENTS ---
 
-function CharCreateEditor({ rules, onChange }: { rules: Record<string, string>, onChange: (r: Record<string, string>) => void }) {
+const PRESETS: Record<string, Record<string, string>> = {
+    "Identity (Simple)": {
+        "$player_name": "string",
+        "$player_portrait": "avatar_1 | avatar_2 | avatar_3"
+    },
+    "Identity (Complex)": {
+        "$player_first_name": "string",
+        "$player_last_name": "string",
+        "$player_name": "$player_first_name + ' ' + $player_last_name", // Logic!
+        "$player_portrait": "avatar_1 | avatar_2"
+    },
+    "RPG Stats (D&D)": {
+        "$strength": "10",
+        "$dexterity": "10",
+        "$constitution": "10",
+        "$intelligence": "10",
+        "$wisdom": "10",
+        "$charisma": "10"
+    },
+    "RPG Stats (Fallen London)": {
+        "$watchful": "10",
+        "$shadowy": "10",
+        "$dangerous": "10",
+        "$persuasive": "10"
+    },
+    "Survival Basics": {
+        "$health": "10",
+        "$hunger": "0",
+        "$thirst": "0"
+    },
+    "Economy": {
+        "$gold": "50",
+        "$rations": "5"
+    },
+    "Start Location": {
+        "$location": "village_square"
+    }
+};
+
+function CharCreateEditor({ rules, onChange, systemKeys }: { rules: Record<string, string>, onChange: (r: Record<string, string>) => void, systemKeys: any }) {
     const [newKey, setNewKey] = useState("");
+    const [newVal, setNewVal] = useState("");
+
+    // Helper to strip $ for comparison, ensuring we find the key regardless of format
+    const hasKey = (key: string) => {
+        const clean = key.replace('$', '');
+        return Object.keys(rules).some(k => k.replace('$', '') === clean);
+    };
+
+    // Robust Missing Key Check
+    const missingKeys = [];
+    if (!hasKey(systemKeys.actions)) missingKeys.push({ label: "Actions", key: systemKeys.actions, val: "20" });
+    if (!hasKey(systemKeys.name)) missingKeys.push({ label: "Name", key: systemKeys.name, val: "string" });
+    if (!hasKey(systemKeys.image)) missingKeys.push({ label: "Portrait", key: systemKeys.image, val: "avatar_1 | avatar_2" });
 
     const handleUpdate = (key: string, val: string) => {
         onChange({ ...rules, [key]: val });
@@ -443,41 +388,123 @@ function CharCreateEditor({ rules, onChange }: { rules: Record<string, string>, 
 
     const handleAdd = () => {
         if (!newKey) return;
+        // Auto-prepend $ if missing, for consistency in the UI list
         const key = newKey.startsWith('$') ? newKey : `$${newKey}`;
-        if (rules[key]) return alert("Rule exists");
-        onChange({ ...rules, [key]: "0" });
+        onChange({ ...rules, [key]: newVal || "0" });
         setNewKey("");
+        setNewVal("");
+    };
+
+    const applyPreset = (presetName: string) => {
+        if (!confirm(`Add ${presetName} fields? This will merge with existing rules.`)) return;
+        const preset = PRESETS[presetName];
+        onChange({ ...rules, ...preset });
+    };
+
+    const addMissingKey = (key: string, val: string) => {
+        // Ensure we use the format provided in the System Bindings setting
+        onChange({ ...rules, [key]: val });
     };
 
     return (
         <div className="special-field-group" style={{ borderColor: '#98c379' }}>
-            <label className="special-label" style={{ color: '#98c379' }}>Character Creation Rules</label>
-            <p className="special-desc">Define initial values. Use "string" for text input, or "opt1 | opt2" for choices.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label className="special-label" style={{ color: '#98c379', margin: 0 }}>Character Initialization</label>
+            </div>
+            <p className="special-desc" style={{ marginBottom: '1.5rem' }}>
+                Define the starting state for every new player. You can set static numbers (<code>10</code>), 
+                ask for user input (<code>string</code>), or offer choices (<code>A | B</code>).
+            </p>
+            
+            {/* RED ALERT: MISSING KEYS */}
+            {missingKeys.length > 0 && (
+                <div style={{ background: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', color: '#e74c3c', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        ⚠️ Missing System Bindings
+                    </p>
+                    <p style={{ fontSize: '0.8rem', color: '#ffcccc', marginBottom: '0.75rem' }}>
+                        You mapped specific features (like Actions or Name) in the settings above, but they aren't initialized here. 
+                        The game will crash or behave oddly if these are missing.
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {missingKeys.map(m => (
+                            <button 
+                                key={m.key} 
+                                onClick={() => addMissingKey(m.key, m.val)}
+                                style={{ background: '#e74c3c', color: 'white', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                                + Initialize {m.label} ({m.key})
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem', marginTop: '1rem' }}>
-                <input 
-                    value={newKey} 
-                    onChange={e => setNewKey(e.target.value)} 
-                    placeholder="Quality ID (e.g. strength)" 
-                    className="form-input" 
-                />
-                <button onClick={handleAdd} className="save-btn" style={{ padding: '0.5rem 1rem', backgroundColor: '#2c3e50' }}>Add</button>
+            {/* PRESETS TOOLBAR */}
+            <div style={{ background: '#1e2127', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', border: '1px solid #333' }}>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#aaa', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+                    Quick Presets
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {Object.keys(PRESETS).map(p => (
+                        <button 
+                            key={p} 
+                            onClick={() => applyPreset(p)}
+                            style={{ 
+                                background: '#2a3e5c', border: '1px solid #3e5a8a', borderRadius: '4px', 
+                                color: '#fff', fontSize: '0.75rem', padding: '0.4rem 0.8rem', cursor: 'pointer',
+                                transition: 'background 0.2s'
+                            }}
+                            className="hover:bg-[#3e5a8a]"
+                        >
+                            {p}
+                        </button>
+                    ))}
+                </div>
             </div>
 
+            {/* RULES LIST */}
             <div style={{ display: 'grid', gap: '0.5rem' }}>
                 {Object.entries(rules).map(([key, val]) => (
-                    <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <div style={{ flex: 1, fontFamily: 'monospace', color: '#ccc' }}>{key}</div>
+                    <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#1e2127', padding: '0.5rem 1rem', borderRadius: '4px', borderLeft: '3px solid #98c379' }}>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontFamily: 'monospace', color: '#98c379', fontWeight: 'bold' }}>{key}</div>
+                        </div>
+                        <div style={{ color: '#777' }}>=</div>
                         <input 
                             value={val} 
                             onChange={e => handleUpdate(key, e.target.value)}
                             className="form-input"
-                            style={{ flex: 2 }}
-                            placeholder="Value"
+                            style={{ flex: 2, border: 'none', background: 'transparent', borderBottom: '1px solid #444' }}
+                            placeholder="e.g. 10 or string"
                         />
-                        <button onClick={() => handleDelete(key)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+                        <button onClick={() => handleDelete(key)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', padding: '0 0.5rem' }}>✕</button>
                     </div>
                 ))}
+                
+                {Object.keys(rules).length === 0 && (
+                    <div style={{ textAlign: 'center', color: '#555', fontStyle: 'italic', padding: '2rem' }}>
+                        No initialization rules yet. Use a preset or add one manually below.
+                    </div>
+                )}
+            </div>
+
+             {/* MANUAL ADD ROW */}
+             <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #333' }}>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#aaa', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+                    Add Custom Quality
+                </span>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1 }}>
+                        <input value={newKey} onChange={e => setNewKey(e.target.value)} placeholder="$quality_id" className="form-input" />
+                        <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '0.25rem' }}>The ID used in code.</p>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <input value={newVal} onChange={e => setNewVal(e.target.value)} placeholder="Initial Value" className="form-input" />
+                        <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '0.25rem' }}>'10', 'string', or 'A | B'</p>
+                    </div>
+                    <button onClick={handleAdd} className="save-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem', height: 'fit-content' }}>Add</button>
+                </div>
             </div>
         </div>
     );

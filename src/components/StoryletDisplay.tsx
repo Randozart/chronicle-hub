@@ -106,6 +106,39 @@ export default function StoryletDisplay({
         return null;
     };
     const returnTargetId = getReturnTarget(storylet);
+
+        // 1. Check for "No Return" property
+    const disableReturn = storylet.properties?.includes('no_return');
+
+    // 2. Calculate Target
+    const getValidReturnTarget = (): string | undefined => {
+        if (disableReturn) return undefined;
+
+        // Preference: 1. Explicit Return ID, 2. Current Location
+        let targetId = storylet.return; 
+
+        // If we have a specific target, verify we are allowed to see it
+        if (targetId) {
+            const targetStorylet = storyletDefs[targetId];
+            if (targetStorylet) {
+                // Check Visible/Unlock conditions of the target
+                // We use your existing evaluator
+                const isVisible = evaluateCondition(targetStorylet.visible_if, qualities);
+                const isUnlocked = evaluateCondition(targetStorylet.unlock_if, qualities);
+                
+                // If the return target is hidden or locked, FALLBACK to Location Hub
+                if (!isVisible || !isUnlocked) {
+                    return undefined; // Returning undefined forces it to go to Location Hub
+                }
+                return targetId;
+            }
+        }
+        
+        // If no specific target, or target is invalid, return undefined (Location Hub)
+        return undefined;
+    };
+
+    const finalReturnTarget = getValidReturnTarget();
     
 
      if (resolution) {

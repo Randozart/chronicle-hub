@@ -33,10 +33,16 @@ export const regenerateDeckCharges = (
         : 0;
     
     // Resolve timer (in minutes)
-    const timerValue = typeof deckDef.timer === 'string' && deckDef.timer.startsWith('@')
-        ? (gameData.settings as any)[deckDef.timer.substring(1)]
-        : parseInt(deckDef.timer, 10);
-    
+    let timerValue = 0;
+
+    if (deckDef.timer === 'sync_actions') {
+        // Use the Global Action Timer setting
+        timerValue = gameData.settings.regenIntervalInMinutes;
+    } else {
+        // Parse custom number
+        timerValue = parseInt(deckDef.timer || '0', 10);
+    }
+        
     if (isNaN(deckSize) || deckSize <= 0 || isNaN(timerValue) || timerValue <= 0) {
         // Deck is not configured for regeneration
         return character;

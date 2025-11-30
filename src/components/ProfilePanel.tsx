@@ -34,9 +34,44 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
 
     const grouped = useGroupedList(flatList, groupBy, search);
     const groups = Object.keys(grouped).sort();
+    
+    const nameState = qualities['player_name'];
+    const portraitState = qualities['player_portrait'];
+
+    const playerName = (nameState?.type === 'S') ? nameState.stringValue : "Unknown Drifter";
+    const portraitCode = (portraitState?.type === 'S') ? portraitState.stringValue : "default_avatar";
 
     return (
         <div className="profile-container">
+            
+            {/* NEW: PASSPORT HEADER */}
+            <div style={{ 
+                display: 'flex', gap: '2rem', alignItems: 'center', 
+                padding: '2rem', marginBottom: '2rem', 
+                background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: '8px' 
+            }}>
+                <div style={{ 
+                    width: '100px', height: '100px', borderRadius: '50%', 
+                    overflow: 'hidden', border: '3px solid var(--accent-primary)',
+                    boxShadow: '0 0 15px rgba(0,0,0,0.5)'
+                }}>
+                    <GameImage 
+                        code={portraitCode} 
+                        imageLibrary={imageLibrary} 
+                        type="portrait" 
+                        alt="Player Portrait"
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+                <div>
+                    <h1 style={{ margin: 0, fontSize: '2rem', color: 'var(--text-primary)' }}>{playerName}</h1>
+                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                        {/* Optional: Add a 'title' quality if you want, e.g. "The Exiled Prince" */}
+                         A resident of this world.
+                    </p>
+                </div>
+            </div>
+
             {/* HEADER CONTROLS */}
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
                 <input 
