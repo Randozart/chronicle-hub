@@ -41,6 +41,7 @@ export default function LondonLayout(props: LayoutProps) {
                     imageLibrary={props.imageLibrary}
                     categories={props.categories}
                     storyId={props.storyId}
+                    characterId={props.character.characterId} // <--- ADD THIS
                 />
             );
         }
@@ -89,6 +90,20 @@ export default function LondonLayout(props: LayoutProps) {
                 </div>
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #181a1f, transparent)' }} />
                 
+                <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10 }}>
+                    <button 
+                        onClick={props.onExit}
+                        style={{ 
+                            background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.3)', 
+                            color: '#ddd', padding: '0.5rem 1rem', borderRadius: '4px', 
+                            cursor: 'pointer', fontSize: '0.85rem', backdropFilter: 'blur(4px)'
+                        }}
+                        className="hover:bg-white hover:text-black transition"
+                    >
+                        Switch Character
+                    </button>
+                </div>
+
                 {/* Banner Content */}
                 <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', padding: '2rem', textAlign: 'center', width: '100%', maxWidth: '1200px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', fontFamily: 'inherit', letterSpacing: '2px', color: 'var(--accent-highlight)' }}>

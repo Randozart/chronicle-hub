@@ -58,6 +58,8 @@ export default function NexusLayout(props: LayoutProps) {
                     imageLibrary={props.imageLibrary}
                     categories={props.categories}
                     storyId={props.storyId}
+                    characterId={props.character.characterId} // <--- ADD THIS
+
                 />
             );
         }
@@ -111,6 +113,20 @@ export default function NexusLayout(props: LayoutProps) {
                     settings={props.settings}
                     categories={props.categories}
                 />
+
+                <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                    <button 
+                        onClick={props.onExit}
+                        style={{ 
+                            background: 'transparent', border: '1px solid var(--danger-color)', 
+                            color: 'var(--danger-color)', width: '100%', padding: '0.5rem', 
+                            borderRadius: 'var(--border-radius)', cursor: 'pointer', fontWeight: 'bold'
+                        }}
+                        className="hover:bg-red-900/20 transition"
+                    >
+                        ← Switch Character
+                    </button>
+                </div>
             </div>
             
             <div className="main-content-column">

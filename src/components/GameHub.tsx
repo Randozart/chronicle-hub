@@ -128,11 +128,11 @@ export default function GameHub(props: GameHubProps) {
         } catch (err) { console.error(err); }
     };
 
-    // ADD: Handle Exit
-    const handleExit = () => {
-        // Navigate to the base story URL (removes ?charId=...)
+    const handleExit = useCallback(() => {
+        // Simply navigating to the base URL without the query param
+        // triggers the Server Component to load the Lobby state.
         window.location.href = `/play/${props.storyId}`;
-    };
+    }, [props.storyId]);
 
 
     // --- RENDER ---
@@ -208,7 +208,7 @@ export default function GameHub(props: GameHubProps) {
         onQualitiesUpdate: handleQualitiesUpdate,
         onCardPlayed: handleCardPlayed,
         onOpenMap: () => setShowMap(true),
-        onExit: handleExit,
+        onExit: handleExit
     };
 
     const style = props.settings.layoutStyle || 'nexus';

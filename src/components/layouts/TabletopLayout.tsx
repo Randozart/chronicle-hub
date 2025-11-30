@@ -53,6 +53,8 @@ export default function TabletopLayout(props: LayoutProps) {
                     imageLibrary={props.imageLibrary}
                     categories={props.categories}
                     storyId={props.storyId}
+                    characterId={props.character.characterId} // <--- ADD THIS
+
                 />
             );
         }

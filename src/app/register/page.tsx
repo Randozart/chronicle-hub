@@ -130,6 +130,10 @@ export default function RegisterPage() {
           />
         </div>
 
+        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.5rem' }}>
+            Must contain: 8+ chars, Uppercase, Lowercase, Number.
+        </div>
+
         <button 
             type="submit" 
             disabled={isSubmitting}
