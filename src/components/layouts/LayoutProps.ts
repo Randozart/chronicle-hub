@@ -25,4 +25,5 @@ export interface LayoutProps {
     onQualitiesUpdate: (newQualities: PlayerQualities) => void;
     onCardPlayed: (cardId: string) => void;
     onOpenMap: () => void; // New Handler
+    onExit: () => void;
 }

@@ -1,142 +1,190 @@
-// src/engine/characterService.ts
-
 import clientPromise from '@/engine/database';
 import { PlayerQualities, CharacterDocument, WorldContent, QualityType } from '@/engine/models';
-// If you implemented contentCache, use that. Otherwise use worldService.
-// import { getContent, getSettings } from '@/engine/contentCache'; 
 import { getWorldConfig, getSettings } from '@/engine/worldService'; 
 import { GameEngine } from './gameEngine';
+import { v4 as uuidv4 } from 'uuid';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 const COLLECTION_NAME = 'characters';
 
-// --- RETRIEVAL FUNCTIONS ---
-
-export const getCharacter = async (userId: string, storyId: string): Promise<CharacterDocument | null> => {
+// ... getCharacter and getCharactersList (keep existing) ...
+export const getCharacter = async (userId: string, storyId: string, characterId?: string): Promise<CharacterDocument | null> => {
     try {
         const client = await clientPromise;
         const db = client.db(DB_NAME);
-        const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
-        const character = await collection.findOne({ userId, storyId });
-        return character;
+        const query: any = { userId, storyId };
+        if (characterId) query.characterId = characterId;
+
+        const chars = await db.collection<CharacterDocument>(COLLECTION_NAME)
+            .find(query)
+            .sort({ lastActionTimestamp: -1 })
+            .limit(1)
+            .toArray();
+
+        return chars.length > 0 ? chars[0] : null;
     } catch (e) {
-        console.error('Database error fetching character:', e);
+        console.error('DB Error:', e);
         return null;
     }
 };
 
-// --- CREATION FUNCTIONS ---
+export const getCharactersList = async (userId: string, storyId: string) => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const chars = await db.collection<CharacterDocument>(COLLECTION_NAME)
+        .find({ userId, storyId })
+        .project({ _id: 1, characterId: 1, name: 1, currentLocationId: 1, lastActionTimestamp: 1 })
+        .sort({ lastActionTimestamp: -1 })
+        .toArray();
 
-// Helper to determine type from JSON definition
-const getQualityType = (content: WorldContent, qid: string): QualityType => {
-    return content.qualities[qid]?.type || QualityType.Counter;
+    return chars.map(c => ({
+        ...c,
+        characterId: c.characterId || c._id.toString(),
+        name: c.name || "Unknown Drifter",
+        currentLocationId: c.currentLocationId || "start"
+    }));
 };
 
-// Helper to standardise state creation
-function createQualityState(qid: string, type: QualityType, value: string | number) {
-    const numVal = Number(value);
-    switch (type) {
-        case QualityType.String: return { qualityId: qid, type, stringValue: String(value) };
-        case QualityType.Pyramidal: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal, changePoints: 0 };
-        case QualityType.Item: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal, sources: [], spentTowardsPrune: 0 };
-        case QualityType.Equipable: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal }; 
-        default: return { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal };
-    }
-}
+// --- ROBUST CREATION LOGIC ---
+
+// Helper to infer type if definition is missing
+const inferType = (value: any): QualityType => {
+    if (typeof value === 'string' && isNaN(Number(value))) return QualityType.String;
+    return QualityType.Pyramidal; // Default to stats
+};
 
 export const getOrCreateCharacter = async (
     userId: string, 
     storyId: string,
     choices?: Record<string, string>
 ): Promise<CharacterDocument> => {
+    console.log(`[CharCreate] Starting for ${storyId}`);
     
-    // 1. Check if character exists
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
-    const existingCharacter = await collection.findOne({ userId, storyId });
-    
-    if (existingCharacter) return existingCharacter;
 
-    // 2. Load World Data
-    // NOTE: If you are using contentCache, change this to getContent(storyId)
     const worldContent = await getWorldConfig(storyId);
-    
     const initialQualities: PlayerQualities = {};
-    const rules = worldContent.char_create;
+    const rules = worldContent.char_create || {};
     
-    // 3. PHASE 1: Apply User Choices & Static Values
-    for (const key in rules) {
-        const qid = key.replace('$', '');
-        const rule = rules[key];
-        const type = getQualityType(worldContent, qid);
-
-        let value: string | number | null = null;
-
-        // Is it a user input? (Defined as 'string' or choice 'A|B' in JSON)
-        if (rule === 'string' || rule.includes('|')) {
-            const userChoice = choices?.[qid];
-            if (userChoice) value = userChoice;
-            else value = rule.includes('|') ? rule.split('|')[0].trim() : ""; // Default fallback
-        } 
-        // Is it a static number?
-        else if (!isNaN(Number(rule))) {
-            value = Number(rule);
-        }
-
-        // Apply if we found a direct value
-        if (value !== null) {
-            initialQualities[qid] = createQualityState(qid, type, value);
-        }
-    }
-
-    // 4. PHASE 2: Calculate Derived Values (e.g., "$player_name")
-    // We instantiate a temporary engine populated with Phase 1 data
-    const tempEngine = new GameEngine(initialQualities, worldContent);
-
+    // PHASE 1: Direct Values (Inputs & Static Numbers)
     for (const key in rules) {
         const qid = key.replace('$', '');
         const rule = rules[key];
         
-        // Skip things we already processed
-        if (initialQualities[qid]) continue;
+        // Try to find definition, otherwise fallback
+        const def = worldContent.qualities[qid];
+        let type = def?.type; 
+        
+        let value: string | number | null = null;
 
-        // If it involves other variables (contains '$'), evaluate it
-        if (rule.includes('$')) {
-            const result = tempEngine.evaluateBlock(`{${rule}}`);
-            const type = getQualityType(worldContent, qid);
-            initialQualities[qid] = createQualityState(qid, type, result);
+        // User Choice
+        if (rule === 'string' || rule.includes('|')) {
+            if (choices && choices[qid] !== undefined) {
+                value = choices[qid];
+            } else {
+                // Fallback if user wasn't asked (e.g. missing from form) but rule exists
+                value = rule.includes('|') ? rule.split('|')[0].trim() : "";
+            }
+        } 
+        // Static Number
+        else if (!isNaN(Number(rule))) {
+            value = Number(rule);
+        }
+
+        if (value !== null) {
+            // If type wasn't found in DB, infer it from the value
+            if (!type) type = inferType(value);
+
+            // Construct State
+            const numVal = Number(value);
+            if (type === QualityType.String) {
+                initialQualities[qid] = { qualityId: qid, type, stringValue: String(value) };
+            } else {
+                // Pyramidal, Counter, etc.
+                initialQualities[qid] = { qualityId: qid, type, level: isNaN(numVal) ? 0 : numVal, changePoints: 0 } as any;
+            }
         }
     }
 
-    // 5. Setup System Defaults
-    const initialDeckCharges: Record<string, number> = {};
-    const initialLastDeckUpdate: Record<string, Date> = {};
+    // PHASE 2: Calculations (Derived Values)
+    // Now that Phase 1 is done, we can use those values in formulas
+    const tempEngine = new GameEngine(initialQualities, worldContent);
     
-    for (const deckId in worldContent.decks) {
-        const deckDef = worldContent.decks[deckId];
-        const sizeStr = tempEngine.evaluateBlock(`{${deckDef.deck_size || '0'}}`);
-        initialDeckCharges[deckId] = parseInt(sizeStr) || 0;
-        initialLastDeckUpdate[deckId] = new Date();
+    for (const key in rules) {
+        const qid = key.replace('$', '');
+        const rule = rules[key];
+        
+        // Skip if already set in Phase 1
+        if (initialQualities[qid]) continue;
+
+        // If it looks like a formula (contains $)
+        if (rule.includes('$') || rule.includes('+') || rule.includes('*')) {
+            try {
+                const result = tempEngine.evaluateBlock(`{${rule}}`);
+                
+                const def = worldContent.qualities[qid];
+                // Logic to guess if result is string or number
+                const isNumber = !isNaN(Number(result)) && result.trim() !== "";
+                
+                let type = def?.type;
+                if (!type) type = isNumber ? QualityType.Pyramidal : QualityType.String;
+
+                if (type === QualityType.String) {
+                     initialQualities[qid] = { qualityId: qid, type, stringValue: result };
+                } else {
+                     initialQualities[qid] = { qualityId: qid, type, level: Number(result) || 0 } as any;
+                }
+                console.log(`[CharCreate] Calculated ${qid} = ${result}`);
+            } catch (e) {
+                console.error(`[CharCreate] Failed to calculate ${qid}:`, e);
+            }
+        }
     }
 
-    const startingLocation = choices?.['location'] || worldContent.char_create['$location'] || 'village';
+    // Deck Defaults
+    const initialDeckCharges: Record<string, number> = {};
+    const initialLastDeckUpdate: Record<string, Date> = {};
+    if (worldContent.decks) {
+        for (const deckId in worldContent.decks) {
+            const deckDef = worldContent.decks[deckId];
+            const sizeStr = tempEngine.evaluateBlock(`{${deckDef.deck_size || '0'}}`);
+            initialDeckCharges[deckId] = parseInt(sizeStr) || 0;
+            initialLastDeckUpdate[deckId] = new Date();
+        }
+    }
 
-    // 6. Action Economy Setup
+    // Action Economy Defaults
     if (worldContent.settings.useActionEconomy) {
         const maxActionsValue = typeof worldContent.settings.maxActions === 'number'
             ? worldContent.settings.maxActions
-            : 0;
-            
+            : 20; // Default safe fallback
+        
         const actionQid = worldContent.settings.actionId.replace('$', '');
-        initialQualities[actionQid] = {
-            qualityId: actionQid,
-            type: QualityType.Counter,
-            level: maxActionsValue
-        };
+        // Only set if not already set by rules
+        if (!initialQualities[actionQid]) {
+            initialQualities[actionQid] = {
+                qualityId: actionQid,
+                type: QualityType.Counter,
+                level: maxActionsValue
+            };
+        }
     }
 
+    // Location & Name Extraction
+    const startingLocation = choices?.['location'] || worldContent.char_create['$location'] || 'village';
+    
+    let charName = choices?.['player_name'];
+    // Try to grab from calculated qualities
+    if (!charName && initialQualities['player_name']?.type === 'S') {
+        charName = initialQualities['player_name'].stringValue;
+    }
+    if (!charName) charName = "Unknown Drifter";
+
     const newCharacter: CharacterDocument = {
+        characterId: uuidv4(),
+        name: charName,
         userId,
         storyId,
         qualities: initialQualities,
@@ -153,22 +201,16 @@ export const getOrCreateCharacter = async (
     return newCharacter;
 };
 
-// --- UPDATE FUNCTIONS ---
-
 export const saveCharacterState = async (character: CharacterDocument): Promise<boolean> => {
-    const { userId, storyId, ...characterDataToSet } = character;
-    if (!userId || !storyId) return false;
-
-    try {
-        const client = await clientPromise;
-        const db = client.db(DB_NAME);
-        const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
-        const result = await collection.updateOne({ userId, storyId }, { $set: characterDataToSet });
-        return result.modifiedCount > 0;
-    } catch (e) {
-        console.error('Database error saving character state:', e);
-        return false;
-    }
+    const { userId, storyId, characterId, ...data } = character;
+    if (!characterId) return false;
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    await db.collection(COLLECTION_NAME).updateOne(
+        { characterId, userId }, 
+        { $set: data }
+    );
+    return true;
 };
 
 export const regenerateActions = async (character: CharacterDocument): Promise<CharacterDocument> => {
@@ -179,25 +221,26 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
     if (typeof settings.maxActions === 'string') {
         const worldConfig = await getWorldConfig(character.storyId);
         const tempEngine = new GameEngine(character.qualities, worldConfig);
-        maxActions = parseInt(tempEngine.evaluateBlock(`{${settings.maxActions}}`), 10);
+        const val = tempEngine.evaluateBlock(`{${settings.maxActions}}`);
+        maxActions = parseInt(val, 10) || 20; 
     } else {
-        maxActions = settings.maxActions;
+        maxActions = settings.maxActions || 20;
     }
 
-    const lastTimestamp = character.lastActionTimestamp || new Date();
+    const lastTimestamp = character.lastActionTimestamp ? new Date(character.lastActionTimestamp) : new Date();
     const now = new Date();
     const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
-    const actionsToRegen = Math.floor(minutesPassed / settings.regenIntervalInMinutes);
+    const regenInterval = settings.regenIntervalInMinutes || 10;
+    const actionsToRegen = Math.floor(minutesPassed / regenInterval);
 
     if (actionsToRegen > 0) {
         const actionQid = settings.actionId.replace('$', '');
         const actionsState = character.qualities[actionQid];
         if (actionsState && 'level' in actionsState) {
-            const newActionTotal = Math.min(maxActions, actionsState.level + (actionsToRegen * settings.regenAmount));
+            const newActionTotal = Math.min(maxActions, actionsState.level + (actionsToRegen * (settings.regenAmount || 1)));
             actionsState.level = newActionTotal;
-            character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * settings.regenIntervalInMinutes * 60 * 1000);
+            character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * regenInterval * 60 * 1000);
         }
     }
-    
     return character;
 }

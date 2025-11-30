@@ -1,23 +1,23 @@
-// src/app/creation/page.tsx
-
-import { getWorldContent } from '@/engine/worldService'; // Use getContent if you set up the cache
+import { getWorldContent } from '@/engine/worldService';
 import CreationForm from '@/components/CreationForm';
 
-// Update the interface to reflect that searchParams is a Promise
-interface CreationPageProps {
+// Define the props interface correctly for Next.js 15
+interface Props {
+    params: Promise<{ storyId: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function CreationPage({props, params}: {props: CreationPageProps, params: { storyId: string }}) {
-    const storyId = await params.storyId;
+export default async function CreationPage({ params }: Props) {
+    // 1. Await the params Promise first to get the actual object
+    const { storyId } = await params;
 
-    if (!storyId || typeof storyId !== 'string') {
-        return <div>Error: No story specified or storyId is invalid.</div>;
+    if (!storyId) {
+        return <div>Error: No story specified.</div>;
     }
 
     // 2. Fetch data
     const gameData = await getWorldContent(storyId);
-    const creationRules = gameData.char_create;
+    const creationRules = gameData.char_create || {};
     
     return (
         <div className="container" style={{ padding: '2rem' }}>

@@ -1,8 +1,7 @@
-// src/app/api/character/create/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getCharacter, getOrCreateCharacter } from '@/engine/characterService';
+import { getOrCreateCharacter } from '@/engine/characterService';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -16,19 +15,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing storyId or choices' }, { status: 400 });
     }
 
-    const existingCharacter = await getCharacter(userId, storyId);
-    if (existingCharacter) {
-        return NextResponse.json({ error: 'Character already exists' }, { status: 409 });
-    }
+    // PREVIOUSLY: We checked for existingCharacter here and returned 409.
+    // NOW: We skip that check to allow multiple characters.
 
-    // The getOrCreateCharacter function is now perfect for this,
-    // but we need to modify it to accept the player's choices.
-    // We will do this in the next step. For now, we'll assume it works.
-    const newCharacter = await getOrCreateCharacter(userId, storyId, choices);
-
-    if (newCharacter) {
-        return NextResponse.json({ success: true, character: newCharacter });
-    } else {
-        return NextResponse.json({ error: 'Failed to create character' }, { status: 500 });
+    try {
+        // This always creates a NEW document with a unique characterId
+        const newCharacter = await getOrCreateCharacter(userId, storyId, choices);
+        
+        if (newCharacter) {
+            return NextResponse.json({ success: true, character: newCharacter });
+        } else {
+            return NextResponse.json({ error: 'Failed to create character' }, { status: 500 });
+        }
+    } catch (error) {
+        console.error("Character creation error:", error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

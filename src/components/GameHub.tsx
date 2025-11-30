@@ -1,158 +1,217 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import ElysiumLayout from './layouts/ElysiumLayout';
 import TabletopLayout from './layouts/TabletopLayout';
 import { LayoutProps } from './layouts/LayoutProps';
-import MapModal from './MapModal'; // Ensure this is imported
+import MapModal from './MapModal';
 
 interface GameHubProps {
-    initialCharacter: CharacterDocument;
-    initialLocation: LocationDefinition;
+    initialCharacter: CharacterDocument | null; 
+    initialLocation: LocationDefinition | null;
     initialHand: Opportunity[];
     locationStorylets: Storylet[];
+    availableCharacters: { characterId: string, name: string, currentLocationId: string, lastActionTimestamp?: string }[];
     
-    // Config Dictionaries
     qualityDefs: Record<string, QualityDefinition>;
     storyletDefs: Record<string, Storylet>;
     opportunityDefs: Record<string, Opportunity>; 
     settings: WorldSettings;
     imageLibrary: Record<string, ImageDefinition>;
     categories: Record<string, CategoryDefinition>;
-    
-    // NEW: Full Location/Region Data for Map
     locations: Record<string, LocationDefinition>;
     regions: Record<string, MapRegion>;
+    storyId: string; 
 }
 
-export default function GameHub({
-    initialCharacter,
-    initialLocation,
-    initialHand,
-    locationStorylets,
-    qualityDefs,
-    storyletDefs,
-    opportunityDefs,
-    settings,
-    imageLibrary,
-    categories,
-    locations,
-    regions
-}: GameHubProps) {
+export default function GameHub(props: GameHubProps) {
     
-    const [character, setCharacter] = useState(initialCharacter);
-    const [location, setLocation] = useState(initialLocation);
-    const [hand, setHand] = useState(initialHand);
+    const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
+    const [location, setLocation] = useState<LocationDefinition | null>(props.initialLocation);
+    const [hand, setHand] = useState<Opportunity[]>(props.initialHand);
+    
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showMap, setShowMap] = useState(false);
+
+    // Sync state when Server Component sends new data
+    useEffect(() => {
+        if (props.initialCharacter) {
+            setCharacter(props.initialCharacter);
+            setLocation(props.initialLocation);
+            setHand(props.initialHand);
+            setShowMap(false); 
+        }
+    }, [props.initialCharacter, props.initialLocation, props.initialHand]);
+
+
+    // --- HANDLERS ---
 
     const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) { setActiveEvent(null); return; }
         setIsLoading(true);
         try {
-            const preloadedEvent = locationStorylets.find(s => s.id === eventId) || hand.find(o => o.id === eventId);
+            // FIX 2: Use props.locationStorylets
+            const preloadedEvent = props.locationStorylets.find(s => s.id === eventId) || hand.find(o => o.id === eventId);
             if (preloadedEvent) {
                 setActiveEvent(preloadedEvent);
             } else {
-                const response = await fetch(`/api/storylet/${eventId}?storyId=${character.storyId}`);
+                const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}`);
                 if (!response.ok) throw new Error(`Event ${eventId} not found.`);
                 const eventData = await response.json();
                 setActiveEvent(eventData);
             }
         } catch (error) { console.error(error); setActiveEvent(null); } finally { setIsLoading(false); }
-    }, [hand, locationStorylets, character.storyId]);
+    }, [hand, props.locationStorylets, props.storyId]); 
 
     const handleDrawCard = useCallback(async () => {
-        if (isLoading) return;
+        if (isLoading || !character) return;
         setIsLoading(true);
         try {
             const response = await fetch('/api/deck/draw', { 
                 method: 'POST',
-                body: JSON.stringify({ storyId: character.storyId }) 
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId }) 
             });
             const data = await response.json();
-            const updatedCharacter: CharacterDocument = data.character || data;
-            
-            if (!response.ok && data.error) throw new Error(data.error);
             if (data.message) alert(data.message);
-            
-            if (updatedCharacter) {
-                setCharacter(updatedCharacter);
-                // If the API returns the updated hand IDs, we should technically re-fetch the card definitions here.
-                // For this prototype, we rely on page refresh or optimistic updates, but ideally:
-                // fetchCards(updatedCharacter.opportunityHands[location.deck]).then(setHand);
-                
-                // Temporary: Refresh page to see new card if we don't implement full hand fetch logic here
-                if (!data.message) window.location.reload(); 
-            }
-        } catch (error) { console.error(error); alert((error as Error).message); } finally { setIsLoading(false); }
-    }, [isLoading, location, character.storyId]);
+            else window.location.reload(); 
+        } catch (e) { console.error(e); } finally { setIsLoading(false); }
+    }, [isLoading, character, props.storyId]);
 
     const handleTravel = useCallback(async (targetId: string) => {
+        if (!character) return;
         setIsLoading(true);
         try {
             const res = await fetch('/api/travel', { 
                 method: 'POST', 
-                body: JSON.stringify({ storyId: character.storyId, targetLocationId: targetId }) 
+                body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
             });
             const data = await res.json();
             if (data.success) {
-                setCharacter(data.character);
-                const newLoc = locations[targetId];
-                if (newLoc) setLocation(newLoc);
-                setShowMap(false);
-                // We should also refresh storylets and hand for the new location
-                window.location.reload(); // Simple fix for prototype: Full refresh loads correct context
+                window.location.reload();
             } else {
                 alert(data.error);
             }
         } catch(e) { console.error(e); } finally { setIsLoading(false); }
-    }, [character.storyId, locations]);
+    }, [character, props.storyId]);
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
-        setCharacter(prev => ({ ...prev, qualities: newQualities } as CharacterDocument));
+        if (character) {
+            setCharacter({ ...character, qualities: newQualities });
+        }
         showEvent(redirectId ?? null);
-    }, [showEvent]);
+    }, [character, showEvent]);
 
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
-        setCharacter(prev => ({ ...prev, qualities: newQualities } as CharacterDocument));
-    }, []);
+        if (character) {
+            setCharacter({ ...character, qualities: newQualities });
+        }
+    }, [character]);
 
     const handleCardPlayed = useCallback((cardId: string) => {
         setHand(prev => prev.filter(c => c.id !== cardId));
     }, []);
 
-    // --- LAYOUT ---
-    const storyId = character.storyId;
+    const handleDeleteChar = async (charId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent clicking the card itself
+        if (!confirm("Permanently delete this character? This cannot be undone.")) return;
+        
+        try {
+            await fetch('/api/character/delete', {
+                method: 'DELETE',
+                body: JSON.stringify({ storyId: props.storyId, characterId: charId })
+            });
+            window.location.reload();
+        } catch (err) { console.error(err); }
+    };
 
+    // ADD: Handle Exit
+    const handleExit = () => {
+        // Navigate to the base story URL (removes ?charId=...)
+        window.location.href = `/play/${props.storyId}`;
+    };
+
+
+    // --- RENDER ---
+
+    // 1. LOBBY VIEW
+    if (!character) {
+        return (
+            <div className="theme-wrapper" /* ... styles ... */>
+                <div style={{ width: '100%', maxWidth: '600px', padding: '2rem' }}>
+                    <h1 style={{ textAlign: 'center', marginBottom: '2rem', color: 'var(--text-primary)' }}>Select Character</h1>
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                        {props.availableCharacters.map((c, index) => (
+                            <div 
+                                key={c.characterId || index} 
+                                className="option-button"
+                                onClick={() => window.location.href = `/play/${props.storyId}?charId=${c.characterId}`}
+                                style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                            >
+                                <div>
+                                    <h3 style={{ margin: 0, color: 'var(--accent-highlight)' }}>{c.name}</h3>
+                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                        {props.locations[c.currentLocationId]?.name || c.currentLocationId}
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '1.5rem' }}>→</span>
+                                    <button 
+                                        onClick={(e) => handleDeleteChar(c.characterId, e)}
+                                        style={{ background: 'none', border: 'none', color: '#e06c75', cursor: 'pointer', padding: '0.5rem' }}
+                                        title="Delete Character"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        
+                        <button 
+                            onClick={() => window.location.href = `/play/${props.storyId}/creation`}
+                            className="option-button"
+                            style={{ border: '2px dashed var(--border-color)', background: 'transparent', color: 'var(--text-muted)', textAlign: 'center', justifyContent: 'center' }}
+                        >
+                            + Create New Character
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!location) return <div>Loading location data...</div>;
+
+    // FIX 3: Use props.PropertyName for values not in local scope
     const layoutProps: LayoutProps = {
         character,
-        location,
+        location, 
         hand,
         activeEvent,
         isLoading,
-        qualityDefs,
-        storyletDefs,
-        opportunityDefs,
-        settings,
-        imageLibrary,
-        categories,
-        locationStorylets,
-        storyId,
         
+        qualityDefs: props.qualityDefs,
+        storyletDefs: props.storyletDefs,
+        opportunityDefs: props.opportunityDefs,
+        settings: props.settings,
+        imageLibrary: props.imageLibrary,
+        categories: props.categories,
+        locationStorylets: props.locationStorylets, 
+        storyId: props.storyId,
+
         onOptionClick: showEvent,
         onDrawClick: handleDrawCard,
         onEventFinish: handleEventFinish,
         onQualitiesUpdate: handleQualitiesUpdate,
         onCardPlayed: handleCardPlayed,
-        onOpenMap: () => setShowMap(true) 
+        onOpenMap: () => setShowMap(true),
+        onExit: handleExit,
     };
 
-    const style = settings.layoutStyle || 'nexus';
+    const style = props.settings.layoutStyle || 'nexus';
 
     const renderLayout = () => {
         switch (style) {
@@ -161,24 +220,22 @@ export default function GameHub({
             case 'tabletop': return <TabletopLayout {...layoutProps} />;
             default: return <NexusLayout {...layoutProps} />;
         }
-
-        
     };
 
     return (
         <div 
-            data-theme={settings.visualTheme || 'default'} 
-            className="theme-wrapper" // Ensure this div wraps everything
+            data-theme={props.settings.visualTheme || 'default'} 
+            className="theme-wrapper"
             style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}
         >
             {renderLayout()}
-
+            
             {showMap && (
                 <MapModal 
                     currentLocationId={character.currentLocationId}
-                    locations={locations}
-                    regions={regions}
-                    imageLibrary={imageLibrary}
+                    locations={props.locations}
+                    regions={props.regions}
+                    imageLibrary={props.imageLibrary}
                     onTravel={handleTravel}
                     onClose={() => setShowMap(false)}
                 />

@@ -176,8 +176,10 @@ export type PlayerQualities = Record<string, QualityState>;
 
 export interface CharacterDocument {
     _id?: any;
+    characterId: string; // <--- NEW: Unique ID for this specific save slot
     userId: string;
     storyId: string;
+    name: string;        // Cached name for the lobby
     qualities: PlayerQualities;
     currentLocationId: string;
     currentStoryletId: string;

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { WorldSettings } from '@/engine/models';
 import ThemePreview from '@/app/create/[storyId]/settings/components/ThemePreview';
 import CollaboratorManager from './components/CollaboratorManager';
+import { QualityType } from '@/engine/models'; // Import QualityType
 
 interface SettingsForm extends WorldSettings {
     char_create: Record<string, string>;
@@ -306,6 +307,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         name: form.playerName,
                         image: form.playerImage
                     }}
+                    storyId={storyId} /* <--- ADD THIS LINE */
                 />
             </div>
             
@@ -361,7 +363,14 @@ const PRESETS: Record<string, Record<string, string>> = {
     }
 };
 
-function CharCreateEditor({ rules, onChange, systemKeys }: { rules: Record<string, string>, onChange: (r: Record<string, string>) => void, systemKeys: any }) {
+interface CharCreateProps {
+    rules: Record<string, string>;
+    onChange: (r: Record<string, string>) => void;
+    systemKeys: { actions: string, name: string, image: string };
+    storyId: string; // <--- Added this
+}
+
+function CharCreateEditor({ rules, onChange, systemKeys, storyId }: CharCreateProps) {
     const [newKey, setNewKey] = useState("");
     const [newVal, setNewVal] = useState("");
 
@@ -407,6 +416,49 @@ function CharCreateEditor({ rules, onChange, systemKeys }: { rules: Record<strin
         onChange({ ...rules, [key]: val });
     };
 
+    const [existingQIDs, setExistingQIDs] = useState<string[]>([]);
+    
+    useEffect(() => {
+        // Quick fetch of just IDs to validate
+        fetch(`/api/admin/qualities?storyId=${storyId}`).then(r => r.json()).then(data => {
+            setExistingQIDs(Object.keys(data));
+        });
+    }, [storyId]);
+
+    const missingDefinitions = Object.keys(rules).filter(key => {
+        const qid = key.replace('$', '');
+        return !existingQIDs.includes(qid);
+    });
+
+    // 2. AUTO-FIX HANDLER
+    const handleAutoCreate = async (qidWithPrefix: string) => {
+        const qid = qidWithPrefix.replace('$', '');
+        const val = rules[qidWithPrefix];
+        
+        // Guess Type
+        let type = QualityType.Pyramidal;
+        if (val === 'string' || val.includes('+')) type = QualityType.String;
+        
+        const newQuality = {
+            id: qid,
+            name: qid.charAt(0).toUpperCase() + qid.slice(1).replace(/_/g, ' '),
+            type: type,
+            category: 'character', // Default category
+            description: 'Auto-generated quality.'
+        };
+
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'qualities', itemId: qid, data: newQuality })
+            });
+            setExistingQIDs(prev => [...prev, qid]); // Update local list to remove alert
+            alert(`Created quality: ${qid}`);
+        } catch(e) { console.error(e); }
+    };
+
+
     return (
         <div className="special-field-group" style={{ borderColor: '#98c379' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -417,24 +469,24 @@ function CharCreateEditor({ rules, onChange, systemKeys }: { rules: Record<strin
                 ask for user input (<code>string</code>), or offer choices (<code>A | B</code>).
             </p>
             
-            {/* RED ALERT: MISSING KEYS */}
-            {missingKeys.length > 0 && (
-                <div style={{ background: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem' }}>
-                    <p style={{ margin: '0 0 0.5rem 0', color: '#e74c3c', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                        ⚠️ Missing System Bindings
+             {/* RED ALERT: MISSING DEFINITIONS */}
+             {missingDefinitions.length > 0 && (
+                <div style={{ background: 'rgba(241, 196, 15, 0.1)', border: '1px solid #f1c40f', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', color: '#f1c40f', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        ⚠️ Undefined Qualities Detected
                     </p>
-                    <p style={{ fontSize: '0.8rem', color: '#ffcccc', marginBottom: '0.75rem' }}>
-                        You mapped specific features (like Actions or Name) in the settings above, but they aren't initialized here. 
-                        The game will crash or behave oddly if these are missing.
+                    <p style={{ fontSize: '0.8rem', color: '#ffecb3', marginBottom: '0.75rem' }}>
+                        The following rules reference qualities that don't exist in the database yet. 
+                        The game engine might ignore them.
                     </p>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {missingKeys.map(m => (
+                        {missingDefinitions.map(key => (
                             <button 
-                                key={m.key} 
-                                onClick={() => addMissingKey(m.key, m.val)}
-                                style={{ background: '#e74c3c', color: 'white', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                key={key} 
+                                onClick={() => handleAutoCreate(key)}
+                                style={{ background: '#f1c40f', color: 'black', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                             >
-                                + Initialize {m.label} ({m.key})
+                                🪄 Create {key}
                             </button>
                         ))}
                     </div>

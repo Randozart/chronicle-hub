@@ -1,6 +1,7 @@
 'use client';
 import { PlayerQualities, QualityDefinition, WorldSettings, QualityType, CategoryDefinition } from "@/engine/models"; 
 import { useMemo } from "react"; 
+import { evaluateText } from "@/engine/textProcessor"; 
 
 interface CharacterSheetProps {
     qualities: PlayerQualities;
@@ -16,14 +17,12 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
     
     const categoriesToDisplay = settings.characterSheetCategories || [];
 
-    // Helper to calculate effective stats
     const getEffectiveLevel = (qid: string, baseLevel: number) => {
         let total = baseLevel;
         Object.values(equipment || {}).forEach(itemId => {
             if (!itemId) return;
             const itemDef = qualityDefs[itemId];
             if (!itemDef || !itemDef.bonus) return;
-
             const bonuses = itemDef.bonus.split(',');
             for (const bonus of bonuses) {
                 const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
@@ -40,7 +39,6 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
         return total;
     };
 
-    // Calculate display values
     const characterQualities = useMemo(() => {
         return Object.keys(qualities)
         .map(qid => {
@@ -48,8 +46,8 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             const state = qualities[qid];
             if (!definition) return null;
 
-            const categories = (definition.category ?? "").split(",").map(s => s.trim());
-            const shouldDisplay = categoriesToDisplay.some(c => categories.includes(c));
+            const cats = (definition.category ?? "").split(",").map(s => s.trim());
+            const shouldDisplay = categoriesToDisplay.some(c => cats.includes(c));
             
             if (!shouldDisplay) return null;
 
@@ -71,7 +69,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             <ul>
                 {validQualities.map(q => {
                     if (!q) return null; 
-
+                    
                     const changePoints = ('changePoints' in q) ? q.changePoints : 0;
                     const isPyramidal = q.type === QualityType.Pyramidal;
                     
@@ -81,13 +79,10 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
                     const bonusText = bonusDiff > 0 ? `(+${bonusDiff})` : bonusDiff < 0 ? `(${bonusDiff})` : '';
                     const bonusClass = bonusDiff > 0 ? 'text-green-400' : 'text-red-400';
+                    
+                    // Dynamic Name Resolution
+                    const displayName = evaluateText(q.name, qualities, qualityDefs);
 
-                    // DETERMINE BAR COLOR
-                    // 1. Get config color
-                    // 2. Fallback to default Blue (var(--progress-fill))
-                    // Note: We check the primary category. 
-                    // If q.category is "menace, something", we grab the first one or try both.
-                    // Let's just try exact match or first split.
                     const primaryCat = (q.category || "").split(',')[0].trim();
                     const catDef = categories[primaryCat];
                     const barColor = catDef?.color || 'var(--progress-fill)';
@@ -95,7 +90,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     return (
                         <li key={q.id} className="quality-item">
                             <p className="quality-header">
-                                <span className="quality-name">{q.name}</span>
+                                <span className="quality-name">{displayName}</span>
                                 &nbsp;
                                 <span className="quality-level">
                                     {q.effectiveLevel} 
@@ -106,10 +101,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                                 <div className="quality-cp-bar-background">
                                     <div 
                                         className="quality-cp-bar-fill"
-                                        style={{ 
-                                            width: `${cpPercent}%`,
-                                            backgroundColor: barColor // DYNAMIC COLOR
-                                        }}
+                                        style={{ width: `${cpPercent}%`, backgroundColor: barColor }}
                                     />
                                 </div>
                             )}

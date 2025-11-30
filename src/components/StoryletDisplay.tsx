@@ -19,6 +19,7 @@ interface StoryletDisplayProps {
     imageLibrary: Record<string, ImageDefinition>; 
     categories: Record<string, CategoryDefinition>;
     storyId: string;
+    characterId: string; // <--- Add this
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -42,7 +43,8 @@ export default function StoryletDisplay({
     onCardPlayed,
     imageLibrary,
     categories,
-    storyId
+    storyId,
+    characterId
 }: StoryletDisplayProps) {
     const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -55,8 +57,12 @@ export default function StoryletDisplay({
         try {
             const response = await fetch('/api/resolve', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId })
+                body: JSON.stringify({ 
+                    storyletId: storylet.id, 
+                    optionId: option.id, 
+                    storyId, 
+                    characterId // <--- Pass it
+                })
             });
             if (!response.ok) throw new Error(await response.text());
             
