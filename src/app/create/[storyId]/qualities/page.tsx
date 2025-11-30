@@ -4,6 +4,8 @@ import { useState, useEffect, use } from 'react';
 import { QualityDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import GameImage from '@/components/GameImage';
+import { hasProperty, toggleProperty } from '@/utils/propertyHelpers';
+import BehaviorCard from '../components/BehaviorCard';
 
 const toggleTag = (currentTags: string | undefined, tag: string): string => {
     const tags = (currentTags || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -67,40 +69,20 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
-    return (
+     return (
         <div className="admin-split-view">
             <AdminListSidebar 
-                title="Qualities"
-                items={qualities}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                onCreate={handleCreate}
-                groupOptions={[
-                    { label: "Category (Tree)", key: "category" },
-                    { label: "Type", key: "type" }
-                ]}
+                title="Qualities" items={qualities} selectedId={selectedId} onSelect={setSelectedId} onCreate={handleCreate}
+                groupOptions={[{ label: "Category", key: "category" }, { label: "Type", key: "type" }]}
                 defaultGroupByKey="category"
-                renderItem={(q) => (
-                    <div>
-                        <div style={{ fontWeight: 'bold', color: '#fff' }}>{q.name || q.id}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#777' }}>{q.id} <span style={{ color: '#61afef' }}>[{q.type}]</span></div>
-                    </div>
-                )}
             />
-
             <div className="admin-editor-col">
                 {selectedId ? (
                     <QualityEditor 
                         initialData={qualities.find(q => q.id === selectedId)!} 
-                        onSave={handleSaveSuccess}
-                        onDelete={handleDeleteSuccess}
-                        storyId={storyId}
+                        onSave={handleSaveSuccess} onDelete={handleDeleteSuccess} storyId={storyId} 
                     />
-                ) : (
-                    <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>
-                        Select a quality to edit
-                    </div>
-                )}
+                ) : <div style={{color:'#777', textAlign:'center', marginTop:'20%'}}>Select a quality</div>}
             </div>
         </div>
     );
@@ -112,209 +94,136 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
 
     useEffect(() => setForm(initialData), [initialData]);
 
-    const handleChange = (field: string, val: string) => {
+    const handleChange = (field: string, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
+    };
+
+    const handlePropToggle = (prop: string) => {
+        const newProps = toggleProperty(form.properties, prop);
+        handleChange('properties', newProps);
     };
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const res = await fetch('/api/admin/config', {
+            await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    storyId: storyId,
-                    category: 'qualities',
-                    itemId: form.id,
-                    data: form
-                })
+                body: JSON.stringify({ storyId, category: 'qualities', itemId: form.id, data: form })
             });
-
-            if (res.ok) {
-                onSave(form); 
-                alert("Saved!");
-            } else {
-                alert("Failed to save.");
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSaving(false);
-        }
+            onSave(form);
+            alert("Saved!");
+        } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to delete "${form.id}"?`)) return;
-        
-        setIsSaving(true);
-        try {
-            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=qualities&itemId=${form.id}`, {
-                method: 'DELETE',
-            });
-
-            if (res.ok) {
-                onDelete(form.id);
-            } else {
-                alert("Failed to delete.");
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSaving(false);
-        }
+        if (!confirm(`Delete ${form.id}?`)) return;
+        await fetch(`/api/admin/config?storyId=${storyId}&category=qualities&itemId=${form.id}`, { method: 'DELETE' });
+        onDelete(form.id);
     };
 
     return (
-        <div>
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
-                Edit: {form.name}
-            </h2>
-            
+        <div className="space-y-4">
             <div className="form-group">
-                <label className="form-label">ID</label> <span className="property-hint">($quality.id)</span>
-                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5, cursor: 'not-allowed' }} />
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">Name</label> <span className="property-hint">($quality.name)</span>
-                <input value={form.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" />
-            </div>
-            <div className="form-group">
-                <label className="form-label">
-                    Description 
-                    <span className="property-hint">($quality.description)</span>
-                </label>
-                <textarea 
-                    value={form.description || ''} 
-                    onChange={e => handleChange('description', e.target.value)}
-                    className="form-textarea"
-                    rows={4}
-                />
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">Image Code</label>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <input 
-                        value={form.image || ''} 
-                        onChange={e => handleChange('image', e.target.value)} 
-                        className="form-input"
-                        placeholder="sword_icon"
-                        style={{ flex: 1 }}
-                    />
-                    {/* Tiny Preview */}
-                    {form.image && (
-                        <div style={{ width: '40px', height: '40px', border: '1px solid #444' }}>
-                            <GameImage 
-                                code={form.image} 
-                                imageLibrary={{}} // Need to pass library here if we want real preview, 
-                                                  // or just rely on URL fallback if applicable.
-                                                  // Ideally, fetch library in parent and pass down.
-                                type="icon" 
-                                className="option-image"
-                            />
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="toggle-row">
-                <label className="toggle-label">
-                    <input 
-                        type="checkbox" 
-                        checked={(form.properties || '').includes('hidden')}
-                        onChange={() => handleChange('properties', toggleTag(form.properties, 'hidden'))}
-                    />
-                    Hidden
-                </label>
-                {/* You can add more standard tags here */}
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">Raw Properties</label>
-                <input 
-                    value={form.properties || ''} 
-                    onChange={e => handleChange('properties', e.target.value)} 
-                    className="form-input"
-                    placeholder="custom_tag_1, custom_tag_2"
-                />
+                <label className="form-label">ID</label>
+                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
             </div>
 
             <div className="form-row">
-                <div className="form-group">
+                <div className="form-group" style={{ flex: 2 }}>
+                    <label className="form-label">Name</label>
+                    <input value={form.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Type</label>
                     <select value={form.type} onChange={e => handleChange('type', e.target.value)} className="form-select">
-                        <option value="P">Pyramidal (Level)</option>
+                        <option value="P">Pyramidal (Stat)</option>
                         <option value="C">Counter (Currency)</option>
                         <option value="I">Item</option>
                         <option value="E">Equipable</option>
                         <option value="S">String (Text)</option>
+                        <option value="T">Tracker (Progress)</option>
                     </select>
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Category</label>
-                    <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" />
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-textarea" rows={2} />
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Category (Tree)</label>
+                <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" placeholder="character, menace" />
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Image Code</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" />
+                    {form.image && <div style={{width: 32, height: 32}}><GameImage code={form.image} imageLibrary={{}} type="icon" className="option-image"/></div>}
                 </div>
             </div>
 
-            <div className="form-row">
-                <div className="form-group">
-                    <label className="form-label">
-                        Max Value 
-                        <span className="property-hint">($quality.max)</span>
-                    </label>
-                    <input 
-                        value={form.max || ''} 
-                        onChange={e => handleChange('max', e.target.value)}
-                        className="form-input"
-                        placeholder="e.g. 100 or $level_cap"
+            {/* --- NEW BEHAVIOR SECTION --- */}
+            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <BehaviorCard 
+                        checked={hasProperty(form.properties, 'hidden')} 
+                        onChange={() => handlePropToggle('hidden')} 
+                        label="Hidden" 
+                        desc="Do not show on profile." 
                     />
+                    
+                    {/* Only show Item logic for Items/Equipables */}
+                    {(form.type === 'E' || form.type === 'I') && (
+                        <>
+                            <BehaviorCard 
+                                checked={hasProperty(form.properties, 'auto_equip')} 
+                                onChange={() => handlePropToggle('auto_equip')} 
+                                label="Auto-Equip" 
+                                desc="Equip immediately on gain." 
+                            />
+                            <BehaviorCard 
+                                checked={hasProperty(form.properties, 'cursed')} 
+                                onChange={() => handlePropToggle('cursed')} 
+                                label="Cursed" 
+                                desc="Cannot be unequipped." 
+                            />
+                        </>
+                    )}
+                </div>
+
+                <div style={{ marginTop: '1rem' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Properties</label>
+                    <input value={form.properties || ''} onChange={e => handleChange('properties', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
                 </div>
             </div>
 
-            {/* Show for Equipables (E) AND Items (I) */}
+            {/* EQUIP/ITEM SPECIFIC FIELDS */}
             {(form.type === 'E' || form.type === 'I') && (
-                <div className="special-field-group" style={{ borderColor: '#61afef' }}>
-                    <label className="special-label" style={{ color: '#61afef' }}>Item Settings</label>
+                <div className="form-group" style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
+                    <label className="special-label" style={{color: '#61afef'}}>Item Settings</label>
                     
-                    {/* Bonus only for Equipables */}
                     {form.type === 'E' && (
                         <div className="form-group">
                             <label className="form-label">Stat Bonus</label>
-                            <input 
-                                value={form.bonus || ''} 
-                                onChange={e => handleChange('bonus', e.target.value)} 
-                                placeholder="$mettle + 1" 
-                                className="form-input" 
-                            />
+                            <input value={form.bonus || ''} onChange={e => handleChange('bonus', e.target.value)} className="form-input" placeholder="$strength + 1" />
                         </div>
                     )}
-                    
-                    {/* Storylet for both */}
+
                     <div className="form-group">
-                        <label className="form-label">On-Use Storylet ID</label>
-                        <input 
-                            value={form.storylet || ''} 
-                            onChange={e => handleChange('storylet', e.target.value)} 
-                            placeholder="open_box_event" 
-                            className="form-input" 
-                        />
-                        <p className="special-desc">
-                            {form.type === 'E' 
-                                ? "If set, shows 'Use' button alongside 'Equip'." 
-                                : "If set, adds a 'Use' button to the item in inventory."}
-                        </p>
+                        <label className="form-label">Use Event (Storylet ID)</label>
+                        <input value={form.storylet || ''} onChange={e => handleChange('storylet', e.target.value)} className="form-input" placeholder="Event ID to fire when 'Used'" />
                     </div>
                 </div>
             )}
 
             <div className="admin-form-footer">
-                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem' }}>
-                    Delete Quality
-                </button>
-                <button onClick={handleSave} disabled={isSaving} className="save-btn">
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
+                <button onClick={handleDelete} className="unequip-btn" style={{width: 'auto', padding: '0.5rem 1rem'}}>Delete</button>
+                <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>
         </div>
     );

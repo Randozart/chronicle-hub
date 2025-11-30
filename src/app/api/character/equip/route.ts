@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
 
     const gameData = await getContent(storyId);
 
+    // Load Location Definition
+    const locationDef = gameData.locations[character.currentLocationId];
+
+    // Check Property
+    if (locationDef?.properties?.includes('lock_equipment')) {
+        return NextResponse.json({ error: 'You cannot change your equipment here.' }, { status: 403 });
+    }
+
     // If itemId is null, we are UNEQUIPPING
     if (!itemId) {
         const currentItem = character.equipment[slot];

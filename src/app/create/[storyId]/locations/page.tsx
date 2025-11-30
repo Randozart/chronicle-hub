@@ -3,6 +3,8 @@
 import { useState, useEffect, use } from 'react';
 import { LocationDefinition } from '@/engine/models';
 import GameImage from '@/components/GameImage';
+import { hasProperty, toggleProperty } from '@/utils/propertyHelpers';
+import BehaviorCard from '../components/BehaviorCard';
 
 export default function LocationsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -85,6 +87,7 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
     );
 }
 
+
 function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialData: LocationDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
@@ -92,34 +95,35 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
     useEffect(() => setForm(initialData), [initialData]);
 
     const handleChange = (field: string, val: any) => {
-            setForm(prev => ({ ...prev, [field]: val }));
-        };
-        
+        setForm(prev => ({ ...prev, [field]: val }));
+    };
+
+    const handlePropToggle = (prop: string) => {
+        const newProps = toggleProperty(form.properties, prop);
+        handleChange('properties', newProps);
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const res = await fetch('/api/admin/config', {
+            await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: storyId, category: 'locations', itemId: form.id, data: form })
+                body: JSON.stringify({ storyId, category: 'locations', itemId: form.id, data: form })
             });
-            if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
+            onSave(form);
+            alert("Saved!");
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Delete "${form.id}"?`)) return;
-        setIsSaving(true);
-        try {
-            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=locations&itemId=${form.id}`, { method: 'DELETE' });
-            if (res.ok) onDelete(form.id);
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
+        if (!confirm(`Delete ${form.id}?`)) return;
+        await fetch(`/api/admin/config?storyId=${storyId}&category=locations&itemId=${form.id}`, { method: 'DELETE' });
+        onDelete(form.id);
     };
 
     return (
-        <div>
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Edit: {form.name}</h2>
-            
+        <div className="space-y-4">
             <div className="form-group">
                 <label className="form-label">ID</label>
                 <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
@@ -130,64 +134,70 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 <input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" />
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Assigned Deck ID</label>
-                <input value={form.deck} onChange={e => handleChange('deck', e.target.value)} className="form-input" placeholder="deck_id" />
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">Image Code</label>
-                <input value={form.image} onChange={e => handleChange('image', e.target.value)} className="form-input" />
-            </div>
-
-            {/* NEW MAP FIELDS */}
-            <div className="form-row" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed #444' }}>
+            <div className="form-row">
                 <div className="form-group">
-                    <label className="form-label">Region ID</label>
-                    <input 
-                        value={form.regionId || ''} 
-                        onChange={e => handleChange('regionId', e.target.value)} 
-                        className="form-input" 
-                        placeholder="london"
-                    />
+                    <label className="form-label">Deck ID</label>
+                    <input value={form.deck} onChange={e => handleChange('deck', e.target.value)} className="form-input" />
                 </div>
                 <div className="form-group">
-                    <label className="form-label">Coordinates (X, Y)</label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <input 
-                            type="number" 
-                            value={form.coordinates?.x || 0} 
-                            onChange={e => handleChange('coordinates', { ...form.coordinates, x: parseInt(e.target.value) })} 
-                            className="form-input" 
-                            placeholder="X"
-                        />
-                        <input 
-                            type="number" 
-                            value={form.coordinates?.y || 0} 
-                            onChange={e => handleChange('coordinates', { ...form.coordinates, y: parseInt(e.target.value) })} 
-                            className="form-input" 
-                            placeholder="Y"
-                        />
+                    <label className="form-label">Image Code</label>
+                    <input value={form.image} onChange={e => handleChange('image', e.target.value)} className="form-input" />
+                </div>
+            </div>
+
+            {/* --- NEW BEHAVIOR SECTION --- */}
+            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    
+                    <BehaviorCard 
+                        checked={hasProperty(form.properties, 'lock_equipment')} 
+                        onChange={() => handlePropToggle('lock_equipment')} 
+                        label="Lock Equipment" 
+                        desc="Player cannot change gear here." 
+                    />
+                     <BehaviorCard 
+                        checked={hasProperty(form.properties, 'safe_zone')} 
+                        onChange={() => handlePropToggle('safe_zone')} 
+                        label="Safe Zone" 
+                        desc="No menace autofires? (Future)" 
+                    />
+
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Properties</label>
+                    <input value={form.properties || ''} onChange={e => handleChange('properties', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
+                </div>
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Unlock Condition (Logic)</label>
+                <input 
+                    value={form.unlockCondition || ''} 
+                    onChange={e => handleChange('unlockCondition', e.target.value)} 
+                    className="form-input" 
+                    placeholder="$route_to_town >= 1"
+                />
+                <p className="special-desc">Requirement to travel here via Map.</p>
+            </div>
+
+            {/* Coordinates */}
+            <div className="form-row" style={{ borderTop: '1px dashed #444', paddingTop: '1rem', marginTop: '1rem' }}>
+                <div className="form-group">
+                    <label className="form-label">Map Region ID</label>
+                    <input value={form.regionId || ''} onChange={e => handleChange('regionId', e.target.value)} className="form-input" />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Coords (X, Y)</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <input type="number" value={form.coordinates?.x || 0} onChange={e => handleChange('coordinates', { ...form.coordinates, x: parseInt(e.target.value) })} className="form-input" placeholder="X" />
+                        <input type="number" value={form.coordinates?.y || 0} onChange={e => handleChange('coordinates', { ...form.coordinates, y: parseInt(e.target.value) })} className="form-input" placeholder="Y" />
                     </div>
                 </div>
             </div>
 
-            {/* Preview Image */}
-            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <div style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', border: '2px solid #444', margin: '0 auto' }}>
-                    <GameImage 
-                        code={form.image} 
-                        imageLibrary={{}} // In a real app, pass the full library here
-                        alt="Preview" 
-                        type="location" 
-                        className="location-image" 
-                    />
-                </div>
-                <p style={{ fontSize: '0.8rem', color: '#777', marginTop: '0.5rem' }}>Icon Preview</p>
-            </div>
-
-            <div style={{ marginTop: '2rem', display: 'flow-root' }}>
-                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ float: 'left' }}>Delete</button>
+            <div className="admin-form-footer">
+                <button onClick={handleDelete} className="unequip-btn" style={{width: 'auto', padding: '0.5rem 1rem'}}>Delete</button>
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>
         </div>
