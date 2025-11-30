@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from "@/lib/auth";
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { getOpportunitiesForDeck } from '@/engine/worldService'; 
 import { GameEngine } from '@/engine/gameEngine';

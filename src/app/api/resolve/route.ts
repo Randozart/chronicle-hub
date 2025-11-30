@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from "@/lib/auth";
 import { getContent, getAutofireStorylets } from '@/engine/contentCache'; // Use CACHE
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { GameEngine } from '@/engine/gameEngine';

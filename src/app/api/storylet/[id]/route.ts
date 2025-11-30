@@ -5,7 +5,7 @@ import { getEvent, getWorldConfig } from '@/engine/worldService';
 import { getCharacter } from '@/engine/characterService';
 import { GameEngine } from '@/engine/gameEngine';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
     // 1. We need the User Session to get their Qualities for parsing
