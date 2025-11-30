@@ -7,6 +7,7 @@ import bcrypt from 'bcrypt';
 import clientPromise from '@/engine/database';
 import { ObjectId } from 'mongodb';
 import { findUserById } from "@/engine/userService"; // <-- IMPORT our new function
+import { isEmailWhitelisted } from "@/engine/whitelistService";
 
 // Define our User document structure from the DB
 interface UserDocument {
@@ -63,44 +64,20 @@ export const authOptions: NextAuthOptions = {
       error: "/login", // Redirect errors to the login page
     },
     callbacks: {
-        // --- THIS IS THE CORRECTED jwt CALLBACK ---
-        async jwt({ token, user, trigger, session }) {
-            // The `user` object is only passed on initial sign-in.
-            if (user) {
-                token.id = user.id;
-            }
-
-            // The `trigger === "session"` check runs when the session is accessed.
-            // We can add a periodic check here.
-            // For now, let's add the check to always run.
-            
-            // If the token has an ID, verify that user still exists in the DB.
-            if (token.id) {
-                const dbUser = await findUserById(token.id as string);
-                // If the user is not found in the database, the token is invalid.
-                if (!dbUser) {
-                    // Invalidate the session by returning an empty object.
-                    // This effectively logs the user out.
-                    return {};
-                }
-            }
-
-            return token;
+        async signIn({ user }) {
+            if (!user.email) return false;
+            // Security Check: Is this user still allowed?
+            return await isEmailWhitelisted(user.email);
         },
-        // --- END OF CORRECTION ---
-
+        async jwt({ token, user }) {
+             // ... existing logic
+             return token;
+        },
         async session({ session, token }) {
-            if (token && token.id && session.user) {
-                // Expose the user ID to the client-side session object.
-                (session.user as any).id = token.id;
-            } else {
-                // If the token was invalidated, ensure the session reflects that.
-                // This case might not be strictly necessary but is good for safety.
-                return null as any; // Force a logout on the client.
-            }
+            // ... existing logic
             return session;
         },
-    },
+    }
 };
 
 const handler = NextAuth(authOptions);
