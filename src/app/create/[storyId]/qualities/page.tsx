@@ -1,75 +1,47 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { QualityDefinition } from '@/engine/models';
+import { QualityDefinition, QualityType } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import GameImage from '@/components/GameImage';
-import { hasProperty, toggleProperty } from '@/utils/propertyHelpers';
+import { toggleProperty, hasProperty } from '@/utils/propertyHelpers'; 
 import BehaviorCard from '../components/BehaviorCard';
-
-const toggleTag = (currentTags: string | undefined, tag: string): string => {
-    const tags = (currentTags || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (tags.includes(tag)) {
-        return tags.filter(t => t !== tag).join(', ');
-    } else {
-        return [...tags, tag].join(', ');
-    }
-};
 
 export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // 1. Fetch Data
     useEffect(() => {
         fetch(`/api/admin/qualities?storyId=${storyId}`)
-            .then(res => res.json())
-            .then(data => {
-                const arr = Object.values(data).map((q: any) => q);
-                setQualities(arr);
-            })
+            .then(r => r.json())
+            .then(data => setQualities(Object.values(data)))
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [storyId]);
 
-    // 2. Create Logic
     const handleCreate = () => {
-        const newId = prompt("Enter unique ID (e.g. 'strength'):");
+        const newId = prompt("Unique ID (e.g. 'strength'):");
         if (!newId) return;
-
-        if (newId.includes('.') || newId.includes(' ')) { 
-            alert("ID cannot contain dots or spaces."); return; 
-        }
-        if (qualities.find(q => q.id === newId)) { 
-            alert("ID already exists."); return; 
-        }
-
-        const newQuality: QualityDefinition = {
-            id: newId,
-            name: "New Quality",
-            type: "P" as any,
-            description: ""
-        };
-
-        setQualities(prev => [...prev, newQuality]);
+        if (qualities.find(q => q.id === newId)) return alert("ID Exists");
+        
+        const newQ: QualityDefinition = { id: newId, name: "New Quality", type: QualityType.Pyramidal };
+        setQualities(prev => [...prev, newQ]);
         setSelectedId(newId);
     };
 
-    // 3. Save Logic
-    const handleSaveSuccess = (updatedItem: QualityDefinition) => {
-        setQualities(prev => prev.map(q => q.id === updatedItem.id ? updatedItem : q));
+    const handleSaveSuccess = (updated: QualityDefinition) => {
+        setQualities(prev => prev.map(q => q.id === updated.id ? updated : q));
     };
 
-    // 4. Delete Logic
-    const handleDeleteSuccess = (deletedId: string) => {
-        setQualities(prev => prev.filter(q => q.id !== deletedId));
+    const handleDeleteSuccess = (id: string) => {
+        setQualities(prev => prev.filter(q => q.id !== id));
         setSelectedId(null);
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
-     return (
+    return (
         <div className="admin-split-view">
             <AdminListSidebar 
                 title="Qualities" items={qualities} selectedId={selectedId} onSelect={setSelectedId} onCreate={handleCreate}
@@ -147,14 +119,27 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                 </div>
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-textarea" rows={2} />
+            {/* RESTORED: MAX VALUE FIELD */}
+            <div className="form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Category (Tree)</label>
+                    <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" placeholder="character, menace" />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Max Value (Cap)</label>
+                    <input 
+                        value={form.max || ''} 
+                        onChange={e => handleChange('max', e.target.value)} 
+                        className="form-input" 
+                        placeholder="10 or $level_cap" 
+                    />
+                    <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>Optional logic limit.</p>
+                </div>
             </div>
 
             <div className="form-group">
-                <label className="form-label">Category (Tree)</label>
-                <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" placeholder="character, menace" />
+                <label className="form-label">Description</label>
+                <textarea value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-textarea" rows={2} />
             </div>
 
             <div className="form-group">
@@ -165,55 +150,32 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                 </div>
             </div>
 
-            {/* --- NEW BEHAVIOR SECTION --- */}
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
-                
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <BehaviorCard 
-                        checked={hasProperty(form.properties, 'hidden')} 
-                        onChange={() => handlePropToggle('hidden')} 
-                        label="Hidden" 
-                        desc="Do not show on profile." 
-                    />
-                    
-                    {/* Only show Item logic for Items/Equipables */}
+                    <BehaviorCard checked={hasProperty(form.properties, 'hidden')} onChange={() => handlePropToggle('hidden')} label="Hidden" desc="Do not show on profile." />
                     {(form.type === 'E' || form.type === 'I') && (
                         <>
-                            <BehaviorCard 
-                                checked={hasProperty(form.properties, 'auto_equip')} 
-                                onChange={() => handlePropToggle('auto_equip')} 
-                                label="Auto-Equip" 
-                                desc="Equip immediately on gain." 
-                            />
-                            <BehaviorCard 
-                                checked={hasProperty(form.properties, 'cursed')} 
-                                onChange={() => handlePropToggle('cursed')} 
-                                label="Cursed" 
-                                desc="Cannot be unequipped." 
-                            />
+                            <BehaviorCard checked={hasProperty(form.properties, 'auto_equip')} onChange={() => handlePropToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />
+                            <BehaviorCard checked={hasProperty(form.properties, 'cursed')} onChange={() => handlePropToggle('cursed')} label="Cursed" desc="Cannot be unequipped." />
                         </>
                     )}
                 </div>
-
                 <div style={{ marginTop: '1rem' }}>
                     <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Properties</label>
                     <input value={form.properties || ''} onChange={e => handleChange('properties', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
                 </div>
             </div>
 
-            {/* EQUIP/ITEM SPECIFIC FIELDS */}
             {(form.type === 'E' || form.type === 'I') && (
                 <div className="form-group" style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
                     <label className="special-label" style={{color: '#61afef'}}>Item Settings</label>
-                    
                     {form.type === 'E' && (
                         <div className="form-group">
                             <label className="form-label">Stat Bonus</label>
                             <input value={form.bonus || ''} onChange={e => handleChange('bonus', e.target.value)} className="form-input" placeholder="$strength + 1" />
                         </div>
                     )}
-
                     <div className="form-group">
                         <label className="form-label">Use Event (Storylet ID)</label>
                         <input value={form.storylet || ''} onChange={e => handleChange('storylet', e.target.value)} className="form-input" placeholder="Event ID to fire when 'Used'" />

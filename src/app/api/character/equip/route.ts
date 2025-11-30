@@ -14,40 +14,44 @@ export async function POST(request: NextRequest) {
     const character = await getCharacter(userId, storyId);
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
+    // Load definitions
     const gameData = await getContent(storyId);
-
-    // Load Location Definition
+    
+    // 1. CHECK LOCATION LOCK
+    // If the player is in a location like "Prison", they shouldn't be able to change gear.
     const locationDef = gameData.locations[character.currentLocationId];
-
-    // Check Property
+    // We check if the properties string contains 'lock_equipment'
+    // Note: property strings are comma-separated, e.g., "safe_zone, lock_equipment"
     if (locationDef?.properties?.includes('lock_equipment')) {
-        return NextResponse.json({ error: 'You cannot change your equipment here.' }, { status: 403 });
+         return NextResponse.json({ error: 'You cannot change your equipment in this location.' }, { status: 403 });
     }
 
+    // 2. HANDLE UNEQUIP
     // If itemId is null, we are UNEQUIPPING
     if (!itemId) {
         const currentItem = character.equipment[slot];
+        
+        // Check if the item currently equipped is Cursed
         if (currentItem) {
             const currentDef = gameData.qualities[currentItem];
-            // SECURITY CHECK: Is it cursed?
             if (currentDef?.properties?.includes('cursed')) {
                  return NextResponse.json({ error: 'You cannot unequip a cursed item.' }, { status: 403 });
             }
         }
-        
+
         character.equipment[slot] = null;
         await saveCharacterState(character);
         return NextResponse.json({ success: true, character });
     }
 
-    // If itemId is present, we are EQUIPPING
+    // 3. HANDLE EQUIP
     const itemDef = gameData.qualities[itemId];
 
     if (!itemDef) {
         return NextResponse.json({ error: 'Item definition not found' }, { status: 404 });
     }
 
-    // 1. Validation: Does the player own this item?
+    // Validation: Does the player own this item?
     const ownedState = character.qualities[itemId];
     const amountOwned = (ownedState && 'level' in ownedState) ? ownedState.level : 0;
     
@@ -55,13 +59,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'You do not own this item.' }, { status: 403 });
     }
 
-    // 2. Validation: Is this item actually equipable?
+    // Validation: Is this item actually equipable?
     if (itemDef.type !== 'E') {
         return NextResponse.json({ error: 'This item cannot be equipped.' }, { status: 400 });
     }
 
-    // 3. Validation: Does the item fit in this slot?
-    // We expect itemDef.category to be "body" or "head, something_else"
+    // Validation: Does the item fit in this slot?
     const allowedSlots = itemDef.category?.split(',').map(s => s.trim()) || [];
     if (!allowedSlots.includes(slot)) {
         return NextResponse.json({ error: `This item does not go in the ${slot} slot.` }, { status: 400 });

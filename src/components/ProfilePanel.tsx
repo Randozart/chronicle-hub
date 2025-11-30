@@ -4,6 +4,7 @@ import { PlayerQualities, QualityDefinition, QualityType, ImageDefinition, Categ
 import { useState, useMemo } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
+import { evaluateText } from "@/engine/textProcessor";
 
 interface ProfilePanelProps {
     qualities: PlayerQualities;
@@ -130,15 +131,18 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                                 />
                                             </div>
                                         )}
-
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                <span className="q-name">{q.name}</span>
-                                                <span className="q-val">
-                                                    {q.type === 'S' ? q.stringValue : q.level}
-                                                </span>
-                                            </div>
-                                            <p className="q-desc">{q.description}</p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                            <span className="q-name">
+                                                {evaluateText(q.name, qualities, qualityDefs)}
+                                            </span>
+                                            <span className="q-val">
+                                                {q.type === 'S' ? q.stringValue : q.level}
+                                            </span>
+                                        </div>
+                                        <p className="q-desc">
+                                            {evaluateText(q.description, qualities, qualityDefs)}
+                                        </p>
                                             
                                             {/* Progress Bar */}
                                             {q.type === 'P' && (

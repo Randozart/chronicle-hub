@@ -1,4 +1,3 @@
-// src/components/StoryletDisplay.tsx
 'use client';
 
 import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition } from '@/engine/models';
@@ -6,9 +5,7 @@ import { useState } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
-import { resolveTxt } from 'dns';
 
-// New, lean props interface
 interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
     qualities: PlayerQualities;
@@ -17,17 +14,16 @@ interface StoryletDisplayProps {
     opportunityDefs: Record<string, Opportunity>;
     settings: WorldSettings;
     onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
-    onQualitiesUpdate: (newQualities: PlayerQualities) => void; // <--- ADD THIS
+    onQualitiesUpdate: (newQualities: PlayerQualities) => void;
     onCardPlayed?: (cardId: string) => void;
-    imageLibrary: Record<string, ImageDefinition>; // Add type
+    imageLibrary: Record<string, ImageDefinition>; 
     categories: Record<string, CategoryDefinition>;
     storyId: string;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
+
 type ResolutionState = {
-    // We need to store the new qualities in the resolution state
-    // to correctly evaluate the result text.
     qualities: PlayerQualities;
     title: string; body: string; redirectId?: string; image_code?: string;
     wasSuccess?: boolean; skillCheckDetails?: { description: string; };
@@ -36,9 +32,9 @@ type ResolutionState = {
 
 export default function StoryletDisplay({ 
     eventData, 
-    qualities, // This is the LIVE quality state from GameHub
+    qualities, 
     onFinish,
-    onQualitiesUpdate, // <--- Destructure here
+    onQualitiesUpdate,
     qualityDefs,
     storyletDefs,
     opportunityDefs,
@@ -48,14 +44,11 @@ export default function StoryletDisplay({
     categories,
     storyId
 }: StoryletDisplayProps) {
-
-    // This component only manages its own temporary UI state.
     const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     
-    const storylet = eventData; // Use the prop directly. No more `useState(eventData)`.
+    const storylet = eventData; 
     
-
     const handleOptionClick = async (option: ResolveOption) => {
         if (isLoading) return;
         setIsLoading(true);
@@ -67,9 +60,7 @@ export default function StoryletDisplay({
             });
             if (!response.ok) throw new Error(await response.text());
             
-
             const data = await response.json();
-
             onQualitiesUpdate(data.newQualities); 
             
             if (onCardPlayed && 'deck' in eventData) {
@@ -81,7 +72,6 @@ export default function StoryletDisplay({
             if (isInstant) {
                 onFinish(data.newQualities, data.result.redirectId);
             } else {
-                // When showing the result, we save the NEW qualities to the resolution state
                 setResolution({ ...data.result, image_code: option.image_code, qualities: data.newQualities });
             }
         } catch (error) {
@@ -93,53 +83,42 @@ export default function StoryletDisplay({
 
     const handleContinue = () => {
         if (!resolution) return;
-        // On continue, we pass the NEW qualities from the resolution state up to the GameHub
         onFinish(resolution.qualities, resolution.redirectId);
     };
 
-    const getReturnTarget = (currentStorylet: Storylet | Opportunity): string | null => {
-        if ('return' in currentStorylet && currentStorylet.return) return currentStorylet.return;
-        if (currentStorylet.properties) {
-            const match = currentStorylet.properties.match(/return\[(.*?)\]/);
-            if (match?.[1]) return match[1];
-        }
-        return null;
-    };
-    const returnTargetId = getReturnTarget(storylet);
-
-        // 1. Check for "No Return" property
+    // --- SMART RETURN LOGIC ---
     const disableReturn = storylet.properties?.includes('no_return');
 
-    // 2. Calculate Target
-    const getValidReturnTarget = (): string | undefined => {
-        if (disableReturn) return undefined;
+    const getReturnTarget = (): string | null | undefined => {
+        if (disableReturn) return null; // Null means "Don't show button"
 
-        // Preference: 1. Explicit Return ID, 2. Current Location
-        let targetId = storylet.return; 
+        const explicitReturn = storylet.return;
+        
+        if (explicitReturn) {
+            // Check if the target is a Storylet (Cards usually don't return to cards)
+            const target = storyletDefs[explicitReturn];
+            
+            if (target) {
+                // RE-EVALUATE: Is the player allowed to see the return target?
+                // If they locked themselves out during this event, we should fallback to Hub.
+                const isVisible = evaluateCondition(target.visible_if, qualities);
+                const isUnlocked = evaluateCondition(target.unlock_if, qualities);
 
-        // If we have a specific target, verify we are allowed to see it
-        if (targetId) {
-            const targetStorylet = storyletDefs[targetId];
-            if (targetStorylet) {
-                // Check Visible/Unlock conditions of the target
-                // We use your existing evaluator
-                const isVisible = evaluateCondition(targetStorylet.visible_if, qualities);
-                const isUnlocked = evaluateCondition(targetStorylet.unlock_if, qualities);
+                // If target is hidden or locked, return undefined to force Hub
+                if (!isVisible || !isUnlocked) return undefined; 
                 
-                // If the return target is hidden or locked, FALLBACK to Location Hub
-                if (!isVisible || !isUnlocked) {
-                    return undefined; // Returning undefined forces it to go to Location Hub
-                }
-                return targetId;
+                return explicitReturn;
             }
+            // Target ID exists but not found in DB? Fallback.
+            return undefined;
         }
         
-        // If no specific target, or target is invalid, return undefined (Location Hub)
-        return undefined;
+        // Undefined means "Return to Location Hub"
+        return undefined; 
     };
 
-    const finalReturnTarget = getValidReturnTarget();
-    
+    const returnTargetId = getReturnTarget();
+    const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
      if (resolution) {
         return (
@@ -150,7 +129,7 @@ export default function StoryletDisplay({
                             <GameImage 
                                 code={resolution?.image_code || storylet.image_code} 
                                 imageLibrary={imageLibrary} 
-                                type="storylet" // or "icon" depending on component
+                                type="storylet"
                                 alt={storylet.name}
                                 className="storylet-image"
                             />
@@ -183,27 +162,19 @@ export default function StoryletDisplay({
         if (!match) return `A requirement is not met.`;
         
         const [, qid, op, val] = match;
-        const qualityName = qualityDefs[qid]?.name ?? qid; // Use the passed-in qualityDefs
+        const qualityName = qualityDefs[qid]?.name ?? qid; 
         const state = qualities[qid];
         const currentVal = (state && 'level' in state) ? state.level : 0;
         return `Requires ${qualityName} ${op} ${val} (You have ${currentVal})`;
     };
 
-    const getEventName = (id: string) => {
-        return storyletDefs[id]?.name || opportunityDefs[id]?.name || id;
-    };
-
-        const optionsToDisplay: DisplayOption[] = storylet.options
+    const optionsToDisplay: DisplayOption[] = storylet.options
         .filter(option => evaluateCondition(option.visible_if, qualities))
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities);
             const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
-            
-
-            // Pass qualityDefs to the calculator
             const { chance, text } = calculateSkillCheckChance(option.random, qualities, qualityDefs);
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}% chance]` : '';
-
             return { ...option, isLocked, lockReason, skillCheckText, chance, };
         });
         
@@ -230,16 +201,16 @@ export default function StoryletDisplay({
 
             <div className="options-container">
                 {optionsToDisplay.map((option) => {
-                    
                     const cost = option.computed_action_cost ?? 1;
                     const showCost = settings.useActionEconomy;
 
                     return (
                         <button 
                             key={option.id} 
-                            className={`option-button ${option.isLocked ? 'locked' : ''}`}
+                            className={`option-button ${option.isLocked ? 'locked' : ''} ${option.properties?.includes('dangerous') ? 'dangerous-border' : ''}`}
                             onClick={() => handleOptionClick(option)}
                             disabled={option.isLocked || isLoading}
+                            style={option.properties?.includes('dangerous') ? { borderColor: 'var(--danger-color)' } : {}}
                         >
                             <div className="option-content-wrapper">
                                 {option.image_code && (
@@ -254,10 +225,8 @@ export default function StoryletDisplay({
                                     </div>
                                 )}
                                 <div className="option-text-wrapper">
-                                    
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                         <h3 style={{ margin: 0 }}>{option.name}</h3>
-                                        
                                         {showCost && (
                                             <span style={{ 
                                                 fontSize: '0.75rem', 
@@ -273,22 +242,14 @@ export default function StoryletDisplay({
                                             </span>
                                         )}
                                     </div>
-
                                     {option.short && <p className="option-short-desc">{option.short}</p>}
-                                    
                                     {option.meta && <p className="option-meta-text">{option.meta}</p>}
-                                    
                                     {option.skillCheckText && (
-                                        <p className="option-skill-check" style={getChanceColor(option.chance)}>
+                                        <p className="option-skill-check" style={{ color: option.chance !== null ? (option.chance > 80 ? '#2ecc71' : option.chance < 40 ? '#e74c3c' : '#f1c40f') : 'inherit' }}>
                                             {option.skillCheckText}
                                         </p>
                                     )}
-                                    
-                                    {option.isLocked && (
-                                        <p className="option-locked-reason">
-                                            {option.lockReason}
-                                        </p>
-                                    )}
+                                    {option.isLocked && <p className="option-locked-reason">{option.lockReason}</p>}
                                 </div>
                             </div>
                         </button>
@@ -297,62 +258,14 @@ export default function StoryletDisplay({
             </div>
 
             <div className="footer-actions">
-                <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId ?? undefined)}>
-                    {returnTargetId 
-                    ? `Return to ${getEventName(returnTargetId)}` 
-                    : 'Return to Location'}
-                </button>
+                {returnTargetId !== null && (
+                    <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId)}>
+                        {returnTargetName 
+                        ? `Return to ${evaluateText(returnTargetName, qualities, qualityDefs)}` 
+                        : 'Return to Location'}
+                    </button>
+                )}
             </div>
         </div>
     );
 }
-
-const getChanceColor = (chance: number | null): React.CSSProperties => {
-    if (chance === null) return {};
-
-    // Define our color stops
-    const colors = {
-        0: '#9b59b6',   // Purple (0%)
-        1: '#e74c3c',   // Deep Red (1%)
-        50: '#f1c40f',  // Yellow (50%)
-        99: '#2ecc71',  // Green (99%)
-        100: '#ffffff', // White/Black (100% - let's use white for a dark theme)
-    };
-
-    let color = colors[100]; // Default to 100% color
-
-    if (chance === 0) color = colors[0];
-    else if (chance === 1) color = colors[1];
-    else if (chance < 50) {
-        // Interpolate between red (1%) and yellow (50%)
-        const progress = (chance - 1) / (50 - 1);
-        color = lerpColor(colors[1], colors[50], progress);
-    } else if (chance < 100) {
-        // Interpolate between yellow (50%) and green (99%)
-        const progress = (chance - 50) / (99 - 50);
-        color = lerpColor(colors[50], colors[99], progress);
-    }
-
-    return { color };
-};
-
-const lerpColor = (color1: string, color2: string, factor: number): string => {
-    const c1 = hexToRgb(color1);
-    const c2 = hexToRgb(color2);
-    if (!c1 || !c2) return color1;
-
-    const r = Math.round(c1.r + factor * (c2.r - c1.r));
-    const g = Math.round(c1.g + factor * (c2.g - c1.g));
-    const b = Math.round(c1.b + factor * (c2.b - c1.b));
-
-    return `rgb(${r}, ${g}, ${b})`;
-};
-
-const hexToRgb = (hex: string): {r: number, g: number, b: number} | null => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-};
