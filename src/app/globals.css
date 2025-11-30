@@ -1083,7 +1083,7 @@ body {
     background-color: var(--bg-main);
     color: var(--text-primary);
     font-family: var(--font-main);
-    padding: 2rem 0;
+    padding: 0; /* <--- Set to 0 */
     margin: 0;
 }
 
@@ -1702,14 +1702,6 @@ body {
 /* However, to keep it clean, we can reuse variables or hardcode them to keep admin distinct from game theme */
 /* For now, let's leave Admin styles hardcoded so themes don't break the editor interface */
 
-.admin-layout {
-    display: flex;
-    min-height: 100vh;
-    background-color: #181a1f;
-    color: white;
-}
-/* ... (Rest of Admin styles remain hardcoded for stability) ... */
-
 /* PROFILE PANEL */
 .profile-grid {
     display: grid;
@@ -1778,9 +1770,11 @@ body {
 /* --- ADMIN PANEL STYLES --- */
 .admin-layout {
     display: flex;
-    min-height: 100vh;
+    min-height: 100vh;       /* Allow page to grow */
+    width: 100%;
     background-color: #181a1f;
     color: white;
+    position: relative;
 }
 
 .admin-sidebar {
@@ -1789,6 +1783,26 @@ body {
     border-right: 1px solid #333;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
+    
+    /* LOCK TO VIEWPORT */
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: 20;
+}
+
+.admin-help-sidebar {
+    width: 300px;
+    border-left: 1px solid #333;
+    background: #21252b;
+    flex-shrink: 0;
+    
+    /* LOCK TO VIEWPORT */
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
 }
 
 .admin-header {
@@ -1800,7 +1814,7 @@ body {
 
 .admin-nav {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: auto; /* Scroll internal links if screen is tiny */
     padding: 1rem 0;
 }
 
@@ -1825,24 +1839,45 @@ body {
 
 .admin-main {
     flex: 1;
+    display: flex;
+    flex-direction: row;
+    min-width: 0; /* Fixes flexbox overflow issues */
+}
+
+.admin-content-wrapper {
+    flex: 1;
     padding: 2rem;
-    overflow-y: auto;
+    /* No overflow hidden here - let it scroll the window */
 }
 
 /* Admin List View */
 .admin-split-view {
     display: flex;
     gap: 1.5rem;
-    height: 100%;
+    align-items: flex-start; /* Align top so columns don't stretch weirdly */
 }
 
 .admin-list-col {
     width: 300px;
+    flex-shrink: 0;
+    /* Optional: Make the list sticky too so it stays visible while editing? */
+    position: sticky;
+    top: 2rem; 
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    
     background-color: #21252b;
     border: 1px solid #333;
     border-radius: 4px;
-    display: flex;
-    flex-direction: column;
+}
+
+.admin-editor-col {
+    flex: 1;
+    background-color: #21252b;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 1.5rem;
+    /* No height limit, let it grow the page */
 }
 
 .list-header {

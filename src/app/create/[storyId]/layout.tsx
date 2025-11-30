@@ -4,6 +4,7 @@ import CheatSheet from './components/CheatSheet';
 import { verifyWorldAccess } from '@/engine/accessControl';
 import { redirect } from 'next/navigation';
 import VisualFilters from '@/components/VisualFilters';
+import AdminSidebarFooter from './components/AdminSidebarFooter';
 
 
 export default async function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
@@ -23,39 +24,39 @@ export default async function AdminLayout({ children, params }: { children: Reac
     
     return (
         <div className="admin-layout">
+            {/* LEFT SIDEBAR (Fixed) */}
             <aside className="admin-sidebar">
                 <div className="admin-header">Creator Studio</div>
                 <nav className="admin-nav">
                     <ul>
-                        <AdminLink href={`${base}/qualities`} label="Qualities" />
-                        <AdminLink href={`${base}/categories`} label="Categories" /> {/* NEW */}
-                        <AdminLink href={`${base}/storylets`} label="Storylets" />
-                        <AdminLink href={`${base}/opportunities`} label="Opportunities" />
-                        <AdminLink href={`${base}/locations`} label="Locations" />
-                        <AdminLink href={`${base}/regions`} label="Map Regions" />
-                        <AdminLink href={`${base}/decks`} label="Decks" />
-                        <AdminLink href={`${base}/images`} label="Image Library" />
-                        <AdminLink href={`${base}/settings`} label="Settings" />
-                        <AdminLink href={`${base}/players`} label="Player Monitor" /> {/* <--- NEW LINK */}
+                       {/* ... Links ... */}
+                       <AdminLink href={`${base}/qualities`} label="Qualities" />
+                       <AdminLink href={`${base}/categories`} label="Categories" />
+                       <AdminLink href={`${base}/storylets`} label="Storylets" />
+                       <AdminLink href={`${base}/opportunities`} label="Opportunities" />
+                       <AdminLink href={`${base}/decks`} label="Decks" />
+                       <AdminLink href={`${base}/locations`} label="Locations" />
+                       <AdminLink href={`${base}/regions`} label="Map Regions" />
+                       <AdminLink href={`${base}/images`} label="Image Library" />
+                       <AdminLink href={`${base}/players`} label="Player Monitor" />
+                       <AdminLink href={`${base}/settings`} label="Settings" />
                     </ul>
                 </nav>
-                <div style={{ padding: '1rem', borderTop: '1px solid #333' }}>
-                    <Link href="/" className="admin-link">Back to Game</Link>
-                </div>
+                <AdminSidebarFooter />
             </aside>
-            {/* Main Content Area */}
-            <main className="admin-main" style={{ display: 'flex', padding: 0 }}>
+
+            {/* MAIN AREA */}
+            <main className="admin-main">
                 
-                {/* The Page Content (List + Editor) */}
-                <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+                {/* MIDDLE CONTENT (Scrolls with Page) */}
+                <div className="admin-content-wrapper">
                     {children}
                 </div>
 
-                {/* Right Sidebar (Reference) */}
+                {/* RIGHT SIDEBAR (Fixed) */}
                 <aside className="admin-help-sidebar">
                     <CheatSheet />
                 </aside>
-
             </main>
         </div>
     );

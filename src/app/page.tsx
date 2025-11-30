@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import WorldCard from '@/components/dashboard/WorldCard';
 import CreateWorldModal from '@/components/dashboard/CreateWorldModal';
@@ -53,11 +53,28 @@ export default function Dashboard() {
                     <div style={{ width: '24px', height: '24px', background: 'var(--accent-highlight)', borderRadius: '4px' }} />
                     <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>Chronicle Hub</h1>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{session?.user?.email}</span>
+                    
+                    {/* --- NEW LOGOUT BUTTON --- */}
+                    <button 
+                        onClick={() => signOut({ callbackUrl: '/login' })}
+                        style={{ 
+                            background: 'transparent', 
+                            border: '1px solid var(--border-color)', 
+                            color: 'var(--text-secondary)', 
+                            padding: '0.4rem 1rem', 
+                            borderRadius: '4px', 
+                            cursor: 'pointer', 
+                            fontSize: '0.85rem'
+                        }}
+                        className="hover:bg-[#333] hover:text-white transition"
+                    >
+                        Log Out
+                    </button>
                 </div>
             </div>
-
             {/* CONTENT */}
             <div style={{ flex: 1, padding: '3rem', overflowY: 'auto' }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
