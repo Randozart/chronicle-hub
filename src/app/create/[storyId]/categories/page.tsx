@@ -8,11 +8,13 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
     const { storyId } = use(params);
     const [categories, setCategories] = useState<CategoryDefinition[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`/api/admin/categories?storyId=${storyId}`) // Dynamic!
+        fetch(`/api/admin/categories?storyId=${storyId}`)
             .then(r => r.json())
-            .then(data => setCategories(Object.values(data).map((c: any) => c)));
+            .then(data => setCategories(Object.values(data)))
+            .finally(() => setIsLoading(false));
     }, [storyId]);
 
     const handleCreate = () => {
@@ -32,6 +34,13 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
     const handleSaveSuccess = (updated: CategoryDefinition) => {
         setCategories(prev => prev.map(c => c.id === updated.id ? updated : c));
     };
+
+    const handleDeleteSuccess = (id: string) => {
+        setCategories(prev => prev.filter(c => c.id !== id));
+        setSelectedId(null);
+    };
+
+    if (isLoading) return <div>Loading...</div>;
 
     return (
         <div className="admin-split-view">
@@ -54,6 +63,7 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
                     <CategoryEditor 
                         initialData={categories.find(c => c.id === selectedId)!} 
                         onSave={handleSaveSuccess} 
+                        onDelete={handleDeleteSuccess}
                         storyId={storyId}
                     />
                 ) : <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a category</div>}
@@ -62,11 +72,12 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
     );
 }
 
-function CategoryEditor({ initialData, onSave, storyId }: { initialData: CategoryDefinition, onSave: (d: any) => void, storyId: string }) {
+function CategoryEditor({ initialData, onSave, onDelete, storyId }: { initialData: CategoryDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => setForm(initialData), [initialData]);
+    
     const handleChange = (field: string, val: any) => setForm(prev => ({ ...prev, [field]: val }));
 
     const handleSave = async () => {
@@ -74,6 +85,7 @@ function CategoryEditor({ initialData, onSave, storyId }: { initialData: Categor
         try {
             await fetch('/api/admin/config', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     storyId: storyId,
                     category: 'categories',
@@ -87,17 +99,27 @@ function CategoryEditor({ initialData, onSave, storyId }: { initialData: Categor
         setIsSaving(false);
     };
 
+    const handleDelete = async () => {
+        if (!confirm(`Delete category "${form.id}"?`)) return;
+        try {
+            await fetch(`/api/admin/config?storyId=${storyId}&category=categories&itemId=${form.id}`, { method: 'DELETE' });
+            onDelete(form.id);
+        } catch (e) { console.error(e); }
+    };
+
     return (
         <div>
             <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
                 Edit: {form.id}
             </h2>
-
             <div className="form-group">
                 <label className="form-label">Display Name</label>
                 <input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" />
             </div>
-
+            <div className="form-group">
+                <label className="form-label">Description</label>
+                <input value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input" />
+            </div>
             <div className="form-group">
                 <label className="form-label">Color</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -115,16 +137,8 @@ function CategoryEditor({ initialData, onSave, storyId }: { initialData: Categor
                     />
                 </div>
             </div>
-
-            {/* Live Preview */}
-            <div className="special-field-group" style={{ borderColor: form.color }}>
-                <label className="special-label" style={{ color: form.color }}>Preview: Skill Check</label>
-                <div style={{ height: '8px', background: '#333', borderRadius: '4px', marginTop: '0.5rem' }}>
-                    <div style={{ height: '100%', width: '60%', background: form.color || '#fff', borderRadius: '4px' }} />
-                </div>
-            </div>
-
-            <div className="admin-form-footer" style={{ justifyContent: 'flex-end' }}>
+            <div className="admin-form-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <button onClick={handleDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete</button>
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">Save</button>
             </div>
         </div>

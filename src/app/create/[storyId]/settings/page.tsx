@@ -28,7 +28,8 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         deckDrawCostsAction: true,
         char_create: {},
         layoutStyle: 'nexus',
-        currencyQualities: [] // e.g. ["gold", "jade", "favours"]
+        currencyQualities: [], // e.g. ["gold", "jade", "favours"]
+        defaultActionCost: 1,  // <--- Initialize
     });
     
     const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +54,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    const handleArrayChange = (field: 'characterSheetCategories' | 'equipCategories' | 'tags', strVal: string) => {
+    const handleArrayChange = (field: 'characterSheetCategories' | 'equipCategories' | 'currencyQualities' | 'tags', strVal: string) => {
         const arr = strVal.split(',').map(s => s.trim()).filter(Boolean);
         setForm(prev => ({ ...prev, [field]: arr }));
     };
@@ -203,6 +204,31 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 Hard limit. Can be a number or logic. <br/>
                                 <em>Tip: Use the 'max' property on the Quality itself for UI bars.</em>
                             </p>
+                        </div>
+                         <div className="form-group">
+                            <label className="form-label">Default Action Cost</label>
+                            <input 
+                                type="number" 
+                                value={form.defaultActionCost} 
+                                onChange={e => handleChange('defaultActionCost', parseInt(e.target.value))} 
+                                className="form-input" 
+                            />
+                            <p className="special-desc">Cost for options that don't specify a cost.</p>
+                        </div>
+
+                        {/* New "Economy" Section */}
+                        <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
+                            <label className="special-label" style={{ color: '#f1c40f' }}>Economy</label>
+                            <div className="form-group">
+                                <label className="form-label">Currencies (Comma Separated IDs)</label>
+                                <input 
+                                    defaultValue={form.currencyQualities?.join(', ')} 
+                                    onBlur={e => handleArrayChange('currencyQualities', e.target.value)} 
+                                    className="form-input" 
+                                    placeholder="gold, echoes, favour" 
+                                />
+                                <p className="special-desc">These will be moved from the sidebar to the Wallet header.</p>
+                            </div>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Regen Rate (Minutes)</label>

@@ -83,7 +83,7 @@ export class GameEngine {
     public resolveOption(storylet: Storylet, option: ResolveOption) {
         this.changes = []; 
         
-        // 1. Determine basic Success/Failure
+        // UPDATE: Use 'challenge' (New Field Name)
         const wasSuccessResult = this.evaluateCondition(option.challenge, true);
         const isSuccess = typeof wasSuccessResult === 'boolean' ? wasSuccessResult : wasSuccessResult.wasSuccess;
 

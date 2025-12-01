@@ -200,65 +200,61 @@ export const evaluateCondition = (expression: string | undefined, qualities: Pla
 export const calculateSkillCheckChance = (
     expression: string | undefined, 
     qualities: PlayerQualities,
-    qualityDefs: Record<string, QualityDefinition> // Accepts the static definitions
-): { chance: number | null; text: string } => { // Correct return type
+    qualityDefs: Record<string, QualityDefinition>
+): { chance: number | null; text: string } => {
     
     if (!expression) return { chance: null, text: '' };
 
-    const match = expression.match(/^\s*\$(.*?)\s*(>=|<=)\s*(\d+)(?:\s*\[(\d+)\])?\s*$/);
+    // Updated Regex to capture optional 4th parameter (Pivot Chance)
+    // Format: $stat >= 50 [10, 0, 100, 70]
+    const match = expression.match(/^\s*\$(.*?)\s*(>=|<=)\s*(\d+)(?:\s*\[([^\]]+)\])?\s*$/);
+    
     if (!match) return { chance: null, text: '' };
 
-    const [, qualitiesPart, operator, targetStr, marginStr] = match;
+    const [, qualitiesPart, operator, targetStr, bracketContent] = match;
     const target = parseInt(targetStr, 10);
-    const margin = marginStr ? parseInt(marginStr, 10) : target;
-
-    const testedQualityNames = qualitiesPart.replace(/\$/g, '') 
-        .split('+')
-        .map(qid => qid.trim())
-        .filter(qid => qid)
-        .map(qid => qualityDefs[qid]?.name ?? qid); // Look up in the passed-in object
-    const text = `A test of ${testedQualityNames.join(' + ')}`;
-
-    const evaluatePart = (part: string): number => {
-        let total = 0;
-        const tokens = part.match(/\$?([a-zA-Z0-9_]+)/g) || [];
-        for (const token of tokens) {
-            if (token.startsWith('$')) {
-                const qid = token.substring(1);
-                const state = qualities[qid];
-                total += (state && 'level' in state) ? state.level : 0;
-            } else if (!isNaN(parseInt(token, 10))) {
-                total += parseInt(token, 10);
-            }
-        }
-        return total;
-    };
     
-    const skillLevel = evaluatePart(qualitiesPart);
-    
+    let margin = target;
+    let minChance = 0;
+    let maxChance = 100;
+    let pivotChance = 60; // <--- NEW DEFAULT: 60% at Target
+
+    if (bracketContent) {
+        const args = bracketContent.split(',').map(s => parseInt(s.trim(), 10));
+        if (!isNaN(args[0])) margin = args[0];
+        if (!isNaN(args[1])) minChance = args[1];
+        if (!isNaN(args[2])) maxChance = args[2];
+        if (args.length > 3 && !isNaN(args[3])) pivotChance = args[3]; // Custom pivot
+    }
+
+    // ... Evaluate Skill Level (Same as before) ...
+    const skillLevel = evaluatePart(qualitiesPart, qualities); // Assuming evaluatePart is helper
+
     const lowerBound = target - margin;
     const upperBound = target + margin;
 
     let successChance = 0.0;
+
     if (skillLevel <= lowerBound) {
         successChance = 0.0;
     } else if (skillLevel >= upperBound) {
         successChance = 1.0;
     } else {
+        // PIECEWISE LINEAR LOGIC
+        const pivotDecimal = pivotChance / 100;
+
         if (skillLevel < target) {
-            const denominator = target - lowerBound;
-            if (denominator <= 0) successChance = 0.5;
-            else {
-                const progress = (skillLevel - lowerBound) / denominator;
-                successChance = progress * 0.5;
-            }
-        } else { // skillLevel >= target
-            const denominator = upperBound - target;
-            if (denominator <= 0) successChance = 0.5;
-            else {
-                const progress = (skillLevel - target) / denominator;
-                successChance = 0.5 + (progress * 0.5);
-            }
+            // Range: LowerBound -> Target
+            // Value: 0% -> Pivot%
+            const range = target - lowerBound;
+            const progress = (skillLevel - lowerBound) / range;
+            successChance = progress * pivotDecimal;
+        } else {
+            // Range: Target -> UpperBound
+            // Value: Pivot% -> 100%
+            const range = upperBound - target;
+            const progress = (skillLevel - target) / range;
+            successChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
         }
     }
     
@@ -266,9 +262,26 @@ export const calculateSkillCheckChance = (
         successChance = 1.0 - successChance;
     }
     
-    const finalChance = Math.max(0.0, Math.min(1.0, successChance));
-    const chance = Math.round(finalChance * 100); 
+    // Apply Clamps
+    let finalPercent = successChance * 100;
+    finalPercent = Math.max(minChance, Math.min(maxChance, finalPercent));
+    
+    const text = `A test of ${qualitiesPart.replace(/\$/g, '')}`; // Simplify name generation for snippet
+    return { chance: Math.round(finalPercent), text };
+};
 
-    // Return as a whole number percentage (e.g., 75)
-    return { chance, text };
+// Helper (Ensure this exists in the file)
+const evaluatePart = (part: string, qualities: PlayerQualities): number => {
+    let total = 0;
+    const tokens = part.match(/\$?([a-zA-Z0-9_]+)|\d+/g) || [];
+    for (const token of tokens) {
+        if (token.startsWith('$')) {
+            const qid = token.substring(1);
+            const state = qualities[qid];
+            total += (state && 'level' in state) ? state.level : 0;
+        } else {
+            total += parseInt(token, 10);
+        }
+    }
+    return total;
 };

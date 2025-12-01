@@ -179,7 +179,13 @@ export default function StoryletDisplay({
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities);
             const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
-            const { chance, text } = calculateSkillCheckChance(option.challenge, qualities, qualityDefs);
+            
+            const { chance, text } = calculateSkillCheckChance(
+                option.challenge, 
+                qualities, 
+                qualityDefs
+            );
+
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}% chance]` : '';
             return { ...option, isLocked, lockReason, skillCheckText, chance, };
         });

@@ -81,8 +81,12 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => setForm(initialData), [initialData]);
-    const handleChange = (field: string, val: string) => setForm(prev => ({ ...prev, [field]: val }));
+    // Handle "Sync vs Custom" for Timer
+    const isSynced = form.timer === 'sync_actions';
+
+    const handleChange = (field: string, val: any) => {
+        setForm(prev => ({ ...prev, [field]: val }));
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -97,51 +101,39 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Delete "${form.id}"?`)) return;
-        setIsSaving(true);
-        try {
-            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=decks&itemId=${form.id}`, { method: 'DELETE' });
-            if (res.ok) onDelete(form.id);
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
+        if (!confirm(`Delete Deck "${form.id}"?`)) return;
+        await fetch(`/api/admin/config?storyId=${storyId}&category=decks&itemId=${form.id}`, { method: 'DELETE' });
+        onDelete(form.id);
     };
 
     return (
-        <div>
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Edit Deck: {form.id}</h2>
-            
+        <div className="space-y-4">
             <div className="form-group">
-                <label className="form-label">Hand Size</label>
-                <input value={form.hand_size} onChange={e => handleChange('hand_size', e.target.value)} className="form-input" placeholder="3 or $hand_size" />
+                <label className="form-label">Deck ID</label>
+                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Persist Cards? (Saved)</label>
-                <select value={form.saved} onChange={e => handleChange('saved', e.target.value)} className="form-select">
-                    <option value="True">Yes (Cards stay when leaving)</option>
-                    <option value="False">No (Cards wiped on exit)</option>
-                </select>
-            </div>
-
-            <div className="form-group">
+            {/* Timer Logic */}
+            <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <label className="form-label">Regeneration Timer</label>
                 <select 
-                    value={form.timer === 'sync_actions' ? 'sync_actions' : 'custom'}
+                    value={isSynced ? 'sync_actions' : 'custom'}
                     onChange={(e) => {
                         if (e.target.value === 'sync_actions') handleChange('timer', 'sync_actions');
-                        else handleChange('timer', '10'); // Default custom value
+                        else handleChange('timer', '10'); // Default custom
                     }}
                     className="form-select"
                     style={{ marginBottom: '0.5rem' }}
                 >
-                    <option value="sync_actions">Sync with Main Actions</option>
+                    <option value="sync_actions">Sync with Global Actions</option>
                     <option value="custom">Custom Duration</option>
                 </select>
-                
-                {form.timer !== 'sync_actions' && (
+
+                {!isSynced && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <input 
                             type="number" 
-                            value={form.timer} 
+                            value={form.timer === 'sync_actions' ? '' : form.timer} 
                             onChange={e => handleChange('timer', e.target.value)} 
                             className="form-input" 
                             style={{ width: '100px' }}
@@ -149,15 +141,31 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                         <span style={{ color: '#aaa', fontSize: '0.9rem' }}>minutes</span>
                     </div>
                 )}
+                <p className="special-desc">How often a card is drawn automatically.</p>
+            </div>
+
+            <div className="form-row">
+                <div className="form-group">
+                    <label className="form-label">Hand Size</label>
+                    <input value={form.hand_size} onChange={e => handleChange('hand_size', e.target.value)} className="form-input" placeholder="3" />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Deck Size (Cap)</label>
+                    <input value={form.deck_size || ''} onChange={e => handleChange('deck_size', e.target.value)} className="form-input" placeholder="Unlimited" />
+                </div>
             </div>
 
             <div className="form-group">
-                <label className="form-label">Max Cards (Deck Size)</label>
-                <input value={form.deck_size || ''} onChange={e => handleChange('deck_size', e.target.value)} className="form-input" placeholder="Unlimited or $max_cards" />
+                <label className="form-label">Persistence</label>
+                <select value={form.saved} onChange={e => handleChange('saved', e.target.value)} className="form-select">
+                    <option value="True">Saved (Persist hand on exit)</option>
+                    <option value="False">Transient (Clear hand on exit)</option>
+                </select>
             </div>
 
-            <div style={{ marginTop: '2rem', display: 'flow-root' }}>
-                <button onClick={handleDelete} disabled={isSaving} className="unequip-btn" style={{ float: 'left' }}>Delete</button>
+            {/* DELETE BUTTON */}
+            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #333', display: 'flex', justifyContent: 'space-between' }}>
+                <button onClick={handleDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete Deck</button>
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>
         </div>
