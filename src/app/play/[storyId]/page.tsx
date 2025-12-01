@@ -10,9 +10,15 @@ import { GameEngine } from '@/engine/gameEngine';
 
 const sanitize = (obj: any) => JSON.parse(JSON.stringify(obj));
 
-export default async function GamePage({ params, searchParams }: { params: Promise<{ storyId: string }>, searchParams: Promise<{ charId?: string }> }) {
+export default async function GamePage({ 
+    params, 
+    searchParams 
+}: { 
+    params: Promise<{ storyId: string }>, 
+    searchParams: Promise<{ charId?: string; menu?: string }> // <--- Add menu type
+}) {
     const { storyId } = await params;
-    const { charId } = await searchParams; 
+    const { charId, menu } = await searchParams; // <--- Destructure menu
     
     const session = await getServerSession(authOptions);
     if (!session?.user) redirect('/login');
@@ -24,8 +30,8 @@ export default async function GamePage({ params, searchParams }: { params: Promi
     // 2. Determine Active Character
     let activeCharId = charId;
     
-    // If no ID in URL, and only 1 char exists, auto-select it
-    if (!activeCharId && charList.length === 1) {
+    // FIX: Only auto-select if the user did NOT ask for the menu explicitly
+    if (!activeCharId && charList.length === 1 && !menu) {
         activeCharId = charList[0].characterId;
     }
 

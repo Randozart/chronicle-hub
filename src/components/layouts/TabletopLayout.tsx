@@ -105,6 +105,20 @@ export default function TabletopLayout(props: LayoutProps) {
                     </div>
                     <CharacterSheet qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
                 </div>
+                <div style={{ padding: '1rem', borderTop: '1px solid #333', background: '#15171a' }}>
+                    <button 
+                        onClick={props.onExit}
+                        style={{ 
+                            width: '100%', background: 'transparent', 
+                            border: '1px dashed #555', color: '#777',
+                            padding: '0.6rem', borderRadius: '2px', cursor: 'pointer',
+                            textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 'bold'
+                        }}
+                        className="hover:border-[#e06c75] hover:text-[#e06c75] transition"
+                    >
+                        Exit to Menu
+                    </button>
+                </div>
             </div>
 
             <div style={{ flex: '0 0 30%', minWidth: '250px', maxWidth: '500px', background: '#000', position: 'relative', overflow: 'hidden', borderRight: '1px solid #333', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)', zIndex: 1 }}>

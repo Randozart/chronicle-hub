@@ -8,13 +8,20 @@ import ElysiumLayout from './layouts/ElysiumLayout';
 import TabletopLayout from './layouts/TabletopLayout';
 import { LayoutProps } from './layouts/LayoutProps';
 import MapModal from './MapModal';
+import GameImage from './GameImage';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
     initialLocation: LocationDefinition | null;
     initialHand: Opportunity[];
     locationStorylets: Storylet[];
-    availableCharacters: { characterId: string, name: string, currentLocationId: string, lastActionTimestamp?: string }[];
+    availableCharacters: { 
+        characterId: string; 
+        name: string; 
+        currentLocationId: string; 
+        lastActionTimestamp?: string;
+        portrait?: string | null; 
+    }[];
     
     qualityDefs: Record<string, QualityDefinition>;
     storyletDefs: Record<string, Storylet>;
@@ -129,9 +136,9 @@ export default function GameHub(props: GameHubProps) {
     };
 
     const handleExit = useCallback(() => {
-        // Simply navigating to the base URL without the query param
-        // triggers the Server Component to load the Lobby state.
-        window.location.href = `/play/${props.storyId}`;
+        // Add ?menu=true to force the server to show the lobby
+        // even if we only have one character.
+        window.location.href = `/play/${props.storyId}?menu=true`;
     }, [props.storyId]);
 
 
@@ -139,43 +146,117 @@ export default function GameHub(props: GameHubProps) {
 
     // 1. LOBBY VIEW
     if (!character) {
+        // Use the theme from settings
+        const theme = props.settings.visualTheme || 'default';
+        
         return (
-            <div className="theme-wrapper" /* ... styles ... */>
-                <div style={{ width: '100%', maxWidth: '600px', padding: '2rem' }}>
-                    <h1 style={{ textAlign: 'center', marginBottom: '2rem', color: 'var(--text-primary)' }}>Select Character</h1>
+            <div 
+                className="theme-wrapper" 
+                data-theme={theme} 
+                style={{ 
+                    minHeight: '100vh', 
+                    width: '100vw',
+                    background: 'var(--bg-main)', // Loads theme background (image/color)
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    position: 'fixed', // Lock to screen
+                    top: 0, left: 0
+                }}
+            >
+                {/* Overlay for readability if background is busy */}
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 0 }} />
+                
+                <div style={{ 
+                    width: '100%', maxWidth: '500px', padding: '2rem', 
+                    zIndex: 10, position: 'relative',
+                    background: 'var(--bg-panel)', 
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--border-radius)',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                }}>
+                    <h1 style={{ 
+                        textAlign: 'center', marginBottom: '2rem', marginTop: 0,
+                        color: 'var(--text-primary)', fontFamily: 'var(--font-main)',
+                        textTransform: 'uppercase', letterSpacing: '2px', fontSize: '1.5rem'
+                    }}>
+                        Select Character
+                    </h1>
+                    
                     <div style={{ display: 'grid', gap: '1rem' }}>
                         {props.availableCharacters.map((c, index) => (
-                            <div 
+                            <button 
                                 key={c.characterId || index} 
-                                className="option-button"
                                 onClick={() => window.location.href = `/play/${props.storyId}?charId=${c.characterId}`}
-                                style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                                className="option-button" // Use standard class for hover effects
+                                style={{ 
+                                    padding: '1rem', 
+                                    display: 'flex', alignItems: 'center', gap: '1rem',
+                                    textAlign: 'left', width: '100%'
+                                }}
                             >
-                                <div>
-                                    <h3 style={{ margin: 0, color: 'var(--accent-highlight)' }}>{c.name}</h3>
-                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                        {props.locations[c.currentLocationId]?.name || c.currentLocationId}
+                                {/* PORTRAIT */}
+                                <div style={{ 
+                                    width: '60px', height: '60px', borderRadius: '50%', 
+                                    overflow: 'hidden', border: '2px solid var(--accent-primary)',
+                                    flexShrink: 0, background: '#000'
+                                }}>
+                                    <GameImage 
+                                        code={c.portrait || "default_avatar"} 
+                                        imageLibrary={props.imageLibrary} 
+                                        type="portrait" 
+                                        className="w-full h-full object-cover"
+                                        alt=""
+                                    />
+                                </div>
+
+                                <div style={{ flex: 1 }}>
+                                    <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)', fontSize: '1.1rem' }}>
+                                        {c.name}
+                                    </h3>
+                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        {props.locations[c.currentLocationId]?.name || "Unknown Location"}
                                     </p>
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '1.5rem' }}>→</span>
-                                    <button 
-                                        onClick={(e) => handleDeleteChar(c.characterId, e)}
-                                        style={{ background: 'none', border: 'none', color: '#e06c75', cursor: 'pointer', padding: '0.5rem' }}
-                                        title="Delete Character"
-                                    >
-                                        ✕
-                                    </button>
+                                
+                                {/* DELETE BUTTON */}
+                                <div 
+                                    onClick={(e) => handleDeleteChar(c.characterId, e)}
+                                    style={{ 
+                                        color: 'var(--danger-color)', padding: '0.5rem', 
+                                        cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6
+                                    }}
+                                    title="Delete Save"
+                                    className="hover:opacity-100"
+                                >
+                                    ✕
                                 </div>
-                            </div>
+                            </button>
                         ))}
                         
                         <button 
                             onClick={() => window.location.href = `/play/${props.storyId}/creation`}
                             className="option-button"
-                            style={{ border: '2px dashed var(--border-color)', background: 'transparent', color: 'var(--text-muted)', textAlign: 'center', justifyContent: 'center' }}
+                            style={{ 
+                                border: '2px dashed var(--border-color)', 
+                                background: 'transparent', 
+                                color: 'var(--text-muted)', 
+                                textAlign: 'center', justifyContent: 'center',
+                                padding: '1rem'
+                            }}
                         >
                             + Create New Character
+                        </button>
+                    </div>
+
+                    <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+                        <button 
+                            onClick={() => window.location.href = '/'}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
+                        >
+                            Back to Dashboard
                         </button>
                     </div>
                 </div>

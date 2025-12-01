@@ -54,6 +54,7 @@ export default function ElysiumLayout(props: LayoutProps) {
                     imageLibrary={props.imageLibrary}
                     categories={props.categories}
                     storyId={props.storyId}
+                    characterId={props.character.characterId} // <--- ADD THIS
                 />
             );
         }
@@ -132,6 +133,21 @@ export default function ElysiumLayout(props: LayoutProps) {
                         activeTab === 'profile' ? <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} />
                         : <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} />
                     )}
+                </div>
+                 <div style={{ padding: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                    <button 
+                        onClick={props.onExit}
+                        style={{ 
+                            width: '100%', background: 'rgba(231, 76, 60, 0.1)', 
+                            border: '1px solid rgba(231, 76, 60, 0.4)', color: '#e74c3c',
+                            padding: '0.8rem', borderRadius: '4px', cursor: 'pointer',
+                            textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.75rem', fontWeight: 'bold',
+                            transition: 'all 0.2s'
+                        }}
+                        className="hover:bg-red-900/30 hover:border-red-500"
+                    >
+                        ← Switch Character
+                    </button>
                 </div>
             </div>
 

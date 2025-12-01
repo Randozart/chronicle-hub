@@ -31,18 +31,35 @@ export const getCharacter = async (userId: string, storyId: string, characterId?
 export const getCharactersList = async (userId: string, storyId: string) => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+    
     const chars = await db.collection<CharacterDocument>(COLLECTION_NAME)
         .find({ userId, storyId })
-        .project({ _id: 1, characterId: 1, name: 1, currentLocationId: 1, lastActionTimestamp: 1 })
+        // Fetch specific fields needed for the menu
+        .project({ 
+            _id: 1, 
+            characterId: 1, 
+            name: 1, 
+            currentLocationId: 1, 
+            lastActionTimestamp: 1,
+            // Try to grab the portrait quality directly using dot notation
+            "qualities.player_portrait": 1 
+        })
         .sort({ lastActionTimestamp: -1 })
         .toArray();
 
-    return chars.map(c => ({
-        ...c,
-        characterId: c.characterId || c._id.toString(),
-        name: c.name || "Unknown Drifter",
-        currentLocationId: c.currentLocationId || "start"
-    }));
+    return chars.map(c => {
+        // Extract portrait string safely
+        const portraitQ = c.qualities?.['player_portrait'];
+        const portraitCode = (portraitQ && portraitQ.type === 'S') ? portraitQ.stringValue : null;
+
+        return {
+            characterId: c.characterId || c._id.toString(),
+            name: c.name || "Unknown Drifter",
+            currentLocationId: c.currentLocationId || "start",
+            lastActionTimestamp: c.lastActionTimestamp?.toString(),
+            portrait: portraitCode // <--- NEW FIELD
+        };
+    });
 };
 
 // --- ROBUST CREATION LOGIC ---
