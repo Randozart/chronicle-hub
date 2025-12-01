@@ -127,6 +127,16 @@ export default function Dashboard() {
                     </div>
                     
                     {/* ... (Recent Adventures Block - Keep existing, but check !isGuest) ... */}
+                    {activeTab === 'my' && data && 'playedWorlds' in data && data.playedWorlds.length > 0 && (
+                        <>
+                            <h2 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', margin: '4rem 0 2rem 0', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>Recent Adventures</h2>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                                {data.playedWorlds.map((w: any) => (
+                                    <WorldCard key={w.worldId} w={w} isOwner={false} />
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
