@@ -88,6 +88,9 @@ export default async function GamePage({
                 storyletDefs={sanitize(visibleStoryletsMap)}
                 opportunityDefs={sanitize(visibleOpportunitiesMap)} 
                 settings={sanitize(gameData.settings)}
+                
+                deckDefs={sanitize(gameData.decks || {})} 
+
                 imageLibrary={gameData.images || {}}
                 categories={sanitize(gameData.categories || {})}
                 locations={sanitize(gameData.locations)} 

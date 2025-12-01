@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { DeckDefinition } from '@/engine/models';
+import AdminListSidebar from '../storylets/components/AdminListSidebar';
 
 export default function DecksAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -10,15 +11,14 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
-        // Assumes you created /api/admin/decks/route.ts
-        fetch(`/api/admin/decks?storyId=${storyId}`) // Dynamic!
+        fetch(`/api/admin/decks?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => {
                 const arr = Object.values(data).map((q: any) => q);
                 setDecks(arr);
             })
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [storyId]);
 
     const handleCreate = () => {
         const newId = prompt("Enter Deck ID (e.g. 'london_deck'):");
@@ -29,7 +29,7 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
             id: newId,
             saved: "True",
             hand_size: "3",
-            deck_size: "Unlimited" // Or number
+            deck_size: "Unlimited"
         };
         setDecks(prev => [...prev, newDeck]);
         setSelectedId(newId);
@@ -48,24 +48,18 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
 
     return (
         <div className="admin-split-view">
-            <div className="admin-list-col">
-                <div className="list-header">
-                    <span>Decks</span>
-                    <button className="new-btn" onClick={handleCreate}>+ New</button>
-                </div>
-                <div className="list-items">
-                    {decks.map(d => (
-                        <div key={d.id} onClick={() => setSelectedId(d.id)} className={`list-item ${selectedId === d.id ? 'active' : ''}`}>
-                            <span className="item-title">{d.id}</span>
-                            <span className="item-subtitle">Size: {d.hand_size} • Saved: {d.saved}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
+            <AdminListSidebar 
+                title="Decks"
+                items={decks}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={handleCreate}
+            />
             <div className="admin-editor-col">
                 {selectedId ? (
                     <DeckEditor 
+                        // THE FIX: Add key={selectedId} here
+                        key={selectedId} 
                         initialData={decks.find(d => d.id === selectedId)!} 
                         onSave={handleSaveSuccess}
                         onDelete={handleDeleteSuccess}
@@ -81,12 +75,12 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Handle "Sync vs Custom" for Timer
+    // Backup Fix: Sync state if props change (redundant if key is used, but good for safety)
+    useEffect(() => setForm(initialData), [initialData]);
+
     const isSynced = form.timer === 'sync_actions';
 
-    const handleChange = (field: string, val: any) => {
-        setForm(prev => ({ ...prev, [field]: val }));
-    };
+    const handleChange = (field: string, val: any) => setForm(prev => ({ ...prev, [field]: val }));
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -101,9 +95,12 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Delete Deck "${form.id}"?`)) return;
-        await fetch(`/api/admin/config?storyId=${storyId}&category=decks&itemId=${form.id}`, { method: 'DELETE' });
-        onDelete(form.id);
+        if (!confirm(`Delete "${form.id}"?`)) return;
+        setIsSaving(true);
+        try {
+            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=decks&itemId=${form.id}`, { method: 'DELETE' });
+            if (res.ok) onDelete(form.id);
+        } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
     return (
@@ -113,14 +110,13 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
             </div>
 
-            {/* Timer Logic */}
             <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <label className="form-label">Regeneration Timer</label>
                 <select 
                     value={isSynced ? 'sync_actions' : 'custom'}
                     onChange={(e) => {
                         if (e.target.value === 'sync_actions') handleChange('timer', 'sync_actions');
-                        else handleChange('timer', '10'); // Default custom
+                        else handleChange('timer', '10');
                     }}
                     className="form-select"
                     style={{ marginBottom: '0.5rem' }}
@@ -154,6 +150,11 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                     <input value={form.deck_size || ''} onChange={e => handleChange('deck_size', e.target.value)} className="form-input" placeholder="Unlimited" />
                 </div>
             </div>
+            
+            <div className="form-group">
+                <label className="form-label">Draw Cost (Logic)</label>
+                <input value={form.draw_cost || ''} onChange={e => handleChange('draw_cost', e.target.value)} className="form-input" placeholder="optional (e.g. $gold >= 1)" />
+            </div>
 
             <div className="form-group">
                 <label className="form-label">Persistence</label>
@@ -163,8 +164,7 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 </select>
             </div>
 
-            {/* DELETE BUTTON */}
-            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #333', display: 'flex', justifyContent: 'space-between' }}>
+            <div className="admin-form-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <button onClick={handleDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete Deck</button>
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>

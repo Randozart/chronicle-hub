@@ -71,6 +71,12 @@ export default function LondonLayout(props: LayoutProps) {
                     qualities={props.character.qualities}
                     qualityDefs={props.qualityDefs}
                     imageLibrary={props.imageLibrary}
+
+                    character={props.character}
+                    locationDeckId={props.location.deck}
+                    deckDefs={props.deckDefs}
+                    settings={props.settings}
+                    currentDeckStats={props.currentDeckStats} // <--- Add this
                 />
             </>
         );

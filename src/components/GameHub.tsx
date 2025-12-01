@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion } from '@/engine/models';
+import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import ElysiumLayout from './layouts/ElysiumLayout';
@@ -9,6 +9,7 @@ import TabletopLayout from './layouts/TabletopLayout';
 import { LayoutProps } from './layouts/LayoutProps';
 import MapModal from './MapModal';
 import GameImage from './GameImage';
+import { GameEngine } from '@/engine/gameEngine';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -32,6 +33,7 @@ interface GameHubProps {
     locations: Record<string, LocationDefinition>;
     regions: Record<string, MapRegion>;
     storyId: string; 
+    deckDefs: Record<string, DeckDefinition>;
 }
 
 export default function GameHub(props: GameHubProps) {
@@ -141,7 +143,7 @@ export default function GameHub(props: GameHubProps) {
         window.location.href = `/play/${props.storyId}?menu=true`;
     }, [props.storyId]);
 
-
+    
     // --- RENDER ---
 
     // 1. LOBBY VIEW
@@ -265,6 +267,40 @@ export default function GameHub(props: GameHubProps) {
     }
 
     if (!location) return <div>Loading location data...</div>;
+    
+    // --- CALCULATE DECK STATS ---
+    let currentDeckStats = undefined;
+
+    if (character && location) {
+        // FIX: Construct a WorldConfig object from the individual props
+        const worldConfig = {
+            settings: props.settings,
+            qualities: props.qualityDefs,
+            decks: props.deckDefs,
+            locations: props.locations,
+            regions: props.regions,
+            images: props.imageLibrary,
+            categories: props.categories,
+            char_create: {} // Not needed for runtime calculations
+        };
+
+        // Pass the full config to the engine
+        const engine = new GameEngine(character.qualities, worldConfig, character.equipment);
+        
+        const deckDef = props.deckDefs[location.deck];
+        
+        if (deckDef) {
+            // Parse Hand Size
+            const handVal = engine.evaluateBlock(`{${deckDef.hand_size || 3}}`);
+            const handSize = parseInt(handVal, 10) || 3;
+
+            // Parse Deck Size
+            const deckVal = engine.evaluateBlock(`{${deckDef.deck_size || 0}}`);
+            const deckSize = parseInt(deckVal, 10) || 0;
+
+            currentDeckStats = { handSize, deckSize };
+        }
+    }
 
     // FIX 3: Use props.PropertyName for values not in local scope
     const layoutProps: LayoutProps = {
@@ -282,6 +318,8 @@ export default function GameHub(props: GameHubProps) {
         categories: props.categories,
         locationStorylets: props.locationStorylets, 
         storyId: props.storyId,
+        deckDefs: props.deckDefs, // <--- PASS THIS
+        currentDeckStats,
 
         onOptionClick: showEvent,
         onDrawClick: handleDrawCard,
@@ -291,6 +329,8 @@ export default function GameHub(props: GameHubProps) {
         onOpenMap: () => setShowMap(true),
         onExit: handleExit
     };
+
+
 
     const style = props.settings.layoutStyle || 'nexus';
 

@@ -267,6 +267,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <em>Tip: Use the 'max' property on the Quality itself for UI bars.</em>
                             </p>
                         </div>
+                        
                          <div className="form-group">
                             <label className="form-label">Default Action Cost</label>
                             <input 
@@ -277,24 +278,25 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             />
                             <p className="special-desc">Cost for options that don't specify a cost.</p>
                         </div>
-
-                        {/* New "Economy" Section */}
-                        <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
-                            <label className="special-label" style={{ color: '#f1c40f' }}>Economy</label>
-                            <div className="form-group">
-                                <label className="form-label">Currencies (Comma Separated IDs)</label>
-                                <input 
-                                    defaultValue={form.currencyQualities?.join(', ')} 
-                                    onBlur={e => handleArrayChange('currencyQualities', e.target.value)} 
-                                    className="form-input" 
-                                    placeholder="gold, echoes, favour" 
-                                />
-                                <p className="special-desc">These will be moved from the sidebar to the Wallet header.</p>
-                            </div>
+                        <div className="form-group">
+                            <label className="form-label">Regen Amount</label>
+                            <input 
+                                value={form.regenAmount} 
+                                onChange={e => handleChange('regenAmount', e.target.value)} 
+                                className="form-input" 
+                                placeholder="1 or $recovery_rate"
+                            />
+                            <p className="special-desc">Actions gained per tick.</p>
                         </div>
+
                         <div className="form-group">
                             <label className="form-label">Regen Rate (Minutes)</label>
-                            <input type="number" value={form.regenIntervalInMinutes} onChange={e => handleChange('regenIntervalInMinutes', parseInt(e.target.value))} className="form-input" />
+                            <input 
+                                type="number" 
+                                value={form.regenIntervalInMinutes} 
+                                onChange={e => handleChange('regenIntervalInMinutes', parseInt(e.target.value))} 
+                                className="form-input" 
+                            />
                         </div>
                         <div className="form-group">
                              <label className="form-label" style={{visibility: 'hidden'}}>Draw Cost</label>
@@ -305,6 +307,21 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         </div>
                     </div>
                 )}
+
+                {/* New "Economy" Section */}
+                <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
+                    <label className="special-label" style={{ color: '#f1c40f' }}>Economy</label>
+                    <div className="form-group">
+                        <label className="form-label">Currencies (Comma Separated IDs)</label>
+                        <input 
+                            defaultValue={form.currencyQualities?.join(', ')} 
+                            onBlur={e => handleArrayChange('currencyQualities', e.target.value)} 
+                            className="form-input" 
+                            placeholder="gold, echoes, favour" 
+                        />
+                        <p className="special-desc">These will be moved from the sidebar to the Wallet header.</p>
+                    </div>
+                </div>
                 
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                     <label className="form-label">Sidebar Categories (Comma Separated)</label>
