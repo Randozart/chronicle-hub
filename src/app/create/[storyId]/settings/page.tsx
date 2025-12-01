@@ -177,6 +177,68 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </p>
             </div>
 
+            {/* --- PLAYER IDENTITY SETTINGS --- */}
+            <div className="special-field-group" style={{ borderColor: '#f39c12' }}>
+                <label className="special-label" style={{ color: '#f39c12' }}>Identity & Profile</label>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    
+                    {/* LEFT: PORTRAIT CONFIG */}
+                    <div>
+                        <label className="toggle-label" style={{ marginBottom: '1rem' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={form.enablePortrait !== false} // Default true
+                                onChange={e => handleChange('enablePortrait', e.target.checked)} 
+                            />
+                            Show Portrait
+                        </label>
+
+                        {form.enablePortrait !== false && (
+                            <div className="form-group">
+                                <label className="form-label">Portrait Style</label>
+                                <select 
+                                    value={form.portraitStyle || 'circle'} 
+                                    onChange={e => handleChange('portraitStyle', e.target.value)}
+                                    className="form-select"
+                                >
+                                    <option value="circle">Circle (Avatar)</option>
+                                    <option value="square">Square (Retro)</option>
+                                    <option value="rect">Portrait (3:4 Card)</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* RIGHT: TITLE CONFIG */}
+                    <div>
+                        <label className="toggle-label" style={{ marginBottom: '1rem' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={form.enableTitle || false} 
+                                onChange={e => handleChange('enableTitle', e.target.checked)} 
+                            />
+                            Show Title
+                        </label>
+
+                        {form.enableTitle && (
+                            <div className="form-group">
+                                <label className="form-label">Title Quality ID</label>
+                                <input 
+                                    value={form.titleQualityId || ''} 
+                                    onChange={e => handleChange('titleQualityId', e.target.value)} 
+                                    className="form-input" 
+                                    placeholder="$current_title or $reputation" 
+                                />
+                                <p className="special-desc">
+                                    If set, the name of this quality (or its value if it's a String) will appear under the player name.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* --- 3. GAME MECHANICS (Actions) --- */}
             <div className="special-field-group" style={{ borderColor: '#61afef' }}>
                 <label className="special-label" style={{ color: '#61afef' }}>Game Rules</label>

@@ -26,7 +26,13 @@ export default function NexusLayout(props: LayoutProps) {
 
     const renderContent = () => {
         if (activeTab === 'profile') {
-            return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} />;
+            return <ProfilePanel 
+                qualities={props.character.qualities} 
+                qualityDefs={props.qualityDefs} 
+                imageLibrary={props.imageLibrary} 
+                categories={props.categories}
+                settings={props.settings} /* <--- MAKE SURE THIS IS HERE */
+            />;
         }
         if (activeTab === 'possessions') {
             return <Possessions 

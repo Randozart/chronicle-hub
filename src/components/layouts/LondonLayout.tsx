@@ -21,9 +21,17 @@ export default function LondonLayout(props: LayoutProps) {
     const handleActionRegen = () => props.onQualitiesUpdate({ ...props.character.qualities, [actionQid]: { ...actionState, level: currentActions + 1 } as any });
 
     const renderContent = () => {
-        if (activeTab === 'profile') return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} />;
+        if (activeTab === 'profile') {
+            return <ProfilePanel 
+                qualities={props.character.qualities} 
+                qualityDefs={props.qualityDefs} 
+                imageLibrary={props.imageLibrary} 
+                categories={props.categories}
+                settings={props.settings} /* <--- MAKE SURE THIS IS HERE */
+            />;
+        }        
         if (activeTab === 'possessions') return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} />;
-        
+                
         if (props.isLoading) return <div className="storylet-container loading-container"><p>Loading...</p></div>;
         
         if (props.activeEvent) {

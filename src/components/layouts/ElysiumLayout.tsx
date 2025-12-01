@@ -34,7 +34,15 @@ export default function ElysiumLayout(props: LayoutProps) {
     const bgSrc = bgDef ? bgDef.url : `/images/locations/${props.location.image}.png`;
 
     const renderContent = () => {
-        if (activeTab === 'profile') return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} />;
+        if (activeTab === 'profile') {
+            return <ProfilePanel 
+                qualities={props.character.qualities} 
+                qualityDefs={props.qualityDefs} 
+                imageLibrary={props.imageLibrary} 
+                categories={props.categories}
+                settings={props.settings} /* <--- MAKE SURE THIS IS HERE */
+            />;
+        }        
         if (activeTab === 'possessions') return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} />;
         
         if (props.isLoading) return <div className="storylet-container loading-container" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)' }}><p>Thinking...</p></div>;
@@ -130,7 +138,7 @@ export default function ElysiumLayout(props: LayoutProps) {
                             <CharacterSheet qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
                         </>
                     ) : (
-                        activeTab === 'profile' ? <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} />
+                        activeTab === 'profile' ? <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings}/>
                         : <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} />
                     )}
                 </div>
