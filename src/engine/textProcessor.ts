@@ -1,66 +1,32 @@
 // src/engine/textProcessor.ts
 
 import { PlayerQualities, QualityDefinition, QualityType } from './models';
-//import { repositories } from './repositories';
 
-// const getQualityDisplayValue = (qid: string, qualities: PlayerQualities): string => {
-//     const state = qualities[qid];
-//     if (!state) return "0"; // Default to 0 if quality doesn't exist
-
-//     const def = repositories.getQuality(qid);
-
-//     // Safely check for stringValue
-//     if ('stringValue' in state) {
-//         return state.stringValue;
-//     }
-
-//     // Fallback for string qualities that might use their definition as a default value
-//     if (def?.type === 'S' && def.description) {
-//         return def.description;
-//     }
-
-//     // Safely check for level
-//     if ('level' in state) {
-//         return state.level.toString();
-//     }
+export const evaluatePart = (part: string, qualities: PlayerQualities): number => {
+    let total = 0;
+    // Matches "$var" or "10"
+    const tokens = part.match(/\$?([a-zA-Z0-9_]+)|\d+/g) || [];
     
-//     return "[Unknown Quality Type]";
-// };
+    for (const token of tokens) {
+        if (token.startsWith('$')) {
+            const qid = token.substring(1);
+            
+            // Luck has no "level" in the database to look up
+            if (qid === 'luck') continue; 
 
-// const resolveQualityReference = (match: string, qualities: PlayerQualities): string => {
-//     const refMatch = match.match(/^\$([a-zA-Z0-9_]+)(?:\.([a-zA-Z_]+))?$/);
-//     if (!refMatch) return match;
-
-//     const [, qid, property] = refMatch;
-//     const state = qualities[qid];
-//     const def = repositories.getQuality(qid);
-
-//     if (property) {
-//         // Handle explicit property access like .description
-//         if (property.toLowerCase() === 'description') {
-//             return def?.description ?? '';
-//         }
-//         // Handle explicit property access for stringValue (e.g., $player_name.stringValue)
-//         if (property.toLowerCase() === 'stringvalue') {
-//             return (state && state.type === QualityType.String) ? state.stringValue : '';
-//         }
-//         return `[${qid}.${property}]`;
-//     }
-
-//     // Handle direct value access like "$gossip" or "$player_name"
-//     if (!state || !def) return "0";
-
-//     // If it's a String quality, its default value IS its stringValue.
-//     if (state.type === QualityType.String) {
-//         return state.stringValue;
-//     }
-
-//     if ('level' in state) {
-//         return state.level.toString();
-//     }
-    
-//     return "[Unknown Quality]";
-// };
+            const state = qualities[qid];
+            // NOTE: This uses raw quality level. 
+            // If you want the UI to reflect Equipment bonuses, 
+            // you would need to pass the calculated effective levels here.
+            const val = (state && 'level' in state) ? state.level : 0;
+            total += val;
+        } else {
+            const val = parseInt(token, 10);
+            if (!isNaN(val)) total += val;
+        }
+    }
+    return total;
+};
 
 // Main evaluation function
 export const evaluateText = (
@@ -205,30 +171,51 @@ export const calculateSkillCheckChance = (
     
     if (!expression) return { chance: null, text: '' };
 
-    // Updated Regex to capture optional 4th parameter (Pivot Chance)
-    // Format: $stat >= 50 [10, 0, 100, 70]
     const match = expression.match(/^\s*\$(.*?)\s*(>=|<=)\s*(\d+)(?:\s*\[([^\]]+)\])?\s*$/);
-    
     if (!match) return { chance: null, text: '' };
 
     const [, qualitiesPart, operator, targetStr, bracketContent] = match;
     const target = parseInt(targetStr, 10);
+
+    // --- 1. HANDLE LUCK SPECIAL CASE ---
+    if (qualitiesPart.trim() === 'luck') {
+        let chance = 0;
+        // $luck <= 40 means 40% chance (1-40 is success)
+        if (operator === '<=') chance = target;
+        // $luck >= 40 means 61% chance (40-100 is success)
+        else if (operator === '>=') chance = 100 - target + 1;
+        
+        // Clamp
+        chance = Math.max(0, Math.min(100, chance));
+        
+        return { chance, text: "Luck" };
+    }
     
+    // Defaults
     let margin = target;
     let minChance = 0;
     let maxChance = 100;
-    let pivotChance = 60; // <--- NEW DEFAULT: 60% at Target
+    let pivotChance = 60;
 
+    // Robust Argument Parsing (The Fix)
     if (bracketContent) {
-        const args = bracketContent.split(',').map(s => parseInt(s.trim(), 10));
-        if (!isNaN(args[0])) margin = args[0];
-        if (!isNaN(args[1])) minChance = args[1];
-        if (!isNaN(args[2])) maxChance = args[2];
-        if (args.length > 3 && !isNaN(args[3])) pivotChance = args[3]; // Custom pivot
+        const args = bracketContent.split(',').map(s => {
+            const parsed = parseInt(s.trim(), 10);
+            return isNaN(parsed) ? null : parsed; 
+        });
+
+        // FIX: Check length before accessing indices to avoid 'undefined'
+        if (args.length > 0 && args[0] !== null) margin = args[0];
+        if (args.length > 1 && args[1] !== null) minChance = args[1];
+        if (args.length > 2 && args[2] !== null) maxChance = args[2];
+        if (args.length > 3 && args[3] !== null) pivotChance = args[3];
     }
 
-    // ... Evaluate Skill Level (Same as before) ...
-    const skillLevel = evaluatePart(qualitiesPart, qualities); // Assuming evaluatePart is helper
+    // Sanity Check: Pivot must be 0-100
+    pivotChance = Math.max(0, Math.min(100, pivotChance));
+
+    // Calculate Skill Level
+    const skillLevel = evaluatePart(qualitiesPart, qualities);
 
     const lowerBound = target - margin;
     const upperBound = target + margin;
@@ -240,48 +227,50 @@ export const calculateSkillCheckChance = (
     } else if (skillLevel >= upperBound) {
         successChance = 1.0;
     } else {
-        // PIECEWISE LINEAR LOGIC
         const pivotDecimal = pivotChance / 100;
 
+        // PIECEWISE LINEAR LOGIC
         if (skillLevel < target) {
             // Range: LowerBound -> Target
-            // Value: 0% -> Pivot%
             const range = target - lowerBound;
-            const progress = (skillLevel - lowerBound) / range;
-            successChance = progress * pivotDecimal;
+            if (range <= 0) {
+                successChance = 0.5; 
+            } else {
+                const progress = (skillLevel - lowerBound) / range;
+                successChance = progress * pivotDecimal;
+            }
         } else {
             // Range: Target -> UpperBound
-            // Value: Pivot% -> 100%
             const range = upperBound - target;
-            const progress = (skillLevel - target) / range;
-            successChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
+            if (range <= 0) {
+                successChance = 0.5;
+            } else {
+                const progress = (skillLevel - target) / range;
+                successChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
+            }
         }
     }
     
+    // Invert for <= (Roll Under)
     if (operator === '<=') {
         successChance = 1.0 - successChance;
     }
     
-    // Apply Clamps
+    // Final Clamping
     let finalPercent = successChance * 100;
+    
+    // Final NaN safety net
+    if (isNaN(finalPercent)) finalPercent = 0;
+
     finalPercent = Math.max(minChance, Math.min(maxChance, finalPercent));
     
-    const text = `A test of ${qualitiesPart.replace(/\$/g, '')}`; // Simplify name generation for snippet
-    return { chance: Math.round(finalPercent), text };
-};
+    // Format Name
+    const testedQualityNames = qualitiesPart.replace(/\$/g, '') 
+        .split('+')
+        .map(qid => qid.trim())
+        .filter(qid => qid)
+        .map(qid => qualityDefs[qid]?.name ?? qid);
+    const text = `A test of ${testedQualityNames.join(' + ')}`;
 
-// Helper (Ensure this exists in the file)
-const evaluatePart = (part: string, qualities: PlayerQualities): number => {
-    let total = 0;
-    const tokens = part.match(/\$?([a-zA-Z0-9_]+)|\d+/g) || [];
-    for (const token of tokens) {
-        if (token.startsWith('$')) {
-            const qid = token.substring(1);
-            const state = qualities[qid];
-            total += (state && 'level' in state) ? state.level : 0;
-        } else {
-            total += parseInt(token, 10);
-        }
-    }
-    return total;
+    return { chance: Math.round(finalPercent), text };
 };
