@@ -6,43 +6,34 @@ export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
     // 1. PUBLIC ROUTES
-    // Allow Home, API for fetching worlds, and Auth pages
     if (
         pathname === '/' || 
         pathname.startsWith('/api/worlds') || 
+        pathname.startsWith('/api/register') || 
+        pathname.startsWith('/api/auth') ||     
         pathname === '/login' || 
         pathname === '/register' ||
-        pathname.startsWith('/_next') || // Static files
+        pathname.startsWith('/_next') || 
         pathname.startsWith('/images') || 
-        pathname.startsWith('/themes')
+        pathname.startsWith('/themes') ||
+        pathname === '/favicon.ico'
     ) {
-        // If user is logged in and tries to go to login/register, send to home
+        // If logged in, redirect OUT of login/register pages to Home
         if (token && (pathname === '/login' || pathname === '/register')) {
             return NextResponse.redirect(new URL('/', req.url));
         }
         return NextResponse.next();
     }
 
-    // 2. PROTECTED ROUTES
-    // Block everything else (Play, Create, API calls for gameplay)
+    // 2. PROTECTED ROUTES (Create, Play, Character APIs)
     if (!token) {
         const loginUrl = new URL('/login', req.url);
-        // Optional: Add ?callbackUrl=... to redirect back after login
         return NextResponse.redirect(loginUrl);
     }
     
     return NextResponse.next();
 }
 
-// Matcher configuration
 export const config = {
-    matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - api/auth (NextAuth routes)
-         * - static (static files)
-         * - favicon.ico (favicon file)
-         */
-        '/((?!api/auth|static|favicon.ico).*)',
-    ],
+    matcher: ['/((?!static|favicon.ico).*)'],
 };

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 
-export default function WorldCard({ w, isOwner }: { w: any, isOwner: boolean }) {
-    // Default to 'default' if undefined
+export default function WorldCard({ w, isOwner, isGuest }: { w: any, isOwner: boolean, isGuest?: boolean }) {
     const theme = w.settings?.visualTheme || 'default';
 
     return (
@@ -51,13 +50,18 @@ export default function WorldCard({ w, isOwner }: { w: any, isOwner: boolean }) 
                         ))}
                     </div>
                 )}
-
-                
                 
                 <div style={{ marginTop: '1rem', display: 'flex', gap: '10px' }}>
-                    <Link href={`/play/${w.worldId}`} className="continue-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem' }}>
-                        Play
-                    </Link>
+                    {isGuest ? (
+                        <Link href="/login" className="continue-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem' }}>
+                            Login to Play
+                        </Link>
+                    ) : (
+                        <Link href={`/play/${w.worldId}`} className="continue-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem' }}>
+                            Play
+                        </Link>
+                    )}
+                    
                     {isOwner && (
                         <Link href={`/create/${w.worldId}/settings`} className="return-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem' }}>
                             Edit
