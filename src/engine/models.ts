@@ -9,40 +9,52 @@ export enum QualityType {
     Equipable = 'E', 
 }
 
-export interface QualityDefinition {
-    id: string;
-    name?: string;
-    description?: string;
-    type: QualityType;
-    category?: string;
-    properties?: string;
-    bonus?: string; // For Equipables
-    storylet?: string; // For clickable items
-    max?: string; // For max value constraints
-    image?: string; // New Field (Image Code)
+// --- CORE LOGIC INTERFACES ---
+
+export interface LogicGates {
+    visible_if?: string; // ScribeScript Condition
+    unlock_if?: string;  // ScribeScript Condition
 }
 
-export interface ResolveOption {
+export interface QualityDefinition {
+    id: string;
+    name?: string;       // Evaluable String
+    description?: string;// Evaluable String
+    type: QualityType;
+    category?: string;   // Comma-separated tree
+    tags?: string[];     // [REPLACES properties] e.g. ['cursed', 'auto_equip', 'hidden']
+    bonus?: string;      // Logic: "$strength + 1"
+    storylet?: string;   // ID of Use-Item event
+    max?: string;        // Logic: "10" or "$level_cap"
+    image?: string;      // Image ID
+}
+
+export interface ResolveOption extends LogicGates {
     id: string;
     name: string;
     image_code?: string;
-    short?: string; // This was your 'short_desc'
-    meta?: string;
-    visible_if?: string;
-    unlock_if?: string;
-    pass_long: string;
-    fail_long?: string;
-    pass_redirect?: string;
-    fail_redirect?: string;
-    pass_quality_change?: string;
-    fail_quality_change?: string;
-    random?: string;
-    properties?: string;
-    action_cost?: string; // <-- ADDED THIS PROPERTY
-    pass_move_to?: string; // New: ID of the location to move to on success
-    fail_move_to?: string; // New: ID of the location to move to on failure
+    short?: string;      // Tooltip
+    meta?: string;       // Instruction text (e.g. "Will consume item")
     
-    rare_pass_chance?: number; // Percentage (0-100)
+    // Logic
+    challenge?: string;  // [REPLACES random] Logic: "$stat >= 50 [10]"
+    action_cost?: string;// Logic: "1" or "$cost"
+    tags?: string[];     // [REPLACES properties] e.g. ['instant_redirect', 'dangerous']
+
+    // Outcomes - Standard
+    pass_long: string;
+    pass_quality_change?: string;
+    pass_redirect?: string;      // Storylet ID
+    pass_move_to?: string;       // Location ID
+
+    // Outcomes - Failure
+    fail_long?: string;
+    fail_quality_change?: string;
+    fail_redirect?: string;
+    fail_move_to?: string;
+
+    // Outcomes - Rare
+    rare_pass_chance?: number;
     rare_pass_long?: string;
     rare_pass_quality_change?: string;
     rare_pass_redirect?: string;
@@ -52,52 +64,75 @@ export interface ResolveOption {
     rare_fail_quality_change?: string;
     rare_fail_redirect?: string;
 
+    // Runtime computed (do not store in DB)
     computed_action_cost?: number; 
 }
 
-export type PublishStatus = 'draft' | 'published' | 'archived';
-
-interface BaseStorylet {
+// --- GAME CONTENT INTERFACES ---
+interface ContentCommon {
     id: string;
     name: string;
     image_code?: string;
     short?: string;
-    text: string;
-    metatext?: string;
-    properties?: string;
+    text: string;        
+    metatext?: string;   
+    tags?: string[];     // [REPLACES properties]
     options: ResolveOption[];
-    autofire_if?: string; 
-    status?: PublishStatus; // Default: 'draft'
-    folder?: string; // e.g. "Chapter 1/Prologue"
-    return?: string;
+    autofire_if?: string;
+    status?: PublishStatus;
+    folder?: string; 
 }
 
-export interface Storylet extends BaseStorylet {
-    location?: string;
-    visible_if?: string;
-    unlock_if?: string;
+export type PublishStatus = 'draft' | 'published' | 'archived';
+
+export interface Storylet extends ContentCommon, LogicGates {
+    location?: string;   // Location ID
+    return?: string;     // Target ID for "Go Back" button
 }
 
-export interface Opportunity extends BaseStorylet {
-    deck: string;
+export interface Opportunity extends ContentCommon {
+    deck: string;        // Deck ID
     draw_condition?: string;
     frequency: "Always" | "Frequent" | "Standard" | "Infrequent" | "Rare";
+    
+    // Card Lifecycle
+    can_discard?: boolean;      // Default: True. If false, player must play it.
+    keep_if_invalid?: boolean;  // Default: False. If true, stays in hand even if draw_condition becomes false.
+    
+    // Note: Cards technically support 'unlock_if' on options, but usually not on the card itself.
+    // If you want "Locked" cards in hand, add LogicGates here too.
+    unlock_if?: string; 
+}
+
+// --- CONFIGURATION INTERFACES ---
+
+export interface QualityDefinition {
+    id: string;
+    name?: string;       
+    description?: string;
+    type: QualityType;
+    category?: string;   
+    tags?: string[];     // [REPLACES properties]
+    bonus?: string;      // Logic: "$strength + 1"
+    storylet?: string;   // ID of Use-Item event
+    max?: string;        // Logic: "10" or "$level_cap"
+    image?: string;      
 }
 
 export interface DeckDefinition {
     id: string;
-    saved: string; // 'True'/'False'
-    timer?: string;
+    saved: string;       // 'True'/'False'
+    timer?: string;      // "sync_actions" OR number OR logic
     draw_cost?: string;
-    hand_size: string;
-    deck_size?: string;
+    hand_size: string;   // Logic
+    deck_size?: string;  // Logic
 }
 
 export interface MapRegion {
     id: string;
     name: string;
-    image?: string; // The Map background image code
-    width?: number; // Optional, for scrolling maps (default 100%)
+    image?: string;
+    width?: number;
     height?: number;
 }
 
@@ -106,34 +141,74 @@ export interface LocationDefinition {
     name: string;
     image: string;
     deck: string;
-    store?: string;
-    regionId?: string; // Links to MapRegion
-    properties?: string;
-    coordinates: { x: number, y: number }; // Where it sits on the map
-    unlockCondition?: string; // e.g., "$route_to_docks >= 1"
-    isHidden?: boolean; // If true, doesn't show on map until visited
+    store?: string;      
+    regionId?: string;   
+    tags?: string[];     // [REPLACES properties]
+    coordinates: { x: number, y: number };
+    unlockCondition?: string; // Logic
+    visibleCondition?: string; // Logic (New)
+}
+
+export interface WorldSettings {
+    // Mechanics
+    useActionEconomy: boolean;
+    maxActions: number | string;
+    actionId: string;
+    regenIntervalInMinutes: number;
+    regenAmount: number | string; 
+    defaultActionCost?: number;
+    
+    // UI / Categories
+    characterSheetCategories: string[];
+    equipCategories: string[];
+    currencyQualities?: string[]; 
+    
+    // Identity
+    playerName: string;
+    playerImage: string;
+    enablePortrait?: boolean; // New
+    portraitStyle?: 'circle' | 'square' | 'rect'; // New
+    enableTitle?: boolean; // New
+    titleQualityId?: string; // New
+    
+    // System
+    deckDrawCostsAction?: boolean;
+    alwaysPurgeHandOnTravel?: boolean;
+    
+    // Visuals
+    layoutStyle: LayoutStyle;
+    bannerHeight?: number;
+    enableParallax?: boolean;
+    visualTheme?: string;
 }
 
 export interface WorldSettings {
     useActionEconomy: boolean;
-    maxActions: number | string; // Can be number or soft-defined
+    maxActions: number | string;
     actionId: string;
-    actionUseOperator: string;
     regenIntervalInMinutes: number;
-    regenAmount: number;
-    regenOperator: string;
+    regenAmount: number | string; // Allow logic
+    
+    // Removed old operators (handled by ScribeScript)
+    
     characterSheetCategories: string[];
+    equipCategories: string[];
+    currencyQualities?: string[]; // [NEW]
+    
     playerName: string;
     playerImage: string;
-    equipCategories: string[];
-    deckDrawCostsAction?: boolean; // Make this optional for backward compatibility
-    alwaysPurgeHandOnTravel?: boolean; // Make this optional
-    layoutStyle: LayoutStyle; // Default: "nexus"
-    bannerHeight?: number; // For London
-    enableParallax?: boolean; // New setting
+    
+    deckDrawCostsAction?: boolean;
+    alwaysPurgeHandOnTravel?: boolean;
+    
+    layoutStyle: LayoutStyle;
+    bannerHeight?: number;
+    enableParallax?: boolean;
     visualTheme?: string;
-    currencyQualities: string[]; // e.g. ["gold", "jade", "favours"]
+    defaultActionCost?: number; // [NEW]
 }
+
+// --- RUNTIME STATE INTERFACES ---
 
 interface BaseQualityState {
     qualityId: string;
@@ -159,27 +234,20 @@ export interface StringQualityState extends BaseQualityState {
     type: QualityType.String;
     stringValue: string;
 }
-
 export interface EquipableQualityState extends BaseQualityState {
     type: QualityType.Equipable;
     level: number; 
 }
 
-export type QualityState = 
-    | CounterQualityState 
-    | PyramidalQualityState 
-    | ItemQualityState 
-    | StringQualityState
-    | EquipableQualityState; 
-
+export type QualityState = CounterQualityState | PyramidalQualityState | ItemQualityState | StringQualityState | EquipableQualityState; 
 export type PlayerQualities = Record<string, QualityState>;
 
 export interface CharacterDocument {
     _id?: any;
-    characterId: string; // <--- NEW: Unique ID for this specific save slot
+    characterId: string;
     userId: string;
     storyId: string;
-    name: string;        // Cached name for the lobby
+    name: string;
     qualities: PlayerQualities;
     currentLocationId: string;
     currentStoryletId: string;
@@ -187,7 +255,8 @@ export interface CharacterDocument {
     deckCharges: Record<string, number>;
     lastDeckUpdate: Record<string, Date>;
     lastActionTimestamp?: Date; 
-    equipment: Record<string, string | null>; // e.g., { body: "thick_coat", head: null }
+    equipment: Record<string, string | null>;
+    // pendingEvents?: any[]; // Future
 }
 
 export interface QualityChangeInfo {
@@ -213,10 +282,10 @@ export interface ImageDefinition {
 }
 
 export interface CategoryDefinition {
-    id: string; // "menace"
-    name?: string; // "Current Threats" (Display Name)
-    color?: string; // "#e74c3c"
-    description?: string; // Optional tooltip
+    id: string;
+    name?: string;
+    color?: string;
+    description?: string;
 }
 
 export interface WorldConfig {
@@ -229,25 +298,24 @@ export interface WorldConfig {
     opportunities?: Record<string, Opportunity>;
     images: Record<string, ImageDefinition>; 
     categories?: Record<string, CategoryDefinition>;
-    regions: Record<string, MapRegion>; // NEW
+    regions: Record<string, MapRegion>;
 }
 
 export type WorldContent = WorldConfig;
 export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";
 
 export interface WorldDocument {
-    _id?: any; // MongoDB ID
-    worldId: string; // Unique URL slug (e.g. 'trader_johns_world')
-    ownerId: string; // User ID
+    _id?: any;
+    worldId: string;
+    ownerId: string;
     title: string;
     summary?: string;
     published: boolean;
     createdAt: Date;
     coverImage?: string; 
     playerCount?: number;
-    tags?: string[]; // ["Fantasy", "Horror"]
+    tags?: string[];
 
-    // The "Hot Config" we've been using
     settings: WorldSettings;
     content: {
         qualities: Record<string, QualityDefinition>;
@@ -257,7 +325,5 @@ export interface WorldDocument {
         images: Record<string, ImageDefinition>;
         char_create: Record<string, string>;
     };
-    
-    // Optional: Collaborators array for future RBAC
     collaborators?: { userId: string, role: 'admin' | 'writer' }[];
 }

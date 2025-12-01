@@ -99,7 +99,7 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
     };
 
     const handlePropToggle = (prop: string) => {
-        const newProps = toggleProperty(form.properties, prop);
+        const newProps = toggleProperty(form.tags, prop);
         handleChange('properties', newProps);
     };
 
@@ -151,13 +151,13 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     
                     <BehaviorCard 
-                        checked={hasProperty(form.properties, 'lock_equipment')} 
+                        checked={hasProperty(form.tags, 'lock_equipment')} 
                         onChange={() => handlePropToggle('lock_equipment')} 
                         label="Lock Equipment" 
                         desc="Player cannot change gear here." 
                     />
                      <BehaviorCard 
-                        checked={hasProperty(form.properties, 'safe_zone')} 
+                        checked={hasProperty(form.tags, 'safe_zone')} 
                         onChange={() => handlePropToggle('safe_zone')} 
                         label="Safe Zone" 
                         desc="No menace autofires? (Future)" 
@@ -166,7 +166,7 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 </div>
                 <div style={{ marginTop: '1rem' }}>
                     <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Properties</label>
-                    <input value={form.properties || ''} onChange={e => handleChange('properties', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
+                    <input value={form.tags || ''} onChange={e => handleChange('properties', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
                 </div>
             </div>
 

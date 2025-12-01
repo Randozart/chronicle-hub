@@ -96,7 +96,7 @@ export default function Possessions({
                     const equippedDef = equippedId ? qualityDefs[equippedId] : null;
 
                     // Check for 'cursed' property (assuming properties is a comma-separated string)
-                    const isCursed = equippedDef?.properties?.includes('cursed');
+                    const isCursed = equippedDef?.tags?.includes('cursed');
 
                     return (
                         <div key={slot} className="equip-slot">

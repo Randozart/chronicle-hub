@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         
         let actionCost = 1; // Default
         
-        const isInstant = option.properties?.includes('instant_redirect');
+        const isInstant = option.tags?.includes('instant_redirect');
 
         if (option.action_cost) {
             const resolvedCost = checkEngine.evaluateBlock(option.action_cost);
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
             const itemDef = gameData.qualities[change.qid];
             
             // Check for "auto_equip" property
-            if (itemDef?.properties?.includes('auto_equip')) {
+            if (itemDef?.tags?.includes('auto_equip')) {
                 const slot = itemDef.category; // e.g., "body"
                 
                 // Check if the slot exists in settings AND is currently empty

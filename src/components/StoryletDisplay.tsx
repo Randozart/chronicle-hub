@@ -73,7 +73,7 @@ export default function StoryletDisplay({
                 onCardPlayed(eventData.id);
             }
 
-            const isInstant = option.properties?.includes('instant_redirect');
+            const isInstant = option.tags?.includes('instant_redirect');
 
             if (isInstant) {
                 onFinish(data.newQualities, data.result.redirectId);
@@ -93,12 +93,12 @@ export default function StoryletDisplay({
     };
 
     // --- SMART RETURN LOGIC ---
-    const disableReturn = storylet.properties?.includes('no_return');
+    const disableReturn = storylet.tags?.includes('no_return');
 
     const getReturnTarget = (): string | null | undefined => {
         if (disableReturn) return null; // Null means "Don't show button"
 
-        const explicitReturn = storylet.return;
+        const explicitReturn = 'return' in storylet ? storylet.return : undefined;
         
         if (explicitReturn) {
             // Check if the target is a Storylet (Cards usually don't return to cards)
@@ -179,7 +179,7 @@ export default function StoryletDisplay({
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities);
             const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
-            const { chance, text } = calculateSkillCheckChance(option.random, qualities, qualityDefs);
+            const { chance, text } = calculateSkillCheckChance(option.challenge, qualities, qualityDefs);
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}% chance]` : '';
             return { ...option, isLocked, lockReason, skillCheckText, chance, };
         });
@@ -213,10 +213,10 @@ export default function StoryletDisplay({
                     return (
                         <button 
                             key={option.id} 
-                            className={`option-button ${option.isLocked ? 'locked' : ''} ${option.properties?.includes('dangerous') ? 'dangerous-border' : ''}`}
+                            className={`option-button ${option.isLocked ? 'locked' : ''} ${option.tags?.includes('dangerous') ? 'dangerous-border' : ''}`}
                             onClick={() => handleOptionClick(option)}
                             disabled={option.isLocked || isLoading}
-                            style={option.properties?.includes('dangerous') ? { borderColor: 'var(--danger-color)' } : {}}
+                            style={option.tags?.includes('dangerous') ? { borderColor: 'var(--danger-color)' } : {}}
                         >
                             <div className="option-content-wrapper">
                                 {option.image_code && (

@@ -19,10 +19,8 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         useActionEconomy: true,
         maxActions: 20, // Can be number or string
         actionId: "$actions",
-        actionUseOperator: "-=",
         regenIntervalInMinutes: 10,
         regenAmount: 1,
-        regenOperator: "+=",
         characterSheetCategories: [],
         equipCategories: [],
         playerName: "$player_name",

@@ -249,12 +249,24 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
     const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
     const regenInterval = settings.regenIntervalInMinutes || 10;
     const actionsToRegen = Math.floor(minutesPassed / regenInterval);
+    
+    let regenValue = 1;
+    if (typeof settings.regenAmount === 'number') {
+        regenValue = settings.regenAmount;
+    } else if (typeof settings.regenAmount === 'string') {
+        // Create a temp engine to parse the logic string (e.g. "$vitality / 2")
+        const worldConfig = await getWorldConfig(character.storyId);
+        const tempEngine = new GameEngine(character.qualities, worldConfig);
+        const result = tempEngine.evaluateBlock(`{${settings.regenAmount}}`);
+        regenValue = parseInt(result, 10) || 1;
+    }
 
     if (actionsToRegen > 0) {
         const actionQid = settings.actionId.replace('$', '');
         const actionsState = character.qualities[actionQid];
         if (actionsState && 'level' in actionsState) {
-            const newActionTotal = Math.min(maxActions, actionsState.level + (actionsToRegen * (settings.regenAmount || 1)));
+            // USE THE RESOLVED VALUE
+            const newActionTotal = Math.min(maxActions, actionsState.level + (actionsToRegen * regenValue));
             actionsState.level = newActionTotal;
             character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * regenInterval * 60 * 1000);
         }

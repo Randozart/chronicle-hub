@@ -29,7 +29,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 const def = qualityDefs[qid];
                 const state = qualities[qid];
                 if (!def || !state) return null;
-                if (def.properties?.includes('hidden')) return null;
+                if (def.tags?.includes('hidden')) return null;
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
                 if (state.type !== 'S' && state.level === 0) return null;
                 return { ...def, ...state };

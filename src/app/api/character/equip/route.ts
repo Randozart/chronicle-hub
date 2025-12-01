@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const locationDef = gameData.locations[character.currentLocationId];
     // We check if the properties string contains 'lock_equipment'
     // Note: property strings are comma-separated, e.g., "safe_zone, lock_equipment"
-    if (locationDef?.properties?.includes('lock_equipment')) {
+    if (locationDef?.tags?.includes('lock_equipment')) {
          return NextResponse.json({ error: 'You cannot change your equipment in this location.' }, { status: 403 });
     }
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         // Check if the item currently equipped is Cursed
         if (currentItem) {
             const currentDef = gameData.qualities[currentItem];
-            if (currentDef?.properties?.includes('cursed')) {
+            if (currentDef?.tags?.includes('cursed')) {
                  return NextResponse.json({ error: 'You cannot unequip a cursed item.' }, { status: 403 });
             }
         }

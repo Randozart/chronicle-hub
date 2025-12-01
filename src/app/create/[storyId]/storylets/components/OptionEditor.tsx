@@ -18,7 +18,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
     const [activeField, setActiveField] = useState<{ key: keyof ResolveOption, mode: 'condition' | 'effect' } | null>(null);
 
     // Toggles
-    const hasDifficulty = !!data.random;
+    const hasDifficulty = !!data.challenge;
     const hasRarePass = (data.rare_pass_chance || 0) > 0;
     const hasRareFail = (data.rare_fail_chance || 0) > 0;
 
@@ -27,8 +27,8 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
     };
 
     const handlePropToggle = (prop: string) => {
-        const newProps = toggleProperty(data.properties, prop);
-        handleChange('properties', newProps);
+        const newProps = toggleProperty(data.tags, prop);
+        handleChange('tags', newProps);
     };
 
     const handleAssistantInsert = (text: string) => {
@@ -148,10 +148,10 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd', marginBottom: '0.5rem' }}>Behavior</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <BehaviorCard checked={hasProperty(data.properties, 'instant_redirect')} onChange={() => handlePropToggle('instant_redirect')} label="Instant Redirect" desc="Skips result text." />
-                    <BehaviorCard checked={hasProperty(data.properties, 'no_return')} onChange={() => handlePropToggle('no_return')} label="No Return" desc="Forces move to location." />
-                    <BehaviorCard checked={hasProperty(data.properties, 'dangerous')} onChange={() => handlePropToggle('dangerous')} label="Dangerous" desc="Adds red warning border." />
-                    <BehaviorCard checked={hasDifficulty} onChange={() => handleChange('random', hasDifficulty ? undefined : '$luck >= 50')} label="Difficulty Check" desc="Adds Success/Failure mechanics." />
+                    <BehaviorCard checked={hasProperty(data.tags, 'instant_redirect')} onChange={() => handlePropToggle('instant_redirect')} label="Instant Redirect" desc="Skips result text." />
+                    <BehaviorCard checked={hasProperty(data.tags, 'no_return')} onChange={() => handlePropToggle('no_return')} label="No Return" desc="Forces move to location." />
+                    <BehaviorCard checked={hasProperty(data.tags, 'dangerous')} onChange={() => handlePropToggle('dangerous')} label="Dangerous" desc="Adds red warning border." />
+                    <BehaviorCard checked={hasDifficulty} onChange={() => handleChange('challenge', hasDifficulty ? undefined : '$luck >= 50')} label="Difficulty Check" desc="Adds Success/Failure mechanics." />
                 </div>
             </div>
 
@@ -163,7 +163,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                 </div>
                 {hasDifficulty && (
                     <div style={{ marginTop: '1rem' }}>
-                         <LogicInput label="Challenge Logic" field="random" mode="condition" placeholder="$stat >= 50 [10]" />
+                         <LogicInput label="Challenge Logic" field="challenge" mode="condition" placeholder="$stat >= 50 [10]" />
                     </div>
                 )}
             </div>

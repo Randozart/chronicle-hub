@@ -84,7 +84,7 @@ export class GameEngine {
         this.changes = []; 
         
         // 1. Determine basic Success/Failure
-        const wasSuccessResult = this.evaluateCondition(option.random, true);
+        const wasSuccessResult = this.evaluateCondition(option.challenge, true);
         const isSuccess = typeof wasSuccessResult === 'boolean' ? wasSuccessResult : wasSuccessResult.wasSuccess;
 
         // 2. Determine Rare Outcome (Alternative)
@@ -483,7 +483,7 @@ export class GameEngine {
 
         if (qState.type === QualityType.Equipable && op === '+=' || op === '++') {
             const def = this.worldContent.qualities[qid];
-            if (def.properties?.includes('auto_equip')) {
+            if (def.tags?.includes('auto_equip')) {
                 // Check if slot is empty
                 // If empty, add to this.equipment[def.category]
                 // We need to expose 'equipment' as mutable in the engine for this to work
@@ -630,7 +630,7 @@ export class GameEngine {
                 if (rOpt.short) rOpt.short = this.evaluateBlock(rOpt.short);
                 if (rOpt.meta) rOpt.meta = this.evaluateBlock(rOpt.meta);
                 
-                const isInstant = rOpt.properties?.includes('instant_redirect');
+                const isInstant = rOpt.tags?.includes('instant_redirect');
 
                 if (rOpt.action_cost) {
                     const val = this.evaluateBlock(rOpt.action_cost);

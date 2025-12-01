@@ -1,21 +1,28 @@
-export const toggleProperty = (currentStr: string | undefined, property: string, forceState?: boolean): string => {
-    const tags = (currentStr || '').split(',').map(s => s.trim()).filter(Boolean);
-    const exists = tags.includes(property);
+// src/utils/propertyHelpers.ts
+
+// Helper to safely get an array (handles undefined)
+export const getTags = (input: string[] | undefined): string[] => {
+    return input || [];
+};
+
+// Toggle a tag in the array
+export const toggleProperty = (currentTags: string[] | undefined, tag: string, forceState?: boolean): string[] => {
+    const tags = currentTags || [];
+    const exists = tags.includes(tag);
     
-    // If forceState is provided, use it. Otherwise toggle.
     const shouldAdd = forceState !== undefined ? forceState : !exists;
 
     if (shouldAdd && !exists) {
-        return [...tags, property].join(', ');
+        return [...tags, tag];
     } else if (!shouldAdd && exists) {
-        return tags.filter(t => t !== property).join(', ');
+        return tags.filter(t => t !== tag);
     }
     
-    return tags.join(', '); // No change
+    return tags;
 };
 
-export const hasProperty = (currentStr: string | undefined, property: string): boolean => {
-    if (!currentStr) return false;
-    const tags = currentStr.split(',').map(s => s.trim());
-    return tags.includes(property);
+// Check if tag exists
+export const hasProperty = (currentTags: string[] | undefined, tag: string): boolean => {
+    if (!currentTags) return false;
+    return currentTags.includes(tag);
 };

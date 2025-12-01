@@ -13,7 +13,6 @@
     "mongodb": "^7.0.0",
     "next": "16.0.1",
     "next-auth": "^4.24.13",
-    "openssl": "^2.0.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
@@ -30,6 +29,7 @@
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
+    "tsx": "4.21.0",
     "typescript": "^5"
   }
 }
