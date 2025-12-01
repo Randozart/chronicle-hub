@@ -630,23 +630,23 @@ export class GameEngine {
                 if (rOpt.short) rOpt.short = this.evaluateBlock(rOpt.short);
                 if (rOpt.meta) rOpt.meta = this.evaluateBlock(rOpt.meta);
                 
-                const isInstant = rOpt.tags?.includes('instant_redirect');
-
+                const isInstant = rOpt.tags?.includes('instant_redirect'); // Updated to tags
+                
                 if (rOpt.action_cost) {
                     const val = this.evaluateBlock(rOpt.action_cost);
-                    rOpt.computed_action_cost = parseInt(val, 10) || 0;
+                    rOpt.computed_action_cost = parseInt(val, 10);
+                    if (isNaN(rOpt.computed_action_cost)) rOpt.computed_action_cost = 0;
                 } else if (isInstant) {
-                    // Default for Redirects = 0 (Free)
                     rOpt.computed_action_cost = 0;
                 } else {
-                    // Default for Standard Actions = 1
-                    rOpt.computed_action_cost = 1;
+                    // FIX: Use World Settings Default instead of hardcoded 1
+                    // If undefined, fallback to 1 (standard behavior)
+                    rOpt.computed_action_cost = this.worldContent.settings.defaultActionCost ?? 1;
                 }
                 
                 return rOpt;
             });
         }
-
         return rendered;
     }
 }

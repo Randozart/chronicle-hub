@@ -1,10 +1,8 @@
-// src/app/api/deck/draw/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from "@/lib/auth";
+import { authOptions } from '@/lib/auth';
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
-import { getOpportunitiesForDeck } from '@/engine/worldService'; 
+import { getOpportunitiesForDeck, getEvent } from '@/engine/worldService'; 
 import { GameEngine } from '@/engine/gameEngine';
 import { CharacterDocument, Opportunity } from '@/engine/models';
 import { regenerateDeckCharges } from '@/engine/deckService'; 
@@ -23,16 +21,17 @@ export async function POST(request: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const userId = (session.user as any).id;
+    const { storyId, characterId } = await request.json(); // <--- REQUIRE CHARACTER ID
 
-    // FIX: Get storyId from body
-    const { storyId } = await request.json();
-    if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
+    if (!storyId || !characterId) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
 
-    const gameData = await getContent(storyId); // Loads config
+    // 1. Load Content & Character
+    const gameData = await getContent(storyId);
+    let character = await getCharacter(userId, storyId, characterId);
     
-    let character = await getCharacter(userId, storyId);
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
+    // 2. Action Economy Cost (If enabled)
     if (gameData.settings.useActionEconomy && gameData.settings.deckDrawCostsAction) {
         character = await regenerateActions(character); 
         
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
         const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
         
         if (currentActions < 1) { 
-            return NextResponse.json({ error: 'You are out of actions to draw.' }, { status: 429 });
+            return NextResponse.json({ message: 'Not enough actions to draw.' }); // Use message to show alert
         }
         
         if (actionsState && 'level' in actionsState) {
@@ -50,75 +49,99 @@ export async function POST(request: NextRequest) {
         }
     }
     
+    // 3. Identify Deck
     const engineForCheck = new GameEngine(character.qualities, gameData, character.equipment);
-
     const location = gameData.locations[character.currentLocationId];
-    if (!location) return NextResponse.json({ character, message: 'Current location is invalid.' });
+    
+    if (!location) return NextResponse.json({ error: 'Invalid location' }, { status: 500 });
     
     const deckDef = gameData.decks[location.deck];
-    if (!deckDef) return NextResponse.json({ character, message: 'Location has no valid deck.' });
+    if (!deckDef) return NextResponse.json({ message: 'There is no deck here.' });
 
-    // 1. Regenerate charges
+    // 4. Regenerate Charges & Check Limits
+    // This mutates the character object with new charge counts if time has passed
     regenerateDeckCharges(character, deckDef, gameData);
     
-    const handSize = parseInt(engineForCheck.evaluateBlock(`{${deckDef.hand_size}}`), 10) || 1;
+    const handSize = parseInt(engineForCheck.evaluateBlock(`{${deckDef.hand_size}}`), 10) || 3;
     const deckId = deckDef.id;
-    const currentCharges = character.deckCharges?.[deckId] ?? 0;
-    const currentHand = character.opportunityHands?.[deckId] ?? [];
+    
+    // Ensure arrays/objects exist
+    if (!character.opportunityHands) character.opportunityHands = {};
+    if (!character.opportunityHands[deckId]) character.opportunityHands[deckId] = [];
+    if (!character.deckCharges) character.deckCharges = {};
 
-    // 2. Check if player can draw.
+    const currentHand = character.opportunityHands[deckId];
+    
+    // Resolve Deck Size (Cap)
+    let deckSize = 0;
+    if (deckDef.deck_size) {
+        const val = engineForCheck.evaluateBlock(`{${deckDef.deck_size}}`);
+        deckSize = parseInt(val, 10);
+    }
+
+    const currentCharges = character.deckCharges[deckId] ?? 0;
+
+    // ERROR 1: Hand Full
     if (currentHand.length >= handSize) {
-        return NextResponse.json({ character, message: 'Your hand for this deck is full.' });
-    }
-    if (deckDef.deck_size && currentCharges <= 0) { 
-        return NextResponse.json({ character, message: 'No draws available for this deck right now.' });
+        return NextResponse.json({ character, message: `Your hand is full (${currentHand.length}/${handSize}).` });
     }
 
-    // FIX: Pass storyId to fetcher
+    // ERROR 2: No Charges (Only if deck_size is set)
+    if (deckSize > 0 && currentCharges <= 0) {
+        return NextResponse.json({ character, message: 'The deck is empty. Wait for it to refresh.' });
+    }
+
+    // 5. Fetch Cards & Filter
     const allCardsInDeck = await getOpportunitiesForDeck(storyId, location.deck);
-
+    
     const eligibleCards = allCardsInDeck.filter(card => {
-        const meetsConditions = engineForCheck.evaluateCondition(card.draw_condition);
+        // Check Logic: Visible If (legacy) AND Draw Condition
+        const drawCond = engineForCheck.evaluateCondition(card.draw_condition);
+        
+        // Check Exclusions: Already in hand?
         const notInHand = !currentHand.includes(card.id);
-        return notInHand && meetsConditions;
+        
+        return drawCond && notInHand;
     });
 
+    // ERROR 3: No Eligible Cards
     if (eligibleCards.length === 0) {
-        return NextResponse.json({ character, message: 'No cards available to draw.' });
+        return NextResponse.json({ character, message: 'No cards are available to draw right now.' });
     }
-    
+
+    // 6. Draw Logic (Weighted Random)
     let drawnCardId: string | undefined = undefined;
+    
+    // Check for "Always" priority first
     const alwaysCard = eligibleCards.find(card => card.frequency === "Always");
+    
     if (alwaysCard) {
         drawnCardId = alwaysCard.id;
     } else {
         const lotteryPool: string[] = [];
         for (const card of eligibleCards) {
-            const weight = FREQUENCY_WEIGHTS[card.frequency] || 1;
+            const weight = FREQUENCY_WEIGHTS[card.frequency] || 5;
             for (let i = 0; i < weight; i++) { lotteryPool.push(card.id); }
         }
+        
         if (lotteryPool.length > 0) {
             drawnCardId = lotteryPool[Math.floor(Math.random() * lotteryPool.length)];
         }
     }
-    
+
+    // 7. Commit Draw
     if (drawnCardId) {
-        if (deckDef.deck_size) character.deckCharges[deckId]--;
-        if (!character.opportunityHands) character.opportunityHands = {};
-        if (!character.opportunityHands[deckId]) character.opportunityHands[deckId] = [];
-        character.opportunityHands[deckId].push(drawnCardId);
-        
-        if (gameData.settings.useActionEconomy && gameData.settings.deckDrawCostsAction) {
-            const actionQid = gameData.settings.actionId.replace('$', '');
-            if(character.qualities[actionQid] && 'level' in character.qualities[actionQid]) {
-                (character.qualities[actionQid] as any).level--;
-            }
+        // Deduct Charge
+        if (deckSize > 0) {
+            character.deckCharges[deckId] = Math.max(0, currentCharges - 1);
         }
         
+        // Add to Hand
+        character.opportunityHands[deckId].push(drawnCardId);
+        
         await saveCharacterState(character);
-        return NextResponse.json(character); 
+        return NextResponse.json({ character }); 
     } else {
-        await saveCharacterState(character);
-        return NextResponse.json(character);
+        return NextResponse.json({ character, message: 'Failed to draw a card (Pool Empty).' });
     }
 }

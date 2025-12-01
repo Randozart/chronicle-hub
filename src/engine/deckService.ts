@@ -7,19 +7,18 @@ export const regenerateDeckCharges = (
     gameData: WorldContent
 ): CharacterDocument => {
     
-    if (!deckDef.timer) {
-        return character;
-    }
+    if (!deckDef.timer) return character;
 
     const deckId = deckDef.id;
-    
-    // 1. Resolve Deck Size
-    // Use a temporary engine to resolve soft-defined settings
     const tempEngine = new GameEngine(character.qualities, gameData);
     
-    const deckSize = typeof deckDef.deck_size === 'string'
-        ? parseInt(tempEngine.evaluateBlock(`{${deckDef.deck_size}}`), 10)
-        : 0;
+    // Resolve deck_size (The Cap)
+    const deckSizeStr = tempEngine.evaluateBlock(`{${deckDef.deck_size || '0'}}`);
+    const deckSize = parseInt(deckSizeStr, 10);
+
+    // If deck_size is 0 or NaN, it means "Unlimited Draws", so we never regenerate charges.
+    // We just return.
+    if (isNaN(deckSize) || deckSize <= 0) return character;
     
     // 2. Resolve Timer
     let timerValue = 0;
@@ -32,6 +31,15 @@ export const regenerateDeckCharges = (
         // Custom Timer (Logic or Number)
         const val = tempEngine.evaluateBlock(`{${deckDef.timer}}`);
         timerValue = parseInt(val, 10);
+    }
+
+    if (character.deckCharges[deckId] === undefined) {
+        character.deckCharges[deckId] = deckSize; // Start full if undefined? Or 0? 
+        // Usually start full or 0 depending on game design. Let's assume 0 if not in creation.
+        // Actually, Character Creation should have set this. 
+        // If it's missing, let's default to 0 to prevent crashes.
+        // character.deckCharges[deckId] = 0; 
+        // Nevermind, we want to start with a full deck.
     }
     
     if (isNaN(deckSize) || deckSize <= 0 || isNaN(timerValue) || timerValue <= 0) {
