@@ -12,16 +12,15 @@ export async function GET(request: NextRequest) {
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
 
-    const config = await getWorldConfig(storyId); 
-
-    if (!await verifyWorldAccess(storyId, 'owner')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // FIX 1: Change 'owner' to 'writer' so collaborators can load this list without 403
+    if (!await verifyWorldAccess(storyId, 'writer')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const world = await db.collection('worlds').findOne({ worldId: storyId }, { projection: { collaborators: 1 } });
     
-    // Enrich with Usernames/Emails (Optional, but nicer UI)
-    // For now, just return the array
     return NextResponse.json(world?.collaborators || []);
 }
 
