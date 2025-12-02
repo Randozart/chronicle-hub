@@ -17,9 +17,7 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
     const [categories, setCategories] = useState<string[]>([]);
     
     // Default based on mode
-    const [logicType, setLogicType] = useState<LogicType>(
-        mode === 'condition' ? 'skill_check' : 'standard'
-    );
+    const [logicType, setLogicType] = useState<LogicType>('standard');
 
     // Standard State
     const [selectedQ, setSelectedQ] = useState("");
@@ -272,7 +270,7 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
                 </button>
             </div>
             
-            <style jsx>{`
+            <style styled-jsx>{`
                 .tab-btn { 
                     background: #111; border: 1px solid #333; color: #888; 
                     padding: 6px 10px; border-radius: 4px; font-size: 0.7rem; 

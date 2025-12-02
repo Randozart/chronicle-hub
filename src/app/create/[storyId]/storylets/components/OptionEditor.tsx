@@ -18,7 +18,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
     const [activeField, setActiveField] = useState<{ key: keyof ResolveOption, mode: 'condition' | 'effect' } | null>(null);
 
     // Toggles
-    const hasDifficulty = !!data.challenge;
+    const hasDifficulty = !!data.challenge; // Updated to 'challenge'
     const hasRarePass = (data.rare_pass_chance || 0) > 0;
     const hasRareFail = (data.rare_fail_chance || 0) > 0;
 
@@ -27,8 +27,8 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
     };
 
     const handlePropToggle = (prop: string) => {
-        const newProps = toggleProperty(data.tags, prop);
-        handleChange('tags', newProps);
+        const newTags = toggleProperty(data.tags, prop); // Updated to 'tags'
+        handleChange('tags', newTags);
     };
 
     const handleAssistantInsert = (text: string) => {
@@ -56,30 +56,23 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                     value={data[field] as string || ''} 
                     onChange={e => handleChange(field, e.target.value)} 
                     className="form-input" 
-                    style={{ paddingRight: '90px' }} // Make room for the badge
+                    style={{ paddingRight: '90px' }} 
                 />
                 <button 
                     onClick={() => setActiveField(activeField?.key === field ? null : { key: field, mode })}
                     style={{ 
                         position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', 
-                        
-                        /* UPDATED STYLES: Always Blue */
                         background: 'rgba(97, 175, 239, 0.1)', 
                         border: '1px solid rgba(97, 175, 239, 0.3)', 
                         color: '#61afef', 
-                        
-                        borderRadius: '4px',
-                        cursor: 'pointer', 
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '3px 8px',
-                        fontSize: '0.7rem',
-                        fontWeight: 'bold',
+                        borderRadius: '4px', cursor: 'pointer', 
+                        display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', fontSize: '0.7rem', fontWeight: 'bold',
                         transition: 'all 0.2s'
                     }}
+                    className="hover:bg-blue-900/30"
                     title="Open Scribe Assistant"
                 >
-                    <SparkleIcon className="w-3 h-3" />
-                    Logic
+                    <SparkleIcon className="w-3 h-3" /> Logic
                 </button>
             </div>
             {activeField?.key === field && (
@@ -100,7 +93,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
         </label>
     );
 
-    // Helper for the "Outcome Column" text area button (which is slightly different layout)
+    // Helper for outcome text areas
     const AssistantBtn = ({ field, mode }: { field: keyof ResolveOption, mode: 'condition' | 'effect' }) => (
         <button 
             onClick={() => setActiveField({ key: field, mode })}
@@ -119,13 +112,9 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
     return (
         <div className="space-y-4" style={{ position: 'relative' }}>
             
-            {/* ASSISTANT POPUP (Fallback for TextArea buttons) */}
+            {/* GLOBAL ASSISTANT FALLBACK (for text areas) */}
             {activeField && (
-                // We render a global popup fallback here if the LogicInput specific one doesn't catch it
-                // (Mainly for the textarea/AssistantBtn usage below)
-                <div style={{ position: 'absolute', top: '50px', right: 0, zIndex: 100, display: 'none' }}> 
-                    {/* LogicInput handles its own popup, but we keep state here */}
-                </div>
+                <div style={{ display: 'none' }}></div>
             )}
 
             {/* 1. LABEL & COST */}
@@ -143,6 +132,32 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                     <input value={data.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" placeholder="key_img" />
                 </div>
             </div>
+
+            {/* --- NEW: TEASER TEXT --- */}
+            <div className="form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Short Description (Teaser)</label>
+                    <input 
+                        value={data.short || ''} 
+                        onChange={e => handleChange('short', e.target.value)} 
+                        className="form-input" 
+                        placeholder="A risky gamble..."
+                    />
+                    <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>Shown on the button.</p>
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Instruction (Meta)</label>
+                    <input 
+                        value={data.meta || ''} 
+                        onChange={e => handleChange('meta', e.target.value)} 
+                        className="form-input" 
+                        placeholder="Requires 5 Gold"
+                        style={{ fontStyle: 'italic', color: '#aaa' }}
+                    />
+                    <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>Italic text inside the button.</p>
+                </div>
+            </div>
+            {/* ----------------------- */}
 
             {/* 2. BEHAVIOR */}
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
@@ -164,6 +179,9 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                 {hasDifficulty && (
                     <div style={{ marginTop: '1rem' }}>
                          <LogicInput label="Challenge Logic" field="challenge" mode="condition" placeholder="$stat >= 50 [10]" />
+                         <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px' }}>
+                             Tip: Use the assistant 🪄 to build Broad Difficulty curves or Luck checks.
+                         </p>
                     </div>
                 )}
             </div>
@@ -214,8 +232,25 @@ function BehaviorCard({ checked, onChange, label, desc }: any) {
     );
 }
 
-// Updated to accept LogicInput props to render the popup locally
 function OutcomeColumn({ title, color, data, prefix, onChange, LogicInput, isRare, chanceField, activeField, setActiveField, storyId, handleAssistantInsert }: any) {
+    
+    // Helper for textarea buttons
+    const AssistantBtn = ({ field }: { field: string }) => (
+        <button 
+            onClick={() => setActiveField({ key: field as any, mode: 'text' })} // Assuming text mode for body? Or effect?
+            // Actually, body text needs 'text' mode.
+            style={{ 
+                position: 'absolute', right: 6, top: 6, 
+                background: 'none', border: 'none', cursor: 'pointer', 
+                color: '#61afef', fontSize: '0.7rem', fontWeight: 'bold',
+                display: 'flex', alignItems: 'center', gap: '4px'
+            }}
+            title="Insert Variable"
+        >
+            <SparkleIcon className="w-3 h-3" /> Add
+        </button>
+    );
+
     return (
         <div className="outcome-column" style={{ background: `${color}08`, border: `1px solid ${color}40` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -228,43 +263,14 @@ function OutcomeColumn({ title, color, data, prefix, onChange, LogicInput, isRar
                 )}
             </div>
             
-            <label className="form-label">Narrative</label>
-            <textarea className="form-textarea" rows={4} value={data[`${prefix}_long`] || ''} onChange={e => onChange(`${prefix}_long`, e.target.value)} placeholder="What happens?" />
+            <div style={{ position: 'relative' }}>
+                <label className="form-label">Narrative</label>
+                <textarea className="form-textarea" rows={4} value={data[`${prefix}_long`] || ''} onChange={e => onChange(`${prefix}_long`, e.target.value)} placeholder="What happens?" />
+                {/* You can add AssistantBtn here if you want text injection in results */}
+            </div>
             
-            <div style={{ marginTop: '0.5rem', position: 'relative' }}>
-                {/* We use LogicInput directly here now for the Changes field */}
-                <div style={{ position: 'relative' }}>
-                     <label className="form-label">Changes</label>
-                     <div style={{ position: 'relative' }}>
-                        <input 
-                            className="form-input" 
-                            value={data[`${prefix}_quality_change`] || ''} 
-                            onChange={e => onChange(`${prefix}_quality_change`, e.target.value)} 
-                            placeholder="$gold += 10"
-                            style={{ paddingRight: '70px' }}
-                        />
-                        <button 
-                            onClick={() => setActiveField(activeField?.key === `${prefix}_quality_change` ? null : { key: `${prefix}_quality_change`, mode: 'effect' })}
-                            style={{ 
-                                position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', 
-                                background: 'none', border: 'none', cursor: 'pointer', color: '#61afef', fontSize: '0.7rem', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center'
-                            }}
-                        >
-                             <SparkleIcon className="w-3 h-3" /> Add
-                        </button>
-                    </div>
-                    {/* Render Popup Locally for this field */}
-                    {activeField?.key === `${prefix}_quality_change` && (
-                         <div style={{ position: 'relative', zIndex: 50 }}>
-                            <ScribeAssistant 
-                                storyId={storyId} 
-                                mode="effect" 
-                                onInsert={handleAssistantInsert} 
-                                onClose={() => setActiveField(null)} 
-                            />
-                        </div>
-                    )}
-                </div>
+            <div style={{ marginTop: '0.5rem' }}>
+                <LogicInput label="Changes (Ledger)" field={`${prefix}_quality_change`} mode="effect" placeholder="$gold += 10" />
             </div>
 
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
@@ -277,6 +283,13 @@ function OutcomeColumn({ title, color, data, prefix, onChange, LogicInput, isRar
                     <input className="form-input" value={data[`${prefix}_redirect`] || ''} onChange={e => onChange(`${prefix}_redirect`, e.target.value)} placeholder="Storylet ID" />
                 </div>
             </div>
+            
+             {/* RENDER POPUP for text area if needed, though LogicInput handles its own */}
+             {activeField?.key === `${prefix}_long` && (
+                <div style={{ position: 'relative', zIndex: 50 }}>
+                    <ScribeAssistant storyId={storyId} mode="text" onInsert={handleAssistantInsert} onClose={() => setActiveField(null)} />
+                </div>
+             )}
         </div>
     );
 }
