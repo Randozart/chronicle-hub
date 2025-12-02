@@ -84,12 +84,6 @@ export const getOrCreateCharacter = async (
     const worldContent = await getWorldConfig(storyId);
     const initialQualities: PlayerQualities = {};
     const rules = worldContent.char_create || {};
-
-    const startingLocation = 
-        choices?.['location'] || 
-        worldContent.char_create['$location'] || 
-        worldContent.settings.startLocation || 
-        'village';
     
     // PHASE 1: Direct Values (Inputs & Static Numbers)
     for (const key in rules) {
@@ -196,7 +190,11 @@ export const getOrCreateCharacter = async (
     }
 
     // Location & Name Extraction
-    const startingLocation = choices?.['location'] || worldContent.char_create['$location'] || 'village';
+    const startingLocation = 
+        choices?.['location'] || 
+        worldContent.char_create['$location'] || 
+        worldContent.settings.startLocation || 
+        'village';
     
     let charName = choices?.['player_name'];
     // Try to grab from calculated qualities
