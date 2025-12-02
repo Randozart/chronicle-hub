@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const { storyId, data } = body; // We need storyId before anything else
 
     // SECURITY CHECK
-    if (!await verifyWorldAccess(storyId, 'owner')) {
+    if (!await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     
@@ -64,7 +64,7 @@ const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
     const id = searchParams.get('id');
 
-    if (!storyId || !await verifyWorldAccess(storyId, 'owner')) {
+    if (!storyId || !await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }    
     

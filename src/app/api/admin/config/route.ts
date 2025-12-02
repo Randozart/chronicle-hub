@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 3. Security Check (Pass ID, not Request)
-        if (!await verifyWorldAccess(storyId, 'owner')) {
+        if (!await verifyWorldAccess(storyId, 'writer')) {
              return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -35,7 +35,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
 
-    if (!storyId || !await verifyWorldAccess(storyId, 'owner')) {
+    if (!storyId || !await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

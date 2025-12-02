@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const { storyId, data } = body; // We need storyId before anything else
 
     // SECURITY CHECK
-    if (!await verifyWorldAccess(storyId, 'owner')) {
+    if (!await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }    
     
@@ -57,7 +57,7 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id');
 
     // SECURITY CHECK
-    if (!storyId || !await verifyWorldAccess(storyId, 'owner')) {
+    if (!storyId || !await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }    
     
