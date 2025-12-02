@@ -175,7 +175,7 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 <label className="special-label" style={{ color: '#61afef' }}>Access Control</label>
                 
                 <div className="form-group" style={{ position: 'relative' }}>
-                    <label className="form-label">Visible Condition (Secrecy)</label>
+                    <label className="form-label">Visible Condition</label>
                     <div style={{ position: 'relative' }}>
                         <input 
                             value={form.visibleCondition || ''} 
@@ -184,11 +184,12 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                             placeholder="$discovered_map >= 1"
                             style={{ paddingRight: '40px' }}
                         />
-                        <button onClick={() => setActiveField('visible')} style={{ position: 'absolute', right: 5, top: 5, background: 'none', border: 'none', cursor: 'pointer', color: '#61afef' }}>
+                        <button onClick={() => setActiveField('visible')} /* ... styles ... */>
                             <SparkleIcon />
                         </button>
                     </div>
-                    <p className="special-desc">If false, location doesn't appear on map.</p>
+                    {/* UPDATED TEXT */}
+                    <p className="special-desc">If empty, it is always visible. If condition fails, it's hidden from the map.</p>
                 </div>
 
                 <div className="form-group" style={{ position: 'relative' }}>
@@ -205,7 +206,7 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                             <SparkleIcon />
                         </button>
                     </div>
-                    <p className="special-desc">If false, location appears but is greyed out.</p>
+                    <p className="special-desc">If empty, it is unlocked. If condition fails, icon is greyed out.</p>
                 </div>
             </div>
 
