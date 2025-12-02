@@ -1,6 +1,6 @@
 'use client';
 
-import { ImageDefinition, PlayerQualities, QualityDefinition } from "@/engine/models";
+import { ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
 import { useState, useMemo } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
@@ -13,6 +13,7 @@ interface PossessionsProps {
     onUpdateCharacter: (character: any) => void; 
     storyId: string;
     imageLibrary: Record<string, ImageDefinition>;
+    settings: WorldSettings;
 }
 
 const formatBonus = (bonusStr: string, qualityDefs: Record<string, QualityDefinition>) => {
@@ -34,12 +35,14 @@ export default function Possessions({
     equipCategories,
     onUpdateCharacter,
     storyId,
-    imageLibrary
+    imageLibrary,
+    settings
 }: PossessionsProps) {
     
     const [isLoading, setIsLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category");
+    const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
 
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
@@ -68,6 +71,7 @@ export default function Possessions({
     const inventoryItems = useMemo(() => {
         return Object.keys(qualities)
             .map(qid => {
+                if (currencyIds.includes(qid)) return null;
                 const def = qualityDefs[qid];
                 const state = qualities[qid];
                 if (!def || !state) return null;

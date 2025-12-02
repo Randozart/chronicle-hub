@@ -10,6 +10,7 @@ import ProfilePanel from '../ProfilePanel';
 import Possessions from '../Possessions';
 import ActionTimer from '../ActionTimer';
 import { useState } from 'react';
+import WalletHeader from '../WalletHeader';
 
 export default function NexusLayout(props: LayoutProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
@@ -43,6 +44,7 @@ export default function NexusLayout(props: LayoutProps) {
                 onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} // Simplified update
                 storyId={props.character.storyId}
                 imageLibrary={props.imageLibrary}
+                settings={props.settings}
             />;
         }
         
@@ -106,7 +108,13 @@ export default function NexusLayout(props: LayoutProps) {
     return (
         <div className="hub-layout">
             <div className="sidebar-column left">
-                {/* Action Timer */}
+                <WalletHeader 
+                    qualities={props.character.qualities}
+                    qualityDefs={props.qualityDefs}
+                    settings={props.settings}
+                    imageLibrary={props.imageLibrary}
+                />
+
                 <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-panel)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Actions: {currentActions} / {maxActions}</h3>
                     <ActionTimer 

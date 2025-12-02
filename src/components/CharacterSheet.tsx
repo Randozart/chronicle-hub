@@ -16,6 +16,7 @@ const getCPforNextLevel = (level: number): number => level + 1;
 export default function CharacterSheet({ qualities, equipment, qualityDefs, settings, categories }: CharacterSheetProps) {
     
     const categoriesToDisplay = settings.characterSheetCategories || [];
+    const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
 
     const getEffectiveLevel = (qid: string, baseLevel: number) => {
         let total = baseLevel;
@@ -42,6 +43,8 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
     const characterQualities = useMemo(() => {
         return Object.keys(qualities)
         .map(qid => {
+            if (currencyIds.includes(qid)) return null;
+
             const definition = qualityDefs[qid];
             const state = qualities[qid];
             if (!definition) return null;

@@ -10,6 +10,7 @@ import ProfilePanel from '../ProfilePanel';
 import Possessions from '../Possessions';
 import ActionTimer from '../ActionTimer';
 import GameImage from '../GameImage';
+import WalletHeader from '../WalletHeader';
 
 export default function LondonLayout(props: LayoutProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
@@ -30,7 +31,7 @@ export default function LondonLayout(props: LayoutProps) {
                 settings={props.settings} /* <--- MAKE SURE THIS IS HERE */
             />;
         }        
-        if (activeTab === 'possessions') return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} />;
+        if (activeTab === 'possessions') return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} settings={props.settings}/>;
                 
         if (props.isLoading) return <div className="storylet-container loading-container"><p>Loading...</p></div>;
         
@@ -146,6 +147,14 @@ export default function LondonLayout(props: LayoutProps) {
                         <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-panel)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
                             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Actions: {currentActions} / {maxActions}</h3>
                             <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={handleActionRegen} />
+                        </div>
+                        <div style={{ marginBottom: '1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)', overflow: 'hidden' }}>
+                        <WalletHeader 
+                            qualities={props.character.qualities}
+                            qualityDefs={props.qualityDefs}
+                            settings={props.settings}
+                            imageLibrary={props.imageLibrary}
+                        />
                         </div>
                         <CharacterSheet qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
                     </div>

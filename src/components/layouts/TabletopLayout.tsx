@@ -42,7 +42,7 @@ export default function TabletopLayout(props: LayoutProps) {
                 settings={props.settings} /* <--- MAKE SURE THIS IS HERE */
             />;
         }        
-        if (activeTab === 'possessions') return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} />;
+        if (activeTab === 'possessions') return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} settings={props.settings}/>;
                 
         if (props.isLoading) return <div className="storylet-container loading-container"><p>Loading...</p></div>;
         
