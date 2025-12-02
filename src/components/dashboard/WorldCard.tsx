@@ -1,24 +1,25 @@
 import Link from 'next/link';
 
-export default function WorldCard({ w, isOwner, isGuest }: { w: any, isOwner: boolean, isGuest?: boolean }) {
+export default function WorldCard({ w, isOwner }: { w: any, isOwner: boolean }) {
+    // robustly get theme, defaulting to 'default'
     const theme = w.settings?.visualTheme || 'default';
 
     return (
-        // APPLY THEME HERE
         <div 
-            className="card theme-wrapper" // Add theme-wrapper class to ensure font/color inheritance
-            data-theme={theme} 
+            className="card theme-wrapper" 
+            data-theme={theme} // <--- This applies the CSS variables
             style={{ 
                 overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', 
                 border: '1px solid var(--border-color)', 
                 borderRadius: 'var(--border-radius)', 
                 backgroundColor: 'var(--bg-panel)',
-                color: 'var(--text-primary)', // Explicitly set text color for this scope
-                fontFamily: 'var(--font-main)'
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-main)',
+                transition: 'transform 0.2s',
             }}
         >
             {/* COVER IMAGE */}
-            <div style={{ height: '150px', background: '#000', position: 'relative' }}>
+            <div style={{ height: '150px', background: '#000', position: 'relative', borderBottom: '1px solid var(--border-color)' }}>
                 {w.coverImage ? (
                     <img src={w.coverImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={w.title} />
                 ) : (
@@ -26,18 +27,18 @@ export default function WorldCard({ w, isOwner, isGuest }: { w: any, isOwner: bo
                         {w.title.charAt(0)}
                     </div>
                 )}
+                
+                {/* COLLAB BADGE */}
+                {isOwner && w.ownerId && w.currentUserId && w.ownerId !== w.currentUserId && (
+                    <div style={{ position: 'absolute', top: 10, right: 10, background: '#f1c40f', color: 'black', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                        COLLABORATOR
+                    </div>
+                )}
             </div>
 
             <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', color: 'var(--text-primary)' }}>{w.title}</h3>
-                    
-                    {/* CHARACTER NAME BADGE */}
-                    {w.characterName && (
-                         <span style={{ fontSize: '0.75rem', color: 'var(--accent-highlight)', fontWeight: 'bold' }}>
-                            {w.characterName}
-                         </span>
-                    )}
                 </div>
 
                 {/* TAGS */}
@@ -50,20 +51,19 @@ export default function WorldCard({ w, isOwner, isGuest }: { w: any, isOwner: bo
                         ))}
                     </div>
                 )}
+
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', flex: 1, marginBottom: '1rem' }}>
+                    {w.summary || "No summary provided."}
+                </p>
                 
-                <div style={{ marginTop: '1rem', display: 'flex', gap: '10px' }}>
-                    {isGuest ? (
-                        <Link href="/login" className="continue-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem' }}>
-                            Login to Play
-                        </Link>
-                    ) : (
-                        <Link href={`/play/${w.worldId}`} className="continue-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem' }}>
-                            Play
-                        </Link>
-                    )}
+                <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
+                    <Link href={`/play/${w.worldId}`} className="continue-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem', textAlign: 'center' }}>
+                        Play
+                    </Link>
                     
+                    {/* EDIT BUTTON - Only shows if isOwner (canEdit) is true */}
                     {isOwner && (
-                        <Link href={`/create/${w.worldId}/settings`} className="return-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem' }}>
+                        <Link href={`/create/${w.worldId}/settings`} className="return-button" style={{ flex: 1, textDecoration: 'none', padding: '0.5rem', textAlign: 'center' }}>
                             Edit
                         </Link>
                     )}

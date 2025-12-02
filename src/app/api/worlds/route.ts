@@ -77,6 +77,11 @@ export async function GET(request: NextRequest) {
     
     // Exclude worlds we own or collab on from the "Played" list
     const myWorldIds = myWorlds.map(w => w.worldId);
+    
+    const myWorldsWithUser = myWorlds.map(w => ({
+        ...w,
+        currentUserId: userId // Add this field
+    }));
 
     const playedWorlds = await db.collection('worlds')
         .find({ 
@@ -92,7 +97,7 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ 
-        myWorlds, 
+        myWorlds: myWorldsWithUser, 
         playedWorlds: enrichedPlayedWorlds 
     });
 }
