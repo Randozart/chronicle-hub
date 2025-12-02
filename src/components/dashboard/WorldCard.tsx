@@ -1,7 +1,14 @@
+'use client'
+
 import Link from 'next/link';
 
-export default function WorldCard({ w, isOwner }: { w: any, isOwner: boolean }) {
-    // robustly get theme, defaulting to 'default'
+interface WorldCardProps {
+    w: any;
+    isOwner: boolean;
+    isGuest?: boolean; // <--- ADD THIS (Optional)
+}
+
+export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProps) {
     const theme = w.settings?.visualTheme || 'default';
 
     return (
