@@ -37,6 +37,7 @@ export default async function AdminLayout({ children, params }: { children: Reac
                        <AdminLink href={`${base}/decks`} label="Decks" />
                        <AdminLink href={`${base}/locations`} label="Locations" />
                        <AdminLink href={`${base}/regions`} label="Map Regions" />
+                       <AdminLink href={`${base}/markets`} label="Markets" />
                        <AdminLink href={`${base}/images`} label="Image Library" />
                        <AdminLink href={`${base}/players`} label="Player Monitor" />
                        <AdminLink href={`${base}/settings`} label="Settings" />

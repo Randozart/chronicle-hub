@@ -134,6 +134,7 @@ export interface MapRegion {
     image?: string;
     width?: number;
     height?: number;
+    marketId?: string; // Fallback Link
 }
 
 export interface LocationDefinition {
@@ -147,6 +148,7 @@ export interface LocationDefinition {
     coordinates: { x: number, y: number };
     unlockCondition?: string; // Logic
     visibleCondition?: string; // Logic (New)
+    marketId?: string; // Link to a Market
 }
 
 export interface WorldSettings {
@@ -301,6 +303,7 @@ export interface WorldConfig {
     images: Record<string, ImageDefinition>; 
     categories?: Record<string, CategoryDefinition>;
     regions: Record<string, MapRegion>;
+    markets: Record<string, MarketDefinition>; 
 }
 
 export type WorldContent = WorldConfig;
@@ -328,4 +331,37 @@ export interface WorldDocument {
         char_create: Record<string, string>;
     };
     collaborators?: { userId: string, role: 'admin' | 'writer' }[];
+}
+
+// --- MARKET INTERFACES ---
+
+export type ShopMode = 'buy' | 'sell';
+
+export interface ShopListing {
+    id: string;             // Unique internal ID
+    qualityId: string;      // The item being traded
+    price: string;          // Logic: "10" or "$charisma * 2"
+    currencyId?: string;    // Optional override. If undefined, use Market default.
+    description?: string;   // Optional flavor text
+    
+    // Gates
+    visible_if?: string;    
+    unlock_if?: string;     
+}
+
+export interface ShopStall {
+    id: string;
+    name: string;
+    description?: string;
+    image?: string;         // Icon for the tab
+    mode: ShopMode;         // 'buy' or 'sell'
+    listings: ShopListing[];
+}
+
+export interface MarketDefinition {
+    id: string;
+    name: string;
+    image?: string;            // Banner/Background
+    defaultCurrencyId: string; // e.g., "gold"
+    stalls: ShopStall[];       // The tabs
 }
