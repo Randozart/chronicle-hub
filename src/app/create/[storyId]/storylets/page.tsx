@@ -36,24 +36,40 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
     }, [selectedId]);
 
     // 3. Create New
-    const handleCreate = () => {
+    const handleCreate = async () => {
         const newId = prompt("Enter unique Storylet ID:");
         if (!newId) return;
         
         // Basic validation
         if (storylets.find(s => s.id === newId)) { alert("Exists"); return; }
-
+        
         const newStorylet: Storylet = {
             id: newId,
             name: "New Storylet",
             text: "Write your story here...",
-            options: []
+            options: [],
+            tags: [], // Ensure this is initialized
+            status: 'draft'
         };
 
-        // Optimistic update
+        // OPTIMISTIC UPDATE
         setStorylets(prev => [...prev, { id: newId, name: newStorylet.name }]);
-        setSelectedId(newId);
-        setActiveStorylet(newStorylet); // Pre-fill detail view
+        
+        // SERVER SAVE (The Fix)
+        try {
+            await fetch('/api/admin/storylets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId: storyId, data: newStorylet })
+            });
+            
+            // Only select AFTER save is confirmed
+            setSelectedId(newId);
+            setActiveStorylet(newStorylet);
+        } catch (e) {
+            console.error("Failed to create storylet:", e);
+            alert("Failed to save new storylet to server.");
+        }
     };
 
     // 4. Save Handler

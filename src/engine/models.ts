@@ -157,6 +157,7 @@ export interface WorldSettings {
     regenIntervalInMinutes: number;
     regenAmount: number | string; 
     defaultActionCost?: number;
+    startLocation?: string; // <--- NEW
     
     // UI / Categories
     characterSheetCategories: string[];

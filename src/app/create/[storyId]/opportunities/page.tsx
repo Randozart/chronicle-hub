@@ -36,7 +36,7 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
     }, [selectedId]);
 
     // 3. Create New
-    const handleCreate = () => {
+    const handleCreate = async () => {
         const newId = prompt("Enter unique Opportunity ID:");
         if (!newId) return;
         
@@ -48,12 +48,27 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
             text: "A card appears...",
             deck: "village_deck",
             frequency: "Standard",
-            options: []
+            options: [],
+            tags: [],
+            can_discard: true,
+            keep_if_invalid: false
         };
 
         setOpportunities(prev => [...prev, { id: newId, name: newOpportunity.name }]);
-        setSelectedId(newId);
-        setActiveOpportunity(newOpportunity); 
+
+        // SERVER SAVE
+        try {
+            await fetch('/api/admin/opportunities', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId: storyId, data: newOpportunity })
+            });
+            
+            setSelectedId(newId);
+            setActiveOpportunity(newOpportunity); 
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     // 4. Save Handler

@@ -30,6 +30,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         layoutStyle: 'nexus',
         currencyQualities: [], // e.g. ["gold", "jade", "favours"]
         defaultActionCost: 1,  // <--- Initialize
+        startLocation: "village",
     });
     
     const [isLoading, setIsLoading] = useState(true);
@@ -170,6 +171,16 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             className="form-input" 
                             placeholder="$player_portrait"
                         />
+                    </div>
+                     <div className="form-group" style={{ marginTop: '1rem' }}>
+                        <label className="form-label">Starting Location ID</label>
+                        <input 
+                            value={form.startLocation || ''} 
+                            onChange={e => handleChange('startLocation', e.target.value)} 
+                            className="form-input" 
+                            placeholder="village_square"
+                        />
+                        <p className="special-desc">Where new characters spawn if not specified in creation rules.</p>
                     </div>
                 </div>
                 <p style={{ fontSize: '0.75rem', color: '#666', fontStyle: 'italic', marginTop: '0.5rem' }}>
