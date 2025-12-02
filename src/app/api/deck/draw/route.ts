@@ -30,35 +30,56 @@ export async function POST(request: NextRequest) {
     let character = await getCharacter(userId, storyId, characterId);
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
-
-    // 2. Action Economy Cost (If enabled)
-    if (gameData.settings.useActionEconomy && gameData.settings.deckDrawCostsAction) {
-        character = await regenerateActions(character); 
-        
-        const actionQid = gameData.settings.actionId.replace('$', '');
-        const actionsState = character.qualities[actionQid];
-        const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
-        
-        if (currentActions < 1) { 
-            return NextResponse.json({ message: 'Not enough actions to draw.' }); // Use message to show alert
-        }
-        
-        if (actionsState && 'level' in actionsState) {
-            actionsState.level--;
-            character.lastActionTimestamp = new Date();
-        }
-    }
     
-    // 3. Identify Deck
     const engineForCheck = new GameEngine(character.qualities, gameData, character.equipment);
     const location = gameData.locations[character.currentLocationId];
     
     if (!location) return NextResponse.json({ error: 'Invalid location' }, { status: 500 });
     
     const deckDef = gameData.decks[location.deck];
-    if (!deckDef) return NextResponse.json({ message: 'There is no deck here.' });
 
-    // 4. Regenerate Charges & Check Limits
+    if (!deckDef) return NextResponse.json({ message: 'There is no deck here.' });
+    // 2. Action Economy Cost (If enabled)
+
+    // Determine final cost expression
+    let costExpression = deckDef.draw_cost || gameData.settings.defaultDrawCost || "1";
+
+    // If it resolves to a number, treat as Actions
+    const numericCost = parseInt(costExpression, 10);
+    const isPureNumber = !isNaN(numericCost) && /^\d+$/.test(costExpression.trim());
+
+    if (isPureNumber && numericCost > 0) {
+        // --- CASE A: ACTION ECONOMY ---
+        if (gameData.settings.useActionEconomy) {
+            character = await regenerateActions(character);
+            
+            const actionQid = gameData.settings.actionId.replace('$', '');
+            const actionsState = character.qualities[actionQid];
+            const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
+            
+            if (currentActions < numericCost) {
+                 return NextResponse.json({ message: 'Not enough actions to draw.' });
+            }
+            
+            // Deduct Actions
+            if (actionsState && 'level' in actionsState) {
+                (actionsState as any).level -= numericCost;
+                character.lastActionTimestamp = new Date(); // Reset regen
+            }
+        }
+    } else {
+        // --- CASE B: CUSTOM LOGIC ($gold -= 5) ---
+        try {
+            if (costExpression.match(/(-=|\+=|=)/)) {
+                const engine = new GameEngine(character.qualities, gameData, character.equipment);
+                engine.applyEffect(costExpression);
+                character.qualities = engine.getQualities();
+            }
+        } catch (e) {
+            console.error("Draw Cost Error:", e);
+        }
+    }    
+
     // This mutates the character object with new charge counts if time has passed
     regenerateDeckCharges(character, deckDef, gameData);
     

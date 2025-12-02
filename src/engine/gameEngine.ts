@@ -168,14 +168,14 @@ export class GameEngine {
         return typeof result === 'boolean' ? result : Number(result) > 0;
     }
 
-    private evaluateEffects(effects: string): void {
+    public evaluateEffects(effects: string): void {
         const individualEffects = effects.split(',');
         for (const effect of individualEffects) {
             this.applyEffect(effect.trim());
         }
     }
 
-    private applyEffect(effect: string): void {
+    public applyEffect(effect: string): void {
         // 1. Conditional Effects
         const conditionalMatch = effect.match(/^{\s*(.*?)\s*:\s*(.*?)(?:\s*\|\s*(.*))?\s*}$/);
         if (conditionalMatch) {

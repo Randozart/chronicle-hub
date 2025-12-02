@@ -33,22 +33,37 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         startLocation: "village",
     });
     
+    const [existingQIDs, setExistingQIDs] = useState<string[]>([]); // Track existing DB qualities
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        Promise.all([
-            fetch(`/api/admin/settings?storyId=${storyId}`).then(r => r.json()),
-            fetch(`/api/admin/char_create?storyId=${storyId}`).then(r => r.ok ? r.json() : {})
-        ]).then(([settingsData, charData]) => {
+        const load = async () => {
+            // Fetch everything in parallel
+            const [sRes, cRes, qRes] = await Promise.all([
+                fetch(`/api/admin/settings?storyId=${storyId}`),
+                fetch(`/api/admin/char_create?storyId=${storyId}`),
+                fetch(`/api/admin/qualities?storyId=${storyId}`)
+            ]);
+
+            const sData = await sRes.json();
+            const cData = cRes.ok ? await cRes.json() : {};
+            const qData = qRes.ok ? await qRes.json() : {};
+
+            setExistingQIDs(Object.keys(qData));
+
             setForm(prev => ({ 
                 ...prev, 
-                ...settingsData,
-                characterSheetCategories: settingsData.characterSheetCategories || [],
-                equipCategories: settingsData.equipCategories || [],
-                char_create: charData || {}
+                ...sData,
+                // Safety defaults for arrays
+                characterSheetCategories: sData.characterSheetCategories || [],
+                equipCategories: sData.equipCategories || [],
+                currencyQualities: sData.currencyQualities || [],
+                char_create: cData || {}
             }));
-        }).finally(() => setIsLoading(false));
+            setIsLoading(false);
+        };
+        load();
     }, [storyId]);
 
     const handleChange = (field: keyof SettingsForm, val: any) => {
@@ -58,6 +73,29 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const handleArrayChange = (field: 'characterSheetCategories' | 'equipCategories' | 'currencyQualities' | 'tags', strVal: string) => {
         const arr = strVal.split(',').map(s => s.trim()).filter(Boolean);
         setForm(prev => ({ ...prev, [field]: arr }));
+    };
+    
+    const createQuality = async (qid: string, type: QualityType = QualityType.Counter) => {
+        const cleanId = qid.replace('$', '');
+        if (existingQIDs.includes(cleanId)) return;
+
+        const newQuality = {
+            id: cleanId,
+            name: cleanId.charAt(0).toUpperCase() + cleanId.slice(1).replace(/_/g, ' '),
+            type: type,
+            category: 'system',
+            description: 'Auto-generated system quality.'
+        };
+
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'qualities', itemId: cleanId, data: newQuality })
+            });
+            setExistingQIDs(prev => [...prev, cleanId]); // Optimistic update
+            alert(`Created quality: ${cleanId}`);
+        } catch(e) { console.error(e); }
     };
 
     const handleSave = async () => {
@@ -105,6 +143,12 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
+    
+    const cleanID = (id: string) => id.replace('$', '').trim();
+
+    const missingCurrencies = (form.currencyQualities || [])
+        .filter(c => Boolean(c)) // remove empty strings
+        .filter(c => !existingQIDs.includes(cleanID(c)));
 
     return (
         <div className="admin-editor-col" style={{ maxWidth: '900px', margin: '0 auto' }}>            
@@ -309,40 +353,56 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 className="form-input" 
                             />
                         </div>
-                        <div className="form-group">
-                             <label className="form-label" style={{visibility: 'hidden'}}>Draw Cost</label>
-                             <label className="toggle-label">
-                                <input type="checkbox" checked={form.deckDrawCostsAction} onChange={e => handleChange('deckDrawCostsAction', e.target.checked)} />
-                                Drawing Cards Costs Action
-                            </label>
-                        </div>
                     </div>
                 )}
 
-                {/* New "Economy" Section */}
-                <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
-                    <label className="special-label" style={{ color: '#f1c40f' }}>Economy</label>
-                    <div className="form-group">
-                        <label className="form-label">Currencies (Comma Separated IDs)</label>
-                        <input 
-                            defaultValue={form.currencyQualities?.join(', ')} 
-                            onBlur={e => handleArrayChange('currencyQualities', e.target.value)} 
-                            className="form-input" 
-                            placeholder="gold, echoes, favour" 
-                        />
-                        <p className="special-desc">These will be moved from the sidebar to the Wallet header.</p>
-                    </div>
+                {/* NEW: Default Draw Cost */}
+                <div className="form-group" style={{ marginTop: '1rem', borderTop: '1px dashed #444', paddingTop: '1rem' }}>
+                    <label className="form-label">Default Deck Draw Cost</label>
+                    <input 
+                        value={form.defaultDrawCost || ''} 
+                        onChange={e => handleChange('defaultDrawCost', e.target.value)} 
+                        className="form-input" 
+                        placeholder="Numeric (1, 2, 0) or a quality modification ($gold -= 5 or $wounds++)"
+                    />
+                    <p className="special-desc">Applied if a deck doesn't specify its own cost.</p>
                 </div>
-                
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label className="form-label">Sidebar Categories (Comma Separated)</label>
-                    <input defaultValue={form.characterSheetCategories.join(', ')} onBlur={e => handleArrayChange('characterSheetCategories', e.target.value)} className="form-input" placeholder="character, menace, currency" />
-                </div>
-                
+            </div>
+
+            {/* ECONOMY (With Auto-Create) */}
+            <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
+                <label className="special-label" style={{ color: '#f1c40f' }}>Economy</label>
                 <div className="form-group">
-                    <label className="form-label">Equipment Slots</label>
-                    <input defaultValue={form.equipCategories?.join(', ')} onBlur={e => handleArrayChange('equipCategories', e.target.value)} className="form-input" placeholder="head, body, weapon" />
+                    <label className="form-label">Currencies (Comma Separated IDs)</label>
+                    <input 
+                        defaultValue={form.currencyQualities?.join(', ')} 
+                        onBlur={e => handleArrayChange('currencyQualities', e.target.value)} 
+                        className="form-input" 
+                        placeholder="gold, echoes, favour" 
+                    />
+                    <p className="special-desc">These will be moved from the sidebar to the Wallet header.</p>
                 </div>
+                
+                {/* AUTO CREATE BUTTONS FOR CURRENCY */}
+                {missingCurrencies.length > 0 && (
+                    <div style={{ background: 'rgba(241, 196, 15, 0.1)', border: '1px solid #f1c40f', padding: '0.5rem', borderRadius: '4px', marginTop: '0.5rem' }}>
+                        <p style={{ margin: '0 0 0.5rem 0', color: '#f1c40f', fontSize: '0.8rem', fontWeight: 'bold' }}>Missing Definitions:</p>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {missingCurrencies.map(c => {
+                                const id = cleanID(c);
+                                return (
+                                    <button 
+                                        key={id} 
+                                        onClick={() => createQuality(id, QualityType.Counter)}
+                                        style={{ background: '#f1c40f', color: 'black', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        + Create Quality: {id}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* --- 4. VISUALS --- */}
