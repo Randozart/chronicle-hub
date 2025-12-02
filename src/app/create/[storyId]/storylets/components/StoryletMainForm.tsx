@@ -15,7 +15,8 @@ interface Props {
 export default function StoryletMainForm({ initialData, onSave, onDelete }: Props) {
     const [form, setForm] = useState(initialData);
     
-    const [activeField, setActiveField] = useState<'text' | 'autofire' | null>(null);
+    // Expanded state to include requirements
+    const [activeField, setActiveField] = useState<'text' | 'autofire' | 'visible_if' | 'unlock_if' | null>(null);
     
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
@@ -25,11 +26,15 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    const handleTextInsert = (text: string) => {
+    const handleInsert = (text: string) => {
         if (activeField === 'text') {
              handleChange('text', (form.text || "") + " " + text);
         } else if (activeField === 'autofire') {
              handleChange('autofire_if', (form.autofire_if || "") + text);
+        } else if (activeField === 'visible_if') {
+             handleChange('visible_if', (form.visible_if || "") + text);
+        } else if (activeField === 'unlock_if') {
+             handleChange('unlock_if', (form.unlock_if || "") + text);
         }
     };
 
@@ -56,7 +61,8 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
-                {/* INPUTS */}
+                
+                {/* BASIC INFO */}
                 <div className="form-row">
                     <div className="form-group"><label className="form-label">Title</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
                     <div className="form-group"><label className="form-label">Location ID</label><input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" /></div>
@@ -66,8 +72,75 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                     <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
                 </div>
 
+                {/* --- REQUIREMENTS SECTION --- */}
+                <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
+                    <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Requirements (Gates)</label>
+                    
+                    <div className="form-row">
+                        {/* VISIBLE IF */}
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            <label className="form-label">Visible If</label>
+                            <div style={{ position: 'relative' }}>
+                                <input 
+                                    placeholder="$gold > 0" 
+                                    value={form.visible_if || ''} 
+                                    onChange={e => handleChange('visible_if', e.target.value)} 
+                                    className="form-input" 
+                                    style={{ paddingRight: '80px' }}
+                                />
+                                <button 
+                                    onClick={() => setActiveField(activeField === 'visible_if' ? null : 'visible_if')}
+                                    style={{ 
+                                        position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', 
+                                        background: 'rgba(97, 175, 239, 0.1)', border: '1px solid rgba(97, 175, 239, 0.3)', 
+                                        color: '#61afef', borderRadius: '4px', cursor: 'pointer', 
+                                        display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', fontSize: '0.7rem', fontWeight: 'bold'
+                                    }}
+                                >
+                                    <SparkleIcon className="w-3 h-3" /> Logic
+                                </button>
+                            </div>
+                            {activeField === 'visible_if' && (
+                                <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '5px' }}>
+                                    <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleInsert} onClose={() => setActiveField(null)} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* UNLOCK IF */}
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            <label className="form-label">Unlock If</label>
+                            <div style={{ position: 'relative' }}>
+                                <input 
+                                    placeholder="$gold >= 10" 
+                                    value={form.unlock_if || ''} 
+                                    onChange={e => handleChange('unlock_if', e.target.value)} 
+                                    className="form-input" 
+                                    style={{ paddingRight: '80px' }}
+                                />
+                                <button 
+                                    onClick={() => setActiveField(activeField === 'unlock_if' ? null : 'unlock_if')}
+                                    style={{ 
+                                        position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', 
+                                        background: 'rgba(97, 175, 239, 0.1)', border: '1px solid rgba(97, 175, 239, 0.3)', 
+                                        color: '#61afef', borderRadius: '4px', cursor: 'pointer', 
+                                        display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', fontSize: '0.7rem', fontWeight: 'bold'
+                                    }}
+                                >
+                                    <SparkleIcon className="w-3 h-3" /> Logic
+                                </button>
+                            </div>
+                            {activeField === 'unlock_if' && (
+                                <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '5px' }}>
+                                    <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleInsert} onClose={() => setActiveField(null)} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 {/* MAIN TEXT */}
-                <div className="form-group" style={{ position: 'relative', zIndex: 20 }}>
+                <div className="form-group" style={{ position: 'relative', zIndex: 20, marginTop: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                         <label className="form-label" style={{ margin: 0 }}>Main Text</label>
                         <button 
@@ -78,11 +151,17 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                                 display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 8px'
                             }}
                         >
-                            <SparkleIcon className="w-3 h-3" /> Logic
+                            <SparkleIcon className="w-3 h-3" /> Text Logic
                         </button>
                     </div>
                     
-                    {/* TEXTAREA: Lower Z-Index */}
+                    {/* POPUP: Rendered BEFORE textarea to avoid z-index wars, but positioned absolutely */}
+                    {activeField === 'text' && (
+                        <div style={{ position: 'absolute', top: '30px', right: 0, zIndex: 100 }}>
+                            <ScribeAssistant storyId={storyId} mode="text" onInsert={handleInsert} onClose={() => setActiveField(null)} />
+                        </div>
+                    )}
+                    
                     <textarea 
                         value={form.text} 
                         onChange={e => handleChange('text', e.target.value)} 
@@ -90,13 +169,6 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                         rows={6} 
                         style={{ position: 'relative', zIndex: 1 }}
                     />
-
-                    {/* POPUP: Rendered AFTER textarea, Higher Z-Index */}
-                    {activeField === 'text' && (
-                        <div style={{ position: 'absolute', top: '30px', right: 0, zIndex: 100 }}>
-                            <ScribeAssistant storyId={storyId} mode="text" onInsert={handleTextInsert} onClose={() => setActiveField(null)} />
-                        </div>
-                    )}
                 </div>
 
                 {/* AUTOFIRE */}
@@ -126,10 +198,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                                 <SparkleIcon className="w-3 h-3" /> Logic
                             </button>
                             
-                            {/* POPUP: Rendered AFTER input */}
                             {activeField === 'autofire' && (
                                 <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '5px' }}>
-                                    <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleTextInsert} onClose={() => setActiveField(null)} />
+                                    <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleInsert} onClose={() => setActiveField(null)} />
                                 </div>
                             )}
                         </div>

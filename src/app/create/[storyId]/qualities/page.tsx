@@ -25,7 +25,8 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
         if (!newId) return;
         if (qualities.find(q => q.id === newId)) return alert("ID Exists");
         
-        const newQ: QualityDefinition = { id: newId, name: "New Quality", type: QualityType.Pyramidal };
+        // Initialize with tags array
+        const newQ: QualityDefinition = { id: newId, name: "New Quality", type: QualityType.Pyramidal, tags: [] };
         setQualities(prev => [...prev, newQ]);
         setSelectedId(newId);
     };
@@ -70,9 +71,17 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    const handlePropToggle = (prop: string) => {
-        const newProps = toggleProperty(form.tags, prop);
-        handleChange('properties', newProps);
+    // FIX: Use tags array
+    const handleTagToggle = (tag: string) => {
+        // This uses your updated utility which handles arrays
+        const newTags = toggleProperty(form.tags, tag);
+        handleChange('tags', newTags);
+    };
+
+    // Helper for the raw input box (Array -> String)
+    const handleRawTagsChange = (str: string) => {
+        const arr = str.split(',').map(s => s.trim()).filter(Boolean);
+        handleChange('tags', arr);
     };
 
     const handleSave = async () => {
@@ -119,7 +128,6 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                 </div>
             </div>
 
-            {/* RESTORED: MAX VALUE FIELD */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Category (Tree)</label>
@@ -133,7 +141,6 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                         className="form-input" 
                         placeholder="10 or $level_cap" 
                     />
-                    <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>Optional logic limit.</p>
                 </div>
             </div>
 
@@ -152,30 +159,56 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
 
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
+                
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handlePropToggle('hidden')} label="Hidden" desc="Do not show on profile." />
+                    <BehaviorCard 
+                        checked={hasProperty(form.tags, 'hidden')} 
+                        onChange={() => handleTagToggle('hidden')} 
+                        label="Hidden" 
+                        desc="Do not show on profile." 
+                    />
+                    
                     {(form.type === 'E' || form.type === 'I') && (
                         <>
-                            <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handlePropToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />
-                            <BehaviorCard checked={hasProperty(form.tags, 'cursed')} onChange={() => handlePropToggle('cursed')} label="Cursed" desc="Cannot be unequipped." />
+                            <BehaviorCard 
+                                checked={hasProperty(form.tags, 'auto_equip')} 
+                                onChange={() => handleTagToggle('auto_equip')} 
+                                label="Auto-Equip" 
+                                desc="Equip immediately on gain." 
+                            />
+                            <BehaviorCard 
+                                checked={hasProperty(form.tags, 'cursed')} 
+                                onChange={() => handleTagToggle('cursed')} 
+                                label="Cursed" 
+                                desc="Cannot be unequipped." 
+                            />
                         </>
                     )}
                 </div>
+
                 <div style={{ marginTop: '1rem' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Properties</label>
-                    <input value={form.tags || ''} onChange={e => handleChange('properties', e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Tags</label>
+                    <input 
+                        // Convert Array to String for display
+                        value={form.tags?.join(', ') || ''} 
+                        onChange={e => handleRawTagsChange(e.target.value)} 
+                        className="form-input" 
+                        style={{ fontSize: '0.8rem' }} 
+                    />
                 </div>
             </div>
 
             {(form.type === 'E' || form.type === 'I') && (
                 <div className="form-group" style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
                     <label className="special-label" style={{color: '#61afef'}}>Item Settings</label>
+                    
                     {form.type === 'E' && (
                         <div className="form-group">
                             <label className="form-label">Stat Bonus</label>
                             <input value={form.bonus || ''} onChange={e => handleChange('bonus', e.target.value)} className="form-input" placeholder="$strength + 1" />
                         </div>
                     )}
+
                     <div className="form-group">
                         <label className="form-label">Use Event (Storylet ID)</label>
                         <input value={form.storylet || ''} onChange={e => handleChange('storylet', e.target.value)} className="form-input" placeholder="Event ID to fire when 'Used'" />
