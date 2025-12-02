@@ -2771,6 +2771,56 @@ html[data-theme='revolutionary']::before {
     border-radius: 8px; 
 }
 
+[data-theme='dark-parchment'] {
+    /* Backgrounds: dark base with subtle parchment texture */
+    --bg-main: #1a1612 url('/themes/parchment/bg.jpg'); /* Dark but textured */
+    --bg-panel: rgba(50, 45, 38, 0.85); /* Dark panel with parchment warmth */
+    --bg-item: rgba(70, 60, 50, 0.6);
+    --bg-item-hover: rgba(90, 80, 65, 0.8);
+
+    /* Borders: soft brown tones */
+    --border-color: #7a6050;
+    --border-light: #9c826d;
+
+    /* Text: readable on dark background but warm */
+    --text-primary: #e0d4c3; /* Soft cream */
+    --text-secondary: #cbb79a; 
+    --text-muted: #a88f74;
+
+    /* Accents: dark-fantasy with parchment warmth */
+    --accent-primary: #8d6e5c;
+    --accent-hover: #a1887f;
+    --accent-highlight: #b23b2b; /* Wax seal red inspired */
+
+    /* Status colors */
+    --success-color: #6b8c6b; 
+    --danger-color: #c62828;
+
+    --progress-bg: rgba(100, 90, 80, 0.5);
+    --progress-fill: #b23b2b;
+
+    /* Font & shape */
+    --font-main: var(--font-garamond), "Georgia", serif;
+    --border-radius: 3px;
+}
+
+/* Panels, cards, and storylets with parchment-influenced shadows */
+[data-theme='dark-parchment'] .storylet-container,
+[data-theme='dark-parchment'] .character-sheet,
+[data-theme='dark-parchment'] .card {
+    border: 1px solid #8d6e5c;
+    box-shadow: inset 0 0 5px #9c826d,
+                inset 0 0 10px #7a6050,
+                inset 0 0 15px rgba(0,0,0,0.6);
+}
+
+[data-theme='dark-parchment'] .card:hover {
+    box-shadow: inset 0 0 8px #9c826d,
+                inset 0 0 15px #7a6050,
+                inset 0 0 25px rgba(0,0,0,0.6),
+                0 0 10px rgba(224, 212, 195, 0.3); /* subtle parchment glow */
+}
+
 .docs-syntax-box .docs-code { font-size: 1.4rem; color: #61afef; background: none; }
 
 .docs-props-list { list-style: none; padding: 0; }

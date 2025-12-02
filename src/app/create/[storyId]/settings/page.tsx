@@ -413,6 +413,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <option value="frontier">Frontier</option>
                                 <option value="bayou">Bayou</option>
                                 <option value="starship">Starship</option>
+                                <option value="dark-parchment">Dark Parchment</option>
                             </select>
                         </div>
                     </div>
