@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
+import FormattedText from './FormattedText';
 
 interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
@@ -126,7 +127,7 @@ export default function StoryletDisplay({
     const returnTargetId = getReturnTarget();
     const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
-     if (resolution) {
+    if (resolution) {
         return (
             <div className="storylet-container">
                 <div className="storylet-main-content">
@@ -143,7 +144,9 @@ export default function StoryletDisplay({
                     )}
                     <div className="storylet-text-content">
                         <h1>{resolution.title}</h1> 
-                        <p className="storylet-text">{resolution.body}</p>
+                        <div className="storylet-text">
+                            <FormattedText text={evaluateText(resolution.body, qualities, qualityDefs)}/>
+                        </div>
                     </div>
                 </div>
 
@@ -206,8 +209,14 @@ export default function StoryletDisplay({
                 )}
                 <div className="storylet-text-content">
                     <h1>{evaluateText(storylet.name, qualities, qualityDefs)}</h1>
-                    <p className="storylet-text">{evaluateText(storylet.text, qualities, qualityDefs)}</p>
-                    {storylet.metatext && <p className="metatext">{evaluateText(storylet.metatext, qualities, qualityDefs)}</p>}
+                    <div className="storylet-text">
+                        <FormattedText text={evaluateText(storylet.text, qualities, qualityDefs)}/>
+                    </div>
+                    {storylet.metatext && (
+                        <div className="metatext">
+                            <FormattedText text={evaluateText(storylet.metatext, qualities, qualityDefs)} />
+                        </div>
+                    )}
                 </div>
             </div>
 
