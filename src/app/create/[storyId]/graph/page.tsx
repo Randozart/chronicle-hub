@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState, Node, Edge } from '@xyflow/react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState, Node, Edge, useReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { generateGraph } from '@/engine/graphAnalysis';
-import { QualityDefinition } from '@/engine/models';
+import { QualityDefinition, Storylet, ResolveOption } from '@/engine/models';
 import SelfLoopEdge from '@/components/admin/SelfLoopEdge';
 import GraphNode from '@/components/admin/GraphNode';
+import GraphContextMenu from '@/components/admin/GraphContextMenu';
+import { v4 as uuidv4 } from 'uuid';
 
-// Define Data Interface
 interface NodeData {
     label: string;
     description: string;
@@ -16,90 +17,221 @@ interface NodeData {
 }
 
 export default function GraphPage({ params }: { params: Promise<{ storyId: string }> }) {
+    return (
+        <ReactFlowProvider>
+            <GraphContent params={params} />
+        </ReactFlowProvider>
+    );
+}
+
+function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
+    const { screenToFlowPosition } = useReactFlow();
     const [storyId, setStoryId] = useState<string>("");
     
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     
-    const [storylets, setStorylets] = useState<Record<string, any>>({});
+    const [storylets, setStorylets] = useState<Record<string, Storylet>>({});
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     
     const [mode, setMode] = useState<'redirect' | 'quality'>('redirect');
     const [selectedQuality, setSelectedQuality] = useState<string>("");
     const [showSelfLoops, setShowSelfLoops] = useState(true);
 
-    // Interaction State
+    // Inspector State
     const [hoveredData, setHoveredData] = useState<NodeData | null>(null);
     const [lockedData, setLockedData] = useState<NodeData | null>(null);
-
-    // Priority: Locked data overrides Hover data
     const activeData = lockedData || hoveredData;
     const isLocked = !!lockedData;
+
+    // Context Menu State
+    const [menu, setMenu] = useState<{ x: number, y: number, type: 'pane' | 'node', nodeId?: string } | null>(null);
+    const ref = useRef<HTMLDivElement>(null);
 
     const nodeTypes = useMemo(() => ({ custom: GraphNode }), []);
     const edgeTypes = useMemo(() => ({ selfloop: SelfLoopEdge }), []);
 
+    // 1. DATA FETCHING (Decoupled from selection state)
+    const fetchData = useCallback(async (sId: string) => {
+        try {
+            const [sRes, qRes] = await Promise.all([
+                fetch(`/api/admin/storylets?storyId=${sId}&full=true`),
+                fetch(`/api/admin/qualities?storyId=${sId}`)
+            ]);
+
+            const sData = await sRes.json();
+            const qData = await qRes.json();
+
+            // 1. Handle Storylets
+            if (Array.isArray(sData)) {
+                const sRecord: any = {};
+                sData.forEach((s: any) => sRecord[s.id] = s);
+                setStorylets(sRecord);
+            }
+
+            // 2. Handle Qualities (The Fix)
+            let qList: QualityDefinition[] = [];
+            
+            if (Array.isArray(qData)) {
+                qList = qData;
+            } else if (qData && typeof qData === 'object') {
+                // Convert Dictionary to Array
+                qList = Object.values(qData);
+            }
+
+            setQualities(qList);
+
+            // 3. Set Default Selection (if none selected)
+            if (qList.length > 0) {
+                // Prefer Pyramidal stats as they are usually the most interesting for graphs
+                const firstStat = qList.find((q: any) => q.type === 'P');
+                
+                // Only override if we don't have a selection (or current selection is invalid)
+                // But since this runs on mount, we usually want to set a default.
+                setSelectedQuality((prev) => {
+                    if (prev && qList.find(q => q.id === prev)) return prev;
+                    return firstStat ? firstStat.id : qList[0].id;
+                });
+            }
+
+        } catch (e) {
+            console.error("Graph Fetch Error:", e);
+        }
+    }, []); // Empty dependency array is fine here
+    
+    // Initial Load
     useEffect(() => {
-        params.then(p => {
-            setStoryId(p.storyId);
-            Promise.all([
-                fetch(`/api/admin/storylets?storyId=${p.storyId}&full=true`).then(r => r.json()),
-                fetch(`/api/admin/qualities?storyId=${p.storyId}`).then(r => r.json())
-            ]).then(([sData, qData]) => {
-                if (Array.isArray(sData)) {
-                    const sRecord: any = {};
-                    sData.forEach((s: any) => sRecord[s.id] = s);
-                    setStorylets(sRecord);
-                }
-                if (Array.isArray(qData) || typeof qData === 'object') {
-                    const qList = Object.values(qData);
-                    setQualities(qList as QualityDefinition[]);
-                    const firstStat = qList.find((q: any) => q.type === 'P');
-                    if (firstStat) setSelectedQuality((firstStat as any).id);
-                }
-            });
+        params.then(p => { 
+            setStoryId(p.storyId); 
+            fetchData(p.storyId); 
         });
     }, []);
 
+    // 2. AUTO-SELECT DEFAULT QUALITY
+    useEffect(() => {
+        // Only select a default if we have qualities AND nothing is currently selected
+        if (qualities.length > 0 && !selectedQuality) {
+            const firstStat = qualities.find((q: any) => q.type === 'P');
+            if (firstStat) setSelectedQuality(firstStat.id);
+            else setSelectedQuality(qualities[0].id);
+        }
+    }, [qualities]); // Run only when qualities list loads
+
+    // 3. GRAPH GENERATION
     useEffect(() => {
         if (!storylets || Object.keys(storylets).length === 0) return;
         const { nodes: gNodes, edges: gEdges } = generateGraph(storylets, mode, selectedQuality, showSelfLoops);
         setNodes(gNodes);
         setEdges(gEdges);
-        setLockedData(null); // Reset selection on graph change
+        // We do NOT reset lockedData here, so you can switch views while inspecting a node
     }, [storylets, mode, selectedQuality, showSelfLoops, setNodes, setEdges]);
 
-    // --- HANDLERS (Wrapped in useCallback for React Flow stability) ---
-    
+    // --- HANDLERS ---
     const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
-        // Only update if we aren't already locked (optimization)
-        if (!lockedData && node.data) {
-            setHoveredData(node.data as unknown as NodeData);
-        }
+        if (!lockedData && node.data) setHoveredData(node.data as unknown as NodeData);
     }, [lockedData]);
 
     const onNodeMouseLeave = useCallback(() => {
-        // Only clear if not locked
-        if (!lockedData) {
-            setHoveredData(null);
-        }
+        if (!lockedData) setHoveredData(null);
     }, [lockedData]);
 
     const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-        // Click locks the selection
         const newData = node.data as unknown as NodeData;
         setLockedData(newData);
         setHoveredData(null); 
     }, []);
 
+    const onPaneContextMenu = useCallback((event: React.MouseEvent | MouseEvent) => {
+        event.preventDefault();
+        setMenu({ x: (event as React.MouseEvent).clientX, y: (event as React.MouseEvent).clientY, type: 'pane' });
+    }, []);
+
+    const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+        event.preventDefault();
+        setLockedData(node.data as unknown as NodeData);
+        setMenu({ x: event.clientX, y: event.clientY, type: 'node', nodeId: node.id });
+    }, []);
+
     const onPaneClick = useCallback(() => {
-        // Click background to unlock
+        setMenu(null);
         setLockedData(null);
         setHoveredData(null);
     }, []);
 
+    // --- EDITOR ACTIONS ---
+    const handleMenuAction = async (action: string) => {
+        if (!menu) return;
+        const { x, y, nodeId } = menu;
+        setMenu(null); 
+
+        const saveStorylet = async (s: Storylet) => {
+            await fetch('/api/admin/storylets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, data: s })
+            });
+            fetchData(storyId);
+        };
+
+        if (action === 'create_node') {
+            const name = prompt("New Storylet Name:");
+            if (!name) return;
+            const id = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            await saveStorylet({ id, name, text: "Write something...", options: [], tags: [], status: 'draft' });
+        }
+
+        if (action === 'link_new_redirect' && nodeId) {
+            const source = storylets[nodeId];
+            if (!source) return;
+            const name = prompt("Name of Next Step:");
+            if (!name) return;
+            const targetId = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+            await saveStorylet({ id: targetId, name, text: "...", options: [], tags: [], status: 'draft' });
+
+            const newOption: ResolveOption = {
+                id: `opt_${uuidv4().slice(0,8)}`,
+                name: `Go to ${name}`,
+                pass_long: "You move onward.",
+                pass_redirect: targetId,
+                action_cost: "1"
+            };
+            await saveStorylet({ ...source, options: [...source.options, newOption] });
+        }
+
+        if (action === 'link_new_quality' && nodeId) {
+            const source = storylets[nodeId];
+            if (!source || !selectedQuality) return alert("Select a quality first");
+            const levelStr = prompt("Level Requirement for Next Step:", "20");
+            if (!levelStr) return;
+            const nextLevel = parseInt(levelStr);
+            const targetId = `${nodeId}_${nextLevel}`;
+
+            await saveStorylet({
+                id: targetId, name: `${source.name} (II)`, 
+                text: "...", 
+                visible_if: `$${selectedQuality} >= ${nextLevel}`,
+                options: [], tags: [], status: 'draft'
+            });
+
+            const newOption: ResolveOption = {
+                id: `opt_${uuidv4().slice(0,8)}`,
+                name: `Advance ${selectedQuality}`,
+                pass_long: "Progress.",
+                pass_quality_change: `$${selectedQuality} = ${nextLevel}`,
+                action_cost: "1"
+            };
+            await saveStorylet({ ...source, options: [...source.options, newOption] });
+        }
+
+        if (action === 'edit_node' && nodeId) {
+            const originalId = lockedData?.originalId || nodeId; 
+            window.open(`/create/${storyId}/storylets?id=${originalId}`, '_blank');
+        }
+    };
+
     return (
-        <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }} ref={ref}>
             
             {/* HEADER */}
             <div style={{ padding: '1rem', borderBottom: '1px solid #444', background: '#181a1f', display: 'flex', gap: '2rem', alignItems: 'center', zIndex: 20 }}>
@@ -118,7 +250,7 @@ export default function GraphPage({ params }: { params: Promise<{ storyId: strin
                 </label>
             </div>
 
-            {/* CANVAS AREA */}
+            {/* CANVAS */}
             <div style={{ flex: 1, background: '#111', position: 'relative' }}>
                 <ReactFlow
                     nodes={nodes}
@@ -127,36 +259,32 @@ export default function GraphPage({ params }: { params: Promise<{ storyId: strin
                     edgeTypes={edgeTypes}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
-                    
-                    // Wire up handlers
                     onNodeClick={onNodeClick}
                     onNodeMouseEnter={onNodeMouseEnter}
                     onNodeMouseLeave={onNodeMouseLeave}
+                    onPaneContextMenu={onPaneContextMenu}
+                    onNodeContextMenu={onNodeContextMenu}
                     onPaneClick={onPaneClick}
-                    
                     fitView
                     colorMode="dark"
-                    minZoom={0.1}
                 >
                     <Background />
                     <Controls />
                     <MiniMap style={{ background: '#222' }} nodeColor={() => '#61afef'} />
                 </ReactFlow>
-
-                {/* INSPECTOR PANEL */}
+                {/* --- RESTORED INSPECTOR PANEL --- */}
                 {activeData && (
                     <div style={{ 
-                        position: 'absolute', top: '1rem', right: '1rem', width: '370px', 
+                        position: 'absolute', top: '1rem', right: '1rem', width: '320px', 
                         background: 'rgba(30, 33, 39, 0.95)', backdropFilter: 'blur(10px)',
                         border: isLocked ? '1px solid #61afef' : '1px solid #555', 
-                        borderRadius: '8px', padding: '0', // Padding handled inside
+                        borderRadius: '8px', padding: '0', 
                         boxShadow: '0 10px 30px rgba(0,0,0,0.6)', 
                         zIndex: 50, maxHeight: '80vh', overflowY: 'auto',
-                        pointerEvents: isLocked ? 'auto' : 'none',
+                        pointerEvents: isLocked ? 'auto' : 'none', // Pass-through for hover
                         transition: 'opacity 0.2s',
                         display: 'flex', flexDirection: 'column'
                     }}>
-                        {/* Panel Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', padding: '1rem', borderBottom: '1px solid #444', background: 'rgba(0,0,0,0.2)' }}>
                             <div>
                                 <span style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Selected Node</span>
@@ -165,42 +293,16 @@ export default function GraphPage({ params }: { params: Promise<{ storyId: strin
                             {isLocked && <button onClick={() => setLockedData(null)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>}
                         </div>
                         
-                        {/* Panel Content */}
                         <div style={{ padding: '1rem' }}>
                             {activeData.description ? (
                                 <div style={{ fontSize: '0.85rem', lineHeight: '1.5' }}>
                                     {activeData.description.split('\n').map((line, i) => {
-                                        
-                                        // Case 1: Section Headers (--- TEXT ---)
                                         if (line.startsWith('---')) {
-                                            return (
-                                                <div key={i} style={{ 
-                                                    color: '#61afef', 
-                                                    fontWeight: 'bold', 
-                                                    fontSize: '0.75rem',
-                                                    marginTop: '1.5rem', 
-                                                    marginBottom: '0.5rem',
-                                                    borderBottom: '1px solid #444',
-                                                    paddingBottom: '4px',
-                                                    letterSpacing: '1px'
-                                                }}>
-                                                    {line.replace(/-/g, '').trim()}
-                                                </div>
-                                            );
+                                            return <div key={i} style={{ color: '#61afef', fontWeight: 'bold', fontSize: '0.75rem', marginTop: '1rem', marginBottom: '0.5rem', borderBottom: '1px solid #444', paddingBottom: '4px', letterSpacing: '1px' }}>{line.replace(/-/g, '').trim()}</div>;
                                         }
-                                        
-                                        // Case 2: Empty lines
                                         if (!line.trim()) return null;
-
-                                        // Case 3: Detail Items
-                                        // We check if it's a sub-item (starts with space from analyzer) or main item
                                         return (
-                                            <div key={i} style={{ 
-                                                marginBottom: '6px', 
-                                                color: line.includes('↳') ? '#aaa' : '#ddd', // Dim arrow lines
-                                                paddingLeft: line.includes('↳') ? '12px' : '0',
-                                                fontFamily: 'monospace'
-                                            }}>
+                                            <div key={i} style={{ marginBottom: '6px', color: line.includes('↳') ? '#aaa' : '#ddd', paddingLeft: line.includes('↳') ? '12px' : '0', fontFamily: 'monospace' }}>
                                                 {line}
                                             </div>
                                         );
@@ -208,19 +310,18 @@ export default function GraphPage({ params }: { params: Promise<{ storyId: strin
                                 </div>
                             ) : (
                                 <div style={{ padding: '2rem', textAlign: 'center', color: '#666', fontStyle: 'italic', fontSize: '0.9rem' }}>
-                                    No logic dependencies found for the selected quality in this node.
+                                    No logic dependencies found for {selectedQuality}.
                                 </div>
                             )}
                         </div>
 
-                        {/* Footer Actions */}
                         <div style={{ borderTop: '1px solid #444', padding: '1rem', background: 'rgba(0,0,0,0.2)' }}>
                             {isLocked ? (
                                 <a 
                                     href={`/create/${storyId}/storylets?id=${activeData.originalId}`} 
                                     target="_blank"
                                     className="save-btn" 
-                                    style={{ display: 'block', textDecoration: 'none', fontSize: '0.8rem', textAlign: 'center', width: '100%', boxSizing: 'border-box'}}
+                                    style={{ display: 'block', textDecoration: 'none', fontSize: '0.8rem', textAlign: 'center', width: '100%' }}
                                 >
                                     Edit Storylet ↗
                                 </a>
@@ -232,6 +333,35 @@ export default function GraphPage({ params }: { params: Promise<{ storyId: strin
                         </div>
                     </div>
                 )}
+
+                {/* CONTEXT MENU */}
+                {menu && (
+                    <GraphContextMenu 
+                        x={menu.x} 
+                        y={menu.y} 
+                        type={menu.type} 
+                        graphMode={mode}
+                        onClose={() => setMenu(null)} 
+                        onAction={handleMenuAction}
+                    />
+                )}
+                
+                {/* LEGEND */}
+                <div style={{ position: 'absolute', bottom: 20, left: 20, background: 'rgba(0,0,0,0.8)', padding: '1rem', borderRadius: '8px', border: '1px solid #444', zIndex: 10, fontSize: '0.8rem', color: '#ccc' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff' }}>Legend</h4>
+                    {mode === 'redirect' ? (
+                        <div style={{ display: 'grid', gap: '5px' }}>
+                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}><div style={{width:10, height:10, background:'#2ecc71', borderRadius:'50%'}}/> Pass</div>
+                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}><div style={{width:10, height:10, background:'#e74c3c', borderRadius:'50%'}}/> Fail</div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gap: '5px' }}>
+                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}><div style={{width:10, height:10, border:'2px solid #2ecc71'}}/> Producer</div>
+                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}><div style={{width:10, height:10, border:'2px solid #e74c3c'}}/> Consumer</div>
+                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}><div style={{width:10, height:10, border:'2px solid #f1c40f'}}/> Hub</div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
