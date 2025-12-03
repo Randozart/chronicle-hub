@@ -371,16 +371,26 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
 
             {/* ECONOMY (With Auto-Create) */}
             <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
-                <label className="special-label" style={{ color: '#f1c40f' }}>Economy</label>
+                <label className="special-label" style={{ color: '#f1c40f' }}>Special Categories (Comma Separated IDs)</label>
                 <div className="form-group">
-                    <label className="form-label">Currencies (Comma Separated IDs)</label>
+                    <label className="form-label">Currencies</label>
                     <input 
                         defaultValue={form.currencyQualities?.join(', ')} 
                         onBlur={e => handleArrayChange('currencyQualities', e.target.value)} 
                         className="form-input" 
                         placeholder="gold, echoes, favour" 
                     />
-                    <p className="special-desc">These will be moved from the sidebar to the Wallet header.</p>
+                    <p className="special-desc">These will be moved from the sidebar to the Wallet header. Entries not otherwise marked with $ as a '$quality' will still be counted as such.</p>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                        <label className="form-label">Sidebar Categories</label>
+                        <input defaultValue={form.characterSheetCategories.join(', ')} onBlur={e => handleArrayChange('characterSheetCategories', e.target.value)} className="form-input" placeholder="character, menace, currency" />
+                    </div>
+                    <p className="special-desc">These quality categories will be displayed on the character sheet in the sidebar.</p>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                        <label className="form-label">Equipment Slots</label>
+                        <input defaultValue={form.equipCategories?.join(', ')} onBlur={e => handleArrayChange('equipCategories', e.target.value)} className="form-input" placeholder="head, body, weapon" />
+                    </div>
+                    <p className="special-desc">These qualities will count as their own equipment slot, and equipable qualities assigned to these categories are equippable in that slot.</p>
                 </div>
                 
                 {/* AUTO CREATE BUTTONS FOR CURRENCY */}
