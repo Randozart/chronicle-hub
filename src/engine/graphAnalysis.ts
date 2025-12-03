@@ -6,34 +6,108 @@ type GraphMode = 'redirect' | 'quality';
 export function generateGraph(
     storylets: Record<string, Storylet> | undefined | null, 
     mode: GraphMode, 
-    targetQuality?: string
+    targetQuality?: string,
+    showSelfLoops: boolean = true
 ): { nodes: Node[], edges: Edge[] } {
     
     if (!storylets || typeof storylets !== 'object') return { nodes: [], edges: [] };
 
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
     const storyletList = Object.values(storylets);
     const cleanQ = targetQuality ? targetQuality.replace('$', '').trim() : '';
 
-    // 1. BUILD NODES
-    storyletList.forEach(s => {
-        if (!s || !s.id) return;
+    // --- 1. IDENTIFY RELEVANT NODES ---
+    const tempNodes = new Set<string>();
+    const nodeDataMap: Record<string, { label: string, role: string, description: string, originalId: string }> = {};
 
+    storyletList.forEach(s => {
+        if(!s.id) return;
         let isRelevant = true;
-        let role = 'neutral'; 
+        let role = 'neutral';
+        
+        // Build a detailed tooltip
+        const details: string[] = [];
 
         if (mode === 'quality' && cleanQ) {
             const json = JSON.stringify(s);
-            const mentionsQuality = json.includes(cleanQ); 
             
-            if (!mentionsQuality) {
+            if (!json.includes(cleanQ)) {
                 isRelevant = false;
             } else {
-                const isProducer = s.options?.some(o => o.pass_quality_change?.includes(cleanQ) || o.fail_quality_change?.includes(cleanQ));
-                const isConsumer = 
-                    (s.visible_if?.includes(cleanQ) || s.unlock_if?.includes(cleanQ)) || 
-                    s.options?.some(o => o.visible_if?.includes(cleanQ) || o.unlock_if?.includes(cleanQ));
+                // A. Analyze Production (Changes)
+                const producerOpts = s.options?.filter(o => 
+                    o.pass_quality_change?.includes(cleanQ) || 
+                    o.fail_quality_change?.includes(cleanQ)
+                ) || [];
+                
+                if (producerOpts.length > 0) {
+                    details.push("--- MODIFIES QUALITY ---");
+                    producerOpts.forEach(o => {
+                        const changeStr = o.pass_quality_change || '';
+                        let displayOp = "modifies";
+
+                        // 1. Check Increment/Decrement ($q++ or $q--)
+                        // matches: $q++ or $q--
+                        const incRegex = new RegExp(`\\$${cleanQ}\\s*(\\+\\+|--)`);
+                        const incMatch = changeStr.match(incRegex);
+
+                        // 2. Check Value Assignment ($q += 10, $q = { 1+1 })
+                        // matches: $q (op) (value up to comma or end)
+                        const valRegex = new RegExp(`\\$${cleanQ}\\s*(=|\\+=|-=)\\s*([^,]+)`);
+                        const valMatch = changeStr.match(valRegex);
+
+                        if (incMatch) {
+                            const op = incMatch[1];
+                            displayOp = op === '++' ? '(+ 1)' : '(- 1)';
+                        } else if (valMatch) {
+                            const op = valMatch[1];
+                            const val = valMatch[2].trim();
+                            displayOp = `(${op} ${val})`;
+                        }
+
+                        details.push(`Option "${o.name}":\n   ↳ ${displayOp}`);
+                    });
+                }
+
+                // B. Analyze Consumption (Gates)
+                const conditions: string[] = [];
+                
+                if (s.visible_if?.includes(cleanQ)) conditions.push(`Storylet Visible If: ${s.visible_if}`);
+                if (s.unlock_if?.includes(cleanQ)) conditions.push(`Storylet Unlocked If: ${s.unlock_if}`);
+                
+                s.options?.forEach(o => {
+                    // VERBOSE TEXT:
+                    if (o.visible_if?.includes(cleanQ)) conditions.push(`Option "${o.name}" Visible If:\n   ↳ ${o.visible_if}`);
+                    if (o.unlock_if?.includes(cleanQ)) conditions.push(`Option "${o.name}" Unlocked If:\n   ↳ ${o.unlock_if}`);
+                    if (o.challenge?.includes(cleanQ)) conditions.push(`Option "${o.name}" Challenge:\n   ↳ ${o.challenge}`);
+                });
+
+                if (conditions.length > 0) {
+                    details.push("--- CHECKED BY ---");
+                    details.push(...conditions);
+                }
+
+                // C. Analyze Text Usage (Interpolation/Logic)
+                // Check Name, Text, Metatext for "{ ... $q ... }"
+                const textUsage: string[] = [];
+                const textFields = [s.name, s.text, s.metatext].filter(Boolean) as string[];
+                
+                // Regex to find { blocks containing the quality }
+                // Note: This is a rough check, fully parsing brackets is hard with regex alone
+                if (textFields.some(t => t.includes(`$${cleanQ}`))) {
+                     // Check if it's inside logic braces
+                     const hasLogic = textFields.some(t => t.match(new RegExp(`\\{[^}]*\\$${cleanQ}[^}]*\\}`)));
+                     if (hasLogic) textUsage.push("Used in Logic Text/Conditional");
+                     else textUsage.push("Used in String Interpolation");
+                }
+
+                if (textUsage.length > 0) {
+                    details.push("--- APPEARS IN TEXT ---");
+                    details.push(...Array.from(new Set(textUsage)));
+                }
+
+                // D. Determine Role
+                const isProducer = producerOpts.length > 0;
+                const isConsumer = conditions.length > 0 || textUsage.length > 0;
 
                 if (isProducer && isConsumer) role = 'hub';
                 else if (isProducer) role = 'producer';
@@ -42,48 +116,73 @@ export function generateGraph(
         }
 
         if (isRelevant) {
-            let borderColor = '#555';
-            if (role === 'producer') borderColor = '#2ecc71'; // Green
-            if (role === 'consumer') borderColor = '#e74c3c'; // Red
-            if (role === 'hub') borderColor = '#f1c40f';      // Yellow
-
-            nodes.push({
-                id: sanitizeId(s.id),
-                position: { x: 0, y: 0 },
-                data: { label: s.name || s.id },
-                style: { 
-                    background: '#1e2127', color: '#fff', 
-                    border: `2px solid ${borderColor}`, borderRadius: '4px',
-                    width: 220, padding: '10px', fontSize: '12px'
-                }
-            });
+            const sId = sanitizeId(s.id);
+            tempNodes.add(sId);
+            nodeDataMap[sId] = { 
+                label: s.name || s.id, 
+                role, 
+                description: details.join('\n'),
+                originalId: s.id // <--- ADD THIS FIELD
+            };
         }
     });
 
-    // 2. BUILD EDGES
+    // ... (Rest of file: Edge Calculation and Layout Algorithm remain unchanged) ...
+    // ... (Copy the code from Step 2 and 3 of the previous "Graph Analysis" response below this line) ...
+    
+    // --- 2. CALCULATE EDGES & TOPOLOGY ---
+    const finalEdges: Edge[] = [];
+    const edgeCounts: Record<string, number> = {};
+    const adjacency: Record<string, string[]> = {}; 
+    const inDegree: Record<string, number> = {};    
+
+    // Init adjacency
+    tempNodes.forEach(id => { adjacency[id] = []; inDegree[id] = 0; });
+
     storyletList.forEach(source => {
-        const sourceNodeId = sanitizeId(source.id);
-        if (!nodes.find(n => n.id === sourceNodeId)) return;
+        const sId = sanitizeId(source.id);
+        if (!tempNodes.has(sId)) return;
         if (!source.options) return;
-        const edgeCounts: Record<string, number> = {};
 
         source.options.forEach(opt => {
-            
-            // --- MODE A: REDIRECTS ---
+            const processLink = (targetRawId: string, label: string, color: string) => {
+                const tId = sanitizeId(targetRawId);
+                if (!tempNodes.has(tId)) return;
+
+                if (sId !== tId) {
+                    adjacency[sId].push(tId);
+                    inDegree[tId] = (inDegree[tId] || 0) + 1;
+                }
+
+                const isSelfLoop = sId === tId;
+                if (isSelfLoop && !showSelfLoops) return;
+
+                const key = `${sId}->${tId}`;
+                const count = (edgeCounts[key] || 0);
+                edgeCounts[key] = count + 1;
+
+                finalEdges.push({
+                    id: `e-${sId}-${tId}-${count}-${Math.random().toString(36).substr(2, 4)}`,
+                    source: sId,
+                    target: tId,
+                    label: label.length > 40 ? label.substring(0, 40) + '...' : label,
+                    animated: true,
+                    type: isSelfLoop ? 'selfloop' : 'smoothstep',
+                    sourceHandle: isSelfLoop ? 'top' : 'right', 
+                    data: { offsetIndex: count },
+                    style: { stroke: color, strokeWidth: 2 },
+                    labelStyle: { fill: '#ccc', fontSize: 10, fontWeight: 700 }
+                });
+            };
+
             if (mode === 'redirect') {
-                if (opt.pass_redirect) createEdge(source.id, opt.pass_redirect, `(Pass) ${opt.name}`, edges, nodes, '#2ecc71', edgeCounts);
-                if (opt.fail_redirect) createEdge(source.id, opt.fail_redirect, `(Fail) ${opt.name}`, edges, nodes, '#e74c3c', edgeCounts);
+                if (opt.pass_redirect) processLink(opt.pass_redirect, `(Pass) ${opt.name}`, '#2ecc71');
+                if (opt.fail_redirect) processLink(opt.fail_redirect, `(Fail) ${opt.name}`, '#e74c3c');
             }
 
             if (mode === 'quality' && cleanQ) {
                 const changeStr = opt.pass_quality_change || '';
-                
-                // Regex for Value Changes ($q += 5)
-                // Capture Group 1: Operator (=, +=, -=)
-                // Capture Group 2: Value (digits, vars)
                 const valRegex = new RegExp(`\\$${cleanQ}\\s*(=|\\+=|-=)\\s*([\\d\\w_$]+)`);
-                
-                // Regex for Increment/Decrement ($q++)
                 const incRegex = new RegExp(`\\$${cleanQ}\\s*(\\+\\+|--)`);
 
                 const valMatch = changeStr.match(valRegex);
@@ -102,26 +201,19 @@ export function generateGraph(
                         value = '1';
                     }
 
-                    // Link to ANY node that mentions this quality (Consumer or Hub)
                     storyletList.forEach(target => {
-                        // NOTE: Removed self-check to allow loops
-                        
                         const sGate = (target.visible_if || '') + (target.unlock_if || '');
                         const oGate = target.options?.map(o => (o.visible_if || '') + (o.unlock_if || '')).join(' ') || '';
                         const fullGates = sGate + oGate;
 
-                        // Check if target relies on this quality
-                        // We check for variable usage ($q) in conditions
                         if (fullGates.includes(`$${cleanQ}`)) {
-                            
                             let color = '#61afef'; 
                             if (operator === '+=') color = '#2ecc71'; 
                             if (operator === '-=') color = '#e74c3c'; 
                             
-                            // Format Label with line break for readability
                             const label = `${opt.name}\n(${operator} ${value})`;
                             
-                            createEdge(source.id, target.id, label, edges, nodes, color, edgeCounts);
+                            processLink(target.id, label, color);
                         }
                     });
                 }
@@ -129,47 +221,69 @@ export function generateGraph(
         });
     });
 
-    return { nodes, edges };
-}
+    const nodePositions: Record<string, { x: number, y: number }> = {};
+    const visited = new Set<string>();
+    let queue: string[] = [];
 
-function createEdge(
-    source: string, 
-    target: string, 
-    label: string, 
-    edges: Edge[], 
-    nodes: Node[], 
-    color: string,
-    edgeCounts: Record<string, number> // <--- New Param
-) {
-    const sId = sanitizeId(source);
-    const tId = sanitizeId(target);
-
-    if (!nodes.find(n => n.id === sId)) return;
-    if (!nodes.find(n => n.id === tId)) return;
-
-    // 1. Calculate Offset Key (Source -> Target)
-    const key = `${sId}->${tId}`;
-    const count = (edgeCounts[key] || 0);
-    edgeCounts[key] = count + 1;
-
-    const isSelfLoop = sId === tId;
-    const edgeId = `e-${sId}-${tId}-${count}-${Math.random().toString(36).substr(2, 5)}`;
-
-    edges.push({
-        id: edgeId,
-        source: sId,
-        target: tId,
-        label: label.length > 50 ? label.substring(0, 50) + '...' : label,
-        animated: true,
-        
-        // Pass the offset index in 'data' so the component can read it
-        data: { offsetIndex: count }, 
-        
-        type: isSelfLoop ? 'selfloop' : 'smoothstep', 
-        
-        style: { stroke: color, strokeWidth: 2 },
-        labelStyle: { fill: '#ccc', fontSize: 11, fontWeight: 700 },
+    tempNodes.forEach(id => {
+        if (inDegree[id] === 0) queue.push(id);
     });
+    if (queue.length === 0 && tempNodes.size > 0) {
+        queue.push(Array.from(tempNodes)[0]);
+    }
+
+    let level = 0;
+    const levelHeight: Record<number, number> = {};
+
+    while (queue.length > 0) {
+        const nextQueue: string[] = [];
+        queue.sort(); 
+
+        queue.forEach(id => {
+            if (visited.has(id)) return;
+            visited.add(id);
+
+            const row = levelHeight[level] || 0;
+            nodePositions[id] = { x: level * 350, y: row * 200 };
+            levelHeight[level] = row + 1;
+
+            const neighbors = adjacency[id] || [];
+            neighbors.forEach(nid => {
+                if (!visited.has(nid)) nextQueue.push(nid);
+            });
+        });
+
+        queue = nextQueue;
+        level++;
+    }
+
+    tempNodes.forEach(id => {
+        if (!visited.has(id)) {
+            const row = levelHeight[0] || 0;
+            nodePositions[id] = { x: 0, y: (row + 1) * 200 };
+            levelHeight[0] = row + 1;
+        }
+    });
+
+    const finalNodes: Node[] = [];
+    tempNodes.forEach(id => {
+        const pos = nodePositions[id] || { x: 0, y: 0 };
+        const meta = nodeDataMap[id];
+        finalNodes.push({
+            id,
+            position: pos,
+            type: 'custom',
+            // Pass originalId here
+            data: { 
+                label: meta.label, 
+                role: meta.role, 
+                description: meta.description,
+                originalId: meta.originalId 
+            }
+        });
+    });
+
+    return { nodes: finalNodes, edges: finalEdges };
 }
 
 function sanitizeId(id: string) {

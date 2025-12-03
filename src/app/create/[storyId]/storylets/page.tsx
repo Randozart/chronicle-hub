@@ -4,9 +4,11 @@ import { useState, useEffect, use } from 'react';
 import { Storylet } from '@/engine/models';
 import StoryletMainForm from './components/StoryletMainForm'; // We'll create this next
 import AdminListSidebar from './components/AdminListSidebar';
+import { useSearchParams } from 'next/navigation';
 
 export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const searchParams = useSearchParams();
     const [storylets, setStorylets] = useState<Partial<Storylet>[]>([]); // List only has partial data
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeStorylet, setActiveStorylet] = useState<Storylet | null>(null);
@@ -17,9 +19,19 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
     useEffect(() => {
         fetch(`/api/admin/storylets?storyId=${storyId}`)
             .then(res => res.json())
-            .then(data => setStorylets(data))
+            .then(data => {
+                setStorylets(data);
+                
+                const paramId = searchParams.get('id');
+                if (paramId) {
+                    const exists = data.find((s: any) => s.id === paramId);
+                    if (exists) {
+                        setSelectedId(paramId);
+                    }
+                }
+            })
             .finally(() => setIsLoadingList(false));
-    }, []);
+    }, [storyId, searchParams]); // Add searchParams to dependency
 
     // 2. Fetch Detail when selected
     useEffect(() => {
