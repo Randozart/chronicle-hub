@@ -7,7 +7,45 @@ import { v4 as uuidv4 } from 'uuid';
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 const COLLECTION_NAME = 'characters';
 
-// ... getCharacter and getCharactersList (keep existing) ...
+export const checkLivingStories = async (character: CharacterDocument): Promise<CharacterDocument> => {
+    if (!character.pendingEvents || character.pendingEvents.length === 0) return character;
+
+    const now = new Date();
+    const eventsToFire = character.pendingEvents.filter(e => now >= new Date(e.triggerTime));
+    
+    if (eventsToFire.length === 0) return character;
+
+    console.log(`[LivingStory] Processing ${eventsToFire.length} events for ${character.characterId}`);
+
+    // 1. Load Config (Needed to know if a quality is Pyramidal)
+    const gameData = await getWorldConfig(character.storyId);
+    
+    // 2. Instantiate Engine to apply effects
+    // We use the engine's 'applyEffect' logic indirectly or rewrite safe math here.
+    // To be safe and support Pyramidal CP logic, let's use a temporary Engine instance.
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+
+    // 3. Apply Updates
+    eventsToFire.forEach(e => {
+        // Construct the effect string manually to reuse engine logic
+        // e.g. "$q += 10"
+        const effectString = `$${e.qualityId} ${e.op} ${e.value}`;
+        console.log(`[LivingStory] Executing: ${effectString}`);
+        engine.applyEffect(effectString);
+    });
+
+    // 4. Update Character
+    character.qualities = engine.getQualities();
+    
+    // Remove fired events
+    character.pendingEvents = character.pendingEvents.filter(e => now < new Date(e.triggerTime));
+    
+    // 5. Save
+    await saveCharacterState(character);
+
+    return character;
+};
+
 export const getCharacter = async (userId: string, storyId: string, characterId?: string): Promise<CharacterDocument | null> => {
     try {
         const client = await clientPromise;

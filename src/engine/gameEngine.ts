@@ -25,6 +25,7 @@ const evaluateSimpleExpression = (expr: string): number | boolean | string => {
     }
 };
 
+
 type SkillCheckResult = {
     wasSuccess: boolean;
     roll: number;
@@ -32,12 +33,17 @@ type SkillCheckResult = {
     description: string;
 };
 
+type ScheduleUpdate = 
+    | { type: 'add', qualityId: string, op: '=' | '+=' | '-=', value: number, delayMs: number } 
+    | { type: 'remove', qualityId: string };
+
 export class GameEngine {
     private qualities: PlayerQualities;
     private worldContent: WorldConfig;
     private changes: QualityChangeInfo[] = [];
     private resolutionPruneTargets: Record<string, string> = {};
     private equipment: Record<string, string | null>; 
+    private scheduledUpdates: ScheduleUpdate[] = [];
 
     constructor(
         initialQualities: PlayerQualities, 
@@ -82,7 +88,8 @@ export class GameEngine {
     
     public resolveOption(storylet: Storylet, option: ResolveOption) {
         this.changes = []; 
-        
+        this.scheduledUpdates = [];
+
         // UPDATE: Use 'challenge' (New Field Name)
         const wasSuccessResult = this.evaluateCondition(option.challenge, true);
         const isSuccess = typeof wasSuccessResult === 'boolean' ? wasSuccessResult : wasSuccessResult.wasSuccess;
@@ -145,6 +152,7 @@ export class GameEngine {
             redirectId,
             moveToId: moveId,
             qualityChanges: this.changes,
+            scheduledUpdates: this.scheduledUpdates 
         };
     }
 
@@ -219,6 +227,45 @@ export class GameEngine {
         if (incrementDecrementMatch) {
             const [, qid, op] = incrementDecrementMatch;
             this.changeQuality(qid, op, 1);
+            return;
+        }
+
+        // --- LIVING STORIES (Updated Syntax) ---
+        
+        // Syntax: $schedule[$quality += 10 : 4h]
+        // Regex Breakdown:
+        // \$schedule\[             -> Literal start
+        // \s*\$([a-zA-Z0-9_]+)     -> Group 1: Quality ID
+        // \s*(=|\+=|-=)            -> Group 2: Operator
+        // \s*(\d+)                 -> Group 3: Value
+        // \s*:\s*(\d+)([mh])       -> Group 4: Time, Group 5: Unit
+        // \s*\]                    -> Literal end
+        const scheduleMatch = effect.match(/^\$schedule\[\s*\$([a-zA-Z0-9_]+)\s*(=|\+=|-=)\s*(\d+)\s*:\s*(\d+)([mh])\s*\]$/);
+        
+        if (scheduleMatch) {
+            const qualityId = scheduleMatch[1];
+            const op = scheduleMatch[2] as any;
+            const value = parseInt(scheduleMatch[3], 10);
+            const timeAmt = parseInt(scheduleMatch[4], 10);
+            const unit = scheduleMatch[5];
+            
+            const delayMs = timeAmt * (unit === 'h' ? 3600000 : 60000);
+            
+            this.scheduledUpdates.push({ 
+                type: 'add', 
+                qualityId, 
+                op, 
+                value, 
+                delayMs 
+            });
+            return;
+        }
+
+        // Syntax: $cancel[$quality]
+        // Cancels any timer targeting this quality
+        const cancelMatch = effect.match(/^\$cancel\[\s*\$([a-zA-Z0-9_]+)\s*\]$/);
+        if (cancelMatch) {
+            this.scheduledUpdates.push({ type: 'remove', qualityId: cancelMatch[1] });
             return;
         }
 

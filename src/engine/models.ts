@@ -260,10 +260,15 @@ export interface CharacterDocument {
     lastDeckUpdate: Record<string, Date>;
     lastActionTimestamp?: Date; 
     equipment: Record<string, string | null>;
-    pendingEvents?: { 
-        eventId: string; 
-        triggerTime: Date; 
-    }[]
+    pendingEvents?: PendingEvent[];
+}
+
+export interface PendingEvent {
+    id: string;          // Unique ID for the timer (usually the quality name)
+    qualityId: string;   // The quality to change
+    op: '=' | '+=' | '-='; 
+    value: number;       // The value to apply
+    triggerTime: Date;
 }
 
 export interface QualityChangeInfo {

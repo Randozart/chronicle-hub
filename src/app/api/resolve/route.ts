@@ -89,6 +89,29 @@ export async function POST(request: NextRequest) {
     // 5. Resolve Outcome
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
     const engineResult = engine.resolveOption(storyletDef, option);
+
+    // --- HANDLE SCHEDULES ---
+    const updates = (engineResult as any).scheduledUpdates;
+    if (updates && updates.length > 0) {
+        if (!character.pendingEvents) character.pendingEvents = [];
+        
+        updates.forEach((upd: any) => {
+            if (upd.type === 'add') {
+                // Remove existing timer for this quality (overwrite behavior)
+                character.pendingEvents = character.pendingEvents!.filter(e => e.qualityId !== upd.qualityId);
+                
+                character.pendingEvents.push({
+                    id: upd.qualityId, // Use qualityId as key
+                    qualityId: upd.qualityId,
+                    op: upd.op,
+                    value: upd.value,
+                    triggerTime: new Date(Date.now() + upd.delayMs)
+                });
+            } else if (upd.type === 'remove') {
+                character.pendingEvents = character.pendingEvents!.filter(e => e.qualityId !== upd.qualityId);
+            }
+        });
+    }
     
     // Update Character
     character.qualities = engine.getQualities();
@@ -138,6 +161,8 @@ export async function POST(request: NextRequest) {
             }
         }
     }
+
+    
 
     character.currentStoryletId = finalRedirectId || "";
     await saveCharacterState(character);
