@@ -23,17 +23,13 @@ export default function LondonLayout(props: LayoutProps) {
 
     const renderContent = () => {
         if (activeTab === 'profile') {
-            return <ProfilePanel 
-                qualities={props.character.qualities} 
-                qualityDefs={props.qualityDefs} 
-                imageLibrary={props.imageLibrary} 
-                categories={props.categories}
-                settings={props.settings} /* <--- MAKE SURE THIS IS HERE */
-            />;
+            return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />;
         }        
-        if (activeTab === 'possessions') return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} settings={props.settings}/>;
+        if (activeTab === 'possessions') {
+            return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} settings={props.settings}/>;
+        }
                 
-        if (props.isLoading) return <div className="storylet-container loading-container"><p>Loading...</p></div>;
+        if (props.isLoading) return <div className="loading-container"><p>Loading...</p></div>;
         
         if (props.activeEvent) {
             return (
@@ -50,20 +46,22 @@ export default function LondonLayout(props: LayoutProps) {
                     imageLibrary={props.imageLibrary}
                     categories={props.categories}
                     storyId={props.storyId}
-                    characterId={props.character.characterId} // <--- ADD THIS
+                    characterId={props.character.characterId}
                 />
             );
         }
 
         return (
             <>
-                <LocationStorylets
-                    storylets={props.locationStorylets}
-                    onStoryletClick={props.onOptionClick}
-                    qualities={props.character.qualities}
-                    qualityDefs={props.qualityDefs}
-                    imageLibrary={props.imageLibrary}
-                />
+                <div style={{ marginBottom: '2rem', background: 'var(--bg-item)', padding: '1.5rem', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
+                    <LocationStorylets
+                        storylets={props.locationStorylets}
+                        onStoryletClick={props.onOptionClick}
+                        qualities={props.character.qualities}
+                        qualityDefs={props.qualityDefs}
+                        imageLibrary={props.imageLibrary}
+                    />
+                </div>
                 <OpportunityHand 
                     hand={props.hand} 
                     onCardClick={props.onOptionClick}
@@ -72,98 +70,74 @@ export default function LondonLayout(props: LayoutProps) {
                     qualities={props.character.qualities}
                     qualityDefs={props.qualityDefs}
                     imageLibrary={props.imageLibrary}
-
                     character={props.character}
                     locationDeckId={props.location.deck}
                     deckDefs={props.deckDefs}
                     settings={props.settings}
-                    currentDeckStats={props.currentDeckStats} // <--- Add this
+                    currentDeckStats={props.currentDeckStats}
                 />
             </>
         );
     };
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="layout-column" style={{ height: '100vh' }}>
             
-            {/* --- FULL WIDTH BANNER --- */}
-            <div style={{ 
-                position: 'relative', 
-                height: '300px', 
-                overflow: 'hidden', 
-                borderBottom: '1px solid var(--border-color)',
-                marginBottom: '2rem'
-            }}>
+            {/* --- BANNER --- */}
+            <div style={{ position: 'relative', height: '250px', flexShrink: 0, overflow: 'hidden', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ position: 'absolute', inset: 0 }}>
-                    <GameImage 
-                        code={props.location.image} 
-                        imageLibrary={props.imageLibrary} 
-                        type="location" 
-                        alt=""
-                        className="banner-bg-image" // Expects global CSS for object-fit
-                    />
+                    <GameImage code={props.location.image} imageLibrary={props.imageLibrary} type="location" alt="" className="banner-bg-image" />
                 </div>
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #181a1f, transparent)' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--bg-main), transparent)' }} />
                 
                 <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10 }}>
-                    <button 
-                        onClick={props.onExit}
-                        style={{ 
-                            background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.3)', 
-                            color: '#ddd', padding: '0.5rem 1rem', borderRadius: '4px', 
-                            cursor: 'pointer', fontSize: '0.85rem', backdropFilter: 'blur(4px)'
-                        }}
-                        className="hover:bg-white hover:text-black transition"
-                    >
+                    <button onClick={props.onExit} className="switch-char-btn" style={{ background: 'rgba(0,0,0,0.6)', color: 'white', width: 'auto', border: '1px solid rgba(255,255,255,0.3)' }}>
                         Switch Character
                     </button>
                 </div>
 
-                {/* Banner Content */}
                 <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', padding: '2rem', textAlign: 'center', width: '100%', maxWidth: '1200px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <h1 style={{ fontSize: '4rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', fontFamily: 'inherit', letterSpacing: '2px', color: 'var(--accent-highlight)' }}>
+                    <h1 style={{ fontSize: '3rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', color: 'var(--accent-highlight)' }}>
                         {props.location.name}
                     </h1>
                     
-                    {/* TRAVEL BUTTON */}
-                    <button 
-                        onClick={props.onOpenMap}
-                        style={{ 
-                            background: 'rgba(0,0,0,0.6)', border: '1px solid var(--border-primary)', 
-                            color: 'var(--accent-highlight)', padding: '0.5rem 1.5rem', borderRadius: '4px',
-                            cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold',
-                            backdropFilter: 'blur(5px)', marginBottom: '10px'
-                        }}
-                        className="hover:bg-white hover:text-black transition"
-                    >
-                        Travel
-                    </button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                         {props.currentMarketId && (
+                            <button onClick={props.onOpenMarket} style={{ background: 'rgba(241, 196, 15, 0.2)', border: '1px solid #f1c40f', color: '#f1c40f', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backdropFilter: 'blur(5px)' }}>
+                                Market
+                            </button>
+                        )}
+                        <button onClick={props.onOpenMap} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid var(--text-primary)', color: 'var(--text-primary)', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backdropFilter: 'blur(5px)' }}>
+                            Travel
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem', width: '100%', flex: 1 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '3rem' }}>
-                    <div>
-                        <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-panel)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
-                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Actions: {currentActions} / {maxActions}</h3>
+            {/* --- MAIN AREA --- */}
+            <div className="content-area">
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
+                    
+                    {/* LEFT COLUMN */}
+                    <div className="layout-column" style={{ gap: '1rem' }}>
+                        <div className="action-box">
+                            <h3 style={{ margin: '0 0 0.5rem 0' }}>{currentActions} / {maxActions}</h3>
                             <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={handleActionRegen} />
                         </div>
-                        <div style={{ marginBottom: '1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)', overflow: 'hidden' }}>
-                        <WalletHeader 
-                            qualities={props.character.qualities}
-                            qualityDefs={props.qualityDefs}
-                            settings={props.settings}
-                            imageLibrary={props.imageLibrary}
-                        />
+                        
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)', overflow: 'hidden', background: 'var(--bg-panel)' }}>
+                            <WalletHeader qualities={props.character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
                         </div>
+
                         <CharacterSheet qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
                     </div>
 
-                    <div>
-                        <div className="hub-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                            <button onClick={() => setActiveTab('story')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'story' ? '2px solid var(--text-primary)' : '2px solid transparent', color: activeTab === 'story' ? 'var(--text-primary)' : '#777', cursor: 'pointer' }}>Story</button>
-                            <button onClick={() => setActiveTab('possessions')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'possessions' ? '2px solid var(--text-primary)' : '2px solid transparent', color: activeTab === 'possessions' ? 'var(--text-primary)' : '#777', cursor: 'pointer' }}>Possessions</button>
-                            <button onClick={() => setActiveTab('profile')} style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: activeTab === 'profile' ? '2px solid var(--text-primary)' : '2px solid transparent', color: activeTab === 'profile' ? 'var(--text-primary)' : '#777', cursor: 'pointer' }}>Myself</button>
+                    {/* RIGHT COLUMN */}
+                    <div className="layout-column">
+                        <div className="tab-bar" style={{ marginBottom: '1rem', borderRadius: 'var(--border-radius)' }}>
+                            <button onClick={() => setActiveTab('story')} className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
+                            <button onClick={() => setActiveTab('possessions')} className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
+                            <button onClick={() => setActiveTab('profile')} className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
                         </div>
                         {renderContent()}
                     </div>

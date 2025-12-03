@@ -10,6 +10,7 @@ import { LayoutProps } from './layouts/LayoutProps';
 import MapModal from './MapModal';
 import GameImage from './GameImage';
 import { GameEngine } from '@/engine/gameEngine';
+import MarketInterface from './MarketInterface';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -46,6 +47,7 @@ export default function GameHub(props: GameHubProps) {
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showMap, setShowMap] = useState(false);
+    const [showMarket, setShowMarket] = useState(false);
 
     // Sync state when Server Component sends new data
     useEffect(() => {
@@ -304,6 +306,15 @@ export default function GameHub(props: GameHubProps) {
         }
     }
 
+    const locationMarket = location?.marketId;
+    const regionMarket = (location?.regionId && props.regions[location.regionId]) 
+        ? props.regions[location.regionId].marketId 
+        : null;
+    
+    const activeMarketId = locationMarket || regionMarket || undefined;
+    
+    const activeMarketDefinition = activeMarketId && props.markets[activeMarketId] ? props.markets[activeMarketId] : null;
+
     // FIX 3: Use props.PropertyName for values not in local scope
     const layoutProps: LayoutProps = {
         character,
@@ -320,8 +331,9 @@ export default function GameHub(props: GameHubProps) {
         categories: props.categories,
         locationStorylets: props.locationStorylets, 
         storyId: props.storyId,
-        deckDefs: props.deckDefs, // <--- PASS THIS
+        deckDefs: props.deckDefs,
         currentDeckStats,
+        currentMarketId: activeMarketId, // <--- THIS MUST BE HER
 
         onOptionClick: showEvent,
         onDrawClick: handleDrawCard,
@@ -329,7 +341,13 @@ export default function GameHub(props: GameHubProps) {
         onQualitiesUpdate: handleQualitiesUpdate,
         onCardPlayed: handleCardPlayed,
         onOpenMap: () => setShowMap(true),
-        onExit: handleExit
+        onOpenMarket: () => setShowMarket(true),
+        onExit: handleExit,
+
+        showMarket: showMarket,
+        activeMarket: activeMarketDefinition,
+        onCloseMarket: () => setShowMarket(false),
+
     };
 
 
@@ -346,6 +364,7 @@ export default function GameHub(props: GameHubProps) {
     };
 
     return (
+        
         <div 
             data-theme={props.settings.visualTheme || 'default'} 
             className="theme-wrapper"

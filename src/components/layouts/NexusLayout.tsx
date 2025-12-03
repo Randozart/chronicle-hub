@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { LayoutProps } from './LayoutProps';
 import CharacterSheet from '../CharacterSheet';
 import LocationHeader from '../LocationHeader';
@@ -9,17 +10,13 @@ import StoryletDisplay from '../StoryletDisplay';
 import ProfilePanel from '../ProfilePanel';
 import Possessions from '../Possessions';
 import ActionTimer from '../ActionTimer';
-import { useState } from 'react';
 import WalletHeader from '../WalletHeader';
+import MarketInterface from '../MarketInterface';
 
 export default function NexusLayout(props: LayoutProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
 
-    // Helper for Action Timer (logic copied from GameHub or passed down? 
-    // Ideally passed down, but local state update logic can live here or be hoisted).
-    // For simplicity, assume props handles the heavy lifting, but UI state is local.
-
-    // Calculate Actions for Timer
+    // Logic
     const actionQid = props.settings.actionId.replace('$', '');
     const actionState = props.character.qualities[actionQid];
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
@@ -27,173 +24,119 @@ export default function NexusLayout(props: LayoutProps) {
 
     const renderContent = () => {
         if (activeTab === 'profile') {
-            return <ProfilePanel 
-                qualities={props.character.qualities} 
-                qualityDefs={props.qualityDefs} 
-                imageLibrary={props.imageLibrary} 
-                categories={props.categories}
-                settings={props.settings} /* <--- MAKE SURE THIS IS HERE */
-            />;
+            return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />;
         }
         if (activeTab === 'possessions') {
-            return <Possessions 
-                qualities={props.character.qualities} 
-                equipment={props.character.equipment}
-                qualityDefs={props.qualityDefs}
-                equipCategories={props.settings.equipCategories || []}
-                onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} // Simplified update
-                storyId={props.character.storyId}
-                imageLibrary={props.imageLibrary}
-                settings={props.settings}
-            />;
+            return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} settings={props.settings} />;
         }
         
-        // Story Tab
-        if (props.isLoading) return <div className="storylet-container loading-container"><p>Loading...</p></div>;
+        if (props.isLoading) return <div className="loading-container"><p>Loading...</p></div>;
         
+        if (props.showMarket && props.activeMarket) {
+            return (
+                <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                    <MarketInterface 
+                        market={props.activeMarket}
+                        qualities={props.character.qualities}
+                        qualityDefs={props.qualityDefs}
+                        imageLibrary={props.imageLibrary}
+                        settings={props.settings}
+                        onClose={props.onCloseMarket}
+                        onUpdate={props.onQualitiesUpdate}
+                        storyId={props.storyId}
+                        characterId={props.character.characterId}
+                    />
+                </div>
+            );
+        }
+
         if (props.activeEvent) {
             return (
-                <StoryletDisplay
-                    eventData={props.activeEvent}
-                    qualities={props.character.qualities}
-                    onFinish={props.onEventFinish}
-                    onQualitiesUpdate={props.onQualitiesUpdate}
-                    onCardPlayed={props.onCardPlayed}
-                    qualityDefs={props.qualityDefs}
-                    storyletDefs={props.storyletDefs}
-                    opportunityDefs={props.opportunityDefs} 
-                    settings={props.settings}
-                    imageLibrary={props.imageLibrary}
-                    categories={props.categories}
-                    storyId={props.storyId}
-                    characterId={props.character.characterId} // <--- ADD THIS
-
-                />
+                <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                    <StoryletDisplay
+                        eventData={props.activeEvent}
+                        qualities={props.character.qualities}
+                        onFinish={props.onEventFinish}
+                        onQualitiesUpdate={props.onQualitiesUpdate}
+                        onCardPlayed={props.onCardPlayed}
+                        qualityDefs={props.qualityDefs}
+                        storyletDefs={props.storyletDefs}
+                        opportunityDefs={props.opportunityDefs} 
+                        settings={props.settings}
+                        imageLibrary={props.imageLibrary}
+                        categories={props.categories}
+                        storyId={props.storyId}
+                        characterId={props.character.characterId}
+                    />
+                </div>
             );
         }
 
         return (
-            <>
+            <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <LocationHeader 
                     location={props.location} 
                     imageLibrary={props.imageLibrary} 
-                    onOpenMap={props.onOpenMap} // <--- Pass it
+                    onOpenMap={props.onOpenMap}
+                    onOpenMarket={props.currentMarketId ? props.onOpenMarket : undefined}
                 />
-                <LocationStorylets
-                    storylets={props.locationStorylets}
-                    onStoryletClick={props.onOptionClick}
-                    qualities={props.character.qualities}
-                    qualityDefs={props.qualityDefs}
-                    imageLibrary={props.imageLibrary}
-                />
-                <OpportunityHand 
-                    hand={props.hand} 
-                    onCardClick={props.onOptionClick}
-                    onDrawClick={props.onDrawClick}
-                    isLoading={props.isLoading} 
-                    qualities={props.character.qualities}
-                    qualityDefs={props.qualityDefs}
-                    imageLibrary={props.imageLibrary}
-
-                    character={props.character}
-                    locationDeckId={props.location.deck}
-                    deckDefs={props.deckDefs}
-                    settings={props.settings}
-                    currentDeckStats={props.currentDeckStats} // <--- Add this
-                />
-            </>
+                <div style={{ marginTop: '2rem' }}>
+                    <LocationStorylets storylets={props.locationStorylets} onStoryletClick={props.onOptionClick} qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} />
+                </div>
+                <div style={{ marginTop: '3rem' }}>
+                    <OpportunityHand 
+                        hand={props.hand} 
+                        onCardClick={props.onOptionClick}
+                        onDrawClick={props.onDrawClick}
+                        isLoading={props.isLoading} 
+                        qualities={props.character.qualities}
+                        qualityDefs={props.qualityDefs}
+                        imageLibrary={props.imageLibrary}
+                        character={props.character}
+                        locationDeckId={props.location.deck}
+                        deckDefs={props.deckDefs}
+                        settings={props.settings}
+                        currentDeckStats={props.currentDeckStats}
+                    />
+                </div>
+            </div>
         );
     };
 
     return (
-        <div className="hub-layout">
-            <div className="sidebar-column left">
-                <WalletHeader 
-                    qualities={props.character.qualities}
-                    qualityDefs={props.qualityDefs}
-                    settings={props.settings}
-                    imageLibrary={props.imageLibrary}
-                />
-
-                <div className="action-display" style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-panel)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Actions: {currentActions} / {maxActions}</h3>
-                    <ActionTimer 
-                        currentActions={currentActions}
-                        maxActions={maxActions}
-                        lastTimestamp={props.character.lastActionTimestamp || new Date()}
-                        regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10}
-                        onRegen={() => { /* Trigger Refetch or Optimistic Update */ }}
-                    />
+        <div className="layout-grid-nexus">
+            {/* LEFT SIDEBAR */}
+            <div className="sidebar-panel">
+                <div style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <WalletHeader qualities={props.character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
                 </div>
 
-                <CharacterSheet 
-                    qualities={props.character.qualities} 
-                    equipment={props.character.equipment}
-                    qualityDefs={props.qualityDefs}
-                    settings={props.settings}
-                    categories={props.categories}
-                />
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                    <div className="action-box">
+                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
+                        <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                    </div>
 
-                <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                    <button 
-                        onClick={props.onExit}
-                        style={{ 
-                            background: 'transparent', border: '1px solid var(--danger-color)', 
-                            color: 'var(--danger-color)', width: '100%', padding: '0.5rem', 
-                            borderRadius: 'var(--border-radius)', cursor: 'pointer', fontWeight: 'bold'
-                        }}
-                        className="hover:bg-red-900/20 transition"
-                    >
-                        ← Switch Character
-                    </button>
+                    <CharacterSheet qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
+                </div>
+
+                <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                    <button onClick={props.onExit} className="switch-char-btn">← Switch Character</button>
                 </div>
             </div>
             
-            <div className="main-content-column">
-                <div className="hub-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                    <button 
-                        onClick={() => setActiveTab('story')} 
-                        style={{ 
-                            padding: '0.5rem 1rem', 
-                            background: activeTab === 'story' ? 'var(--bg-item)' : 'transparent', // Active BG
-                            color: 'white', // Always white text
-                            border: 'none', 
-                            cursor: 'pointer',
-                            borderRadius: '4px 4px 0 0'
-                        }}
-                    >
-                        Story
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('possessions')} 
-                        style={{ 
-                            padding: '0.5rem 1rem', 
-                            background: activeTab === 'possessions' ? 'var(--bg-item)' : 'transparent', 
-                            color: 'white', 
-                            border: 'none', 
-                            cursor: 'pointer',
-                            borderRadius: '4px 4px 0 0'
-                        }}
-                    >
-                        Possessions
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('profile')} 
-                        style={{ 
-                            padding: '0.5rem 1rem', 
-                            background: activeTab === 'profile' ? 'var(--bg-item)' : 'transparent', 
-                            color: 'white', 
-                            border: 'none', 
-                            cursor: 'pointer',
-                            borderRadius: '4px 4px 0 0'
-                        }}
-                    >
-                        Myself
-                    </button>
+            {/* MAIN CONTENT */}
+            <div className="layout-column" style={{ overflow: 'hidden' }}>
+                <div className="tab-bar">
+                    <button onClick={() => setActiveTab('story')} className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
+                    <button onClick={() => setActiveTab('possessions')} className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
+                    <button onClick={() => setActiveTab('profile')} className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
                 </div>
-                {renderContent()}
+                
+                <div className="content-area" style={{ padding: '2rem' }}>
+                    {renderContent()}
+                </div>
             </div>
-            <div className="sidebar-column right"></div>
         </div>
     );
 }

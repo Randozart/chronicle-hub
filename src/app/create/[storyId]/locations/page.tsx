@@ -164,6 +164,17 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                     <label className="form-label">Deck ID</label>
                     <input value={form.deck} onChange={e => handleChange('deck', e.target.value)} className="form-input" />
                 </div>
+
+                <div className="form-group">
+                    <label className="form-label">Market ID</label>
+                    <input 
+                        value={form.marketId || ''} 
+                        onChange={e => handleChange('marketId', e.target.value)} 
+                        className="form-input" 
+                        placeholder="grand_bazaar"
+                    />
+                </div>
+                
                 <div className="form-group">
                     <label className="form-label">Image Code</label>
                     <input value={form.image} onChange={e => handleChange('image', e.target.value)} className="form-input" />

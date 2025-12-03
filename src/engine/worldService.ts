@@ -27,7 +27,8 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
         char_create: worldDoc.content.char_create || {},
         images: injectIds(worldDoc.content.images) || {},
         categories: injectIds(worldDoc.content.categories) || {},
-        regions: injectIds(worldDoc.content.regions) || {}
+        regions: injectIds(worldDoc.content.regions) || {},
+        markets: injectIds(worldDoc.content.markets) || {}
     };
 });
 

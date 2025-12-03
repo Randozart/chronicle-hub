@@ -7,10 +7,14 @@ export async function GET(request: NextRequest) {
     const storyId = searchParams.get('storyId');
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
+    
+    // Allow writers to see markets
     if (!await verifyWorldAccess(storyId, 'writer')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const config = await getWorldConfig(storyId);
-    // Return as array
+    
+    // Convert Dictionary to Array for the list view
     const markets = config.markets ? Object.values(config.markets) : [];
+    
     return NextResponse.json(markets);
 }

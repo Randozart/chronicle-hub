@@ -96,6 +96,17 @@ function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData:
                 <label className="form-label">Name</label>
                 <input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" />
             </div>
+            
+            <div className="form-group">
+                <label className="form-label">Default Market ID</label>
+                <input 
+                    value={form.marketId || ''} 
+                    onChange={e => handleChange('marketId', e.target.value)} 
+                    className="form-input" 
+                    placeholder="region_market"
+                />
+                <p className="special-desc">Used if a specific Location doesn't have its own market.</p>
+            </div>
 
             <div className="form-group">
                 <label className="form-label">Map Image Code</label>

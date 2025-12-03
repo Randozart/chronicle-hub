@@ -1,4 +1,4 @@
-import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, DeckDefinition } from "@/engine/models";
+import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, DeckDefinition, MarketDefinition } from "@/engine/models";
 
 export interface DeckStats {
     handSize: number;
@@ -24,6 +24,7 @@ export interface LayoutProps {
     storyId: string;
     deckDefs: Record<string, DeckDefinition>;
     currentDeckStats?: DeckStats;
+    currentMarketId?: string; // The ID of the active market (if any)
 
     // Handlers
     onOptionClick: (storyletId: string) => void; // This maps to 'showEvent'
@@ -33,4 +34,10 @@ export interface LayoutProps {
     onCardPlayed: (cardId: string) => void;
     onOpenMap: () => void; // New Handler
     onExit: () => void;
+    onOpenMarket: () => void; // The function to open the UI
+
+    showMarket: boolean;
+    activeMarket: MarketDefinition | null; // The full object, resolved in GameHub
+    onCloseMarket: () => void;
+
 }

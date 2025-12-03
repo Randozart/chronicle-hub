@@ -71,7 +71,7 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
     };
 
     return (
-        <div className="storylet-container" style={{ minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+        <div className="storylet-container" style={{ minHeight: '500px', display: 'flex', flexDirection: 'column', width: '100%' }}>
             
             {/* HEADER */}
             <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -83,8 +83,11 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
                     )}
                     <h2 style={{ margin: 0 }}>{market.name}</h2>
                 </div>
-                <button onClick={onClose} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem' }}>Exit Market</button>
+                    <button onClick={onClose} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem' }}>
+                        Leave Shop
+                </button>
             </div>
+
 
             {/* STALL TABS */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' }}>
