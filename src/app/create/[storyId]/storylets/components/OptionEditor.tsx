@@ -46,45 +46,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
         handleChange(activeField.key, newVal);
     };
 
-    // Helper: Render Input with "Add Logic" Badge
-    const LogicInput = ({ label, field, mode, placeholder }: { label: string, field: keyof ResolveOption, mode: 'condition' | 'effect', placeholder?: string }) => (
-        <div style={{ position: 'relative', flex: 1 }}>
-            <label className="form-label">{label}</label>
-            <div style={{ position: 'relative' }}>
-                <input 
-                    placeholder={placeholder} 
-                    value={data[field] as string || ''} 
-                    onChange={e => handleChange(field, e.target.value)} 
-                    className="form-input" 
-                    style={{ paddingRight: '90px' }} 
-                />
-                <button 
-                    onClick={() => setActiveField(activeField?.key === field ? null : { key: field, mode })}
-                    style={{ 
-                        position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', 
-                        background: 'rgba(97, 175, 239, 0.1)', 
-                        border: '1px solid rgba(97, 175, 239, 0.3)', 
-                        color: '#61afef', 
-                        borderRadius: '4px', cursor: 'pointer', 
-                        display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', fontSize: '0.7rem', fontWeight: 'bold',
-                        transition: 'all 0.2s'
-                    }}
-                    className="hover:bg-blue-900/30"
-                    title="Open Scribe Assistant"
-                >
-                    <SparkleIcon className="w-3 h-3" /> Logic
-                </button>
-            </div>
-            {activeField?.key === field && (
-                <ScribeAssistant 
-                    storyId={storyId} 
-                    mode={mode} 
-                    onInsert={handleAssistantInsert} 
-                    onClose={() => setActiveField(null)} 
-                />
-            )}
-        </div>
-    );
+    
 
     const ToggleRare = ({ active, onChange, label }: any) => (
          <label style={{ fontSize: '0.8rem', color: '#aaa', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
@@ -173,12 +135,33 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
             {/* 3. REQUIREMENTS */}
             <div className="form-group" style={{ background: '#181a1f', padding: '0.75rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="form-row">
-                    <LogicInput label="Visible If" field="visible_if" mode="condition" placeholder="$gold > 0" />
-                    <LogicInput label="Unlock If" field="unlock_if" mode="condition" placeholder="$gold >= 10" />
+                    <LogicInput 
+                        label="Visible If" field="visible_if" mode="condition" placeholder="$gold > 0" data={data}
+                        handleChange={handleChange}
+                        activeField={activeField}
+                        setActiveField={setActiveField}
+                        storyId={storyId}
+                        handleAssistantInsert={handleAssistantInsert}
+                    />
+                    <LogicInput 
+                        label="Unlock If" field="unlock_if" mode="condition" placeholder="$gold >= 10" data={data}
+                        handleChange={handleChange}
+                        activeField={activeField}
+                        setActiveField={setActiveField}
+                        storyId={storyId}
+                        handleAssistantInsert={handleAssistantInsert}
+                    />
                 </div>
                 {hasDifficulty && (
                     <div style={{ marginTop: '1rem' }}>
-                         <LogicInput label="Challenge Logic" field="challenge" mode="condition" placeholder="$stat >= 50 [10]" />
+                         <LogicInput 
+                            label="Challenge Logic" field="challenge" mode="condition" placeholder="$stat >= 50 [10]" data={data}
+                            handleChange={handleChange}
+                            activeField={activeField}
+                            setActiveField={setActiveField}
+                            storyId={storyId}
+                            handleAssistantInsert={handleAssistantInsert}
+                        />
                          <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px' }}>
                              Tip: Use the assistant 🪄 to build Broad Difficulty curves or Luck checks.
                          </p>
@@ -270,7 +253,18 @@ function OutcomeColumn({ title, color, data, prefix, onChange, LogicInput, isRar
             </div>
             
             <div style={{ marginTop: '0.5rem' }}>
-                <LogicInput label="Changes (Ledger)" field={`${prefix}_quality_change`} mode="effect" placeholder="$gold += 10" />
+                <LogicInput
+                    label="Changes (Ledger)"
+                    field={`${prefix}_quality_change` as keyof ResolveOption}
+                    mode="effect"
+                    placeholder="$gold += 10"
+                    data={data}
+                    handleChange={onChange}
+                    activeField={activeField}
+                    setActiveField={setActiveField}
+                    storyId={storyId}
+                    handleAssistantInsert={handleAssistantInsert}
+                />
             </div>
 
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
@@ -290,6 +284,93 @@ function OutcomeColumn({ title, color, data, prefix, onChange, LogicInput, isRar
                     <ScribeAssistant storyId={storyId} mode="text" onInsert={handleAssistantInsert} onClose={() => setActiveField(null)} />
                 </div>
              )}
+        </div>
+    );
+}
+
+interface LogicInputProps {
+    label: string;
+    field: keyof ResolveOption;
+    mode: 'condition' | 'effect';
+    placeholder?: string;
+
+    data: ResolveOption;
+    handleChange: (field: keyof ResolveOption, value: any) => void;
+
+    activeField: { key: keyof ResolveOption; mode: 'condition' | 'effect' } | null;
+    setActiveField: React.Dispatch<
+        React.SetStateAction<{ key: keyof ResolveOption; mode: 'condition' | 'effect' } | null>
+    >;
+
+    storyId: string;
+    handleAssistantInsert: (text: string) => void;
+}
+
+export function LogicInput({
+    label,
+    field,
+    mode,
+    placeholder,
+    data,
+    handleChange,
+    activeField,
+    setActiveField,
+    storyId,
+    handleAssistantInsert,
+}: LogicInputProps) {
+    return (
+        <div style={{ position: 'relative', flex: 1 }}>
+            <label className="form-label">{label}</label>
+
+            <div style={{ position: 'relative' }}>
+                <input
+                    placeholder={placeholder}
+                    value={(data[field] as string) || ''}
+                    onChange={e => handleChange(field, e.target.value)}
+                    className="form-input"
+                    style={{ paddingRight: '90px' }}
+                />
+
+                <button
+                    onClick={() =>
+                        setActiveField(
+                            activeField?.key === field
+                                ? null
+                                : { key: field, mode }
+                        )
+                    }
+                    style={{
+                        position: 'absolute',
+                        right: 6,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'rgba(97, 175, 239, 0.1)',
+                        border: '1px solid rgba(97, 175, 239, 0.3)',
+                        color: '#61afef',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '3px 8px',
+                        fontSize: '0.7rem',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s',
+                    }}
+                    className="hover:bg-blue-900/30"
+                >
+                    Logic
+                </button>
+            </div>
+
+            {activeField?.key === field && (
+                <ScribeAssistant
+                    storyId={storyId}
+                    mode={mode}
+                    onInsert={handleAssistantInsert}
+                    onClose={() => setActiveField(null)}
+                />
+            )}
         </div>
     );
 }
