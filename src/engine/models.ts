@@ -355,6 +355,7 @@ export interface ShopStall {
     description?: string;
     image?: string;         // Icon for the tab
     mode: ShopMode;         // 'buy' or 'sell'
+    source?: string; 
     listings: ShopListing[];
 }
 
@@ -363,5 +364,6 @@ export interface MarketDefinition {
     name: string;
     image?: string;            // Banner/Background
     defaultCurrencyId: string; // e.g., "gold"
+    allowAllTypes?: boolean;   // <--- NEW: If true, show Pyramidal/Strings in the dropdown
     stalls: ShopStall[];       // The tabs
 }

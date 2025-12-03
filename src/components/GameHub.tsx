@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition } from '@/engine/models';
+import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import ElysiumLayout from './layouts/ElysiumLayout';
@@ -34,6 +34,7 @@ interface GameHubProps {
     regions: Record<string, MapRegion>;
     storyId: string; 
     deckDefs: Record<string, DeckDefinition>;
+    markets: Record<string, MarketDefinition>;
 }
 
 export default function GameHub(props: GameHubProps) {
@@ -281,7 +282,8 @@ export default function GameHub(props: GameHubProps) {
             regions: props.regions,
             images: props.imageLibrary,
             categories: props.categories,
-            char_create: {} // Not needed for runtime calculations
+            char_create: {}, 
+            markets: props.markets
         };
 
         // Pass the full config to the engine

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MarketDefinition, ShopStall, ShopListing, QualityDefinition } from '@/engine/models';
-import SparkleIcon from '@/components/icons/SparkleIcon';
+import { MarketDefinition, ShopStall, ShopListing, QualityDefinition, QualityType } from '@/engine/models';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Props {
@@ -22,6 +21,17 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
     const handleChange = (field: keyof MarketDefinition, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
+
+    // --- FILTERING LOGIC ---
+    // 1. Tradeable Items: Default to Items/Equip only, unless "Allow All" is checked
+    const tradeableQualities = form.allowAllTypes 
+        ? allQualities 
+        : allQualities.filter(q => q.type === QualityType.Item || q.type === QualityType.Equipable);
+
+    // 2. Currencies: Usually Counters/Trackers/Items
+    const currencyOptions = allQualities.filter(q => 
+        q.type === QualityType.Counter || q.type === QualityType.Tracker || q.type === QualityType.Item
+    );
 
     // --- STALL LOGIC ---
     const addStall = () => {
@@ -43,7 +53,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
     };
 
     const removeStall = (index: number) => {
-        if (!confirm("Delete stall and all listings?")) return;
+        if (!confirm("Delete stall?")) return;
         const newStalls = form.stalls.filter((_, i) => i !== index);
         handleChange('stalls', newStalls);
         setActiveStallIndex(Math.max(0, index - 1));
@@ -76,32 +86,28 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
     // --- BULK ADD LOGIC ---
     const bulkAdd = (category: string) => {
         if (!currentStall || !category) return;
-        const itemsToAdd = allQualities.filter(q => 
-            (q.type === 'I' || q.type === 'E') && 
-            q.category?.includes(category)
-        );
+        // Use the filtered list so we don't accidentally add Stats if "Allow All" is off
+        const itemsToAdd = tradeableQualities.filter(q => q.category?.includes(category));
 
         const newListings = [...currentStall.listings];
         let addedCount = 0;
         
         itemsToAdd.forEach(item => {
-            // Avoid duplicates
             if (!newListings.find(l => l.qualityId === item.id)) {
                 newListings.push({
                     id: uuidv4(),
                     qualityId: item.id,
-                    price: "10" // Default price
+                    price: "10"
                 });
                 addedCount++;
             }
         });
 
         updateStall(activeStallIndex, 'listings', newListings);
-        alert(`Added ${addedCount} items from category '${category}'.`);
+        alert(`Added ${addedCount} items.`);
     };
 
-    // Get unique categories for the dropdown
-    const categories = Array.from(new Set(allQualities.map(q => q.category?.split(',')[0].trim()).filter(Boolean)));
+    const categories = Array.from(new Set(tradeableQualities.map(q => q.category?.split(',')[0].trim()).filter(Boolean)));
 
     return (
         <div className="h-full flex flex-col">
@@ -119,12 +125,41 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                 {/* GLOBAL SETTINGS */}
                 <div className="form-row">
                     <div className="form-group"><label className="form-label">Display Name</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Default Currency</label><input value={form.defaultCurrencyId} onChange={e => handleChange('defaultCurrencyId', e.target.value)} className="form-input" placeholder="gold" /></div>
+                    
+                    <div className="form-group">
+                        <label className="form-label">Default Currency</label>
+                        <select 
+                            value={form.defaultCurrencyId} 
+                            onChange={e => handleChange('defaultCurrencyId', e.target.value)} 
+                            className="form-select"
+                        >
+                             <option value="">-- Select Currency --</option>
+                             {currencyOptions.map(c => (
+                                 <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
+                             ))}
+                        </select>
+                    </div>
                 </div>
-                <div className="form-group"><label className="form-label">Image/Banner</label><input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" /></div>
+                
+                <div className="form-group">
+                    <label className="form-label">Image/Banner</label>
+                    <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" />
+                </div>
+
+                {/* TOGGLE: ESOTERIC TYPES */}
+                <div style={{ marginBottom: '2rem', background: '#181a1f', padding: '0.5rem', borderRadius: '4px', border: '1px dashed #444' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#aaa', fontSize: '0.85rem' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={form.allowAllTypes || false} 
+                            onChange={e => handleChange('allowAllTypes', e.target.checked)} 
+                        />
+                        Allow Esoteric Trades (Pyramidal Qualities, Strings, etc.)
+                    </label>
+                </div>
 
                 {/* STALL TABS */}
-                <div style={{ marginTop: '2rem' }}>
+                <div style={{ marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
                         {form.stalls.map((stall, idx) => (
                             <button 
@@ -147,15 +182,47 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                 {/* ACTIVE STALL EDITOR */}
                 {currentStall && (
                     <div style={{ background: '#181a1f', padding: '1.5rem', borderRadius: '0 0 4px 4px', border: '1px solid #333', borderTop: 'none' }}>
+                        
+                        {/* Row 1: Name & Mode */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <input value={currentStall.name} onChange={e => updateStall(activeStallIndex, 'name', e.target.value)} className="form-input" style={{ fontWeight: 'bold' }} />
-                                <select value={currentStall.mode} onChange={e => updateStall(activeStallIndex, 'mode', e.target.value)} className="form-select">
-                                    <option value="buy">Player Buys</option>
-                                    <option value="sell">Player Sells</option>
-                                </select>
+                            <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
+                                <div style={{ flex: 2 }}>
+                                    <label className="form-label">Stall Name</label>
+                                    <input 
+                                        value={currentStall.name} 
+                                        onChange={e => updateStall(activeStallIndex, 'name', e.target.value)} 
+                                        className="form-input" 
+                                        style={{ fontWeight: 'bold' }} 
+                                    />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label className="form-label">Mode</label>
+                                    <select value={currentStall.mode} onChange={e => updateStall(activeStallIndex, 'mode', e.target.value)} className="form-select">
+                                        <option value="buy">Player Buys</option>
+                                        <option value="sell">Player Sells</option>
+                                    </select>
+                                </div>
                             </div>
-                            <button onClick={() => removeStall(activeStallIndex)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer' }}>Delete Stall</button>
+                            <div style={{ alignSelf: 'end', marginLeft: '1rem' }}>
+                                <button onClick={() => removeStall(activeStallIndex)} className="unequip-btn" style={{ width: 'auto', padding: '0.6rem 1rem' }}>
+                                    Delete Stall
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Source Configuration (NEW) */}
+                        <div className="form-group" style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #444' }}>
+                            <label className="form-label" style={{ color: '#98c379' }}>Item Source Tag (Optional)</label>
+                            <input 
+                                value={currentStall.source || ''} 
+                                onChange={e => updateStall(activeStallIndex, 'source', e.target.value)} 
+                                className="form-input" 
+                                placeholder={`bought at ${currentStall.name}`}
+                            />
+                            <p className="special-desc">
+                                Items gained here will be tagged: <code>[source:{currentStall.source || `bought at ${currentStall.name}`}]</code>.
+                                <br/>Useful for "Deduction" mechanics or tracking where contraband came from.
+                            </p>
                         </div>
 
                         {/* BULK ADDER */}
@@ -178,33 +245,54 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                         </div>
 
                         {/* LISTINGS GRID */}
-                        <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            
+                            {/* Header Row for Clarity */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr 2fr 30px', gap: '1rem', padding: '0 0.5rem', fontSize: '0.75rem', color: '#aaa', textTransform: 'uppercase' }}>
+                                <span>Item</span>
+                                <span>Price (Logic Allowed)</span>
+                                <span>Currency Override</span>
+                                <span></span>
+                            </div>
+
                             {currentStall.listings.map((listing, lIdx) => (
-                                <div key={listing.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 30px', gap: '1rem', alignItems: 'center', background: '#21252b', padding: '0.5rem', borderRadius: '4px', border: '1px solid #333' }}>
-                                    {/* Item Selector */}
+                                <div key={listing.id} style={{ display: 'grid', gridTemplateColumns: '3fr 2fr 2fr 30px', gap: '1rem', alignItems: 'center', background: '#21252b', padding: '0.5rem', borderRadius: '4px', border: '1px solid #333' }}>
+                                    
+                                    {/* ITEM SELECTOR */}
                                     <select 
                                         value={listing.qualityId} 
                                         onChange={e => updateListing(lIdx, 'qualityId', e.target.value)} 
                                         className="form-select"
                                     >
                                         <option value="">Select Item...</option>
-                                        {allQualities.map(q => (
+                                        {tradeableQualities.map(q => (
                                             <option key={q.id} value={q.id}>{q.name} ({q.id})</option>
                                         ))}
                                     </select>
 
-                                    {/* Price (Logic Enabled) */}
+                                    {/* PRICE INPUT */}
                                     <div style={{ position: 'relative' }}>
                                         <input 
                                             value={listing.price} 
                                             onChange={e => updateListing(lIdx, 'price', e.target.value)} 
                                             className="form-input" 
-                                            placeholder="Price (10 or $val*2)" 
-                                            style={{ paddingRight: '30px' }}
+                                            placeholder="10" 
+                                            title="Logic allowed (e.g. $rep * 5)"
                                         />
-                                        {/* Reuse simple Logic Button concept */}
-                                        <button style={{ position: 'absolute', right: 5, top: 5, background: 'none', border: 'none', color: '#f1c40f' }}>$</button>
                                     </div>
+
+                                    {/* CURRENCY OVERRIDE */}
+                                    <select 
+                                        value={listing.currencyId || ""} 
+                                        onChange={e => updateListing(lIdx, 'currencyId', e.target.value || undefined)} 
+                                        className="form-select"
+                                        style={{ fontSize: '0.85rem', color: listing.currencyId ? 'var(--accent-highlight)' : '#777' }}
+                                    >
+                                        <option value="">Default ({form.defaultCurrencyId})</option>
+                                        {currencyOptions.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
+                                        ))}
+                                    </select>
 
                                     <button onClick={() => removeListing(lIdx)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                                 </div>

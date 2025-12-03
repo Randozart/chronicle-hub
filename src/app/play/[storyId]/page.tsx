@@ -90,6 +90,7 @@ export default async function GamePage({
                 settings={sanitize(gameData.settings)}
                 
                 deckDefs={sanitize(gameData.decks || {})} 
+                markets={sanitize(gameData.markets || {})}
 
                 imageLibrary={gameData.images || {}}
                 categories={sanitize(gameData.categories || {})}

@@ -32,7 +32,8 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
             char_create: rawContent.char_create || rawContent.starting || {},
             settings: worldDocument.settings,
             images: worldDocument.images,
-            regions: {}
+            regions: {},
+            markets: {}
         };
 
         // Inject IDs into the config objects
