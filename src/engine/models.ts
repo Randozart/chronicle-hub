@@ -260,7 +260,10 @@ export interface CharacterDocument {
     lastDeckUpdate: Record<string, Date>;
     lastActionTimestamp?: Date; 
     equipment: Record<string, string | null>;
-    // pendingEvents?: any[]; // Future
+    pendingEvents?: { 
+        eventId: string; 
+        triggerTime: Date; 
+    }[]
 }
 
 export interface QualityChangeInfo {

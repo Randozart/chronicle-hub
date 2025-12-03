@@ -215,7 +215,7 @@ export const getOrCreateCharacter = async (
         deckCharges: initialDeckCharges,
         lastDeckUpdate: initialLastDeckUpdate,
         equipment: {},
-        lastActionTimestamp: new Date()
+        lastActionTimestamp: new Date(),
     };
 
     await collection.insertOne(newCharacter);
