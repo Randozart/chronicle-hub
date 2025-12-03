@@ -9,7 +9,8 @@ const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
-    const id = searchParams.get('id'); // Optional ID for single fetch
+    const id = searchParams.get('id');
+    const full = searchParams.get('full'); // <--- NEW FLAG
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
 
@@ -17,14 +18,17 @@ export async function GET(request: NextRequest) {
     const db = client.db(DB_NAME);
     
     if (id) {
-        // Fetch FULL single storylet
         const storylet = await db.collection('storylets').findOne({ worldId: storyId, id });
         return NextResponse.json(storylet);
+    } else if (full === 'true') {
+        // MUST BE HERE
+        const storylets = await db.collection('storylets').find({ worldId: storyId }).toArray();
+        return NextResponse.json(storylets);
     } else {
-        // Fetch LIST summary
+        // Default: Summary for Sidebar
         const storylets = await db.collection('storylets')
             .find({ worldId: storyId })
-            .project({ id: 1, name: 1, location: 1, folder: 1, status: 1 }) // <--- Add folder + status
+            .project({ id: 1, name: 1, location: 1, folder: 1, status: 1 })
             .sort({ id: 1 })
             .toArray();
         return NextResponse.json(storylets);
