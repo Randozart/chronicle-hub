@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from "@/lib/auth";
-import { getCharacter, getCharactersList } from '@/engine/characterService';
+import { checkLivingStories, getCharacter, getCharactersList } from '@/engine/characterService';
 import { getContent } from '@/engine/contentCache'; 
 import { getLocationStorylets, getEvent } from '@/engine/worldService';
 import { Storylet, Opportunity } from '@/engine/models';
@@ -38,6 +38,9 @@ export default async function GamePage({
     let character = null;
     if (activeCharId) {
         character = await getCharacter(userId, storyId, activeCharId);
+         if (character) {
+            character = await checkLivingStories(character);
+        }
     }
 
     // If no chars at all, redirect to creation
