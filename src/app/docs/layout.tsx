@@ -46,13 +46,13 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
                     <NavItem href="/docs/logic" label="Logic & Math" />
 
                     <Section title="The World" />
-                    <NavItem href="/docs/storylets" label="Storylets & Cards" />
-                    <NavItem href="/docs/qualities" label="Qualities, Variables & Economy" />
-                    <NavItem href="/docs/geography" label="Geography & Maps" />
+                    <NavItem href="/docs/storylets" label="Storylets & Opportunities" />
+                    <NavItem href="/docs/qualities" label="Qualities, Variables & Resources" />
+                    <NavItem href="/docs/geography" label="Locations, Regions, Markets & Maps" />
 
                     <Section title="Tools" />
-                    <NavItem href="/docs/graph" label="Visual Graph Builder" />
-                    <NavItem href="/docs/admin" label="Admin & Security" />
+                    <NavItem href="/docs/graph" label="Narrative Graph" />
+                    <NavItem href="/docs/admin" label="Configuration & Administration" />
 
                     <Section title="Cookbook" />
                     <NavItem href="/docs/patterns" label="Design Patterns" />

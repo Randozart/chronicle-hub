@@ -6,7 +6,7 @@ export default function QualitiesDocs() {
     return (
         <div className="docs-content">
             <header>
-                <h1 className="docs-h1">Qualities, Variables & Economy</h1>
+                <h1 className="docs-h1">Qualities, Variables & Resources</h1>
                 <p className="docs-lead">
                     Defining the variables, items, stats, and currencies that make up your world.
                 </p>
