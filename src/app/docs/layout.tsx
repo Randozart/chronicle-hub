@@ -131,6 +131,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
 
                     <Section title="Cookbook" />
                     <NavItem href="/docs/patterns" label="Design Patterns" />
+                    <NavItem href="/docs/esoteric" label="System Hacking" />
                 </ul>
             </aside>
             <main style={{ flex: 1, padding: '4rem 6rem', scrollBehavior: 'smooth' }}>
