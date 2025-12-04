@@ -276,42 +276,66 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
     const settings = await getSettings(character.storyId);
     if (!settings.useActionEconomy) return character;
     
-    let maxActions: number;
-    if (typeof settings.maxActions === 'string') {
-        const worldConfig = await getWorldConfig(character.storyId);
-        const tempEngine = new GameEngine(character.qualities, worldConfig);
-        const val = tempEngine.evaluateBlock(`{${settings.maxActions}}`);
-        maxActions = parseInt(val, 10) || 20; 
-    } else {
-        maxActions = settings.maxActions || 20;
-    }
-
+    // 1. Calculate Time Passed
     const lastTimestamp = character.lastActionTimestamp ? new Date(character.lastActionTimestamp) : new Date();
     const now = new Date();
     const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
     const regenInterval = settings.regenIntervalInMinutes || 10;
-    const actionsToRegen = Math.floor(minutesPassed / regenInterval);
     
-    let regenValue = 1;
-    if (typeof settings.regenAmount === 'number') {
-        regenValue = settings.regenAmount;
-    } else if (typeof settings.regenAmount === 'string') {
-        // Create a temp engine to parse the logic string (e.g. "$vitality / 2")
-        const worldConfig = await getWorldConfig(character.storyId);
-        const tempEngine = new GameEngine(character.qualities, worldConfig);
-        const result = tempEngine.evaluateBlock(`{${settings.regenAmount}}`);
-        regenValue = parseInt(result, 10) || 1;
+    const ticks = Math.floor(minutesPassed / regenInterval);
+
+    if (ticks <= 0) return character;
+
+    // 2. Initialize Engine
+    const worldConfig = await getWorldConfig(character.storyId);
+    const engine = new GameEngine(character.qualities, worldConfig, character.equipment);
+
+    // 3. Determine Logic
+    const regenRaw = settings.regenAmount || 1;
+    const actionQid = settings.actionId.replace('$', '');
+
+    // CASE A: Pure Number (Legacy / Standard)
+    if (!isNaN(Number(regenRaw))) {
+        const amountPerTick = Number(regenRaw);
+        const totalRestored = amountPerTick * ticks;
+        
+        // Resolve Max Cap
+        const maxStr = settings.maxActions || 20;
+        const maxVal = parseInt(engine.evaluateBlock(`{${maxStr}}`), 10) || 20;
+        
+        const current = engine.getEffectiveLevel(actionQid);
+        const newValue = Math.min(maxVal, current + totalRestored);
+        
+        // Apply
+        // Note: Direct assignment bypasses 'applyEffect' triggers, but is safe for main stats
+        if (character.qualities[actionQid]) {
+            (character.qualities[actionQid] as any).level = newValue;
+        }
+    } 
+    
+    // CASE B: Logic String ($wounds -= 1)
+    else {
+        const effectString = String(regenRaw);
+        
+        // We need to apply this effect 'ticks' times.
+        // Optimization: Regex replace the value to multiply by ticks?
+        // Or just loop. Looping 50 times is cheap in Node. Let's loop.
+        // Ideally we cap ticks at ~100 to prevent infinite loops on old saves.
+        
+        const safeTicks = Math.min(ticks, 100); 
+        
+        console.log(`[Regen] Running '${effectString}' x ${safeTicks} ticks`);
+
+        for (let i = 0; i < safeTicks; i++) {
+            engine.applyEffect(effectString);
+        }
+        
+        character.qualities = engine.getQualities();
     }
 
-    if (actionsToRegen > 0) {
-        const actionQid = settings.actionId.replace('$', '');
-        const actionsState = character.qualities[actionQid];
-        if (actionsState && 'level' in actionsState) {
-            // USE THE RESOLVED VALUE
-            const newActionTotal = Math.min(maxActions, actionsState.level + (actionsToRegen * regenValue));
-            actionsState.level = newActionTotal;
-            character.lastActionTimestamp = new Date(lastTimestamp.getTime() + actionsToRegen * regenInterval * 60 * 1000);
-        }
-    }
+    // 4. Update Timestamp
+    // Move timestamp forward by exactly the amount of time consumed
+    character.lastActionTimestamp = new Date(lastTimestamp.getTime() + ticks * regenInterval * 60 * 1000);
+
     return character;
 }

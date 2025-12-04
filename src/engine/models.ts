@@ -158,8 +158,8 @@ export interface WorldSettings {
     maxActions: number | string;
     actionId: string;
     regenIntervalInMinutes: number;
-    regenAmount: number | string; 
-    defaultActionCost?: number;
+    regenAmount: number | string;        // Already supports string, but we'll enforce logic usage
+    defaultActionCost?: number | string; // <--- Updated to allow string logic
     defaultDrawCost?: string;
     startLocation?: string; // <--- NEW
     
@@ -210,7 +210,7 @@ export interface WorldSettings {
     bannerHeight?: number;
     enableParallax?: boolean;
     visualTheme?: string;
-    defaultActionCost?: number; // [NEW]
+    defaultActionCost?: number | string; // <--- Updated to allow string logic
 }
 
 // --- RUNTIME STATE INTERFACES ---

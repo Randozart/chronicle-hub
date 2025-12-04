@@ -3105,6 +3105,28 @@ html[data-theme='revolutionary']::before {
 .docs-props-list .docs-code { display: inline-block; margin-bottom: 0.5rem; color: #e5c07b; font-size: 1rem; }
 .docs-props-list span { display: block; color: #abb2bf; line-height: 1.5; }
 
+.cost-badge {
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 10px;
+    white-space: nowrap;
+}
+.cost-numeric {
+    color: var(--danger-color);
+    background: rgba(0,0,0,0.3);
+}
+.cost-free {
+    color: var(--success-color);
+    background: rgba(0,0,0,0.3);
+}
+.cost-logic {
+    color: var(--accent-highlight); /* Gold/Yellow */
+    background: rgba(0,0,0,0.3);
+    border: 1px dashed var(--accent-highlight);
+}
+
 html {
     scroll-behavior: smooth;
 }

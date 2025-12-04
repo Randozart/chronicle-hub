@@ -294,64 +294,88 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </div>
             </div>
 
-            {/* --- 3. GAME MECHANICS (Actions) --- */}
+            {/* --- GAME RULES SECTION --- */}
             <div className="special-field-group" style={{ borderColor: '#61afef' }}>
-                <label className="special-label" style={{ color: '#61afef' }}>Game Rules</label>
+                <label className="special-label" style={{ color: '#61afef' }}>Game Rules & Physics</label>
                 
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label className="toggle-label" style={{ marginBottom: '0.5rem' }}>
+                    <label className="toggle-label">
                         <input type="checkbox" checked={form.useActionEconomy} onChange={e => handleChange('useActionEconomy', e.target.checked)} />
-                        Enable Action Economy
+                        Enable Action/Time Economy
                     </label>
-                    <p className="special-desc">Limits how many moves a player can make.</p>
                 </div>
 
                 {form.useActionEconomy && (
-                    <div className="form-row" style={{ borderTop: '1px dashed #444', paddingTop: '1rem' }}>
-                        <div className="form-group">
-                            <label className="form-label">Max Actions</label>
-                            <input 
-                                // Allow number OR string logic
-                                value={form.maxActions} 
-                                onChange={e => handleChange('maxActions', e.target.value)} 
-                                className="form-input" 
-                                placeholder="20 or $stamina * 2"
-                            />
-                            <p className="special-desc">
-                                Hard limit. Can be a number or logic. <br/>
-                                <em>Tip: Use the 'max' property on the Quality itself for UI bars.</em>
-                            </p>
-                        </div>
+                    <div className="form-group" style={{ borderTop: '1px dashed #444', paddingTop: '1rem' }}>
                         
-                         <div className="form-group">
-                            <label className="form-label">Default Action Cost</label>
-                            <input 
-                                type="number" 
-                                value={form.defaultActionCost} 
-                                onChange={e => handleChange('defaultActionCost', parseInt(e.target.value))} 
-                                className="form-input" 
-                            />
-                            <p className="special-desc">Cost for options that don't specify a cost.</p>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Regen Amount</label>
-                            <input 
-                                value={form.regenAmount} 
-                                onChange={e => handleChange('regenAmount', e.target.value)} 
-                                className="form-input" 
-                                placeholder="1 or $recovery_rate"
-                            />
-                            <p className="special-desc">Actions gained per tick.</p>
+                        {/* 1. THE METER (What are we tracking?) */}
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Main Resource ID</label>
+                                <input 
+                                    value={form.actionId} 
+                                    onChange={e => handleChange('actionId', e.target.value)} 
+                                    className="form-input" 
+                                    placeholder="$actions"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Max Value (Cap)</label>
+                                <input 
+                                    value={form.maxActions} 
+                                    onChange={e => handleChange('maxActions', e.target.value)} 
+                                    className="form-input" 
+                                    placeholder="20 or $vitality * 2"
+                                />
+                            </div>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Regen Rate (Minutes)</label>
+                        {/* 2. REGENERATION (Time passing) */}
+                        <div className="form-group" style={{ marginTop: '1rem', background: 'rgba(97, 175, 239, 0.1)', padding: '1rem', borderRadius: '4px' }}>
+                            <label className="form-label" style={{ color: '#61afef' }}>Time Passing (Regeneration)</label>
+                            <div className="form-row">
+                                <div className="form-group" style={{ flex: 1 }}>
+                                    <label className="form-label">Interval (Minutes)</label>
+                                    <input 
+                                        type="number" 
+                                        value={form.regenIntervalInMinutes} 
+                                        onChange={e => handleChange('regenIntervalInMinutes', parseInt(e.target.value))} 
+                                        className="form-input" 
+                                    />
+                                </div>
+                                <div className="form-group" style={{ flex: 2 }}>
+                                    <label className="form-label">Effect per Tick</label>
+                                    <input 
+                                        value={form.regenAmount} 
+                                        onChange={e => handleChange('regenAmount', e.target.value)} 
+                                        className="form-input" 
+                                        placeholder="1 or $wounds -= 1"
+                                    />
+                                </div>
+                            </div>
+                            <p className="special-desc">
+                                If <strong>Effect</strong> is a number (e.g. <code>1</code>), it adds to the Main Resource.
+                                <br/>
+                                If it is logic (e.g. <code>$wounds -= 1</code>), it executes that logic every interval.
+                            </p>
+                        </div>
+
+                        {/* 3. COSTS (Clicking buttons) */}
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                            <label className="form-label">Default Action Cost</label>
                             <input 
-                                type="number" 
-                                value={form.regenIntervalInMinutes} 
-                                onChange={e => handleChange('regenIntervalInMinutes', parseInt(e.target.value))} 
+                                value={form.defaultActionCost || ''} 
+                                onChange={e => handleChange('defaultActionCost', e.target.value)} 
                                 className="form-input" 
+                                placeholder="1 or $stress++"
                             />
+                            <p className="special-desc">
+                                The "Tax" for clicking any Storylet option. 
+                                <br/>
+                                • Number (<code>1</code>): Subtracts 1 from Main Resource.
+                                <br/>
+                                • Logic (<code>$stress++</code>): Executes this effect instead.
+                            </p>
                         </div>
                     </div>
                 )}

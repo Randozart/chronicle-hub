@@ -59,31 +59,49 @@ export async function POST(request: NextRequest) {
         
         const checkEngine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
         
-        let actionCost = gameData.settings.defaultActionCost ?? 1;
+        // 1. Determine the Cost Expression
+        let costExpr: string | number = gameData.settings.defaultActionCost ?? 1;
         
-        const isInstant = option.tags?.includes('instant_redirect');
-
+        // Specific option overrides default
         if (option.action_cost) {
-            const resolvedCost = checkEngine.evaluateBlock(option.action_cost);
-            const parsed = parseInt(resolvedCost, 10);
-            actionCost = isNaN(parsed) ? actionCost : parsed;
-        } else if (isInstant) {
-            actionCost = 0;
+            costExpr = option.action_cost;
+        } else if (option.tags?.includes('instant_redirect')) {
+            costExpr = 0;
         }
 
-        const actionQid = gameData.settings.actionId.replace('$', '');
-        const actionsState = character.qualities[actionQid] as any;
-        const currentActions = (actionsState && 'level' in actionsState) ? actionsState.level : 0;
+        // 2. Evaluate Logic
+        // Is it a simple number?
+        const numericCost = parseInt(checkEngine.evaluateBlock(`{${costExpr}}`), 10);
+        const isPureNumber = !isNaN(numericCost) && /^\d+$/.test(String(costExpr).trim());
 
-        if (currentActions < actionCost) {
-            return NextResponse.json({ error: 'You do not have enough actions.' }, { status: 429 });
-        }
-        
-        if (actionsState && 'level' in actionsState) {
-            actionsState.level -= actionCost;
-            if (actionCost > 0) {
+        if (isPureNumber) {
+            // --- STANDARD NUMERIC COST ---
+            const cost = numericCost;
+            const actionQid = gameData.settings.actionId.replace('$', '');
+            const currentActions = checkEngine.getEffectiveLevel(actionQid);
+
+            if (currentActions < cost) {
+                return NextResponse.json({ error: 'You do not have enough actions.' }, { status: 429 });
+            }
+            
+            // Deduct
+            if (cost > 0) {
+                // We can use applyEffect for safety
+                const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
+                engine.applyEffect(`$${actionQid} -= ${cost}`);
+                character.qualities = engine.getQualities();
                 character.lastActionTimestamp = new Date();
             }
+        } else {
+            // --- CUSTOM LOGIC COST ($stress++) ---
+            // Note: This does not "Gate" the action (check for affordability). 
+            // It just applies the tax.
+            const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
+            engine.applyEffect(String(costExpr));
+            character.qualities = engine.getQualities();
+            
+            // We don't reset timestamp for custom logic usually, or maybe we do? 
+            // Let's assume custom logic handles its own flow.
         }
     }
 

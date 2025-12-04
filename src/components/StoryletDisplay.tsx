@@ -224,7 +224,39 @@ export default function StoryletDisplay({
                 {optionsToDisplay.map((option) => {
                     const cost = option.computed_action_cost ?? 1;
                     const showCost = settings.useActionEconomy;
-
+                    
+                    let costDisplay = null;
+    
+                    if (showCost) {
+                        const defaultCost = settings.defaultActionCost ?? 1;
+                        const rawCost = option.action_cost || defaultCost;
+                        
+                        // Try to parse as number
+                        const numCost = parseInt(String(rawCost), 10);
+                        
+                        if (!isNaN(numCost) && /^\d+$/.test(String(rawCost))) {
+                            // Numeric
+                            if (numCost > 0) {
+                                costDisplay = (
+                                    <span className="cost-badge cost-numeric">
+                                        {numCost} Actions
+                                    </span>
+                                );
+                            } else {
+                                costDisplay = <span className="cost-badge cost-free">Free</span>;
+                            }
+                        } else {
+                            // Logic (e.g. $stress++)
+                            // We strip the $ for cleaner display
+                            const cleanLogic = String(rawCost).replace(/\$/g, '');
+                            costDisplay = (
+                                <span className="cost-badge cost-logic" title={String(rawCost)}>
+                                    {cleanLogic}
+                                </span>
+                            );
+                        }
+                    }
+                    
                     return (
                         <button 
                             key={option.id} 
@@ -249,18 +281,7 @@ export default function StoryletDisplay({
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                         <h3 style={{ margin: 0 }}>{option.name}</h3>
                                         {showCost && (
-                                            <span style={{ 
-                                                fontSize: '0.75rem', 
-                                                fontWeight: 'bold', 
-                                                color: cost > 0 ? 'var(--danger-color)' : 'var(--success-color)', 
-                                                background: 'rgba(0,0,0,0.3)',
-                                                padding: '2px 6px',
-                                                borderRadius: '4px',
-                                                marginLeft: '10px',
-                                                whiteSpace: 'nowrap'
-                                            }}>
-                                                {cost > 0 ? `${cost} Actions` : 'Free'}
-                                            </span>
+                                            costDisplay
                                         )}
                                     </div>
                                     {option.short && <p className="option-short-desc">{option.short}</p>}

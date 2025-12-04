@@ -737,7 +737,8 @@ export class GameEngine {
                 } else {
                     // FIX: Use World Settings Default instead of hardcoded 1
                     // If undefined, fallback to 1 (standard behavior)
-                    rOpt.computed_action_cost = this.worldContent.settings.defaultActionCost ?? 1;
+                    const val = this.evaluateBlock(this.worldContent.settings.defaultActionCost as string);
+                    rOpt.computed_action_cost = parseInt(val, 10) ?? 1;
                 }
                 
                 return rOpt;
