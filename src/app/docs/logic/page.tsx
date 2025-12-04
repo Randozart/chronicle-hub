@@ -143,14 +143,110 @@ export default function LogicMathPage() {
                         {`{ $reputation >= 10 : $diamond++ }, $gold += 10`}
                     </code>
                 </div>
-                 <p className="docs-p">
-                    And this example grants a diamond on top of your 10 gold reward, if your reputation quality is equal to or greater than 10.
+                <p className="docs-p">
+                    Grants a Diamond ONLY if Reputation is 10 or higher, but always grants 10 Gold.
                 </p>
+            </section>
+
+            <section id="syntax-rules">
+                <h2 className="docs-h2">3. Braces vs. Parentheses</h2>
+                <p className="docs-p">
+                    ScribeScript uses two types of brackets. Confusing them is the most common cause of errors, so here is the rule of thumb:
+                </p>
+
+                {/* DEFINITIONS */}
+                <div className="docs-grid">
+                    <div className="docs-card" style={{borderColor: '#f1c40f'}}>
+                        <h4 className="docs-h4" style={{color: '#f1c40f'}}>{`{ }`} The Engine Switch</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            <strong>"Stop reading text, start calculating."</strong>
+                        </p>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            Used to inject variables or math into normal sentences.
+                        </p>
+                        <div className="docs-code" style={{marginTop:'10px'}}>
+                            "Cost: <span style={{color: '#f1c40f'}}>{`{ ($lvl + 1) * 10 }`}</span>"
+                        </div>
+                    </div>
+
+                    <div className="docs-card" style={{borderColor: '#61afef'}}>
+                        <h4 className="docs-h4" style={{color: '#61afef'}}>{`( )`} The Grouper</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            <strong>"Do this part first."</strong>
+                        </p>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            Used <em>inside</em> code to organize logic order (Order of Operations).
+                        </p>
+                        <div className="docs-code" style={{marginTop:'10px'}}>
+                            <span style={{color: '#61afef'}}>(</span>$A || $B<span style={{color: '#61afef'}}>)</span> && $C
+                        </div>
+                    </div>
+                </div>
+
+                <h3 className="docs-h3">Context: When to use which?</h3>
+                <p className="docs-p">
+                    The Editor has two types of input fields. The rules change depending on where you are typing.
+                </p>
+
+                {/* CONTEXT EXAMPLES */}
+                <div className="docs-grid">
+                    {/* TEXT FIELDS */}
+                    <div className="docs-card">
+                        <h4 className="docs-h4">1. Text Fields</h4>
+                        <small style={{display:'block', marginBottom:'1rem', color:'#888'}}>Main Text, Title, Button Labels</small>
+                        
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            These are <strong>Literal Text</strong> by default.
+                        </p>
+                        <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                            <li>You <strong>MUST</strong> use <code>{`{ }`}</code> to insert variables.</li>
+                            <li>Without braces, <code>$gold</code> is just the word "$gold".</li>
+                        </ul>
+                        <div className="docs-code">
+                            "Hello <span style={{color: '#f1c40f'}}>{`{$name}`}</span>!"
+                        </div>
+                    </div>
+
+                    {/* LOGIC FIELDS */}
+                    <div className="docs-card">
+                        <h4 className="docs-h4">2. Logic Fields</h4>
+                        <small style={{display:'block', marginBottom:'1rem', color:'#888'}}>Visible If, Unlock If, Quality Changes</small>
+                        
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            These are <strong>Code</strong> by default.
+                        </p>
+                        <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                            <li>You <strong>do NOT</strong> need <code>{`{ }`}</code> for basic checks.</li>
+                            <li>You <strong>CAN</strong> use <code>{`{ }`}</code> to calculate dynamic targets.</li>
+                            <li>You <strong>MUST</strong> use <code>( )</code> to group AND/OR logic.</li>
+                        </ul>
+                        
+                        <div style={{marginTop:'10px'}}>
+                            <small style={{color:'#888'}}>Grouping Logic:</small><br/>
+                            <div className="docs-code" style={{marginBottom:'5px'}}>
+                                <span style={{color: '#61afef'}}>(</span>$str &gt; 5 || $dex &gt; 5<span style={{color: '#61afef'}}>)</span> && $key
+                            </div>
+                            
+                            <small style={{color:'#888'}}>Dynamic Math:</small><br/>
+                            <div className="docs-code">
+                                $gold &gt; <span style={{color: '#f1c40f'}}>{`{ $level * 50 }`}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="docs-callout" style={{borderColor: '#2ecc71'}}>
+                    <strong style={{color: '#2ecc71'}}>Redundancy Check:</strong>
+                    <br/>
+                    Writing <code>{`{ $gold > 5 }`}</code> inside a logic field works, but the braces are redundant. 
+                    <br/>Writing <code>$gold &gt; 5</code> is cleaner.
+                    <br/>However, writing <code>$gold &gt; {`{ 1 ~ 6 }`}</code> is powerful—it makes the requirement random every time!
+                </div>
             </section>
 
             {/* SECTION 3: PYRAMIDAL VS LINEAR */}
             <section id="pyramidal">
-                <h2 className="docs-h2">3. The Pyramidal Curve</h2>
+                <h2 className="docs-h2">4. The Pyramidal Curve</h2>
                 <p className="docs-p">
                     Chronicle Hub supports two types of numeric progression. It is vital to understand the difference.
                 </p>
@@ -175,7 +271,7 @@ export default function LogicMathPage() {
                         </p>
                         <div className="docs-code">$strength += 1</div>
                         <p className="docs-p" style={{fontSize: '0.8rem', marginTop: '0.5rem'}}>
-                            Result: You gain 1 CP. You might not level up yet.
+                            Result: You gain 1 CP. You might gain a level yet, but you have made progress towards a quality level.
                         </p>
                     </div>
                 </div>
@@ -201,25 +297,6 @@ export default function LogicMathPage() {
                     <br/>
                     <code className="docs-code">$strength = 5</code> sets the level to 5 immediately and resets CP to 0.
                 </div>
-            </section>
-
-            {/* SECTION 4: ADVANCED */}
-            <section id="advanced">
-                <h2 className="docs-h2">4. Advanced Operations</h2>
-
-                <h3 className="docs-h3">Batch Operations</h3>
-                <p className="docs-p">
-                    Sometimes you need to clear many qualities at once. For example, when a player goes to Jail, you might want to remove all "Contraband".
-                </p>
-                <p className="docs-p">
-                    Instead of writing <code>$stolen_goods = 0, $smuggled_wine = 0...</code>, you can target a <strong>Category</strong>.
-                </p>
-                <div className="docs-syntax-box">
-                    <code className="docs-code">$all[category_name] = 0</code>
-                </div>
-                <p className="docs-p">
-                    This finds every quality tagged with that category and sets it to 0.
-                </p>
             </section>
         </div>
     );

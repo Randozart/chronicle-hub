@@ -71,6 +71,22 @@ export default function DocsPage() {
                             When the player enters the Location, the Engine reaches into the bag. 
                             It pulls out <strong>only</strong> the marbles that match the player&apos;s current Qualities (stats/items).
                         </p>
+                        <p>
+                        Every scene you write (a <strong>Storylet</strong>) is a marble. You throw it into the bag (the <strong>Location</strong>). 
+                        When the player arrives at that location, the Engine looks at their character sheet and reaches into the bag.
+                        </p>
+                        <ul className="docs-list" style={{marginTop: '1rem'}}>
+                            <li>If <code className="docs-code">Wounds &gt; 5</code>, the "Collapse" marble is pulled out.</li>
+                            <li>If <code className="docs-code">Has_Key == 0</code>, the "Open Door" marble stays hidden in the bag.</li>
+                        </ul>
+                    </div>
+                    <div className="docs-card">
+                        <h4 className="docs-h4">4. The Deck (Randomness)</h4>
+                        <p className="docs-p" style={{ fontSize: '0.9rem' }}>
+                            For unpredictable events, you use an <strong>Opportunity Deck</strong>. 
+                            The player draws cards from this deck into their hand. Unlike fixed Storylets, these are transient and discarded after use.
+                            Like Storylets, these can also be made to look at the character's qualities to determine which cards are drawn, and which are not. 
+                        </p>
                     </div>
                 </div>
             </section>
@@ -99,7 +115,7 @@ export default function DocsPage() {
                             (Some may be &quot;Locked&quot; if they fail the secondary <code className="docs-code">unlock_if</code> check).
                         </li>
                         <li className="docs-li">
-                            <strong>Mutation:</strong> The Player makes a choice. The Engine runs the math in the Option&apos;s <code className="docs-code">quality_change</code> field 
+                            <strong>Mutation:</strong> The Player opens a Storylet and makes a choice. The Engine runs the math in the Option&apos;s <code className="docs-code">quality_change</code> field 
                             (e.g., <code className="docs-code">$gold -= 5</code>, <code className="docs-code">$wounds += 1</code>).
                         </li>
                         <li className="docs-li">
