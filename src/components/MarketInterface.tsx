@@ -16,9 +16,10 @@ interface Props {
     onUpdate: (newQualities: PlayerQualities) => void;
     storyId: string;
     characterId: string;
+    worldState: PlayerQualities; 
 }
 
-export default function MarketInterface({ market, qualities, qualityDefs, imageLibrary, settings, onClose, onUpdate, storyId, characterId }: Props) {
+export default function MarketInterface({ market, qualities, qualityDefs, imageLibrary, settings, onClose, onUpdate, storyId, characterId, worldState }: Props) {
     const [activeStallIndex, setActiveStallIndex] = useState(0);
     const [selectedListing, setSelectedListing] = useState<ShopListing | null>(null);
     const [quantity, setQuantity] = useState(1);
@@ -28,7 +29,7 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
 
     // --- HELPER: Calculate Prices Client-Side for Preview ---
     // We construct a temp engine just for evaluating math strings
-    const engine = useMemo(() => new GameEngine(qualities, { settings, qualities: qualityDefs } as any), [qualities, qualityDefs, settings]);
+    const engine = useMemo(() => new GameEngine(qualities, { settings, qualities: qualityDefs } as any, {}, worldState), [qualities, qualityDefs, settings, worldState]);
 
     const getPrice = (priceExpr: string) => {
         const val = engine.evaluateBlock(`{${priceExpr}}`);

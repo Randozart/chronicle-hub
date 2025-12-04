@@ -39,6 +39,8 @@ type ScheduleUpdate =
 
 export class GameEngine {
     private qualities: PlayerQualities;
+    private worldQualities: PlayerQualities;
+
     private worldContent: WorldConfig;
     private changes: QualityChangeInfo[] = [];
     private resolutionPruneTargets: Record<string, string> = {};
@@ -48,15 +50,23 @@ export class GameEngine {
     constructor(
         initialQualities: PlayerQualities, 
         worldContent: WorldConfig, 
-        currentEquipment: Record<string, string | null> = {}
+        currentEquipment: Record<string, string | null> = {},
+        worldQualities: PlayerQualities = {} 
     ) {
         this.qualities = JSON.parse(JSON.stringify(initialQualities));
         this.worldContent = worldContent;
         this.equipment = currentEquipment;
+        this.worldQualities = worldQualities;
     }
 
     public getEffectiveLevel(qid: string): number {
-        const baseState = this.qualities[qid];
+        let baseState = this.qualities[qid];
+        
+        // 2. Check World (if missing locally)
+        if (!baseState) {
+            baseState = this.worldQualities[qid];
+        }        
+        
         let total = (baseState && 'level' in baseState) ? baseState.level : 0;
 
         for (const slot in this.equipment) {
@@ -356,13 +366,15 @@ export class GameEngine {
 
 
     public getQualityValue(id: string): number | string {
-        const state = this.qualities[id];
-        
+        let state = this.qualities[id];
+        if (!state) state = this.worldQualities[id]; // <--- Fallback
+
         if (state?.type === 'S' && 'stringValue' in state) {
              return `'${state.stringValue.replace(/'/g, "\\'")}'`;
         }
         return this.getEffectiveLevel(id);
     }
+
     
     private performSkillCheck(match: RegExpMatchArray): SkillCheckResult {
         const [, qualitiesPart, operator, targetStr, bracketContent] = match;

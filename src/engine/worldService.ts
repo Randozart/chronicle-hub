@@ -2,9 +2,21 @@
 
 import { cache } from 'react';
 import clientPromise from '@/engine/database';
-import { WorldConfig, Storylet, Opportunity, LocationDefinition, QualityDefinition, WorldSettings } from './models';
+import { WorldConfig, Storylet, Opportunity, LocationDefinition, QualityDefinition, WorldSettings, PlayerQualities } from './models';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
+
+export const getWorldState = async (worldId: string): Promise<PlayerQualities> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    
+    const world = await db.collection('worlds').findOne(
+        { worldId }, 
+        { projection: { worldState: 1 } }
+    );
+
+    return (world?.worldState as PlayerQualities) || {};
+};
 
 // 1. Get "Hot" Config (Qualities, Decks, Locations)
 export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig> => {

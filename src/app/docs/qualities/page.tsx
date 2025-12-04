@@ -160,10 +160,11 @@ export default function QualitiesDocs() {
                 <p className="docs-p">
                     If checked, the item <strong>cannot be unequipped</strong> by the player via the UI. 
                     It must be removed via story logic (e.g., paying a priest to set <code>$cursed_ring = 0</code>).
+                    Note that this does not place the item back into possessions (but can be emulated with a subsequent <code>$cursed_ring = 1</code> command).
                 </p>
                 <p className="docs-p">
-                    The name should not be taken literally. This is also a property you want to enable on making a permanent commitment which should only be removable through
-                    story logic.
+                    The name can be a deceptive misnomer. This is also a property you want to enable on making a permanent commitment which should only be removable through
+                    story logic, and not all cursed items need to be non-unequippable.
                 </p>
             </section>
 

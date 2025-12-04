@@ -39,5 +39,5 @@ export interface LayoutProps {
     showMarket: boolean;
     activeMarket: MarketDefinition | null; // The full object, resolved in GameHub
     onCloseMarket: () => void;
-
+    worldState: PlayerQualities;
 }

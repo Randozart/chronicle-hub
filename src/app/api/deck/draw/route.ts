@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
-import { getOpportunitiesForDeck, getEvent } from '@/engine/worldService'; 
+import { getOpportunitiesForDeck, getEvent, getWorldState } from '@/engine/worldService'; 
 import { GameEngine } from '@/engine/gameEngine';
 import { CharacterDocument, Opportunity } from '@/engine/models';
 import { regenerateDeckCharges } from '@/engine/deckService'; 
@@ -21,17 +21,18 @@ export async function POST(request: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const userId = (session.user as any).id;
-    const { storyId, characterId } = await request.json(); // <--- REQUIRE CHARACTER ID
+    const { storyId, characterId } = await request.json();
 
     if (!storyId || !characterId) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
 
     // 1. Load Content & Character
     const gameData = await getContent(storyId);
+    const worldState = await getWorldState(storyId);
     let character = await getCharacter(userId, storyId, characterId);
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
     
-    const engineForCheck = new GameEngine(character.qualities, gameData, character.equipment);
+    const engineForCheck = new GameEngine(character.qualities, gameData, character.equipment, worldState);
     const location = gameData.locations[character.currentLocationId];
     
     if (!location) return NextResponse.json({ error: 'Invalid location' }, { status: 500 });

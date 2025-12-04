@@ -5,7 +5,7 @@ import { getContent, getAutofireStorylets } from '@/engine/contentCache';
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { GameEngine } from '@/engine/gameEngine';
 import { evaluateText } from '@/engine/textProcessor';
-import { getEvent } from '@/engine/worldService'; 
+import { getEvent, getWorldState } from '@/engine/worldService'; 
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
     
     // 1. Load Data
     const gameData = await getContent(storyId);
-    let character = await getCharacter(userId, storyId, characterId);
+    const worldState = await getWorldState(storyId); // <--- FETCH
+    let character = await getCharacter(userId, storyId, characterId); 
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Autofire Check (Anti-Cheat)
-    const engineForCheck = new GameEngine(character.qualities, gameData);
+    const engineForCheck = new GameEngine(character.qualities, gameData, character.equipment, worldState);
     const pendingAutofires = await getAutofireStorylets(storyId);
     const activeAutofire = pendingAutofires.find(e => engineForCheck.evaluateCondition(e.autofire_if));
 
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (gameData.settings.useActionEconomy) {
         character = await regenerateActions(character);
         
-        const checkEngine = new GameEngine(character.qualities, gameData, character.equipment);
+        const checkEngine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
         
         // FIX: Use Default from Settings
         let actionCost = gameData.settings.defaultActionCost ?? 1;
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Resolve Outcome
-    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
     const engineResult = engine.resolveOption(storyletDef, option);
 
     // --- HANDLE LIVING STORY SCHEDULES ---
@@ -111,7 +112,6 @@ export async function POST(request: NextRequest) {
             }
         });
     }
-    // -------------------------------------
     
     // Update Character
     character.qualities = engine.getQualities();

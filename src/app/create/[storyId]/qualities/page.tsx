@@ -118,12 +118,24 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Type</label>
                     <select value={form.type} onChange={e => handleChange('type', e.target.value)} className="form-select">
-                        <option value="P">Pyramidal (Stat)</option>
-                        <option value="C">Counter (Currency)</option>
+                        <option value="P">Pyramidal (Exponential)</option>
+                        <option value="C">Counter (Linear)</option>
                         <option value="I">Item</option>
                         <option value="E">Equipable</option>
                         <option value="S">String (Text)</option>
                         <option value="T">Tracker (Progress)</option>
+                    </select>
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                    <label className="form-label">Scope</label>
+                    <select 
+                        value={form.scope || 'character'} 
+                        onChange={e => handleChange('scope', e.target.value)} 
+                        className="form-select"
+                        style={{ borderColor: form.scope === 'world' ? '#f1c40f' : '#333', color: form.scope === 'world' ? '#f1c40f' : 'inherit' }}
+                    >
+                        <option value="character">Character (Local)</option>
+                        <option value="world">World (Global)</option>
                     </select>
                 </div>
             </div>

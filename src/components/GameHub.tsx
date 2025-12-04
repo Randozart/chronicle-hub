@@ -36,6 +36,7 @@ interface GameHubProps {
     storyId: string; 
     deckDefs: Record<string, DeckDefinition>;
     markets: Record<string, MarketDefinition>;
+    worldState: PlayerQualities; // <--- ADD THIS
 }
 
 export default function GameHub(props: GameHubProps) {
@@ -285,11 +286,11 @@ export default function GameHub(props: GameHubProps) {
             images: props.imageLibrary,
             categories: props.categories,
             char_create: {}, 
-            markets: props.markets
+            markets: props.markets,
         };
 
         // Pass the full config to the engine
-        const engine = new GameEngine(character.qualities, worldConfig, character.equipment);
+        const engine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
         
         const deckDef = props.deckDefs[location.deck];
         
@@ -347,7 +348,7 @@ export default function GameHub(props: GameHubProps) {
         showMarket: showMarket,
         activeMarket: activeMarketDefinition,
         onCloseMarket: () => setShowMarket(false),
-
+        worldState: props.worldState
     };
 
 

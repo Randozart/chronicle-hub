@@ -142,7 +142,8 @@ export async function POST(request: NextRequest) {
             images: {},
             char_create: {}
         },
-        collaborators: [] // <--- Initialize array
+        collaborators: [], // <--- Initialize array
+        worldState: {}, // <--- Init empty
     };
 
     await db.collection('worlds').insertOne(newWorld);

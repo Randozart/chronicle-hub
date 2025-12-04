@@ -27,6 +27,7 @@ export interface QualityDefinition {
     storylet?: string;   // ID of Use-Item event
     max?: string;        // Logic: "10" or "$level_cap"
     image?: string;      // Image ID
+    scope?: 'character' | 'world'; // Default is 'character'
 }
 
 export interface ResolveOption extends LogicGates {
@@ -339,6 +340,7 @@ export interface WorldDocument {
         char_create: Record<string, string>;
     };
     collaborators?: { userId: string, role: 'admin' | 'writer' }[];
+    worldState?: Record<string, QualityState>;
 }
 
 // --- MARKET INTERFACES ---

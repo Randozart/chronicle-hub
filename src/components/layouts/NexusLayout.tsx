@@ -45,6 +45,7 @@ export default function NexusLayout(props: LayoutProps) {
                         onUpdate={props.onQualitiesUpdate}
                         storyId={props.storyId}
                         characterId={props.character.characterId}
+                        worldState={props.worldState}
                     />
                 </div>
             );
