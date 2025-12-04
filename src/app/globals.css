@@ -1793,16 +1793,21 @@ body {
 }
 
 .admin-help-sidebar {
-    width: 300px;
+    /* Change width: 300px to width: auto */
+    width: auto; 
+    max-width: 320px;
+    
     border-left: 1px solid #333;
     background: #21252b;
     flex-shrink: 0;
     
-    /* LOCK TO VIEWPORT */
     position: sticky;
     top: 0;
     height: 100vh;
-    overflow-y: auto;
+    /* Remove overflow-y: auto here; we will handle scrolling INSIDE the component */
+    display: flex;
+    flex-direction: column;
+    z-index: 30;
 }
 
 .admin-header {

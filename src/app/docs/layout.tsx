@@ -47,7 +47,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
 
                     <Section title="The World" />
                     <NavItem href="/docs/storylets" label="Storylets & Cards" />
-                    <NavItem href="/docs/qualities" label="Qualities & Economy" />
+                    <NavItem href="/docs/qualities" label="Qualities, Variables & Economy" />
                     <NavItem href="/docs/geography" label="Geography & Maps" />
 
                     <Section title="Tools" />
