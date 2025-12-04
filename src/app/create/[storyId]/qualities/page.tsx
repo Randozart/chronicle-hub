@@ -174,7 +174,13 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                                 checked={hasProperty(form.tags, 'auto_equip')} 
                                 onChange={() => handleTagToggle('auto_equip')} 
                                 label="Auto-Equip" 
-                                desc="Equip immediately on gain." 
+                                desc="Equip if slot is empty." 
+                            />
+                            <BehaviorCard 
+                                checked={hasProperty(form.tags, 'force_equip')} 
+                                onChange={() => handleTagToggle('force_equip')} 
+                                label="Force Equip" 
+                                desc="Equip always (Overwrites slot)." 
                             />
                             <BehaviorCard 
                                 checked={hasProperty(form.tags, 'cursed')} 

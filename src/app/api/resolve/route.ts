@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth'; // Updated import
+import { authOptions } from '@/lib/auth';
 import { getContent, getAutofireStorylets } from '@/engine/contentCache'; 
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { GameEngine } from '@/engine/gameEngine';
@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Autofire Check (Anti-Cheat)
-    // If there is an active autofire event that ISN'T this one, block the action.
     const engineForCheck = new GameEngine(character.qualities, gameData);
     const pendingAutofires = await getAutofireStorylets(storyId);
     const activeAutofire = pendingAutofires.find(e => engineForCheck.evaluateCondition(e.autofire_if));
@@ -90,7 +89,7 @@ export async function POST(request: NextRequest) {
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
     const engineResult = engine.resolveOption(storyletDef, option);
 
-    // --- HANDLE SCHEDULES ---
+    // --- HANDLE LIVING STORY SCHEDULES ---
     const updates = (engineResult as any).scheduledUpdates;
     if (updates && updates.length > 0) {
         if (!character.pendingEvents) character.pendingEvents = [];
@@ -112,6 +111,7 @@ export async function POST(request: NextRequest) {
             }
         });
     }
+    // -------------------------------------
     
     // Update Character
     character.qualities = engine.getQualities();
@@ -119,12 +119,11 @@ export async function POST(request: NextRequest) {
     // Handle Card Discard
     if ('deck' in storyletDef) {
         const deck = storyletDef.deck;
-        // Keep if invalid? (Future feature). For now, standard discard.
+        // Filter out the played card
         character.opportunityHands[deck] = character.opportunityHands[deck].filter((id: string) => id !== storyletId);
     }
 
-    // 6. Calculate Redirects
-    // Check Autofire AGAIN (Post-action state might trigger new traps)
+    // 6. Calculate Redirects & Movement
     const newAutofire = pendingAutofires.find(e => engine.evaluateCondition(e.autofire_if));
     let finalRedirectId: string | undefined = undefined;
 
@@ -133,10 +132,9 @@ export async function POST(request: NextRequest) {
     } else if (engineResult.redirectId) {
         finalRedirectId = engineResult.redirectId;
     } else if (!('deck' in storyletDef)) {
-        // If Storylet and no redirect, stay put.
+        // Storylets stay open unless redirected
         finalRedirectId = character.currentStoryletId;
     }
-    // If Card and no redirect, finalRedirectId remains undefined (Hub)
 
     // Handle Movement
     const newLocationId = (engineResult as any).moveToId;
@@ -155,16 +153,37 @@ export async function POST(request: NextRequest) {
                     }
                 }
             }
-            // If moved, default redirect should be null (Hub) unless explicit redirect exists
             if (!engineResult.redirectId && !newAutofire) {
-                finalRedirectId = undefined; 
+                finalRedirectId = undefined; // Clear storylet (return to Hub)
             }
         }
     }
 
-    
+    // --- AUTO/FORCE EQUIP LOGIC ---
+    const changes = (engineResult as any).qualityChanges || []; 
 
+    for (const change of changes) {
+        if (change.levelAfter > 0 && change.type === 'E') {
+            const itemDef = gameData.qualities[change.qid];
+            if (!itemDef) continue;
+            
+            const slot = itemDef.category?.split(',')[0].trim(); 
+            if (!slot) continue;
+
+            const isForce = itemDef.tags?.includes('force_equip');
+            const isAuto = itemDef.tags?.includes('auto_equip');
+
+            if (isForce || (isAuto && !character.equipment[slot])) {
+                character.equipment[slot] = change.qid;
+            }
+        }
+    }
+    // ------------------------------
+
+    // Final Sync
+    character.qualities = engine.getQualities();
     character.currentStoryletId = finalRedirectId || "";
+    
     await saveCharacterState(character);
 
     const cleanTitle = evaluateText(option.name, character.qualities, gameData.qualities);
