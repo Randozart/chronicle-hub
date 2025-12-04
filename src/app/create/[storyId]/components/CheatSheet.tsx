@@ -225,19 +225,39 @@ export default function CheatSheet() {
                     <div className="cheat-item">
                         <span className="cheat-sub-title">Item Sources</span>
                         <code className="cheat-code">$item[source:cave] += 1</code>
-                        <p className="cheat-desc">Tags the item history. Can be inserted back into the text as {`{$item.source}`}, 
-                            which will select the most recent source first to insert back into the text, and delete the source after.</p>
+                        <p className="cheat-desc">
+                            Adds a metadata tag to the item. You can display where an item came from using <code>{`{$item.source}`}</code> (shows the most recent source).
+                            <br/><br/>
+                            <small>The source tag is automatically removed when the item is spent/lost.</small>
+                        </p>
                     </div>
 
                     <div className="cheat-item">
                         <span className="cheat-sub-title">Living Stories</span>
                         <code className="cheat-code">$schedule[$q += 1 : 4h]</code>
-                        <p className="cheat-desc">Updates a quality after real-world time passes.</p>
+                        <p className="cheat-desc">Updates a quality after real-world time passes (even if offline).</p>
                         <code className="cheat-code">$cancel[$q]</code>
-                        <p className="cheat-desc">Cancels an update to the specified quality.</p>
+                        <p className="cheat-desc">Cancels any pending updates for that quality.</p>
+                    </div>
+
+                    <div className="cheat-item">
+                        <span className="cheat-sub-title">World Qualities</span>
+                        <code className="cheat-code">$season</code>
+                        <p className="cheat-desc">World qualities can be read like normal qualities.</p>
+                        <code className="cheat-code">$world.season</code>
+                        <code className="cheat-code">$season[scope:world]</code>
+                        <p className="cheat-desc">Or accessed within their own scope using either syntax.</p>
+                        <div style={{marginTop: '0.5rem'}}>
+                            <code className="cheat-code">$world.kings_gold -= 5</code>
+                            <code className="cheat-code">$season[scope:world] = 'Winter'</code>
+                        </div>
+                        <p className="cheat-desc">These qualities can also be modified using the same syntax.</p>
+                        <p className="cheat-desc" style={{ color: '#e06c75' }}>
+                            <strong>CAUTION:</strong> Writing <code>$season = 'Winter'</code> (without world scope) creates a <em>local</em> copy for the player, breaking the sync. Always use the prefix or the GM Console.
+                        </p>
                     </div>
                 </Accordion>
-                
+                                
                 <div style={{ marginTop: '2rem', paddingTop: '1rem', textAlign: 'center' }}>
                     <Link href="/docs" target="_blank" style={{ color: '#61afef', textDecoration: 'none', fontSize: '0.85rem' }}>
                         Open Full Documentation ↗
