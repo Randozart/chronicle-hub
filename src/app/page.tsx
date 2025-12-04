@@ -58,6 +58,9 @@ export default function Dashboard() {
                     <div style={{ width: '24px', height: '24px', background: 'var(--accent-highlight)', borderRadius: '4px' }} />
                     <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>Chronicle Hub</h1>
                 </div>
+                <Link href="/docs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }} className="hover:text-white transition">
+                    Documentation
+                </Link>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     {isGuest ? (
                         <Link href="/login" style={{ color: 'var(--accent-highlight)', textDecoration: 'none', fontWeight: 'bold' }}>

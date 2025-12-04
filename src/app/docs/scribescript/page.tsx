@@ -191,8 +191,9 @@ You are fine.
                 <p className="docs-p">
                     This sets <code>$ship_arrived</code> to 1 exactly 4 hours from now, even if the player is offline.
                 </p>
-
-                <h3 className="docs-h2">6.1 Advanced: Item Sources</h3>
+            </section>
+            <section id="sources">
+                <h2 className="docs-h2">6.1 Advanced: Item Sources</h2>
                 <p className="docs-p">
                     Items in Chronicle Hub memorize where they came from. This allows for callbacks to the <em>origin</em> of an item in the text.
                 </p>
@@ -233,7 +234,8 @@ You are fine.
                     <li>If you spent half your coins, it will also try to prune half the sources for that coin, but <em>only</em> if these are duplicate sources.</li>
                     <li>If you have mixed sources, it will try to preserve unique history tags as long as possible.</li>
                 </ul>
-            
+            </section>
+            <section id="challenges">
                 <h2 className="docs-h2">6.2 Advanced: Skill Checks</h2>
                 <p className="docs-p">
                     The <code>Challenge</code> field supports a powerful <strong>Difficulty</strong> syntax. You can define complex probability curves that adapt to the player's stats.

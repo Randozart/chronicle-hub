@@ -3105,3 +3105,10 @@ html[data-theme='revolutionary']::before {
 .docs-props-list .docs-code { display: inline-block; margin-bottom: 0.5rem; color: #e5c07b; font-size: 1rem; }
 .docs-props-list span { display: block; color: #abb2bf; line-height: 1.5; }
 
+html {
+    scroll-behavior: smooth;
+}
+
+.toc-link:hover {
+    color: #61afef !important;
+}
