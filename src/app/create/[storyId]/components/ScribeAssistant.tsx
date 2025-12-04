@@ -135,7 +135,7 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
             if (parentRect) {
                 // If the input is closer than 450px to the top of the screen, flip down.
                 // (450px covers the height of the popup + header/margins)
-                if (parentRect.top < 450) {
+                if (parentRect.top < 500) {
                     setPlacement('bottom');
                 } else {
                     setPlacement('top');
@@ -258,7 +258,7 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
             {/* TABS */}
             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <TabButton type="standard" label="Basic" />
-                <TabButton type="conditional_text" label="Logic" />
+                <TabButton type="conditional_text" label="Conditional" />
                 
                 {/* CONDITION MODES */}
                 {mode === 'condition' && (

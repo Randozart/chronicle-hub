@@ -279,6 +279,43 @@ export class GameEngine {
             return;
         }
 
+        // --- WORLD STATE UPDATE ---
+        // Syntax: $world.season += 1  OR  $season[scope:world] += 1
+        const worldMatch = effect.match(/^\$world\.([a-zA-Z0-9_]+)\s*(\+=|-=|=)\s*(.*)$/) ||
+                           effect.match(/^\$([a-zA-Z0-9_]+)\[scope:world\]\s*(\+=|-=|=)\s*(.*)$/);
+
+        if (worldMatch) {
+            const [, qid, op, valueStr] = worldMatch;
+            const resolvedStr = this.evaluateBlock(valueStr);
+            const mathResult = evaluateSimpleExpression(resolvedStr);
+            const value = typeof mathResult === 'number' ? mathResult : mathResult.toString();
+
+            // We use a special prefix or flag to indicate this is a World Update
+            // Since 'this.changes' usually tracks local character changes, 
+            // we need a way to signal the API that this is global.
+            // Let's add a 'scope' field to QualityChangeInfo.
+            
+            // Calculate New Value Locally for Display/Chaining
+            const currentState = this.worldQualities[qid] || { qualityId: qid, type: QualityType.Counter, level: 0 };
+            // (Perform the math locally on currentState to get levelAfter...)
+            // ... math logic ...
+            
+            // Push to changes list with scope: 'world'
+            this.changes.push({
+                qid,
+                qualityName: qid, // or lookup name
+                type: currentState.type,
+                category: 'world',
+                levelBefore: (currentState as any).level || 0,
+                cpBefore: 0,
+                levelAfter: 0, // Calculate this!
+                cpAfter: 0,
+                changeText: `World: ${qid} changed.`,
+                scope: 'world' // <--- NEW FIELD
+            } as any); // Cast because we haven't updated the interface yet
+            return;
+        }
+
         // 4. Standard Math Operations (+=, -=, *=, /=, %=, =)
         const simpleMatch = effect.match(/^\s*\$([a-zA-Z0-9_]+)(?:\[source:([^\]]+)\])?\s*(\+=|-=|\*=|\/=|%=|=)\s*(.*)\s*$/);
         if (simpleMatch) {

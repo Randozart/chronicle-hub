@@ -6,6 +6,7 @@ import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/ch
 import { GameEngine } from '@/engine/gameEngine';
 import { evaluateText } from '@/engine/textProcessor';
 import { getEvent, getWorldState } from '@/engine/worldService'; 
+import { applyWorldUpdates, processAutoEquip } from '@/engine/resolutionService'; // <--- NEW IMPORTS
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -14,9 +15,9 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id;
     const { storyletId, optionId, storyId, characterId } = await request.json();
     
-    // 1. Load Data
+    // 1. Load Data (Including World State)
     const gameData = await getContent(storyId);
-    const worldState = await getWorldState(storyId); // <--- FETCH
+    const worldState = await getWorldState(storyId); 
     let character = await getCharacter(userId, storyId, characterId); 
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Autofire Check (Anti-Cheat)
+    // Ensure user isn't ignoring a forced event
     const engineForCheck = new GameEngine(character.qualities, gameData, character.equipment, worldState);
     const pendingAutofires = await getAutofireStorylets(storyId);
     const activeAutofire = pendingAutofires.find(e => engineForCheck.evaluateCondition(e.autofire_if));
@@ -57,7 +59,6 @@ export async function POST(request: NextRequest) {
         
         const checkEngine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
         
-        // FIX: Use Default from Settings
         let actionCost = gameData.settings.defaultActionCost ?? 1;
         
         const isInstant = option.tags?.includes('instant_redirect');
@@ -86,22 +87,20 @@ export async function POST(request: NextRequest) {
         }
     }
 
-    // 5. Resolve Outcome
+    // 5. Resolve Outcome (The Engine Run)
     const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
     const engineResult = engine.resolveOption(storyletDef, option);
 
-    // --- HANDLE LIVING STORY SCHEDULES ---
+    // --- A. HANDLE LIVING STORIES (Schedules) ---
     const updates = (engineResult as any).scheduledUpdates;
     if (updates && updates.length > 0) {
         if (!character.pendingEvents) character.pendingEvents = [];
         
         updates.forEach((upd: any) => {
             if (upd.type === 'add') {
-                // Remove existing timer for this quality (overwrite behavior)
                 character.pendingEvents = character.pendingEvents!.filter(e => e.qualityId !== upd.qualityId);
-                
                 character.pendingEvents.push({
-                    id: upd.qualityId, // Use qualityId as key
+                    id: upd.qualityId, 
                     qualityId: upd.qualityId,
                     op: upd.op,
                     value: upd.value,
@@ -112,14 +111,21 @@ export async function POST(request: NextRequest) {
             }
         });
     }
-    
-    // Update Character
+
+    // --- B. HANDLE GLOBAL STATE (World Updates) ---
+    // We extract changes tagged with scope: 'world' and write to the World DB
+    await applyWorldUpdates(storyId, (engineResult as any).qualityChanges);
+
+    // --- C. UPDATE LOCAL CHARACTER ---
+    // Update Qualities
     character.qualities = engine.getQualities();
+    
+    // Handle Auto-Equip (via Helper)
+    processAutoEquip(character, (engineResult as any).qualityChanges, gameData);
     
     // Handle Card Discard
     if ('deck' in storyletDef) {
         const deck = storyletDef.deck;
-        // Filter out the played card
         character.opportunityHands[deck] = character.opportunityHands[deck].filter((id: string) => id !== storyletId);
     }
 
@@ -132,11 +138,9 @@ export async function POST(request: NextRequest) {
     } else if (engineResult.redirectId) {
         finalRedirectId = engineResult.redirectId;
     } else if (!('deck' in storyletDef)) {
-        // Storylets stay open unless redirected
         finalRedirectId = character.currentStoryletId;
     }
 
-    // Handle Movement
     const newLocationId = (engineResult as any).moveToId;
     if (newLocationId) {
         const oldLoc = gameData.locations[character.currentLocationId];
@@ -144,6 +148,7 @@ export async function POST(request: NextRequest) {
 
         if (newLoc) {
             character.currentLocationId = newLocationId;
+            
             // Deck Persistence Logic
             if (oldLoc && oldLoc.deck !== newLoc.deck) {
                 const oldDeckDef = gameData.decks[oldLoc.deck];
@@ -153,35 +158,14 @@ export async function POST(request: NextRequest) {
                     }
                 }
             }
-            if (!engineResult.redirectId && !newAutofire) {
-                finalRedirectId = undefined; // Clear storylet (return to Hub)
-            }
-        }
-    }
-
-    // --- AUTO/FORCE EQUIP LOGIC ---
-    const changes = (engineResult as any).qualityChanges || []; 
-
-    for (const change of changes) {
-        if (change.levelAfter > 0 && change.type === 'E') {
-            const itemDef = gameData.qualities[change.qid];
-            if (!itemDef) continue;
             
-            const slot = itemDef.category?.split(',')[0].trim(); 
-            if (!slot) continue;
-
-            const isForce = itemDef.tags?.includes('force_equip');
-            const isAuto = itemDef.tags?.includes('auto_equip');
-
-            if (isForce || (isAuto && !character.equipment[slot])) {
-                character.equipment[slot] = change.qid;
+            if (!engineResult.redirectId && !newAutofire) {
+                finalRedirectId = undefined; // Return to Hub
             }
         }
     }
-    // ------------------------------
 
-    // Final Sync
-    character.qualities = engine.getQualities();
+    // 7. Final Save & Response
     character.currentStoryletId = finalRedirectId || "";
     
     await saveCharacterState(character);

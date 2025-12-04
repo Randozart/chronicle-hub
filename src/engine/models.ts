@@ -283,6 +283,7 @@ export interface QualityChangeInfo {
     cpAfter: number;
     stringValue?: string;
     changeText: string;
+    scope?: 'character' | 'world'; // <--- NEW
 }
 
 export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'location' | 'uncategorized';
