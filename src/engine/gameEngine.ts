@@ -172,10 +172,14 @@ export class GameEngine {
         const finalExpression = this.evaluateBlock(expression);
 
         if (isSkillCheck) {
-            const skillCheckMatch = finalExpression.match(/^\s*\$(.*?)\s*(>=|<=)\s*([^\[]+)(?:\s*\[([^\]]+)\])?\s*$/);
+            // FIX: Updated Regex to include >>, <<, ==, !=
+            // We also keep >= and <= for backward compatibility/boolean logic if needed
+            const skillCheckMatch = finalExpression.match(/^\s*\$(.*?)\s*(>>|<<|==|!=|>=|<=)\s*([^\[]+)(?:\s*\[([^\]]+)\])?\s*$/);
+            
             if (skillCheckMatch) {
                 return this.performSkillCheck(skillCheckMatch);
             }
+
             // If it's just a boolean check (no skill roll), assume success if true
             const result = evaluateSimpleExpression(finalExpression);
             return typeof result === 'boolean' ? result : Number(result) > 0;
@@ -414,93 +418,100 @@ export class GameEngine {
 
     
     private performSkillCheck(match: RegExpMatchArray): SkillCheckResult {
-        const [, qualitiesPart, operator, targetStr, bracketContent] = match;
+        const [, qualitiesPart, rawOperator, targetStr, bracketContent] = match;
         
+        let operator = rawOperator;
+        if (operator === '>=') operator = '>>'; // Treat old >= as Progressive
+        if (operator === '<=') operator = '<<'; // Treat old <= as Regressive
+
         const target = parseInt(this.evaluateBlock(targetStr), 10);
 
-        // 2. Parse Brackets: [Margin, Min%, Max%]
-        let margin = target; // Default margin = target (Narrow difficulty)
-        let minChance = 0;
-        let maxChance = 100;
-
-        if (bracketContent) {
-            const args = bracketContent.split(',').map(s => s.trim());
-            
-            // Resolve Margin (Arg 0)
-            if (args[0]) {
-                const val = this.evaluateBlock(args[0]);
-                margin = parseInt(val, 10);
-            }
-            
-            // Resolve Min Chance (Arg 1)
-            if (args[1]) {
-                const val = this.evaluateBlock(args[1]);
-                minChance = parseInt(val, 10);
-            }
-
-            // Resolve Max Chance (Arg 2)
-            if (args[2]) {
-                const val = this.evaluateBlock(args[2]);
-                maxChance = parseInt(val, 10);
-            }
+        const config = this.worldContent.settings.challengeConfig || {};
+        
+        let minChance = config.minCap ?? 0;
+        let maxChance = config.maxCap ?? 100;
+        let pivotChance = config.basePivot ?? 60;
+        
+        let margin = target;
+        if (config.defaultMargin) {
+            // Inject $target value into formula
+            const marginExpr = config.defaultMargin.replace(/\$target/g, target.toString());
+            // Use the engine's own evaluator so full ScribeScript works here!
+            const marginRes = this.evaluateBlock(`{${marginExpr}}`);
+            margin = parseInt(marginRes, 10) || target;
         }
 
-        // 3. Evaluate Skill Level
-        // Support addition in skill part: "$strength + $sword"
+
+        if (bracketContent) {
+            const args = bracketContent.split(',').map(s => {
+                const parsed = parseInt(s.trim(), 10);
+                return isNaN(parsed) ? null : parsed; 
+            });
+            
+            if (args.length > 0 && args[0] !== null) margin = args[0];
+            if (args.length > 1 && args[1] !== null) minChance = args[1];
+            if (args.length > 2 && args[2] !== null) maxChance = args[2];
+            if (args.length > 3 && args[3] !== null) pivotChance = args[3];
+        }
+
+        pivotChance = Math.max(0, Math.min(100, pivotChance));
+        const pivotDecimal = pivotChance / 100;
+
+        // Calculate Skill using GameEngine's internal state (includes Equipment)
         const skillExpression = qualitiesPart.replace(/\$([a-zA-Z0-9_]+)/g, (_, qid) => this.getQualityValue(qid).toString());
         const skillLevelResult = evaluateSimpleExpression(skillExpression);
         const skillLevel = typeof skillLevelResult === 'number' ? skillLevelResult : 0;
-        
-        // 4. Calculate Difficulty Probability
-        const lowerBound = target - margin;
-        const upperBound = target + margin;
 
         let successChance = 0.0;
-        if (skillLevel <= lowerBound) {
-            successChance = 0.0;
-        } else if (skillLevel >= upperBound) {
-            successChance = 1.0;
-        } else {
-            if (skillLevel < target) {
-                // Range: [Lower ... Target] -> 0% ... 50%
-                const denominator = target - lowerBound;
-                if (denominator <= 0) successChance = 0.5;
-                else {
-                    const progress = (skillLevel - lowerBound) / denominator;
-                    successChance = progress * 0.5;
-                }
-            } else { 
-                // Range: [Target ... Upper] -> 50% ... 100%
-                const denominator = upperBound - target;
-                if (denominator <= 0) successChance = 0.5;
-                else {
-                    const progress = (skillLevel - target) / denominator;
-                    successChance = 0.5 + (progress * 0.5);
-                }
+        
+        if (operator === '>>') {
+            const lowerBound = target - margin;
+            const upperBound = target + margin;
+            if (skillLevel <= lowerBound) successChance = 0.0;
+            else if (skillLevel >= upperBound) successChance = 1.0;
+            else if (skillLevel < target) {
+                successChance = ((skillLevel - lowerBound) / margin) * pivotDecimal;
+            } else {
+                const progress = (skillLevel - target) / margin;
+                successChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
             }
         }
-        
-        // Invert if operator is <= (Roll UNDER)
-        if (operator === '<=') {
-            successChance = 1.0 - successChance;
+        else if (operator === '<<') {
+            const lowerBound = target - margin;
+            const upperBound = target + margin;
+            let inverseChance = 0.0;
+            if (skillLevel <= lowerBound) inverseChance = 0.0;
+            else if (skillLevel >= upperBound) inverseChance = 1.0;
+            else if (skillLevel < target) {
+                inverseChance = ((skillLevel - lowerBound) / margin) * pivotDecimal;
+            } else {
+                const progress = (skillLevel - target) / margin;
+                inverseChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
+            }
+            successChance = 1.0 - inverseChance;
+        }
+        else if (operator === '==') {
+            const distance = Math.abs(skillLevel - target);
+            successChance = distance >= margin ? 0.0 : 1.0 - (distance / margin);
+        }
+        else if (operator === '!=') {
+            const distance = Math.abs(skillLevel - target);
+            successChance = distance >= margin ? 1.0 : (distance / margin);
         }
 
-        // 5. Apply Clamps (Min/Max Chance)
-        // Convert 0.0-1.0 to 0-100 for clamping
         let finalPercent = successChance * 100;
-        
-        // Clamp
+        if (isNaN(finalPercent)) finalPercent = 0;
         finalPercent = Math.max(minChance, Math.min(maxChance, finalPercent));
         
         const targetPercent = Math.round(finalPercent);
-        const rollPercent = Math.floor(Math.random() * 101); // 0-100
+        const rollPercent = Math.floor(Math.random() * 101); // 0-100 inclusive (standard 100-sided die logic usually 1-100, but 0-100 is fine)
         const wasSuccess = rollPercent <= targetPercent;
 
         return {
             wasSuccess,
             roll: rollPercent,
             target: targetPercent,
-            description: `Rolled ${rollPercent} vs ${targetPercent}% (Clamped: ${minChance}-${maxChance}%)`
+            description: `Rolled ${rollPercent} vs ${targetPercent}% (Op: ${operator})`
         };
     }
 

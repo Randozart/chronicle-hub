@@ -1,6 +1,6 @@
 // src/engine/textProcessor.ts
 import { evaluateSimpleExpression } from './gameEngine';
-import { PlayerQualities, QualityDefinition, QualityType } from './models';
+import { PlayerQualities, QualityDefinition, QualityType, WorldSettings } from './models';
 
 // Helper to sum up values in a string like "$strength + 10"
 export const evaluatePart = (part: string, qualities: PlayerQualities): number => {
@@ -183,30 +183,43 @@ export const evaluateCondition = (expression: string | undefined, qualities: Pla
 export const calculateSkillCheckChance = (
     expression: string | undefined, 
     qualities: PlayerQualities,
-    qualityDefs: Record<string, QualityDefinition>
+    qualityDefs: Record<string, QualityDefinition>,
+    settings?: WorldSettings // <--- ADD THIS ARGUMENT
 ): { chance: number | null; text: string } => {
     
     if (!expression) return { chance: null, text: '' };
 
-    const match = expression.match(/^\s*\$(.*?)\s*(>=|<=)\s*(\d+)(?:\s*\[([^\]]+)\])?\s*$/);
+    const match = expression.match(/^\s*\$(.*?)\s*(>>|<<|==|!=|>=|<=)\s*(\d+)(?:\s*\[([^\]]+)\])?\s*$/);
+    
     if (!match) return { chance: null, text: '' };
 
     const [, qualitiesPart, operator, targetStr, bracketContent] = match;
     const target = parseInt(targetStr, 10);
 
-    if (qualitiesPart.trim() === 'luck') {
-        let chance = 0;
-        if (operator === '<=') chance = target;
-        else if (operator === '>=') chance = 100 - target + 1;
-        chance = Math.max(0, Math.min(100, chance));
-        return { chance, text: "Luck" };
-    }
+    // --- 1. LOAD DEFAULTS FROM SETTINGS ---
+    const config = settings?.challengeConfig || {};
     
-    let margin = target;
-    let minChance = 0;
-    let maxChance = 100;
-    let pivotChance = 60;
+    let minChance = config.minCap ?? 0;
+    let maxChance = config.maxCap ?? 100;
+    let pivotChance = config.basePivot ?? 60;
 
+    // Calculate Default Margin
+    let margin = target; // Fallback
+    if (config.defaultMargin) {
+        // Allow "$target" variable in the settings string
+        const marginExpr = config.defaultMargin.replace(/\$target/g, target.toString());
+        // We use a simple eval here since we don't have the full Engine instance in textProcessor
+        // (safe enough for simple math like "50 / 2")
+        try {
+            // Use existing evaluatePart to handle other qualities if needed, 
+            // or a simple math parser. For now, evaluatePart handles basic math + qualities.
+            margin = evaluatePart(marginExpr, qualities);
+        } catch {
+            margin = target;
+        }
+    }
+
+    // --- 2. OVERRIDE WITH BRACKETS ---
     if (bracketContent) {
         const args = bracketContent.split(',').map(s => {
             const parsed = parseInt(s.trim(), 10);
@@ -219,48 +232,86 @@ export const calculateSkillCheckChance = (
         if (args.length > 3 && args[3] !== null) pivotChance = args[3];
     }
 
+    // Sanity Check
     pivotChance = Math.max(0, Math.min(100, pivotChance));
-
-    // Use the exported helper
+    let pivotDecimal = pivotChance;
+    
+    // --- 3. CALCULATE ---
     const skillLevel = evaluatePart(qualitiesPart, qualities);
 
-    const lowerBound = target - margin;
-    const upperBound = target + margin;
-
+    // 4. Calculate Logic based on Operator
     let successChance = 0.0;
 
-    if (skillLevel <= lowerBound) {
-        successChance = 0.0;
-    } else if (skillLevel >= upperBound) {
-        successChance = 1.0;
-    } else {
-        const pivotDecimal = pivotChance / 100;
+    // MODE: PROGRESSIVE ( >> )
+    // "Higher is better". 
+    // 0% at (Target - Margin). Pivot% at Target. 100% at (Target + Margin).
+    if (operator === '>>') {
+        const lowerBound = target - margin;
+        const upperBound = target + margin;
 
-        if (skillLevel < target) {
-            const range = target - lowerBound;
-            if (range <= 0) successChance = 0.5;
-            else {
-                const progress = (skillLevel - lowerBound) / range;
-                successChance = progress * pivotDecimal;
-            }
+        if (skillLevel <= lowerBound) successChance = 0.0;
+        else if (skillLevel >= upperBound) successChance = 1.0;
+        else if (skillLevel < target) {
+            // Climbing to Pivot
+            successChance = ((skillLevel - lowerBound) / margin) * pivotDecimal;
         } else {
-            const range = upperBound - target;
-            if (range <= 0) successChance = 0.5;
-            else {
-                const progress = (skillLevel - target) / range;
-                successChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
-            }
+            // Climbing from Pivot to 100
+            const progress = (skillLevel - target) / margin;
+            successChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
         }
     }
     
-    if (operator === '<=') {
-        successChance = 1.0 - successChance;
+    // MODE: ROLL UNDER ( << )
+    // "Lower is better". Exact inverse of >>.
+    else if (operator === '<<') {
+        const lowerBound = target - margin;
+        const upperBound = target + margin;
+
+        // Calculate as if it were >>, then invert result
+        let inverseChance = 0.0;
+        if (skillLevel <= lowerBound) inverseChance = 0.0;
+        else if (skillLevel >= upperBound) inverseChance = 1.0;
+        else if (skillLevel < target) {
+            inverseChance = ((skillLevel - lowerBound) / margin) * pivotDecimal;
+        } else {
+            const progress = (skillLevel - target) / margin;
+            inverseChance = pivotDecimal + (progress * (1.0 - pivotDecimal));
+        }
+        successChance = 1.0 - inverseChance;
     }
-    
+
+    // MODE: PRECISION ( == )
+    // "Close is good". 
+    // 100% at Target. 0% at Edges (Target +/- Margin).
+    else if (operator === '==') {
+        const distance = Math.abs(skillLevel - target);
+        if (distance >= margin) {
+            successChance = 0.0;
+        } else {
+            // Linear drop off from 1.0 to 0.0 based on distance
+            successChance = 1.0 - (distance / margin);
+        }
+    }
+
+    // MODE: AVOIDANCE ( != )
+    // "Far is good". 
+    // 0% at Target. 100% at Edges (Target +/- Margin).
+    else if (operator === '!=') {
+        const distance = Math.abs(skillLevel - target);
+        if (distance >= margin) {
+            successChance = 1.0;
+        } else {
+            // Linear climb from 0.0 to 1.0 based on distance
+            successChance = (distance / margin);
+        }
+    }
+
+    // 5. Final Clamping
     let finalPercent = successChance * 100;
     if (isNaN(finalPercent)) finalPercent = 0;
     finalPercent = Math.max(minChance, Math.min(maxChance, finalPercent));
-    
+
+    // Format Name
     const testedQualityNames = qualitiesPart.replace(/\$/g, '') 
         .split('+')
         .map(qid => qid.trim())

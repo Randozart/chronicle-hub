@@ -153,15 +153,19 @@ export interface LocationDefinition {
 }
 
 export interface WorldSettings {
+
+}
+
+export interface WorldSettings {
     // Mechanics
     useActionEconomy: boolean;
     maxActions: number | string;
     actionId: string;
     regenIntervalInMinutes: number;
-    regenAmount: number | string;        // Already supports string, but we'll enforce logic usage
-    defaultActionCost?: number | string; // <--- Updated to allow string logic
+    regenAmount: number | string;
+    defaultActionCost?: number | string; 
     defaultDrawCost?: string;
-    startLocation?: string; // <--- NEW
+    startLocation?: string; 
     
     // UI / Categories
     characterSheetCategories: string[];
@@ -171,10 +175,10 @@ export interface WorldSettings {
     // Identity
     playerName: string;
     playerImage: string;
-    enablePortrait?: boolean; // New
-    portraitStyle?: 'circle' | 'square' | 'rect'; // New
-    enableTitle?: boolean; // New
-    titleQualityId?: string; // New
+    enablePortrait?: boolean;
+    portraitStyle?: 'circle' | 'square' | 'rect';
+    enableTitle?: boolean;
+    titleQualityId?: string;
     
     // System
     deckDrawCostsAction?: boolean;
@@ -185,32 +189,14 @@ export interface WorldSettings {
     bannerHeight?: number;
     enableParallax?: boolean;
     visualTheme?: string;
-}
 
-export interface WorldSettings {
-    useActionEconomy: boolean;
-    maxActions: number | string;
-    actionId: string;
-    regenIntervalInMinutes: number;
-    regenAmount: number | string; // Allow logic
-    
-    // Removed old operators (handled by ScribeScript)
-    
-    characterSheetCategories: string[];
-    equipCategories: string[];
-    currencyQualities?: string[]; // [NEW]
-    
-    playerName: string;
-    playerImage: string;
-    
-    deckDrawCostsAction?: boolean;
-    alwaysPurgeHandOnTravel?: boolean;
-    
-    layoutStyle: LayoutStyle;
-    bannerHeight?: number;
-    enableParallax?: boolean;
-    visualTheme?: string;
-    defaultActionCost?: number | string; // <--- Updated to allow string logic
+    // Challenge Logic
+    challengeConfig?: {
+        defaultMargin?: string; // Logic: "10", "$target", "$target / 2"
+        basePivot?: number;     // Default 60
+        minCap?: number;        // Default 0
+        maxCap?: number;        // Default 100
+    };
 }
 
 // --- RUNTIME STATE INTERFACES ---

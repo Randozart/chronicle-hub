@@ -65,6 +65,16 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         };
         load();
     }, [storyId]);
+    
+    const handleChallengeChange = (field: string, val: any) => {
+        setForm(prev => ({
+            ...prev,
+            challengeConfig: {
+                ...prev.challengeConfig,
+                [field]: val
+            }
+        }));
+    };
 
     const handleChange = (field: keyof SettingsForm, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
@@ -390,6 +400,58 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         placeholder="Numeric (1, 2, 0) or a quality modification ($gold -= 5 or $wounds++)"
                     />
                     <p className="special-desc">Applied if a deck doesn't specify its own cost.</p>
+                </div>
+            </div>
+
+            {/* --- CHALLENGE PHYSICS --- */}
+            <div className="special-field-group" style={{ borderColor: '#6b4cc0ff' }}>
+                <label className="special-label" style={{ color: '#6b4cc0ff' }}>Challenge Physics</label>
+                <p className="special-desc">
+                    Define how skill checks behave by default. You can override these per-option using <code>[brackets]</code>.
+                </p>
+
+                <div className="form-row" style={{ marginTop: '1rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Default Margin</label>
+                        <input 
+                            value={form.challengeConfig?.defaultMargin || ''} 
+                            onChange={e => handleChallengeChange('defaultMargin', e.target.value)} 
+                            className="form-input" 
+                            placeholder="$target"
+                        />
+                        <p className="special-desc">Broadness. Use <code>$target</code> to scale with difficulty.</p>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Pivot Point %</label>
+                        <input 
+                            type="number"
+                            value={form.challengeConfig?.basePivot ?? 60} 
+                            onChange={e => handleChallengeChange('basePivot', parseInt(e.target.value))} 
+                            className="form-input" 
+                        />
+                        <p className="special-desc">Success chance when Skill equals Target.</p>
+                    </div>
+                </div>
+
+                <div className="form-row">
+                    <div className="form-group">
+                        <label className="form-label">Min Chance %</label>
+                        <input 
+                            type="number"
+                            value={form.challengeConfig?.minCap ?? 0} 
+                            onChange={e => handleChallengeChange('minCap', parseInt(e.target.value))} 
+                            className="form-input" 
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Max Chance %</label>
+                        <input 
+                            type="number"
+                            value={form.challengeConfig?.maxCap ?? 100} 
+                            onChange={e => handleChallengeChange('maxCap', parseInt(e.target.value))} 
+                            className="form-input" 
+                        />
+                    </div>
                 </div>
             </div>
 

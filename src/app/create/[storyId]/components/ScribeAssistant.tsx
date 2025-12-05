@@ -293,13 +293,19 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
                 {logicType === 'skill_check' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={MINI_LABEL}>Target</label>
-                                <input className="form-input" type="number" value={target} onChange={e => setTarget(e.target.value)} />
+                            {/* OPERATOR SELECT */}
+                            <div style={{ width: '80px' }}>
+                                <label className="mini-label">Type</label>
+                                <select className="form-select" value={operator} onChange={e => setOperator(e.target.value)}>
+                                    <option value=">>">{'>>'} (High)</option>
+                                    <option value="<<">{'<<'} (Low)</option>
+                                    <option value="==">{'=='} (Exact)</option>
+                                    <option value="!=">{'!='} (Avoid)</option>
+                                </select>
                             </div>
                             <div style={{ flex: 1 }}>
-                                <label style={MINI_LABEL}>Margin</label>
-                                <input className="form-input" type="number" value={margin} onChange={e => setMargin(e.target.value)} />
+                                <label className="mini-label">Target</label>
+                                <input className="form-input" type="number" value={target} onChange={e => setTarget(e.target.value)} />
                             </div>
                         </div>
                         <button 
