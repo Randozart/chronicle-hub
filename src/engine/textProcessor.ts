@@ -1,4 +1,5 @@
 // src/engine/textProcessor.ts
+import { evaluateSimpleExpression } from './gameEngine';
 import { PlayerQualities, QualityDefinition, QualityType } from './models';
 
 // Helper to sum up values in a string like "$strength + 10"
@@ -85,32 +86,44 @@ const evaluateBlock = (
         return Math.floor(Math.random() * (max - min + 1) + min).toString();
     }
 
-    // 2. Conditionals { $q > 5 : A | B }
-    if (trimmedContent.includes('|') || trimmedContent.includes(':')) {
-        const branches = trimmedContent.split('|'); 
+    // 2. Conditional Text { Condition : Text | Else }
+    // We need to split by '|', but IGNORE '||' (Logical OR)
+    // Regex: Match a pipe that is NOT preceded by a pipe AND NOT followed by a pipe
+    const hasBranching = /(?<!\|)\|(?!\|)/.test(trimmedContent);
+    const hasColon = trimmedContent.includes(':');
+
+    if (hasBranching || hasColon) {
+        // Split by single pipe
+        const branches = trimmedContent.split(/(?<!\|)\|(?!\|)/); 
+        
         for (const branch of branches) {
-            const parts = branch.split(':');
-            if (parts.length > 1) {
-                const condition = parts[0].trim();
-                const text = parts.slice(1).join(':').trim();
+            const colonIndex = branch.indexOf(':');
+            
+            if (colonIndex > -1) {
+                // "Condition : Result"
+                const condition = branch.substring(0, colonIndex).trim();
+                const text = branch.substring(colonIndex + 1).trim();
+                
+                // Evaluate the condition (handling || is now safe because we didn't split on it)
                 if (evaluateCondition(condition, qualities)) { 
-                    return evaluateText(text, qualities, qualityDefs);
+                    const cleanText = text.replace(/^['"]|['"]$/g, ''); // Strip outer quotes
+                    return evaluateText(cleanText, qualities, qualityDefs);
                 }
             } else {
-                return evaluateText(branch.trim(), qualities, qualityDefs);
+                // "Else Result" (No colon)
+                const cleanText = branch.trim().replace(/^['"]|['"]$/g, '');
+                return evaluateText(cleanText, qualities, qualityDefs);
             }
         }
-        return '';
+        return ''; // No conditions met
     }
     
-    // 3. Fallback Math
-    // Note: evaluateText handles variables, but if the block is just "{ $a + $b }", 
-    // we might want to run evaluatePart here to return a number string.
-    // For now, we rely on evaluateText to just strip braces if no logic matched.
-    const numericResult = evaluatePart(trimmedContent, qualities);
-    if (numericResult !== 0 || trimmedContent === '0') return numericResult.toString();
-
-    return evaluateText(trimmedContent, qualities, qualityDefs);
+    // 3. Fallback: Math/Logic/Variables
+    // First, resolve inner variables
+    const resolvedVars = evaluateText(trimmedContent, qualities, qualityDefs);
+    // Then try to evaluate as math
+    const result = evaluateSimpleExpression(resolvedVars);
+    return result.toString();
 };
 
 // UPDATED: Supports && and || recursion

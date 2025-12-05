@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
-import FormattedText from './FormattedText';
+import FormattedText from './FormattedText'; // Assuming you have this from previous steps
 
 interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
@@ -20,7 +20,7 @@ interface StoryletDisplayProps {
     imageLibrary: Record<string, ImageDefinition>; 
     categories: Record<string, CategoryDefinition>;
     storyId: string;
-    characterId: string; // <--- Add this
+    characterId: string;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -58,12 +58,8 @@ export default function StoryletDisplay({
         try {
             const response = await fetch('/api/resolve', {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    storyletId: storylet.id, 
-                    optionId: option.id, 
-                    storyId, 
-                    characterId // <--- Pass it
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId, characterId })
             });
             if (!response.ok) throw new Error(await response.text());
             
@@ -93,41 +89,28 @@ export default function StoryletDisplay({
         onFinish(resolution.qualities, resolution.redirectId);
     };
 
-    // --- SMART RETURN LOGIC ---
     const disableReturn = storylet.tags?.includes('no_return');
 
     const getReturnTarget = (): string | null | undefined => {
-        if (disableReturn) return null; // Null means "Don't show button"
-
-        const explicitReturn = 'return' in storylet ? storylet.return : undefined;
-        
+        if (disableReturn) return null;
+        const explicitReturn = storylet.return;
         if (explicitReturn) {
-            // Check if the target is a Storylet (Cards usually don't return to cards)
             const target = storyletDefs[explicitReturn];
-            
             if (target) {
-                // RE-EVALUATE: Is the player allowed to see the return target?
-                // If they locked themselves out during this event, we should fallback to Hub.
                 const isVisible = evaluateCondition(target.visible_if, qualities);
                 const isUnlocked = evaluateCondition(target.unlock_if, qualities);
-
-                // If target is hidden or locked, return undefined to force Hub
                 if (!isVisible || !isUnlocked) return undefined; 
-                
                 return explicitReturn;
             }
-            // Target ID exists but not found in DB? Fallback.
             return undefined;
         }
-        
-        // Undefined means "Return to Location Hub"
         return undefined; 
     };
 
     const returnTargetId = getReturnTarget();
     const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
-    if (resolution) {
+     if (resolution) {
         return (
             <div className="storylet-container">
                 <div className="storylet-main-content">
@@ -145,7 +128,7 @@ export default function StoryletDisplay({
                     <div className="storylet-text-content">
                         <h1>{resolution.title}</h1> 
                         <div className="storylet-text">
-                            <FormattedText text={evaluateText(resolution.body, qualities, qualityDefs)}/>
+                            <FormattedText text={resolution.body} />
                         </div>
                     </div>
                 </div>
@@ -182,13 +165,7 @@ export default function StoryletDisplay({
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities);
             const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
-            
-            const { chance, text } = calculateSkillCheckChance(
-                option.challenge, 
-                qualities, 
-                qualityDefs
-            );
-
+            const { chance, text } = calculateSkillCheckChance(option.challenge, qualities, qualityDefs);
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}% chance]` : '';
             return { ...option, isLocked, lockReason, skillCheckText, chance, };
         });
@@ -210,10 +187,10 @@ export default function StoryletDisplay({
                 <div className="storylet-text-content">
                     <h1>{evaluateText(storylet.name, qualities, qualityDefs)}</h1>
                     <div className="storylet-text">
-                        <FormattedText text={evaluateText(storylet.text, qualities, qualityDefs)}/>
+                        <FormattedText text={evaluateText(storylet.text, qualities, qualityDefs)} />
                     </div>
                     {storylet.metatext && (
-                        <div className="metatext">
+                         <div className="metatext">
                             <FormattedText text={evaluateText(storylet.metatext, qualities, qualityDefs)} />
                         </div>
                     )}
@@ -222,41 +199,26 @@ export default function StoryletDisplay({
 
             <div className="options-container">
                 {optionsToDisplay.map((option) => {
-                    const cost = option.computed_action_cost ?? 1;
                     const showCost = settings.useActionEconomy;
                     
+                    // NEW: Better Cost Badge Logic
                     let costDisplay = null;
-    
                     if (showCost) {
-                        const defaultCost = settings.defaultActionCost ?? 1;
-                        const rawCost = option.action_cost || defaultCost;
+                        const rawCost = option.computed_action_cost;
                         
-                        // Try to parse as number
-                        const numCost = parseInt(String(rawCost), 10);
-                        
-                        if (!isNaN(numCost) && /^\d+$/.test(String(rawCost))) {
-                            // Numeric
-                            if (numCost > 0) {
-                                costDisplay = (
-                                    <span className="cost-badge cost-numeric">
-                                        {numCost} Actions
-                                    </span>
-                                );
-                            } else {
-                                costDisplay = <span className="cost-badge cost-free">Free</span>;
-                            }
-                        } else {
-                            // Logic (e.g. $stress++)
-                            // We strip the $ for cleaner display
-                            const cleanLogic = String(rawCost).replace(/\$/g, '');
-                            costDisplay = (
-                                <span className="cost-badge cost-logic" title={String(rawCost)}>
-                                    {cleanLogic}
-                                </span>
-                            );
+                        if (typeof rawCost === 'number') {
+                             if (rawCost > 0) {
+                                 costDisplay = <span className="cost-badge cost-numeric">{rawCost} Actions</span>;
+                             } else {
+                                 costDisplay = <span className="cost-badge cost-free">Free</span>;
+                             }
+                        } else if (typeof rawCost === 'string') {
+                            // Logic string ($wounds++)
+                            const cleanLogic = rawCost.replace(/\$/g, '');
+                            costDisplay = <span className="cost-badge cost-logic" title={rawCost}>{cleanLogic}</span>;
                         }
                     }
-                    
+
                     return (
                         <button 
                             key={option.id} 
@@ -280,9 +242,7 @@ export default function StoryletDisplay({
                                 <div className="option-text-wrapper">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                         <h3 style={{ margin: 0 }}>{option.name}</h3>
-                                        {showCost && (
-                                            costDisplay
-                                        )}
+                                        {costDisplay}
                                     </div>
                                     {option.short && <p className="option-short-desc">{option.short}</p>}
                                     {option.meta && <p className="option-meta-text">{option.meta}</p>}
@@ -302,9 +262,13 @@ export default function StoryletDisplay({
             <div className="footer-actions">
                 {returnTargetId !== null && (
                     <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId)}>
-                        {returnTargetName 
-                        ? `Return to ${evaluateText(returnTargetName, qualities, qualityDefs)}` 
-                        : 'Return to Location'}
+                         {/* Logic to distinguish Card vs Storylet return */}
+                        {returnTargetId && returnTargetName
+                            ? `Return to ${evaluateText(returnTargetName, qualities, qualityDefs)}`
+                            : ('deck' in storylet)
+                                ? 'Put Card Back (Return to Hand)'
+                                : 'Return to Location'
+                        }
                     </button>
                 )}
             </div>

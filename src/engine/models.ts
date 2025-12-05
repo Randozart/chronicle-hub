@@ -66,7 +66,7 @@ export interface ResolveOption extends LogicGates {
     rare_fail_redirect?: string;
 
     // Runtime computed (do not store in DB)
-    computed_action_cost?: number; 
+    computed_action_cost?: number | string; // <--- UPDATE TYPE
 }
 
 // --- GAME CONTENT INTERFACES ---
@@ -82,13 +82,13 @@ interface ContentCommon {
     autofire_if?: string;
     status?: PublishStatus;
     folder?: string; 
+    return?: string;     // Target ID for "Go Back" button
 }
 
 export type PublishStatus = 'draft' | 'published' | 'archived';
 
 export interface Storylet extends ContentCommon, LogicGates {
     location?: string;   // Location ID
-    return?: string;     // Target ID for "Go Back" button
 }
 
 export interface Opportunity extends ContentCommon {

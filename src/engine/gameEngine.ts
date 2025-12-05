@@ -7,7 +7,7 @@ const getCPforNextLevel = (level: number): number => {
     return level + 1;
 };
 
-const evaluateSimpleExpression = (expr: string): number | boolean | string => {
+export const evaluateSimpleExpression = (expr: string): number | boolean | string => {
     const sanitizedExpr = expr.trim();
     if (!sanitizedExpr) return 0;
 
@@ -730,15 +730,20 @@ export class GameEngine {
                 
                 if (rOpt.action_cost) {
                     const val = this.evaluateBlock(rOpt.action_cost);
-                    rOpt.computed_action_cost = parseInt(val, 10);
-                    if (isNaN(rOpt.computed_action_cost)) rOpt.computed_action_cost = 0;
+                    const numVal = parseInt(val, 10);
+                    // If it's a number, store number. If it's logic string, store string.
+                    rOpt.computed_action_cost = isNaN(numVal) || !/^\d+$/.test(val) ? val : numVal;
                 } else if (isInstant) {
                     rOpt.computed_action_cost = 0;
                 } else {
-                    // FIX: Use World Settings Default instead of hardcoded 1
-                    // If undefined, fallback to 1 (standard behavior)
-                    const val = this.evaluateBlock(this.worldContent.settings.defaultActionCost as string);
-                    rOpt.computed_action_cost = parseInt(val, 10) ?? 1;
+                    // Use Default from Settings
+                    const def = this.worldContent.settings.defaultActionCost;
+                    if (def !== undefined) {
+                        // If default is a number, use it. If string logic, pass it.
+                        rOpt.computed_action_cost = def;
+                    } else {
+                        rOpt.computed_action_cost = 1; // Hard fallback
+                    }
                 }
                 
                 return rOpt;
