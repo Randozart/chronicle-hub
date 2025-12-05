@@ -210,14 +210,14 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                                     value={listing.visible_if || ''} 
                                                     onChange={v => updateListing(lIdx, 'visible_if', v)} 
                                                     storyId={storyId} 
-                                                    mode="condition" 
+                                                    mode="text" 
                                                 />
                                                 <SmartArea 
                                                     label="Unlock If" 
                                                     value={listing.unlock_if || ''} 
                                                     onChange={v => updateListing(lIdx, 'unlock_if', v)} 
                                                     storyId={storyId} 
-                                                    mode="condition" 
+                                                    mode="text" 
                                                 />
                                                 <div style={{ gridColumn: '1 / -1' }}>
                                                      <SmartArea 
