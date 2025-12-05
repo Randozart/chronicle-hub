@@ -170,7 +170,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                         </div>
 
                         <div style={{ background: 'rgba(97, 175, 239, 0.1)', padding: '0.5rem', borderRadius: '4px', display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#61afef', fontWeight: 'bold' }}>⚡ Bulk Add:</span>
+                            <span style={{ fontSize: '0.8rem', color: '#61afef', fontWeight: 'bold' }}>Bulk Add from Category:</span>
                             <select id="bulk-cat" className="form-select" style={{ width: 'auto', padding: '0.2rem' }}>
                                 <option value="">Select Category...</option>
                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
