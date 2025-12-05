@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Storylet } from '@/engine/models';
 import OptionList from './OptionList';
-import SmartArea from '@/components/admin/SmartArea'; // <--- THE NEW COMPONENT
+import SmartArea from '@/components/admin/SmartArea'; 
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import BehaviorCard from '../../../../../components/admin/BehaviorCard';
 
@@ -15,8 +15,6 @@ interface Props {
 
 export default function StoryletMainForm({ initialData, onSave, onDelete }: Props) {
     const [form, setForm] = useState(initialData);
-    
-    // Note: We REMOVED activeField state! Clean!
     
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
@@ -45,7 +43,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
 
     return (
         <div className="h-full flex flex-col relative">
-            {/* ... Header (Same as before) ... */}
+            {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
@@ -64,8 +62,17 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                 
                 {/* BASIC INFO */}
                 <div className="form-row">
-                    <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" />
-                    <div className="form-group" style={{ flex:1 }}><label className="form-label">Location ID</label><input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" /></div>
+                    <div style={{ flex: 2 }}>
+                        <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" />
+                    </div>
+                    <div className="form-group" style={{ flex:1 }}>
+                        <label className="form-label">Location ID</label>
+                        <input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" />
+                    </div>
+                </div>
+                <div className="form-row">
+                    <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
+                    <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
                 </div>
 
                 {/* TEASER */}
@@ -79,14 +86,30 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                 />
 
                 {/* REQUIREMENTS */}
-                <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
+                <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Requirements</label>
                     <div className="form-row">
                         <div style={{ flex: 1 }}>
-                            <SmartArea label="Visible If" value={form.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" />
+                            <SmartArea 
+                                label="Visible If" 
+                                value={form.visible_if || ''} 
+                                onChange={v => handleChange('visible_if', v)} 
+                                storyId={storyId} 
+                                mode="text" 
+                                initialTab="standard" // <--- NEW: Force "Compare" tab
+                                placeholder="$gold > 0" 
+                            />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <SmartArea label="Unlock If" value={form.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" />
+                            <SmartArea 
+                                label="Unlock If" 
+                                value={form.unlock_if || ''} 
+                                onChange={v => handleChange('unlock_if', v)} 
+                                storyId={storyId} 
+                                mode="text" 
+                                initialTab="standard" // <--- NEW
+                                placeholder="$gold >= 10" 
+                            />
                         </div>
                     </div>
                 </div>

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Opportunity } from '@/engine/models';
 import OptionList from '../../storylets/components/OptionList';
-import SmartArea from '@/components/admin/SmartArea'; // <--- NEW
-import BehaviorCard from '@/components/admin/BehaviorCard'; // <--- NEW
+import SmartArea from '@/components/admin/SmartArea';
+import BehaviorCard from '@/components/admin/BehaviorCard';
 
 interface Props {
     initialData: Opportunity;
@@ -23,7 +23,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    // CTRL+S Handler
+    // CTRL+S
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -37,7 +37,6 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
 
     return (
         <div className="h-full flex flex-col relative">
-            
             {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -59,7 +58,6 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
             
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
-                {/* BASIC INFO */}
                 <div className="form-row">
                     <div className="form-group"><label className="form-label">Title</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
                     <div className="form-group"><label className="form-label">Deck ID</label><input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" /></div>
@@ -69,17 +67,17 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                     <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
                 </div>
 
-                {/* TEASER (Card Preview) */}
+                {/* TEASER */}
                 <SmartArea 
                     label="Teaser Text" 
-                    subLabel="Shown on the card face before clicking."
+                    subLabel="Shown on the card face."
                     value={form.short || ''} 
                     onChange={v => handleChange('short', v)} 
                     storyId={storyId} 
                     minHeight="60px"
                 />
 
-                {/* LOGIC & DRAWING */}
+                {/* LOGIC */}
                 <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Card Logic</label>
                     
@@ -88,29 +86,25 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                         value={form.draw_condition || ''} 
                         onChange={v => handleChange('draw_condition', v)} 
                         storyId={storyId} 
-                        mode="condition" 
+                        mode="text" 
                         placeholder="$gold > 10"
                     />
                     
                     <div className="form-row" style={{ marginTop: '1rem' }}>
                         <div className="form-group">
-                            <label className="form-label">Frequency (Weight)</label>
-                            <select 
-                                value={form.frequency || 'Standard'} 
-                                onChange={e => handleChange('frequency', e.target.value)} 
-                                className="form-select"
-                            >
-                                <option value="Always">Always (Infinite Weight)</option>
-                                <option value="Frequent">Frequent (High)</option>
-                                <option value="Standard">Standard (Normal)</option>
-                                <option value="Infrequent">Infrequent (Low)</option>
-                                <option value="Rare">Rare (Very Low)</option>
+                            <label className="form-label">Frequency</label>
+                            <select value={form.frequency || 'Standard'} onChange={e => handleChange('frequency', e.target.value)} className="form-select">
+                                <option value="Always">Always</option>
+                                <option value="Frequent">Frequent</option>
+                                <option value="Standard">Standard</option>
+                                <option value="Infrequent">Infrequent</option>
+                                <option value="Rare">Rare</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
-                {/* MAIN TEXT */}
+                {/* BODY */}
                 <div style={{ marginTop: '1rem' }}>
                     <SmartArea 
                         label="Card Body Text" 
@@ -118,7 +112,6 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                         onChange={v => handleChange('text', v)} 
                         storyId={storyId} 
                         minHeight="150px" 
-                        placeholder="You flip the card..."
                     />
                 </div>
 
@@ -130,13 +123,13 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                             checked={form.can_discard !== false} // Default true
                             onChange={() => handleChange('can_discard', !form.can_discard)} 
                             label="Discardable" 
-                            desc="Player can remove this card from hand." 
+                            desc="Player can remove this card." 
                         />
                         <BehaviorCard 
                             checked={!!form.keep_if_invalid} 
                             onChange={() => handleChange('keep_if_invalid', !form.keep_if_invalid)} 
-                            label="Sticky (Transient)" 
-                            desc="Keep in hand even if conditions fail later?" 
+                            label="Sticky" 
+                            desc="Keep in hand even if invalid." 
                         />
                     </div>
                 </div>

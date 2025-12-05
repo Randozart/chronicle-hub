@@ -72,8 +72,8 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
 
             <div className="form-group" style={{ background: '#181a1f', padding: '0.75rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="form-row">
-                    <div style={{ flex: 1 }}><SmartArea label="Visible If" value={data.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" /></div>
-                    <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={data.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" /></div>
+                    <div style={{ flex: 1 }}><SmartArea label="Visible If" value={data.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="text" placeholder="$gold > 0" /></div>
+                    <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={data.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="text" placeholder="$gold >= 10" /></div>
                 </div>
                 {hasDifficulty && <div style={{ marginTop: '1rem' }}><SmartArea label="Challenge Logic" value={data.challenge || ''} onChange={v => handleChange('challenge', v)} storyId={storyId} mode="condition" /></div>}
             </div>

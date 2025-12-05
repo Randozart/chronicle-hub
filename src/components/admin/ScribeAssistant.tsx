@@ -63,13 +63,13 @@ const styles = {
 
 interface Props {
     storyId: string;
-    mode: 'effect' | 'condition' | 'text'; 
+    mode: 'text' | 'effect' | 'condition'; 
     onInsert: (text: string) => void;
     onClose: () => void;
+    initialTab?: LogicType; // Updated Type
 }
 
-// Added 'timer'
-type LogicType = 'standard' | 'source' | 'group_clear' | 'conditional_text' | 'skill_check' | 'luck' | 'timer';
+type LogicType = 'conditional_text' | 'standard' | 'source' | 'group_clear' | 'skill_check' | 'luck' | 'timer';
 
 const TAB_BTN: React.CSSProperties = {
     background: '#21252b',
@@ -96,7 +96,7 @@ const MINI_LABEL: React.CSSProperties = {
     display: 'block', fontSize: '0.7rem', color: '#aaa', marginBottom: '3px'
 };
 
-export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Props) {
+export default function ScribeAssistant({ storyId, mode, onInsert, onClose, initialTab }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     
     const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
@@ -104,7 +104,7 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
     
-    const [logicType, setLogicType] = useState<LogicType>('standard');
+    const [logicType, setLogicType] = useState<LogicType>(initialTab || 'standard');
 
     // Form State
     const [selectedQ, setSelectedQ] = useState("");
@@ -130,42 +130,25 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
     
     useLayoutEffect(() => {
         if (containerRef.current) {
-            // Get the bounding rectangle of the parent element (the input wrapper)
             const parentRect = containerRef.current.parentElement?.getBoundingClientRect();
-            
-            if (parentRect) {
-                // If the input is closer than 450px to the top of the screen, flip down.
-                // (450px covers the height of the popup + header/margins)
-                if (parentRect.top < 500) {
-                    setPlacement('bottom');
-                } else {
-                    setPlacement('top');
-                }
-            }
+            if (parentRect && parentRect.top < 500) setPlacement('bottom');
+            else setPlacement('top');
         }
     }, []);
 
     useEffect(() => {
-        fetch(`/api/admin/qualities?storyId=${storyId}`)
-            .then(r => r.json())
-            .then(data => {
-                const list = Object.values(data) as QualityDefinition[];
-                setQualities(list);
-                if (list.length > 0) setSelectedQ(list[0].id);
-                
-                const cats = new Set<string>();
-                list.forEach(q => {
-                    if (q.category) q.category.split(',').forEach(c => cats.add(c.trim()));
-                });
-                const catList = Array.from(cats);
-                setCategories(catList);
-                if (catList.length > 0) setSelectedCat(catList[0]);
-            });
+        fetch(`/api/admin/qualities?storyId=${storyId}`).then(r => r.json()).then(data => {
+            const list = Object.values(data) as QualityDefinition[];
+            setQualities(list);
+            if (list.length > 0) setSelectedQ(list[0].id);
+            const cats = new Set<string>();
+            list.forEach(q => { if (q.category) q.category.split(',').forEach(c => cats.add(c.trim())); });
+            setCategories(Array.from(cats));
+            if (Array.from(cats).length > 0) setSelectedCat(Array.from(cats)[0]);
+        });
     }, [storyId]);
 
-    const visibleQualities = logicType === 'source' 
-        ? qualities.filter(q => q.type === QualityType.Item)
-        : qualities;
+    const visibleQualities = logicType === 'source' ? qualities.filter(q => q.type === QualityType.Item) : qualities;
 
     useEffect(() => {
         if (visibleQualities.length > 0 && !visibleQualities.find(q => q.id === selectedQ)) {
@@ -175,44 +158,30 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
 
     const handleInsert = () => {
         let result = "";
-
         switch (logicType) {
             case 'standard':
+                // FIX: Handle boolean check vs text interpolation
                 result = mode === 'text' ? `{$${selectedQ}}` : `$${selectedQ} ${operator} ${value}`;
                 break;
-            case 'source':
-                result = `$${selectedQ}[source:${sourceText}] ${operator} ${value}`;
-                break;
-            case 'group_clear':
-                result = `$all[${selectedCat}] = 0`;
-                break;
-            case 'conditional_text':
-                result = `{ $${selectedQ} ${operator} ${value} : '${condTrue}' | '${condFalse}' }`;
-                break;
+            case 'source': result = `$${selectedQ}[source:${sourceText}] ${operator} ${value}`; break;
+            case 'group_clear': result = `$all[${selectedCat}] = 0`; break;
+            case 'conditional_text': result = `{ $${selectedQ} ${operator} ${value} : '${condTrue}' | '${condFalse}' }`; break;
             case 'skill_check':
                 let brackets = `[${margin}`;
                 if (minCap !== "0" || maxCap !== "100" || pivot !== "60") {
                     brackets += `, ${minCap}`;
                     if (maxCap !== "100" || pivot !== "60") {
                         brackets += `, ${maxCap}`;
-                        if (pivot !== "60") {
-                            brackets += `, ${pivot}`;
-                        }
+                        if (pivot !== "60") brackets += `, ${pivot}`;
                     }
                 }
                 brackets += `]`;
                 if (brackets === `[${target}]`) brackets = ""; 
-                result = `$${selectedQ} >= ${target} ${brackets}`;
+                result = `$${selectedQ} >> ${target} ${brackets}`; // Updated operator
                 break;
-            case 'luck':
-                result = `$luck <= ${luckChance}`;
-                break;
-            case 'timer':
-                // Syntax: $schedule[$q += 1 : 4h]
-                result = `$schedule[$${selectedQ} ${operator} ${value} : ${timeAmount}${timeUnit}]`;
-                break;
+            case 'luck': result = `$luck <= ${luckChance}`; break;
+            case 'timer': result = `$schedule[$${selectedQ} ${operator} ${value} : ${timeAmount}${timeUnit}]`; break;
         }
-        
         onInsert(result);
         onClose();
     };
@@ -249,29 +218,29 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
 
     return (
         <div ref={containerRef} style={containerStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, color: '#61afef', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                    Scribe Assistant
-                </h4>
-                <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+            <div style={styles.header}>
+                <h4 style={styles.title}>Scribe Assistant</h4>
+                <button onClick={onClose} style={styles.closeBtn}>✕</button>
             </div>
 
-            {/* TABS */}
             <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <TabButton type="standard" label="Basic" />
+                {/* TEXT MODE */}
                 <TabButton type="conditional_text" label="Conditional" />
-                
-                {/* CONDITION MODES */}
+                {mode === 'text' && <TabButton type="standard" label="Variable" />}
+
+                {/* CONDITION MODE */}
                 {mode === 'condition' && (
                     <>
+                        {/* FIX: Added Standard back for Conditions (renamed Compare) */}
                         <TabButton type="skill_check" label="Challenge" />
                         <TabButton type="luck" label="Luck" />
                     </>
                 )}
                 
-                {/* EFFECT MODES */}
+                {/* EFFECT MODE */}
                 {mode === 'effect' && (
                     <>
+                        <TabButton type="standard" label="Basic" />
                         <TabButton type="group_clear" label="Batch" />
                         <TabButton type="source" label="Source" />
                         <TabButton type="timer" label="Timer" />
@@ -279,63 +248,40 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
                 )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={styles.column}>
                 
-                {/* QUALITY SELECTOR (Used by most) */}
+                {/* QUALITY SELECTOR */}
                 {logicType !== 'group_clear' && logicType !== 'luck' && (
                     <select className="form-select" value={selectedQ} onChange={e => setSelectedQ(e.target.value)}>
-                        {visibleQualities.map(q => (
-                            <option key={q.id} value={q.id}>{q.name || q.id} ({q.type})</option>
-                        ))}
+                        {visibleQualities.map(q => <option key={q.id} value={q.id}>{q.name || q.id} ({q.type})</option>)}
                     </select>
                 )}
                 
-                {/* 1. SKILL CHECK BUILDER */}
+                {/* 1. SKILL CHECK */}
                 {logicType === 'skill_check' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        
-                        {/* --- INSERT CHART HERE --- */}
-                        <ProbabilityChart 
-                            operator={operator}
-                            target={parseInt(target) || 0}
-                            margin={parseInt(margin) || 0}
-                            minCap={parseInt(minCap) || 0}
-                            maxCap={parseInt(maxCap) || 100}
-                            pivot={parseInt(pivot) || 60}
-                        />
-
+                    <div style={styles.column}>
+                        <ProbabilityChart operator={operator} target={parseInt(target)||0} margin={parseInt(margin)||0} minCap={parseInt(minCap)||0} maxCap={parseInt(maxCap)||100} pivot={parseInt(pivot)||60} />
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {/* OPERATOR SELECT */}
-                            <div style={{ width: '80px' }}>
-                                <label className="mini-label">Type</label>
-                                <select className="form-select" value={operator} onChange={e => setOperator(e.target.value)}>
-                                    <option value=">>">{'>>'} (High)</option>
-                                    <option value="<<">{'<<'} (Low)</option>
-                                    <option value="==">{'=='} (Exact)</option>
-                                    <option value="!=">{'!='} (Avoid)</option>
+                            <div style={{ width: '70px' }}>
+                                <label style={MINI_LABEL}>Type</label>
+                                <select className="form-select" value={operator} onChange={e => setOperator(e.target.value)} style={{ padding: '5px 2px' }}>
+                                    <option value=">>">{">>"}</option>
+                                    <option value="<<">{"<<"}</option>
+                                    <option value="==">{"=="}</option>
+                                    <option value="!=">{"!="}</option>
                                 </select>
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <label className="mini-label">Target</label>
-                                <input className="form-input" type="number" value={target} onChange={e => setTarget(e.target.value)} />
-                            </div>
+                            <div style={{ flex: 1 }}><label style={MINI_LABEL}>Target</label><input className="form-input" type="number" value={target} onChange={e => setTarget(e.target.value)} /></div>
+                            <div style={{ flex: 1 }}><label style={MINI_LABEL}>Margin</label><input className="form-input" type="number" value={margin} onChange={e => setMargin(e.target.value)} /></div>
                         </div>
-                        <button 
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            style={{ background: 'none', border: 'none', color: '#61afef', fontSize: '0.75rem', cursor: 'pointer', textAlign: 'left', padding: 0 }}
-                        >
-                            {showAdvanced ? '▼ Less' : '▶ Advanced'}
-                        </button>
+                        <button onClick={() => setShowAdvanced(!showAdvanced)} style={{ background: 'none', border: 'none', color: '#61afef', fontSize: '0.75rem', cursor: 'pointer', textAlign: 'left', padding: 0 }}>{showAdvanced ? '▼ Less' : '▶ Advanced'}</button>
                         {showAdvanced && (
                             <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
                                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                     <div><label style={MINI_LABEL}>Min %</label><input className="form-input" type="number" value={minCap} onChange={e => setMinCap(e.target.value)} /></div>
                                     <div><label style={MINI_LABEL}>Max %</label><input className="form-input" type="number" value={maxCap} onChange={e => setMaxCap(e.target.value)} /></div>
                                 </div>
-                                <div>
-                                    <label style={MINI_LABEL}>Pivot %: {pivot}</label>
-                                    <input type="range" min="10" max="90" value={pivot} onChange={e => setPivot(e.target.value)} style={{ width: '100%' }} />
-                                </div>
+                                <div><label style={{...MINI_LABEL, display:'flex', justifyContent:'space-between'}}>Pivot % <span>{pivot}</span></label><input type="range" min="10" max="90" value={pivot} onChange={e => setPivot(e.target.value)} style={{ width: '100%' }} /></div>
                             </div>
                         )}
                     </div>
@@ -343,69 +289,32 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
 
                 {/* 2. LUCK */}
                 {logicType === 'luck' && (
-                    <div>
-                        <label style={{ ...MINI_LABEL, display: 'flex', justifyContent: 'space-between' }}>
-                            Success Chance <span>{luckChance}%</span>
-                        </label>
-                        <input type="range" min="1" max="99" value={luckChance} onChange={e => setLuckChance(e.target.value)} style={{ width: '100%' }} />
-                    </div>
+                    <div><label style={{ ...MINI_LABEL, display: 'flex', justifyContent: 'space-between' }}>Success Chance <span>{luckChance}%</span></label><input type="range" min="1" max="99" value={luckChance} onChange={e => setLuckChance(e.target.value)} style={{ width: '100%' }} /></div>
                 )}
 
-                {/* 3. BATCH WIPE */}
+                {/* 3. BATCH */}
                 {logicType === 'group_clear' && (
-                    <select className="form-select" value={selectedCat} onChange={e => setSelectedCat(e.target.value)}>
-                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <select className="form-select" value={selectedCat} onChange={e => setSelectedCat(e.target.value)}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
                 )}
 
-                {/* 4. STANDARD & TIMER MATH */}
+                {/* 4. STANDARD & TIMER */}
                 {['standard', 'source', 'timer'].includes(logicType) && (
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <select className="form-select" value={operator} onChange={e => setOperator(e.target.value)} style={{ width: '80px' }}>
-                            {mode === 'condition' ? (
-                                <><option value=">=">&gt;=</option><option value="<=">&lt;=</option><option value="==">==</option><option value="!=">!=</option><option value=">">&gt;</option><option value="<">&lt;</option></>
-                            ) : (
-                                <><option value="+=">+=</option><option value="-=">-=</option><option value="=">=</option><option value="++">++</option></>
-                            )}
+                            {mode === 'condition' ? <><option value=">=">&gt;=</option><option value="<=">&lt;=</option><option value="==">==</option><option value="!=">!=</option><option value=">">&gt;</option><option value="<">&lt;</option></> : <><option value="+=">+=</option><option value="-=">-=</option><option value="=">=</option><option value="++">++</option></>}
                         </select>
                         <input className="form-input" value={value} onChange={e => setValue(e.target.value)} placeholder="Value" />
                     </div>
                 )}
 
-                {/* TIMER INPUTS */}
-                {logicType === 'timer' && (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                         <div style={{ flex: 1 }}>
-                            <label style={MINI_LABEL}>Duration</label>
-                            <input className="form-input" type="number" value={timeAmount} onChange={e => setTimeAmount(e.target.value)} />
-                         </div>
-                         <div style={{ width: '80px' }}>
-                            <label style={MINI_LABEL}>Unit</label>
-                            <select className="form-select" value={timeUnit} onChange={e => setTimeUnit(e.target.value)}>
-                                <option value="m">Mins</option>
-                                <option value="h">Hours</option>
-                                <option value="d">Days</option>
-                            </select>
-                         </div>
-                    </div>
-                )}
+                {/* TIMER */}
+                {logicType === 'timer' && <div style={{ display: 'flex', gap: '0.5rem' }}><div style={{ flex: 1 }}><label style={MINI_LABEL}>Duration</label><input className="form-input" type="number" value={timeAmount} onChange={e => setTimeAmount(e.target.value)} /></div><div style={{ width: '80px' }}><label style={MINI_LABEL}>Unit</label><select className="form-select" value={timeUnit} onChange={e => setTimeUnit(e.target.value)}><option value="m">Mins</option><option value="h">Hours</option><option value="d">Days</option></select></div></div>}
 
-                {logicType === 'source' && (
-                    <input className="form-input" value={sourceText} onChange={e => setSourceText(e.target.value)} placeholder="Source (e.g. Cave)" />
-                )}
+                {/* SOURCE */}
+                {logicType === 'source' && <input className="form-input" value={sourceText} onChange={e => setSourceText(e.target.value)} placeholder="Source (e.g. Cave)" />}
 
-                {logicType === 'conditional_text' && (
-                    <>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <select className="form-select" value={operator} onChange={e => setOperator(e.target.value)} style={{ width: '80px' }}>
-                                <option value=">=">&gt;=</option><option value="<=">&lt;=</option><option value="==">==</option>
-                            </select>
-                            <input className="form-input" value={value} onChange={e => setValue(e.target.value)} placeholder="Value" />
-                        </div>
-                        <input className="form-input" value={condTrue} onChange={e => setCondTrue(e.target.value)} placeholder="Text if True" />
-                        <input className="form-input" value={condFalse} onChange={e => setCondFalse(e.target.value)} placeholder="Text if False" />
-                    </>
-                )}
+                {/* CONDITIONAL TEXT */}
+                {logicType === 'conditional_text' && <><div style={{ display: 'flex', gap: '0.5rem' }}><select className="form-select" value={operator} onChange={e => setOperator(e.target.value)} style={{ width: '80px' }}><option value=">=">&gt;=</option><option value="<=">&lt;=</option><option value="==">==</option></select><input className="form-input" value={value} onChange={e => setValue(e.target.value)} placeholder="Value" /></div><input className="form-input" value={condTrue} onChange={e => setCondTrue(e.target.value)} placeholder="Text if True" /><input className="form-input" value={condFalse} onChange={e => setCondFalse(e.target.value)} placeholder="Text if False" /></>}
 
                 <button onClick={handleInsert} style={styles.insertBtn}>Insert Code</button>
             </div>
