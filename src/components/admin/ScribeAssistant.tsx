@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { QualityDefinition, QualityType } from '@/engine/models';
+import ProbabilityChart from './ProbabilityChart';
 
 // --- STYLES (Fixes the console error) ---
 const styles = {
@@ -288,10 +289,21 @@ export default function ScribeAssistant({ storyId, mode, onInsert, onClose }: Pr
                         ))}
                     </select>
                 )}
-
-                {/* 1. SKILL CHECK */}
+                
+                {/* 1. SKILL CHECK BUILDER */}
                 {logicType === 'skill_check' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        
+                        {/* --- INSERT CHART HERE --- */}
+                        <ProbabilityChart 
+                            operator={operator}
+                            target={parseInt(target) || 0}
+                            margin={parseInt(margin) || 0}
+                            minCap={parseInt(minCap) || 0}
+                            maxCap={parseInt(maxCap) || 100}
+                            pivot={parseInt(pivot) || 60}
+                        />
+
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             {/* OPERATOR SELECT */}
                             <div style={{ width: '80px' }}>

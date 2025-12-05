@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { MarketDefinition, ShopStall, ShopListing, QualityDefinition, QualityType } from '@/engine/models';
 import { v4 as uuidv4 } from 'uuid';
-import SparkleIcon from '@/components/icons/SparkleIcon';
-import ScribeAssistant from '../../components/ScribeAssistant';
+import SmartArea from '@/components/admin/SmartArea'; // <--- NEW
+import BehaviorCard from '@/components/admin/BehaviorCard'; // <--- NEW
 
 interface Props {
     initialData: MarketDefinition;
@@ -17,32 +17,36 @@ interface Props {
 export default function MarketMainForm({ initialData, onSave, onDelete, allQualities, storyId }: Props) {
     const [form, setForm] = useState(initialData);
     const [activeStallIndex, setActiveStallIndex] = useState(0);
-    
     const [expandedListingId, setExpandedListingId] = useState<string | null>(null);
-    
-    // Track active field for the assistant
-    const [activeField, setActiveField] = useState<{ listingId: string, field: 'visible_if' | 'unlock_if' } | null>(null);
 
     useEffect(() => setForm(initialData), [initialData]);
+
+    // CTRL+S
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                onSave(form);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [form, onSave]);
 
     const handleChange = (field: keyof MarketDefinition, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    // --- FILTERING LOGIC (FIXED) ---
-    // 1. Items to Sell
     const tradeableQualities = form.allowAllTypes 
         ? allQualities 
         : allQualities.filter(q => q.type === QualityType.Item || q.type === QualityType.Equipable);
 
-    // 2. Currencies (FIXED: Respects allowAllTypes for weird economies)
     const currencyOptions = form.allowAllTypes
         ? allQualities
         : allQualities.filter(q => 
             q.type === QualityType.Counter || q.type === QualityType.Tracker || q.type === QualityType.Item
         );
 
-    // ... (Stall/Listing Logic same as before) ...
     const addStall = () => {
         const newStall: ShopStall = { id: uuidv4(), name: "New Stall", mode: 'buy', listings: [] };
         const newStalls = [...form.stalls, newStall];
@@ -98,19 +102,10 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
         alert(`Added ${addedCount} items.`);
     };
 
-    const handleAssistantInsert = (text: string) => {
-        if (!activeField || !currentStall) return;
-        const lIndex = currentStall.listings.findIndex(l => l.id === activeField.listingId);
-        if (lIndex === -1) return;
-        const currentVal = currentStall.listings[lIndex][activeField.field] || "";
-        updateListing(lIndex, activeField.field, currentVal + text);
-    };
-
     const categories = Array.from(new Set(tradeableQualities.map(q => q.category?.split(',')[0].trim()).filter(Boolean)));
 
     return (
         <div className="h-full flex flex-col relative">
-            
             {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
@@ -122,7 +117,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
 
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
-                {/* GLOBAL SETTINGS */}
                 <div className="form-row">
                     <div className="form-group"><label className="form-label">Display Name</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
                     <div className="form-group">
@@ -136,13 +130,14 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                 <div className="form-group"><label className="form-label">Image/Banner</label><input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" /></div>
 
                 <div style={{ marginBottom: '2rem', background: '#181a1f', padding: '0.5rem', borderRadius: '4px', border: '1px dashed #444' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#aaa', fontSize: '0.85rem' }}>
-                        <input type="checkbox" checked={form.allowAllTypes || false} onChange={e => handleChange('allowAllTypes', e.target.checked)} />
-                        Allow Esoteric Trades (Pyramidal Qualities, Strings, etc.)
-                    </label>
+                    <BehaviorCard 
+                        checked={form.allowAllTypes || false} 
+                        onChange={() => handleChange('allowAllTypes', !form.allowAllTypes)}
+                        label="Allow Esoteric Trades"
+                        desc="Trade Stats (Pyramidal) and Text Strings."
+                    />
                 </div>
 
-                {/* STALL TABS */}
                 <div style={{ marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
                         {form.stalls.map((stall, idx) => (
@@ -152,7 +147,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                     </div>
                 </div>
 
-                {/* ACTIVE STALL EDITOR */}
                 {currentStall && (
                     <div style={{ background: '#181a1f', padding: '1.5rem', borderRadius: '0 0 4px 4px', border: '1px solid #333', borderTop: 'none' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
@@ -163,9 +157,16 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                             <div style={{ alignSelf: 'end', marginLeft: '1rem' }}><button onClick={() => removeStall(activeStallIndex)} className="unequip-btn" style={{ width: 'auto', padding: '0.6rem 1rem' }}>Delete Stall</button></div>
                         </div>
 
-                        <div className="form-group" style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px dashed #444' }}>
-                            <label className="form-label" style={{ color: '#98c379' }}>Item Source Tag (Optional)</label>
-                            <input value={currentStall.source || ''} onChange={e => updateStall(activeStallIndex, 'source', e.target.value)} className="form-input" placeholder={`bought at ${currentStall.name}`}/>
+                        <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                             {/* Using SmartArea for source tag allows easier editing if logic needed later */}
+                             <SmartArea 
+                                label="Item Source Tag" 
+                                value={currentStall.source || ''} 
+                                onChange={v => updateStall(activeStallIndex, 'source', v)} 
+                                storyId={storyId} 
+                                minHeight="38px"
+                                placeholder={`bought at ${currentStall.name}`}
+                            />
                         </div>
 
                         <div style={{ background: 'rgba(97, 175, 239, 0.1)', padding: '0.5rem', borderRadius: '4px', display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
@@ -177,7 +178,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                             <button onClick={() => { const sel = document.getElementById('bulk-cat') as HTMLSelectElement; if(sel.value) bulkAdd(sel.value); }} className="save-btn" style={{ padding: '0.2rem 0.8rem', fontSize: '0.8rem' }}>Add All</button>
                         </div>
 
-                        {/* LISTINGS GRID */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '30px 3fr 2fr 2fr 30px', gap: '1rem', padding: '0 0.5rem', fontSize: '0.75rem', color: '#aaa', textTransform: 'uppercase' }}>
                                 <span></span><span>Item</span><span>Price</span><span>Currency</span><span></span>
@@ -191,7 +191,10 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                             <option value="">Select Item...</option>
                                             {tradeableQualities.map(q => <option key={q.id} value={q.id}>{q.name} ({q.id})</option>)}
                                         </select>
-                                        <input value={listing.price} onChange={e => updateListing(lIdx, 'price', e.target.value)} className="form-input" placeholder="10" />
+                                        
+                                        {/* Price Input with Logic Support (Not using full SmartArea for compact layout, but allowing text) */}
+                                        <input value={listing.price} onChange={e => updateListing(lIdx, 'price', e.target.value)} className="form-input" placeholder="10" title="Logic allowed (e.g. $rep * 5)" />
+                                        
                                         <select value={listing.currencyId || ""} onChange={e => updateListing(lIdx, 'currencyId', e.target.value || undefined)} className="form-select" style={{ fontSize: '0.85rem', color: listing.currencyId ? 'var(--accent-highlight)' : '#777' }}>
                                             <option value="">Default ({form.defaultCurrencyId})</option>
                                             {currencyOptions.map(c => <option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
@@ -199,46 +202,31 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                         <button onClick={() => removeListing(lIdx)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                                     </div>
 
-                                    {/* EXPANDED DETAILS PANE (Local Popup Position) */}
                                     {expandedListingId === listing.id && (
                                         <div style={{ padding: '1rem', borderTop: '1px dashed #333', background: 'rgba(0,0,0,0.2)' }}>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                                
-                                                <div style={{ position: 'relative' }}>
-                                                    <label className="form-label">Visible If</label>
-                                                    <input value={listing.visible_if || ''} onChange={e => updateListing(lIdx, 'visible_if', e.target.value)} className="form-input" placeholder="$reputation > 5" style={{paddingRight: '40px'}}/>
-                                                    
-                                                    {/* BUTTON */}
-                                                    <button onClick={() => setActiveField(activeField?.listingId === listing.id && activeField.field === 'visible_if' ? null : { listingId: listing.id, field: 'visible_if' })} style={{ position: 'absolute', right: 5, top: 22, background: 'none', border: 'none', cursor: 'pointer' }}>
-                                                        <SparkleIcon className="w-3 h-3 text-blue-400" />
-                                                    </button>
-
-                                                    {/* POPUP HERE */}
-                                                    {activeField?.listingId === listing.id && activeField.field === 'visible_if' && (
-                                                        <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 50 }}>
-                                                            <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleAssistantInsert} onClose={() => setActiveField(null)} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                
-                                                <div style={{ position: 'relative' }}>
-                                                    <label className="form-label">Unlock If</label>
-                                                    <input value={listing.unlock_if || ''} onChange={e => updateListing(lIdx, 'unlock_if', e.target.value)} className="form-input" placeholder="$gold > 100" style={{paddingRight: '40px'}}/>
-                                                    
-                                                    {/* BUTTON */}
-                                                    <button onClick={() => setActiveField(activeField?.listingId === listing.id && activeField.field === 'unlock_if' ? null : { listingId: listing.id, field: 'unlock_if' })} style={{ position: 'absolute', right: 5, top: 22, background: 'none', border: 'none', cursor: 'pointer' }}><SparkleIcon className="w-3 h-3 text-blue-400" /></button>
-                                                    
-                                                    {/* POPUP HERE */}
-                                                    {activeField?.listingId === listing.id && activeField.field === 'unlock_if' && (
-                                                        <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 50 }}>
-                                                            <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleAssistantInsert} onClose={() => setActiveField(null)} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                
+                                                <SmartArea 
+                                                    label="Visible If" 
+                                                    value={listing.visible_if || ''} 
+                                                    onChange={v => updateListing(lIdx, 'visible_if', v)} 
+                                                    storyId={storyId} 
+                                                    mode="condition" 
+                                                />
+                                                <SmartArea 
+                                                    label="Unlock If" 
+                                                    value={listing.unlock_if || ''} 
+                                                    onChange={v => updateListing(lIdx, 'unlock_if', v)} 
+                                                    storyId={storyId} 
+                                                    mode="condition" 
+                                                />
                                                 <div style={{ gridColumn: '1 / -1' }}>
-                                                    <label className="form-label">Description Override</label>
-                                                    <input value={listing.description || ''} onChange={e => updateListing(lIdx, 'description', e.target.value)} className="form-input" placeholder="Mostly for flavor, the shopkeeper can override the usual description of an item within their store"/>
+                                                     <SmartArea 
+                                                        label="Description Override" 
+                                                        value={listing.description || ''} 
+                                                        onChange={v => updateListing(lIdx, 'description', v)} 
+                                                        storyId={storyId} 
+                                                        minHeight="60px"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>

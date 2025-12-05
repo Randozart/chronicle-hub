@@ -1,6 +1,8 @@
 'use client';
 
-import React from 'react';
+import ProbabilityChart from '@/components/admin/ProbabilityChart';
+import React, { useState } from 'react';
+import SparkleIcon from '@/components/icons/SparkleIcon';
 
 export default function ScribeScriptSyntaxPage() {
     return (
@@ -169,7 +171,7 @@ You are fine.
 
                 <h3 className="docs-h3">Batch Operations</h3>
                 <p className="docs-p">
-                    Sometimes you need to clear many qualities at once. For example, when a player goes to Jail, you might want to remove all "Contraband".
+                    Sometimes you need to clear or modify many qualities at once. For example, when a player goes to Jail, you might want to remove all "Contraband".
                 </p>
                 <p className="docs-p">
                     Instead of writing <code>$stolen_goods = 0, $smuggled_wine = 0...</code>, you can target a <strong>Category</strong>.
@@ -183,14 +185,48 @@ You are fine.
 
                 <h3 className="docs-h3">Living Stories (Time Delays)</h3>
                 <p className="docs-p">
-                    You can schedule a quality change to happen in the future.
+                    You can schedule a quality change to happen in the future, even if the player is offline.
                 </p>
                 <div className="docs-syntax-box">
                     <code className="docs-code">$schedule[$ship_arrived = 1 : 4h]</code>
                 </div>
+                <ul className="docs-props-list">
+                    <li><strong>Syntax:</strong> <code>$schedule[ Effect : Time ]</code></li>
+                    <li><strong>Time Units:</strong> <code>m</code> (minutes), <code>h</code> (hours).</li>
+                    <li><strong>Cancel:</strong> <code>$cancel[$ship_arrived]</code> stops the timer.</li>
+                </ul>
+
+                <h3 className="docs-h3">World Qualities (Global State)</h3>
                 <p className="docs-p">
-                    This sets <code>$ship_arrived</code> to 1 exactly 4 hours from now, even if the player is offline.
+                    Variables shared by <strong>all players</strong> in the game (e.g., "The Season", "War Progress").
                 </p>
+                
+                <h4 className="docs-h4">Reading</h4>
+                <p className="docs-p">World qualities create a local copy for the player to access. As such, you can access them using both 
+                    the <code>local</code> scope, or the <code>world</code> scope.</p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">"The season is currently {`{$season}`}."</code>
+                    <br/><small>or</small><br/>
+                    <code className="docs-code">"The season is currently {`{$world.season}`}."</code>
+                    <br/><small>or</small><br/>
+                    <code className="docs-code">"The season is currently {`{$season[scope:world]}`}."</code>
+                </div>
+
+                <h4 className="docs-h4">Writing</h4>
+                <p className="docs-p">
+                    You must explicitly target the world scope to modify them.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">$world.season = 'Winter'</code>
+                    <br/><small>or</small><br/>
+                    <code className="docs-code">$war_progress[scope:world] += 5</code>
+                </div>
+                <div className="docs-callout" style={{borderColor: '#e06c75'}}>
+                    <strong style={{color: '#e06c75'}}>Warning: </strong> 
+                    If you write <code>$season = 'Winter'</code> without the prefix, you create a <strong>local copy</strong> for that player only, desyncing them from the world.
+                    Also, it's better not to use the equals (<code>=</code>) operator in this fashion, unless you want multiple players to affect the value directly.
+                    The creator studio has a GM console suited for initialising and setting world qualities in this way.
+                </div>
             </section>
             <section id="sources">
                 <h2 className="docs-h2">6.1 Advanced: Item Sources</h2>
@@ -238,53 +274,75 @@ You are fine.
             <section id="challenges">
                 <h2 className="docs-h2">6.2 Advanced: Skill Checks</h2>
                 <p className="docs-p">
-                    The <code>Challenge</code> field supports a powerful <strong>Difficulty</strong> syntax. You can define complex probability curves that adapt to the player's stats.
+                    The <code>Challenge</code> field supports a powerful <strong>Probability Curve</strong> syntax.
                 </p>
                 
                 <h3 className="docs-h3">The Syntax</h3>
                 <div className="docs-syntax-box">
-                    <code className="docs-code">$stat &gt;= Target [Margin, Min, Max, Pivot]</code>
+                    <code className="docs-code">$stat &gt;&gt; Target [Margin, Min, Max, Pivot]</code>
                 </div>
-                <p className="docs-p">
-                    The parser is <strong>Progressive</strong>. You only need to define as much as you need. Defaults are applied automatically.
-                </p>
 
+                <h3 className="docs-h3">Operators</h3>
+                <ul className="docs-props-list">
+                    <li><code>&gt;&gt;</code> <strong>Progressive:</strong> Higher stats increase chance (Standard RPG check).</li>
+                    <li><code>&lt;&lt;</code> <strong>Regressive:</strong> Lower stats increase chance (Stealth, Suspicion).</li>
+                    <li><code>==</code> <strong>Precision:</strong> You must be exactly at the Target. Chance drops as you move away.</li>
+                    <li><code>!=</code> <strong>Avoidance:</strong> You must be far from the Target. Chance drops as you get closer.</li>
+                </ul>
+
+                <h3 className="docs-h3">Parameters</h3>
                 <table className="docs-table">
-                    <thead><tr><th>Input</th><th>Resulting Logic</th></tr></thead>
+                    <thead><tr><th>Param</th><th>Description</th><th>Default</th></tr></thead>
                     <tbody>
                         <tr>
-                            <td><code>$stat &gt;= 50</code></td>
-                            <td><strong>Target.</strong> All defaults apply here. At <code>$stat 0</code>, the player will have 0% chance of success. At <code>$stat 0</code>
-                            they will have a 60% chance of success (Pefault Pivot), and at <code>$stat 100</code> they will have a 100% chance of success. All <code>$stat</code>
-                            scores in-between will be calculated along this graph, so a score between 0 and 50 will give a probability between 0% and 60%.</td>
+                            <td><strong>Target</strong></td>
+                            <td>The difficulty level to beat.</td>
+                            <td>Required</td>
                         </tr>
                         <tr>
-                            <td><code>$stat &gt;= 50 [10]</code></td>
-                            <td>
-                            <strong>Margin.</strong> 
-                            The way the minimum required score for 0% and the maximum required score for 100% is calculated. The margin is calculated based on the difficulty
-                            by subtracting the margin from the target for the minimum, and adding the margin to the target for the maximum. The margin defaults to the Target score
-                            unless explicitly set, so a Target of 50 will have 0% at 0 and 100% at 100, whereas a target of 70 will have 0% at 0, and 100% at 140.
-                            <br/><br/>40: 0% (Target-Margin)<br/>50: 60% (Default Pivot)<br/>60: 100% (Target+Margin)
+                            <td><strong>Margin</strong></td>
+                            <td>The "Width" of the difficulty curve. <br/><small>Target +/- Margin = 0% or 100%.</small>
+                            <br/>This determines at what <em>stat</em> or <em>operator</em> level the min and max values are applied. 
+                            The default calculates this as <code>target - target</code>, and <code>target + target</code>.
+                            For example:
+                            <br/>With <code>$stat &gt;&gt; 50</code>, you have a 0% success chance at 0, and a 100% success chance at 100.
+                            <br/>With<code>$stat &gt;&gt; 50 [20]</code>, you have a 0% success chance at 30, and a 100% success chance at 80.
                             </td>
+                            <td>Target</td>
                         </tr>
                         <tr>
-                            <td><code>$stat &gt;= 50 [10, 10, 90]</code></td>
-                            <td><strong>Clamp.</strong> Same as above, but chance never drops below 10% or rises above 90%. The first number defines the minimum,
-                            the second the maximum.</td>
+                            <td><strong>Min/Max</strong></td>
+                            <td>Hard caps on success chance (e.g., always 1% fail chance if you set max to 99, or always a 10% success chance if you set min to 10).</td>
+                            <td>0, 100</td>
                         </tr>
                         <tr>
-                            <td><code>$stat &gt;= 50 [10, 0, 100, 30]</code></td>
+                            <td><strong>Pivot</strong></td>
                             <td>
-                                <strong>Pivot.</strong> Reaching the target (50) only grants a 30% chance. 
-                                <br/>This means going from <code>$stat 40</code> to <code>$stat 50</code> will only give you a 3% probability increase per level, 
-                                but once you reach <code>$stat 50</code>, each step towards <code>$stat 60</code> grants a 7% success probability.
-                                The pivot serves as a hard kink in the probability curve, and defaults to 60 so players can feel their skills
-                                affecting checks slightly more quickly, but makes them work a little harder to reach the 100% success probability.
+                                The Success Chance (%) when your Skill equals the Target.
+                                <br/><em>Setting this to <strong>30</strong> makes the check "Hard" (you need to exceed the target to get good odds).</em>
+                                <br/><em>Setting this to <strong>80</strong> makes the check "Easy" (meeting the target is mostly sufficient).</em>
                             </td>
+                            <td>60</td>
                         </tr>
                     </tbody>
                 </table>
+
+                <h3 className="docs-h3">Visualizing the Math</h3>
+                <p className="docs-p">
+                    Balancing probability curves in your head can be challenging. Use the interactive tool below to test your settings.
+                </p>
+                
+                <ProbabilityPlayground />
+
+                <div className="docs-callout" style={{borderColor: '#61afef'}}>
+                    <strong style={{color: '#61afef'}}>Pro Tip: Use the Assistant</strong>
+                    <br/>
+                    When you click the <strong>Logic Button</strong> (Sparkle Icon <SparkleIcon className="w-3 h-3"/>) and select "Challenge", the editor displays 
+                    a <strong>Live Graph</strong> like the one above.
+                    <br/><br/>
+                    This visualizes <em>Skill Level (X)</em> vs <em>Success Chance (Y)</em>. You can drag the "Pivot" slider 
+                    to see exactly how the curve "kinks" at the target level, ensuring the game feels fair.
+                </div>
 
                 <h3 className="docs-h3">The Luck Quality</h3>
                 <p className="docs-p">
@@ -298,8 +356,8 @@ You are fine.
                 </div>
                 <p className="docs-p">
                     This represents a <strong>Raw Percentage Check</strong>.
-                    <br/><code>&lt;= 40</code> means a <strong>40% Chance</strong> of success (Rolling 1-40).
-                    <br/><code>&gt;= 90</code> means an <strong>11% Chance</strong> of success (Rolling 90-100).
+                    <br/><code>{`<<`} 40</code> means a <strong>40% Chance</strong> of success (Rolling 1-40).
+                    <br/><code>{`>>`} 90</code> means an <strong>11% Chance</strong> of success (Rolling 90-100).
                 </p>
                 <div className="docs-callout" style={{borderColor: '#f1c40f'}}>
                     <strong style={{color: '#f1c40f'}}>Note on Modifiers:</strong>
@@ -317,7 +375,7 @@ You are fine.
                 <p className="docs-p">Add a bonus to the roll <strong>only if</strong> the player has a specific item.</p>
                 <div className="docs-pre">
                     <code className="docs-code">
-                        {`{ $strength + { $crowbar >= 1 : 10 | 0 } }`} &gt;= 50
+                        {`{ $strength + { $crowbar >= 1 : 10 | 0 } }`} {`>>`} 50
                     </code>
                 </div>
                 <p className="docs-p">
@@ -328,14 +386,14 @@ You are fine.
                 </p>
                 <div className="docs-pre">
                     <code className="docs-code">
-                        {`{ $persuasion > 0 : $persuasion + $charisma | $persuasion }`} &gt;= 50 [10]
+                        {`{ $persuasion > 0 : $persuasion + $charisma | $persuasion }`} {`>>`} 50 [10]
                     </code>
                 </div>
                 <p className="docs-p">In the above example, if the player has the <code>$persuasion</code> quality, it will be explicitly added to the calculation, otherwise, it is ignored.
                 This is good if you want to hide qualities from the player in the challenge field.</p>
                 <div className="docs-pre">
                     <code className="docs-code">
-                        $dexterity &gt;= 50 [10, 0, {`{ $surgery > 20 : 100 | $surgery > 0 : {80 + $surgery} | 80 }`}]
+                        $dexterity {`>>`} 50 [10, 0, {`{ $surgery > 20 : 100 | $surgery > 0 : {80 + $surgery} | 80 }`}]
                     </code>
                 </div>
                 <p className="docs-p">
@@ -344,25 +402,98 @@ You are fine.
                 </p>
                 <div className="docs-pre">
                     <code className="docs-code">
-                        $strength &gt;= {`{ $enemy_level * 10 }`} [20]
+                        $strength {`>>`} {`{ $enemy_level * 10 }`} [20]
                     </code>
                 </div>
                 <p className="docs-p">Make the difficulty scale with the enemy's level. Useful for encounters where the enemy or their skills are randomised somehow</p>
                 <div className="docs-pre">
                     <code className="docs-code">
-                        {`{ $strength - $wounds }`} &gt;= {`{ $enemy_level * 10 }`}
+                        {`{ $strength - $wounds }`} {`>>`} {`{ $enemy_level * 10 }`}
                     </code>
                 </div>
                 <p className="docs-p">This makes it so the check becomes more difficult over time as you are wounded.</p>
                 <div className="docs-pre">
                     <code className="docs-code">
-                        $luck {`<= $driving`}
+                        $luck {`<< $driving`}
                     </code>
                 </div>
                 <p className="docs-p">This specific syntax would make skill checks function like a more traditional d100 system, where a simple 1 - 100 check
                     is performed against your <code>$driving</code> quality.
                 </p>
             </section>
+        </div>
+    );
+}
+
+// --- INTERACTIVE PLAYGROUND COMPONENT ---
+function ProbabilityPlayground() {
+    const [op, setOp] = useState('>>');
+    const [target, setTarget] = useState(50);
+    const [margin, setMargin] = useState(10);
+    const [pivot, setPivot] = useState(60);
+    const [min, setMin] = useState(0);
+    const [max, setMax] = useState(100);
+
+    return (
+        <div className="docs-card" style={{ marginTop: '1rem', border: '1px solid #61afef' }}>
+            <h4 style={{ marginTop: 0, color: '#61afef' }}>Interactive Probability Chart</h4>
+            <p className="docs-p" style={{ fontSize: '0.85rem' }}>
+                Adjust the values to see how the difficulty curve reacts.
+            </p>
+            
+            <div style={{ margin: '1rem 0' }}>
+                <ProbabilityChart 
+                    operator={op} 
+                    target={target} 
+                    margin={margin} 
+                    minCap={min} 
+                    maxCap={max} 
+                    pivot={pivot} 
+                />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem' }}>
+                <div>
+                    <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Operator</label>
+                    <select 
+                        value={op} 
+                        onChange={(e) => setOp(e.target.value)}
+                        style={{ width: '100%', background: '#111', border: '1px solid #444', color: '#fff', padding: '4px', borderRadius: '4px' }}
+                    >
+                        <option value=">>">{">>"}</option>
+                        <option value="<<">{"<<"}</option>
+                        <option value="==">{"=="}</option>
+                        <option value="!=">{"!="}</option>
+                    </select>
+                </div>
+                <div>
+                    <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Target Level ({target})</label>
+                    <input type="range" min="0" max="100" value={target} onChange={(e) => setTarget(parseInt(e.target.value))} style={{ width: '100%' }} />
+                </div>
+                
+                <div>
+                    <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Pivot Chance ({pivot}%)</label>
+                    <input type="range" min="1" max="99" value={pivot} onChange={(e) => setPivot(parseInt(e.target.value))} style={{ width: '100%' }} />
+                </div>
+                <div>
+                    <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Margin (+/- {margin})</label>
+                    <input type="range" min="0" max="50" value={margin} onChange={(e) => setMargin(parseInt(e.target.value))} style={{ width: '100%' }} />
+                </div>
+
+                {/* --- NEW SLIDERS --- */}
+                <div>
+                    <label style={{ display: 'block', color: '#e74c3c', marginBottom: '4px' }}>Min Cap ({min}%)</label>
+                    <input type="range" min="0" max="50" value={min} onChange={(e) => setMin(parseInt(e.target.value))} style={{ width: '100%' }} />
+                </div>
+                <div>
+                    <label style={{ display: 'block', color: '#e74c3c', marginBottom: '4px' }}>Max Cap ({max}%)</label>
+                    <input type="range" min="50" max="100" value={max} onChange={(e) => setMax(parseInt(e.target.value))} style={{ width: '100%' }} />
+                </div>
+            </div>
+
+            <div style={{ marginTop: '1rem', padding: '0.5rem', background: '#111', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem', color: '#98c379', textAlign: 'center' }}>
+                $stat {op} {target} [{margin}, {min}, {max}, {pivot}]
+            </div>
         </div>
     );
 }

@@ -6,8 +6,8 @@ import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import GameImage from '@/components/GameImage';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import SparkleIcon from '@/components/icons/SparkleIcon';
-import BehaviorCard from '../components/BehaviorCard';
-import ScribeAssistant from '../components/ScribeAssistant';
+import BehaviorCard from '../../../../components/admin/BehaviorCard';
+import ScribeAssistant from '../../../../components/admin/ScribeAssistant';
 
 export default function LocationsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);

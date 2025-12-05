@@ -197,8 +197,16 @@ export default function CheatSheet() {
                     </div>
 
                     <div className="cheat-item">
+                        <span className="cheat-sub-title">Operators</span>
+                        <code className="cheat-code">{">>"} (High is Good)</code>
+                        <code className="cheat-code">{"<<"} (Low is Good)</code>
+                        <code className="cheat-code">{"=="} (Precision)</code>
+                        <code className="cheat-code">{"!="} (Avoidance)</code>
+                    </div>
+
+                    <div className="cheat-item">
                         <span className="cheat-sub-title">Full Syntax</span>
-                        <code className="cheat-code" style={{fontSize:'0.7rem'}}>$stat {">="} T [Mar, Min, Max, Piv]</code>
+                        <code className="cheat-code" style={{fontSize:'0.7rem'}}>$stat {">>"} T [Mar, Min, Max, Piv]</code>
                         <p className="cheat-desc">
                             <strong>Mar:</strong> Range (+/-)<br/>
                             <strong>Min/Max:</strong> Clamp % (e.g. 10, 90)<br/>
@@ -208,9 +216,9 @@ export default function CheatSheet() {
 
                     <div className="cheat-item">
                         <span className="cheat-sub-title">Hard Pivot Example</span>
-                        <code className="cheat-code" style={{fontSize:'0.7rem'}}>$stat {">="} 50 [10, 0, 100, 30]</code>
+                        <code className="cheat-code" style={{fontSize:'0.7rem'}}>$stat {">>"} 50 [10, 0, 100, 30]</code>
                         <p className="cheat-desc">
-                            Reaching target only gives 30% chance.
+                            Reaching target only grants 30% chance. Steep climb after.
                         </p>
                     </div>
 
@@ -220,6 +228,7 @@ export default function CheatSheet() {
                         <p className="cheat-desc">Raw 40% chance. Ignores stats.</p>
                     </div>
                 </Accordion>
+
                 {/* 5. ADVANCED MECHANICS */}
                 <Accordion title="7. Advanced Mechanics">
                     <div className="cheat-item">
@@ -252,8 +261,8 @@ export default function CheatSheet() {
                             <code className="cheat-code">$season[scope:world] = 'Winter'</code>
                         </div>
                         <p className="cheat-desc">These qualities can also be modified using the same syntax.</p>
-                        <p className="cheat-desc" style={{ color: '#e06c75' }}>
-                            <strong>CAUTION:</strong> Writing <code>$season = 'Winter'</code> (without world scope) creates a <em>local</em> copy for the player, breaking the sync. Always use the prefix or the GM Console.
+                        <p className="cheat-desc" style={{ color: '#e06c75', marginTop:'0.5rem', fontSize:'0.7rem' }}>
+                            <strong>Warning:</strong> Always use the <code>$world.</code> prefix or <code>[scope:world]</code> when writing. Otherwise you create a local copy!
                         </p>
                     </div>
                 </Accordion>

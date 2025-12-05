@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import '@/app/globals.css';
-import CheatSheet from './components/CheatSheet';
+import CheatSheet from '../../../components/admin/CheatSheet';
 import { verifyWorldAccess } from '@/engine/accessControl';
 import { redirect } from 'next/navigation';
 import VisualFilters from '@/components/VisualFilters';
-import AdminSidebarFooter from './components/AdminSidebarFooter';
+import AdminSidebarFooter from '../../../components/admin/AdminSidebarFooter';
 
 
 export default async function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {

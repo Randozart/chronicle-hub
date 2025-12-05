@@ -63,6 +63,39 @@ export default function LogicMathPage() {
                     </tbody>
                 </table>
 
+                <h3 className="docs-h3">Challenge Operators (unique to skill checks)</h3>
+                <table className="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Operator</th>
+                            <th>Meaning</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>&gt;&gt;</code></td>
+                            <td><strong>Progressive</strong></td>
+                            <td><code>$stat &gt;&gt; 50</code> (Higher is better)</td>
+                        </tr>
+                        <tr>
+                            <td><code>&lt;&lt;</code></td>
+                            <td><strong>Regressive</strong></td>
+                            <td><code>$suspicion &lt;&lt; 20</code> (Lower is better)</td>
+                        </tr>
+                        <tr>
+                            <td><code>==</code></td>
+                            <td><strong>Precision</strong></td>
+                            <td><code>$tuning == 50</code> (Target is 100% chance)</td>
+                        </tr>
+                        <tr>
+                            <td><code>!=</code></td>
+                            <td><strong>Avoidance</strong></td>
+                            <td><code>$noise != 50</code> (Target is 0% chance)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
                 <h3 className="docs-h3">Combining Conditions</h3>
                 <p className="docs-p">
                     You can create complex requirements using <strong>AND</strong> and <strong>OR</strong>.

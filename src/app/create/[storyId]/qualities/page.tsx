@@ -1,23 +1,36 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { QualityDefinition, QualityType } from '@/engine/models';
+import { QualityDefinition, QualityType, WorldSettings } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import GameImage from '@/components/GameImage';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers'; 
-import BehaviorCard from '../components/BehaviorCard';
+import SmartArea from '@/components/admin/SmartArea'; // <--- USE SMART AREA
+import BehaviorCard from '../../../../components/admin/BehaviorCard';
+
+// ENGINE RESERVED WORDS
+const ENGINE_RESERVED = ['luck', 'target', 'schedule', 'cancel', 'all', 'world', 'source'];
 
 export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
+    const [settings, setSettings] = useState<WorldSettings | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`/api/admin/qualities?storyId=${storyId}`)
-            .then(r => r.json())
-            .then(data => setQualities(Object.values(data)))
-            .finally(() => setIsLoading(false));
+        const load = async () => {
+            const [qRes, sRes] = await Promise.all([
+                fetch(`/api/admin/qualities?storyId=${storyId}`),
+                fetch(`/api/admin/settings?storyId=${storyId}`)
+            ]);
+            
+            if (qRes.ok) setQualities(Object.values(await qRes.json()));
+            if (sRes.ok) setSettings(await sRes.json());
+            
+            setIsLoading(false);
+        };
+        load();
     }, [storyId]);
 
     const handleCreate = () => {
@@ -25,7 +38,6 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
         if (!newId) return;
         if (qualities.find(q => q.id === newId)) return alert("ID Exists");
         
-        // Initialize with tags array
         const newQ: QualityDefinition = { id: newId, name: "New Quality", type: QualityType.Pyramidal, tags: [] };
         setQualities(prev => [...prev, newQ]);
         setSelectedId(newId);
@@ -50,9 +62,10 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
                 defaultGroupByKey="category"
             />
             <div className="admin-editor-col">
-                {selectedId ? (
+                {selectedId && settings ? (
                     <QualityEditor 
                         initialData={qualities.find(q => q.id === selectedId)!} 
+                        settings={settings} 
                         onSave={handleSaveSuccess} onDelete={handleDeleteSuccess} storyId={storyId} 
                     />
                 ) : <div style={{color:'#777', textAlign:'center', marginTop:'20%'}}>Select a quality</div>}
@@ -61,7 +74,7 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
     );
 }
 
-function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData: QualityDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
+function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { initialData: QualityDefinition, settings: WorldSettings, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -71,18 +84,27 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    // FIX: Use tags array
     const handleTagToggle = (tag: string) => {
-        // This uses your updated utility which handles arrays
         const newTags = toggleProperty(form.tags, tag);
         handleChange('tags', newTags);
     };
 
-    // Helper for the raw input box (Array -> String)
     const handleRawTagsChange = (str: string) => {
         const arr = str.split(',').map(s => s.trim()).filter(Boolean);
         handleChange('tags', arr);
     };
+
+    // CTRL+S Handler
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [form]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -93,7 +115,7 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                 body: JSON.stringify({ storyId, category: 'qualities', itemId: form.id, data: form })
             });
             onSave(form);
-            alert("Saved!");
+            // alert("Saved!"); // Removed alert for Ctrl+S flow
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
@@ -103,8 +125,36 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
         onDelete(form.id);
     };
 
+    const getConflict = (id: string) => {
+        const cleanId = id.toLowerCase();
+        if (ENGINE_RESERVED.includes(cleanId)) return { type: 'critical', msg: `"${id}" is a reserved Engine Keyword.` };
+        if (cleanId === settings.actionId?.replace('$', '')) return { type: 'info', msg: "Bound to 'Action Points'." };
+        if (cleanId === settings.playerName?.replace('$', '')) return { type: 'info', msg: "Bound to 'Player Name'." };
+        
+        const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', ''));
+        if (currencyIds.includes(cleanId)) return { type: 'currency', msg: "Defined as a Currency (Wallet)." };
+
+        return null;
+    };
+
+    const conflict = getConflict(form.id);
+
     return (
         <div className="space-y-4">
+            
+            {conflict && (
+                <div style={{
+                    padding: '1rem', borderRadius: '4px', marginBottom: '1rem',
+                    border: `1px solid ${conflict.type === 'critical' ? '#e74c3c' : '#f1c40f'}`,
+                    background: conflict.type === 'critical' ? 'rgba(231, 76, 60, 0.1)' : 'rgba(241, 196, 15, 0.1)'
+                }}>
+                    <strong style={{ color: conflict.type === 'critical' ? '#e74c3c' : '#f1c40f', display: 'block', marginBottom: '0.25rem' }}>
+                        {conflict.type === 'critical' ? '⚠️ Reserved Keyword' : 'System Binding'}
+                    </strong>
+                    <span style={{ fontSize: '0.85rem', color: '#ccc' }}>{conflict.msg}</span>
+                </div>
+            )}
+
             <div className="form-group">
                 <label className="form-label">ID</label>
                 <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
@@ -112,8 +162,15 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
 
             <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
-                    <label className="form-label">Name</label>
-                    <input value={form.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" />
+                    {/* UPGRADED TO SMART AREA */}
+                    <SmartArea 
+                        label="Name" 
+                        value={form.name || ''} 
+                        onChange={v => handleChange('name', v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        placeholder="Display Name"
+                    />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Type</label>
@@ -126,39 +183,35 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                         <option value="T">Tracker (Progress)</option>
                     </select>
                 </div>
-                <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Scope</label>
-                    <select 
-                        value={form.scope || 'character'} 
-                        onChange={e => handleChange('scope', e.target.value)} 
-                        className="form-select"
-                        style={{ borderColor: form.scope === 'world' ? '#f1c40f' : '#333', color: form.scope === 'world' ? '#f1c40f' : 'inherit' }}
-                    >
-                        <option value="character">Character (Local)</option>
-                        <option value="world">World (Global)</option>
-                    </select>
-                </div>
             </div>
 
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Category (Tree)</label>
+                    <label className="form-label">Category</label>
                     <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" placeholder="character, menace" />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Max Value (Cap)</label>
-                    <input 
+                    <SmartArea 
+                        label="Max Value (Cap)" 
                         value={form.max || ''} 
-                        onChange={e => handleChange('max', e.target.value)} 
-                        className="form-input" 
-                        placeholder="10 or $level_cap" 
+                        onChange={v => handleChange('max', v)} 
+                        storyId={storyId} 
+                        minHeight="38px"
+                        placeholder="10 or $level_cap"
                     />
                 </div>
             </div>
 
             <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-textarea" rows={2} />
+                {/* UPGRADED TO SMART AREA */}
+                <SmartArea 
+                    label="Description" 
+                    value={form.description || ''} 
+                    onChange={v => handleChange('description', v)} 
+                    storyId={storyId} 
+                    minHeight="80px"
+                    placeholder="Visible in tooltip..."
+                />
             </div>
 
             <div className="form-group">
@@ -173,46 +226,19 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                 <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <BehaviorCard 
-                        checked={hasProperty(form.tags, 'hidden')} 
-                        onChange={() => handleTagToggle('hidden')} 
-                        label="Hidden" 
-                        desc="Do not show on profile." 
-                    />
+                    <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handleTagToggle('hidden')} label="Hidden" desc="Do not show on profile." />
                     
                     {(form.type === 'E' || form.type === 'I') && (
                         <>
-                            <BehaviorCard 
-                                checked={hasProperty(form.tags, 'auto_equip')} 
-                                onChange={() => handleTagToggle('auto_equip')} 
-                                label="Auto-Equip" 
-                                desc="Equip if slot is empty." 
-                            />
-                            <BehaviorCard 
-                                checked={hasProperty(form.tags, 'force_equip')} 
-                                onChange={() => handleTagToggle('force_equip')} 
-                                label="Force Equip" 
-                                desc="Equip always (Overwrites slot)." 
-                            />
-                            <BehaviorCard 
-                                checked={hasProperty(form.tags, 'cursed')} 
-                                onChange={() => handleTagToggle('cursed')} 
-                                label="Cursed" 
-                                desc="Cannot be unequipped." 
-                            />
+                            <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />
+                            <BehaviorCard checked={hasProperty(form.tags, 'cursed')} onChange={() => handleTagToggle('cursed')} label="Cursed" desc="Cannot be unequipped." />
                         </>
                     )}
                 </div>
 
                 <div style={{ marginTop: '1rem' }}>
                     <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Tags</label>
-                    <input 
-                        // Convert Array to String for display
-                        value={form.tags?.join(', ') || ''} 
-                        onChange={e => handleRawTagsChange(e.target.value)} 
-                        className="form-input" 
-                        style={{ fontSize: '0.8rem' }} 
-                    />
+                    <input value={form.tags?.join(', ') || ''} onChange={e => handleRawTagsChange(e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
                 </div>
             </div>
 
@@ -222,8 +248,14 @@ function QualityEditor({ initialData, onSave, onDelete, storyId }: { initialData
                     
                     {form.type === 'E' && (
                         <div className="form-group">
-                            <label className="form-label">Stat Bonus</label>
-                            <input value={form.bonus || ''} onChange={e => handleChange('bonus', e.target.value)} className="form-input" placeholder="$strength + 1" />
+                            <SmartArea 
+                                label="Stat Bonus" 
+                                value={form.bonus || ''} 
+                                onChange={v => handleChange('bonus', v)} 
+                                storyId={storyId} 
+                                minHeight="38px"
+                                placeholder="$strength + 1"
+                            />
                         </div>
                     )}
 

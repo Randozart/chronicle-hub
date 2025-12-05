@@ -14,13 +14,16 @@
     "mongodb": "^7.0.0",
     "next": "16.0.1",
     "next-auth": "^4.24.13",
+    "prismjs": "1.30.0",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "react-simple-code-editor": "0.14.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
+    "@types/prismjs": "1.26.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "9.0.8",

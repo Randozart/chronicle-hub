@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Storylet } from '@/engine/models';
 import OptionList from './OptionList';
-import SparkleIcon from '@/components/icons/SparkleIcon';
+import SmartArea from '@/components/admin/SmartArea'; // <--- THE NEW COMPONENT
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
-import ScribeAssistant from '../../components/ScribeAssistant';
-import BehaviorCard from '../../components/BehaviorCard';
+import BehaviorCard from '../../../../../components/admin/BehaviorCard';
 
 interface Props {
     initialData: Storylet;
@@ -17,8 +16,7 @@ interface Props {
 export default function StoryletMainForm({ initialData, onSave, onDelete }: Props) {
     const [form, setForm] = useState(initialData);
     
-    // Contextual Popup State
-    const [activeField, setActiveField] = useState<'text' | 'autofire' | 'visible_if' | 'unlock_if' | null>(null);
+    // Note: We REMOVED activeField state! Clean!
     
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
@@ -33,25 +31,25 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
         handleChange('tags', newTags);
     };
 
-    const handleInsert = (text: string) => {
-        if (activeField === 'text') handleChange('text', (form.text || "") + " " + text);
-        else if (activeField === 'autofire') handleChange('autofire_if', (form.autofire_if || "") + text);
-        else if (activeField === 'visible_if') handleChange('visible_if', (form.visible_if || "") + text);
-        else if (activeField === 'unlock_if') handleChange('unlock_if', (form.unlock_if || "") + text);
-    };
+    // CTRL+S Handler
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                onSave(form);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [form, onSave]);
 
     return (
         <div className="h-full flex flex-col relative">
-            
-            {/* HEADER */}
+            {/* ... Header (Same as before) ... */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
-                    <select 
-                        value={form.status || 'draft'} 
-                        onChange={e => handleChange('status', e.target.value)}
-                        style={{ background: form.status === 'published' ? '#2ecc71' : '#f1c40f', color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px' }}
-                    >
+                     <select value={form.status || 'draft'} onChange={e => handleChange('status', e.target.value)} style={{ background: form.status === 'published' ? '#2ecc71' : '#f1c40f', color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px' }}>
                         <option value="draft">DRAFT</option>
                         <option value="published">PUBLISHED</option>
                     </select>
@@ -64,199 +62,84 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
 
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
-                {/* CONFIG & IMAGE */}
+                {/* BASIC INFO */}
                 <div className="form-row">
-                    <div className="form-group"><label className="form-label">Title</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Location ID</label><input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" /></div>
-                </div>
-                <div className="form-row">
-                    <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
+                    <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" />
+                    <div className="form-group" style={{ flex:1 }}><label className="form-label">Location ID</label><input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" /></div>
                 </div>
 
-                {/* TEASER TEXT (Missing previously) */}
-                <div className="form-group">
-                    <label className="form-label">Teaser Text (Short)</label>
-                    <textarea 
-                        value={form.short || ''} 
-                        onChange={e => handleChange('short', e.target.value)} 
-                        className="form-textarea" 
-                        rows={2} 
-                        placeholder="Shown on the button before entering."
-                    />
-                </div>
+                {/* TEASER */}
+                <SmartArea 
+                    label="Teaser Text" 
+                    subLabel="Shown on the button before entering."
+                    value={form.short || ''} 
+                    onChange={v => handleChange('short', v)} 
+                    storyId={storyId} 
+                    minHeight="60px"
+                />
 
-                {/* --- REQUIREMENTS SECTION --- */}
+                {/* REQUIREMENTS */}
                 <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
-                    <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Requirements (Gates)</label>
+                    <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Requirements</label>
                     <div className="form-row">
-                        <div style={{ flex: 1, position: 'relative' }}>
-                            <label className="form-label">Visible If</label>
-                            <div style={{ position: 'relative' }}>
-                                <input 
-                                    placeholder="$gold > 0" 
-                                    value={form.visible_if || ''} 
-                                    onChange={e => handleChange('visible_if', e.target.value)} 
-                                    className="form-input" 
-                                    style={{ paddingRight: '80px' }}
-                                />
-                                <button 
-                                    onClick={() => setActiveField(activeField === 'visible_if' ? null : 'visible_if')}
-                                    style={{ 
-                                        position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', 
-                                        background: 'rgba(97, 175, 239, 0.1)', border: '1px solid rgba(97, 175, 239, 0.3)', 
-                                        color: '#61afef', borderRadius: '4px', cursor: 'pointer', 
-                                        display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', fontSize: '0.7rem', fontWeight: 'bold'
-                                    }}
-                                >
-                                    <SparkleIcon className="w-3 h-3" /> Logic
-                                </button>
-                            </div>
-                            {activeField === 'visible_if' && (
-                                <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '5px' }}>
-                                    <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleInsert} onClose={() => setActiveField(null)} />
-                                </div>
-                            )}
+                        <div style={{ flex: 1 }}>
+                            <SmartArea label="Visible If" value={form.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" />
                         </div>
-
-                        <div style={{ flex: 1, position: 'relative' }}>
-                            <label className="form-label">Unlock If</label>
-                            <div style={{ position: 'relative' }}>
-                                <input 
-                                    placeholder="$gold >= 10" 
-                                    value={form.unlock_if || ''} 
-                                    onChange={e => handleChange('unlock_if', e.target.value)} 
-                                    className="form-input" 
-                                    style={{ paddingRight: '80px' }}
-                                />
-                                <button 
-                                    onClick={() => setActiveField(activeField === 'unlock_if' ? null : 'unlock_if')}
-                                    style={{ 
-                                        position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', 
-                                        background: 'rgba(97, 175, 239, 0.1)', border: '1px solid rgba(97, 175, 239, 0.3)', 
-                                        color: '#61afef', borderRadius: '4px', cursor: 'pointer', 
-                                        display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', fontSize: '0.7rem', fontWeight: 'bold'
-                                    }}
-                                >
-                                    <SparkleIcon className="w-3 h-3" /> Logic
-                                </button>
-                            </div>
-                            {activeField === 'unlock_if' && (
-                                <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '5px' }}>
-                                    <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleInsert} onClose={() => setActiveField(null)} />
-                                </div>
-                            )}
+                        <div style={{ flex: 1 }}>
+                            <SmartArea label="Unlock If" value={form.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" />
                         </div>
                     </div>
                 </div>
 
-                {/* MAIN TEXT CONTENT */}
-                <div className="form-group" style={{ position: 'relative', zIndex: 20, marginTop: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                        <label className="form-label" style={{ margin: 0 }}>Main Text</label>
-                        <button 
-                            onClick={() => setActiveField(activeField === 'text' ? null : 'text')} 
-                            style={{ 
-                                background: 'rgba(97, 175, 239, 0.1)', border: '1px solid rgba(97, 175, 239, 0.3)', borderRadius: '4px',
-                                color: '#61afef', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold',
-                                display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 8px'
-                            }}
-                        >
-                            <SparkleIcon className="w-3 h-3" /> Text Logic
-                        </button>
-                    </div>
-                    
-                    {activeField === 'text' && (
-                        <div style={{ position: 'absolute', top: '30px', right: 0, zIndex: 100 }}>
-                            <ScribeAssistant storyId={storyId} mode="text" onInsert={handleInsert} onClose={() => setActiveField(null)} />
-                        </div>
-                    )}
-                    
-                    <textarea 
+                {/* MAIN TEXT */}
+                <div style={{ marginTop: '1rem' }}>
+                    <SmartArea 
+                        label="Main Text" 
                         value={form.text} 
-                        onChange={e => handleChange('text', e.target.value)} 
-                        className="form-textarea" 
-                        rows={6} 
-                        style={{ position: 'relative', zIndex: 1 }}
+                        onChange={v => handleChange('text', v)} 
+                        storyId={storyId} 
+                        minHeight="200px" 
+                        placeholder="Write your story..." 
                     />
                 </div>
 
-                {/* META TEXT (Missing previously) */}
-                <div className="form-group">
-                    <label className="form-label">Instruction Text (Meta)</label>
-                    <input 
-                        value={form.metatext || ''} 
-                        onChange={e => handleChange('metatext', e.target.value)} 
-                        className="form-input" 
-                        placeholder="e.g. 'This choice will lock the route.'"
-                        style={{ fontStyle: 'italic', color: '#aaa' }}
-                    />
+                {/* META */}
+                <SmartArea 
+                    label="Instruction Text (Meta)"
+                    subLabel="Italic text below the body."
+                    value={form.metatext || ''} 
+                    onChange={v => handleChange('metatext', v)} 
+                    storyId={storyId} 
+                    minHeight="38px"
+                />
+
+                {/* AUTOFIRE */}
+                <div className="special-field-group" style={{ borderColor: form.autofire_if ? '#e06c75' : '#444', marginTop: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="special-label" style={{ color: form.autofire_if ? '#e06c75' : '#aaa', margin: 0 }}>Must-Event (Autofire)</label>
+                        <input type="checkbox" checked={!!form.autofire_if} onChange={e => handleChange('autofire_if', e.target.checked ? '$quality >= 1' : undefined)} />
+                    </div>
+                    {form.autofire_if !== undefined && (
+                        <SmartArea 
+                            label="Condition" 
+                            value={form.autofire_if} 
+                            onChange={v => handleChange('autofire_if', v)} 
+                            storyId={storyId} 
+                            mode="condition" 
+                        />
+                    )}
                 </div>
 
-                {/* --- BEHAVIOR & AUTOFIRE --- */}
-                <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                {/* BEHAVIOR */}
+                <div className="special-field-group" style={{ borderColor: '#c678dd', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
-                    
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                        <BehaviorCard 
-                            checked={hasProperty(form.tags, 'no_return')} 
-                            onChange={() => handleTagToggle('no_return')} 
-                            label="Disable Return" 
-                            desc="Removes the 'Go Back' button." 
-                        />
-                        <BehaviorCard 
-                            checked={hasProperty(form.tags, 'instant_redirect')} 
-                            onChange={() => handleTagToggle('instant_redirect')} 
-                            label="Instant Redirect" 
-                            desc="Skip to first option result (rare)." 
-                        />
+                        <BehaviorCard checked={hasProperty(form.tags, 'no_return')} onChange={() => handleTagToggle('no_return')} label="Disable Return" desc="Removes the 'Go Back' button." />
+                        <BehaviorCard checked={hasProperty(form.tags, 'instant_redirect')} onChange={() => handleTagToggle('instant_redirect')} label="Instant Redirect" desc="Skip to first option." />
                     </div>
-
-                    {/* Return Target */}
                     <div className="form-group">
-                        <label className="form-label">Explicit Return Target (Optional)</label>
-                        <input 
-                            value={form.return || ''} 
-                            onChange={e => handleChange('return', e.target.value)} 
-                            className="form-input" 
-                            placeholder="Default: Returns to Location Hub"
-                        />
-                    </div>
-
-                    {/* Autofire */}
-                    <div style={{ borderTop: '1px solid #444', paddingTop: '1rem', marginTop: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <label className="special-label" style={{ color: form.autofire_if ? '#e06c75' : '#aaa', margin: 0 }}>Must-Event (Autofire)</label>
-                            <input type="checkbox" checked={!!form.autofire_if} onChange={e => handleChange('autofire_if', e.target.checked ? '$quality >= 1' : undefined)} />
-                        </div>
-                        {form.autofire_if !== undefined && (
-                            <div style={{ position: 'relative', marginTop: '0.5rem' }}>
-                                <input 
-                                    value={form.autofire_if} 
-                                    onChange={e => handleChange('autofire_if', e.target.value)} 
-                                    className="form-input" 
-                                    style={{ paddingRight: '90px' }} 
-                                    placeholder="Condition..." 
-                                />
-                                <button 
-                                    onClick={() => setActiveField(activeField === 'autofire' ? null : 'autofire')} 
-                                    style={{ 
-                                        position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                                        background: 'rgba(231, 76, 60, 0.15)', border: '1px solid #e06c75', color: '#e06c75',
-                                        borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold',
-                                        display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px'
-                                    }}
-                                >
-                                    <SparkleIcon className="w-3 h-3" /> Logic
-                                </button>
-                                
-                                {activeField === 'autofire' && (
-                                    <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '5px' }}>
-                                        <ScribeAssistant storyId={storyId} mode="condition" onInsert={handleInsert} onClose={() => setActiveField(null)} />
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        <label className="form-label">Return Target</label>
+                        <input value={form.return || ''} onChange={e => handleChange('return', e.target.value)} className="form-input" placeholder="Default: Location Hub" />
                     </div>
                 </div>
 

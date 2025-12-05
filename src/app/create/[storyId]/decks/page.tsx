@@ -3,8 +3,11 @@
 import { useState, useEffect, use } from 'react';
 import { DeckDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import SmartArea from '@/components/admin/SmartArea'; // <--- NEW
+import BehaviorCard from '@/components/admin/BehaviorCard'; // <--- NEW
 
 export default function DecksAdmin({ params }: { params: Promise<{ storyId: string }> }) {
+    // ... (Keep existing fetch logic) ...
     const { storyId } = use(params);
     const [decks, setDecks] = useState<DeckDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -48,17 +51,10 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
 
     return (
         <div className="admin-split-view">
-            <AdminListSidebar 
-                title="Decks"
-                items={decks}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                onCreate={handleCreate}
-            />
+            <AdminListSidebar title="Decks" items={decks} selectedId={selectedId} onSelect={setSelectedId} onCreate={handleCreate} />
             <div className="admin-editor-col">
                 {selectedId ? (
                     <DeckEditor 
-                        // THE FIX: Add key={selectedId} here
                         key={selectedId} 
                         initialData={decks.find(d => d.id === selectedId)!} 
                         onSave={handleSaveSuccess}
@@ -75,8 +71,19 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Backup Fix: Sync state if props change (redundant if key is used, but good for safety)
     useEffect(() => setForm(initialData), [initialData]);
+
+    // CTRL+S Handler
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [form]);
 
     const isSynced = form.timer === 'sync_actions';
 
@@ -90,7 +97,8 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, category: 'decks', itemId: form.id, data: form })
             });
-            if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
+            if (res.ok) { onSave(form); /* alert("Saved!"); */ } 
+            else { alert("Failed."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
@@ -141,27 +149,48 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
             </div>
 
             <div className="form-row">
-                <div className="form-group">
-                    <label className="form-label">Hand Size</label>
-                    <input value={form.hand_size} onChange={e => handleChange('hand_size', e.target.value)} className="form-input" placeholder="3" />
+                <div className="form-group" style={{ flex: 1 }}>
+                    <SmartArea 
+                        label="Hand Size" 
+                        value={form.hand_size} 
+                        onChange={v => handleChange('hand_size', v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        placeholder="3"
+                    />
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Deck Size (Cap)</label>
-                    <input value={form.deck_size || ''} onChange={e => handleChange('deck_size', e.target.value)} className="form-input" placeholder="Unlimited" />
+                <div className="form-group" style={{ flex: 1 }}>
+                    <SmartArea 
+                        label="Deck Size (Cap)" 
+                        value={form.deck_size || ''} 
+                        onChange={v => handleChange('deck_size', v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        placeholder="Unlimited"
+                    />
                 </div>
             </div>
             
             <div className="form-group">
-                <label className="form-label">Draw Cost (Logic)</label>
-                <input value={form.draw_cost || ''} onChange={e => handleChange('draw_cost', e.target.value)} className="form-input" placeholder="optional (e.g. $gold >= 1)" />
+                <SmartArea 
+                    label="Draw Cost (Logic)" 
+                    value={form.draw_cost || ''} 
+                    onChange={v => handleChange('draw_cost', v)} 
+                    storyId={storyId} 
+                    minHeight="38px" 
+                    placeholder="optional (e.g. $gold >= 1)"
+                    mode="condition"
+                />
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Persistence</label>
-                <select value={form.saved} onChange={e => handleChange('saved', e.target.value)} className="form-select">
-                    <option value="True">Saved (Persist hand on exit)</option>
-                    <option value="False">Transient (Clear hand on exit)</option>
-                </select>
+            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
+                <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
+                <BehaviorCard 
+                    checked={form.saved === "True"} 
+                    onChange={() => handleChange('saved', form.saved === "True" ? "False" : "True")} 
+                    label="Persistent (Saved)" 
+                    desc="Cards stay in hand when leaving the location." 
+                />
             </div>
 
             <div className="admin-form-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
