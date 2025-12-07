@@ -3,18 +3,19 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ImageDefinition, CharCreateRule, QualityType, PlayerQualities } from '@/engine/models';
+import { ImageDefinition, CharCreateRule, QualityType, PlayerQualities, QualityDefinition } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import { evaluateText, evaluateCondition } from '@/engine/textProcessor';
 
 interface CreationFormProps { 
     storyId: string; 
     rules: Record<string, CharCreateRule>;
+    qualityDefs: Record<string, QualityDefinition>;
     imageLibrary: Record<string, ImageDefinition>;
-    allowScribeScript: boolean; // From settings
+    allowScribeScript: boolean;
 }
 
-export default function CreationForm({ storyId, rules, imageLibrary, allowScribeScript }: CreationFormProps) {
+export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary, allowScribeScript }: CreationFormProps) {
     const router = useRouter();
     const [choices, setChoices] = useState<Record<string, string>>({});
     const [derivedValues, setDerivedValues] = useState<Record<string, string>>({});
@@ -22,11 +23,33 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
     const [inputErrors, setInputErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // 1. Dependency Analysis (Sort by dependencies so math works in order)
+    // 1. CREATE SYNTHETIC DEFINITIONS
+    // This is the FIX. We create definitions for every rule so the parser knows they exist.
+    const allDefinitions = useMemo(() => {
+        const syntheticDefs: Record<string, QualityDefinition> = { ...qualityDefs };
+        
+        Object.keys(rules).forEach(key => {
+            const qid = key.replace('$', '');
+            if (!syntheticDefs[qid]) {
+                // Infer type based on rule type
+                const rule = rules[key];
+                let type = QualityType.String; // Default
+                if (rule.type === 'static' && !isNaN(Number(rule.rule))) type = QualityType.Pyramidal;
+                
+                syntheticDefs[qid] = {
+                    id: qid,
+                    name: qid, // Fallback name
+                    type: type,
+                    description: "Character Creation Field"
+                };
+            }
+        });
+        return syntheticDefs;
+    }, [rules, qualityDefs]);
+
+    // 2. Dependency Analysis
     const sortedKeys = useMemo(() => {
         const keys = Object.keys(rules);
-        // Simple sort: Put derived values (containing $ or @) last
-        // A real topological sort is better, but this suffices for 99% of cases
         return keys.sort((a, b) => {
             const ruleA = rules[a].rule;
             const ruleB = rules[b].rule;
@@ -38,72 +61,67 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
         });
     }, [rules]);
 
-    // 2. Real-time Evaluation Engine
+    // 3. Real-time Evaluation Engine
     useEffect(() => {
-        // Construct a mock PlayerQualities object from current choices
-        // This allows evaluateText to resolve $variables
         const mockQualities: PlayerQualities = {};
         
-        // Populate with current user choices
-        Object.entries(choices).forEach(([key, val]) => {
-            const isNum = !isNaN(Number(val)) && val !== '';
-            mockQualities[key] = {
-                qualityId: key,
-                type: isNum ? QualityType.Pyramidal : QualityType.String,
+        const addToMock = (key: string, val: string) => {
+            const qid = key.replace('$', '');
+            const isNum = !isNaN(Number(val)) && val.trim() !== '';
+            
+            // Use our synthetic definitions to get the type!
+            const def = allDefinitions[qid];
+            const type = def?.type || (isNum ? QualityType.Pyramidal : QualityType.String);
+
+            mockQualities[qid] = {
+                qualityId: qid,
+                type: type,
                 level: isNum ? Number(val) : 0,
-                stringValue: String(val)
+                stringValue: String(val),
+                changePoints: 0,
+                sources: [],
+                spentTowardsPrune: 0
             } as any;
+        };
+
+        // Initialize from current choices
+        sortedKeys.forEach(key => {
+            const qid = key.replace('$', '');
+            if (choices[qid] !== undefined) addToMock(key, choices[qid]);
+            else if (derivedValues[qid] !== undefined) addToMock(key, derivedValues[qid]);
+            else addToMock(key, "0");
         });
 
         const newDerived: Record<string, string> = {};
 
-        // Evaluate all rules in order
         sortedKeys.forEach(key => {
             const ruleObj = rules[key];
             const qid = key.replace('$', '');
             
-            // Skip user inputs (already in choices), unless we want to validate/transform them
             if (ruleObj.type !== 'static' && choices[qid] !== undefined) return;
 
-            // Evaluate ScribeScript
-            if (ruleObj.rule.includes('{') || ruleObj.rule.includes('$')) {
+            let result = ruleObj.rule;
+
+            if (ruleObj.rule.includes('{') || ruleObj.rule.includes('$') || ruleObj.rule.includes('@')) {
                 try {
-                    // We pass null for qualityDefs as we don't need deep property access for creation math usually
-                    // If needed, we'd need to pass definitions prop to this component
-                    const result = evaluateText(`{${ruleObj.rule}}`, mockQualities, {}, null, 0);
-                    newDerived[qid] = result;
-                    
-                    // Add to mock context for subsequent rules to use
-                    const isNum = !isNaN(Number(result)) && result.trim() !== "";
-                     mockQualities[qid] = {
-                        qualityId: qid,
-                        type: isNum ? QualityType.Pyramidal : QualityType.String,
-                        level: isNum ? Number(result) : 0,
-                        stringValue: String(result)
-                    } as any;
+                    // FIX: Pass allDefinitions (synthetic + real)
+                    result = evaluateText(`{${ruleObj.rule}}`, mockQualities, allDefinitions, null, 0);
                 } catch (e) {
                     console.warn("Eval error", e);
                 }
-            } else {
-                // Static value
-                newDerived[qid] = ruleObj.rule;
-                 // Add to mock context
-                 const isNum = !isNaN(Number(ruleObj.rule));
-                 mockQualities[qid] = {
-                    qualityId: qid,
-                    type: isNum ? QualityType.Pyramidal : QualityType.String,
-                    level: isNum ? Number(ruleObj.rule) : 0,
-                    stringValue: String(ruleObj.rule)
-                } as any;
             }
+            
+            newDerived[qid] = result;
+            addToMock(key, result);
         });
 
-        setDerivedValues(newDerived);
+        if (JSON.stringify(newDerived) !== JSON.stringify(derivedValues)) {
+            setDerivedValues(newDerived);
+        }
 
-    }, [choices, rules, sortedKeys]);
+    }, [choices, rules, sortedKeys, allDefinitions]); // Dependency on allDefinitions
 
-
-    // 3. Validation Helper
+    // 4. Validation
     const validateInput = (qid: string, value: string) => {
         if (!allowScribeScript) {
             const scribeScriptPattern = /\{[@%].*\}|\[desc:.*\]|[\+\-\*\/]=/;
@@ -131,7 +149,6 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
         if (Object.keys(inputErrors).length > 0) return;
         
         setIsSubmitting(true);
-        // Merge derived values so server has full context (though server will re-calc to be safe)
         const finalPayload = { ...choices, ...derivedValues };
         
         const res = await fetch('/api/character/create', { 
@@ -146,24 +163,24 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
         }
     };
 
-    // Helper to evaluate visibility
     const isVisible = (rule: CharCreateRule) => {
         if (!rule.visible) return false;
         if (!rule.visible_if) return true;
         
-        // Mock context for visibility check
         const mockQualities: PlayerQualities = {};
         Object.entries({ ...choices, ...derivedValues }).forEach(([key, val]) => {
+            const qid = key.replace('$', '');
             const isNum = !isNaN(Number(val)) && val !== '';
-            mockQualities[key] = {
-                qualityId: key,
+            mockQualities[qid] = {
+                qualityId: qid,
                 type: isNum ? QualityType.Pyramidal : QualityType.String,
                 level: isNum ? Number(val) : 0,
                 stringValue: String(val)
             } as any;
         });
         
-        return evaluateCondition(rule.visible_if, mockQualities);
+        // FIX: Pass allDefinitions here too
+        return evaluateCondition(rule.visible_if, mockQualities, allDefinitions);
     };
 
     return (
@@ -177,7 +194,6 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
 
                 const label = qid.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                 
-                // --- RENDER: READ ONLY / STATIC ---
                 if (ruleObj.readOnly || ruleObj.type === 'static') {
                     return (
                         <div key={key} style={{ marginBottom: '1.5rem', opacity: 0.8 }}>
@@ -189,12 +205,12 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
                     );
                 }
 
-                // --- RENDER: SELECTORS (Label, Image, Labeled Image) ---
                 if (['label_select', 'image_select', 'labeled_image_select'].includes(ruleObj.type)) {
-                    // Parse options: "val1:Label1 | val2:Label2"
                     const options = ruleObj.rule.split('|').map(opt => {
-                        const [val, ...lblParts] = opt.split(':');
-                        return { val: val.trim(), label: lblParts.join(':').trim() }; // Join back in case label has :
+                        const parts = opt.split(':');
+                        const val = parts[0].trim();
+                        const lbl = parts.length > 1 ? parts.slice(1).join(':').trim() : val;
+                        return { val, label: lbl };
                     });
 
                     return (
@@ -210,7 +226,7 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
                             }}>
                                 {options.map(opt => {
                                     const isSelected = choices[qid] === opt.val;
-                                    const hasImage = ruleObj.type !== 'label_select' && imageLibrary[opt.val]; // Use value as image key
+                                    const hasImage = ruleObj.type !== 'label_select' && imageLibrary[opt.val]; 
                                     
                                     return (
                                         <div 
@@ -240,13 +256,13 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
                                                     </div>
                                                     {ruleObj.type === 'labeled_image_select' && (
                                                         <div style={{ fontSize: '0.85rem', color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 'bold' }}>
-                                                            {opt.label || opt.val}
+                                                            {opt.label}
                                                         </div>
                                                     )}
                                                 </div>
                                             ) : (
                                                 <div style={{ padding: '1rem', fontWeight: 'bold', color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                                                    {opt.label || opt.val}
+                                                    {opt.label}
                                                 </div>
                                             )}
                                         </div>
@@ -257,7 +273,6 @@ export default function CreationForm({ storyId, rules, imageLibrary, allowScribe
                     );
                 }
 
-                // --- RENDER: TEXT INPUT (Default) ---
                 return (
                     <div key={key} style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>{label}</label>

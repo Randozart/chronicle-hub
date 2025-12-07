@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorldConfig } from '@/engine/worldService';
-// You'll need a new update helper in worldService too, ideally.
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
@@ -9,7 +8,17 @@ export async function GET(request: NextRequest) {
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
 
     const config = await getWorldConfig(storyId);
-    return NextResponse.json(config.qualities);
-}
+    
+    // Convert to array and sort
+    const qualities = Object.values(config.qualities).sort((a: any, b: any) => {
+        // Primary: Manual Ordering (Ascending)
+        const orderA = a.ordering || 0;
+        const orderB = b.ordering || 0;
+        if (orderA !== orderB) return orderA - orderB;
+        
+        // Secondary: Name (Alphabetical)
+        return (a.name || a.id).localeCompare(b.name || b.id);
+    });
 
-// POST (Save) implementation comes later
+    return NextResponse.json(qualities);
+}

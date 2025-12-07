@@ -7,6 +7,7 @@ import Link from 'next/link';
 import WorldCard from '@/components/dashboard/WorldCard';
 import CreateWorldModal from '@/components/dashboard/CreateWorldModal';
 import { signOut } from 'next-auth/react';
+import SystemMessageBanner from '@/components/SystemMessageBanner';
 
 export default function Dashboard() {
     const { data: session, status } = useSession();
@@ -14,6 +15,7 @@ export default function Dashboard() {
     const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | any[] | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [activeTab, setActiveTab] = useState<'my' | 'discover'>('my');
+    const [platformMsg, setPlatformMsg] = useState<any>(null);
 
     // 1. Determine Mode on Load
     useEffect(() => {
@@ -41,6 +43,21 @@ export default function Dashboard() {
             .catch(console.error);
             
     }, [activeTab, status]);
+    
+    useEffect(() => {
+        fetch('/api/platform/announcement')
+            .then(r => r.json())
+            .then(setPlatformMsg)
+            .catch(() => {}); // silent fail
+    }, []);
+
+    const dismissPlatformMsg = async () => {
+         if (!platformMsg) return;
+         await fetch('/api/user/acknowledge-message', {
+             method: 'POST',
+             body: JSON.stringify({ messageId: platformMsg.id })
+         });
+    };
 
     if (status === 'loading') return <div className="loading-container">Loading Studio...</div>;
 
@@ -80,6 +97,14 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
+
+            {platformMsg && (
+                <SystemMessageBanner 
+                    message={platformMsg} 
+                    type="platform" 
+                    onDismiss={dismissPlatformMsg} 
+                />
+             )}
 
             {/* CONTENT */}
             <div style={{ flex: 1, padding: '3rem', overflowY: 'auto' }}>

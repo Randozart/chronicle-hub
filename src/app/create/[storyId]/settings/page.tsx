@@ -559,24 +559,31 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
     };
 
     // --- PRESETS ---
-    const addPronounSystem = () => {
-        onCreateQuality('pronouns', QualityType.String, { tags: ['hidden'], text_variants: {
-            "subject": "{ $.stringValue == 'he/him' ? 'he' : ($.stringValue == 'she/her' ? 'she' : ($.stringValue == 'they/them' ? 'they' : {$prn_subj})) }",
-            "object": "{ $.stringValue == 'he/him' ? 'him' : ($.stringValue == 'she/her' ? 'her' : ($.stringValue == 'they/them' ? 'them' : {$prn_obj})) }",
-            "possessive": "{ $.stringValue == 'he/him' ? 'his' : ($.stringValue == 'she/her' ? 'her' : ($.stringValue == 'they/them' ? 'their' : {$prn_poss})) }",
-        }});
-        onCreateQuality('prn_subj', QualityType.String, { name: "Subject", tags: ['hidden'] });
-        onCreateQuality('prn_obj', QualityType.String, { name: "Object", tags: ['hidden'] });
-        onCreateQuality('prn_poss', QualityType.String, { name: "Possessive", tags: ['hidden'] });
+     const addPronounSystem = () => {
+        onCreateQuality('pronouns', QualityType.String, { 
+            tags: ['is_pronoun_set'], 
+            text_variants: {
+                // ScribeScript Syntax: { Condition : Result | Else }
+                // No quotes needed for string literals in comparison if they don't contain spaces/symbols
+                "subject": "{ $.stringValue == he/him : he | $.stringValue == she/her : she | $.stringValue == they/them : they | {$prn_subj} }",
+                "object": "{ $.stringValue == he/him : him | $.stringValue == she/her : her | $.stringValue == they/them : them | {$prn_obj} }",
+                "possessive": "{ $.stringValue == he/him : his | $.stringValue == she/her : her | $.stringValue == they/them : their | {$prn_poss} }",
+            }
+        });
+        onCreateQuality('prn_subj', QualityType.String, { name: "Subject" });
+        onCreateQuality('prn_obj', QualityType.String, { name: "Object" });
+        onCreateQuality('prn_poss', QualityType.String, { name: "Possessive" });
 
         const newRules = { ...rules };
+        // UI Rules
         newRules['$pronouns'] = { type: 'label_select', rule: "he/him:He/Him | she/her:She/Her | they/them:They/Them | Custom:Custom", visible: true, readOnly: false, visible_if: '' };
-        newRules['$prn_subj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == 'Custom'" };
-        newRules['$prn_obj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == 'Custom'" };
-        newRules['$prn_poss'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == 'Custom'" };
+        // Conditions use unquoted strings
+        newRules['$prn_subj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
+        newRules['$prn_obj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
+        newRules['$prn_poss'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
         onChange(newRules);
     };
-    
+
     // NEW PRESET: Simple Identity
     const addSimpleIdentity = () => {
         const newRules = { ...rules };
@@ -626,37 +633,35 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
         onCreateQuality('strength', QualityType.Pyramidal, { name: "Strength", category: "Attributes" });
         onCreateQuality('intellect', QualityType.Pyramidal, { name: "Intellect", category: "Attributes" });
         onCreateQuality('dexterity', QualityType.Pyramidal, { name: "Dexterity", category: "Attributes" });
-        onCreateQuality('protection', QualityType.Counter, { name: "Protection", category: "Hidden" }); // Needed for armor
+        onCreateQuality('protection', QualityType.Counter, { name: "Protection", category: "Hidden" });
 
-        // Skills (Dynamic Names based on Level)
+        // Skills (Dynamic Names)
         onCreateQuality('armor_skill', QualityType.Counter, {
             name: "Armor Proficiency",
             category: "Skills",
-            // Logic: Checks level ($) to return text
-            description: "{ $. == 3 : 'Heavy Armor' | $. == 2 : 'Medium Armor' | $. == 1 : 'Light Armor' | 'Unarmored' }"
+            description: "{ $. == 3: 'Heavy Armor' | $. == 2: 'Medium Armor' | $. == 1: 'Light Armor' | 'Unarmored' }"
         });
 
         onCreateQuality('magical_studies', QualityType.Pyramidal, {
             name: "Magical Studies",
             category: "Skills",
-            description: "{ $. >= 10 : 'Archmage' | $. >= 5 : 'Adept' | $. >= 1 : 'Novice' | 'Uninitiated' }"
+            description: "{ $. >= 10: 'Archmage' | $. >= 5: 'Adept' | $. >= 1: 'Novice' | 'Uninitiated' }"
         });
 
         onCreateQuality('thievery', QualityType.Pyramidal, {
             name: "Thievery",
             category: "Skills",
-            description: "{ $. >= 10 : 'Master Thief' | $. >= 5 : 'Burglar' | $. >= 1 : 'Pickpocket' | 'Honest' }"
+            description: "{ $. >= 10: 'Master Thief' | $. >= 5: 'Burglar' | $. >= 1: 'Pickpocket' | 'Honest' }"
         });
 
         // Equipment
-        // Note: The bonus field uses ScribeScript to conditionally apply the dexterity penalty!
+        // Note: Logic inside bonus must return a valid bonus string format (e.g. '$protection + 5')
         onCreateQuality('starting_plate', QualityType.Equipable, {
             name: "Old Plate Armor",
-            category: "Body", // Assuming you have a 'Body' slot defined in settings
-            // Logic: If Skill >= 3, just Protection. Else, Protection AND Dex penalty.
-            bonus: "{ $armor_skill >= 3 : '$protection + 5' | '$protection + 5, $dexterity - 5' }",
+            category: "Body", 
+            bonus: "{ $armor_skill >= 3 : '$protection + 5' | '$protection + 5, $dexterity - 5' }", 
             description: "A heavy suit of iron. { $armor_skill < 3 : '**You lack the skill to move freely in this.**' | 'It fits like a second skin.' }",
-            tags: ['auto_equip'] // Automatically equip when given
+            tags: ['auto_equip'] 
         });
 
         onCreateQuality('thieves_tools', QualityType.Equipable, {
@@ -675,10 +680,10 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
             tags: ['auto_equip']
         });
 
-        // 2. Define the Character Creation Rules
+        // 2. Define Character Creation Rules
+        // Using unquoted strings (Warrior) which the parser handles as literals
         const newRules = { ...rules };
 
-        // The Input
         newRules['$class'] = { 
             type: 'label_select', 
             rule: "Warrior:Warrior | Mage:Mage | Rogue:Rogue", 
@@ -687,78 +692,74 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
             visible_if: '' 
         };
 
-        // Derived Attributes (Dependent on Class)
-        // Note: We use single quotes for strings inside logic: 'Warrior'
         newRules['$strength'] = { 
             type: 'static', 
-            rule: "{ $class == 'Warrior' : 10 | $class == 'Rogue' : 4 | 2 }", 
+            rule: "{ $class == Warrior : 10 | $class == Rogue : 4 | 2 }", 
             visible: true, 
             readOnly: true, 
             visible_if: '' 
         };
         newRules['$dexterity'] = { 
             type: 'static', 
-            rule: "{ $class == 'Rogue' : 10 | $class == 'Warrior' : 4 | 2 }", 
+            rule: "{ $class == Rogue : 10 | $class == Warrior : 4 | 2 }", 
             visible: true, 
             readOnly: true, 
             visible_if: '' 
         };
         newRules['$intellect'] = { 
             type: 'static', 
-            rule: "{ $class == 'Mage' : 10 | 2 }", 
+            rule: "{ $class == Mage : 10 | 2 }", 
             visible: true, 
             readOnly: true, 
             visible_if: '' 
         };
 
-        // Derived Skills (Hidden unless relevant)
+        // Derived Skills
         newRules['$armor_skill'] = { 
             type: 'static', 
-            rule: "{ $class == 'Warrior' : 3 | $class == 'Rogue' : 1 | 0 }", 
+            rule: "{ $class == Warrior : 3 | $class == Rogue : 1 | 0 }", 
             visible: true, 
             readOnly: true, 
-            // Only show this field if the value is > 0
-            visible_if: "$class == 'Warrior' || $class == 'Rogue'" 
+            visible_if: "$class == Warrior || $class == Rogue" 
         };
 
         newRules['$thievery'] = { 
             type: 'static', 
-            rule: "{ $class == 'Rogue' : 1 | 0 }", 
+            rule: "{ $class == Rogue : 1 | 0 }", 
             visible: true, 
             readOnly: true, 
-            visible_if: "$class == 'Rogue'" 
+            visible_if: "$class == Rogue" 
         };
         
         newRules['$magical_studies'] = { 
             type: 'static', 
-            rule: "{ $class == 'Mage' : 1 | 0 }", 
+            rule: "{ $class == Mage : 1 | 0 }", 
             visible: true, 
             readOnly: true, 
-            visible_if: "$class == 'Mage'" 
+            visible_if: "$class == Mage" 
         };
 
-        // Starting Equipment (Hidden Logic)
-        // We use this to "give" the items. Since they have 'auto_equip' tags, they will go on immediately.
+        // Starting Equipment (Visible: True, so player sees they get it)
         newRules['$starting_plate'] = {
             type: 'static',
             rule: "{ $class == Warrior : 1 | 0 }",
-            visible: true, // Hidden from player
+            visible: true, 
             readOnly: true,
-            visible_if: "$class == 'Warrior'"
+            visible_if: "$class == Warrior"
         };
         newRules['$thieves_tools'] = {
             type: 'static',
             rule: "{ $class == Rogue : 1 | 0 }",
             visible: true, 
             readOnly: true,
-            visible_if: "$class == 'Rogue'"
+            visible_if: "$class == Rogue"
         };
         newRules['$student_wand'] = {
             type: 'static',
             rule: "{ $class == Mage : 1 | 0 }",
             visible: true, 
             readOnly: true,
-            visible_if: "$class == 'Mage'"
+            visible_if: "$class == Mage"
         };
 
         onChange(newRules);

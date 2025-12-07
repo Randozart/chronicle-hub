@@ -76,8 +76,13 @@ export class GameEngine {
             const itemDef = this.worldContent.qualities[itemId];
             if (!itemDef || !itemDef.bonus) continue;
 
+            // NEW: Evaluate the bonus string first to handle conditional logic
+            // e.g. "{ $armor_skill >= 3 : '$protection + 5' | '$protection + 4' }"
+            // returns "$protection + 5"
+            const evaluatedBonus = this.evaluateText(itemDef.bonus);
+
             // Parse bonus string: "$stat + 1, $other - 2"
-            const bonuses = itemDef.bonus.split(',');
+            const bonuses = evaluatedBonus.split(',');
             for (const bonus of bonuses) {
                 const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
                 if (match) {

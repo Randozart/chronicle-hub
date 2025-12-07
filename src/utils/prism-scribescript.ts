@@ -4,38 +4,66 @@ import Prism from 'prismjs';
 Prism.languages.scribescript = {
     // 1. Logic Blocks { ... }
     'logic-block': {
+        // Matches the outer block. 
+        // Logic inside 'inside' will tokenize the contents.
         pattern: /\{(?:[^{}]|\{[^{}]*\})*\}/,
         inside: {
-            // Engine Macros: %command
+            // --- A. BLOCK WRAPPERS (The Engine Sigils) ---
+            // We color { and } distinctly to show where logic starts/ends
+            'logic-delimiter': {
+                pattern: /[{}]/,
+                alias: 'important' 
+            },
+
+            // --- B. DATA SIGILS & IDENTIFIERS ---
             'macro': {
                 pattern: /%[a-zA-Z0-9_]+/,
-                alias: 'function' // Colors it like a function
+                alias: 'function' 
             },
-            // Variables: $quality
             'variable': {
                 pattern: /\$[a-zA-Z0-9_]+/,
                 alias: 'variable'
             },
-            // Local Aliases: @alias
             'alias': {
                 pattern: /@[a-zA-Z0-9_]+/,
-                alias: 'string' // Colors it distinct from globals
+                alias: 'builtin' // Distinct color (often teal/green) for local aliases
             },
-            // Self Reference: $.
             'self-ref': {
                 pattern: /\$\./,
                 alias: 'keyword'
             },
-            // Keys in key:value pairs (desc:, pivot:)
+
+            // --- C. KEYS (before colon) ---
             'key': {
                 pattern: /\b[a-zA-Z0-9_]+(?=:)/,
                 alias: 'attr-name'
             },
-            // Operators
-            'operator': />=|<=|!=|==|>>|<<|[=+\-><|:]/,
-            'punctuation': /[{}|;[\],.]/,
+
+            // --- D. FLOW CONTROL ---
+            // Pipe, Colon, Semicolon are functional operators, not just punctuation
+            'flow-operator': {
+                pattern: /[|:;]/,
+                alias: 'operator'
+            },
+
+            // --- E. STANDARD OPERATORS ---
+            'operator': />=|<=|!=|==|>>|<<|[=+\-><]/,
+            
+            // --- F. PUNCTUATION ---
+            // Commas, brackets, parens, dots
+            'punctuation': /[\[\](),.]/,
+
+            // --- G. LITERALS ---
             'number': /\b\d+\b/,
-            'keyword': /\b(true|false|recur|unique|invert|first|last|all)\b/
+            'keyword': /\b(true|false|recur|unique|invert|first|last|all)\b/,
+
+            // --- H. CATCH-ALL TEXT (Grey) ---
+            // Matches any sequence of characters that are NOT syntax control characters.
+            // This renders plain text inside the block as comments (grey).
+            'text': {
+                pattern: /[^@$%{}|:;,[\]().<>=+\-]+/,
+                alias: 'comment' 
+            }
         }
     },
     
@@ -43,12 +71,23 @@ Prism.languages.scribescript = {
     'metadata': {
         pattern: /\[.*?\]/,
         inside: {
+            'metadata-delimiter': {
+                pattern: /[\[\]]/,
+                alias: 'punctuation'
+            },
             'key': {
                 pattern: /\b[a-zA-Z0-9_]+(?=:)/,
                 alias: 'attr-name'
             },
-            'punctuation': /[:\[\]]/,
-            'string': /[^:\[\]]+/
+            'separator': {
+                pattern: /:/,
+                alias: 'operator'
+            },
+            // Metadata values are text by default
+            'string': {
+                pattern: /[^:\[\]]+/,
+                alias: 'comment'
+            }
         }
     }
 };

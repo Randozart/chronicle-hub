@@ -8,6 +8,10 @@ export async function GET(request: NextRequest) {
 
     const config = await getWorldConfig(storyId);
     
-    // Return decks object
-    return NextResponse.json(config.decks || {});
+    // Sort Decks
+    const decks = Object.values(config.decks || {}).sort((a: any, b: any) => {
+        return (a.ordering || 0) - (b.ordering || 0);
+    });
+    
+    return NextResponse.json(decks);
 }

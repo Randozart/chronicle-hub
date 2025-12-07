@@ -16,11 +16,8 @@ export default async function CreationPage({ params }: Props) {
     // Normalize rules (Handle old string format migration)
     const rawRules = gameData.char_create || {};
     const rules: any = {};
-    
     for (const key in rawRules) {
-        // Cast to any to handle the migration from string -> object
-        const val = rawRules[key] as any; 
-        
+        const val = rawRules[key] as any;
         if (typeof val === 'string') {
              rules[key] = {
                 type: val.includes('|') ? 'label_select' : (val === 'string' ? 'string' : 'static'),
@@ -34,9 +31,8 @@ export default async function CreationPage({ params }: Props) {
         }
     }
 
-
     const imageLibrary = gameData.images || {};
-    // Extract security setting
+    const qualityDefs = gameData.qualities || {}; // <--- GET DEFINITIONS
     const allowScribeScript = gameData.settings.allowScribeScriptInInputs || false;
     
     return (
@@ -48,6 +44,7 @@ export default async function CreationPage({ params }: Props) {
                 <CreationForm 
                     storyId={storyId} 
                     rules={rules} 
+                    qualityDefs={qualityDefs} // <--- PASS DOWN
                     imageLibrary={imageLibrary} 
                     allowScribeScript={allowScribeScript}
                 />
