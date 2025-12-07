@@ -97,7 +97,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                             onChange={v => handleChange('challenge', v)} 
                             storyId={storyId} 
                             mode="condition" 
-                            initialTab="skill_check"
+                            initialTab="chance"
                             placeholder="{%chance[$stat >> 50]}"
                         />
                     </div>

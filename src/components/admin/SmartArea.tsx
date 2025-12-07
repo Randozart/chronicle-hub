@@ -14,8 +14,9 @@ interface Props {
     minHeight?: string;
     mode?: 'text' | 'condition' | 'effect';
     subLabel?: string;
-    // NEW PROP
-    initialTab?: 'conditional_text' | 'standard' | 'skill_check' | 'source' | 'group_clear' |  'luck';
+
+    initialTab?: 'conditional' | 'variable' | 'effect' | 'batch' | 'timer' | 'chance' | 'random';
+
 }
 
 export default function SmartArea({ 
@@ -69,7 +70,7 @@ export default function SmartArea({
                         mode={mode} 
                         onInsert={handleInsert} 
                         onClose={() => setShowAssistant(false)}
-                        initialTab='conditional_text' // <--- Pass it down
+                        initialTab='conditional' // <--- Pass it down
                     />
                 </div>
             )}

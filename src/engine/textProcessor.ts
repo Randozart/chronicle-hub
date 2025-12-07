@@ -227,7 +227,7 @@ function evaluateMacro(
     }
 }
 
-function calculateChance(
+export function calculateChance(
     skillCheckExpr: string,
     optionalArgsStr: string | undefined,
     qualities: PlayerQualities,
@@ -301,6 +301,41 @@ function calculateChance(
     finalPercent = Math.max(minCap, Math.min(maxCap, finalPercent));
     
     return Math.round(finalPercent);
+}
+
+export function getChallengeDetails(
+    challengeString: string | undefined,
+    qualities: PlayerQualities,
+    defs: Record<string, QualityDefinition>
+): { chance: number | null, text: string } {
+    if (!challengeString) return { chance: null, text: '' };
+
+    // 1. Evaluate the string to get the probability number
+    // We wrap it in braces to ensure it evaluates as logic
+    const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, null, 0);
+    const chance = parseInt(chanceStr, 10);
+
+    if (isNaN(chance)) return { chance: null, text: '' };
+
+    // 2. Extract a pretty label (Text)
+    // We try to extract the quality name from the string for display purposes
+    // e.g. "{%chance[$strength >> 50]}" -> "Strength"
+    let text = "Challenge";
+    
+    // Simple regex to find the first quality being tested
+    const match = challengeString.match(/\$([a-zA-Z0-9_]+)/);
+    if (match) {
+        const qid = match[1];
+        // Don't evaluate the name here, just get the raw string or ID to be safe/fast
+        text = defs[qid]?.name || qid;
+        
+        // If the name itself contains ScribeScript, we should evaluate it for display
+        if (text.includes('{') || text.includes('$')) {
+             text = evaluateText(text, qualities, defs, null, 0);
+        }
+    }
+
+    return { chance: Math.max(0, Math.min(100, chance)), text: `Test: ${text}` };
 }
 
 function resolveComplexExpression(

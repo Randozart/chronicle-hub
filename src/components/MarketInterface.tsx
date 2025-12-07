@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { MarketDefinition, PlayerQualities, QualityDefinition, ShopListing, ImageDefinition, WorldSettings } from '@/engine/models';
-import { evaluateText, evaluateCondition } from '@/engine/textProcessor';
+import { evaluateCondition } from '@/engine/textProcessor';
 import GameImage from './GameImage';
-import { GameEngine } from '@/engine/gameEngine'; // Need logic to calc price client-side preview
+import { GameEngine } from '@/engine/gameEngine';
 
 interface Props {
     market: MarketDefinition;
@@ -27,16 +27,14 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
 
     const currentStall = market.stalls[activeStallIndex];
 
-    // --- HELPER: Calculate Prices Client-Side for Preview ---
-    // We construct a temp engine just for evaluating math strings
     const engine = useMemo(() => new GameEngine(qualities, { settings, qualities: qualityDefs } as any, {}, worldState), [qualities, qualityDefs, settings, worldState]);
 
     const getPrice = (priceExpr: string) => {
-        const val = engine.evaluateBlock(`{${priceExpr}}`);
+        // FIX: use evaluateText
+        const val = engine.evaluateText(`{${priceExpr}}`);
         return parseInt(val, 10) || 0;
     };
 
-    // --- HANDLE BUY/SELL ---
     const handleTransaction = async () => {
         if (!selectedListing || isProcessing) return;
         setIsProcessing(true);
@@ -58,7 +56,7 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
             const data = await res.json();
             if (res.ok) {
                 onUpdate(data.newQualities);
-                setSelectedListing(null); // Close modal
+                setSelectedListing(null); 
                 setQuantity(1);
             } else {
                 alert(data.error);
@@ -74,7 +72,6 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
     return (
         <div className="storylet-container" style={{ minHeight: '500px', display: 'flex', flexDirection: 'column', width: '100%' }}>
             
-            {/* HEADER */}
             <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     {market.image && (
@@ -89,8 +86,6 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
                 </button>
             </div>
 
-
-            {/* STALL TABS */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' }}>
                 {market.stalls.map((stall, idx) => (
                     <button 
@@ -113,11 +108,9 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
                 ))}
             </div>
 
-            {/* LISTINGS GRID */}
             {currentStall && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                     {currentStall.listings.map(listing => {
-                        // Check requirements
                         if (listing.visible_if && !evaluateCondition(listing.visible_if, qualities)) return null;
                         const isLocked = listing.unlock_if && !evaluateCondition(listing.unlock_if, qualities);
 
@@ -126,7 +119,6 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
                         const currencyDef = qualityDefs[currencyId];
                         const price = getPrice(listing.price);
 
-                        // Inventory check for UI disabling
                         let canAfford = true;
                         if (currentStall.mode === 'buy') {
                             const funds = (qualities[currencyId] as any)?.level || 0;
@@ -166,7 +158,6 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
                 </div>
             )}
 
-            {/* TRANSACTION MODAL */}
             {selectedListing && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
                     <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', padding: '2rem', borderRadius: '8px', width: '400px' }}>
@@ -182,7 +173,7 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
                             <input 
                                 type="range" 
                                 min="1" 
-                                max="100" // In a real app, calculate max affordable/max owned here
+                                max="100" 
                                 value={quantity} 
                                 onChange={e => setQuantity(parseInt(e.target.value))} 
                                 style={{ width: '100%' }} 

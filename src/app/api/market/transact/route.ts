@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
 
     // 2. Validate Location (Anti-Teleport Hack)
     const currentLocation = gameData.locations[character.currentLocationId];
-    // Check if current location links to this market, OR if the region does
     const locationMarket = currentLocation?.marketId;
     const regionMarket = currentLocation?.regionId ? gameData.regions[currentLocation.regionId]?.marketId : null;
     
@@ -43,7 +42,6 @@ export async function POST(request: NextRequest) {
     // 4. Check Requirements (Visible/Unlock)
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
     
-    // We use evaluateCondition for gates
     if (listing.visible_if && !engine.evaluateCondition(listing.visible_if)) {
         return NextResponse.json({ error: 'Item not available.' }, { status: 403 });
     }
@@ -52,8 +50,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Calculate Price
-    // Price can be logic string ("$rep * 10") or simple string ("10")
-    const unitPriceStr = engine.evaluateBlock(`{${listing.price}}`);
+    // FIX: use evaluateText
+    const unitPriceStr = engine.evaluateText(`{${listing.price}}`);
     const unitPrice = parseInt(unitPriceStr, 10);
     
     if (isNaN(unitPrice) || unitPrice < 0) {
@@ -62,16 +60,12 @@ export async function POST(request: NextRequest) {
 
     const totalCost = unitPrice * quantity;
     
-    // Determine Currency ID (Listing override > Market Default)
     const currencyId = listing.currencyId || market.defaultCurrencyId;
     const itemId = listing.qualityId;
 
     // 6. EXECUTE TRANSACTION
     
     if (stall.mode === 'buy') {
-        // --- BUYING (Lose Currency, Gain Item) ---
-        
-        // Check Funds
         const currencyState = character.qualities[currencyId];
         const currentFunds = (currencyState && 'level' in currencyState) ? currencyState.level : 0;
         
@@ -79,17 +73,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: `Cannot afford. Need ${totalCost} ${currencyId}, have ${currentFunds}.` }, { status: 400 });
         }
 
-        // Deduct Money
-        engine.applyEffect(`$${currencyId} -= ${totalCost}`);
+        // FIX: use applyEffects
+        engine.applyEffects(`$${currencyId} -= ${totalCost}`);
         
-        // Add Item (With Source)
         const sourceTag = stall.source || `bought at ${stall.name}`;
-        engine.applyEffect(`$${itemId}[source:${sourceTag}] += ${quantity}`);
+        engine.applyEffects(`$${itemId}[source:${sourceTag}] += ${quantity}`);
 
     } else {
-        // --- SELLING (Lose Item, Gain Currency) ---
-        
-        // Check Inventory
         const itemState = character.qualities[itemId];
         const currentItems = (itemState && 'level' in itemState) ? itemState.level : 0;
         
@@ -97,11 +87,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: `Not enough items. Need ${quantity}, have ${currentItems}.` }, { status: 400 });
         }
 
-        // Deduct Item
-        engine.applyEffect(`$${itemId} -= ${quantity}`);
-        
-        // Add Money
-        engine.applyEffect(`$${currencyId} += ${totalCost}`);
+        engine.applyEffects(`$${itemId} -= ${quantity}`);
+        engine.applyEffects(`$${currencyId} += ${totalCost}`);
     }
 
     // 7. Save

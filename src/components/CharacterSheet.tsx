@@ -84,7 +84,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     const bonusClass = bonusDiff > 0 ? 'text-green-400' : 'text-red-400';
                     
                     // Dynamic Name Resolution
-                    const displayName = evaluateText(q.name, qualities, qualityDefs);
+                    const displayName = evaluateText(q.name, qualities, qualityDefs, null, 0);
 
                     const primaryCat = (q.category || "").split(',')[0].trim();
                     const catDef = categories[primaryCat];

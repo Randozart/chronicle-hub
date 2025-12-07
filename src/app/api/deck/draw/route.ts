@@ -40,9 +40,8 @@ export async function POST(request: NextRequest) {
     const deckDef = gameData.decks[location.deck];
 
     if (!deckDef) return NextResponse.json({ message: 'There is no deck here.' });
+    
     // 2. Action Economy Cost (If enabled)
-
-    // Determine final cost expression
     let costExpression = deckDef.draw_cost || gameData.settings.defaultDrawCost || "1";
 
     // If it resolves to a number, treat as Actions
@@ -72,8 +71,10 @@ export async function POST(request: NextRequest) {
         // --- CASE B: CUSTOM LOGIC ($gold -= 5) ---
         try {
             if (costExpression.match(/(-=|\+=|=)/)) {
+                // Create new engine to apply
                 const engine = new GameEngine(character.qualities, gameData, character.equipment);
-                engine.applyEffect(costExpression);
+                // FIX: use applyEffects
+                engine.applyEffects(costExpression);
                 character.qualities = engine.getQualities();
             }
         } catch (e) {
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
     // This mutates the character object with new charge counts if time has passed
     regenerateDeckCharges(character, deckDef, gameData);
     
-    const handSize = parseInt(engineForCheck.evaluateBlock(`{${deckDef.hand_size}}`), 10) || 3;
+    // FIX: use evaluateText
+    const handSize = parseInt(engineForCheck.evaluateText(`{${deckDef.hand_size}}`), 10) || 3;
     const deckId = deckDef.id;
     
     // Ensure arrays/objects exist
@@ -97,7 +99,8 @@ export async function POST(request: NextRequest) {
     // Resolve Deck Size (Cap)
     let deckSize = 0;
     if (deckDef.deck_size) {
-        const val = engineForCheck.evaluateBlock(`{${deckDef.deck_size}}`);
+        // FIX: use evaluateText
+        const val = engineForCheck.evaluateText(`{${deckDef.deck_size}}`);
         deckSize = parseInt(val, 10);
     }
 

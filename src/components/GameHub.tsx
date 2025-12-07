@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition } from '@/engine/models';
+import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import ElysiumLayout from './layouts/ElysiumLayout';
@@ -11,6 +11,7 @@ import MapModal from './MapModal';
 import GameImage from './GameImage';
 import { GameEngine } from '@/engine/gameEngine';
 import MarketInterface from './MarketInterface';
+import SystemMessageBanner from './SystemMessageBanner';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -37,6 +38,7 @@ interface GameHubProps {
     deckDefs: Record<string, DeckDefinition>;
     markets: Record<string, MarketDefinition>;
     worldState: PlayerQualities; // <--- ADD THIS
+    systemMessage?: SystemMessage | null;
 }
 
 export default function GameHub(props: GameHubProps) {
@@ -62,6 +64,16 @@ export default function GameHub(props: GameHubProps) {
 
 
     // --- HANDLERS ---
+    const handleDismissMessage = async () => {
+        if (!props.systemMessage || !character) return;
+        try {
+            await fetch('/api/character/acknowledge-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterId: character.characterId, messageId: props.systemMessage.id })
+            });
+        } catch (e) { console.error(e); }
+    };
 
     const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) { setActiveEvent(null); return; }
@@ -172,6 +184,14 @@ export default function GameHub(props: GameHubProps) {
                     top: 0, left: 0
                 }}
             >
+                {props.systemMessage && (
+                    <SystemMessageBanner 
+                        message={props.systemMessage} 
+                        type="world" 
+                        onDismiss={handleDismissMessage} 
+                    />
+                )}
+
                 {/* Overlay for readability if background is busy */}
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 0 }} />
                 
@@ -296,11 +316,11 @@ export default function GameHub(props: GameHubProps) {
         
         if (deckDef) {
             // Parse Hand Size
-            const handVal = engine.evaluateBlock(`{${deckDef.hand_size || 3}}`);
+            const handVal = engine.evaluateText(`{${deckDef.hand_size || 3}}`);
             const handSize = parseInt(handVal, 10) || 3;
 
             // Parse Deck Size
-            const deckVal = engine.evaluateBlock(`{${deckDef.deck_size || 0}}`);
+            const deckVal = engine.evaluateText(`{${deckDef.deck_size || 0}}`);
             const deckSize = parseInt(deckVal, 10) || 0;
 
             currentDeckStats = { handSize, deckSize };

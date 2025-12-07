@@ -2,7 +2,7 @@
 
 import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition } from '@/engine/models';
 import { useState } from 'react';
-import { evaluateText, evaluateCondition, calculateSkillCheckChance } from '@/engine/textProcessor';
+import { evaluateText, evaluateCondition, calculateChance, getChallengeDetails } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
 import FormattedText from './FormattedText'; // Assuming you have this from previous steps
@@ -165,13 +165,13 @@ export default function StoryletDisplay({
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities);
             const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
-            const { chance, text } = calculateSkillCheckChance(
-                option.challenge, 
-                qualities, 
-                qualityDefs,
-                settings
-            );
-            const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}% chance]` : '';
+            const { chance, text } = getChallengeDetails(
+            option.challenge, 
+            qualities, 
+            qualityDefs
+        );
+        
+        const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}%]` : '';
             return { ...option, isLocked, lockReason, skillCheckText, chance, };
         });
         
@@ -190,13 +190,13 @@ export default function StoryletDisplay({
                     </div>
                 )}
                 <div className="storylet-text-content">
-                    <h1>{evaluateText(storylet.name, qualities, qualityDefs)}</h1>
+                    <h1>{evaluateText(storylet.name, qualities, qualityDefs, null, 0)}</h1>
                     <div className="storylet-text">
-                        <FormattedText text={evaluateText(storylet.text, qualities, qualityDefs)} />
+                        <FormattedText text={evaluateText(storylet.text, qualities, qualityDefs, null, 0)} />
                     </div>
                     {storylet.metatext && (
                          <div className="metatext">
-                            <FormattedText text={evaluateText(storylet.metatext, qualities, qualityDefs)} />
+                            <FormattedText text={evaluateText(storylet.metatext, qualities, qualityDefs, null, 0)} />
                         </div>
                     )}
                 </div>
@@ -269,7 +269,7 @@ export default function StoryletDisplay({
                     <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId)}>
                          {/* Logic to distinguish Card vs Storylet return */}
                         {returnTargetId && returnTargetName
-                            ? `Return to ${evaluateText(returnTargetName, qualities, qualityDefs)}`
+                            ? `Return to ${evaluateText(returnTargetName, qualities, qualityDefs, null, 0)}`
                             : ('deck' in storylet)
                                 ? 'Put Card Back (Return to Hand)'
                                 : 'Return to Location'

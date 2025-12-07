@@ -256,3 +256,5 @@ export interface QualityChangeInfo {
     overrideDescription?: string; // The dynamic override from [desc:...]
     scope?: 'character' | 'world';
 }
+
+export type WorldContent = WorldConfig;

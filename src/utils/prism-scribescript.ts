@@ -1,47 +1,55 @@
+// src/utils/prism-scribescript.ts
 import Prism from 'prismjs';
 
 Prism.languages.scribescript = {
     // 1. Logic Blocks { ... }
-    // Handles one level of nesting: { ... { ... } ... }
     'logic-block': {
         pattern: /\{(?:[^{}]|\{[^{}]*\})*\}/,
         inside: {
+            // Engine Macros: %command
+            'macro': {
+                pattern: /%[a-zA-Z0-9_]+/,
+                alias: 'function' // Colors it like a function
+            },
+            // Variables: $quality
             'variable': {
-                pattern: /\$[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)?/,
+                pattern: /\$[a-zA-Z0-9_]+/,
                 alias: 'variable'
             },
+            // Local Aliases: @alias
+            'alias': {
+                pattern: /@[a-zA-Z0-9_]+/,
+                alias: 'string' // Colors it distinct from globals
+            },
+            // Self Reference: $.
+            'self-ref': {
+                pattern: /\$\./,
+                alias: 'keyword'
+            },
+            // Keys in key:value pairs (desc:, pivot:)
+            'key': {
+                pattern: /\b[a-zA-Z0-9_]+(?=:)/,
+                alias: 'attr-name'
+            },
+            // Operators
             'operator': />=|<=|!=|==|>>|<<|[=+\-><|:]/,
-            'punctuation': /[{}|]/,
-            // 'string': {
-            //     pattern: /(['"])(?:(?!\1)[^\\\r\n]|\\.)*\1/,
-            //     alias: 'string'
-            // },
+            'punctuation': /[{}|;[\],.]/,
             'number': /\b\d+\b/,
-            'keyword': /\b(true|false)\b/
-        }
-    },
-
-    // 2. Variables (Global - e.g. in requirements)
-    'variable': /\$[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)?/,
-
-    // 3. Tags [source:...]
-    'tag': {
-        pattern: /\[[^\]]+\]/,
-        inside: {
-            'punctuation': /[\[\]:]/,
-            'attr-name': /^[a-zA-Z0-9_]+(?=:)/,
-            'attr-value': /.+/
+            'keyword': /\b(true|false|recur|unique|invert|first|last|all)\b/
         }
     },
     
-    // 4. Formatting (Markdown) - Optional, keeps text nice
-    'bold': {
-        pattern: /\*\*(?:(?!\*\*).)+\*\*/,
-        inside: { 'punctuation': /\*\*/ }
-    },
-    'italic': {
-        pattern: /([*_])(?:(?!\1).)+\1/,
-        inside: { 'punctuation': /^.|.$/ }
+    // 2. Effect Metadata [key: value]
+    'metadata': {
+        pattern: /\[.*?\]/,
+        inside: {
+            'key': {
+                pattern: /\b[a-zA-Z0-9_]+(?=:)/,
+                alias: 'attr-name'
+            },
+            'punctuation': /[:\[\]]/,
+            'string': /[^:\[\]]+/
+        }
     }
 };
 
