@@ -1,27 +1,18 @@
 // src/engine/textProcessor.ts
 
-import { PlayerQualities, QualityDefinition, QualityState, QualityType, StringQualityState, WorldSettings } from './models';
+import { PlayerQualities, QualityDefinition, QualityState, QualityType, WorldSettings } from './models';
 
 // --- TYPE DEFINITIONS for the Parser ---
 type EvaluationContext = 'LOGIC' | 'TEXT';
 
 // --- CORE PARSING ENGINE ---
 
-/**
- * The main entry point for evaluating a ScribeScript string.
- * This function orchestrates the entire parsing process.
- * @param rawText The raw string from a storylet field (e.g., text, name, description).
- * @param qualities The current player's qualities.
- * @param qualityDefs All quality definitions for the world.
- * @param selfContext For self-referencing ($.), this is the quality being evaluated.
- * @returns The final, rendered string.
- */
 export function evaluateText(
     rawText: string | undefined,
     qualities: PlayerQualities,
     qualityDefs: Record<string, QualityDefinition>,
     selfContext: { qid: string, state: QualityState } | null,
-    resolutionRoll: number // Added roll
+    resolutionRoll: number
 ): string {
     if (!rawText) return '';
 
@@ -29,9 +20,6 @@ export function evaluateText(
     return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, aliasMap, selfContext, resolutionRoll);
 }
 
-/**
- * The recursive heart of the parser. It evaluates a string based on its current context.
- */
 function evaluateRecursive(
     text: string,
     context: EvaluationContext,
@@ -39,7 +27,7 @@ function evaluateRecursive(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number // Added roll
+    resolutionRoll: number
 ): string {
     let currentText = text;
 
@@ -61,12 +49,7 @@ function evaluateRecursive(
         return currentText;
     }
 }
-// src/engine/textProcessor.ts
 
-/**
- * Evaluates a string that is known to be in a LOGIC context.
- * This function handles macros, conditionals, and logical/mathematical expressions.
- */
 function evaluateExpression(
     expr: string,
     qualities: PlayerQualities,
@@ -81,7 +64,9 @@ function evaluateExpression(
         return evaluateMacro(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
     }
     
+    // Check for Conditional Logic (colon OR pipe)
     if (trimmedExpr.includes(':') || trimmedExpr.includes('|')) {
+        // Check for special pluralization syntax first
         const pluralMatch = trimmedExpr.match(/^(\$[^|]+)\s*\|\s*([^|]+)\s*\|\s*(.+)$/);
         if (pluralMatch) {
             const [, qualityVar, singular, plural] = pluralMatch;
@@ -94,11 +79,103 @@ function evaluateExpression(
     return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
 }
 
-
+/**
+ * Handles { condition : result | else } logic.
+ * This returns the TEXT of the chosen branch.
+ */
+function evaluateConditional(
+    expr: string, 
+    qualities: PlayerQualities, 
+    defs: Record<string, QualityDefinition>,
+    aliases: Record<string, string>, 
+    self: { qid: string, state: QualityState } | null, 
+    resolutionRoll: number
+): string {
+    // Split by pipe | but be careful not to split inside nested structures if any remain 
+    // (though main recursion should have handled inner braces).
+    const branches = expr.split('|');
+    
+    for (const branch of branches) {
+        const colonIndex = branch.indexOf(':');
+        
+        if (colonIndex > -1) {
+            // "Condition : Result"
+            const condition = branch.substring(0, colonIndex).trim();
+            const resultText = branch.substring(colonIndex + 1).trim();
+            
+            // Evaluate the condition part as a Boolean
+            const isTrue = evaluateCondition(condition, qualities, defs, aliases, self, resolutionRoll);
+            
+            if (isTrue) {
+                // Strip quotes if it looks like a string literal
+                return resultText.replace(/^['"]|['"]$/g, ''); 
+            }
+        } else {
+            // "Else Result" (No colon)
+            return branch.trim().replace(/^['"]|['"]$/g, '');
+        }
+    }
+    
+    return ""; // No condition met
+}
 
 /**
- * The master dispatcher for all %macros.
+ * Evaluates a condition string (e.g. "$gold > 10") and returns a boolean.
  */
+export function evaluateCondition(
+    expression: string | undefined, 
+    qualities: PlayerQualities,
+    defs: Record<string, QualityDefinition> = {}, 
+    aliases: Record<string, string> = {},
+    self: { qid: string, state: QualityState } | null = null,
+    resolutionRoll: number = 0
+): boolean {
+    if (!expression) return true;
+    const trimExpr = expression.trim();
+
+    if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) {
+        return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, aliases, self, resolutionRoll);
+    }
+
+    if (trimExpr.includes('||')) {
+        const parts = trimExpr.split('||');
+        return parts.some(part => evaluateCondition(part, qualities, defs, aliases, self, resolutionRoll));
+    }
+
+    if (trimExpr.includes('&&')) {
+        const parts = trimExpr.split('&&');
+        return parts.every(part => evaluateCondition(part, qualities, defs, aliases, self, resolutionRoll));
+    }
+
+    const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
+    if (!operatorMatch) {
+        const val = resolveVariable(trimExpr, qualities, defs, aliases, self, resolutionRoll);
+        return val === 'true' || Number(val) > 0;
+    }
+    
+    const operator = operatorMatch[0];
+    const [leftRaw, rightRaw] = trimExpr.split(operator);
+    
+    const leftVal = resolveComplexExpression(leftRaw.trim(), qualities, defs, aliases, self, resolutionRoll);
+    const rightVal = resolveComplexExpression(rightRaw.trim(), qualities, defs, aliases, self, resolutionRoll);
+
+    if (operator === '==') return leftVal == rightVal;
+    if (operator === '!=') return leftVal != rightVal;
+    
+    const lNum = Number(leftVal);
+    const rNum = Number(rightVal);
+
+    if (isNaN(lNum) || isNaN(rNum)) return false;
+
+    switch (operator) {
+        case '>': return lNum > rNum;
+        case '<': return lNum < rNum;
+        case '>=': return lNum >= rNum;
+        case '<=': return lNum <= rNum;
+        default: return false;
+    }
+}
+
 function evaluateMacro(
     macroString: string,
     qualities: PlayerQualities,
@@ -125,37 +202,31 @@ function evaluateMacro(
             const success = resolutionRoll < chance;
             return isInverted ? !success : success;
         }
-
         case "choice": {
             if (requiredArgs.length === 0) return "";
             const randomIndex = Math.floor(Math.random() * requiredArgs.length);
             const chosenExpr = requiredArgs[randomIndex];
             return evaluateExpression(chosenExpr, qualities, defs, aliases, self, resolutionRoll);
         }
-
         case "chance": {
             return calculateChance(requiredArgsStr, optionalArgsStr, qualities, defs, aliases, self, resolutionRoll);
         }
+        // Removed %pronounset/pronoun as requested
         
         case "label":
         case "image":
         case "labeled_image":
             return `[Error: UI Macro '${command}' cannot be used in this context]`;
-
         case "schedule":
         case "reset":
         case "update":
         case "cancel":
             return ""; 
-        
         default:
             return `[Unknown Macro: ${command}]`;
     }
 }
 
-/**
- * A dedicated function to parse and calculate %chance.
- */
 function calculateChance(
     skillCheckExpr: string,
     optionalArgsStr: string | undefined,
@@ -163,18 +234,16 @@ function calculateChance(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number // This is needed for the calls inside
+    resolutionRoll: number
 ): number {
     const skillCheckMatch = skillCheckExpr.match(/^\s*(.*?)\s*(>>|<<|==|!=)\s*(.*)\s*$/);
     if (!skillCheckMatch) return 0;
 
     const [, skillPart, operator, targetPart] = skillCheckMatch;
     
-    // The skill and target are LOGIC contexts
     const skillLevel = Number(evaluateExpression(skillPart, qualities, defs, aliases, self, resolutionRoll));
     const target = Number(evaluateExpression(targetPart, qualities, defs, aliases, self, resolutionRoll));
 
-    // --- Parse Optional Parameters ---
     let margin = target, minCap = 0, maxCap = 100, pivot = 60;
     
     if (optionalArgsStr) {
@@ -185,7 +254,6 @@ function calculateChance(
             const namedArgMatch = arg.match(/^([a-zA-Z]+):\s*(.*)$/);
             if (namedArgMatch) {
                 const [, key, valueStr] = namedArgMatch;
-                // CRITICAL FIX HERE: Pass all arguments to the recursive call
                 const value = Number(evaluateExpression(valueStr, qualities, defs, aliases, self, resolutionRoll));
                 if (!isNaN(value)) {
                     if (key === 'margin') margin = value;
@@ -194,7 +262,6 @@ function calculateChance(
                     else if (key === 'pivot') pivot = value;
                 }
             } else if (!isNaN(Number(arg))) {
-                // Positional arguments
                 const value = Number(arg);
                 if (posIndex === 0) margin = value;
                 else if (posIndex === 1) minCap = value;
@@ -205,7 +272,6 @@ function calculateChance(
         }
     }
     
-    // --- Perform the Calculation (logic from GameEngine moved here) ---
     let successChance = 0;
     const pivotDecimal = pivot / 100;
     
@@ -237,17 +303,6 @@ function calculateChance(
     return Math.round(finalPercent);
 }
 
-
-// --- The rest of the file (utility functions, resolveVariable, etc.) remains the same ---
-// MAKE SURE to pass `resolutionRoll` down through the function calls, like:
-// evaluateConditional(..., resolutionRoll)
-// resolveComplexExpression(..., resolutionRoll)
-
-/**
- * Resolves a complex logical or mathematical expression, respecting operator precedence.
- */
-// in src/engine/textProcessor.ts
-
 function resolveComplexExpression(
     expr: string,
     qualities: PlayerQualities,
@@ -256,29 +311,20 @@ function resolveComplexExpression(
     self: { qid: string, state: QualityState } | null,
     resolutionRoll: number
 ): string | number | boolean {
-    // Replace all variables ($quality, @alias, $.) with their numeric or string values.
     const varReplacedExpr = expr.replace(/([@\$\.]?)([a-zA-Z0-9_]+)((?:\.[a-zA-Z0-9_]+)*)(?:\[(.*?)\])?/g, 
-        (match) => { // The entire match is the first argument
-            // CRITICAL FIX: Pass 'resolutionRoll' down to the next function
+        (match) => { 
             return resolveVariable(match, qualities, defs, aliases, self, resolutionRoll).toString();
         }
     );
-    
     try {
-        // Using a safe, sandboxed eval method is crucial here.
-        // For simplicity in pseudocode, we represent it as a function.
         return new Function(`return ${varReplacedExpr}`)();
     } catch (e) {
-        // If it fails to evaluate (e.g., it's just a string), return the string.
         return varReplacedExpr;
     }
 }
 
-/**
- * The master function for resolving any variable reference like $q.name[5].capital
- */
 function resolveVariable(
-    fullMatch: string, // Corrected signature: receives the full matched string
+    fullMatch: string, 
     qualities: PlayerQualities,
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
@@ -344,24 +390,17 @@ function resolveVariable(
     return currentValue?.toString() || "";
 }
 
-
-// --- UTILITY FUNCTIONS --- (These would be filled out)
 function preprocessAliases(text: string): [string, Record<string, string>] {
     const aliasMap: Record<string, string> = {};
     const aliasRegex = /\{@([a-zA-Z0-9_]+)\s*=\s*\$([a-zA-Z0-9_]+)\}/g;
-    
     const cleanText = text.replace(aliasRegex, (_, alias, qid) => {
         aliasMap[alias] = qid;
-        return ''; // Remove the declaration from the text
+        return '';
     });
-
     return [cleanText, aliasMap];
 }
 
-function evaluateConditional(expr: string, qualities: PlayerQualities, defs: Record<string, QualityDefinition>, aliases: Record<string, string>, self: { qid: string, state: QualityState } | null, resolutionRoll: number): string { return "" }
-
-// A simplified helper, since the full one is in GameEngine
 function createInitialState(qid: string, type: QualityType): QualityState {
-    if (type === QualityType.String) return { qualityId: qid, type, stringValue: "" };
+    if (type === QualityType.String) return { qualityId: qid, type, stringValue: "" } as any;
     return { qualityId: qid, type, level: 0 } as any;
 }

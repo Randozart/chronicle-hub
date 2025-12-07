@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/opportunities/components/OpportunityMainForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,7 +20,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
 
     useEffect(() => setForm(initialData), [initialData]);
 
-    const handleChange = (field: string, val: any) => {
+    const handleChange = (field: keyof Opportunity, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
@@ -59,10 +60,17 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
                 <div className="form-row">
-                    <div className="form-group"><label className="form-label">Title</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Deck ID</label><input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" /></div>
+                    <div style={{ flex: 2 }}>
+                        <div className="form-group"><label className="form-label">Title</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Sort Order</label>
+                        <input type="number" value={form.ordering || 0} onChange={e => handleChange('ordering', parseInt(e.target.value))} className="form-input" />
+                    </div>
                 </div>
+
                 <div className="form-row">
+                    <div className="form-group"><label className="form-label">Deck ID</label><input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" /></div>
                     <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
                     <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
                 </div>
@@ -86,7 +94,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                         value={form.draw_condition || ''} 
                         onChange={v => handleChange('draw_condition', v)} 
                         storyId={storyId} 
-                        mode="text" 
+                        mode="condition" 
                         placeholder="$gold > 10"
                     />
                     

@@ -1,3 +1,4 @@
+// src/app/play/[storyId]/creation/page.tsx
 import { getWorldContent } from '@/engine/worldService';
 import CreationForm from '@/components/CreationForm';
 
@@ -8,13 +9,35 @@ interface Props {
 
 export default async function CreationPage({ params }: Props) {
     const { storyId } = await params;
-
     if (!storyId) return <div>Error: No story specified.</div>;
 
-    // 1. Fetch ALL game data (including images)
     const gameData = await getWorldContent(storyId);
-    const creationRules = gameData.char_create || {};
-    const imageLibrary = gameData.images || {}; // <--- Get the library
+    
+    // Normalize rules (Handle old string format migration)
+    const rawRules = gameData.char_create || {};
+    const rules: any = {};
+    
+    for (const key in rawRules) {
+        // Cast to any to handle the migration from string -> object
+        const val = rawRules[key] as any; 
+        
+        if (typeof val === 'string') {
+             rules[key] = {
+                type: val.includes('|') ? 'label_select' : (val === 'string' ? 'string' : 'static'),
+                rule: val === 'string' ? '' : val,
+                visible: val !== 'static' && !(!isNaN(Number(val))), 
+                readOnly: false,
+                visible_if: ''
+            };
+        } else {
+            rules[key] = val;
+        }
+    }
+
+
+    const imageLibrary = gameData.images || {};
+    // Extract security setting
+    const allowScribeScript = gameData.settings.allowScribeScriptInInputs || false;
     
     return (
         <div className="theme-wrapper" data-theme={gameData.settings.visualTheme || 'default'} style={{ minHeight: '100vh', background: 'var(--bg-main)', padding: '2rem' }}>
@@ -24,8 +47,9 @@ export default async function CreationPage({ params }: Props) {
                 </h1>
                 <CreationForm 
                     storyId={storyId} 
-                    rules={creationRules} 
-                    imageLibrary={imageLibrary} /* <--- Pass it down */
+                    rules={rules} 
+                    imageLibrary={imageLibrary} 
+                    allowScribeScript={allowScribeScript}
                 />
             </div>
         </div>
