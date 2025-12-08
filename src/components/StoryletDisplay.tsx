@@ -54,13 +54,8 @@ export default function StoryletDisplay({
     const storylet = eventData; 
     
     // Helper to call evaluateText with standard display context (no engine, no roll)
-    const evalText = (text?: string) => {
-        return evaluateText(text ?? '', qualities, qualityDefs, null, 0);
-    };
-
-    const evalConditionSafe = (expr?: string): boolean => {
-        if (!expr) return true;
-        return evaluateCondition(expr, qualities, qualityDefs, {}, null, 0);
+    const evalText = (text: string | undefined) => {
+        return evaluateText(text, qualities, qualityDefs, null, 0);
     };
 
     const handleOptionClick = async (option: ResolveOption) => {
@@ -109,8 +104,8 @@ export default function StoryletDisplay({
             const target = storyletDefs[explicitReturn];
             if (target) {
                 // UPDATE: Pass required args to evaluateCondition
-                const isVisible = evalConditionSafe(target.visible_if);
-                const isUnlocked = evalConditionSafe(target.unlock_if);
+                const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, {}, null, 0);
+                const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, {}, null, 0);
                 if (!isVisible || !isUnlocked) return undefined; 
                 return explicitReturn;
             }
@@ -174,10 +169,10 @@ export default function StoryletDisplay({
 
     const optionsToDisplay: DisplayOption[] = storylet.options
         // UPDATE: Pass required args to evaluateCondition
-        .filter(option => evalConditionSafe(option.visible_if))
+        .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, {}, null, 0))
         .map(option => {
             // UPDATE: Pass required args to evaluateCondition
-            const isLocked = !evalConditionSafe(option.unlock_if);
+            const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, {}, null, 0);
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
             
             // UPDATE: getChallengeDetails already has the correct signature in the new file, just ensure we use it
