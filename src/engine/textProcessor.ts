@@ -361,9 +361,53 @@ export class ScribeParser {
         if(opToken) {
             const right = this.evaluateTerm();
             
+            // --- NEW: Challenge Shorthand with Arguments ---
             if (['>>', '<<', '><', '<>'].includes(opToken.value)) {
-                return calculateChanceInternal(`${left} ${opToken.value} ${right}`, this.state);
+                
+                let expr = `${left} ${opToken.value} ${right}`;
+                let margin: number | undefined;
+                let minCap = 0, maxCap = 100, pivot = 60;
+
+                // Check for arguments separator ';'
+                if (this.match('SEPARATOR')) {
+                    const args: string[] = [];
+                    let buffer = "";
+                    
+                    // Safe loop
+                    let t = this.peek();
+                    while (t) {
+                        if (t.type === 'LOGIC_BLOCK_END' || t.type === 'ALTERNATOR' || t.type === 'CONDITIONAL') {
+                            break; 
+                        }
+                        
+                        this.consume(); // Eat token
+                        
+                        if (t.type === 'LIST_SEPARATOR') {
+                            if (buffer.trim()) args.push(buffer.trim());
+                            buffer = "";
+                        } else {
+                            buffer += t.value;
+                        }
+
+                        t = this.peek(); // Update for next iteration
+                    }
+                    if (buffer.trim()) args.push(buffer.trim());
+
+                    // Parse the arguments
+                    args.forEach((opt, idx) => {
+                        const [k, v] = opt.split(':').map(s => s.trim());
+                        const val = Number(v || k);
+                        
+                        if (k === 'margin' || idx === 0) margin = val;
+                        else if (k === 'min' || idx === 1) minCap = val;
+                        else if (k === 'max' || idx === 2) maxCap = val;
+                        else if (k === 'pivot' || idx === 3) pivot = val;
+                    });
+                }
+                
+                return calculateChanceInternal(expr, this.state, margin, minCap, maxCap, pivot);
             }
+            // -----------------------------------------------
 
             const lVal = this.toNumber(left);
             const rVal = this.toNumber(right);
