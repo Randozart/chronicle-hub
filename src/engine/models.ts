@@ -114,11 +114,15 @@ export interface QualityDefinition {
 }
 
 export interface CharCreateRule {
-    type: 'string' | 'static' | 'label_select' | 'image_select' | 'labeled_image_select';
-    rule: string; // The ScribeScript logic or choice data
+    type: 'string' | 'static' | 'label_select' | 'image_select' | 'labeled_image_select' | 'header'; // Added 'header'
+    rule: string;
     visible: boolean;
     readOnly: boolean;
     visible_if?: string;
+    
+    // NEW:
+    input_transform?: 'none' | 'lowercase' | 'uppercase' | 'capitalize';
+    displayMode?: 'inline' | 'modal'; // For selection types
 }
 
 export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";

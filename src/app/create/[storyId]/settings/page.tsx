@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/settings/page.tsx
 'use client';
 
 import { useState, useEffect, use, useMemo } from 'react';
@@ -7,6 +6,7 @@ import CollaboratorManager from './components/CollaboratorManager';
 import ThemePreview from './components/ThemePreview';
 import SmartArea from '@/components/admin/SmartArea';
 
+// --- TYPES ---
 interface SettingsForm extends WorldSettings {
     char_create: Record<string, CharCreateRule>;
     isPublished?: boolean; 
@@ -18,6 +18,7 @@ interface SettingsForm extends WorldSettings {
 export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     
+    // DEFAULT STATE
     const [form, setForm] = useState<SettingsForm>({
         useActionEconomy: true,
         maxActions: 20,
@@ -46,6 +47,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
+    // 1. FETCH DATA
     useEffect(() => {
         const load = async () => {
             try {
@@ -57,13 +59,22 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 ]);
                 
                 const sData = await sRes.json();
-                const cData = cRes.ok ? await cRes.json() : {};
+                
+                // SAFE DATA HANDLING: Ensure we don't get nulls
+                const cDataRaw = cRes.ok ? await cRes.json() : {};
+                const cData = cDataRaw || {}; // Fallback if API returns null
+
                 const qData = qRes.ok ? await qRes.json() : {};
                 const lData = lRes.ok ? await lRes.json() : {};
 
-                setExistingQIDs(Object.keys(qData));
-                setExistingLocIDs(Object.keys(lData));
+                // Robustly get IDs
+                const qIDs = Array.isArray(qData) ? qData.map((q: any) => q.id) : Object.keys(qData || {});
+                const lIDs = Array.isArray(lData) ? lData.map((l: any) => l.id) : Object.keys(lData || {});
 
+                setExistingQIDs(qIDs);
+                setExistingLocIDs(lIDs);
+
+                // Normalize char_create data 
                 const normalizedCharCreate: Record<string, CharCreateRule> = {};
                 for (const key in cData) {
                     const val = cData[key];
@@ -143,16 +154,19 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const handleSave = async () => {
         setIsSaving(true);
         try {
+            // Save Settings
             await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId, category: 'settings', itemId: 'settings', data: { ...form, char_create: undefined, isPublished: undefined } })
             });
+            // Save Char Create
             await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId, category: 'char_create', itemId: 'rules', data: form.char_create })
             });
+            // Save Root Fields
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'published', data: form.isPublished }) });
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'coverImage', data: form.coverImage }) });
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'tags', data: form.tags }) });
@@ -164,39 +178,37 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
+    // --- SYSTEM BINDING VALIDATION ---
     const cleanID = (id: string) => id.replace('$', '').trim();
+    
+    // Check if the ID exists in the list (Robust check)
+    const isQualityMissing = (bindingValue: string) => {
+        if (!bindingValue) return true;
+        const clean = cleanID(bindingValue);
+        return !existingQIDs.includes(clean);
+    };
+
     const missingSystemQualities = [
         { id: form.actionId, type: QualityType.Counter },
         { id: form.playerName, type: QualityType.String },
         { id: form.playerImage, type: QualityType.String }
-    ].filter(q => q.id && !existingQIDs.includes(q.id.replace('$', '')));
-    
+    ].filter(q => isQualityMissing(q.id));
+
+    // --- LOCATION VALIDATION ---
     const isStartLocationValid = !form.startLocation || existingLocIDs.includes(form.startLocation);
-
-    // 1. Validate Global Setting
-    const isGlobalLocationValid = !form.startLocation || existingLocIDs.includes(form.startLocation);
-
-    // 2. Validate Character Creation Logic ($location)
-    let charCreateLocationError = "";
     const locRule = form.char_create['$location'];
+    let charCreateLocationError = "";
 
     if (locRule) {
         if (['label_select', 'image_select', 'labeled_image_select'].includes(locRule.type)) {
-            // Format: "id:Label | id2:Label" -> Extract IDs
             const options = locRule.rule.split('|').map(opt => opt.split(':')[0].trim());
             const invalidIds = options.filter(id => !existingLocIDs.includes(id));
-            
-            if (invalidIds.length > 0) {
-                charCreateLocationError = `⚠️ Rule contains invalid Location IDs: ${invalidIds.join(', ')}`;
-            }
+            if (invalidIds.length > 0) charCreateLocationError = `⚠️ Rule contains invalid Location IDs: ${invalidIds.join(', ')}`;
         } else if (locRule.type === 'static' && !locRule.rule.trim().startsWith('{')) {
-            // Format: "village_id" (Direct string, not ScribeScript block)
-            if (!existingLocIDs.includes(locRule.rule.trim())) {
-                charCreateLocationError = `⚠️ Rule points to invalid Location ID: '${locRule.rule}'`;
-            }
+            if (!existingLocIDs.includes(locRule.rule.trim())) charCreateLocationError = `⚠️ Rule points to invalid Location ID: '${locRule.rule}'`;
         }
     }
-    
+
     return (
         <div className="admin-editor-col" style={{ maxWidth: '900px', margin: '0 auto' }}>            
             
@@ -231,7 +243,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     <strong>Map Engine Concepts to Data:</strong> The engine is agnostic. It does not know what "Health" or "Gold" is. 
                     Use these fields to tell the engine which of your Qualities represent core system features.
                 </div>
-                
+
                 {missingSystemQualities.length > 0 && (
                     <div style={{ background: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', padding: '0.5rem', borderRadius: '4px', marginBottom: '1rem' }}>
                         <p style={{ margin: '0 0 0.5rem 0', color: '#e74c3c', fontSize: '0.8rem', fontWeight: 'bold' }}>Missing Quality Definitions:</p>
@@ -247,14 +259,17 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     <div className="form-group">
                         <label className="form-label">Action Counter ID</label>
                         <input value={form.actionId} onChange={e => handleChange('actionId', e.target.value)} className="form-input" placeholder="$actions" />
+                        <p className="special-desc">The specific quality used to track player energy.</p>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Player Name ID</label>
                         <input value={form.playerName} onChange={e => handleChange('playerName', e.target.value)} className="form-input" placeholder="$player_name" />
+                        <p className="special-desc">Stores the character's display name.</p>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Player Portrait ID</label>
                         <input value={form.playerImage} onChange={e => handleChange('playerImage', e.target.value)} className="form-input" placeholder="$player_portrait" />
+                        <p className="special-desc">Stores the image code for the avatar.</p>
                     </div>
                 </div>
                 <div className="form-group" style={{ marginTop: '1rem' }}>
@@ -266,50 +281,39 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         placeholder="village" 
                         disabled={!!locRule}
                         style={{
-                            // If managed by logic, dim it. If invalid (and active), red border.
                             ...(!!locRule ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
-                            ...(!isGlobalLocationValid && !locRule ? { borderColor: '#e74c3c' } : {})
+                            ...(!isStartLocationValid && !locRule ? { borderColor: '#e74c3c' } : {})
                         }}
                     />
-                    
-                    {/* FEEDBACK AREA */}
                     {locRule ? (
                         <div style={{ marginTop: '0.25rem' }}>
                             <p style={{ color: '#e5c07b', fontSize: '0.8rem', margin: 0 }}>
                                 🔒 <strong>Managed via Logic:</strong> Defined by the <code>$location</code> rule in Character Initialization.
                             </p>
-                            {charCreateLocationError && (
-                                <p style={{ color: '#e74c3c', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 'bold' }}>
-                                    {charCreateLocationError}
-                                </p>
-                            )}
+                            {charCreateLocationError && <p style={{ color: '#e74c3c', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 'bold' }}>{charCreateLocationError}</p>}
                         </div>
                     ) : (
                         <>
-                            {!isGlobalLocationValid && (
-                                <p style={{ color: '#e74c3c', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                                    ⚠️ Warning: Location ID '{form.startLocation}' not found in Locations list.
-                                </p>
-                            )}
+                            {!isStartLocationValid && <p style={{ color: '#e74c3c', fontSize: '0.8rem', marginTop: '0.25rem' }}>⚠️ Warning: Location ID '{form.startLocation}' not found in Locations list.</p>}
                             <p className="special-desc">Where new characters spawn.</p>
                         </>
                     )}
                 </div>
             </div>
 
-
+            {/* 3. GAME RULES (Action Economy) */}
             <div className="special-field-group" style={{ borderColor: '#61afef' }}>
                 <label className="special-label" style={{ color: '#61afef' }}>Game Rules & Action Economy</label>
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
                     <strong>Energy System:</strong> Configure how the player spends and regains actions. 
                     Values like "Max Actions" or "Regen Amount" can be <strong>Dynamic Logic</strong> (e.g. <code>{`{ 10 + $vitality }`}</code>), allowing stats to affect the economy.
                 </div>
+                
                 <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '2rem' }}>
                     <label className="toggle-label">
                         <input type="checkbox" checked={form.useActionEconomy} onChange={e => handleChange('useActionEconomy', e.target.checked)} />
                         Enable Action/Time Economy
                     </label>
-                    
                     <label className="toggle-label">
                         <input type="checkbox" checked={form.deckDrawCostsAction !== false} onChange={e => handleChange('deckDrawCostsAction', e.target.checked)} />
                         Drawing Cards Costs Action
@@ -327,7 +331,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                          <div className="form-group" style={{ flex: 1 }}>
                             <label className="form-label">Interval (Min)</label>
                             <input type="number" value={form.regenIntervalInMinutes} onChange={e => handleChange('regenIntervalInMinutes', parseInt(e.target.value))} className="form-input" />
-                            <p className="special-desc">Real-time minutes per tick. Does not allow for ScribeScript logic.</p>
+                            <p className="special-desc">Real-time minutes per tick.</p>
                         </div>
                     </div>
                 )}
@@ -349,12 +353,11 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </div>
             </div>
             
-            {/* 4. CHALLENGE PHYSICS (Unchanged) */}
+            {/* 4. CHALLENGE PHYSICS */}
             <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
                 <label className="special-label" style={{ color: '#f1c40f' }}>Challenge Physics</label>
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
-                    <strong>Global Probability Settings:</strong> These defaults are used by the <code>%chance</code> macro if specific parameters (margin, pivot) are not provided in the call. <code>$target</code> lets you use the target number in the margin calculation. 
-                    Otherwise it defaults to <code>0</code> - <code>2 * target number</code>.
+                    <strong>Global Probability Settings:</strong> These defaults are used by the <code>%chance</code> macro if specific parameters (margin, pivot) are not provided in the call.
                 </div>
                 <div className="form-row" style={{ marginTop: '1rem' }}>
                     <div className="form-group">
@@ -369,11 +372,11 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             </div>
 
             {/* 5. ECONOMY & UI Categories */}
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
-                <strong>Organization:</strong> Define which qualities appear in specific parts of the player interface. Qualities not matching these categories will be hidden from the sidebar.
-            </div>
             <div className="special-field-group" style={{ borderColor: '#2ecc71' }}>
                 <label className="special-label" style={{ color: '#2ecc71' }}>Economy & UI Layout</label>
+                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+                    <strong>Organization:</strong> Define which qualities appear in specific parts of the player interface. Qualities not matching these categories will be hidden from the sidebar.
+                </div>
 
                 <div className="form-group">
                     <label className="form-label">Currencies</label>
@@ -494,8 +497,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     );
 }
 
-// --- CHAR CREATE EDITOR SUB-COMPONENT ---
-
+// ... CharCreateEditor Sub-Component (Same as before) ...
 interface CharCreateProps {
     rules: Record<string, CharCreateRule>;
     onChange: (r: Record<string, CharCreateRule>) => void;
@@ -508,11 +510,11 @@ interface CharCreateProps {
 function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, onCreateQuality }: CharCreateProps) {
     const [newKey, setNewKey] = useState("");
     
-    // ... (Dependency logic same as before) ...
+    // Dependency Analysis
     const { hierarchy, depthMap, roots } = useMemo(() => {
+        if (!rules) return { hierarchy: {}, depthMap: {}, roots: [] }; // Safety check for null rules
         const h: Record<string, string[]> = {};
         const parents: Record<string, string> = {};
-        
         Object.keys(rules).forEach(key => {
             const rule = rules[key];
             if (rule.visible_if) {
@@ -543,7 +545,6 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
         if (hierarchy[key]) hierarchy[key].forEach(traverse);
     };
     roots.forEach(traverse);
-    // Add orphans
     Object.keys(rules).forEach(k => { if(!renderOrder.includes(k)) renderOrder.push(k); });
 
     const handleUpdate = (key: string, field: keyof CharCreateRule, val: any) => {
@@ -559,12 +560,11 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
     };
 
     // --- PRESETS ---
-     const addPronounSystem = () => {
+    const addPronounSystem = () => {
         onCreateQuality('pronouns', QualityType.String, { 
             tags: ['is_pronoun_set'], 
             text_variants: {
-                // ScribeScript Syntax: { Condition : Result | Else }
-                // No quotes needed for string literals in comparison if they don't contain spaces/symbols
+                // ScribeScript logic with unquoted literals where appropriate
                 "subject": "{ $.stringValue == he/him : he | $.stringValue == she/her : she | $.stringValue == they/them : they | {$prn_subj} }",
                 "object": "{ $.stringValue == he/him : him | $.stringValue == she/her : her | $.stringValue == they/them : them | {$prn_obj} }",
                 "possessive": "{ $.stringValue == he/him : his | $.stringValue == she/her : her | $.stringValue == they/them : their | {$prn_poss} }",
@@ -581,6 +581,61 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
         newRules['$prn_subj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
         newRules['$prn_obj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
         newRules['$prn_poss'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
+        onChange(newRules);
+    };
+
+    const addClassSystem = () => {
+        // 1. Define the Qualities
+        onCreateQuality('class', QualityType.String, { name: "Character Class", category: "Identity" });
+        onCreateQuality('strength', QualityType.Pyramidal, { name: "Strength", category: "Attributes" });
+        onCreateQuality('intellect', QualityType.Pyramidal, { name: "Intellect", category: "Attributes" });
+        onCreateQuality('dexterity', QualityType.Pyramidal, { name: "Dexterity", category: "Attributes" });
+        onCreateQuality('protection', QualityType.Counter, { name: "Protection", category: "Hidden" });
+
+        onCreateQuality('armor_skill', QualityType.Counter, {
+            name: "Armor Proficiency", category: "Skills",
+            description: "{ $. == 3: 'Heavy Armor' | $. == 2: 'Medium Armor' | $. == 1: 'Light Armor' | 'Unarmored' }"
+        });
+        onCreateQuality('magical_studies', QualityType.Pyramidal, {
+            name: "Magical Studies", category: "Skills",
+            description: "{ $. >= 10: 'Archmage' | $. >= 5: 'Adept' | $. >= 1: 'Novice' | 'Uninitiated' }"
+        });
+        onCreateQuality('thievery', QualityType.Pyramidal, {
+            name: "Thievery", category: "Skills",
+            description: "{ $. >= 10: 'Master Thief' | $. >= 5: 'Burglar' | $. >= 1: 'Pickpocket' | 'Honest' }"
+        });
+
+        // Equipment (Bonus uses logic in string)
+        onCreateQuality('starting_plate', QualityType.Equipable, {
+            name: "Old Plate Armor", category: "Body", 
+            bonus: "{ $armor_skill >= 3 : '$protection + 5' | '$protection + 5, $dexterity - 5' }", 
+            description: "A heavy suit of iron. { $armor_skill < 3 : '**You lack the skill to move freely in this.**' | 'It fits like a second skin.' }",
+            tags: ['auto_equip'] 
+        });
+        onCreateQuality('thieves_tools', QualityType.Equipable, {
+            name: "Thieves' Tools", category: "Hand", bonus: "$thievery + 1", description: "A set of picks and tension wrenches.", tags: ['auto_equip']
+        });
+        onCreateQuality('student_wand', QualityType.Equipable, {
+            name: "Student Wand", category: "Hand", bonus: "$intellect + 1", description: "Birch and owl feather.", tags: ['auto_equip']
+        });
+
+        // 2. Define Character Creation Rules
+        const newRules = { ...rules };
+
+        newRules['$class'] = { type: 'label_select', rule: "Warrior:Warrior | Mage:Mage | Rogue:Rogue", visible: true, readOnly: false, visible_if: '' };
+
+        newRules['$strength'] = { type: 'static', rule: "{ $class == Warrior : 10 | $class == Rogue : 4 | 2 }", visible: true, readOnly: true, visible_if: '' };
+        newRules['$dexterity'] = { type: 'static', rule: "{ $class == Rogue : 10 | $class == Warrior : 4 | 2 }", visible: true, readOnly: true, visible_if: '' };
+        newRules['$intellect'] = { type: 'static', rule: "{ $class == Mage : 10 | 2 }", visible: true, readOnly: true, visible_if: '' };
+
+        newRules['$armor_skill'] = { type: 'static', rule: "{ $class == Warrior : 3 | $class == Rogue : 1 | 0 }", visible: true, readOnly: true, visible_if: "$class == Warrior || $class == Rogue" };
+        newRules['$thievery'] = { type: 'static', rule: "{ $class == Rogue : 1 | 0 }", visible: true, readOnly: true, visible_if: "$class == Rogue" };
+        newRules['$magical_studies'] = { type: 'static', rule: "{ $class == Mage : 1 | 0 }", visible: true, readOnly: true, visible_if: "$class == Mage" };
+
+        newRules['$starting_plate'] = { type: 'static', rule: "{ $class == Warrior : 1 | 0 }", visible: false, readOnly: true, visible_if: '' };
+        newRules['$thieves_tools'] = { type: 'static', rule: "{ $class == Rogue : 1 | 0 }", visible: false, readOnly: true, visible_if: '' };
+        newRules['$student_wand'] = { type: 'static', rule: "{ $class == Mage : 1 | 0 }", visible: false, readOnly: true, visible_if: '' };
+
         onChange(newRules);
     };
 
@@ -616,152 +671,8 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
 
     // NEW PRESET: Variable Start Location
     const addVariableLocation = () => {
-        // Requires user to have created locations first ideally, but we can set up the structure
         const newRules = { ...rules };
         newRules['$location'] = { type: 'label_select', rule: "village:The Village | city:The City", visible: true, readOnly: false, visible_if: '' };
-        onChange(newRules);
-    };
-
-    const addClassSystem = () => {
-        // 1. Define the Qualities
-        
-        // Core Attributes
-        onCreateQuality('class', QualityType.String, { 
-            name: "Character Class",
-            category: "Identity" 
-        });
-        onCreateQuality('strength', QualityType.Pyramidal, { name: "Strength", category: "Attributes" });
-        onCreateQuality('intellect', QualityType.Pyramidal, { name: "Intellect", category: "Attributes" });
-        onCreateQuality('dexterity', QualityType.Pyramidal, { name: "Dexterity", category: "Attributes" });
-        onCreateQuality('protection', QualityType.Counter, { name: "Protection", category: "Hidden" });
-
-        // Skills (Dynamic Names)
-        onCreateQuality('armor_skill', QualityType.Counter, {
-            name: "Armor Proficiency",
-            category: "Skills",
-            description: "{ $. == 3: 'Heavy Armor' | $. == 2: 'Medium Armor' | $. == 1: 'Light Armor' | 'Unarmored' }"
-        });
-
-        onCreateQuality('magical_studies', QualityType.Pyramidal, {
-            name: "Magical Studies",
-            category: "Skills",
-            description: "{ $. >= 10: 'Archmage' | $. >= 5: 'Adept' | $. >= 1: 'Novice' | 'Uninitiated' }"
-        });
-
-        onCreateQuality('thievery', QualityType.Pyramidal, {
-            name: "Thievery",
-            category: "Skills",
-            description: "{ $. >= 10: 'Master Thief' | $. >= 5: 'Burglar' | $. >= 1: 'Pickpocket' | 'Honest' }"
-        });
-
-        // Equipment
-        // Note: Logic inside bonus must return a valid bonus string format (e.g. '$protection + 5')
-        onCreateQuality('starting_plate', QualityType.Equipable, {
-            name: "Old Plate Armor",
-            category: "Body", 
-            bonus: "{ $armor_skill >= 3 : '$protection + 5' | '$protection + 5, $dexterity - 5' }", 
-            description: "A heavy suit of iron. { $armor_skill < 3 : '**You lack the skill to move freely in this.**' | 'It fits like a second skin.' }",
-            tags: ['auto_equip'] 
-        });
-
-        onCreateQuality('thieves_tools', QualityType.Equipable, {
-            name: "Thieves' Tools",
-            category: "Hand",
-            bonus: "$thievery + 1",
-            description: "A set of picks and tension wrenches.",
-            tags: ['auto_equip']
-        });
-
-        onCreateQuality('student_wand', QualityType.Equipable, {
-            name: "Student Wand",
-            category: "Hand",
-            bonus: "$intellect + 1",
-            description: "Birch and owl feather.",
-            tags: ['auto_equip']
-        });
-
-        // 2. Define Character Creation Rules
-        // Using unquoted strings (Warrior) which the parser handles as literals
-        const newRules = { ...rules };
-
-        newRules['$class'] = { 
-            type: 'label_select', 
-            rule: "Warrior:Warrior | Mage:Mage | Rogue:Rogue", 
-            visible: true, 
-            readOnly: false, 
-            visible_if: '' 
-        };
-
-        newRules['$strength'] = { 
-            type: 'static', 
-            rule: "{ $class == Warrior : 10 | $class == Rogue : 4 | 2 }", 
-            visible: true, 
-            readOnly: true, 
-            visible_if: '' 
-        };
-        newRules['$dexterity'] = { 
-            type: 'static', 
-            rule: "{ $class == Rogue : 10 | $class == Warrior : 4 | 2 }", 
-            visible: true, 
-            readOnly: true, 
-            visible_if: '' 
-        };
-        newRules['$intellect'] = { 
-            type: 'static', 
-            rule: "{ $class == Mage : 10 | 2 }", 
-            visible: true, 
-            readOnly: true, 
-            visible_if: '' 
-        };
-
-        // Derived Skills
-        newRules['$armor_skill'] = { 
-            type: 'static', 
-            rule: "{ $class == Warrior : 3 | $class == Rogue : 1 | 0 }", 
-            visible: true, 
-            readOnly: true, 
-            visible_if: "$class == Warrior || $class == Rogue" 
-        };
-
-        newRules['$thievery'] = { 
-            type: 'static', 
-            rule: "{ $class == Rogue : 1 | 0 }", 
-            visible: true, 
-            readOnly: true, 
-            visible_if: "$class == Rogue" 
-        };
-        
-        newRules['$magical_studies'] = { 
-            type: 'static', 
-            rule: "{ $class == Mage : 1 | 0 }", 
-            visible: true, 
-            readOnly: true, 
-            visible_if: "$class == Mage" 
-        };
-
-        // Starting Equipment (Visible: True, so player sees they get it)
-        newRules['$starting_plate'] = {
-            type: 'static',
-            rule: "{ $class == Warrior : 1 | 0 }",
-            visible: true, 
-            readOnly: true,
-            visible_if: "$class == Warrior"
-        };
-        newRules['$thieves_tools'] = {
-            type: 'static',
-            rule: "{ $class == Rogue : 1 | 0 }",
-            visible: true, 
-            readOnly: true,
-            visible_if: "$class == Rogue"
-        };
-        newRules['$student_wand'] = {
-            type: 'static',
-            rule: "{ $class == Mage : 1 | 0 }",
-            visible: true, 
-            readOnly: true,
-            visible_if: "$class == Mage"
-        };
-
         onChange(newRules);
     };
 
@@ -779,6 +690,7 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                 </div>
             </div>
 
+            {/* HELP TEXT BLOCK (Restored) */}
             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', fontSize: '0.85rem', color: '#ccc' }}>
                 <p style={{ margin: '0 0 0.5rem 0' }}><strong>How to use:</strong> Define the starting qualities for new characters. You can create inputs, choices, or hidden values.</p>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.4' }}>
@@ -789,7 +701,7 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                 </ul>
             </div>
             
-            {/* ... Render Logic (Same as before) ... */}
+            {/* ... Render Logic ... */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {renderOrder.map(key => {
                     const rule = rules[key];
@@ -820,6 +732,7 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                                     className="form-select" 
                                     style={{ width: '120px', padding: '2px' }}
                                 >
+                                    <option value="header">-- Header --</option>
                                     <option value="string">Text Input</option>
                                     <option value="static">Static/Calc</option>
                                     <option value="label_select">Buttons</option>
@@ -828,6 +741,8 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                                 </select>
                                 <button onClick={() => handleDelete(key)} style={{color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer'}}>✕</button>
                             </div>
+
+                            {/* CONTROLS ROW */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                 <div>
                                     <input 
@@ -836,8 +751,9 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                                         className="form-input" 
                                         placeholder={rulePlaceholder}
                                     />
+                                    <span className="property-hint" style={{marginLeft: 0}}>Rule / Data</span>
                                 </div>
-                                {rule.type !== 'static' && (
+                                {rule.type !== 'static' && rule.type !== 'header' && (
                                      <div>
                                          <input 
                                             value={rule.visible_if || ''} 
@@ -845,16 +761,49 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                                             className="form-input" 
                                             placeholder="Visible If (e.g. $q == 1)"
                                         />
+                                        <span className="property-hint" style={{marginLeft: 0}}>Condition</span>
                                      </div>
                                 )}
                             </div>
-                            <div style={{ display: 'flex', gap: '15px', marginTop: '0.5rem', fontSize: '0.8rem' }}>
+
+                            {/* FLAGS ROW */}
+                            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem', borderTop: '1px dashed #333', paddingTop: '0.5rem' }}>
                                 <label className="toggle-label">
                                     <input type="checkbox" checked={rule.visible} onChange={e => handleUpdate(key, 'visible', e.target.checked)} /> Visible
                                 </label>
                                 <label className="toggle-label">
                                     <input type="checkbox" checked={rule.readOnly} onChange={e => handleUpdate(key, 'readOnly', e.target.checked)} /> Read-Only
                                 </label>
+
+                                {rule.type === 'string' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
+                                        <label style={{ marginRight:'5px', color:'#aaa' }}>Format:</label>
+                                        <select 
+                                            value={rule.input_transform || 'none'}
+                                            onChange={e => handleUpdate(key, 'input_transform', e.target.value as any)}
+                                            className="form-select"
+                                            style={{ width: 'auto', padding: '2px' }}
+                                        >
+                                            <option value="none">None</option>
+                                            <option value="lowercase">lowercase</option>
+                                            <option value="uppercase">UPPERCASE</option>
+                                            <option value="capitalize">Capitalize</option>
+                                        </select>
+                                    </div>
+                                )}
+                                
+                                {['label_select', 'image_select', 'labeled_image_select'].includes(rule.type) && (
+                                     <div style={{ marginLeft: 'auto' }}>
+                                         <label className="toggle-label">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={rule.displayMode === 'modal'} 
+                                                onChange={e => handleUpdate(key, 'displayMode', e.target.checked ? 'modal' : 'inline')} 
+                                            /> 
+                                            Use Modal
+                                         </label>
+                                     </div>
+                                )}
                             </div>
                         </div>
                     );

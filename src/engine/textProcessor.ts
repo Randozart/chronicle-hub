@@ -1,8 +1,7 @@
 // src/engine/textProcessor.ts
 
-import { PlayerQualities, QualityDefinition, QualityState, QualityType, WorldSettings } from './models';
+import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
 
-// --- TYPE DEFINITIONS for the Parser ---
 type EvaluationContext = 'LOGIC' | 'TEXT';
 
 // --- CORE PARSING ENGINE ---
@@ -15,7 +14,6 @@ export function evaluateText(
     resolutionRoll: number
 ): string {
     if (!rawText) return '';
-
     const [cleanText, aliasMap] = preprocessAliases(rawText);
     return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, aliasMap, selfContext, resolutionRoll);
 }
@@ -60,13 +58,14 @@ function evaluateExpression(
 ): string | number | boolean {
     const trimmedExpr = expr.trim();
 
+    // 1. Macros
     if (trimmedExpr.startsWith('%')) {
         return evaluateMacro(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
     }
     
-    // Check for Conditional Logic (colon OR pipe)
+    // 2. Conditional Logic (colon OR pipe)
     if (trimmedExpr.includes(':') || trimmedExpr.includes('|')) {
-        // Check for special pluralization syntax first
+        // Pluralization { $q | Sing | Plur }
         const pluralMatch = trimmedExpr.match(/^(\$[^|]+)\s*\|\s*([^|]+)\s*\|\s*(.+)$/);
         if (pluralMatch) {
             const [, qualityVar, singular, plural] = pluralMatch;
@@ -76,12 +75,10 @@ function evaluateExpression(
         return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
     }
 
+    // 3. Complex Expression (Math/Variables)
     return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
 }
 
-/**
- * Handles { condition : result | else } logic.
- */
 function evaluateConditional(
     expr: string, 
     qualities: PlayerQualities, 
@@ -111,12 +108,9 @@ function evaluateConditional(
     return "";
 }
 
-/**
- * Evaluates a condition string (e.g. "$gold > 10") and returns a boolean.
- */
 export function evaluateCondition(
     expression: string | undefined, 
-    qualities: PlayerQualities,
+    qualities: PlayerQualities, 
     defs: Record<string, QualityDefinition> = {}, 
     aliases: Record<string, string> = {},
     self: { qid: string, state: QualityState } | null = null,
@@ -141,20 +135,19 @@ export function evaluateCondition(
 
     const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
     if (!operatorMatch) {
-        // Single variable boolean check: "$is_admin"
-        // Try to resolve variable
+        // Boolean variable check (must start with sigil)
         const match = trimExpr.match(/^([@\$\.])([a-zA-Z0-9_]+)/);
         if (match) {
              const val = resolveVariable(trimExpr, qualities, defs, aliases, self, resolutionRoll);
              return val === 'true' || Number(val) > 0;
         }
-        // Literal check
         return trimExpr === 'true';
     }
     
     const operator = operatorMatch[0];
     const [leftRaw, rightRaw] = trimExpr.split(operator);
     
+    // FIX: Pass all required arguments to resolveComplexExpression
     const leftVal = resolveComplexExpression(leftRaw.trim(), qualities, defs, aliases, self, resolutionRoll);
     const rightVal = resolveComplexExpression(rightRaw.trim(), qualities, defs, aliases, self, resolutionRoll);
 
@@ -210,25 +203,22 @@ function evaluateMacro(
         case "chance": {
             return calculateChance(requiredArgsStr, optionalArgsStr, qualities, defs, aliases, self, resolutionRoll);
         }
-        // UI Helpers (should be handled by frontend components usually, but fallback here)
         case "label":
         case "image":
         case "labeled_image":
-             return ""; // Return empty in text context
-        
-        // Write Ops (should fail silently in Read context)
+            return ""; 
         case "schedule":
         case "reset":
         case "update":
         case "cancel":
         case "all":
             return ""; 
-
         default:
-            return `[Unknown: ${command}]`;
+            return `[Unknown Macro: ${command}]`;
     }
 }
 
+// FIX: Exported so StoryletDisplay can use it via getChallengeDetails wrapper logic
 export function calculateChance(
     skillCheckExpr: string,
     optionalArgsStr: string | undefined,
@@ -238,11 +228,15 @@ export function calculateChance(
     self: { qid: string, state: QualityState } | null,
     resolutionRoll: number
 ): number {
+    // FIX: Check for undefined expr
+    if (!skillCheckExpr) return 0;
+
     const skillCheckMatch = skillCheckExpr.match(/^\s*(.*?)\s*(>>|<<|==|!=)\s*(.*)\s*$/);
     if (!skillCheckMatch) return 0;
 
     const [, skillPart, operator, targetPart] = skillCheckMatch;
     
+    // FIX: Pass all args to evaluateExpression
     const skillLevel = Number(evaluateExpression(skillPart, qualities, defs, aliases, self, resolutionRoll));
     const target = Number(evaluateExpression(targetPart, qualities, defs, aliases, self, resolutionRoll));
 
@@ -284,12 +278,10 @@ export function calculateChance(
         else if (skillLevel < target) successChance = ((skillLevel - lowerBound) / margin) * pivotDecimal;
         else successChance = pivotDecimal + (((skillLevel - target) / margin) * (1 - pivotDecimal));
     } else {
-        // Simplified fallback for other ops
          const distance = Math.abs(skillLevel - target);
          if (operator === '==') successChance = distance >= margin ? 0 : 1.0 - (distance / margin);
          else if (operator === '!=') successChance = distance >= margin ? 1.0 : (distance / margin);
          else if (operator === '<<') {
-             // Inverse of >> logic roughly
              successChance = 1 - (((skillLevel - (target - margin)) / (2 * margin)));
          }
     }
@@ -308,22 +300,15 @@ function resolveComplexExpression(
     resolutionRoll: number
 ): string | number | boolean {
     
-    // FIX: Only replace VALID variable patterns (must start with sigil)
-    const varReplacedExpr = expr.replace(/([@\$\.])([a-zA-Z0-9_]+)((?:\.[a-zA-Z0-9_]+)*)(?:\[(.*?)\])?/g, 
+    // STRICT REGEX: Must start with sigil @, $, #, or .
+    const varReplacedExpr = expr.replace(/([@#\$\.])([a-zA-Z0-9_]+)((?:\.[a-zA-Z0-9_]+)*)(?:\[(.*?)\])?/g, 
         (match) => { 
             const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll);
-            
-            // SMART QUOTING:
-            // If the resolved value is a string, wrap it in quotes for JS Eval.
-            // Unless it's a number.
-            if (typeof resolved === 'string') {
-                return `"${resolved}"`;
-            }
+            if (typeof resolved === 'string') return `"${resolved}"`;
             return resolved.toString();
         }
     );
 
-    // Sanitize: If alphanumeric only, return as string literal (e.g. "Warrior")
     if (/^[a-zA-Z0-9_]+$/.test(varReplacedExpr.trim())) {
         return varReplacedExpr.trim();
     }
@@ -331,7 +316,6 @@ function resolveComplexExpression(
     try {
         return new Function(`return ${varReplacedExpr}`)();
     } catch (e) {
-        // Fallback: Return raw string if eval fails (e.g. string concat without quotes)
         return varReplacedExpr;
     }
 }
@@ -344,23 +328,26 @@ function resolveVariable(
     self: { qid: string, state: QualityState } | null,
     resolutionRoll: number
 ): string | number {
-    const match = fullMatch.match(/([@\$\.])([a-zA-Z0-9_]+)((?:\.[a-zA-Z0-9_]+)*)(?:\[(.*?)\])?/);
+    // STRICT REGEX: Matches must start with a sigil
+    const match = fullMatch.match(/^([@#\$\.])([a-zA-Z0-9_]+)((?:\.[a-zA-Z0-9_]+)*)(?:\[(.*?)\])?/);
     if (!match) return fullMatch;
 
     const [, sigil, name, propChain, levelSpoof] = match;
 
     let qualityId: string | undefined;
     if (sigil === '$') qualityId = name;
+    else if (sigil === '#') qualityId = name; 
     else if (sigil === '@') qualityId = aliases[name];
     else if (sigil === '$.') qualityId = self?.qid;
-    if (!qualityId) return `[Unknown Var: ${fullMatch}]`;
+
+    if (!qualityId) return `[Unknown: ${fullMatch}]`;
 
     const definition = defs[qualityId];
-    if (!definition) return `[Unknown Quality: ${qualityId}]`;
+    if (!definition) return `[Missing Def: ${qualityId}]`;
     
     let state = qualities[qualityId];
     if (!state && self?.qid === qualityId) state = self.state;
-    // Mock state if missing (e.g. new char creation)
+    // Default state for missing variables to allow math to proceed (e.g. 0)
     if (!state) state = { qualityId, type: definition.type, level: 0, stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 } as any;
 
     let contextQualities = qualities;
@@ -414,17 +401,20 @@ function preprocessAliases(text: string): [string, Record<string, string>] {
     return [cleanText, aliasMap];
 }
 
-// UI Helper
+// UI Helper - Wraps internal calls
 export function getChallengeDetails(
     challengeString: string | undefined,
     qualities: PlayerQualities,
     defs: Record<string, QualityDefinition>
 ): { chance: number | null, text: string } {
     if (!challengeString) return { chance: null, text: '' };
+    
+    // 1. Evaluate logic
     const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, null, 0);
     const chance = parseInt(chanceStr, 10);
     if (isNaN(chance)) return { chance: null, text: '' };
 
+    // 2. Extract Label
     let text = "Challenge";
     const match = challengeString.match(/\$([a-zA-Z0-9_]+)/);
     if (match) {

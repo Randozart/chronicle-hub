@@ -2,7 +2,7 @@
 
 import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition } from '@/engine/models';
 import { useState } from 'react';
-import { evaluateText, evaluateCondition, calculateChance, getChallengeDetails } from '@/engine/textProcessor';
+import { evaluateText, evaluateCondition, getChallengeDetails } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
 import FormattedText from './FormattedText'; // Assuming you have this from previous steps
