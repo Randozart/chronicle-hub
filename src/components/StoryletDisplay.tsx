@@ -1,3 +1,4 @@
+// src/components/StoryletDisplay.tsx
 'use client';
 
 import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition } from '@/engine/models';
@@ -5,7 +6,7 @@ import { useState } from 'react';
 import { evaluateText, evaluateCondition, getChallengeDetails } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
-import FormattedText from './FormattedText'; // Assuming you have this from previous steps
+import FormattedText from './FormattedText';
 
 interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
@@ -52,6 +53,11 @@ export default function StoryletDisplay({
     
     const storylet = eventData; 
     
+    // Helper to call evaluateText with standard display context (no engine, no roll)
+    const evalText = (text: string | undefined) => {
+        return evaluateText(text, qualities, qualityDefs, null, 0);
+    };
+
     const handleOptionClick = async (option: ResolveOption) => {
         if (isLoading) return;
         setIsLoading(true);
@@ -97,8 +103,9 @@ export default function StoryletDisplay({
         if (explicitReturn) {
             const target = storyletDefs[explicitReturn];
             if (target) {
-                const isVisible = evaluateCondition(target.visible_if, qualities);
-                const isUnlocked = evaluateCondition(target.unlock_if, qualities);
+                // UPDATE: Pass required args to evaluateCondition
+                const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, {}, null, 0);
+                const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, {}, null, 0);
                 if (!isVisible || !isUnlocked) return undefined; 
                 return explicitReturn;
             }
@@ -161,18 +168,22 @@ export default function StoryletDisplay({
     };
 
     const optionsToDisplay: DisplayOption[] = storylet.options
-        .filter(option => evaluateCondition(option.visible_if, qualities))
+        // UPDATE: Pass required args to evaluateCondition
+        .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, {}, null, 0))
         .map(option => {
-            const isLocked = !evaluateCondition(option.unlock_if, qualities);
-            const lockReason = isLocked ? getLockReason(option.unlock_if!) : '';
+            // UPDATE: Pass required args to evaluateCondition
+            const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, {}, null, 0);
+            const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
+            
+            // UPDATE: getChallengeDetails already has the correct signature in the new file, just ensure we use it
             const { chance, text } = getChallengeDetails(
-            option.challenge, 
-            qualities, 
-            qualityDefs
-        );
-        
-        const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}%]` : '';
-            return { ...option, isLocked, lockReason, skillCheckText, chance, };
+                option.challenge, 
+                qualities, 
+                qualityDefs
+            );
+            
+            const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}%]` : '';
+            return { ...option, isLocked, lockReason, skillCheckText, chance };
         });
         
     return (
@@ -190,13 +201,14 @@ export default function StoryletDisplay({
                     </div>
                 )}
                 <div className="storylet-text-content">
-                    <h1>{evaluateText(storylet.name, qualities, qualityDefs, null, 0)}</h1>
+                    {/* UPDATE: Use helper evalText */}
+                    <h1>{evalText(storylet.name)}</h1>
                     <div className="storylet-text">
-                        <FormattedText text={evaluateText(storylet.text, qualities, qualityDefs, null, 0)} />
+                        <FormattedText text={evalText(storylet.text)} />
                     </div>
                     {storylet.metatext && (
                          <div className="metatext">
-                            <FormattedText text={evaluateText(storylet.metatext, qualities, qualityDefs, null, 0)} />
+                            <FormattedText text={evalText(storylet.metatext)} />
                         </div>
                     )}
                 </div>
@@ -206,7 +218,6 @@ export default function StoryletDisplay({
                 {optionsToDisplay.map((option) => {
                     const showCost = settings.useActionEconomy;
                     
-                    // NEW: Better Cost Badge Logic
                     let costDisplay = null;
                     if (showCost) {
                         const rawCost = option.computed_action_cost;
@@ -218,7 +229,6 @@ export default function StoryletDisplay({
                                  costDisplay = <span className="cost-badge cost-free">Free</span>;
                              }
                         } else if (typeof rawCost === 'string') {
-                            // Logic string ($wounds++)
                             const cleanLogic = rawCost.replace(/\$/g, '');
                             costDisplay = <span className="cost-badge cost-logic" title={rawCost}>{cleanLogic}</span>;
                         }
@@ -267,9 +277,8 @@ export default function StoryletDisplay({
             <div className="footer-actions">
                 {returnTargetId !== null && (
                     <button className="option-button return-button" onClick={() => onFinish(qualities, returnTargetId)}>
-                         {/* Logic to distinguish Card vs Storylet return */}
                         {returnTargetId && returnTargetName
-                            ? `Return to ${evaluateText(returnTargetName, qualities, qualityDefs, null, 0)}`
+                            ? `Return to ${evalText(returnTargetName)}`
                             : ('deck' in storylet)
                                 ? 'Put Card Back (Return to Hand)'
                                 : 'Return to Location'
