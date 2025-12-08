@@ -16,9 +16,11 @@ export async function GET(request: NextRequest) {
     // 2. Get params
     const id = request.nextUrl.pathname.split('/').pop();
     const { searchParams } = new URL(request.url);
-    const storyIdParam = searchParams.get('storyId');
-    if (!storyIdParam) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
-    const storyId = storyIdParam;
+    const storyId = searchParams.get('storyId');
+    const characterId = searchParams.get('characterId'); // <-- ADD THIS
+
+    if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
+    if (!characterId) return NextResponse.json({ error: 'Missing characterId' }, { status: 400 }); // <-- ADD THIS
 
     if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
 
@@ -27,7 +29,8 @@ export async function GET(request: NextRequest) {
         const event = await getEvent(storyId, id);
         if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-        const character = await getCharacter(userId, storyId);
+        // Use the specific characterId now
+        const character = await getCharacter(userId, storyId, characterId); // <-- UPDATE THIS CALL
         if (!character) return NextResponse.json({ error: 'No character' }, { status: 404 });
         
         const config = await getWorldConfig(storyId);
@@ -37,6 +40,7 @@ export async function GET(request: NextRequest) {
         const renderedEvent = engine.renderStorylet(event);
 
         return NextResponse.json(renderedEvent);
+
 
     } catch (error) {
         console.error(error);

@@ -36,7 +36,9 @@ export class GameEngine {
         this.worldQualities = worldQualities;
         this.resolutionRoll = Math.random() * 100;
     }
-
+public setQualities(newQualities: PlayerQualities): void {
+    this.qualities = JSON.parse(JSON.stringify(newQualities));
+}
     public getQualities(): PlayerQualities { return this.qualities; }
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
 
@@ -79,7 +81,7 @@ export class GameEngine {
     }
 
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
-        this.changes = [];
+//   this.changes = [];
         this.scheduledUpdates = [];
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
@@ -131,18 +133,39 @@ export class GameEngine {
     // --- EFFECT API ---
 
     public applyEffects(effectsString: string): void {
-        const tokens = tokenize(effectsString);
-        const state: EvaluationState = {
-            qualities: this.qualities,
-            worldQualities: this.worldQualities,
-            defs: this.worldContent.qualities,
-            aliases: {},
-            self: null,
-            resolutionRoll: this.resolutionRoll,
-            engine: this
-        };
-        const parser = new ScribeParser(tokens, state);
-        parser.evaluate('EFFECT'); // Does parsing and calls engine methods
+        // --- ADD DEBUG LOGGING HERE ---
+        console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
+        // The regex `,(?![^\[]*\]|[^\{]*\})/g` splits by commas not inside `[]` or `{}`
+        const effects = effectsString.split(/,(?![^\[]*\]|[^\{]*\})/g); 
+        console.log(`[ENGINE DEBUG] Split into effects:`, effects);
+        // --- END DEBUG ---
+
+        for (const effect of effects) {
+            if (!effect.trim()) {
+                console.log(`[ENGINE DEBUG] Skipping empty effect: "${effect}"`);
+                continue;
+            }
+            const tokens = tokenize(effect.trim());
+            const state: EvaluationState = {
+                qualities: this.qualities,
+                worldQualities: this.worldQualities,
+                defs: this.worldContent.qualities,
+                aliases: {},
+                self: null,
+                resolutionRoll: this.resolutionRoll,
+                engine: this
+            };
+            const parser = new ScribeParser(tokens, state);
+            
+            // --- ADD DEBUG LOGGING HERE ---
+            console.log(`[ENGINE DEBUG] Evaluating effect "${effect.trim()}". Tokens:`, tokens.map(t => t.value).join(' '));
+            // --- END DEBUG ---
+            
+            parser.evaluate('EFFECT'); // This is where the actual mutation happens
+            
+            // Log state after each effect application
+            console.log(`[ENGINE DEBUG] After effect "${effect.trim()}", tutorial_progress is:`, (this.qualities['tutorial_progress'] as any)?.level);
+        }
     }
 
     // --- PUBLIC METHODS CALLED BY PARSER ---
@@ -189,8 +212,17 @@ export class GameEngine {
     }
 
     public changeQuality(qid: string, op: string, value: number | string, metadata: { desc?: string; source?: string }): void {
-        const def = this.worldContent.qualities[qid];
-        if (!def) return;
+        console.log(`[ENGINE.changeQuality] Received command: qid='${qid}', op='${op}', value='${value}'`);
+        if (!qid || typeof qid !== 'string') {
+            console.error("[ENGINE.changeQuality] ERROR: Invalid or missing qid. Aborting change.");
+            return;
+        }
+        
+         const def = this.worldContent.qualities[qid];
+        if (!def) {
+            console.error(`[ENGINE.changeQuality] ERROR: No definition found for qid='${qid}'. Aborting change.`);
+            return;
+        }
 
         let targetState = this.qualities;
         let effectiveQid = qid;

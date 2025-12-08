@@ -3,7 +3,7 @@
 import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
 import { GameEngine } from './gameEngine';
 
-const DEBUG = true; // <--- SET TO true TO ENABLE LOGS
+const DEBUG = false; // <--- SET TO true TO ENABLE LOGS
 let indent = 0;
 const log = (message: string, ...args: any[]) => {
     if (DEBUG) {

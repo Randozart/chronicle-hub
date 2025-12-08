@@ -89,9 +89,9 @@ export default function GameHub(props: GameHubProps) {
         setIsLoading(true);
         try {
             // We always fetch the RAW template. The client is the source of truth for rendering.
-            const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}`);
-            if (!response.ok) throw new Error(`Event ${eventId} not found.`);
-            
+            if (!character) return; // Add a safety check
+            const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}&characterId=${character.characterId}`);            if (!response.ok) throw new Error(`Event ${eventId} not found.`);
+                        
             const rawEventData = await response.json();
             setActiveEvent(rawEventData); // Set the raw, un-rendered event data
 
