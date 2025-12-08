@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage } from '@/engine/models';
+import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage, WorldConfig } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import ElysiumLayout from './layouts/ElysiumLayout';
@@ -43,6 +43,7 @@ interface GameHubProps {
 
 export default function GameHub(props: GameHubProps) {
     
+    
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
     const [location, setLocation] = useState<LocationDefinition | null>(props.initialLocation);
     const [hand, setHand] = useState<Opportunity[]>(props.initialHand);
@@ -52,15 +53,18 @@ export default function GameHub(props: GameHubProps) {
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
 
-    // Sync state when Server Component sends new data
+    // Sync state when Server Component sends new data (e.g., page load/reload)
     useEffect(() => {
         if (props.initialCharacter) {
             setCharacter(props.initialCharacter);
             setLocation(props.initialLocation);
             setHand(props.initialHand);
-            setShowMap(false); 
+            setShowMap(false);
+            // We are back at the location hub, so clear any active event
+            setActiveEvent(null); 
         }
     }, [props.initialCharacter, props.initialLocation, props.initialHand]);
+
 
 
     // --- HANDLERS ---
@@ -75,22 +79,47 @@ export default function GameHub(props: GameHubProps) {
         } catch (e) { console.error(e); }
     };
 
+    
+    
     const showEvent = useCallback(async (eventId: string | null) => {
-        if (!eventId) { setActiveEvent(null); return; }
+        if (!eventId) { 
+            setActiveEvent(null); 
+            return; 
+        }
         setIsLoading(true);
         try {
-            // FIX 2: Use props.locationStorylets
-            const preloadedEvent = props.locationStorylets.find(s => s.id === eventId) || hand.find(o => o.id === eventId);
-            if (preloadedEvent) {
-                setActiveEvent(preloadedEvent);
-            } else {
-                const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}`);
-                if (!response.ok) throw new Error(`Event ${eventId} not found.`);
-                const eventData = await response.json();
-                setActiveEvent(eventData);
-            }
-        } catch (error) { console.error(error); setActiveEvent(null); } finally { setIsLoading(false); }
-    }, [hand, props.locationStorylets, props.storyId]); 
+            // We always fetch the RAW template. The client is the source of truth for rendering.
+            const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}`);
+            if (!response.ok) throw new Error(`Event ${eventId} not found.`);
+            
+            const rawEventData = await response.json();
+            setActiveEvent(rawEventData); // Set the raw, un-rendered event data
+
+        } catch (error) { 
+            console.error(error); 
+            setActiveEvent(null); 
+        } finally { 
+            setIsLoading(false); 
+        }
+    }, [props.storyId]); 
+
+    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
+        setCharacter(prevCharacter => {
+            if (!prevCharacter) return null;
+            return { ...prevCharacter, qualities: newQualities };
+        });
+    }, []);
+
+    const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
+        // First, update the character state immediately.
+        handleQualitiesUpdate(newQualities);
+        // Then, trigger the navigation to the next event.
+        showEvent(redirectId ?? null);
+    }, [handleQualitiesUpdate, showEvent]);
+
+    const handleCardPlayed = useCallback((cardId: string) => {
+        setHand(prev => prev.filter(c => c.id !== cardId));
+    }, []);
 
     const handleDrawCard = useCallback(async () => {
         if (isLoading || !character) return;
@@ -122,23 +151,6 @@ export default function GameHub(props: GameHubProps) {
             }
         } catch(e) { console.error(e); } finally { setIsLoading(false); }
     }, [character, props.storyId]);
-
-    const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
-        if (character) {
-            setCharacter({ ...character, qualities: newQualities });
-        }
-        showEvent(redirectId ?? null);
-    }, [character, showEvent]);
-
-    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
-        if (character) {
-            setCharacter({ ...character, qualities: newQualities });
-        }
-    }, [character]);
-
-    const handleCardPlayed = useCallback((cardId: string) => {
-        setHand(prev => prev.filter(c => c.id !== cardId));
-    }, []);
 
     const handleDeleteChar = async (charId: string, e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent clicking the card itself
@@ -292,6 +304,16 @@ export default function GameHub(props: GameHubProps) {
 
     if (!location) return <div>Loading location data...</div>;
     
+    const worldConfig: WorldConfig = {
+        settings: props.settings, qualities: props.qualityDefs, decks: props.deckDefs,
+        locations: props.locations, regions: props.regions, images: props.imageLibrary,
+        categories: props.categories || {}, char_create: {}, markets: props.markets,
+    };
+    const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
+    
+    // Render the active event using the LATEST character state
+    const renderedActiveEvent = activeEvent ? renderEngine.renderStorylet(activeEvent) : null;
+
     // --- CALCULATE DECK STATS ---
     let currentDeckStats = undefined;
 
@@ -312,50 +334,32 @@ export default function GameHub(props: GameHubProps) {
         // Pass the full config to the engine
         const engine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
         
+        let currentDeckStats;
         const deckDef = props.deckDefs[location.deck];
-        
         if (deckDef) {
-            // Parse Hand Size
-            const handVal = engine.evaluateText(`{${deckDef.hand_size || 3}}`);
+            const handVal = renderEngine.evaluateText(`{${deckDef.hand_size || 3}}`);
             const handSize = parseInt(handVal, 10) || 3;
-
-            // Parse Deck Size
-            const deckVal = engine.evaluateText(`{${deckDef.deck_size || 0}}`);
+            const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
             const deckSize = parseInt(deckVal, 10) || 0;
-
             currentDeckStats = { handSize, deckSize };
         }
     }
 
     const locationMarket = location?.marketId;
-    const regionMarket = (location?.regionId && props.regions[location.regionId]) 
-        ? props.regions[location.regionId].marketId 
-        : null;
-    
+    const regionMarket = (location?.regionId && props.regions[location.regionId]) ? props.regions[location.regionId].marketId : null;
     const activeMarketId = locationMarket || regionMarket || undefined;
-    
     const activeMarketDefinition = activeMarketId && props.markets[activeMarketId] ? props.markets[activeMarketId] : null;
 
-    // FIX 3: Use props.PropertyName for values not in local scope
     const layoutProps: LayoutProps = {
-        character,
-        location, 
-        hand,
-        activeEvent,
-        isLoading,
+        character, location, hand, isLoading, storyId: props.storyId,
+        activeEvent: renderedActiveEvent, // Pass the newly rendered event
         
-        qualityDefs: props.qualityDefs,
-        storyletDefs: props.storyletDefs,
-        opportunityDefs: props.opportunityDefs,
-        settings: props.settings,
-        imageLibrary: props.imageLibrary,
-        categories: props.categories,
-        locationStorylets: props.locationStorylets, 
-        storyId: props.storyId,
-        deckDefs: props.deckDefs,
-        currentDeckStats,
-        currentMarketId: activeMarketId, // <--- THIS MUST BE HER
-
+        // Pass down all definitions and handlers
+        qualityDefs: props.qualityDefs, storyletDefs: props.storyletDefs, opportunityDefs: props.opportunityDefs,
+        settings: props.settings, imageLibrary: props.imageLibrary, categories: props.categories,
+        locationStorylets: props.locationStorylets, deckDefs: props.deckDefs, currentDeckStats,
+        currentMarketId: activeMarketId, 
+        
         onOptionClick: showEvent,
         onDrawClick: handleDrawCard,
         onEventFinish: handleEventFinish,
@@ -371,10 +375,7 @@ export default function GameHub(props: GameHubProps) {
         worldState: props.worldState
     };
 
-
-
     const style = props.settings.layoutStyle || 'nexus';
-
     const renderLayout = () => {
         switch (style) {
             case 'london': return <LondonLayout {...layoutProps} />;
@@ -385,22 +386,14 @@ export default function GameHub(props: GameHubProps) {
     };
 
     return (
-        
-        <div 
-            data-theme={props.settings.visualTheme || 'default'} 
-            className="theme-wrapper"
-            style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}
-        >
+        <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             {renderLayout()}
-            
             {showMap && (
                 <MapModal 
                     currentLocationId={character.currentLocationId}
-                    locations={props.locations}
-                    regions={props.regions}
+                    locations={props.locations} regions={props.regions}
                     imageLibrary={props.imageLibrary}
-                    onTravel={handleTravel}
-                    onClose={() => setShowMap(false)}
+                    onTravel={handleTravel} onClose={() => setShowMap(false)}
                 />
             )}
         </div>

@@ -123,6 +123,9 @@ export interface CharCreateRule {
     // NEW:
     input_transform?: 'none' | 'lowercase' | 'uppercase' | 'capitalize';
     displayMode?: 'inline' | 'modal'; // For selection types
+    ordering?: number;
+    isModal?: boolean;
+    showOnCard?: boolean;
 }
 
 export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";

@@ -3,6 +3,14 @@
 import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
 import { GameEngine } from './gameEngine';
 
+const DEBUG = true; // <--- SET TO true TO ENABLE LOGS
+let indent = 0;
+const log = (message: string, ...args: any[]) => {
+    if (DEBUG) {
+        console.log(`${'  '.repeat(indent)}${message}`, ...args);
+    }
+};
+
 export type EvaluationContext = 'TEXT' | 'LOGIC' | 'EFFECT';
 
 export interface Token {
@@ -25,8 +33,6 @@ type MacroHandler = (args: string[], options: string[], state: EvaluationState) 
 // --- TOKENIZER (LEXER) ---
 
 const tokenSpecification: [string, RegExp][] = [
-    // FIX 1: Capture Whitespace as a token, don't discard it immediately.
-    // The parser will decide when to ignore it.
     ['WHITESPACE', /^\s+/], 
     ['COMMENT', /^\/\*[\s\S]*?\*\/|^\/\/.*/],
     ['LOGIC_BLOCK_START', /^\{/],
@@ -43,15 +49,20 @@ const tokenSpecification: [string, RegExp][] = [
     ['NUMBER', /^\d+(?:\.\d+)?/],
     ['DOT_ACCESSOR', /^\./],
     ['KEYWORD', /^\b(true|false|recur|unique|invert|first|last|all)\b/],
+    
+    // MOVED UP: Must match && and || before single | or & (if & was alternator)
+    ['LOGICAL_OP', /^(&&|\|\|)/], 
+    
     ['CONDITIONAL', /^:/],
     ['ALTERNATOR', /^\|/],
     ['SEPARATOR', /^;/],
     ['LIST_SEPARATOR', /^,/],
-    ['LOGICAL_OP', /^(&&|\|\|)/],
+    
+    // ['LOGICAL_OP', ... ] // OLD POSITION WAS HERE
+    
     ['COMPARISON_OP', /^(==|!=|>=|<=|>>|<<|><|<>|>|<)/],
     ['ASSIGNMENT_OP', /^(\+\+|--|\+=|-=|\*=|=)/],
     ['MATH_OP', /^[+\-\*\/~%]/],
-    // FIX 2: Text regex is less aggressive, allowing some punctuation that isn't logic
     ['TEXT', /^[^@#$%\s{}()[\]:;,.<>=!&|~+-\/]+/] 
 ];
 
@@ -121,293 +132,291 @@ export class ScribeParser {
     constructor(tokens: Token[], state: EvaluationState) {
         this.tokens = tokens;
         this.state = state;
+        log(`[NEW PARSER] Tokens:`, tokens.map(t => t.value).join(' '));
     }
 
     private peek(): Token | null { 
-        // Skip whitespace when peeking for logic structure
         let p = this.position;
-        while (this.tokens[p] && this.tokens[p].type === 'WHITESPACE') {
-            p++;
-        }
+        while (this.tokens[p] && this.tokens[p].type === 'WHITESPACE') { p++; }
         return this.tokens[p] || null; 
     }
 
     private consume(): Token { 
-        // Consume whitespace blindly if next token is whitespace
-        while (this.tokens[this.position] && this.tokens[this.position].type === 'WHITESPACE') {
-            this.position++;
-        }
-        return this.tokens[this.position++]; 
+        while (this.tokens[this.position] && this.tokens[this.position].type === 'WHITESPACE') { this.position++; }
+        const token = this.tokens[this.position++];
+        log(`[CONSUME] ${token?.type}('${token?.value}')`);
+        return token;
     }
 
     private match(type: string): Token | null { 
-        if (this.peek()?.type === type) { return this.consume(); } 
+        const peeked = this.peek();
+        if (peeked?.type === type) { return this.consume(); } 
         return null; 
     }
 
-    // NEW: Special consumer for text content that preserves spaces
-    private consumeAsText(): string {
+    private consumeBranchContent(): string {
+        log(`[consumeBranchContent] START`);
+        indent++;
         let text = "";
-        // Consume raw tokens including whitespace until we hit a logic delimiter
         while (this.tokens[this.position]) {
             const t = this.tokens[this.position];
-            // Stop at delimiters that signify flow control in the current context
             if (['ALTERNATOR', 'CONDITIONAL', 'LOGIC_BLOCK_END', 'SEPARATOR'].includes(t.type)) {
+                log(`[consumeBranchContent] Stop at ${t.type}`);
                 break;
             }
-            // Variables inside text need to be resolved? 
-            // In `{ $q >= 5 : Text }`, "Text" might contain other variables.
-            // But the tokenizer flattens the block.
-            // If the block contains nested {}, the main `evaluateText` loop handled it.
-            // So here we are just grabbing the literals.
+            if (t.type === 'LOGIC_BLOCK_START') {
+                const start = this.position;
+                let balance = 1;
+                let i = start + 1;
+                while (i < this.tokens.length) {
+                    if (this.tokens[i].type === 'LOGIC_BLOCK_START') balance++;
+                    if (this.tokens[i].type === 'LOGIC_BLOCK_END') balance--;
+                    if (balance === 0) break;
+                    i++;
+                }
+                
+                if (balance === 0) {
+                    const blockTokens = this.tokens.slice(start + 1, i);
+                    const subParser = new ScribeParser(blockTokens, this.state);
+                    const result = subParser.evaluate('LOGIC');
+                    log(`[consumeBranchContent] Nested Block Result: "${result}"`);
+                    text += String(result);
+                    this.position = i + 1; 
+                    continue; 
+                }
+            }
+            text += t.value;
+            this.position++;
+        }
+        indent--;
+        log(`[consumeBranchContent] END. Result: "${text.trim()}"`);
+        return text;
+    }
+
+    public evaluate(context: EvaluationContext): any {
+        log(`[EVALUATE] Context: ${context}`);
+        indent++;
+        const result = this.evaluateExpression();
+        indent--;
+        log(`[EVALUATE] Final Result:`, result);
+        return result;
+    }
+
+    private evaluateExpression(): any {
+        log(`[evaluateExpression]`);
+        indent++;
+        const result = this.evaluateConditional();
+        indent--;
+        log(`-> [evaluateExpression] Result:`, result);
+        return result;
+    }
+
+    private evaluateConditional(): any {
+        log(`[evaluateConditional]`);
+        indent++;
+        // This function handles ternary and chained conditionals.
+        // It is the lowest precedence operator.
+
+        let left = this.evaluateLogicalOr();
+
+        if (this.match('CONDITIONAL')) { // Matched ':'
+            log(`  > Found conditional ':'`);
+            if (this.toBoolean(left)) {
+                log(`  > Condition is TRUE`);
+                // The condition is true, so evaluate the "true" branch
+                const trueResult = this.evaluateExpression();
+                // Then, we must skip the "false" branch if it exists
+                if (this.match('ALTERNATOR')) { // Matched '|'
+                    log(`  > Skipping false branch`);
+                    this.evaluateExpression(); // Evaluate and discard the result
+                }
+                indent--;
+                log(`-> [evaluateConditional] Returning TRUE branch:`, trueResult);
+                return trueResult;
+            } else {
+                log(`  > Condition is FALSE`);
+                // The condition is false, so we must skip the "true" branch
+                this.evaluateExpression(); // Evaluate and discard
+                // And then evaluate the "false" branch
+                if (this.match('ALTERNATOR')) { // Matched '|'
+                    log(`  > Evaluating false branch`);
+                    const falseResult = this.evaluateExpression();
+                    indent--;
+                    log(`-> [evaluateConditional] Returning FALSE branch:`, falseResult);
+                    return falseResult;
+                }
+                // No "else" branch, so the result is undefined/empty
+                indent--;
+                log(`-> [evaluateConditional] No FALSE branch, returning empty.`);
+                return ""; 
+            }
+        }
+
+        indent--;
+        log(`-> [evaluateConditional] Not a conditional, returning value:`, left);
+        return left; // Not a conditional expression, just return the value
+    }
+
+    private skipBranch(): void {
+        log(`[skipBranch] Skipping until next '|' or end of current block...`);
+        indent++;
+        let balance = 0; // For nested {}
+        while(this.tokens[this.position]) {
+            const t = this.tokens[this.position];
+
+            if (t.type === 'LOGIC_BLOCK_START') balance++;
+            if (t.type === 'LOGIC_BLOCK_END') balance--;
+
+            // Stop if we hit an alternator at our current level of nesting
+            if (t.type === 'ALTERNATOR' && balance === 0) {
+                log(`[skipBranch] Found stop token: ALTERNATOR`);
+                break;
+            }
+            // Stop if we hit the end of the parent block
+            if (balance < 0) {
+                log(`[skipBranch] Found end of parent block.`);
+                break;
+            }
             
-            // However, we MUST process variables if they appear here, OR return them as text?
-            // "He looks at you..." is just TEXT and WHITESPACE tokens.
+            this.position++;
+        }
+        indent--;
+    }
+
+    // src/engine/textProcessor.ts
+
+    private skipRemainingBranches() {
+        log(`[skipRemainingBranches] Skipping all subsequent branches in this chain.`);
+        while(this.match('ALTERNATOR')) {
+            this.skipBranch();
+        }
+    }
+
+    private evaluateLogicalOr(): any { 
+        log(`[evaluateLogicalOr]`);
+        indent++;
+        let left = this.evaluateLogicalAnd(); 
+        while (this.peek()?.type === 'LOGICAL_OP' && this.peek()?.value === '||') { 
+            this.consume(); 
+            let right = this.evaluateLogicalAnd(); 
+            log(`[evaluateLogicalOr] ${left} || ${right}`);
+            left = this.toBoolean(left) || this.toBoolean(right); 
+        } 
+        indent--;
+        log(`-> [evaluateLogicalOr] Result:`, left);
+        return left; 
+    }
+    
+
+    private evaluateLogicalAnd(): any { let left = this.evaluateComparison(); while (this.peek()?.value === '&&') { this.consume(); let right = this.evaluateComparison(); left = this.toBoolean(left) && this.toBoolean(right); } return left; }
+    // NEW: Special consumer for text content that preserves spaces
+    
+    private consumeAsText(): string {
+        let text = "";
+        while (this.tokens[this.position]) {
+            const t = this.tokens[this.position];
+            
+            // This is the correct stop list
+            if (['ALTERNATOR', 'CONDITIONAL', 'LOGIC_BLOCK_END', 'SEPARATOR', 'LOGICAL_OP'].includes(t.type)) {
+                break;
+            }
+
+            if (t.type === 'LOGIC_BLOCK_START') {
+                const start = this.position;
+                let balance = 1;
+                let i = start + 1;
+                while (i < this.tokens.length) {
+                    if (this.tokens[i].type === 'LOGIC_BLOCK_START') balance++;
+                    if (this.tokens[i].type === 'LOGIC_BLOCK_END') balance--;
+                    if (balance === 0) break;
+                    i++;
+                }
+                
+                if (balance === 0) {
+                    const blockTokens = this.tokens.slice(start + 1, i);
+                    const subParser = new ScribeParser(blockTokens, this.state);
+                    const result = subParser.evaluate('LOGIC');
+                    text += String(result);
+                    this.position = i + 1; 
+                    continue; 
+                }
+            }
+
             text += t.value;
             this.position++;
         }
         return text;
     }
 
-    public evaluate(context: EvaluationContext): any {
-        if (context === 'EFFECT') {
-            this.evaluateEffectList();
-            return;
-        }
-        return this.evaluateExpression();
-    }
+    private evaluateMultiplicative(): any {
+        let left = this.evaluateTerm();
+        while (this.peek()?.value === '*' || this.peek()?.value === '/' || this.peek()?.value === '%') {
+            const op = this.consume();
 
-    // ... (Effect Parsing remains same) ...
-    private evaluateEffectList(): void {
-        this.evaluateSingleEffect();
-        while(this.match('LIST_SEPARATOR')) {
-            this.evaluateSingleEffect();
-        }
-    }
-    private evaluateSingleEffect(): void {
-        const token = this.peek();
-        if (!token) return;
-        if (token.type === 'MACRO') { this.evaluateTerm(); return; }
-
-        let qid = "";
-        let isAlias = false;
-        let isWorld = false;
-        let batchCategory: string | null = null;
-        let meta: any = {};
-
-        if (token.type === 'VARIABLE') { qid = this.consume().value.substring(1); } 
-        else if (token.type === 'WORLD_VAR') { qid = this.consume().value.substring(1); isWorld = true; } 
-        else if (token.type === 'ALIAS') { qid = this.consume().value.substring(1); isAlias = true; } 
-        else if (token.type === 'MACRO' && token.value === '%all') {
-             const res = this.evaluateTerm();
-             if (res && res.__batch_category) { batchCategory = res.__batch_category; }
-        } else {
-            this.evaluateExpression(); return;
-        }
-
-        if (!isAlias && this.match('PARAM_BLOCK_START')) {
-            meta = this.parseMetadata();
-            this.match('PARAM_BLOCK_END');
-        }
-
-        const opToken = this.match('ASSIGNMENT_OP');
-        if (opToken) {
-            const op = opToken.value;
-            let value: any = 1;
-            if (op !== '++' && op !== '--') { value = this.evaluateExpression(); }
-
-            if (isAlias) {
-                if (op === '=') this.state.aliases[qid] = value;
-                else if (typeof this.state.aliases[qid] === 'number') {
-                    let current = Number(this.state.aliases[qid]);
-                    if (op === '+=') current += Number(value);
-                    if (op === '-=') current -= Number(value);
-                    this.state.aliases[qid] = current;
-                }
-            } else if (batchCategory) {
-                this.state.engine?.batchChangeQuality(batchCategory, op, value, meta);
-            } else {
-                const targetQid = isWorld ? `world.${qid}` : qid;
-                this.state.engine?.changeQuality(targetQid, op, value, meta);
+            
+            if (op.value === '*') {
+                const right = this.evaluateTerm();
+                left = this.toNumber(left) * this.toNumber(right);
+            } else if (op.value === '/') {
+                const right = this.evaluateTerm();
+                left = this.toNumber(left) / this.toNumber(right);
             }
         }
-    }
-    private parseMetadata(): any {
-        const meta: any = {};
-        let currentKey = "";
-        let buffer = "";
-        while (this.peek() && this.peek()?.type !== 'PARAM_BLOCK_END') {
-            const t = this.consume();
-            if (t.type === 'CONDITIONAL') { currentKey = buffer.trim(); buffer = ""; } 
-            else if (t.type === 'LIST_SEPARATOR') { if (currentKey) meta[currentKey] = buffer.trim(); currentKey = ""; buffer = ""; } 
-            else { buffer += t.value; }
-        }
-        if (currentKey) meta[currentKey] = buffer.trim();
-        return meta;
+        return left;
     }
 
-    // --- EXPRESSION HANDLING ---
-
-    private evaluateExpression(): any {
-        // NEW: Check for Assignment (Alias Declaration) first
-        // Pattern: ALIAS + ASSIGNMENT_OP + Expression
-        // We peek to see if it's an alias assignment
-        const t1 = this.peek();
-        if (t1?.type === 'ALIAS') {
-            // We need to look ahead without consuming. 
-            // Since our parser is simple, we check tokens[pos+1]
-            const t2 = this.tokens[this.position + 1];
-            if (t2?.type === 'ASSIGNMENT_OP' && t2.value === '=') {
-                const aliasKey = this.consume().value.substring(1);
-                this.consume(); // Eat '='
-                const val = this.evaluateConditional(); // Evaluate the value
-                
-                // Perform Assignment
-                this.state.aliases[aliasKey] = val;
-                
-                // Bible says: "Returns empty string"
-                return "";
-            }
+    private evaluateAdditive(): any {
+        let left = this.evaluateMultiplicative();
+        while (this.peek()?.value === '+' || this.peek()?.value === '-') {
+            const op = this.consume();
+            const right = this.evaluateMultiplicative();
+            if (op.value === '+') left = this.toNumber(left) + this.toNumber(right);
+            else left = this.toNumber(left) - this.toNumber(right);
         }
-
-        return this.evaluateConditional();
+        return left;
     }
-
-    private evaluateConditional(): any {
-        // We need to peek ahead to see if this is "TEXT | TEXT" or "LOGIC | LOGIC".
-        // Heuristic: Logic usually starts with vars/ops. Text starts with TEXT/WHITESPACE.
-        // But since we are inside {}, it defaults to LOGIC context unless we are in the result part of a condition.
-        
-        // Structure: { $q > 5 : Result A | Result B }
-        // 1. Evaluate first term ($q > 5)
-        const firstBranch = this.evaluateLogicalOr();
-        
-        // 2. Check for Conditional ':'
-        if (this.peek()?.type === 'CONDITIONAL') {
-            this.consume(); // Eat :
-            
-            // If True -> Eval and Return the content until | or End
-            // If False -> Skip until | or End
-            
-            const isTrue = this.toBoolean(firstBranch);
-            
-            if (isTrue) {
-                // Consume and Return True Branch (Text mode!)
-                const result = this.consumeAsText(); 
-                // Skip the rest of the chain
-                while (this.match('ALTERNATOR')) {
-                    this.skipBranch();
-                }
-                return result.trim();
-            } else {
-                // Skip True Branch
-                this.skipBranch();
-                
-                if (this.match('ALTERNATOR')) {
-                    // Recurse for the "Else" part (which might be another condition)
-                    return this.evaluateConditional();
-                }
-                return ""; // No else
-            }
-        }
-        
-        // If we get here, there was no ':', so it's { A | B } random choice
-        // But we already evaluated 'A' as logic. 
-        // If A was just text "Hello", evaluateLogicalOr returned "Hello".
-        
-        const branches = [firstBranch];
-        while(this.match('ALTERNATOR')) {
-            // For random choices, we assume they are text-like or simple logic
-            // But wait, `evaluateLogicalOr` tries to do math. 
-            // If the content is "Hello World", it fails math.
-            // Random choice usually implies text content.
-            // Let's use consumeAsText for the subsequent branches.
-            branches.push(this.consumeAsText().trim());
-        }
-        
-        if (branches.length > 1) {
-            const randomIndex = Math.floor(Math.random() * branches.length);
-            return branches[randomIndex];
-        }
-
-        return branches[0];
-    }
-    
-    private skipBranch() {
-        // Fast forward until | or } or end
-        let balance = 0;
-        while(this.tokens[this.position]) {
-            const t = this.tokens[this.position];
-            if (t.type === 'ALTERNATOR' && balance === 0) break;
-            if (t.type === 'LOGIC_BLOCK_END' && balance === 0) break; // Don't consume the end brace of parent
-            
-            // Nested blocks might confuse things, but token stream flattens them? 
-            // No, findBlock extracts inner. This parser only sees current level.
-            this.position++;
-        }
-    }
-
-    private evaluateLogicalOr(): any { 
-        let left = this.evaluateLogicalAnd(); 
-        while (this.peek()?.value === '||') { this.consume(); let right = this.evaluateLogicalAnd(); left = this.toBoolean(left) || this.toBoolean(right); } 
-        return left; 
-    }
-
-    private evaluateLogicalAnd(): any { let left = this.evaluateComparison(); while (this.peek()?.value === '&&') { this.consume(); let right = this.evaluateComparison(); left = this.toBoolean(left) && this.toBoolean(right); } return left; }
 
     private evaluateComparison(): any {
-        let left = this.evaluateTerm();
+        let left = this.evaluateAdditive(); // CORRECT: Must handle math before comparison
         const opToken = this.match('COMPARISON_OP');
         if(opToken) {
-            const right = this.evaluateTerm();
+            const right = this.evaluateAdditive(); 
             
-            // --- NEW: Challenge Shorthand with Arguments ---
-            if (['>>', '<<', '><', '<>'].includes(opToken.value)) {
-                
+            if (['>>', '<<', '==', '!='].includes(opToken.value) && this.peek()?.type === 'PARAM_BLOCK_START') {
+                this.position--; // un-consume the right side for now
                 let expr = `${left} ${opToken.value} ${right}`;
+                
+                this.consume(); // re-consume right side
+                
                 let margin: number | undefined;
                 let minCap = 0, maxCap = 100, pivot = 60;
 
-                // Check for arguments separator ';'
-                if (this.match('SEPARATOR')) {
+                if (this.match('PARAM_BLOCK_START')) {
                     const args: string[] = [];
                     let buffer = "";
-                    
-                    // Safe loop
-                    let t = this.peek();
-                    while (t) {
-                        if (t.type === 'LOGIC_BLOCK_END' || t.type === 'ALTERNATOR' || t.type === 'CONDITIONAL') {
-                            break; 
-                        }
-                        
-                        this.consume(); // Eat token
-                        
-                        if (t.type === 'LIST_SEPARATOR') {
-                            if (buffer.trim()) args.push(buffer.trim());
-                            buffer = "";
-                        } else {
-                            buffer += t.value;
-                        }
-
-                        t = this.peek(); // Update for next iteration
+                    let balance = 1; 
+                    while(this.peek() && balance > 0) {
+                        const t = this.peek(); 
+                        if(t?.type === 'PARAM_BLOCK_START') balance++;
+                        if(t?.type === 'PARAM_BLOCK_END') balance--;
+                        if (balance === 0) { this.consume(); break; }
+                        this.consume(); 
+                        if (balance === 1 && t?.type === 'LIST_SEPARATOR') { if (buffer.trim()) args.push(buffer.trim()); buffer = ""; }
+                        else { buffer += t?.value || ""; }
                     }
-                    if (buffer.trim()) args.push(buffer.trim());
+                    if(buffer.trim()) args.push(buffer.trim());
 
-                    // Parse the arguments
                     args.forEach((opt, idx) => {
                         const [k, v] = opt.split(':').map(s => s.trim());
                         const val = Number(v || k);
-                        
                         if (k === 'margin' || idx === 0) margin = val;
                         else if (k === 'min' || idx === 1) minCap = val;
                         else if (k === 'max' || idx === 2) maxCap = val;
                         else if (k === 'pivot' || idx === 3) pivot = val;
                     });
                 }
-                
                 return calculateChanceInternal(expr, this.state, margin, minCap, maxCap, pivot);
             }
-            // -----------------------------------------------
 
             const lVal = this.toNumber(left);
             const rVal = this.toNumber(right);
@@ -423,13 +432,45 @@ export class ScribeParser {
         }
         return left;
     }
-
     private evaluateTerm(): any {
         const token = this.peek();
         if(!token) return "";
 
-        if (this.match('GROUP_START')) { const result = this.evaluateExpression(); this.match('GROUP_END'); return result; }
-        
+        // NEW: Handle nested logic blocks { ... }
+        if (token.type === 'LOGIC_BLOCK_START') {
+            this.consume(); // Eat {
+            
+            // We need to find the matching closing brace in the stream
+            // Since we are already inside a parsed stream, we just scan for balance
+            let balance = 1;
+            const startPos = this.position;
+            
+            // Scan ahead
+            while (this.position < this.tokens.length) {
+                const t = this.tokens[this.position];
+                if (t.type === 'LOGIC_BLOCK_START') balance++;
+                if (t.type === 'LOGIC_BLOCK_END') balance--;
+                
+                if (balance === 0) {
+                    // Found end
+                    const blockTokens = this.tokens.slice(startPos, this.position);
+                    this.position++; // Eat }
+                    
+                    // Recursively evaluate this block
+                    const subParser = new ScribeParser(blockTokens, this.state);
+                    return subParser.evaluate('LOGIC');
+                }
+                this.position++;
+            }
+            // If unbalanced, just return empty or error
+            return "";
+        }
+
+        if (this.match('GROUP_START')) {
+            const result = this.evaluateExpression();
+            this.match('GROUP_END'); // Expect a closing parenthesis
+            return result;
+        }        
         // Handle TEXT tokens that appeared in logic (e.g. "Hello" inside { A | "Hello" })
         if (token.type === 'TEXT' || token.type === 'WHITESPACE') {
             return this.consumeAsText().trim();
@@ -542,10 +583,24 @@ export class ScribeParser {
                  currentVal = evaluateText(def.text_variants[prop], this.state.qualities, this.state.defs, { qid: qid!, state: qState! }, this.state.resolutionRoll, this.state.engine);
             } 
             else if (prop === 'name') {
-                currentVal = def.name;
-            } 
+                const rawDesc = def.name || "";
+                // If the description contains logic (self-reference or braces), evaluate it
+                if (rawDesc.includes('{') || rawDesc.includes('$')) {
+                     // We pass the CURRENT STATE (qState) as the 'self' context so $. works
+                     currentVal = evaluateText(rawDesc, this.state.qualities, this.state.defs, { qid: qid!, state: qState! }, this.state.resolutionRoll, this.state.engine);
+                } else {
+                     currentVal = rawDesc;
+                }
+            }
             else if (prop === 'description') {
-                currentVal = def.description;
+                const rawDesc = def.description || "";
+                // If the description contains logic (self-reference or braces), evaluate it
+                if (rawDesc.includes('{') || rawDesc.includes('$')) {
+                     // We pass the CURRENT STATE (qState) as the 'self' context so $. works
+                     currentVal = evaluateText(rawDesc, this.state.qualities, this.state.defs, { qid: qid!, state: qState! }, this.state.resolutionRoll, this.state.engine);
+                } else {
+                     currentVal = rawDesc;
+                }
             }
             // NEW: Item Source (Bible Feature)
             else if (prop === 'source') {

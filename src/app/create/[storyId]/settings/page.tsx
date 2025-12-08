@@ -46,6 +46,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const [existingLocIDs, setExistingLocIDs] = useState<string[]>([]); 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [qualityDefs, setQualityDefs] = useState<Record<string, QualityDefinition>>({}); // NEW
 
     // 1. FETCH DATA
     useEffect(() => {
@@ -60,21 +61,27 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 
                 const sData = await sRes.json();
                 
-                // SAFE DATA HANDLING: Ensure we don't get nulls
+                // SAFE DATA HANDLING
                 const cDataRaw = cRes.ok ? await cRes.json() : {};
-                const cData = cDataRaw || {}; // Fallback if API returns null
+                const cData = cDataRaw || {};
 
                 const qData = qRes.ok ? await qRes.json() : {};
                 const lData = lRes.ok ? await lRes.json() : {};
 
-                // Robustly get IDs
                 const qIDs = Array.isArray(qData) ? qData.map((q: any) => q.id) : Object.keys(qData || {});
                 const lIDs = Array.isArray(lData) ? lData.map((l: any) => l.id) : Object.keys(lData || {});
 
                 setExistingQIDs(qIDs);
                 setExistingLocIDs(lIDs);
 
-                // Normalize char_create data 
+                const defsRecord: Record<string, QualityDefinition> = {};
+                if (Array.isArray(qData)) {
+                    qData.forEach((q: any) => defsRecord[q.id] = q);
+                } else {
+                    Object.assign(defsRecord, qData);
+                }
+                setQualityDefs(defsRecord); // SAVE IT
+
                 const normalizedCharCreate: Record<string, CharCreateRule> = {};
                 for (const key in cData) {
                     const val = cData[key];
@@ -84,10 +91,11 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             rule: val === 'string' ? '' : val,
                             visible: val !== 'static' && !(!isNaN(Number(val))), 
                             readOnly: false,
-                            visible_if: ''
+                            visible_if: '',
+                            ordering: 0
                         };
                     } else {
-                        normalizedCharCreate[key] = val;
+                        normalizedCharCreate[key] = { ...val, ordering: val.ordering || 0 };
                     }
                 }
 
@@ -115,8 +123,14 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
 
     const handleArrayChange = (field: 'characterSheetCategories' | 'equipCategories' | 'tags' | 'currencyQualities', strVal: string) => {
         const arr = strVal.split(',').map(s => s.trim()).filter(Boolean);
+        // REMOVED: Auto-create confirm popup
         setForm(prev => ({ ...prev, [field]: arr }));
     };
+
+    const missingCurrencies = (form.currencyQualities || []).filter(c => {
+        const clean = c.replace('$', '').trim();
+        return clean && !existingQIDs.includes(clean);
+    });
     
     const handleChallengeChange = (field: string, val: any) => {
         setForm(prev => ({
@@ -149,6 +163,22 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             });
             setExistingQIDs(prev => [...prev, cleanId]); 
         } catch(e) { console.error(e); }
+
+        const newDef: QualityDefinition = { 
+             id: cleanId, type, category: 'system', description: 'Auto-generated...', ...extra 
+        };
+        setQualityDefs(prev => ({ ...prev, [cleanId]: newDef }));
+
+
+    };
+    
+    // Callback to add new categories from presets
+    const addCategory = (category: string, targetList: 'equip' | 'sheet' = 'sheet') => {
+        const listName = targetList === 'equip' ? 'equipCategories' : 'characterSheetCategories';
+        const current = form[listName] || [];
+        if (!current.includes(category)) {
+            handleChange(listName, [...current, category]);
+        }
     };
 
     const handleSave = async () => {
@@ -180,8 +210,6 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
 
     // --- SYSTEM BINDING VALIDATION ---
     const cleanID = (id: string) => id.replace('$', '').trim();
-    
-    // Check if the ID exists in the list (Robust check)
     const isQualityMissing = (bindingValue: string) => {
         if (!bindingValue) return true;
         const clean = cleanID(bindingValue);
@@ -212,6 +240,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     return (
         <div className="admin-editor-col" style={{ maxWidth: '900px', margin: '0 auto' }}>            
             
+            {/* 1. HEADER & META */}
             <div style={{ borderBottom: '1px solid #444', paddingBottom: '2rem', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h2 style={{ margin: 0 }}>Game Settings</h2>
@@ -237,6 +266,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </div>
             </div>
 
+            {/* 2. SYSTEM BINDINGS */}
             <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
                 <label className="special-label" style={{ color: '#e5c07b' }}>System Bindings</label>
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
@@ -377,7 +407,34 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
                     <strong>Organization:</strong> Define which qualities appear in specific parts of the player interface. Qualities not matching these categories will be hidden from the sidebar.
                 </div>
-
+                {missingCurrencies.length > 0 && (
+                     <div style={{ background: 'rgba(241, 196, 15, 0.15)', border: '1px solid #f1c40f', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <strong style={{ color: '#f1c40f', display: 'block', marginBottom: '0.25rem' }}>Missing Currencies</strong>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#ccc' }}>
+                                The following currencies are defined but not created:
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {missingCurrencies.map(raw => {
+                                const clean = raw.replace('$', '').trim();
+                                return (
+                                    <button 
+                                        key={clean} 
+                                        onClick={() => createQuality(clean, QualityType.Counter, { name: clean.charAt(0).toUpperCase() + clean.slice(1) })}
+                                        style={{ 
+                                            background: '#f1c40f', color: 'black', border: 'none', 
+                                            borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', 
+                                            padding: '4px 10px', fontWeight: 'bold' 
+                                        }}
+                                    >
+                                        + Create {clean}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                     </div>
+                )}
                 <div className="form-group">
                     <label className="form-label">Currencies</label>
                     <input defaultValue={form.currencyQualities?.join(', ')} onBlur={e => handleArrayChange('currencyQualities', e.target.value)} className="form-input" placeholder="gold, echoes" />
@@ -395,7 +452,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </div>
             </div>
 
-            {/* 6. VISUALS (Unchanged) */}
+            {/* 6. VISUALS */}
              <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd' }}>Visuals</label>
                  <div className="form-row">
@@ -480,14 +537,19 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 <CharCreateEditor 
                     rules={form.char_create || {}} 
                     onChange={r => handleChange('char_create', r)} 
-                    systemKeys={{
-                        actions: form.actionId,
-                        name: form.playerName,
-                        image: form.playerImage
-                    }}
                     storyId={storyId}
                     existingQIDs={existingQIDs}
                     onCreateQuality={createQuality}
+                    qualityDefs={qualityDefs} // PASS IT
+                    // FIX: Use functional state update to handle multiple rapid calls
+                    onAddCategory={(cat, type) => {
+                         const field = type === 'equip' ? 'equipCategories' : 'characterSheetCategories';
+                         setForm(prev => {
+                             const currentList = prev[field] || [];
+                             if (currentList.includes(cat)) return prev;
+                             return { ...prev, [field]: [...currentList, cat] };
+                         });
+                    }}
                 />
             </div>
             
@@ -497,56 +559,27 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     );
 }
 
-// ... CharCreateEditor Sub-Component (Same as before) ...
+// --- SUB-COMPONENT: CharCreateEditor (Refactored) ---
+
 interface CharCreateProps {
     rules: Record<string, CharCreateRule>;
     onChange: (r: Record<string, CharCreateRule>) => void;
-    systemKeys: { actions: string; name: string; image: string };
     storyId: string; 
     existingQIDs: string[];
     onCreateQuality: (id: string, type: QualityType, extra?: any) => void;
+    onAddCategory: (cat: string, type: 'equip' | 'sheet') => void;
+    qualityDefs: Record<string, QualityDefinition>; // NEW
 }
 
-function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, onCreateQuality }: CharCreateProps) {
+function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCategory }: CharCreateProps) {
     const [newKey, setNewKey] = useState("");
-    
-    // Dependency Analysis
-    const { hierarchy, depthMap, roots } = useMemo(() => {
-        if (!rules) return { hierarchy: {}, depthMap: {}, roots: [] }; // Safety check for null rules
-        const h: Record<string, string[]> = {};
-        const parents: Record<string, string> = {};
-        Object.keys(rules).forEach(key => {
-            const rule = rules[key];
-            if (rule.visible_if) {
-                const match = rule.visible_if.match(/\$([a-zA-Z0-9_]+)/);
-                if (match) {
-                    const parentId = `$${match[1]}`;
-                    if (rules[parentId]) {
-                        if (!h[parentId]) h[parentId] = [];
-                        h[parentId].push(key);
-                        parents[key] = parentId;
-                    }
-                }
-            }
-        });
-        const roots = Object.keys(rules).filter(k => !parents[k]);
-        const d: Record<string, number> = {};
-        const calcDepth = (k: string, lvl: number) => {
-            d[k] = lvl;
-            if (h[k]) h[k].forEach(child => calcDepth(child, lvl + 1));
-        };
-        roots.forEach(k => calcDepth(k, 0));
-        return { hierarchy: h, depthMap: d, roots };
+    const [draggedKey, setDraggedKey] = useState<string | null>(null);
+
+    const sortedKeys = useMemo(() => {
+        return Object.keys(rules).sort((a, b) => (rules[a].ordering || 0) - (rules[b].ordering || 0));
     }, [rules]);
 
-    const renderOrder: string[] = [];
-    const traverse = (key: string) => {
-        renderOrder.push(key);
-        if (hierarchy[key]) hierarchy[key].forEach(traverse);
-    };
-    roots.forEach(traverse);
-    Object.keys(rules).forEach(k => { if(!renderOrder.includes(k)) renderOrder.push(k); });
-
+    
     const handleUpdate = (key: string, field: keyof CharCreateRule, val: any) => {
         onChange({ ...rules, [key]: { ...rules[key], [field]: val } });
     };
@@ -555,157 +588,237 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
 
     const handleAdd = () => { 
         const qid = newKey.startsWith('$') ? newKey : `$${newKey}`;
-        onChange({ ...rules, [qid]: { type: 'static', rule: "0", visible: false, readOnly: false, visible_if: '' } }); 
+        const maxOrder = sortedKeys.length > 0 ? (rules[sortedKeys[sortedKeys.length - 1]].ordering || 0) + 1 : 0;
+        onChange({ ...rules, [qid]: { type: 'static', rule: "0", visible: false, readOnly: false, visible_if: '', ordering: maxOrder } }); 
         setNewKey(""); 
     };
 
+    const onDragStart = (e: React.DragEvent, key: string) => { setDraggedKey(key); e.dataTransfer.effectAllowed = "move"; };
+    const onDragOver = (e: React.DragEvent, targetKey: string) => { e.preventDefault(); };
+    const onDrop = (e: React.DragEvent, targetKey: string) => {
+        e.preventDefault();
+        if (!draggedKey || draggedKey === targetKey) return;
+        const fromIndex = sortedKeys.indexOf(draggedKey);
+        const toIndex = sortedKeys.indexOf(targetKey);
+        const newOrder = [...sortedKeys];
+        newOrder.splice(fromIndex, 1);
+        newOrder.splice(toIndex, 0, draggedKey);
+        const nextRules = { ...rules };
+        newOrder.forEach((k, idx) => { nextRules[k] = { ...nextRules[k], ordering: idx }; });
+        onChange(nextRules);
+        setDraggedKey(null);
+    };
+    
     // --- PRESETS ---
-    const addPronounSystem = () => {
-        onCreateQuality('pronouns', QualityType.String, { 
-            tags: ['is_pronoun_set'], 
-            text_variants: {
-                // ScribeScript logic with unquoted literals where appropriate
-                "subject": "{ $.stringValue == he/him : he | $.stringValue == she/her : she | $.stringValue == they/them : they | {$prn_subj} }",
-                "object": "{ $.stringValue == he/him : him | $.stringValue == she/her : her | $.stringValue == they/them : them | {$prn_obj} }",
-                "possessive": "{ $.stringValue == he/him : his | $.stringValue == she/her : her | $.stringValue == they/them : their | {$prn_poss} }",
-            }
-        });
-        onCreateQuality('prn_subj', QualityType.String, { name: "Subject" });
-        onCreateQuality('prn_obj', QualityType.String, { name: "Object" });
-        onCreateQuality('prn_poss', QualityType.String, { name: "Possessive" });
 
+    const addSimpleIdentity = () => {
+        const baseOrder = sortedKeys.length;
         const newRules = { ...rules };
-        // UI Rules
-        newRules['$pronouns'] = { type: 'label_select', rule: "he/him:He/Him | she/her:She/Her | they/them:They/Them | Custom:Custom", visible: true, readOnly: false, visible_if: '' };
-        // Conditions use unquoted strings
-        newRules['$prn_subj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
-        newRules['$prn_obj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
-        newRules['$prn_poss'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom" };
+        newRules['$identity_header'] = { type: 'header', rule: "Identity", visible: true, readOnly: true, visible_if: '', ordering: baseOrder };
+        newRules['$player_name'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 1 };
         onChange(newRules);
     };
 
-    const addClassSystem = () => {
-        // 1. Define the Qualities
+    const removeSimpleIdentity = () => {
+        const next = { ...rules };
+        delete next['$identity_header'];
+        delete next['$player_name'];
+        onChange(next);
+    };
+
+    const addComplexIdentity = () => {
+        const baseOrder = sortedKeys.length;
+        onCreateQuality('first_name', QualityType.String);
+        onCreateQuality('last_name', QualityType.String);
+        
+        const newRules = { ...rules };
+        // Header
+        newRules['$identity_header'] = { type: 'header', rule: "Identity", visible: true, readOnly: true, visible_if: '', ordering: baseOrder, displayMode: 'modal' } as any;
+        
+        // Hidden from card (default), visible in modal
+        newRules['$first_name'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 1 };
+        newRules['$last_name'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 2 };
+        
+        // Visible on card
+        newRules['$player_name'] = { type: 'static', rule: "{$first_name} {$last_name}", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 3, showOnCard: true };
+        
+        onChange(newRules);
+    };
+    
+    const removeComplexIdentity = () => {
+        const next = { ...rules };
+        delete next['$identity_header'];
+        delete next['$first_name'];
+        delete next['$last_name'];
+        delete next['$player_name'];
+        onChange(next);
+    };
+
+     const addClassSystem = () => {
+        const baseOrder = sortedKeys.length;
+        
+        // 1. Define Qualities
         onCreateQuality('class', QualityType.String, { name: "Character Class", category: "Identity" });
         onCreateQuality('strength', QualityType.Pyramidal, { name: "Strength", category: "Attributes" });
         onCreateQuality('intellect', QualityType.Pyramidal, { name: "Intellect", category: "Attributes" });
         onCreateQuality('dexterity', QualityType.Pyramidal, { name: "Dexterity", category: "Attributes" });
-        onCreateQuality('protection', QualityType.Counter, { name: "Protection", category: "Hidden" });
-
+        
+        // Skills with Dynamic Descriptions
         onCreateQuality('armor_skill', QualityType.Counter, {
             name: "Armor Proficiency", category: "Skills",
-            description: "{ $. == 3: 'Heavy Armor' | $. == 2: 'Medium Armor' | $. == 1: 'Light Armor' | 'Unarmored' }"
+            description: "{ $. == 3: Heavy Armor | $. == 2: Medium Armor | $. == 1: Light Armor | Unarmored }"
         });
         onCreateQuality('magical_studies', QualityType.Pyramidal, {
             name: "Magical Studies", category: "Skills",
-            description: "{ $. >= 10: 'Archmage' | $. >= 5: 'Adept' | $. >= 1: 'Novice' | 'Uninitiated' }"
+            description: "{ $. >= 10: Archmage | $. >= 5: Adept | $. >= 1: Novice | Uninitiated }"
         });
         onCreateQuality('thievery', QualityType.Pyramidal, {
             name: "Thievery", category: "Skills",
-            description: "{ $. >= 10: 'Master Thief' | $. >= 5: 'Burglar' | $. >= 1: 'Pickpocket' | 'Honest' }"
+            description: "{ $. >= 10: Master Thief | $. >= 5: Burglar | $. >= 1: Pickpocket | Honest }"
         });
 
-        // Equipment (Bonus uses logic in string)
+        // Equipment
         onCreateQuality('starting_plate', QualityType.Equipable, {
             name: "Old Plate Armor", category: "Body", 
-            bonus: "{ $armor_skill >= 3 : '$protection + 5' | '$protection + 5, $dexterity - 5' }", 
-            description: "A heavy suit of iron. { $armor_skill < 3 : '**You lack the skill to move freely in this.**' | 'It fits like a second skin.' }",
-            tags: ['auto_equip'] 
+            bonus: "{ $armor_skill >= 3 : $protection + 5 | $protection + 5, $dexterity - 5 }", 
+            description: "A heavy suit of iron.", tags: ['auto_equip'] 
         });
-        onCreateQuality('thieves_tools', QualityType.Equipable, {
-            name: "Thieves' Tools", category: "Hand", bonus: "$thievery + 1", description: "A set of picks and tension wrenches.", tags: ['auto_equip']
-        });
-        onCreateQuality('student_wand', QualityType.Equipable, {
-            name: "Student Wand", category: "Hand", bonus: "$intellect + 1", description: "Birch and owl feather.", tags: ['auto_equip']
-        });
+        onCreateQuality('thieves_tools', QualityType.Equipable, { name: "Thieves' Tools", category: "Hand", bonus: "$thievery + 1", tags: ['auto_equip'] });
+        onCreateQuality('student_wand', QualityType.Equipable, { name: "Student Wand", category: "Hand", bonus: "$intellect + 1", tags: ['auto_equip'] });
 
-        // 2. Define Character Creation Rules
+        onAddCategory("Body", 'equip');
+        onAddCategory("Hand", 'equip');
+        onAddCategory("Attributes", 'sheet');
+        onAddCategory("Skills", 'sheet');
+
+        // 2. Rules
         const newRules = { ...rules };
+        
+        // Header is a Modal Button
+        newRules['$class_header'] = { type: 'header', rule: "Class Selection", visible: true, readOnly: true, visible_if: '', displayMode: 'modal', ordering: baseOrder };
+        
+        newRules['$class_name'] = { type: 'static', rule: "{ $class == 0 : Pick a Class | {$class} }", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 1, showOnCard: true };
+        
+        // The Selector (Inside Modal)
+        newRules['$class'] = { type: 'label_select', rule: "Warrior:Warrior | Mage:Mage | Rogue:Rogue", visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 2 };
+        
+        // Attributes (Visible on Card)
+        newRules['$strength'] = { type: 'static', rule: "{ $class == Warrior : 10 | $class == Rogue : 4 | 2 }", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 3, showOnCard: true };
+        newRules['$dexterity'] = { type: 'static', rule: "{ $class == Rogue : 10 | $class == Warrior : 4 | 2 }", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 4, showOnCard: true };
+        newRules['$intellect'] = { type: 'static', rule: "{ $class == Mage : 10 | 2 }", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 5, showOnCard: true };
+        
+        newRules['$armor_skill'] = { type: 'static', rule: "{ $class == Warrior : 3 | $class == Rogue : 1 | 0 }", visible: false, readOnly: true, visible_if: "", ordering: baseOrder + 6 };
+        newRules['$thievery'] = { type: 'static', rule: "{ $class == Rogue : 5 | 0 }", visible: false, readOnly: true, visible_if: "", ordering: baseOrder + 7 };
+        newRules['$magical_studies'] = { type: 'static', rule: "{ $class == Mage : 5 | 0 }", visible: false, readOnly: true, visible_if: "", ordering: baseOrder + 8 };
+        // Derived Skills (Visible on Card) - Using .description property!
+        // We use $armor_skill[VALUE].description to show the text for the *calculated* value
+        newRules['$armor_skill_level'] = { type: 'static', rule: "{$armor_skill[{$armor_skill}].description}", visible: true, readOnly: true, visible_if: "$class == Warrior || $class == Rogue", ordering: baseOrder + 9, showOnCard: true };
+        newRules['$thievery_level'] = { type: 'static', rule: "{$thievery[{$thievery}].description}", visible: true, readOnly: true, visible_if: "$class == Rogue", ordering: baseOrder + 10, showOnCard: true };
+        newRules['$magical_studies_level'] = { type: 'static', rule: "{$magical_studies[{$magical_studies}].description}", visible: true, readOnly: true, visible_if: "$class == Mage", ordering: baseOrder + 11, showOnCard: true };
 
-        newRules['$class'] = { type: 'label_select', rule: "Warrior:Warrior | Mage:Mage | Rogue:Rogue", visible: true, readOnly: false, visible_if: '' };
-
-        newRules['$strength'] = { type: 'static', rule: "{ $class == Warrior : 10 | $class == Rogue : 4 | 2 }", visible: true, readOnly: true, visible_if: '' };
-        newRules['$dexterity'] = { type: 'static', rule: "{ $class == Rogue : 10 | $class == Warrior : 4 | 2 }", visible: true, readOnly: true, visible_if: '' };
-        newRules['$intellect'] = { type: 'static', rule: "{ $class == Mage : 10 | 2 }", visible: true, readOnly: true, visible_if: '' };
-
-        newRules['$armor_skill'] = { type: 'static', rule: "{ $class == Warrior : 3 | $class == Rogue : 1 | 0 }", visible: true, readOnly: true, visible_if: "$class == Warrior || $class == Rogue" };
-        newRules['$thievery'] = { type: 'static', rule: "{ $class == Rogue : 1 | 0 }", visible: true, readOnly: true, visible_if: "$class == Rogue" };
-        newRules['$magical_studies'] = { type: 'static', rule: "{ $class == Mage : 1 | 0 }", visible: true, readOnly: true, visible_if: "$class == Mage" };
-
-        newRules['$starting_plate'] = { type: 'static', rule: "{ $class == Warrior : 1 | 0 }", visible: false, readOnly: true, visible_if: '' };
-        newRules['$thieves_tools'] = { type: 'static', rule: "{ $class == Rogue : 1 | 0 }", visible: false, readOnly: true, visible_if: '' };
-        newRules['$student_wand'] = { type: 'static', rule: "{ $class == Mage : 1 | 0 }", visible: false, readOnly: true, visible_if: '' };
+        // Hidden Calculation Fields (To drive the display fields above)
+        
+        
+        // Items (Hidden)
+        newRules['$starting_plate'] = { type: 'static', rule: "{ $class == Warrior : 1 | 0 }", visible: false, readOnly: true, visible_if: '$class == Warrior', ordering: baseOrder + 12 };
+        newRules['$thieves_tools'] = { type: 'static', rule: "{ $class == Rogue : 1 | 0 }", visible: false, readOnly: true, visible_if: '$class == Rogue', ordering: baseOrder + 13 };
+        newRules['$student_wand'] = { type: 'static', rule: "{ $class == Mage : 1 | 0 }", visible: false, readOnly: true, visible_if: '$class == Mage', ordering: baseOrder + 14 };
 
         onChange(newRules);
     };
-
-    // NEW PRESET: Simple Identity
-    const addSimpleIdentity = () => {
-        const newRules = { ...rules };
-        newRules['$player_name'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: '' };
-        onChange(newRules);
+    
+    const removeClassSystem = () => {
+        const next = { ...rules };
+        ['$class_header','$class','$strength','$dexterity','$intellect','$armor_skill','$starting_plate',
+            '$thieves_tools','$student_wand', '$magical_studies', '$thievery','$magical_studies_level','$thievery_level', '$armor_skill_level', '$class_name'].forEach(k => delete next[k]);
+        onChange(next);
     };
 
-    // NEW PRESET: Complex Identity
-    const addComplexIdentity = () => {
-        onCreateQuality('first_name', QualityType.String);
-        onCreateQuality('last_name', QualityType.String);
+    const addPronounSystem = () => {
+        const baseOrder = sortedKeys.length;
+        onCreateQuality('pronouns', QualityType.String, { 
+            tags: ['is_pronoun_set'], 
+            text_variants: {
+                "subject": "{ $.stringValue == he/him : he | $.stringValue == she/her : she | $.stringValue == they/them : they | {$prn_subj} }",
+                "object": "{ $.stringValue == he/him : him | $.stringValue == she/her : her | $.stringValue == they/them : them | {$prn_obj} }",
+                "possessive": "{ $.stringValue == he/him : his | $.stringValue == she/her : her | $.stringValue == they/them : their | {$prn_poss} }"
+            }
+        });
         const newRules = { ...rules };
-        newRules['$first_name'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: '' };
-        newRules['$last_name'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: '' };
-        newRules['$player_name'] = { type: 'static', rule: "{$first_name} {$last_name}", visible: true, readOnly: true, visible_if: '' };
+        newRules['$pronouns_header'] = { type: 'header', rule: "Pronouns", visible: true, readOnly: true, visible_if: '', ordering: baseOrder };
+        newRules['$pronouns'] = { type: 'label_select', rule: "he/him:He/Him | she/her:She/Her | they/them:They/Them | Custom:Custom", visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 1 };
+        newRules['$prn_subj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 2 };
+        newRules['$prn_obj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 3 };
+        newRules['$prn_poss'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 4 };
         onChange(newRules);
     };
+    
+    const removePronounSystem = () => {
+        const next = { ...rules };
+        ['$pronouns_header','$pronouns','$prn_subj','$prn_obj','$prn_poss'].forEach(k => delete next[k]);
+        onChange(next);
+    };
 
-    // NEW PRESET: Simple Stats
     const addSimpleStats = () => {
+        const baseOrder = sortedKeys.length;
         onCreateQuality('body', QualityType.Pyramidal);
         onCreateQuality('mind', QualityType.Pyramidal);
         onCreateQuality('spirit', QualityType.Pyramidal);
         const newRules = { ...rules };
-        newRules['$body'] = { type: 'static', rule: "10", visible: true, readOnly: true, visible_if: '' };
-        newRules['$mind'] = { type: 'static', rule: "10", visible: true, readOnly: true, visible_if: '' };
-        newRules['$spirit'] = { type: 'static', rule: "10", visible: true, readOnly: true, visible_if: '' };
+        newRules['$stats_header'] = { type: 'header', rule: "Stats", visible: true, readOnly: true, visible_if: '', ordering: baseOrder };
+        newRules['$body'] = { type: 'static', rule: "10", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 1 };
+        newRules['$mind'] = { type: 'static', rule: "10", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 2 };
+        newRules['$spirit'] = { type: 'static', rule: "10", visible: true, readOnly: true, visible_if: '', ordering: baseOrder + 3 };
         onChange(newRules);
+    };
+    
+    const removeSimpleStats = () => {
+        const next = { ...rules };
+        ['$stats_header','$body','$mind','$spirit'].forEach(k => delete next[k]);
+        onChange(next);
     };
 
-    // NEW PRESET: Variable Start Location
     const addVariableLocation = () => {
-        const newRules = { ...rules };
-        newRules['$location'] = { type: 'label_select', rule: "village:The Village | city:The City", visible: true, readOnly: false, visible_if: '' };
-        onChange(newRules);
+         const baseOrder = sortedKeys.length;
+         const newRules = { ...rules };
+         newRules['$location'] = { type: 'label_select', rule: "village:The Village | city:The City", visible: true, readOnly: false, visible_if: '', ordering: baseOrder };
+         onChange(newRules);
     };
+    
+    const removeVariableLocation = () => {
+        const next = { ...rules };
+        delete next['$location'];
+        onChange(next);
+    };
+
+    const hasRule = (k: string) => !!rules[k];
 
     return (
         <div className="special-field-group" style={{ borderColor: '#98c379' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <label className="special-label" style={{ color: '#98c379', margin: 0 }}>Character Initialization</label>
                 <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <PresetBtn onClick={addSimpleIdentity} label="+ Simple Name" />
-                    <PresetBtn onClick={addComplexIdentity} label="+ Complex Name" />
-                    <PresetBtn onClick={addSimpleStats} label="+ Simple Stats" />
-                    <PresetBtn onClick={addClassSystem} label="+ (Complex) Class System" />
-                    <PresetBtn onClick={addPronounSystem} label="+ Pronouns" />
-                    <PresetBtn onClick={addVariableLocation} label="+ Location" />
+                    <PresetToggle label="Simple Name" has={hasRule('$player_name') && !hasRule('$first_name')} onAdd={addSimpleIdentity} onRemove={removeSimpleIdentity} />
+                    <PresetToggle label="Complex Name" has={hasRule('$first_name')} onAdd={addComplexIdentity} onRemove={removeComplexIdentity} />
+                    <PresetToggle label="Stats" has={hasRule('$body')} onAdd={addSimpleStats} onRemove={removeSimpleStats} />
+                    <PresetToggle label="Class System" has={hasRule('$class')} onAdd={addClassSystem} onRemove={removeClassSystem} />
+                    <PresetToggle label="Pronouns" has={hasRule('$pronouns')} onAdd={addPronounSystem} onRemove={removePronounSystem} />
+                    <PresetToggle label="Location" has={hasRule('$location')} onAdd={addVariableLocation} onRemove={removeVariableLocation} />
                 </div>
             </div>
 
-            {/* HELP TEXT BLOCK (Restored) */}
             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', fontSize: '0.85rem', color: '#ccc' }}>
-                <p style={{ margin: '0 0 0.5rem 0' }}><strong>How to use:</strong> Define the starting qualities for new characters. You can create inputs, choices, or hidden values.</p>
+                <p style={{ margin: '0 0 0.5rem 0' }}><strong>How to use:</strong> Define the starting qualities. Drag to reorder.</p>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.4' }}>
-                    <li><strong>Static/Calc:</strong> A fixed starting value (e.g. <code>10</code>) or a ScribeScript formula (e.g. <code>{'{ $class == \'Warrior\' : 10 | 3 }'}</code>).</li>
-                    <li><strong>Inputs (Text):</strong> Allows the player to type a value.</li>
-                    <li><strong>Selectors:</strong> Defined as <code>value:Label | value2:Label2</code>.</li>
-                    <li><strong>Dependency:</strong> To make a quality depend on another (like Stats depending on Class), create a separate rule for the stat, set it to <strong>Static/Calc</strong>, and reference the class variable in the Rule field.</li>
+                     <li><strong>Headers:</strong> Create sections. Can be set as "Modal Root" to group subsequent fields into a popup.</li>
+                     <li><strong>Static/Calc:</strong> A fixed value or formula. Now supports <code>Visible If</code> conditions.</li>
+                     <li><strong>Inputs/Selects:</strong> Player choices.</li>
                 </ul>
             </div>
             
-            {/* ... Render Logic ... */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {renderOrder.map(key => {
+                {sortedKeys.map(key => {
                     const rule = rules[key];
-                    const depth = depthMap[key] || 0;
                     const isDerived = rule.rule.includes('$') || rule.rule.includes('@');
                     const isConditional = !!rule.visible_if;
                     
@@ -715,16 +828,26 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                     if (rule.type === 'static') rulePlaceholder = "10 or { $other * 2 }";
 
                     return (
-                         <div key={key} style={{ 
-                            background: '#1e2127', padding: '0.75rem', borderRadius: '4px', 
-                            borderLeft: `3px solid ${depth > 0 ? '#61afef' : '#98c379'}`,
-                            marginLeft: `${depth * 20}px`
-                        }}>
+                         <div 
+                            key={key} 
+                            draggable
+                            onDragStart={(e) => onDragStart(e, key)}
+                            onDragOver={(e) => onDragOver(e, key)}
+                            onDrop={(e) => onDrop(e, key)}
+                            style={{ 
+                                background: '#1e2127', padding: '0.75rem', borderRadius: '4px', 
+                                borderLeft: `3px solid ${rule.type === 'header' ? '#c678dd' : '#98c379'}`,
+                                cursor: 'move',
+                                opacity: draggedKey === key ? 0.5 : 1
+                            }}
+                        >
                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <div style={{ fontFamily: 'monospace', color: '#98c379', flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <div style={{ fontFamily: 'monospace', color: rule.type === 'header' ? '#c678dd' : '#98c379', flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ cursor: 'grab', marginRight: '5px', opacity: 0.5 }}>☰</span>
                                     {isConditional && <span title={`Visible If: ${rule.visible_if}`}>👁️</span>}
                                     {key}
                                     {isDerived && <span title="Derived/Calculated Value" style={{ color: '#c678dd' }}>ƒ</span>}
+                                    {rule.type === 'header' && rule.displayMode === 'modal' && <span style={{fontSize:'0.7rem', border:'1px solid #c678dd', padding:'0 4px', borderRadius:'4px'}}>MODAL</span>}
                                 </div>
                                 <select 
                                     value={rule.type} 
@@ -750,30 +873,40 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                                         onChange={e => handleUpdate(key, 'rule', e.target.value)} 
                                         className="form-input" 
                                         placeholder={rulePlaceholder}
+                                        style={rule.type === 'header' ? { fontWeight: 'bold', color: '#fff' } : {}}
                                     />
-                                    <span className="property-hint" style={{marginLeft: 0}}>Rule / Data</span>
+                                    <span className="property-hint" style={{marginLeft: 0}}>
+                                        {rule.type === 'header' ? 'Section Title' : 'Rule / Data'}
+                                    </span>
                                 </div>
-                                {rule.type !== 'static' && rule.type !== 'header' && (
-                                     <div>
-                                         <input 
-                                            value={rule.visible_if || ''} 
-                                            onChange={e => handleUpdate(key, 'visible_if', e.target.value)} 
-                                            className="form-input" 
-                                            placeholder="Visible If (e.g. $q == 1)"
-                                        />
-                                        <span className="property-hint" style={{marginLeft: 0}}>Condition</span>
-                                     </div>
-                                )}
+                                <div>
+                                    <input 
+                                        value={rule.visible_if || ''} 
+                                        onChange={e => handleUpdate(key, 'visible_if', e.target.value)} 
+                                        className="form-input" 
+                                        placeholder="Visible If (e.g. $q == 1)"
+                                    />
+                                    <span className="property-hint" style={{marginLeft: 0}}>Condition</span>
+                                </div>
                             </div>
 
                             {/* FLAGS ROW */}
                             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem', borderTop: '1px dashed #333', paddingTop: '0.5rem' }}>
+                                {/* ... Visible / ReadOnly ... */}
                                 <label className="toggle-label">
                                     <input type="checkbox" checked={rule.visible} onChange={e => handleUpdate(key, 'visible', e.target.checked)} /> Visible
                                 </label>
                                 <label className="toggle-label">
                                     <input type="checkbox" checked={rule.readOnly} onChange={e => handleUpdate(key, 'readOnly', e.target.checked)} /> Read-Only
                                 </label>
+
+                                {/* NEW: Show On Card (Only if NOT a header) */}
+                                {rule.type !== 'header' && (
+                                     <label className="toggle-label" title="If inside a Modal Section, check this to ALSO show it on the main card.">
+                                        <input type="checkbox" checked={!!rule.showOnCard} onChange={e => handleUpdate(key, 'showOnCard', e.target.checked)} /> 
+                                        Show on Card
+                                    </label>
+                                )}
 
                                 {rule.type === 'string' && (
                                     <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
@@ -792,6 +925,19 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
                                     </div>
                                 )}
                                 
+                                {rule.type === 'header' && (
+                                    <div style={{ marginLeft: 'auto' }}>
+                                        <label className="toggle-label" title="If checked, this header becomes a button that opens a popup for the settings below it.">
+                                           <input 
+                                               type="checkbox" 
+                                               checked={rule.displayMode === 'modal'} 
+                                               onChange={e => handleUpdate(key, 'displayMode', e.target.checked ? 'modal' : 'inline')} 
+                                           /> 
+                                           As Modal Button
+                                        </label>
+                                    </div>
+                                )}
+
                                 {['label_select', 'image_select', 'labeled_image_select'].includes(rule.type) && (
                                      <div style={{ marginLeft: 'auto' }}>
                                          <label className="toggle-label">
@@ -819,6 +965,33 @@ function CharCreateEditor({ rules, onChange, systemKeys, storyId, existingQIDs, 
     );
 }
 
-function PresetBtn({ onClick, label }: { onClick: () => void, label: string }) {
-    return <button onClick={onClick} style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#2a3e5c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>{label}</button>;
+function PresetToggle({ has, onAdd, onRemove, label }: { has: boolean, onAdd: () => void, onRemove: () => void, label: string }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', background: has ? 'rgba(46, 204, 113, 0.2)' : '#2a3e5c', borderRadius: '4px', overflow: 'hidden', border: has ? '1px solid #2ecc71' : 'none' }}>
+            <button 
+                onClick={has ? undefined : onAdd}
+                disabled={has}
+                style={{ 
+                    fontSize: '0.7rem', padding: '4px 8px', 
+                    background: 'transparent', color: has ? '#2ecc71' : 'white', border: 'none', 
+                    cursor: has ? 'default' : 'pointer' 
+                }}
+            >
+                {has ? `✓ ${label}` : `+ ${label}`}
+            </button>
+            {has && (
+                <button 
+                    onClick={onRemove}
+                    style={{ 
+                        fontSize: '0.7rem', padding: '4px 6px', 
+                        background: 'rgba(0,0,0,0.2)', color: '#e06c75', border: 'none', borderLeft: '1px solid #2ecc71',
+                        cursor: 'pointer' 
+                    }}
+                    title="Remove Preset"
+                >
+                    ✕
+                </button>
+            )}
+        </div>
+    );
 }
