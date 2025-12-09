@@ -14,7 +14,7 @@ export default function StoryletsDocs() {
 
             {/* SECTION 1: THE CONCEPT */}
             <section id="concept">
-                <h2 className="docs-h2">1. The Atomic Unit</h2>
+                <h2 className="docs-h2">1. The Narrative Unit</h2>
                 <p className="docs-p">
                     In Chronicle, there is no difference between a "Room", a "Conversation", or a "Shop". They are all <strong>Storylets</strong>.
                 </p>
@@ -90,9 +90,46 @@ export default function StoryletsDocs() {
                 </div>
             </section>
 
+            <section id="outcomes">
+    <h2 className="docs-h2">3. Anatomy of an Option</h2>
+    <p className="docs-p">
+        While the Storylet is the container, the <strong>Option</strong> is where the action happens. Each option has a set of "Outcome" fields that tell the engine what to do when the player clicks it. If a Challenge is present, there are separate fields for Success (<code>pass_</code>) and Failure (<code>fail_</code>).
+    </p>
+    <div className="docs-grid">
+        <div className="docs-card">
+            <h4 className="docs-h4">Quality Changes</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Fields:</strong> <code>pass_quality_change</code>, <code>fail_quality_change</code>
+                <br/>
+                This is where you put your ScribeScript effects to modify the player's state.
+            </p>
+            <div className="docs-code" style={{fontSize:'0.8rem'}}>
+                $gold -= 5, $clues++
+            </div>
+        </div>
+        <div className="docs-card">
+            <h4 className="docs-h4">Redirect</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Fields:</strong> <code>pass_redirect</code>, <code>fail_redirect</code>
+                <br/>
+                Instantly sends the player to another Storylet or Opportunity by its ID. This is the primary way to chain events together in a linear sequence.
+            </p>
+        </div>
+        <div className="docs-card">
+            <h4 className="docs-h4">Move To</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Fields:</strong> <code>pass_move_to</code>, <code>fail_move_to</code>
+                <br/>
+                Physically moves the player's character to a new <strong>Location ID</strong>. This is how you handle narrative travel, like falling into a trap or arriving at a new city.
+            </p>
+        </div>
+        
+    </div>
+</section>
+
             {/* SECTION 3: DECK MECHANICS */}
             <section id="deck">
-                <h2 className="docs-h2">3. Opportunity Mechanics</h2>
+                <h2 className="docs-h2">4. Opportunity Mechanics</h2>
                 <p className="docs-p">
                     Cards have special rules that govern how often they appear.
                 </p>
@@ -133,45 +170,85 @@ export default function StoryletsDocs() {
 
             {/* SECTION 4: BEHAVIOR TAGS */}
             <section id="behavior">
-                <h2 className="docs-h2">4. Behavior Tags</h2>
-                <p className="docs-p">
-                    Special checkboxes that alter the flow of the game.
-                </p>
+    <h2 className="docs-h2">5. Behavior Tags</h2>
+    <p className="docs-p">
+        Tags are special keywords you can attach to an Option to change its behavior or appearance. You can set these via checkboxes or the "Raw Tags" field in the Option Editor.
+    </p>
 
-                <div className="docs-grid">
-                    <div className="docs-card">
-                        <h4 className="docs-h4">Instant Redirect</h4>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            <strong>Option Tag.</strong> Skips the "Result" screen.
-                        </p>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            When clicked, the player is immediately moved to the target Storylet. Essential for "Visual Novel" style flows where you don't want a "Continue" button after every sentence.
-                        </p>
-                    </div>
-                    <div className="docs-card">
-                        <h4 className="docs-h4">No Return</h4>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            <strong>Option Tag.</strong> Hides the "Go Back" button on the result.
-                        </p>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            Forces the player to move forward. Use this when entering a new area or a trap, or if you want to link several Storylets together in a continuous narrative flow.
-                        </p>
-                    </div>
-                    <div className="docs-card">
-                        <h4 className="docs-h4">Dangerous</h4>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            <strong>Option Tag.</strong> Adds a red border.
-                        </p>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            Purely visual warning to the player that this option has negative consequences.
-                        </p>
-                    </div>
-                </div>
-            </section>
+    <div className="docs-grid">
+        <div className="docs-card">
+            <h4 className="docs-h4">Instant Redirect</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Tag:</strong> <code>instant_redirect</code>
+                <br/>
+                <strong>Effect:</strong> Skips the "Result" screen entirely.
+            </p>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                When the player clicks this option, they are immediately taken to the new storylet or location. This is essential for creating smooth, "Visual Novel" style flows where you don't want a "Continue" button interrupting every line of dialogue.
+            </p>
+        </div>
+        <div className="docs-card">
+            <h4 className="docs-h4">No Return</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Tag:</strong> <code>no_return</code>
+                <br/>
+                <strong>Effect:</strong> Hides the "Go Back" button on the result screen.
+            </p>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                This forces the player to move forward by clicking "Continue". Use this when an action has irreversible consequences, like entering a new area or triggering a trap.
+            </p>
+        </div>
+        <div className="docs-card">
+            <h4 className="docs-h4">Dangerous</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Tag:</strong> <code>dangerous</code>
+                <br/>
+                <strong>Effect:</strong> Adds a red, warning-colored border to the option.
+            </p>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                This is a purely visual cue to the player that the option is risky or may have negative consequences, allowing them to make more informed choices.
+            </p>
+        </div>
+        <div className="docs-card">
+            <h4 className="docs-h4">Clear Hand</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Tag:</strong> <code>clear_hand</code>
+                <br/>
+                <strong>Effect:</strong> Discards all cards from the player's hand in the current deck.
+            </p>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                Unlike a standard card play which only discards itself, this tag wipes the entire hand. This is useful for "milestone" events that should reset the player's available opportunities.
+            </p>
+        </div>
+        <div className="docs-card">
+            <h4 className="docs-h4">Difficulty (Checkbox)</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>Effect:</strong> Enables the <code>Challenge</code> field for this option.
+            </p>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                Checking this box reveals the "Failure" outcome fields in the editor. The engine will then use the logic in your <code>Challenge</code> field to determine whether the player receives the "Success" or "Failure" outcome.
+            </p>
+        </div>
+        <div className="docs-card">
+    <h4 className="docs-h4">Dynamic Tags</h4>
+    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+        <strong>Field:</strong> <code>dynamic_tags</code>
+        <br/>
+        <strong>Effect:</strong> Attaches tags to an outcome based on ScribeScript logic.
+    </p>
+    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+        This is an advanced feature for creating emergent behavior. For example, an option's outcome could gain the <code>clear_hand</code> tag, but only if the player's suspicion is high.
+    </p>
+    <div className="docs-pre" style={{marginTop:'0.5rem'}}>
+        <code className="docs-code">{`{ $suspicion > 5 : clear_hand }`}</code>
+    </div>
+</div>
+    </div>
+</section>
 
             {/* SECTION 5: AUTOFIRE */}
             <section id="autofire">
-                <h2 className="docs-h2">5. Autofire (Must-Event)</h2>
+                <h2 className="docs-h2">6. Flow Control</h2>
                 <p className="docs-p">
                     You can designate a Storylet as a <strong>Must-Event</strong> by adding an <code>Autofire If</code> condition.
                 </p>
@@ -187,7 +264,19 @@ export default function StoryletsDocs() {
                     <strong>Use Case:</strong> The player reaches 8 Suspicion. They try to click "Go to Shop", but the engine interrupts them: 
                     <em>"The Constables arrest you!"</em> and moves them to Jail.
                 </p>
+                <h3 className="docs-h3">The <code>return</code> Field (Custom "Go Back")</h3>
+<p className="docs-p">
+    By default, the "Go Back" button on a result screen takes the player to their location's main hub. You can override this by specifying a Storylet ID in the <strong>Return Target</strong> field of a Storylet.
+</p>
+<div className="docs-syntax-box" style={{textAlign:'left'}}>
+    <code className="docs-code">return: previous_conversation_hub</code>
+</div>
+<p className="docs-p">
+    <strong>Use Case:</strong> Imagine a complex conversation hub with many sub-options. After exploring a sub-option, you want the "Go Back" button to return the player to the <em>conversation hub</em>, not the main location hub. Setting the <code>return</code> field on the sub-option storylets achieves this, creating a more intuitive nested flow for the player.
+</p>
             </section>
+
+            
         </div>
     );
 }

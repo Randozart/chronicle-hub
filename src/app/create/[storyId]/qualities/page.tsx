@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/qualities/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -5,11 +6,12 @@ import { QualityDefinition, QualityType, WorldSettings } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import GameImage from '@/components/GameImage';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers'; 
-import SmartArea from '@/components/admin/SmartArea'; // <--- USE SMART AREA
-import BehaviorCard from '../../../../components/admin/BehaviorCard';
+import SmartArea from '@/components/admin/SmartArea';
+import BehaviorCard from '@/components/admin/BehaviorCard';
+import ScribeEditor from '@/components/admin/ScribeEditor'; // Reuse editor for variants
 
 // ENGINE RESERVED WORDS
-const ENGINE_RESERVED = ['luck', 'target', 'schedule', 'cancel', 'all', 'world', 'source'];
+const ENGINE_RESERVED = ['luck', 'target', 'schedule', 'cancel', 'all', 'world', 'source', 'desc'];
 
 export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -25,7 +27,12 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
                 fetch(`/api/admin/settings?storyId=${storyId}`)
             ]);
             
-            if (qRes.ok) setQualities(Object.values(await qRes.json()));
+            if (qRes.ok) {
+                const data = await qRes.json();
+                // Sort by ordering field by default
+                const sorted = Object.values(data).sort((a: any, b: any) => (a.ordering || 0) - (b.ordering || 0));
+                setQualities(sorted as QualityDefinition[]);
+            }
             if (sRes.ok) setSettings(await sRes.json());
             
             setIsLoading(false);
@@ -77,10 +84,13 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
 function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { initialData: QualityDefinition, settings: WorldSettings, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Variant Editor State
+    const [newVariantKey, setNewVariantKey] = useState("");
 
     useEffect(() => setForm(initialData), [initialData]);
 
-    const handleChange = (field: string, val: any) => {
+    const handleChange = (field: keyof QualityDefinition, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
@@ -115,7 +125,6 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
                 body: JSON.stringify({ storyId, category: 'qualities', itemId: form.id, data: form })
             });
             onSave(form);
-            // alert("Saved!"); // Removed alert for Ctrl+S flow
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
@@ -123,6 +132,25 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
         if (!confirm(`Delete ${form.id}?`)) return;
         await fetch(`/api/admin/config?storyId=${storyId}&category=qualities&itemId=${form.id}`, { method: 'DELETE' });
         onDelete(form.id);
+    };
+
+    // Variant Handlers
+    const addVariant = () => {
+        if (!newVariantKey) return;
+        const current = form.text_variants || {};
+        handleChange('text_variants', { ...current, [newVariantKey]: "" });
+        setNewVariantKey("");
+    };
+
+    const updateVariant = (key: string, val: string) => {
+        const current = form.text_variants || {};
+        handleChange('text_variants', { ...current, [key]: val });
+    };
+
+    const removeVariant = (key: string) => {
+        const current = { ...form.text_variants };
+        delete current[key];
+        handleChange('text_variants', current);
     };
 
     const getConflict = (id: string) => {
@@ -155,26 +183,31 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
                 </div>
             )}
 
-            <div className="form-group">
-                <label className="form-label">ID</label>
-                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
+            <div className="form-row">
+                <div className="form-group" style={{flex: 1}}>
+                    <label className="form-label">ID</label>
+                    <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
+                </div>
+                <div className="form-group" style={{flex: 1}}>
+                    <label className="form-label">Sort Order</label>
+                    <input type="number" value={form.ordering || 0} onChange={e => handleChange('ordering', parseInt(e.target.value))} className="form-input" />
+                </div>
             </div>
 
             <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
-                    {/* UPGRADED TO SMART AREA */}
                     <SmartArea 
                         label="Name" 
                         value={form.name || ''} 
                         onChange={v => handleChange('name', v)} 
                         storyId={storyId} 
                         minHeight="38px" 
-                        placeholder="Display Name"
+                        placeholder="Display Name (ScribeScript allowed)"
                     />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Type</label>
-                    <select value={form.type} onChange={e => handleChange('type', e.target.value)} className="form-select">
+                    <select value={form.type} onChange={e => handleChange('type', e.target.value as any)} className="form-select">
                         <option value="P">Pyramidal (Exponential)</option>
                         <option value="C">Counter (Linear)</option>
                         <option value="I">Item</option>
@@ -191,43 +224,109 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
                     <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" placeholder="character, menace" />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <SmartArea 
-                        label="Max Value (Cap)" 
-                        value={form.max || ''} 
-                        onChange={v => handleChange('max', v)} 
-                        storyId={storyId} 
-                        minHeight="38px"
-                        placeholder="10 or $level_cap"
-                    />
+                    <label className="form-label">Image Code</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" />
+                        {form.image && <div style={{width: 32, height: 32}}><GameImage code={form.image} imageLibrary={{}} type="icon" className="option-image"/></div>}
+                    </div>
+                </div>
+            </div>
+            
+            {/* QoL Names */}
+            <div className="form-row">
+                 <div className="form-group" style={{ flex: 1 }}>
+                    <input value={form.singular_name || ''} onChange={e => handleChange('singular_name', e.target.value)} className="form-input" placeholder="Singular (e.g. Coin)" />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                    <input value={form.plural_name || ''} onChange={e => handleChange('plural_name', e.target.value)} className="form-input" placeholder="Plural (e.g. Coins)" />
                 </div>
             </div>
 
             <div className="form-group">
-                {/* UPGRADED TO SMART AREA */}
                 <SmartArea 
                     label="Description" 
                     value={form.description || ''} 
                     onChange={v => handleChange('description', v)} 
                     storyId={storyId} 
                     minHeight="80px"
-                    placeholder="Visible in tooltip..."
+                    placeholder="Visible in tooltip. Use {$.level} for current level."
                 />
             </div>
+            
+            {/* ADVANCED CAPS SECTION */}
+            {(form.type === 'P' || form.type === 'C' || form.type === 'T') && (
+                <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
+                    <label className="special-label" style={{ color: '#e5c07b' }}>Progression Limits</label>
+                    <div className="form-row">
+                        <div className="form-group" style={{flex:1}}>
+                            <SmartArea label="Hard Cap (Max)" value={form.max || ''} onChange={v => handleChange('max', v)} storyId={storyId} minHeight="38px" placeholder="Infinity" />
+                            <p className="special-desc">Absolute maximum effective level.</p>
+                        </div>
+                        <div className="form-group" style={{flex:1}}>
+                            <SmartArea label="Soft Cap (Grind)" value={form.grind_cap || ''} onChange={v => handleChange('grind_cap', v)} storyId={storyId} minHeight="38px" placeholder="None" />
+                            <p className="special-desc">Limit for repeatable actions.</p>
+                        </div>
+                        {form.type === 'P' && (
+                            <div className="form-group" style={{flex:1}}>
+                                <SmartArea label="CP Requirement Cap" value={form.cp_cap || ''} onChange={v => handleChange('cp_cap', v)} storyId={storyId} minHeight="38px" placeholder="None" />
+                                <p className="special-desc">Max CP needed per level.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
-            <div className="form-group">
-                <label className="form-label">Image Code</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" />
-                    {form.image && <div style={{width: 32, height: 32}}><GameImage code={form.image} imageLibrary={{}} type="icon" className="option-image"/></div>}
+            {/* FEEDBACK SECTION */}
+            <div className="special-field-group" style={{ borderColor: '#61afef' }}>
+                <label className="special-label" style={{ color: '#61afef' }}>Change Feedback</label>
+                <div className="form-group">
+                     <SmartArea label="On Increase" value={form.increase_description || ''} onChange={v => handleChange('increase_description', v)} storyId={storyId} minHeight="38px" placeholder="Your {$.name} has increased!" />
+                </div>
+                <div className="form-group">
+                     <SmartArea label="On Decrease" value={form.decrease_description || ''} onChange={v => handleChange('decrease_description', v)} storyId={storyId} minHeight="38px" placeholder="Your {$.name} has dropped..." />
                 </div>
             </div>
 
+            {/* TEXT VARIANTS SECTION */}
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
-                <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
+                <label className="special-label" style={{ color: '#c678dd' }}>Text Variants</label>
+                <p className="special-desc">Custom properties accessed via <code>$quality.property</code>.</p>
+                
+                <div style={{ display: 'grid', gap: '10px', marginTop: '1rem' }}>
+                    {Object.entries(form.text_variants || {}).map(([key, val]) => (
+                        <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                            <div style={{ width: '120px', paddingTop: '8px', fontWeight: 'bold', color: '#ccc', textAlign: 'right' }}>
+                                .{key}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <ScribeEditor value={val} onChange={v => updateVariant(key, v)} minHeight="38px" />
+                            </div>
+                            <button onClick={() => removeVariant(key)} style={{ background: 'none', border: 'none', color: '#e06c75', cursor: 'pointer', marginTop: '8px' }}>✕</button>
+                        </div>
+                    ))}
+                </div>
+                
+                <div style={{ display: 'flex', gap: '10px', marginTop: '1rem', borderTop: '1px dashed #444', paddingTop: '1rem' }}>
+                    <input 
+                        value={newVariantKey} 
+                        onChange={e => setNewVariantKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                        placeholder="new_property_key" 
+                        className="form-input" 
+                    />
+                    <button onClick={addVariant} className="save-btn" style={{ width: 'auto', padding: '0.4rem 1rem' }}>+ Add Variant</button>
+                </div>
+            </div>
+
+            <div className="special-field-group" style={{ borderColor: '#98c379' }}>
+                <label className="special-label" style={{ color: '#98c379' }}>Behavior & Tags</label>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handleTagToggle('hidden')} label="Hidden" desc="Do not show on profile." />
                     
+                    {/* {form.type === 'S' && (
+                         <BehaviorCard checked={hasProperty(form.tags, 'is_pronoun_set')} onChange={() => handleTagToggle('is_pronoun_set')} label="Is Pronoun Set" desc="Enables {%pronoun} macros." />
+                    )} */}
+
                     {(form.type === 'E' || form.type === 'I') && (
                         <>
                             <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />

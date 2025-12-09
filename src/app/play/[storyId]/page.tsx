@@ -52,6 +52,7 @@ export default async function GamePage({
     const gameData = await getContent(storyId);
     const worldState = await getWorldState(storyId); 
 
+
     // 4. If we have a character, prepare the game state
     let initialLocation = null;
     let initialHand: Opportunity[] = [];
@@ -79,6 +80,16 @@ export default async function GamePage({
         initialHand.forEach(o => visibleOpportunitiesMap[o.id] = o);
     }
 
+    let activeMessage = null;
+    
+    if (character && gameData.settings.systemMessage && gameData.settings.systemMessage.enabled) {
+        const msg = gameData.settings.systemMessage;
+        // Check if character has already seen it
+        if (!character.acknowledgedMessages?.includes(msg.id)) {
+            activeMessage = msg;
+        }
+    }
+
     return (
         <main>
             <GameHub
@@ -101,7 +112,8 @@ export default async function GamePage({
                 locations={sanitize(gameData.locations)} 
                 regions={sanitize(gameData.regions || {})}
                 storyId={storyId}
-                worldState={sanitize(worldState)} // <--- PASS TO CLIENT
+                worldState={sanitize(worldState)}
+                systemMessage={sanitize(activeMessage)}
             />
         </main>
     );

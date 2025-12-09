@@ -104,8 +104,8 @@ export default function OpportunityHand({
                                 />
                             )}
                             <div className="card-text">
-                                <h3>{evaluateText(card.name, qualities, qualityDefs)}</h3>
-                                {card.short && <p>{evaluateText(card.short, qualities, qualityDefs)}</p>}
+                                <h3>{evaluateText(card.name, qualities, qualityDefs, null, 0)}</h3>
+                                {card.short && <p>{evaluateText(card.short, qualities, qualityDefs, null, 0)}</p>}
                             </div>
                         </button>
                     ))

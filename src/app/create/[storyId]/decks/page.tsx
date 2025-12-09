@@ -1,13 +1,13 @@
+// src/app/create/[storyId]/decks/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
 import { DeckDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
-import SmartArea from '@/components/admin/SmartArea'; // <--- NEW
-import BehaviorCard from '@/components/admin/BehaviorCard'; // <--- NEW
+import SmartArea from '@/components/admin/SmartArea';
+import BehaviorCard from '@/components/admin/BehaviorCard';
 
 export default function DecksAdmin({ params }: { params: Promise<{ storyId: string }> }) {
-    // ... (Keep existing fetch logic) ...
     const { storyId } = use(params);
     const [decks, setDecks] = useState<DeckDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +97,7 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, category: 'decks', itemId: form.id, data: form })
             });
-            if (res.ok) { onSave(form); /* alert("Saved!"); */ } 
+            if (res.ok) { onSave(form); } 
             else { alert("Failed."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
@@ -136,16 +136,19 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 {!isSynced && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <input 
-                            type="number" 
-                            value={form.timer === 'sync_actions' ? '' : form.timer} 
+                            type="text" // Changed from number to text to allow logic
+                            value={form.timer || ''} 
                             onChange={e => handleChange('timer', e.target.value)} 
                             className="form-input" 
-                            style={{ width: '100px' }}
+                            style={{ width: '200px' }}
+                            placeholder="10 or { $speed * 2 }"
                         />
                         <span style={{ color: '#aaa', fontSize: '0.9rem' }}>minutes</span>
                     </div>
                 )}
-                <p className="special-desc">How often a card is drawn automatically.</p>
+                <p className="special-desc">
+                    How often a card is drawn automatically. Can be a number or ScribeScript logic.
+                </p>
             </div>
 
             <div className="form-row">

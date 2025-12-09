@@ -42,8 +42,8 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                 </div>
                             )}
                              <div className="option-text-wrapper">
-                                <h3>{evaluateText(storylet.name, qualities, qualityDefs)}</h3>
-                                {storylet.short && <p className="option-short-desc">{evaluateText(storylet.short, qualities, qualityDefs)}</p>}
+                                <h3>{evaluateText(storylet.name, qualities, qualityDefs, null, 0)}</h3>
+                                {storylet.short && <p className="option-short-desc">{evaluateText(storylet.short, qualities, qualityDefs, null, 0)}</p>}
                             </div>
                         </div>
                     </button>

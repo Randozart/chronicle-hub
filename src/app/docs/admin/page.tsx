@@ -160,6 +160,50 @@ export default function AdminDocs() {
                     <li><strong>Live (Published):</strong> Anyone with the link can play. If "Public Arcade" is enabled, it appears on the homepage.</li>
                 </ul>
             </section>
+
+            <section id="gm-console">
+    <h2 className="docs-h2">5. The GM Console (Live World Management)</h2>
+    <p className="docs-p">
+        Found under "Tools & Live", the <strong>GM Console</strong> gives you direct, real-time control over the game world as your players are experiencing it. It has two main functions: Live Announcements and managing World State.
+    </p>
+
+    <h3 className="docs-h3">Live Announcements</h3>
+    <p className="docs-p">
+        This tool allows you to broadcast a message to all active players in your world. It's perfect for announcing patches, story updates, or scheduled downtime.
+    </p>
+    <ul className="docs-list">
+        <li><strong>Active Toggle:</strong> Controls whether the message is currently being shown to players.</li>
+        <li><strong>Severity:</strong> Changes the color of the banner (Info, Warning, Critical) to convey urgency.</li>
+        <li><strong>Message ID:</strong> This is a crucial field. Each player's account remembers which message IDs they have dismissed. If you need to show the same message again, or a new version of it, you <strong>must change this ID</strong> (e.g., from <code>patch-v1.1</code> to <code>patch-v1.2</code>).</li>
+    </ul>
+
+    <h3 className="docs-h3">Global State (<code>#world</code> Qualities)</h3>
+    <p className="docs-p">
+        This part of the console is a direct interface to your world's global variables. Any quality created or modified here will be visible to <strong>all players</strong> who reference it with the <code>#</code> sigil (e.g., <code>{`{#season}`}</code>).
+    </p>
+    <div className="docs-callout">
+        <strong style={{color: '#fff'}}>The Source of Truth:</strong>
+        <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
+            While you can change world qualities from a storylet (using <code>#quality = value</code>), the GM Console is the primary tool for setting their initial state or making manual adjustments during a live event. It is the source of truth for your game's global state to avoid needing to set the value elsewhere.
+        </p>
+    </div>
+    <div className="docs-pre">
+        <span style={{color:'#777'}}>// Use the console to create these variables:</span>
+        <br/>
+        <code className="docs-code">
+            #season = Summer
+            <br/>
+            #war_progress = 25
+        </code>
+        <br/><br/>
+        <span style={{color:'#777'}}>// Then, any player can see them in-game:</span>
+        <br/>
+        <code className="docs-code">
+            "It is currently {`{#season}`}. The war effort is at {`{#war_progress}`}%."
+            <br/> =&gt; "It is currently Summer. The war effort is at 25%."
+        </code>
+    </div>
+</section>
         </div>
     );
 }

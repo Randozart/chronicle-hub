@@ -62,30 +62,35 @@ export default function PatternsDocs() {
                     </ol>
                 </div>
 
+
                 {/* PATTERN 3: VISUAL NOVEL */}
-                <div className="docs-card" style={{borderColor: '#61afef', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#61afef'}}>3. The Simple Chain (Visual Novel)</h3>
-                    <p className="docs-p">
-                        A traditional, linear story. The player moves from Scene A to B to C.
-                    </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
-                    <ol className="docs-list">
-                        <li><strong>Tracker:</strong> Create a quality <code>$chapter</code>.</li>
-                        <li>
-                            <strong>Storylet A:</strong>
-                            <br/><em>Visible If:</em> <code>$chapter == 1</code>
-                            <br/><em>Option Effect:</em> <code>$chapter = 2</code>
-                        </li>
-                        <li>
-                            <strong>Storylet B:</strong>
-                            <br/><em>Visible If:</em> <code>$chapter == 2</code>
-                            <br/><em>Option Effect:</em> <code>$chapter = 3</code>
-                        </li>
-                        <li>
-                            <strong>Direct Links:</strong> Check the <strong>No Return</strong> behavior tag to prevent backtracking.
-                        </li>
-                    </ol>
-                </div>
+<div className="docs-card" style={{borderColor: '#61afef', marginTop: '2rem'}}>
+    <h3 style={{marginTop: 0, color: '#61afef'}}>3. The Simple Chain (Visual Novel)</h3>
+    <p className="docs-p">
+        A traditional, linear story where the player moves from Scene A to B to C without interruption.
+    </p>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <ol className="docs-list">
+        <li><strong>Tracker:</strong> Create a quality <code>$chapter</code>.</li>
+        <li>
+            <strong>Storylet A:</strong>
+            <br/><em>Visible If:</em> <code>$chapter == 1</code>
+            <br/><em>Option Effect:</em> <code>pass_redirect: storylet_b</code>
+            <br/><em>Option Tag:</em> Add the <strong>Instant Redirect</strong> tag to the option. This skips the result screen.
+        </li>
+        <li>
+            <strong>Storylet B:</strong>
+            <br/><em>Visible If:</em> <code>$chapter == 2</code>
+            <br/><em>(This storylet's option would redirect to Storylet C)</em>
+        </li>
+        <li>
+            <strong>Result:</strong> Clicking the option in Storylet A will immediately display Storylet B, creating a seamless, book-like reading experience.
+        </li>
+        <li>
+            <strong>To enforce a linear experience:</strong> Check the <strong>No Return</strong> behavior tag to prevent backtracking.
+        </li>
+    </ol>
+</div>
 
                 {/* PATTERN 4: THE HUB */}
                 <div className="docs-card" style={{borderColor: '#f1c40f', marginTop: '2rem'}}>
@@ -109,74 +114,80 @@ export default function PatternsDocs() {
                 </div>
 
                 {/* PATTERN 5: TIME */}
-                <div className="docs-card" style={{borderColor: '#c678dd', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#c678dd'}}>5. The Appointment (Time Delay)</h3>
-                    <p className="docs-p">
-                        Mechanics that require waiting for real-time to pass.
-                    </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
-                    <ol className="docs-list">
-                        <li>
-                            <strong>The Trigger:</strong> An option "Plant Seeds".
-                            <br/><em>Effect:</em> <code>$schedule[$harvest_ready = 1 : 4h]</code>
-                        </li>
-                        <li>
-                            <strong>The Result:</strong> A Storylet "Harvest Crops".
-                            <br/><em>Visible If:</em> <code>$harvest_ready == 1</code>
-                        </li>
-                        <li>
-                            <strong>The Outcome:</strong> Clicking "Harvest" gives items and resets:
-                            <br/><em>Effect:</em> <code>$potatoes += 10, $harvest_ready = 0</code>
-                        </li>
-                    </ol>
-                </div>
+                {/* PATTERN 5: TIME */}
+<div className="docs-card" style={{borderColor: '#c678dd', marginTop: '2rem'}}>
+    <h3 style={{marginTop: 0, color: '#c678dd'}}>5. The Appointment (Time Delay)</h3>
+    <p className="docs-p">
+        Mechanics that require waiting for real-time to pass, powered by Living Stories.
+    </p>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <ol className="docs-list">
+        <li>
+            <strong>The Trigger:</strong> An option "Plant Seeds".
+            <br/><em>Effect:</em> <code>{`{%schedule[$harvest_ready = 1 : 4h]}`}</code>
+        </li>
+        <li>
+            <strong>The Result:</strong> A Storylet "Harvest Crops".
+            <br/><em>Visible If:</em> <code>$harvest_ready == 1</code>
+        </li>
+        <li>
+            <strong>The Outcome:</strong> Clicking "Harvest" gives items and resets the flag:
+            <br/><em>Effect:</em> <code>$potatoes += 10, $harvest_ready = 0</code>
+        </li>
+    </ol>
+</div>
 
                 {/* PATTERN 6: THE EXPEDITION */}
-                <div className="docs-card" style={{borderColor: '#e06c75', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#e74c3c'}}>6. The Expedition (Deck-Driven)</h3>
-                    <p className="docs-p">
-                        A high-stakes mode where the player must survive a random deck to reach a destination.
-                    </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
-                    <ol className="docs-list">
-                        <li>
-                            Create a specialized <strong>Deck</strong> (e.g., "Desert Deck").
-                            <br/>Set <code>deck_size: 20</code> (Finite duration).
-                        </li>
-                        <li>
-                            Create "Hazard" and "Progress" Cards.
-                            <br/><em>Hazard:</em> Test `$survival`. Pass: `$progress++`. Fail: `$supplies--`.
-                        </li>
-                        <li>
-                            <strong>Win State:</strong> Autofire Storylet.
-                            <br/><em>Condition:</em> <code>autofire_if: $progress &gt;= 10</code>
-                            <br/><em>Effect:</em> <code>move_to: desert_city</code>
-                        </li>
-                        <li>
-                            <strong>Fail State:</strong> Autofire Storylet.
-                            <br/><em>Condition:</em> <code>autofire_if: $supplies {`<=`} 0</code>
-                            <br/><em>Effect:</em> <code>move_to: base_camp, $wounds++</code>
-                        </li>
-                    </ol>
-                </div>
+                {/* PATTERN 6: THE EXPEDITION */}
+<div className="docs-card" style={{borderColor: '#e06c75', marginTop: '2rem'}}>
+    <h3 style={{marginTop: 0, color: '#e74c75'}}>6. The Expedition (Deck-Driven)</h3>
+    <p className="docs-p">
+        A high-stakes mode where the player must survive a random deck to reach a destination.
+    </p>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <ol className="docs-list">
+        <li>
+            Create a specialized <strong>Deck</strong> (e.g., "Desert Deck").
+            <br/>Set <code>deck_size: 20</code> (Finite duration).
+        </li>
+        <li>
+            Create "Hazard" and "Progress" Cards.
+            <br/><em>Hazard Card Effect:</em> <code>$supplies--</code>
+            <br/><em>Progress Card Effect:</em> <code>$progress++</code>
+        </li>
+        <li>
+            <strong>Win State:</strong> An Autofire Storylet.
+            <br/><em>Autofire If:</em> <code>$progress &gt;= 10</code>
+            <br/><em>Option Effect:</em> <code>pass_move_to: desert_city</code>
+        </li>
+        <li>
+            <strong>Fail State:</strong> An Autofire Storylet.
+            <br/><em>Autofire If:</em> <code>$supplies {`<=`} 0</code>
+            <br/><em>Option Effect:</em> <code>pass_move_to: base_camp, $wounds++</code>
+        </li>
+    </ol>
+</div>
 
                 {/* PATTERN 7: PERSONALIZATION */}
-                <div className="docs-card" style={{borderColor: '#9b59b6', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#9b59b6'}}>7. The Road with Many Faces</h3>
-                    <p className="docs-p">
-                        Linear story, personalized text.
-                    </p>
-                    <div className="docs-pre">
-                        <code className="docs-code">
-                            "You approach the gate. {`{ $class == 'Noble' : 'The guards bow to you.' | 'The guards block your path.' }`}"
-                        </code>
-                    </div>
-                    <p className="docs-p">
-                        Use <strong>Visible If</strong> to show class-specific options:
-                        <br/><em>Option:</em> "Command them to stand aside"
-                        <br/><em>Requirement:</em> <code>visible_if: $class == 'Noble'</code>
-                    </p>
-                </div>
+                {/* PATTERN 7: PERSONALIZATION */}
+<div className="docs-card" style={{borderColor: '#9b59b6', marginTop: '2rem'}}>
+    <h3 style={{marginTop: 0, color: '#9b59b6'}}>7. The Road with Many Faces</h3>
+    <p className="docs-p">
+        A story that adapts its text and options based on the player's identity.
+    </p>
+    <div className="docs-pre">
+        <span style={{color:'#777'}}>// Adaptive Text</span>
+        <br/>
+        <code className="docs-code">
+            "You approach the gate. {`{ $class == Noble : The guards bow to you. | The guards block your path. }`}"
+        </code>
+    </div>
+    <p className="docs-p">
+        Use <strong>Visible If</strong> to show class-specific options:
+        <br/><em>Option:</em> "Command them to stand aside"
+        <br/><em>Visible If:</em> <code>$class == Noble</code>
+    </p>
+</div>
 
                 {/* PATTERN 8: PYTHON */}
                 <div className="docs-card" style={{borderColor: '#f39c12', marginTop: '2rem'}}>

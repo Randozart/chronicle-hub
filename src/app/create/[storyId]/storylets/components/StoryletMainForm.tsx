@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/storylets/components/StoryletMainForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,7 @@ import { Storylet } from '@/engine/models';
 import OptionList from './OptionList';
 import SmartArea from '@/components/admin/SmartArea'; 
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
-import BehaviorCard from '../../../../../components/admin/BehaviorCard';
+import BehaviorCard from '@/components/admin/BehaviorCard';
 
 interface Props {
     initialData: Storylet;
@@ -16,11 +17,12 @@ interface Props {
 export default function StoryletMainForm({ initialData, onSave, onDelete }: Props) {
     const [form, setForm] = useState(initialData);
     
+    // Extract storyId from window or props (props is cleaner but window works for now in this architecture)
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
     useEffect(() => setForm(initialData), [initialData]);
 
-    const handleChange = (field: string, val: any) => {
+    const handleChange = (field: keyof Storylet, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
@@ -65,14 +67,29 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                     <div style={{ flex: 2 }}>
                         <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" />
                     </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Sort Order</label>
+                        <input type="number" value={form.ordering || 0} onChange={e => handleChange('ordering', parseInt(e.target.value))} className="form-input" />
+                    </div>
+                </div>
+                
+                <div className="form-row">
                     <div className="form-group" style={{ flex:1 }}>
                         <label className="form-label">Location ID</label>
                         <input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" />
                     </div>
-                </div>
-                <div className="form-row">
                     <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <SmartArea 
+                            label="Image Code" 
+                            value={form.image_code || ''} 
+                            onChange={v => handleChange('image_code', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="image_id or { $logic }"
+                            subLabel="Supports ScribeScript"
+                        />
+                    </div>
                 </div>
 
                 {/* TEASER */}
@@ -95,8 +112,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                                 value={form.visible_if || ''} 
                                 onChange={v => handleChange('visible_if', v)} 
                                 storyId={storyId} 
-                                mode="text" 
-                                initialTab="standard" // <--- NEW: Force "Compare" tab
+                                mode="condition" 
                                 placeholder="$gold > 0" 
                             />
                         </div>
@@ -106,8 +122,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                                 value={form.unlock_if || ''} 
                                 onChange={v => handleChange('unlock_if', v)} 
                                 storyId={storyId} 
-                                mode="text" 
-                                initialTab="standard" // <--- NEW
+                                mode="condition" 
                                 placeholder="$gold >= 10" 
                             />
                         </div>

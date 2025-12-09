@@ -9,7 +9,8 @@ interface UserDocument {
     _id: ObjectId;
     username: string;
     email: string;
-    password?: string; 
+    password?: string;
+    acknowledgedPlatformMessages?: string[];
 }
 
 export const authOptions: NextAuthOptions = {

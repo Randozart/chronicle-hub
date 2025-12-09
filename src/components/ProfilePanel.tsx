@@ -39,7 +39,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
             // If it's a Stat (Renown), show the *Name* of the quality which might be dynamic
             // e.g. Name: "{ $l > 50 : The Legend | The Novice }"
             else if (titleDef) {
-                playerTitle = evaluateText(titleDef.name, qualities, qualityDefs);
+                playerTitle = evaluateText(titleDef.name, qualities, qualityDefs, null, 0);
             }
         }
     }
@@ -149,10 +149,10 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                         )}
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                <span className="q-name">{evaluateText(q.name, qualities, qualityDefs)}</span>
+                                                <span className="q-name">{evaluateText(q.name, qualities, qualityDefs, null, 0)}</span>
                                                 <span className="q-val">{q.type === 'S' ? q.stringValue : q.level}</span>
                                             </div>
-                                            <p className="q-desc">{evaluateText(q.description, qualities, qualityDefs)}</p>
+                                            <p className="q-desc">{evaluateText(q.description, qualities, qualityDefs, null, 0)}</p>
                                             {q.type === 'P' && (
                                                 <div className="mini-progress-bar">
                                                     <div className="fill" style={{ width: `${(q.changePoints / (q.level + 1)) * 100}%` }} />

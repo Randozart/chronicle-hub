@@ -1,10 +1,12 @@
+// src/app/api/market/transact/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getCharacter, saveCharacterState } from '@/engine/characterService';
 import { getContent } from '@/engine/contentCache'; 
 import { GameEngine } from '@/engine/gameEngine';
-import { MarketDefinition, ShopStall, ShopListing } from '@/engine/models';
+import { getWorldState } from '@/engine/worldService';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -17,12 +19,13 @@ export async function POST(request: NextRequest) {
 
     // 1. Load State
     const gameData = await getContent(storyId);
+    const worldState = await getWorldState(storyId);
     const character = await getCharacter(userId, storyId, characterId);
+    
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
     // 2. Validate Location (Anti-Teleport Hack)
     const currentLocation = gameData.locations[character.currentLocationId];
-    // Check if current location links to this market, OR if the region does
     const locationMarket = currentLocation?.marketId;
     const regionMarket = currentLocation?.regionId ? gameData.regions[currentLocation.regionId]?.marketId : null;
     
@@ -40,10 +43,9 @@ export async function POST(request: NextRequest) {
     const listing = stall.listings.find(l => l.id === listingId);
     if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
-    // 4. Check Requirements (Visible/Unlock)
-    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    // 4. Initialize Engine & Check Requirements
+    const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
     
-    // We use evaluateCondition for gates
     if (listing.visible_if && !engine.evaluateCondition(listing.visible_if)) {
         return NextResponse.json({ error: 'Item not available.' }, { status: 403 });
     }
@@ -51,9 +53,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Item is locked.' }, { status: 403 });
     }
 
-    // 5. Calculate Price
-    // Price can be logic string ("$rep * 10") or simple string ("10")
-    const unitPriceStr = engine.evaluateBlock(`{${listing.price}}`);
+    // 5. Calculate Price (ScribeScript)
+    const unitPriceStr = engine.evaluateText(`{${listing.price}}`);
     const unitPrice = parseInt(unitPriceStr, 10);
     
     if (isNaN(unitPrice) || unitPrice < 0) {
@@ -62,46 +63,31 @@ export async function POST(request: NextRequest) {
 
     const totalCost = unitPrice * quantity;
     
-    // Determine Currency ID (Listing override > Market Default)
     const currencyId = listing.currencyId || market.defaultCurrencyId;
     const itemId = listing.qualityId;
 
     // 6. EXECUTE TRANSACTION
-    
     if (stall.mode === 'buy') {
-        // --- BUYING (Lose Currency, Gain Item) ---
-        
-        // Check Funds
-        const currencyState = character.qualities[currencyId];
-        const currentFunds = (currencyState && 'level' in currencyState) ? currencyState.level : 0;
+        const currentFunds = engine.getEffectiveLevel(currencyId);
         
         if (currentFunds < totalCost) {
             return NextResponse.json({ error: `Cannot afford. Need ${totalCost} ${currencyId}, have ${currentFunds}.` }, { status: 400 });
         }
 
-        // Deduct Money
-        engine.applyEffect(`$${currencyId} -= ${totalCost}`);
-        
-        // Add Item (With Source)
         const sourceTag = stall.source || `bought at ${stall.name}`;
-        engine.applyEffect(`$${itemId}[source:${sourceTag}] += ${quantity}`);
+        
+        // Combine effects into one transaction string
+        engine.applyEffects(`$${currencyId} -= ${totalCost}, $${itemId}[source:${sourceTag}] += ${quantity}`);
 
     } else {
-        // --- SELLING (Lose Item, Gain Currency) ---
-        
-        // Check Inventory
-        const itemState = character.qualities[itemId];
-        const currentItems = (itemState && 'level' in itemState) ? itemState.level : 0;
+        // Sell Mode
+        const currentItems = engine.getEffectiveLevel(itemId);
         
         if (currentItems < quantity) {
             return NextResponse.json({ error: `Not enough items. Need ${quantity}, have ${currentItems}.` }, { status: 400 });
         }
 
-        // Deduct Item
-        engine.applyEffect(`$${itemId} -= ${quantity}`);
-        
-        // Add Money
-        engine.applyEffect(`$${currencyId} += ${totalCost}`);
+        engine.applyEffects(`$${itemId} -= ${quantity}, $${currencyId} += ${totalCost}`);
     }
 
     // 7. Save

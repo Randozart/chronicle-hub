@@ -6,7 +6,7 @@ export enum QualityType {
     Tracker = 'T',
     Item = 'I',
     String = 'S',
-    Equipable = 'E', 
+    Equipable = 'E',
 }
 
 // --- CORE LOGIC INTERFACES ---
@@ -16,163 +16,143 @@ export interface LogicGates {
     unlock_if?: string;  // ScribeScript Condition
 }
 
-export interface QualityDefinition {
-    id: string;
-    name?: string;       // Evaluable String
-    description?: string;// Evaluable String
-    type: QualityType;
-    category?: string;   // Comma-separated tree
-    tags?: string[];     // [REPLACES properties] e.g. ['cursed', 'auto_equip', 'hidden']
-    bonus?: string;      // Logic: "$strength + 1"
-    storylet?: string;   // ID of Use-Item event
-    max?: string;        // Logic: "10" or "$level_cap"
-    image?: string;      // Image ID
-    scope?: 'character' | 'world'; // Default is 'character'
-}
-
 export interface ResolveOption extends LogicGates {
     id: string;
     name: string;
     image_code?: string;
-    short?: string;      // Tooltip
-    meta?: string;       // Instruction text (e.g. "Will consume item")
+    short?: string;
+    meta?: string;
     
     // Logic
-    challenge?: string;  // [REPLACES random] Logic: "$stat >= 50 [10]"
-    action_cost?: string;// Logic: "1" or "$cost"
-    tags?: string[];     // [REPLACES properties] e.g. ['instant_redirect', 'dangerous']
+    challenge?: string; // NOW EXPECTS 0-100: "{%chance[$stat >= 50 [10]]}"
+    action_cost?: string; // Logic: "1" or "$stress++"
+    
+    // NEW: Hybrid Tag System
+    tags?: string[]; // Static tags from checkboxes
+    dynamic_tags?: string; // ScribeScript for conditional tags
 
-    // Outcomes - Standard
+    // NEW: Manual Ordering
+    ordering?: number;
+
+    // Outcomes
     pass_long: string;
     pass_quality_change?: string;
-    pass_redirect?: string;      // Storylet ID
-    pass_move_to?: string;       // Location ID
+    pass_redirect?: string;
+    pass_move_to?: string;
 
-    // Outcomes - Failure
     fail_long?: string;
     fail_quality_change?: string;
     fail_redirect?: string;
     fail_move_to?: string;
 
-    // Outcomes - Rare
-    rare_pass_chance?: number;
-    rare_pass_long?: string;
-    rare_pass_quality_change?: string;
-    rare_pass_redirect?: string;
-
-    rare_fail_chance?: number;
-    rare_fail_long?: string;
-    rare_fail_quality_change?: string;
-    rare_fail_redirect?: string;
-
+    // DEPRECATED: All rare_* fields are removed
+    
     // Runtime computed (do not store in DB)
-    computed_action_cost?: number | string; // <--- UPDATE TYPE
+    computed_action_cost?: number | string;
 }
 
-// --- GAME CONTENT INTERFACES ---
+// --- GAME CONTENT DEFINITIONS ---
+
+export type PublishStatus = 'draft' | 'published' | 'archived';
+
 interface ContentCommon {
     id: string;
     name: string;
     image_code?: string;
     short?: string;
-    text: string;        
-    metatext?: string;   
-    tags?: string[];     // [REPLACES properties]
+    text: string;
+    metatext?: string;
+    tags?: string[];
     options: ResolveOption[];
     autofire_if?: string;
     status?: PublishStatus;
-    folder?: string; 
-    return?: string;     // Target ID for "Go Back" button
+    folder?: string;
+    return?: string;
+    ordering?: number; // NEW
 }
 
-export type PublishStatus = 'draft' | 'published' | 'archived';
-
 export interface Storylet extends ContentCommon, LogicGates {
-    location?: string;   // Location ID
+    location?: string;
 }
 
 export interface Opportunity extends ContentCommon {
-    deck: string;        // Deck ID
+    deck: string;
     draw_condition?: string;
     frequency: "Always" | "Frequent" | "Standard" | "Infrequent" | "Rare";
-    
-    // Card Lifecycle
-    can_discard?: boolean;      // Default: True. If false, player must play it.
-    keep_if_invalid?: boolean;  // Default: False. If true, stays in hand even if draw_condition becomes false.
-    
-    // Note: Cards technically support 'unlock_if' on options, but usually not on the card itself.
-    // If you want "Locked" cards in hand, add LogicGates here too.
-    unlock_if?: string; 
+    can_discard?: boolean;
+    keep_if_invalid?: boolean;
+    unlock_if?: string;
 }
 
-// --- CONFIGURATION INTERFACES ---
+// --- CONFIGURATION DEFINITIONS ---
 
 export interface QualityDefinition {
     id: string;
-    name?: string;       
+    name?: string;
     description?: string;
     type: QualityType;
-    category?: string;   
-    tags?: string[];     // [REPLACES properties]
-    bonus?: string;      // Logic: "$strength + 1"
-    storylet?: string;   // ID of Use-Item event
-    max?: string;        // Logic: "10" or "$level_cap"
-    image?: string;      
-}
-
-export interface DeckDefinition {
-    id: string;
-    saved: string;       // 'True'/'False'
-    timer?: string;      // "sync_actions" OR number OR logic
-    draw_cost?: string;
-    hand_size: string;   // Logic
-    deck_size?: string;  // Logic
-}
-
-export interface MapRegion {
-    id: string;
-    name: string;
+    category?: string;
     image?: string;
-    width?: number;
-    height?: number;
-    marketId?: string; // Fallback Link
+    ordering?: number; // NEW
+
+    // NEW: Advanced Caps
+    max?: string;              // Hard Cap
+    grind_cap?: string;        // Soft (Grindable) Cap
+    cp_cap?: string;           // CP Requirement Cap
+
+    // NEW: QoL Text Features
+    singular_name?: string;
+    plural_name?: string;
+    increase_description?: string;
+    decrease_description?: string;
+    text_variants?: Record<string, string>; // For pronouns, titles, etc.
+    
+    // Tags and Item-specific fields
+    tags?: string[];
+    bonus?: string;
+    storylet?: string;
 }
 
-export interface LocationDefinition {
+export interface CharCreateRule {
+    type: 'string' | 'static' | 'label_select' | 'image_select' | 'labeled_image_select' | 'header'; // Added 'header'
+    rule: string;
+    visible: boolean;
+    readOnly: boolean;
+    visible_if?: string;
+    
+    // NEW:
+    input_transform?: 'none' | 'lowercase' | 'uppercase' | 'capitalize';
+    displayMode?: 'inline' | 'modal'; // For selection types
+    ordering?: number;
+    isModal?: boolean;
+    showOnCard?: boolean;
+}
+
+export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";
+export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'location' | 'uncategorized';
+
+export interface SystemMessage {
     id: string;
-    name: string;
-    image: string;
-    deck: string;
-    store?: string;      
-    regionId?: string;   
-    tags?: string[];     // [REPLACES properties]
-    coordinates: { x: number, y: number };
-    unlockCondition?: string; // Logic
-    visibleCondition?: string; // Logic (New)
-    marketId?: string; // Link to a Market
+    enabled: boolean;
+    severity: 'info' | 'warning' | 'critical';
+    title: string;
+    content: string;
 }
 
 export interface WorldSettings {
-
-}
-
-export interface WorldSettings {
-    // Mechanics
     useActionEconomy: boolean;
     maxActions: number | string;
     actionId: string;
     regenIntervalInMinutes: number;
     regenAmount: number | string;
-    defaultActionCost?: number | string; 
+    defaultActionCost?: number | string;
     defaultDrawCost?: string;
-    startLocation?: string; 
+    startLocation?: string;
     
-    // UI / Categories
     characterSheetCategories: string[];
     equipCategories: string[];
-    currencyQualities?: string[]; 
+    currencyQualities?: string[];
     
-    // Identity
     playerName: string;
     playerImage: string;
     enablePortrait?: boolean;
@@ -180,58 +160,76 @@ export interface WorldSettings {
     enableTitle?: boolean;
     titleQualityId?: string;
     
-    // System
-    deckDrawCostsAction?: boolean;
-    alwaysPurgeHandOnTravel?: boolean;
-    
-    // Visuals
     layoutStyle: LayoutStyle;
-    bannerHeight?: number;
-    enableParallax?: boolean;
     visualTheme?: string;
-
-    // Challenge Logic
+    enableParallax?: boolean;
+    
     challengeConfig?: {
-        defaultMargin?: string; // Logic: "10", "$target", "$target / 2"
-        basePivot?: number;     // Default 60
-        minCap?: number;        // Default 0
-        maxCap?: number;        // Default 100
+        defaultMargin?: string;
+        basePivot?: number;
+        minCap?: number;
+        maxCap?: number;
     };
+
+    // NEW
+    systemMessage?: SystemMessage;
+    allowScribeScriptInInputs?: boolean;
 }
 
-// --- RUNTIME STATE INTERFACES ---
+// All other config definitions remain largely the same, just with 'ordering' added
+export interface DeckDefinition { id: string; saved: string; timer?: string; draw_cost?: string; hand_size: string; deck_size?: string; ordering?: number; }
+export interface MapRegion { id: string; name: string; image?: string; marketId?: string; }
+export interface LocationDefinition { id: string; name: string; image: string; deck: string; regionId?: string; tags?: string[]; coordinates: { x: number, y: number }; unlockCondition?: string; visibleCondition?: string; marketId?: string; }
+export interface ImageDefinition { id: string; url: string; alt?: string; category?: ImageCategory; }
+export interface CategoryDefinition { id: string; name?: string; color?: string; description?: string; }
+export interface ShopListing { id: string; qualityId: string; price: string; currencyId?: string; description?: string; visible_if?: string; unlock_if?: string; }
+export interface ShopStall { id: string; name: string; mode: 'buy' | 'sell'; source?: string; listings: ShopListing[]; }
+export interface MarketDefinition { id: string; name: string; image?: string; defaultCurrencyId: string; allowAllTypes?: boolean; stalls: ShopStall[]; }
 
-interface BaseQualityState {
+// --- WORLD DOCUMENT ---
+
+export interface WorldConfig {
+    qualities: Record<string, QualityDefinition>;
+    locations: Record<string, LocationDefinition>;
+    decks: Record<string, DeckDefinition>;
+    settings: WorldSettings;
+    char_create: Record<string, CharCreateRule>; // UPDATED
+    images: Record<string, ImageDefinition>;
+    categories?: Record<string, CategoryDefinition>;
+    regions: Record<string, MapRegion>;
+    markets: Record<string, MarketDefinition>;
+}
+
+// --- RUNTIME STATE ---
+
+export interface BaseQualityState {
     qualityId: string;
     type: QualityType;
+    customProperties?: Record<string, string | number | boolean>; // NEW
 }
+// Other QualityState interfaces (Counter, Pyramidal, etc.) extend BaseQualityState
+export interface CounterQualityState extends BaseQualityState { type: QualityType.Counter | QualityType.Tracker; level: number; }
+export interface PyramidalQualityState extends BaseQualityState { type: QualityType.Pyramidal; level: number; changePoints: number; }
+export interface ItemQualityState extends BaseQualityState { type: QualityType.Item | QualityType.Equipable; level: number; sources: string[]; spentTowardsPrune: number; }
+export interface StringQualityState extends BaseQualityState { type: QualityType.String; stringValue: string; }
 
-export interface CounterQualityState extends BaseQualityState {
-    type: QualityType.Counter | QualityType.Tracker;
-    level: number;
-}
-export interface PyramidalQualityState extends BaseQualityState {
-    type: QualityType.Pyramidal;
-    level: number;
-    changePoints: number;
-}
-export interface ItemQualityState extends BaseQualityState {
-    type: QualityType.Item;
-    level: number;
-    sources: string[];
-    spentTowardsPrune: number;
-}
-export interface StringQualityState extends BaseQualityState {
-    type: QualityType.String;
-    stringValue: string;
-}
-export interface EquipableQualityState extends BaseQualityState {
-    type: QualityType.Equipable;
-    level: number; 
-}
-
-export type QualityState = CounterQualityState | PyramidalQualityState | ItemQualityState | StringQualityState | EquipableQualityState; 
+export type QualityState = CounterQualityState | PyramidalQualityState | ItemQualityState | StringQualityState;
 export type PlayerQualities = Record<string, QualityState>;
+
+export interface PendingEvent {
+    instanceId: string;
+    scope: 'quality' | 'category';
+    targetId: string;
+    op: '=' | '+=' | '-=';
+    value: number;
+    triggerTime: Date;
+    
+    // CHANGED: Split 'behavior' into specific flags
+    recurring: boolean; 
+    
+    intervalMs?: number;
+    description?: string;
+}
 
 export interface CharacterDocument {
     _id?: any;
@@ -242,20 +240,13 @@ export interface CharacterDocument {
     qualities: PlayerQualities;
     currentLocationId: string;
     currentStoryletId: string;
-    opportunityHands: Record<string, string[]>; 
+    opportunityHands: Record<string, string[]>;
     deckCharges: Record<string, number>;
     lastDeckUpdate: Record<string, Date>;
-    lastActionTimestamp?: Date; 
+    lastActionTimestamp?: Date;
     equipment: Record<string, string | null>;
     pendingEvents?: PendingEvent[];
-}
-
-export interface PendingEvent {
-    id: string;          // Unique ID for the timer (usually the quality name)
-    qualityId: string;   // The quality to change
-    op: '=' | '+=' | '-='; 
-    value: number;       // The value to apply
-    triggerTime: Date;
+    acknowledgedMessages?: string[]; // NEW
 }
 
 export interface QualityChangeInfo {
@@ -268,99 +259,9 @@ export interface QualityChangeInfo {
     levelAfter: number;
     cpAfter: number;
     stringValue?: string;
-    changeText: string;
-    scope?: 'character' | 'world'; // <--- NEW
-}
-
-export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'location' | 'uncategorized';
-
-export interface ImageDefinition {
-    id: string;
-    url: string;
-    alt?: string;
-    category?: ImageCategory;
-}
-
-export interface CategoryDefinition {
-    id: string;
-    name?: string;
-    color?: string;
-    description?: string;
-}
-
-export interface WorldConfig {
-    qualities: Record<string, QualityDefinition>;
-    locations: Record<string, LocationDefinition>;
-    decks: Record<string, DeckDefinition>;
-    settings: WorldSettings;
-    char_create: Record<string, string>;
-    storylets?: Record<string, Storylet>;
-    opportunities?: Record<string, Opportunity>;
-    images: Record<string, ImageDefinition>; 
-    categories?: Record<string, CategoryDefinition>;
-    regions: Record<string, MapRegion>;
-    markets: Record<string, MarketDefinition>; 
+    changeText: string; // The default or definition-based description
+    overrideDescription?: string; // The dynamic override from [desc:...]
+    scope?: 'character' | 'world';
 }
 
 export type WorldContent = WorldConfig;
-export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";
-
-export interface WorldDocument {
-    _id?: any;
-    worldId: string;
-    ownerId: string;
-    title: string;
-    summary?: string;
-    published: boolean;
-    createdAt: Date;
-    coverImage?: string; 
-    playerCount?: number;
-    tags?: string[];
-
-    settings: WorldSettings;
-    content: {
-        qualities: Record<string, QualityDefinition>;
-        locations: Record<string, LocationDefinition>;
-        decks: Record<string, DeckDefinition>;
-        regions: Record<string, MapRegion>;
-        images: Record<string, ImageDefinition>;
-        char_create: Record<string, string>;
-    };
-    collaborators?: { userId: string, role: 'admin' | 'writer' }[];
-    worldState?: Record<string, QualityState>;
-}
-
-// --- MARKET INTERFACES ---
-
-export type ShopMode = 'buy' | 'sell';
-
-export interface ShopListing {
-    id: string;             // Unique internal ID
-    qualityId: string;      // The item being traded
-    price: string;          // Logic: "10" or "$charisma * 2"
-    currencyId?: string;    // Optional override. If undefined, use Market default.
-    description?: string;   // Optional flavor text
-    
-    // Gates
-    visible_if?: string;    
-    unlock_if?: string;     
-}
-
-export interface ShopStall {
-    id: string;
-    name: string;
-    description?: string;
-    image?: string;         // Icon for the tab
-    mode: ShopMode;         // 'buy' or 'sell'
-    source?: string; 
-    listings: ShopListing[];
-}
-
-export interface MarketDefinition {
-    id: string;
-    name: string;
-    image?: string;            // Banner/Background
-    defaultCurrencyId: string; // e.g., "gold"
-    allowAllTypes?: boolean;   // <--- NEW: If true, show Pyramidal/Strings in the dropdown
-    stalls: ShopStall[];       // The tabs
-}
