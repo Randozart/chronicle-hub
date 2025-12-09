@@ -135,6 +135,7 @@ export class GameEngine {
                 evalAndAssign(rOpt, 'name'); 
                 evalAndAssign(rOpt, 'short'); 
                 evalAndAssign(rOpt, 'meta'); 
+                evalAndAssign(rOpt, 'image_code'); 
                 
                 if (rOpt.action_cost) {
                     const costStr = this.evaluateText(`{${rOpt.action_cost}}`);

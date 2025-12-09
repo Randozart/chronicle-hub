@@ -1,14 +1,16 @@
+// src/components/GameImage.tsx
 'use client';
 
 import { ImageCategory, ImageDefinition } from "@/engine/models";
+import { CSSProperties } from "react";
 
 interface GameImageProps {
     code?: string; 
     alt?: string;
-    type?: ImageCategory; // Use the shared type instead of a hardcoded union
+    type?: ImageCategory;
     className?: string;
     imageLibrary: Record<string, ImageDefinition>;
-    style?: React.CSSProperties; // <--- ADD THIS
+    style?: CSSProperties;
 }
 
 export default function GameImage({ code, alt, type, className, imageLibrary, style }: GameImageProps) {
@@ -17,13 +19,18 @@ export default function GameImage({ code, alt, type, className, imageLibrary, st
     let src = '';
     let finalAlt = alt || '';
 
+    // 1. Check Library First (ID lookup)
     const def = imageLibrary[code];
     if (def) {
         src = def.url;
         if (!finalAlt) finalAlt = def.alt || code;
-    } else if (code.startsWith('http')) {
+    } 
+    // 2. Check for Direct External Link
+    else if (code.toLowerCase().startsWith('http')) {
         src = code;
-    } else {
+    } 
+    // 3. Fallback to Local Folder structure
+    else {
         const folder = type === 'location' ? 'locations' 
                      : type === 'icon' ? 'icons' 
                      : 'storylets';
@@ -35,8 +42,9 @@ export default function GameImage({ code, alt, type, className, imageLibrary, st
             src={src} 
             alt={finalAlt} 
             className={className}
-            style={style} // <--- PASS IT DOWN
+            style={style}
             onError={(e) => {
+                // If the image fails to load, hide it to prevent ugly broken link icons
                 e.currentTarget.style.display = 'none'; 
             }}
         />
