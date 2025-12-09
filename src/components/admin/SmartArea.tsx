@@ -1,3 +1,4 @@
+// src/components/admin/SmartArea.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -14,9 +15,7 @@ interface Props {
     minHeight?: string;
     mode?: 'text' | 'condition' | 'effect';
     subLabel?: string;
-
-    initialTab?: 'conditional' | 'variable' | 'effect' | 'batch' | 'timer' | 'chance' | 'random';
-
+    initialTab?: 'variable' | 'conditional' | 'challenge' | 'random' | 'effect' | 'timer';
 }
 
 export default function SmartArea({ 
@@ -36,6 +35,9 @@ export default function SmartArea({
     }, []);
 
     const handleInsert = (text: string) => {
+        // If field is empty, insert directly.
+        // If ending with space, insert directly.
+        // Otherwise append space then insert.
         const prefix = (value && value.length > 0 && !value.endsWith(' ')) ? " " : "";
         onChange(value + prefix + text);
     };
@@ -64,15 +66,13 @@ export default function SmartArea({
             </div>
 
             {showAssistant && (
-                <div style={{ position: 'absolute', top: '30px', right: 0, zIndex: 100 }}>
-                    <ScribeAssistant 
-                        storyId={storyId} 
-                        mode={mode} 
-                        onInsert={handleInsert} 
-                        onClose={() => setShowAssistant(false)}
-                        initialTab='conditional' // <--- Pass it down
-                    />
-                </div>
+                <ScribeAssistant 
+                    storyId={storyId} 
+                    mode={mode} 
+                    onInsert={handleInsert} 
+                    onClose={() => setShowAssistant(false)}
+                    initialTab={initialTab}
+                />
             )}
 
             <ScribeEditor 
