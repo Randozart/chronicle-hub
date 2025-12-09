@@ -114,25 +114,27 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
                     <Link href="/" style={{ color: 'white', textDecoration: 'none' }}>Chronicle Engine</Link>
                 </h2>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    <NavItem href="/docs" label="Introduction" />
-                    
-                    <Section title="The Language" />
-                    <NavItem href="/docs/scribescript" label="ScribeScript Syntax" />
-                    <NavItem href="/docs/logic" label="Logic & Math" />
+    <NavItem href="/docs" label="Introduction" />
+    
+    <Section title="The Language" />
+    <NavItem href="/docs/scribescript" label="ScribeScript Syntax" />
+    <NavItem href="/docs/logic" label="Logic & Conditions" />
+    <NavItem href="/docs/effects" label="Effects & State Changes" />
+    <NavItem href="/docs/macros" label="Macros & Functions" />
 
-                    <Section title="The World" />
-                    <NavItem href="/docs/storylets" label="Storylets & Opportunities" />
-                    <NavItem href="/docs/qualities" label="Qualities, Variables & Resources" />
-                    <NavItem href="/docs/geography" label="Locations, Regions, Markets & Maps" />
+    <Section title="The World" />
+    <NavItem href="/docs/storylets" label="Storylets & Opportunities" />
+    <NavItem href="/docs/qualities" label="Qualities, Variables & Resources" />
+    <NavItem href="/docs/geography" label="Locations, Regions, Markets & Maps" />
 
-                    <Section title="Tools" />
-                    <NavItem href="/docs/graph" label="Narrative Graph" />
-                    <NavItem href="/docs/admin" label="Configuration & Administration" />
+    <Section title="Tools" />
+    <NavItem href="/docs/graph" label="Narrative Graph" />
+    <NavItem href="/docs/admin" label="Configuration & Administration" />
 
-                    <Section title="Cookbook" />
-                    <NavItem href="/docs/patterns" label="Design Patterns" />
-                    <NavItem href="/docs/esoteric" label="System Hacking" />
-                </ul>
+    <Section title="Cookbook" />
+    <NavItem href="/docs/patterns" label="Design Patterns" />
+    <NavItem href="/docs/esoteric" label="System Hacking" />
+</ul>
             </aside>
             <main style={{ flex: 1, padding: '4rem 6rem', scrollBehavior: 'smooth' }}>
                 {children}

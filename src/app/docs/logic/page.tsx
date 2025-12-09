@@ -128,69 +128,11 @@ export default function LogicMathPage() {
             </section>
 
             {/* SECTION 2: EFFECTS */}
-            <section id="math">
-                <h2 className="docs-h2">2. Effects (State Changes)</h2>
-                <p className="docs-p">
-                    Effects determine <strong>consequences</strong>. You use these in the <code>Quality Changes</code> field of an Option.
-                </p>
-
-                <h3 className="docs-h3">Math Operators</h3>
-                <table className="docs-table">
-                    <thead>
-                        <tr>
-                            <th>Operator</th>
-                            <th>Meaning</th>
-                            <th>Example</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><code>=</code></td>
-                            <td>Set Value</td>
-                            <td><code>$faction = 'Empire'</code> (Overwrites current value)</td>
-                        </tr>
-                        <tr>
-                            <td><code>+=</code></td>
-                            <td>Add</td>
-                            <td><code>$gold += 50</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>-=</code></td>
-                            <td>Subtract</td>
-                            <td><code>$gold -= 10</code></td>
-                        </tr>
-                        <tr>
-                            <td><code>*=</code></td>
-                            <td>Multiply</td>
-                            <td><code>$xp *= 1.5</code></td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <h3 className="docs-h3">Dynamic Math</h3>
-                <p className="docs-p">
-                    You can use logic blocks inside your effects to calculate values dynamically.
-                </p>
-                <div className="docs-pre">
-                    <code className="docs-code">
-                        $gold += {`{ $reputation * 10 }`}
-                    </code>
-                </div>
-                <p className="docs-p">
-                    This grants gold equal to 10 times the player&apos;s reputation.
-                </p>
-                <div className="docs-pre">
-                    <code className="docs-code">
-                        {`{ $reputation >= 10 : $diamond++ }, $gold += 10`}
-                    </code>
-                </div>
-                <p className="docs-p">
-                    Grants a Diamond ONLY if Reputation is 10 or higher, but always grants 10 Gold.
-                </p>
-            </section>
+                
+            
 
             <section id="syntax-rules">
-                <h2 className="docs-h2">3. Braces vs. Parentheses</h2>
+                <h2 className="docs-h2">2. Braces vs. Parentheses</h2>
                 <p className="docs-p">
                     ScribeScript uses two types of brackets. Confusing them is the most common cause of errors, so here is the rule of thumb:
                 </p>
@@ -259,7 +201,7 @@ export default function LogicMathPage() {
                         <ul className="docs-list" style={{fontSize: '0.9rem'}}>
                             <li>You <strong>do NOT</strong> need <code>{`{ }`}</code> for basic checks.</li>
                             <li>You <strong>CAN</strong> use <code>{`{ }`}</code> to calculate dynamic targets.</li>
-                            <li>You <strong>MUST</strong> use <code>( )</code> to group AND/OR logic.</li>
+                            <li>You <strong>SHOULD</strong> use <code>( )</code> to group AND/OR logic. If only for clarity.</li>
                         </ul>
                         
                         <div style={{marginTop:'10px'}}>
@@ -282,61 +224,6 @@ export default function LogicMathPage() {
                     Writing <code>{`{ $gold > 5 }`}</code> inside a logic field works, but the braces are redundant. 
                     <br/>Writing <code>$gold &gt; 5</code> is cleaner.
                     <br/>However, writing <code>$gold &gt; {`{ 1 ~ 6 }`}</code> is powerful—it makes the requirement random every time!
-                </div>
-            </section>
-
-            {/* SECTION 3: PYRAMIDAL VS LINEAR */}
-            <section id="pyramidal">
-                <h2 className="docs-h2">4. The Pyramidal Curve</h2>
-                <p className="docs-p">
-                    Chronicle Hub supports two types of numeric progression. It is vital to understand the difference.
-                </p>
-
-                <div className="docs-grid">
-                    <div className="docs-card" style={{borderColor: '#e5c07b'}}>
-                        <h4 className="docs-h4">Linear (Counter)</h4>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            <strong>1 Point = 1 Level.</strong><br/>
-                            Used for Currency, Items, and simple Trackers.
-                        </p>
-                        <div className="docs-code">$gold += 1</div>
-                        <p className="docs-p" style={{fontSize: '0.8rem', marginTop: '0.5rem'}}>
-                            Result: You gain exactly 1 Gold.
-                        </p>
-                    </div>
-                    <div className="docs-card" style={{borderColor: '#61afef'}}>
-                        <h4 className="docs-h4">Pyramidal (Exponential)</h4>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                            <strong>1 Point = 1 Change Point (CP).</strong><br/>
-                            Used for Skills, Main Stats and more complex progress tracking.
-                        </p>
-                        <div className="docs-code">$strength += 1</div>
-                        <p className="docs-p" style={{fontSize: '0.8rem', marginTop: '0.5rem'}}>
-                            Result: You gain 1 CP. You might gain a level yet, but you have made progress towards a quality level.
-                        </p>
-                    </div>
-                </div>
-
-                <h3 className="docs-h3">The Formula</h3>
-                <p className="docs-p">
-                    To reach the <em>next</em> level, you need CP equal to <code>Current Level + 1</code>.
-                </p>
-                <table className="docs-table">
-                    <thead>
-                        <tr><th>Level</th><th>CP to Next</th><th>Total CP</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>1</td><td>2</td><td>1</td></tr>
-                        <tr><td>2</td><td>3</td><td>3</td></tr>
-                        <tr><td>3</td><td>4</td><td>6</td></tr>
-                        <tr><td>4</td><td>5</td><td>10</td></tr>
-                        <tr><td>5</td><td>6</td><td>15</td></tr>
-                    </tbody>
-                </table>
-                <div className="docs-callout">
-                    <strong style={{color: '#fff'}}>Pro Tip:</strong> To force a level up regardless of CP, use the <code>=</code> operator.
-                    <br/>
-                    <code className="docs-code">$strength = 5</code> sets the level to 5 immediately and resets CP to 0.
                 </div>
             </section>
         </div>
