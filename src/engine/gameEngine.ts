@@ -148,14 +148,16 @@ export class GameEngine {
         return rendered;
     }
 
+    // --- EFFECT API ---
+
     public applyEffects(effectsString: string): void {
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
         
-        // 1. Resolve nested ScribeScript first ({ ... })
-        const resolvedString = this.evaluateText(`{${effectsString}}`);
+        // FIX: DO NOT evaluate the entire string here. That was causing "10 = 20" bugs.
+        // We resolve values only after identifying the variable on the left.
         
-        // 2. Split by comma (ignore brackets)
-        const effects = resolvedString.split(/,(?![^\[]*\])/g); 
+        // Split by comma (respecting brackets)
+        const effects = effectsString.split(/,(?![^\[]*\])/g); 
 
         for (const effect of effects) {
             const cleanEffect = effect.trim();
@@ -163,6 +165,7 @@ export class GameEngine {
 
             console.log(`[ENGINE DEBUG] Processing effect: "${cleanEffect}"`);
 
+            // A. Check for Macros: {%command[args]}
             const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
             if (macroMatch) {
                 const [, command, args] = macroMatch;
@@ -172,15 +175,19 @@ export class GameEngine {
                 continue;
             }
 
+            // B. Check for Batch Assignment: {%all[cat]} = 0
             const batchMatch = cleanEffect.match(/^%all\[(.*?)\]\s*(=|\+=|-=)\s*(.*)$/);
             if (batchMatch) {
                 const [, cat, op, val] = batchMatch;
+                // Safe to evaluate the Value side now
                 const resolvedVal = this.evaluateText(`{${val}}`);
                 const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
                 this.batchChangeQuality(cat, op, numVal, {});
                 continue;
             }
 
+            // C. Check for Standard Assignment: $quality[meta] += value
+            // We use the strict regex to capture ID and Metadata separately from the Op and Value
             const assignMatch = cleanEffect.match(/^\$([a-zA-Z0-9_]+)(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
             
             if (assignMatch) {
@@ -188,18 +195,28 @@ export class GameEngine {
                 
                 const metadata: { desc?: string; source?: string } = {};
                 if (metaStr) {
+                    // Evaluate metadata strings in case they contain variables like {$.name}
+                    // But we split them carefully first.
+                    // Note: This simple split might break if desc contains a comma. 
+                    // For v6 robustness we assume no commas in meta values for now, or careful quoting.
                     const metaParts = metaStr.split(',');
                     for (const part of metaParts) {
                         const [k, ...v] = part.split(':');
-                        if (k.trim() === 'desc') metadata.desc = v.join(':').trim();
-                        if (k.trim() === 'source') metadata.source = v.join(':').trim();
+                        const val = v.join(':').trim();
+                        if (k.trim() === 'desc') metadata.desc = val;
+                        if (k.trim() === 'source') metadata.source = val;
                     }
                 }
 
+                // Resolve Value
+                // NOW we evaluate the right-hand side.
                 let val: string | number = 0;
+                
                 if (op !== '++' && op !== '--') {
+                     // We wrap in braces to trigger ScribeScript evaluation for the value
                      const resolvedValueStr = this.evaluateText(`{${valStr}}`);
                      val = resolvedValueStr;
+                     // Convert to number if possible
                      if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
                          val = Number(resolvedValueStr);
                      }
@@ -211,30 +228,43 @@ export class GameEngine {
     }
 
     private parseAndQueueTimerInstruction(command: string, argsStr: string) {
+        // argsStr example: "$q+=1 : 1h; recur, desc:..."
         const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
         const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
 
         if (command === 'cancel') {
             instruction.targetId = mainArgs;
         } else {
+            // Split "Effect : Time"
             const lastColon = mainArgs.lastIndexOf(':');
             if (lastColon === -1) return;
 
             const effectStr = mainArgs.substring(0, lastColon).trim();
             const timeStr = mainArgs.substring(lastColon + 1).trim();
 
-            const tMatch = timeStr.match(/(\d+)([mhd])/);
+            // Parse Time - Now supports Logic like {5+5}m
+            // Regex matches either a {block} or raw digits, followed by unit
+            const tMatch = timeStr.match(/((?:\{.*\}|\d+))\s*([mhd])/);
             if (tMatch) {
-                const val = parseInt(tMatch[1]);
+                // Evaluate the time amount part
+                const amountRaw = tMatch[1];
                 const unit = tMatch[2];
-                instruction.intervalMs = val * (unit === 'h' ? 3600000 : unit === 'd' ? 86400000 : 60000);
+                const amountVal = parseInt(this.evaluateText(amountRaw.startsWith('{') ? amountRaw : `{${amountRaw}}`));
+                
+                if (!isNaN(amountVal)) {
+                    instruction.intervalMs = amountVal * (unit === 'h' ? 3600000 : unit === 'd' ? 86400000 : 60000);
+                }
             }
 
+            // Parse Effect string for the DB (e.g. $q+=1)
             const effMatch = effectStr.match(/\$([a-zA-Z0-9_]+)\s*(=|\+=|-=)\s*(.*)/);
             if (effMatch) {
                 instruction.targetId = effMatch[1];
                 instruction.op = effMatch[2];
-                instruction.value = isNaN(Number(effMatch[3])) ? effMatch[3] : Number(effMatch[3]);
+                // Resolve the value immediately for the schedule
+                const valStr = effMatch[3];
+                const resolvedVal = this.evaluateText(`{${valStr}}`);
+                instruction.value = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
             }
         }
 
@@ -340,8 +370,13 @@ export class GameEngine {
 
         const displayName = this.evaluateText(def.name || effectiveQid);
         let changeText = "";
-        if (qState.level > levelBefore) changeText = this.evaluateText(def.increase_description) || `${displayName} increased.`;
-        else if (qState.level < levelBefore) changeText = this.evaluateText(def.decrease_description) || `${displayName} decreased.`;
+        
+        // Evaluate dynamic descriptions in case they use {$.level}
+        const increaseDesc = this.evaluateText(def.increase_description);
+        const decreaseDesc = this.evaluateText(def.decrease_description);
+
+        if (qState.level > levelBefore) changeText = increaseDesc || `${displayName} increased.`;
+        else if (qState.level < levelBefore) changeText = decreaseDesc || `${displayName} decreased.`;
         else if (qState.type === 'S') changeText = `${displayName} is now ${qState.stringValue}`;
 
         if (metadata.desc) changeText = this.evaluateText(metadata.desc);
