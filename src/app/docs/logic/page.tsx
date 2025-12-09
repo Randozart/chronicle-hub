@@ -63,60 +63,68 @@ export default function LogicMathPage() {
                     </tbody>
                 </table>
 
-                <h3 className="docs-h3">Challenge Operators (unique to skill checks)</h3>
-                <table className="docs-table">
-                    <thead>
-                        <tr>
-                            <th>Operator</th>
-                            <th>Meaning</th>
-                            <th>Example</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><code>&gt;&gt;</code></td>
-                            <td><strong>Progressive</strong></td>
-                            <td><code>$stat &gt;&gt; 50</code> (Higher is better)</td>
-                        </tr>
-                        <tr>
-                            <td><code>&lt;&lt;</code></td>
-                            <td><strong>Regressive</strong></td>
-                            <td><code>$suspicion &lt;&lt; 20</code> (Lower is better)</td>
-                        </tr>
-                        <tr>
-                            <td><code>==</code></td>
-                            <td><strong>Precision</strong></td>
-                            <td><code>$tuning == 50</code> (Target is 100% chance)</td>
-                        </tr>
-                        <tr>
-                            <td><code>!=</code></td>
-                            <td><strong>Avoidance</strong></td>
-                            <td><code>$noise != 50</code> (Target is 0% chance)</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <h3 className="docs-h3">Challenge Operators</h3>
+<p className="docs-p">
+    When writing an anonymous challenge or a <code>%chance</code> macro, you use special operators to define the type of skill check.
+</p>
+<table className="docs-table">
+    <thead>
+        <tr>
+            <th>Operator</th>
+            <th>Meaning</th>
+            <th>Example</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>&gt;&gt;</code></td>
+            <td><strong>Progressive</strong></td>
+            <td><code>$strength &gt;&gt; 50</code> (Higher is better)</td>
+        </tr>
+        <tr>
+            <td><code>&lt;&lt;</code></td>
+            <td><strong>Regressive</strong></td>
+            <td><code>$suspicion &lt;&lt; 20</code> (Lower is better)</td>
+        </tr>
+        <tr>
+            <td><code>&gt;&lt;</code></td>
+            <td><strong>Precision</strong></td>
+            <td><code>$tuning &gt;&lt; 50</code> (Must be close to the target)</td>
+        </tr>
+        <tr>
+            <td><code>&lt;&gt;</code></td>
+            <td><strong>Avoidance</strong></td>
+            <td><code>$noise &lt;&gt; 50</code> (Must be far from the target)</td>
+        </tr>
+    </tbody>
+</table>
 
                 <h3 className="docs-h3">Combining Conditions</h3>
-                <p className="docs-p">
-                    You can create complex requirements using <strong>AND</strong> and <strong>OR</strong>.
-                </p>
-                <div className="docs-grid">
-                    <div className="docs-card">
-                        <h4 className="docs-h4">&& (AND)</h4>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>Both conditions must be true.</p>
-                        <code className="docs-code">$gold &gt;= 10 && $reputation &gt; 5</code>
-                    </div>
-                    <div className="docs-card">
-                        <h4 className="docs-h4">|| (OR)</h4>
-                        <p className="docs-p" style={{fontSize: '0.9rem'}}>At least one must be true.</p>
-                        <code className="docs-code">$has_key == 1 || $lockpicking &gt; 5</code>
-                    </div>
-                </div>
-                <div className="docs-callout">
-                    <strong style={{color: '#fff'}}>Grouping:</strong> Use parentheses <code>( )</code> to group logic.
-                    <br/>
-                    <code className="docs-code">($gold &gt; 10 || $charisma &gt; 5) && $stamina &gt; 3</code>
-                </div>
+<p className="docs-p">
+    You can create complex requirements by combining multiple checks.
+</p>
+<div className="docs-grid">
+    <div className="docs-card">
+        <h4 className="docs-h4">&& (AND)</h4>
+        <p className="docs-p" style={{fontSize: '0.9rem'}}>Both conditions must be true.</p>
+        <code className="docs-code">$gold &gt;= 10 && $reputation &gt; 5</code>
+    </div>
+    <div className="docs-card">
+        <h4 className="docs-h4">, (Comma as AND)</h4>
+        <p className="docs-p" style={{fontSize: '0.9rem'}}>For readability, a comma can also be used to mean AND.</p>
+        <code className="docs-code">$gold &gt;= 10, $reputation &gt; 5</code>
+    </div>
+    <div className="docs-card">
+        <h4 className="docs-h4">|| (OR)</h4>
+        <p className="docs-p" style={{fontSize: '0.9rem'}}>At least one condition must be true.</p>
+        <code className="docs-code">$has_key == 1 || $lockpicking &gt; 5</code>
+    </div>
+</div>
+<div className="docs-callout">
+    <strong style={{color: '#fff'}}>Grouping with Parentheses:</strong> Use <code>( )</code> to control the order of operations for complex checks.
+    <br/>
+    <code className="docs-code">($has_key == 1 || $lockpicking &gt; 5) && $stamina &gt; 0</code>
+</div>
             </section>
 
             {/* SECTION 2: EFFECTS */}

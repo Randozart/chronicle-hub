@@ -435,7 +435,7 @@ export class GameEngine {
         const targetChance = parseInt(chanceStr, 10) || 100;
         
         return { 
-            wasSuccess: this.resolutionRoll < targetChance, 
+            wasSuccess: this.resolutionRoll <= targetChance, 
             roll: Math.floor(this.resolutionRoll), 
             targetChance, 
             description: `Rolled ${Math.floor(this.resolutionRoll)} vs ${targetChance}%` 
