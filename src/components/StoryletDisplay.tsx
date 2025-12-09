@@ -103,7 +103,7 @@ export default function StoryletDisplay({
         if (explicitReturn) {
             const target = storyletDefs[explicitReturn];
             if (target) {
-                // UPDATE: Pass required args to evaluateCondition
+                // FIXED: Passing correct arguments to evaluateCondition
                 const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, {}, null, 0);
                 const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, {}, null, 0);
                 if (!isVisible || !isUnlocked) return undefined; 
@@ -168,14 +168,13 @@ export default function StoryletDisplay({
     };
 
     const optionsToDisplay: DisplayOption[] = storylet.options
-        // UPDATE: Pass required args to evaluateCondition
+        // FIXED: Passing correct arguments to evaluateCondition
         .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, {}, null, 0))
         .map(option => {
-            // UPDATE: Pass required args to evaluateCondition
+            // FIXED: Passing correct arguments to evaluateCondition
             const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, {}, null, 0);
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
             
-            // UPDATE: getChallengeDetails already has the correct signature in the new file, just ensure we use it
             const { chance, text } = getChallengeDetails(
                 option.challenge, 
                 qualities, 
@@ -201,7 +200,6 @@ export default function StoryletDisplay({
                     </div>
                 )}
                 <div className="storylet-text-content">
-                    {/* UPDATE: Use helper evalText */}
                     <h1>{evalText(storylet.name)}</h1>
                     <div className="storylet-text">
                         <FormattedText text={evalText(storylet.text)} />

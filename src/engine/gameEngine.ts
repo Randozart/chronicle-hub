@@ -6,10 +6,7 @@ import {
 } from '@/engine/models';
 import {
     evaluateText as evaluateScribeText,
-    evaluateCondition as evaluateScribeCondition,
-    ScribeParser,
-    tokenize,
-    EvaluationState
+    evaluateCondition as evaluateScribeCondition
 } from './textProcessor';
 
 type SkillCheckResult = { wasSuccess: boolean; roll: number; targetChance: number; description: string; };
@@ -36,9 +33,11 @@ export class GameEngine {
         this.worldQualities = worldQualities;
         this.resolutionRoll = Math.random() * 100;
     }
-public setQualities(newQualities: PlayerQualities): void {
-    this.qualities = JSON.parse(JSON.stringify(newQualities));
-}
+
+    public setQualities(newQualities: PlayerQualities): void {
+        this.qualities = JSON.parse(JSON.stringify(newQualities));
+    }
+
     public getQualities(): PlayerQualities { return this.qualities; }
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
 
@@ -73,18 +72,33 @@ public setQualities(newQualities: PlayerQualities): void {
     }
 
     public evaluateCondition(expression?: string): boolean {
-        return evaluateScribeCondition(expression, this.qualities, this.worldContent.qualities, {}, null, this.resolutionRoll, this);
+        return evaluateScribeCondition(
+            expression, 
+            this.qualities, 
+            this.worldContent.qualities, 
+            {}, 
+            null, 
+            this.resolutionRoll
+        );
     }
 
     public evaluateText(rawText: string | undefined): string {
-        return evaluateScribeText(rawText, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, this);
+        return evaluateScribeText(
+            rawText, 
+            this.qualities, 
+            this.worldContent.qualities, 
+            null, 
+            this.resolutionRoll
+        );
     }
 
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
-//   this.changes = [];
+        this.changes = [];
         this.scheduledUpdates = [];
+        
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
+        
         const body = isSuccess ? option.pass_long : option.fail_long || "";
         const changeString = isSuccess ? option.pass_quality_change : option.fail_quality_change;
         const redirectId = isSuccess ? option.pass_redirect : option.fail_redirect;
@@ -108,21 +122,25 @@ public setQualities(newQualities: PlayerQualities): void {
     public renderStorylet(storylet: Storylet | Opportunity): Storylet | Opportunity {
         const rendered = JSON.parse(JSON.stringify(storylet));
         const evalAndAssign = (obj: any, key: string) => { if (obj[key]) { obj[key] = this.evaluateText(obj[key]); } };
+        
         evalAndAssign(rendered, 'name');
         evalAndAssign(rendered, 'text');
         evalAndAssign(rendered, 'short');
         evalAndAssign(rendered, 'metatext');
         evalAndAssign(rendered, 'image_code');
+        
         if (rendered.options) { 
             rendered.options = rendered.options.map((opt: ResolveOption) => { 
                 const rOpt = { ...opt }; 
                 evalAndAssign(rOpt, 'name'); 
                 evalAndAssign(rOpt, 'short'); 
                 evalAndAssign(rOpt, 'meta'); 
-                if (rOpt.action_cost && isNaN(Number(rOpt.action_cost))) {
-                    rOpt.computed_action_cost = rOpt.action_cost; 
+                
+                if (rOpt.action_cost) {
+                    const costStr = this.evaluateText(`{${rOpt.action_cost}}`);
+                    rOpt.computed_action_cost = isNaN(Number(costStr)) ? costStr : Number(costStr);
                 } else {
-                    rOpt.computed_action_cost = Number(rOpt.action_cost || 0);
+                    rOpt.computed_action_cost = 0;
                 }
                 return rOpt; 
             }); 
@@ -130,74 +148,101 @@ public setQualities(newQualities: PlayerQualities): void {
         return rendered;
     }
 
-    // --- EFFECT API ---
-
     public applyEffects(effectsString: string): void {
-        // --- ADD DEBUG LOGGING HERE ---
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
-        // The regex `,(?![^\[]*\]|[^\{]*\})/g` splits by commas not inside `[]` or `{}`
-        const effects = effectsString.split(/,(?![^\[]*\]|[^\{]*\})/g); 
-        console.log(`[ENGINE DEBUG] Split into effects:`, effects);
-        // --- END DEBUG ---
+        
+        // 1. Resolve nested ScribeScript first ({ ... })
+        const resolvedString = this.evaluateText(`{${effectsString}}`);
+        
+        // 2. Split by comma (ignore brackets)
+        const effects = resolvedString.split(/,(?![^\[]*\])/g); 
 
         for (const effect of effects) {
-            if (!effect.trim()) {
-                console.log(`[ENGINE DEBUG] Skipping empty effect: "${effect}"`);
+            const cleanEffect = effect.trim();
+            if (!cleanEffect) continue;
+
+            console.log(`[ENGINE DEBUG] Processing effect: "${cleanEffect}"`);
+
+            const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
+            if (macroMatch) {
+                const [, command, args] = macroMatch;
+                if (['schedule', 'reset', 'update', 'cancel'].includes(command)) {
+                    this.parseAndQueueTimerInstruction(command, args);
+                }
                 continue;
             }
-            const tokens = tokenize(effect.trim());
-            const state: EvaluationState = {
-                qualities: this.qualities,
-                worldQualities: this.worldQualities,
-                defs: this.worldContent.qualities,
-                aliases: {},
-                self: null,
-                resolutionRoll: this.resolutionRoll,
-                engine: this
-            };
-            const parser = new ScribeParser(tokens, state);
+
+            const batchMatch = cleanEffect.match(/^%all\[(.*?)\]\s*(=|\+=|-=)\s*(.*)$/);
+            if (batchMatch) {
+                const [, cat, op, val] = batchMatch;
+                const resolvedVal = this.evaluateText(`{${val}}`);
+                const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
+                this.batchChangeQuality(cat, op, numVal, {});
+                continue;
+            }
+
+            const assignMatch = cleanEffect.match(/^\$([a-zA-Z0-9_]+)(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
             
-            // --- ADD DEBUG LOGGING HERE ---
-            console.log(`[ENGINE DEBUG] Evaluating effect "${effect.trim()}". Tokens:`, tokens.map(t => t.value).join(' '));
-            // --- END DEBUG ---
-            
-            parser.evaluate('EFFECT'); // This is where the actual mutation happens
-            
-            // Log state after each effect application
-            console.log(`[ENGINE DEBUG] After effect "${effect.trim()}", tutorial_progress is:`, (this.qualities['tutorial_progress'] as any)?.level);
+            if (assignMatch) {
+                const [, qid, metaStr, op, valStr] = assignMatch;
+                
+                const metadata: { desc?: string; source?: string } = {};
+                if (metaStr) {
+                    const metaParts = metaStr.split(',');
+                    for (const part of metaParts) {
+                        const [k, ...v] = part.split(':');
+                        if (k.trim() === 'desc') metadata.desc = v.join(':').trim();
+                        if (k.trim() === 'source') metadata.source = v.join(':').trim();
+                    }
+                }
+
+                let val: string | number = 0;
+                if (op !== '++' && op !== '--') {
+                     const resolvedValueStr = this.evaluateText(`{${valStr}}`);
+                     val = resolvedValueStr;
+                     if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
+                         val = Number(resolvedValueStr);
+                     }
+                }
+                
+                this.changeQuality(qid, op, val, metadata);
+            }
         }
     }
 
-    // --- PUBLIC METHODS CALLED BY PARSER ---
+    private parseAndQueueTimerInstruction(command: string, argsStr: string) {
+        const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
+        const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
 
-    public queueUpdate(type: string, targetId: string, opts: string[]) {
-        const instruction: any = { type, targetId, rawOptions: opts };
-        const timeOpt = opts.find(o => o.match(/\d+[mhd]/));
-        if (timeOpt) {
-            const match = timeOpt.match(/(\d+)([mhd])/);
-            if (match) {
-                const val = parseInt(match[1]);
-                const unit = match[2];
+        if (command === 'cancel') {
+            instruction.targetId = mainArgs;
+        } else {
+            const lastColon = mainArgs.lastIndexOf(':');
+            if (lastColon === -1) return;
+
+            const effectStr = mainArgs.substring(0, lastColon).trim();
+            const timeStr = mainArgs.substring(lastColon + 1).trim();
+
+            const tMatch = timeStr.match(/(\d+)([mhd])/);
+            if (tMatch) {
+                const val = parseInt(tMatch[1]);
+                const unit = tMatch[2];
                 instruction.intervalMs = val * (unit === 'h' ? 3600000 : unit === 'd' ? 86400000 : 60000);
             }
-        }
-        
-        // Handle effect parsing for schedule (e.g., $q+=1) if present
-        // In this architecture, the Parser passes `args[0]` which is the full effect string ($q+=1)
-        // or just the ID for cancel. 
-        // We need to store the effect structure. 
-        // For simplicity v6, we assume the API re-parses it, OR we store the raw string.
-        // Let's check how `queueUpdate` is called. It gets `args[0]`.
-        // If it's `schedule`, `args[0]` is `$q+=1`. 
-        // We parse out the op/value here for the DB.
-        
-        if (type !== 'cancel') {
-            const effectMatch = targetId.match(/(.+?)\s*(=|\+=|-=)\s*(.*)/);
-            if (effectMatch) {
-                instruction.targetId = effectMatch[1].replace('$', '').trim(); // Remove $
-                instruction.op = effectMatch[2];
-                instruction.value = parseInt(effectMatch[3].trim()); // Note: Assumes simple number for delayed effects
+
+            const effMatch = effectStr.match(/\$([a-zA-Z0-9_]+)\s*(=|\+=|-=)\s*(.*)/);
+            if (effMatch) {
+                instruction.targetId = effMatch[1];
+                instruction.op = effMatch[2];
+                instruction.value = isNaN(Number(effMatch[3])) ? effMatch[3] : Number(effMatch[3]);
             }
+        }
+
+        if (optArgs) {
+            if (optArgs.includes('recur')) instruction.recurring = true;
+            if (optArgs.includes('unique')) instruction.unique = true;
+            const descMatch = optArgs.match(/desc:(.*)/);
+            if (descMatch) instruction.description = descMatch[1].trim();
         }
 
         this.scheduledUpdates.push(instruction);
@@ -212,15 +257,9 @@ public setQualities(newQualities: PlayerQualities): void {
     }
 
     public changeQuality(qid: string, op: string, value: number | string, metadata: { desc?: string; source?: string }): void {
-        console.log(`[ENGINE.changeQuality] Received command: qid='${qid}', op='${op}', value='${value}'`);
-        if (!qid || typeof qid !== 'string') {
-            console.error("[ENGINE.changeQuality] ERROR: Invalid or missing qid. Aborting change.");
-            return;
-        }
-        
-         const def = this.worldContent.qualities[qid];
+        const def = this.worldContent.qualities[qid];
         if (!def) {
-            console.error(`[ENGINE.changeQuality] ERROR: No definition found for qid='${qid}'. Aborting change.`);
+            console.warn(`[GameEngine] Unknown quality '${qid}'. Skipping.`);
             return;
         }
 
@@ -237,7 +276,7 @@ public setQualities(newQualities: PlayerQualities): void {
         }
 
         const qState = targetState[effectiveQid] as any;
-        const levelBefore = qState.level || 0; // Capture this BEFORE modification
+        const levelBefore = qState.level || 0;
         const cpBefore = qState.changePoints || 0;
 
         if (qState.type === QualityType.String) {
@@ -248,10 +287,14 @@ public setQualities(newQualities: PlayerQualities): void {
             const isIncremental = ['+=', '-=', '++', '--'].includes(op);
             const isItem = def.type === QualityType.Item || def.type === QualityType.Equipable;
 
-            // ... (Pyramidal logic unchanged) ...
             if (qState.type === QualityType.Pyramidal) {
-                 // ... [Keep existing Pyramidal block] ...
                  if (isIncremental) {
+                    if (op === '++' || op === '+=') {
+                        if (def.grind_cap) {
+                            const cap = parseInt(this.evaluateText(`{${def.grind_cap}}`), 10);
+                            if (!isNaN(cap) && qState.level >= cap) return; 
+                        }
+                    }
                     if (op === '++') qState.changePoints += 1;
                     else if (op === '--') qState.changePoints -= 1;
                     else if (op === '+=') qState.changePoints += numValue;
@@ -259,69 +302,49 @@ public setQualities(newQualities: PlayerQualities): void {
                     this.updatePyramidalLevel(qState, def);
                 } else if (op === '=') { qState.level = numValue; qState.changePoints = 0; }
             } else {
-                // Linear / Item Logic
                 if (isIncremental) {
                     const isAdd = op === '++' || op === '+=';
                     const qty = (op === '++' || op === '--') ? 1 : numValue;
 
                     if (isAdd) {
-                        // ... [Keep existing Cap Check] ...
                         if (def.grind_cap) {
-                             const grindCapValue = parseInt(this.evaluateText(`{${def.grind_cap}}`), 10);
-                             if (!isNaN(grindCapValue) && qState.level >= grindCapValue) return;
+                             const cap = parseInt(this.evaluateText(`{${def.grind_cap}}`), 10);
+                             if (!isNaN(cap) && qState.level >= cap) return;
                         }
-
                         qState.level += qty;
                         
-                        // Source Tracking (ADD)
                         if (isItem && metadata.source) {
                             if (!qState.sources) qState.sources = [];
-                            // Optimization: If the NEW source is identical to the LATEST source, 
-                            // we generally assume it's the same batch.
-                            // However, the prompt implies adding multiple entries for frequency weight.
-                            // So we push every time.
-                            for(let i=0; i<qty; i++) {
-                                qState.sources.push(metadata.source);
-                            }
+                            for(let i=0; i<qty; i++) qState.sources.push(metadata.source);
                         }
                     } else {
-                        // SUBTRACT
-                        // Prune BEFORE lowering the level number, so calculations work on the state at the time of spending
-                        if (isItem) {
-                            this.pruneSources(qState, qty, levelBefore);
-                        }
+                        if (isItem) this.pruneSources(qState, qty, levelBefore);
                         qState.level -= qty;
                     }
-                } else { // '=' SET
-                    qState.level = numValue;
-                    if (isItem) {
-                        if (numValue === 0) {
-                            qState.sources = [];
-                            qState.spentTowardsPrune = 0;
-                        }
-                        else {
-                            // If setting to a lower number, treat difference as "spent"
-                            const diff = levelBefore - numValue;
-                            if (diff > 0) this.pruneSources(qState, diff, levelBefore);
-                        }
+                } else { 
+                    if (isItem && numValue < levelBefore) {
+                        this.pruneSources(qState, levelBefore - numValue, levelBefore);
                     }
+                    qState.level = numValue;
+                    if (isItem && numValue === 0) qState.sources = [];
                 }
             }
             
-            // ... [Keep existing Post-Change Cap Checks and Logging] ...
-            if (def.max && qState.level > Number(def.max)) qState.level = Number(def.max);
+            if (def.max) {
+                const max = Number(this.evaluateText(`{${def.max}}`)) || Infinity;
+                if (qState.level > max) { qState.level = max; if (qState.type === 'P') qState.changePoints = 0; }
+            }
             qState.level = Math.floor(qState.level);
-            if ((def.type === QualityType.Counter || isItem) && qState.level < 0) qState.level = 0;
+            if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
         }
 
-        // ... [Keep existing Logging Logic] ...
         const displayName = this.evaluateText(def.name || effectiveQid);
         let changeText = "";
-        if (qState.level > levelBefore) changeText = `${displayName} increased.`;
-        else if (qState.level < levelBefore) changeText = `${displayName} decreased.`;
+        if (qState.level > levelBefore) changeText = this.evaluateText(def.increase_description) || `${displayName} increased.`;
+        else if (qState.level < levelBefore) changeText = this.evaluateText(def.decrease_description) || `${displayName} decreased.`;
         else if (qState.type === 'S') changeText = `${displayName} is now ${qState.stringValue}`;
 
-        if (metadata.desc) changeText = metadata.desc;
+        if (metadata.desc) changeText = this.evaluateText(metadata.desc);
 
         if (changeText) {
             this.changes.push({
@@ -337,45 +360,22 @@ public setQualities(newQualities: PlayerQualities): void {
         if (!qState.sources || qState.sources.length === 0) return;
         if (totalLevelBefore <= 0) return;
 
-        // 1. Calculate Pruning Credit
         const fractionSpent = amountSpent / totalLevelBefore;
         const creditsEarned = qState.sources.length * fractionSpent;
-
         qState.spentTowardsPrune = (qState.spentTowardsPrune || 0) + creditsEarned;
 
-        // 2. Execution Loop
         let removeCount = 0;
-
         while (qState.spentTowardsPrune >= 1.0 && qState.sources.length > 0) {
-            
-            // Identify Candidate (FIFO = Index 0)
             const candidate = qState.sources[0];
-
-            // Check if Candidate is a Duplicate (exists more than once in current array)
-            // Note: We scan the whole array. Ideally we optimized this but for <100 sources it's fine.
             let duplicateCount = 0;
-            for(const s of qState.sources) {
-                if (s === candidate) duplicateCount++;
-                if (duplicateCount > 1) break; 
-            }
+            for(const s of qState.sources) { if (s === candidate) duplicateCount++; if(duplicateCount > 1) break; }
             const isDuplicate = duplicateCount > 1;
 
-            // 3. The Protection Rule
-            // - If it's the First item being removed in this specific transaction (removeCount === 0),
-            //   we ALWAYS allow it. This ensures the displayed "source" updates eventually.
-            // - If we have enough credit to remove MORE items (removeCount > 0),
-            //   we ONLY allow it if the candidate is a DUPLICATE.
-            //   We stop pruning to preserve unique history tags.
-            
             if (removeCount === 0 || isDuplicate) {
-                qState.sources.shift(); // Remove oldest
+                qState.sources.shift();
                 qState.spentTowardsPrune -= 1.0;
                 removeCount++;
             } else {
-                // We have credit, but the next item is Unique. 
-                // We stop pruning to save it. 
-                // We do NOT clear the credit; it carries over to the next transaction,
-                // putting pressure on this unique item until enough are spent to force it out next time.
                 break;
             }
         }
