@@ -36,7 +36,7 @@ export default function MacrosPage() {
 </section>
 
             <section id="random">
-                <h2 className="docs-h2">2. The<code>%random</code> Macro</h2>
+                <h2 className="docs-h2">2. The <code>%random</code> Macro</h2>
                 <p className="docs-p">
                     This is the simplest probability macro. It takes a number (0-100) and returns <code>true</code> or <code>false</code> based on the single Resolution Roll for the current action.
                 </p>
@@ -61,7 +61,7 @@ export default function MacrosPage() {
             </section>
 
             <section id="chance">
-                <h2 className="docs-h2">3. The<code>%chance</code> Macro</h2>
+                <h2 className="docs-h2">3. The <code>%chance</code> Macro</h2>
                 <p className="docs-p">
                     This macro is the explicit, long-form version of the <Link href="/docs/scribescript#challenges" className="docs-link">Anonymous Challenge</Link>. It calculates a probability number based on a skill check, but gives you full control over every parameter.
                 </p>
@@ -83,7 +83,7 @@ export default function MacrosPage() {
             </section>
 
             <section id="batch">
-    <h2 className="docs-h2">4. The<code>%all</code> Macro (Batch Operations)</h2>
+    <h2 className="docs-h2">4. The <code>%all</code> Macro (Batch Operations)</h2>
     <p className="docs-p">
         This macro is a powerful tool for targeting a group of qualities at once, identified by their <strong>Category</strong>. It is used in Effect fields.
     </p>
@@ -151,7 +151,7 @@ export default function MacrosPage() {
         </p>
     </div>
 
-    <h3 className="docs-h3">`%schedule`</h3>
+    <h3 className="docs-h3"><code>%schedule</code></h3>
     <p className="docs-p"><strong>Adds a new event</strong> to the character's pending event queue. By default, this stacks, allowing multiple timers for the same quality.</p>
     <div className="docs-syntax-box">
         <code className="docs-code">{`{%schedule[ EFFECT : TIME ; MODIFIERS ]}`}</code>
@@ -164,7 +164,7 @@ export default function MacrosPage() {
         </code>
     </div>
 
-    <h3 className="docs-h3">`%cancel`</h3>
+    <h3 className="docs-h3"><code>%cancel</code></h3>
     <p className="docs-p"><strong>Removes pending events</strong> for a specific quality. You can target which events to remove using modifiers.</p>
     <div className="docs-syntax-box">
         <code className="docs-code">{`{%cancel[ $QUALITY_ID ; MODIFIERS ]}`}</code>

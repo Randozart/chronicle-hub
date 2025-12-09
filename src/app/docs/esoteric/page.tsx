@@ -65,28 +65,28 @@ export default function EsotericPatternsPage() {
                 </p>
 
                 <div className="docs-card" style={{borderColor: '#f1c40f'}}>
-                    <h3>Setup</h3>
-                    <ul className="docs-props-list">
-                        <li><strong>Settings:</strong> Disable Action Economy.</li>
-                        <li><strong>Mechanic:</strong> Every major action uses <strong>Living Stories</strong>.</li>
-                    </ul>
-                    <hr style={{borderColor: '#444', margin: '1rem 0'}}/>
-                    <h3>Example Loop</h3>
-                    <ol className="docs-list">
-                        <li>
-                            <strong>Option:</strong> "Send Scavengers"<br/>
-                            Effect: <code>$schedule[$scavengers_return = 1 : 4h]</code>
-                        </li>
-                        <li>
-                            The player leaves the site. 4 hours later, the server updates the state.
-                        </li>
-                        <li>
-                            <strong>Storylet:</strong> "Scavengers Return"<br/>
-                            Requirement: <code>visible_if: $scavengers_return == 1</code><br/>
-                            Effect: <code>$scavengers_return = 0, $scrap += 50</code>
-                        </li>
-                    </ol>
-                </div>
+    <h3>Setup</h3>
+    <ul className="docs-props-list">
+        <li><strong>Settings:</strong> Disable Action Economy.</li>
+        <li><strong>Mechanic:</strong> Every major action uses <strong>Living Stories (Timers)</strong>.</li>
+    </ul>
+    <hr style={{borderColor: '#444', margin: '1rem 0'}}/>
+    <h3>Example Loop</h3>
+    <ol className="docs-list">
+        <li>
+            <strong>Option:</strong> "Send Scavengers"<br/>
+            Effect: <code>{`{%schedule[$scavengers_return = 1 : 4h]}`}</code>
+        </li>
+        <li>
+            The player leaves the site. 4 hours later, the server updates the state.
+        </li>
+        <li>
+            <strong>Storylet:</strong> "Scavengers Return"<br/>
+            Requirement: <code>visible_if: $scavengers_return == 1</code><br/>
+            Effect: <code>$scavengers_return = 0, $scrap += 50</code>
+        </li>
+    </ol>
+</div>
             </section>
 
             <section>
@@ -121,16 +121,24 @@ export default function EsotericPatternsPage() {
             </section>
 
              <section>
-                <h2 className="docs-h2">5. The "Premium" Draw</h2>
-                <p className="docs-p">
-                    Instead of Actions limiting your play, <strong>Resources</strong> limit your play. 
-                    Walking around is free, but drawing Opportunity Cards costs money.
-                </p>
-                <ul className="docs-props-list">
-                    <li><strong>Settings:</strong> <code>Default Draw Cost: "$gold -= 5"</code></li>
-                    <li><strong>Result:</strong> The "Deck" becomes a "Gacha" mechanic or a "Paid Information Broker". The player must grind basic storylets to earn Gold, then spend Gold to draw Cards for rare rewards.</li>
-                </ul>
-            </section>
+    <h2 className="docs-h2">5. The "Premium" Draw</h2>
+    <p className="docs-p">
+        Instead of Actions limiting play, you can make <strong>Resources</strong> the primary constraint. 
+        Walking around is free, but drawing Opportunity Cards costs a specific quality.
+    </p>
+    <div className="docs-callout">
+        <strong style={{color: '#fff'}}>How to set it up:</strong>
+        <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
+            In the <strong>Settings</strong> page, find the <strong>Default Draw Cost</strong> field. Instead of a number like <code>1</code>, enter a full ScribeScript effect string.
+        </p>
+        <div className="docs-pre" style={{marginTop:'0.5rem'}}>
+            <code className="docs-code">$gold -= 5</code>
+        </div>
+        <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
+            <strong>Result:</strong> The "Draw" button now deducts 5 Gold instead of 1 Action. This turns the deck into a "Gacha" mechanic or a "Paid Information Broker," where the player must grind basic storylets for currency to access rare card rewards.
+        </p>
+    </div>
+</section>
 
             <section>
                 <h2 className="docs-h2">6. Esoteric Markets (Metaphysical Trade)</h2>
