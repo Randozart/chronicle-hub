@@ -59,9 +59,16 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
             
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
+                {/* BASIC INFO */}
                 <div className="form-row">
                     <div style={{ flex: 2 }}>
-                        <div className="form-group"><label className="form-label">Title</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
+                        <SmartArea 
+                            label="Title" 
+                            value={form.name} 
+                            onChange={v => handleChange('name', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                        />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Sort Order</label>
@@ -72,7 +79,17 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                 <div className="form-row">
                     <div className="form-group"><label className="form-label">Deck ID</label><input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" /></div>
                     <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <SmartArea 
+                            label="Image Code" 
+                            value={form.image_code || ''} 
+                            onChange={v => handleChange('image_code', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="image_id or { $logic }"
+                            subLabel="Supports ScribeScript"
+                        />
+                    </div>
                 </div>
 
                 {/* TEASER */}
@@ -89,24 +106,40 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                 <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Card Logic</label>
                     
-                    <SmartArea 
-                        label="Draw Condition" 
-                        value={form.draw_condition || ''} 
-                        onChange={v => handleChange('draw_condition', v)} 
-                        storyId={storyId} 
-                        mode="condition" 
-                        placeholder="$gold > 10"
-                    />
+                    <div className="form-row">
+                        <div style={{ flex: 1 }}>
+                            <SmartArea 
+                                label="Draw Condition" 
+                                value={form.draw_condition || ''} 
+                                onChange={v => handleChange('draw_condition', v)} 
+                                storyId={storyId} 
+                                mode="condition" 
+                                placeholder="$gold > 10"
+                                subLabel="Requirements to enter hand"
+                            />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <SmartArea 
+                                label="Unlock If (Playable)" 
+                                value={form.unlock_if || ''} 
+                                onChange={v => handleChange('unlock_if', v)} 
+                                storyId={storyId} 
+                                mode="condition" 
+                                placeholder="$energy > 5"
+                                subLabel="Requirements to play from hand"
+                            />
+                        </div>
+                    </div>
                     
                     <div className="form-row" style={{ marginTop: '1rem' }}>
                         <div className="form-group">
                             <label className="form-label">Frequency</label>
                             <select value={form.frequency || 'Standard'} onChange={e => handleChange('frequency', e.target.value)} className="form-select">
-                                <option value="Always">Always</option>
-                                <option value="Frequent">Frequent</option>
-                                <option value="Standard">Standard</option>
-                                <option value="Infrequent">Infrequent</option>
-                                <option value="Rare">Rare</option>
+                                <option value="Always">Always (Infinite Weight)</option>
+                                <option value="Frequent">Frequent (20)</option>
+                                <option value="Standard">Standard (10)</option>
+                                <option value="Infrequent">Infrequent (5)</option>
+                                <option value="Rare">Rare (2)</option>
                             </select>
                         </div>
                     </div>

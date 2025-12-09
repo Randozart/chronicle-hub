@@ -79,7 +79,17 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                         <input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" />
                     </div>
                     <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Image Code</label><input value={form.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" /></div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <SmartArea 
+                            label="Image Code" 
+                            value={form.image_code || ''} 
+                            onChange={v => handleChange('image_code', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="image_id or { $logic }"
+                            subLabel="Supports ScribeScript"
+                        />
+                    </div>
                 </div>
 
                 {/* TEASER */}
