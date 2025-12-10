@@ -8,6 +8,7 @@ import { Storylet, Opportunity, CharacterDocument } from '@/engine/models';
 import GameHub from '@/components/GameHub';
 import { GameEngine } from '@/engine/gameEngine';
 import { getAutofireStorylets } from '@/engine/contentCache'; // Ensure this is imported
+import CharacterLobby from '@/components/CharacterLobby';
 
 
 const sanitize = (obj: any) => JSON.parse(JSON.stringify(obj));
@@ -53,6 +54,8 @@ export default async function GamePage({
                     storyId={storyId}
                     imageLibrary={gameData.images || {}}
                     locations={gameData.locations || {}}
+                    settings={gameData.settings}
+                    initialCharacter={sanitize(character)}
                 />
             </div>
         );
@@ -138,38 +141,3 @@ export default async function GamePage({
         </main>
     );
 }
-
-const CharacterLobby = ({ availableCharacters, storyId, imageLibrary, locations }: any) => {
-    return (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 0 }} />
-            <div style={{ width: '100%', maxWidth: '500px', padding: '2rem', zIndex: 10, background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)' }}>
-                <h1 style={{ textAlign: 'center', marginBottom: '2rem', marginTop: 0, color: 'var(--text-primary)' }}>Select Character</h1>
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                    {availableCharacters.map((c: any) => (
-                        <button 
-                            key={c.characterId} 
-                            onClick={() => window.location.href = `/play/${storyId}?charId=${c.characterId}`}
-                            className="option-button"
-                            style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'left', width: '100%' }}
-                        >
-                            <div style={{ flex: 1 }}>
-                                <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)' }}>{c.name}</h3>
-                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                    {locations[c.currentLocationId]?.name || "Unknown Location"}
-                                </p>
-                            </div>
-                        </button>
-                    ))}
-                    <button 
-                        onClick={() => window.location.href = `/play/${storyId}/creation`}
-                        className="option-button"
-                        style={{ border: '2px dashed var(--border-color)', background: 'transparent', color: 'var(--text-muted)', textAlign: 'center', justifyContent: 'center', padding: '1rem' }}
-                    >
-                        + Create New Character
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
