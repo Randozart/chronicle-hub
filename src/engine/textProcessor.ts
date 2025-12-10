@@ -56,17 +56,20 @@ function evaluateExpression(
     resolutionRoll: number
 ): string | number | boolean {
     const trimmedExpr = expr.trim();
+    
+    if (trimmedExpr.includes(':')) {
+        return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
+    }
 
     if (trimmedExpr.startsWith('%')) {
         return evaluateMacro(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
     }
+    
     if (trimmedExpr.match(/^\d+%$/)) {
         const chance = parseInt(trimmedExpr.slice(0, -1), 10);
         return resolutionRoll < chance;
     }
-    if (trimmedExpr.includes(':')) {
-        return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
-    }
+    
     if (trimmedExpr.includes('|')) {
         const choices = trimmedExpr.split('|');
         const randomIndex = Math.floor(Math.random() * choices.length);

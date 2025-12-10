@@ -95,6 +95,19 @@ export async function POST(request: NextRequest) {
     }
 
     const engineResult = engine.resolveOption(storyletDef, option);
+    if (engineResult.wasSuccess && option.pass_quality_change) {
+        const resolved = engine.evaluateText(option.pass_quality_change);
+        if (resolved.trim()) {
+            engine.applyEffects(resolved);
+        }
+    } else if (!engineResult.wasSuccess && option.fail_quality_change) {
+        const resolved = engine.evaluateText(option.fail_quality_change);
+        if (resolved.trim()) {
+            engine.applyEffects(resolved);
+        }
+    }
+
+    // Update character qualities after applying effects
     character.qualities = engine.getQualities();
 
     processScheduledUpdates(character, engineResult.scheduledUpdates);
