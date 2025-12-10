@@ -39,6 +39,8 @@ interface GameHubProps {
     markets: Record<string, MarketDefinition>;
     worldState: PlayerQualities; // <--- ADD THIS
     systemMessage?: SystemMessage | null;
+    activeEvent?: Storylet | Opportunity | null; // <--- Add this
+
 }
 
 export default function GameHub(props: GameHubProps) {
@@ -53,17 +55,16 @@ export default function GameHub(props: GameHubProps) {
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
 
-    // Sync state when Server Component sends new data (e.g., page load/reload)
+    // Update useEffect to sync activeEvent
     useEffect(() => {
-        if (props.initialCharacter) {
-            setCharacter(props.initialCharacter);
-            setLocation(props.initialLocation);
-            setHand(props.initialHand);
-            setShowMap(false);
-            // We are back at the location hub, so clear any active event
-            setActiveEvent(null); 
-        }
-    }, [props.initialCharacter, props.initialLocation, props.initialHand]);
+        setCharacter(props.initialCharacter);
+        setLocation(props.initialLocation);
+        setHand(props.initialHand);
+        // If the server passes a forced event (Autofire), use it. Otherwise clear it.
+        setActiveEvent(props.activeEvent || null); 
+        setShowMap(false);
+        setShowMarket(false);
+    }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
 
 
 

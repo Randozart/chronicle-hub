@@ -4,9 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { checkLivingStories, getCharacter, getCharactersList } from '@/engine/characterService';
 import { getContent } from '@/engine/contentCache'; 
 import { getLocationStorylets, getEvent, getWorldState } from '@/engine/worldService';
-import { Storylet, Opportunity } from '@/engine/models';
+import { Storylet, Opportunity, CharacterDocument } from '@/engine/models';
 import GameHub from '@/components/GameHub';
 import { GameEngine } from '@/engine/gameEngine';
+import { getAutofireStorylets } from '@/engine/contentCache'; // Ensure this is imported
+
 
 const sanitize = (obj: any) => JSON.parse(JSON.stringify(obj));
 
@@ -15,79 +17,96 @@ export default async function GamePage({
     searchParams 
 }: { 
     params: Promise<{ storyId: string }>, 
-    searchParams: Promise<{ charId?: string; menu?: string }> // <--- Add menu type
+    searchParams: Promise<{ charId?: string; menu?: string }>
 }) {
     const { storyId } = await params;
-    const { charId, menu } = await searchParams; // <--- Destructure menu
+    const { charId, menu } = await searchParams;
     
     const session = await getServerSession(authOptions);
     if (!session?.user) redirect('/login');
     const userId = (session.user as any).id;
 
-    // 1. Fetch Character List
-    const charList = await getCharactersList(userId, storyId);
+    const [charList, gameData, worldState] = await Promise.all([
+        getCharactersList(userId, storyId),
+        getContent(storyId),
+        getWorldState(storyId)
+    ]);
 
-    // 2. Determine Active Character
+    if (charList.length === 0) redirect(`/play/${storyId}/creation`);
+
     let activeCharId = charId;
-    
-    // FIX: Only auto-select if the user did NOT ask for the menu explicitly
-    if (!activeCharId && charList.length === 1 && !menu) {
+    if (!activeCharId && charList.length > 0 && !menu) {
         activeCharId = charList[0].characterId;
     }
-
-    let character = null;
+    
+    let character: CharacterDocument | null = null;
     if (activeCharId) {
         character = await getCharacter(userId, storyId, activeCharId);
-         if (character) {
-            character = await checkLivingStories(character);
+        if (character) character = await checkLivingStories(character);
+    }
+
+    if (!character) {
+        return (
+             <div data-theme={gameData.settings.visualTheme || 'default'} className="theme-wrapper">
+                <CharacterLobby 
+                    availableCharacters={charList} 
+                    storyId={storyId}
+                    imageLibrary={gameData.images || {}}
+                    locations={gameData.locations || {}}
+                />
+            </div>
+        );
+    }
+
+    let initialLocation = gameData.locations[character.currentLocationId];
+    
+    // --- AUTOFIRE LOGIC START ---
+    const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
+    const pendingAutofires = await getAutofireStorylets(storyId);
+    
+    const eligibleAutofires = pendingAutofires.filter(e => engine.evaluateCondition(e.autofire_if));
+    
+    // Sort: Must > High > Normal
+    eligibleAutofires.sort((a, b) => {
+        const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
+        const pA = priority[a.urgency as keyof typeof priority || 'Normal'];
+        const pB = priority[b.urgency as keyof typeof priority || 'Normal'];
+        return pB - pA;
+    });
+
+    let activeEvent = null;
+    if (eligibleAutofires.length > 0) {
+        // Force the highest priority autofire event
+        activeEvent = await getEvent(storyId, eligibleAutofires[0].id);
+        if (activeEvent) {
+             activeEvent = engine.renderStorylet(activeEvent) as Storylet;
         }
     }
+    // --- AUTOFIRE LOGIC END ---
 
-    // If no chars at all, redirect to creation
-    if (!character && charList.length === 0) {
-        redirect(`/play/${storyId}/creation`);
+    let initialHand: Opportunity[] = [];
+    if (!activeEvent) {
+        const initialHandIds = character.opportunityHands?.[initialLocation?.deck] || [];
+        const rawHand = (await Promise.all(initialHandIds.map((id: string) => getEvent(storyId, id)))).filter((item): item is Opportunity => item !== null && 'deck' in item);
+        initialHand = rawHand.map(card => engine.renderStorylet(card) as Opportunity);
     }
 
-    // 3. Load Game Data
-    const gameData = await getContent(storyId);
-    const worldState = await getWorldState(storyId); 
-
-
-    // 4. If we have a character, prepare the game state
-    let initialLocation = null;
-    let initialHand: Opportunity[] = [];
-    let locationStorylets: Storylet[] = [];
+    const rawStorylets = await getLocationStorylets(storyId, character.currentLocationId);
+    const locationStorylets = rawStorylets.map(s => engine.renderStorylet(s) as Storylet);
     
-    // FIX 1: Explicitly type these objects so TypeScript allows assignment
     const visibleStoryletsMap: Record<string, Storylet> = {};
     const visibleOpportunitiesMap: Record<string, Opportunity> = {};
-
-    if (character) {
-        initialLocation = gameData.locations[character.currentLocationId];
-        const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
-
-        const initialHandIds = character.opportunityHands?.[initialLocation?.deck] || [];
-        const rawHand = (await Promise.all(
-            initialHandIds.map((id: string) => getEvent(storyId, id))
-        )).filter((item): item is Opportunity => item !== null && 'deck' in item);
-        initialHand = rawHand.map(card => engine.renderStorylet(card) as Opportunity);
-
-        const rawStorylets = await getLocationStorylets(storyId, character.currentLocationId);
-        locationStorylets = rawStorylets.map(s => engine.renderStorylet(s) as Storylet);
-        
-        // Build maps
-        locationStorylets.forEach(s => visibleStoryletsMap[s.id] = s);
-        initialHand.forEach(o => visibleOpportunitiesMap[o.id] = o);
-    }
-
-    let activeMessage = null;
+    locationStorylets.forEach(s => visibleStoryletsMap[s.id] = s);
+    initialHand.forEach(o => visibleOpportunitiesMap[o.id] = o);
     
-    if (character && gameData.settings.systemMessage && gameData.settings.systemMessage.enabled) {
-        const msg = gameData.settings.systemMessage;
-        // Check if character has already seen it
-        if (!character.acknowledgedMessages?.includes(msg.id)) {
-            activeMessage = msg;
-        }
+    // Also include the active autofire event in the definition map so it can render
+    if (activeEvent) {
+        visibleStoryletsMap[activeEvent.id] = activeEvent as Storylet;
+    }
+    
+    let activeMessage = null;
+    if (gameData.settings.systemMessage?.enabled && !character.acknowledgedMessages?.includes(gameData.settings.systemMessage.id)) {
+        activeMessage = gameData.settings.systemMessage;
     }
 
     return (
@@ -99,15 +118,16 @@ export default async function GamePage({
                 locationStorylets={sanitize(locationStorylets)}
                 availableCharacters={sanitize(charList)}
                 
+                // Pass the auto-detected event
+                activeEvent={sanitize(activeEvent)}
+                
                 qualityDefs={sanitize(gameData.qualities)}
                 storyletDefs={sanitize(visibleStoryletsMap)}
                 opportunityDefs={sanitize(visibleOpportunitiesMap)} 
                 settings={sanitize(gameData.settings)}
-                
                 deckDefs={sanitize(gameData.decks || {})} 
                 markets={sanitize(gameData.markets || {})}
-
-                imageLibrary={gameData.images || {}}
+                imageLibrary={sanitize(gameData.images || {})}
                 categories={sanitize(gameData.categories || {})}
                 locations={sanitize(gameData.locations)} 
                 regions={sanitize(gameData.regions || {})}
@@ -118,3 +138,38 @@ export default async function GamePage({
         </main>
     );
 }
+
+const CharacterLobby = ({ availableCharacters, storyId, imageLibrary, locations }: any) => {
+    return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 0 }} />
+            <div style={{ width: '100%', maxWidth: '500px', padding: '2rem', zIndex: 10, background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)' }}>
+                <h1 style={{ textAlign: 'center', marginBottom: '2rem', marginTop: 0, color: 'var(--text-primary)' }}>Select Character</h1>
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                    {availableCharacters.map((c: any) => (
+                        <button 
+                            key={c.characterId} 
+                            onClick={() => window.location.href = `/play/${storyId}?charId=${c.characterId}`}
+                            className="option-button"
+                            style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'left', width: '100%' }}
+                        >
+                            <div style={{ flex: 1 }}>
+                                <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)' }}>{c.name}</h3>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                    {locations[c.currentLocationId]?.name || "Unknown Location"}
+                                </p>
+                            </div>
+                        </button>
+                    ))}
+                    <button 
+                        onClick={() => window.location.href = `/play/${storyId}/creation`}
+                        className="option-button"
+                        style={{ border: '2px dashed var(--border-color)', background: 'transparent', color: 'var(--text-muted)', textAlign: 'center', justifyContent: 'center', padding: '1rem' }}
+                    >
+                        + Create New Character
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

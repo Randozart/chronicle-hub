@@ -67,6 +67,18 @@ export default function StoryletDisplay({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId, characterId })
             });
+
+            // --- NEW ERROR HANDLING ---
+            if (response.status === 409) {
+                const data = await response.json();
+                if (data.redirectId) {
+                    // Automatically redirect to the locking event
+                    onFinish(qualities, data.redirectId);
+                    return;
+                }
+            }
+            // --------------------------
+
             if (!response.ok) throw new Error(await response.text());
             
             const data = await response.json();

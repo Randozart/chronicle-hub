@@ -10,7 +10,7 @@ import { regenerateDeckCharges } from '@/engine/deckService';
 import { getContent } from '@/engine/contentCache';
 
 const FREQUENCY_WEIGHTS: Record<string, number> = {
-    "Always": Infinity,
+    "Always": Infinity, // Should be handled by Autofire, but kept for legacy decks
     "Frequent": 10,
     "Standard": 5,
     "Infrequent": 2,
@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
 
     if (!storyId || !characterId) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
 
-    // 1. Load Content & Character
     const gameData = await getContent(storyId);
     const worldState = await getWorldState(storyId);
     let character = await getCharacter(userId, storyId, characterId);
@@ -39,68 +38,41 @@ export async function POST(request: NextRequest) {
     const deckDef = gameData.decks[location.deck];
     if (!deckDef) return NextResponse.json({ message: 'There is no deck here.' });
 
-    // 2. Regenerate Actions (Action Economy)
-    // We do this BEFORE creating the engine so the engine sees the updated action count.
     if (gameData.settings.useActionEconomy) {
         character = await regenerateActions(character);
     }
 
-    // 3. Initialize Engine
     const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
 
-    // 4. Resolve Costs
     let costExpression = deckDef.draw_cost || gameData.settings.defaultDrawCost || "1";
-    
-    // Evaluate logic first (e.g. "{ $draw_tax }" -> "2")
     const resolvedCost = engine.evaluateText(`{${costExpression}}`);
     const numericCost = parseInt(resolvedCost, 10);
     const isPureNumber = !isNaN(numericCost);
 
     if (isPureNumber && numericCost > 0) {
-        // --- CASE A: ACTION ECONOMY ---
         if (gameData.settings.useActionEconomy) {
             const actionQid = gameData.settings.actionId.replace('$', '');
-            // Check effective level
             const currentActions = engine.getEffectiveLevel(actionQid);
-            
-            if (currentActions < numericCost) {
-                 return NextResponse.json({ message: 'Not enough actions to draw.' });
-            }
-            
-            // Deduct Actions using Engine
+            if (currentActions < numericCost) return NextResponse.json({ message: 'Not enough actions to draw.' });
             engine.applyEffects(`$${actionQid} -= ${numericCost}`);
-            character.lastActionTimestamp = new Date(); // Reset regen timestamp
+            character.lastActionTimestamp = new Date();
         }
     } else {
-        // --- CASE B: CUSTOM LOGIC ($gold -= 5) ---
         try {
-            // Only apply if it looks like an assignment or mutation
-            if (costExpression.match(/(-=|\+=|=)/)) {
-                engine.applyEffects(costExpression);
-            }
-        } catch (e) {
-            console.error("Draw Cost Error:", e);
-        }
+            if (costExpression.match(/(-=|\+=|=)/)) engine.applyEffects(costExpression);
+        } catch (e) { console.error("Draw Cost Error:", e); }
     }
 
-    // 5. Update Character with Engine State (Costs Paid)
     character.qualities = engine.getQualities();
-
-    // 6. Regenerate Deck Charges
-    // This mutates the character object based on time passed
     regenerateDeckCharges(character, deckDef, gameData);
     
     const deckId = deckDef.id;
-    
-    // Ensure arrays/objects exist
     if (!character.opportunityHands) character.opportunityHands = {};
     if (!character.opportunityHands[deckId]) character.opportunityHands[deckId] = [];
     if (!character.deckCharges) character.deckCharges = {};
 
-    // 7. Resolve Dynamic Deck Sizes
     const handSizeVal = engine.evaluateText(`{${deckDef.hand_size}}`);
     const handSize = parseInt(handSizeVal, 10) || 3;
-
     let deckSize = 0;
     if (deckDef.deck_size) {
         const deckSizeVal = engine.evaluateText(`{${deckDef.deck_size}}`);
@@ -110,73 +82,89 @@ export async function POST(request: NextRequest) {
     const currentHand = character.opportunityHands[deckId];
     const currentCharges = character.deckCharges[deckId] ?? 0;
 
-    // CHECK: Hand Full
-    if (currentHand.length >= handSize) {
-        return NextResponse.json({ character, message: `Your hand is full (${currentHand.length}/${handSize}).` });
-    }
+    if (currentHand.length >= handSize) return NextResponse.json({ character, message: `Your hand is full (${currentHand.length}/${handSize}).` });
+    if (deckSize > 0 && currentCharges <= 0) return NextResponse.json({ character, message: 'The deck is empty. Wait for it to refresh.' });
 
-    // CHECK: No Charges (Only if deck_size is set)
-    if (deckSize > 0 && currentCharges <= 0) {
-        return NextResponse.json({ character, message: 'The deck is empty. Wait for it to refresh.' });
-    }
-
-    // 8. Fetch Cards & Filter
+    // --- CARD SELECTION LOGIC ---
     const allCardsInDeck = await getOpportunitiesForDeck(storyId, location.deck);
     
     const eligibleCards = allCardsInDeck.filter(card => {
-        // Check Logic: Draw Condition
-        // engine has the updated state (costs paid), so we use it here
         const drawCond = engine.evaluateCondition(card.draw_condition);
-        
-        // Check Exclusions: Already in hand?
         const notInHand = !currentHand.includes(card.id);
-        
         return drawCond && notInHand;
     });
 
     if (eligibleCards.length === 0) {
-        // Save state (costs were paid) even if no card drawn? 
-        // Typically NO. If no card, we shouldn't charge actions. 
-        // However, restoring state is complex. For now, we return message.
-        // Ideally, we'd check eligibility before paying cost, but cost might affect eligibility.
-        // We will just return without saving the character cost deduction.
         return NextResponse.json({ character, message: 'No cards are available to draw right now.' });
     }
 
-    // 9. Draw Logic (Weighted Random)
-    let drawnCardId: string | undefined = undefined;
+    // --- STORYNEXUS MODE: PRIORITY DRAW ---
+    let poolToDrawFrom = eligibleCards;
     
-    // Check for "Always" priority first
-    const alwaysCard = eligibleCards.find(card => card.frequency === "Always");
+    if (gameData.settings.storynexusMode) {
+        // High urgency cards MUST be drawn before Normal ones
+        const highUrgencyCards = eligibleCards.filter(c => c.urgency === 'High');
+        if (highUrgencyCards.length > 0) {
+            poolToDrawFrom = highUrgencyCards;
+            console.log("[SN Mode] High Priority Deck Draw Active");
+        }
+    }
+    
+    let drawnCardId: string | undefined = undefined;
+    const alwaysCard = poolToDrawFrom.find(card => card.frequency === "Always");
     
     if (alwaysCard) {
         drawnCardId = alwaysCard.id;
     } else {
         const lotteryPool: string[] = [];
-        for (const card of eligibleCards) {
+        for (const card of poolToDrawFrom) {
             const weight = FREQUENCY_WEIGHTS[card.frequency] || 5;
             for (let i = 0; i < weight; i++) { lotteryPool.push(card.id); }
         }
-        
         if (lotteryPool.length > 0) {
             drawnCardId = lotteryPool[Math.floor(Math.random() * lotteryPool.length)];
         }
     }
 
-    // 10. Commit
     if (drawnCardId) {
-        // Deduct Charge
-        if (deckSize > 0) {
-            character.deckCharges[deckId] = Math.max(0, currentCharges - 1);
-        }
-        
-        // Add to Hand
+        if (deckSize > 0) character.deckCharges[deckId] = Math.max(0, currentCharges - 1);
         character.opportunityHands[deckId].push(drawnCardId);
-        
-        // Final Save
         await saveCharacterState(character);
         return NextResponse.json({ character }); 
     } else {
         return NextResponse.json({ character, message: 'Failed to draw a card (Pool Empty).' });
     }
+}
+
+export async function DELETE(request: NextRequest) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const userId = (session.user as any).id;
+    const { storyId, characterId, cardId, deckId } = await request.json();
+
+    if (!storyId || !characterId || !cardId || !deckId) {
+        return NextResponse.json({ error: 'Missing params' }, { status: 400 });
+    }
+
+    const character = await getCharacter(userId, storyId, characterId);
+    if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+
+    // Ensure the hand exists
+    if (!character.opportunityHands || !character.opportunityHands[deckId]) {
+        return NextResponse.json({ error: 'Deck not found on character' }, { status: 404 });
+    }
+
+    // Filter out the card
+    const originalLength = character.opportunityHands[deckId].length;
+    character.opportunityHands[deckId] = character.opportunityHands[deckId].filter(id => id !== cardId);
+
+    if (character.opportunityHands[deckId].length === originalLength) {
+        return NextResponse.json({ error: 'Card not found in hand' }, { status: 404 });
+    }
+
+    // Save
+    await saveCharacterState(character);
+
+    return NextResponse.json({ success: true, hand: character.opportunityHands[deckId] });
 }
