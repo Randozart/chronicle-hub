@@ -4,12 +4,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage, WorldConfig } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
-// import Elysium/Tabletop if needed
+import ElysiumLayout from './layouts/ElysiumLayout';
+import TabletopLayout from './layouts/TabletopLayout';
 import MapModal from './MapModal';
 import { GameEngine } from '@/engine/gameEngine';
 import CharacterLobby from './CharacterLobby';
 
-// Component Imports for Content Construction
+// Component Imports
 import CharacterSheet from './CharacterSheet';
 import LocationHeader from './LocationHeader';
 import LocationStorylets from './LocationStorylets';
@@ -20,8 +21,6 @@ import Possessions from './Possessions';
 import ActionTimer from './ActionTimer';
 import WalletHeader from './WalletHeader';
 import MarketInterface from './MarketInterface';
-import ElysiumLayout from './layouts/ElysiumLayout';
-import TabletopLayout from './layouts/TabletopLayout';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -52,7 +51,7 @@ interface GameHubProps {
 }
 
 export default function GameHub(props: GameHubProps) {
-    // State
+    // --- STATE ---
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
     const [location, setLocation] = useState<LocationDefinition | null>(props.initialLocation);
     const [hand, setHand] = useState<Opportunity[]>(props.initialHand);
@@ -60,8 +59,6 @@ export default function GameHub(props: GameHubProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
-    
-    // Moved from Layouts: Active Tab State
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
 
     useEffect(() => {
@@ -73,7 +70,7 @@ export default function GameHub(props: GameHubProps) {
         setShowMarket(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
 
-    // --- HANDLERS (Same as before) ---
+    // --- HANDLERS ---
     const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) { setActiveEvent(null); return; }
         setIsLoading(true);
@@ -130,7 +127,7 @@ export default function GameHub(props: GameHubProps) {
     }, [props.storyId]);
 
 
-    // --- LOBBY VIEW ---
+    // --- LOBBY CHECK ---
     if (!character) {
         return (
             <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper">
@@ -140,7 +137,7 @@ export default function GameHub(props: GameHubProps) {
     }
     if (!location) return <div>Loading location data...</div>;
 
-    // --- ENGINE SETUP ---
+    // --- ENGINE & DATA PREP ---
     const worldConfig: WorldConfig = {
         settings: props.settings, qualities: props.qualityDefs, decks: props.deckDefs,
         locations: props.locations, regions: props.regions, images: props.imageLibrary,
@@ -149,7 +146,6 @@ export default function GameHub(props: GameHubProps) {
     const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
     const renderedActiveEvent = activeEvent ? renderEngine.renderStorylet(activeEvent) : null;
 
-    // Deck Stats
     let currentDeckStats = undefined;
     const deckDef = props.deckDefs[location.deck];
     if (deckDef) {
@@ -158,13 +154,16 @@ export default function GameHub(props: GameHubProps) {
         currentDeckStats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
     }
 
-    // Market
     const locationMarket = location?.marketId;
     const regionMarket = (location?.regionId && props.regions[location.regionId]) ? props.regions[location.regionId].marketId : null;
     const activeMarketId = locationMarket || regionMarket || undefined;
     const activeMarketDefinition = activeMarketId && props.markets[activeMarketId] ? props.markets[activeMarketId] : null;
 
-    // --- SHARED COMPONENTS ---
+    const actionQid = props.settings.actionId.replace('$', '');
+    const actionState = character.qualities[actionQid];
+    const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
+    const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
+
     const TabBar = () => (
         <div className="tab-bar">
             <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
@@ -173,48 +172,43 @@ export default function GameHub(props: GameHubProps) {
         </div>
     );
 
-    const actionQid = props.settings.actionId.replace('$', '');
-    const actionState = character.qualities[actionQid];
-    const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
-    const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
-
-    // --- CONTENT BUILDERS ---
+    // --- CONTENT BUILDERS (The core of the refactor) ---
 
     const buildSidebar = () => {
         const isBlackCrown = props.settings.visualTheme === 'black-crown';
         
-        // 1. Black Crown Sidebar (Minimal, Tabs inside)
         if (isBlackCrown) {
+            // Black Crown Sidebar: Minimal, Tabs inside, Sticky Footer
             return (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
-                    <TabBar /> {/* Tabs live here for BC */}
-                    
-                    <div className="action-box">
-                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
-                        <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                        <TabBar /> 
+                        <div className="action-box">
+                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
+                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                        </div>
+                        <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
                     </div>
-
-                    <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
+                    <div style={{ padding: '1rem' }}>
+                        <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
+                    </div>
                 </div>
             );
         }
 
-        // 2. Default Sidebar
+        // Default Sidebar
         return (
             <>
                 <div style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <WalletHeader qualities={character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
                 </div>
-
                 <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
                     <div className="action-box">
                         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
                     </div>
-
                     <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
                 </div>
-
                 <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
                 </div>
@@ -222,142 +216,83 @@ export default function GameHub(props: GameHubProps) {
         );
     };
 
-    // In src/components/GameHub.tsx
-
-   const buildMainContent = () => {
+    const buildMainContent = () => {
         const isBlackCrown = props.settings.visualTheme === 'black-crown';
-
         let innerContent = null;
 
         if (activeTab === 'profile') {
             innerContent = (
-                <ProfilePanel 
-                    qualities={character.qualities} 
-                    qualityDefs={props.qualityDefs} 
-                    imageLibrary={props.imageLibrary} 
-                    categories={props.categories} 
-                    settings={props.settings} 
-                />
+                <div className="content-panel">
+                    <ProfilePanel qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />
+                </div>
             );
         } else if (activeTab === 'possessions') {
             innerContent = (
-                <Possessions 
-                    qualities={character.qualities} 
-                    equipment={character.equipment} 
-                    qualityDefs={props.qualityDefs} 
-                    equipCategories={props.settings.equipCategories || []} 
-                    onUpdateCharacter={(c) => handleQualitiesUpdate(c.qualities)} 
-                    storyId={props.storyId} 
-                    imageLibrary={props.imageLibrary} 
-                    settings={props.settings} 
-                />
+                <div className="content-panel">
+                    <Possessions qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => handleQualitiesUpdate(c.qualities)} storyId={props.storyId} imageLibrary={props.imageLibrary} settings={props.settings} />
+                </div>
             );
         } else if (isLoading) {
             innerContent = <div className="loading-container"><p>Loading...</p></div>;
         } else if (showMarket && activeMarketDefinition) {
             innerContent = (
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <MarketInterface 
-                        market={activeMarketDefinition} 
-                        qualities={character.qualities} 
-                        qualityDefs={props.qualityDefs} 
-                        imageLibrary={props.imageLibrary} 
-                        settings={props.settings} 
-                        onClose={() => setShowMarket(false)} 
-                        onUpdate={handleQualitiesUpdate} 
-                        storyId={props.storyId} 
-                        characterId={character.characterId} 
-                        worldState={props.worldState} 
-                    />
+                <div className="content-panel">
+                    <MarketInterface market={activeMarketDefinition} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} onClose={() => setShowMarket(false)} onUpdate={handleQualitiesUpdate} storyId={props.storyId} characterId={character.characterId} worldState={props.worldState} />
                 </div>
             );
         } else if (renderedActiveEvent) {
             innerContent = (
-                // FIX 1: Changed maxWidth from '800px' to '100%'. 
-                // This allows the CSS (.storylet-container) to control the width.
-                // For Black Crown, your CSS sets it to 950px. For others, it will fill the space.
                 <div style={{ maxWidth: '100%', margin: '0 auto' }}>
-                    <StoryletDisplay 
-                        eventData={renderedActiveEvent} 
-                        qualities={character.qualities} 
-                        onFinish={handleEventFinish} 
-                        onQualitiesUpdate={handleQualitiesUpdate} 
-                        onCardPlayed={handleCardPlayed} 
-                        qualityDefs={props.qualityDefs} 
-                        storyletDefs={props.storyletDefs} 
-                        opportunityDefs={props.opportunityDefs} 
-                        settings={props.settings} 
-                        imageLibrary={props.imageLibrary} 
-                        categories={props.categories} 
-                        storyId={props.storyId} 
-                        characterId={character.characterId} 
-                    />
+                    {isBlackCrown && (
+                        <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
+                            <LocationHeader 
+                                location={location!} 
+                                imageLibrary={props.imageLibrary} 
+                                onOpenMap={() => setShowMap(true)} 
+                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                            />
+                        </div>
+                    )}
+                    
+                    
+                    <StoryletDisplay eventData={renderedActiveEvent} qualities={character.qualities} onFinish={handleEventFinish} onQualitiesUpdate={handleQualitiesUpdate} onCardPlayed={handleCardPlayed} qualityDefs={props.qualityDefs} storyletDefs={props.storyletDefs} opportunityDefs={props.opportunityDefs} settings={props.settings} imageLibrary={props.imageLibrary} categories={props.categories} storyId={props.storyId} characterId={character.characterId} />
                 </div>
             );
         } else {
             // Default Story/Location View
             innerContent = (
                 <>
-                    <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
-                        <LocationHeader 
-                            location={location!} 
-                            imageLibrary={props.imageLibrary} 
-                            onOpenMap={() => setShowMap(true)} 
-                            onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
-                        />
-                    </div>
+                    {/* Header Logic: Show inside content flow ONLY for Black Crown to avoid duplicates in LondonLayout */}
+                    {isBlackCrown && (
+                        <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
+                            <LocationHeader location={location!} imageLibrary={props.imageLibrary} onOpenMap={() => setShowMap(true)} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} />
+                        </div>
+                    )}
 
                     <div style={{ marginTop: '2rem' }}>
-                        <LocationStorylets 
-                            storylets={props.locationStorylets} 
-                            onStoryletClick={showEvent} 
-                            qualities={character.qualities} 
-                            qualityDefs={props.qualityDefs} 
-                            imageLibrary={props.imageLibrary} 
-                        />
+                        <LocationStorylets storylets={props.locationStorylets} onStoryletClick={showEvent} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} />
                     </div>
                     <div style={{ marginTop: '3rem' }}>
-                        <OpportunityHand 
-                            hand={hand} 
-                            onCardClick={showEvent} 
-                            onDrawClick={handleDrawCard} 
-                            isLoading={isLoading} 
-                            qualities={character.qualities} 
-                            qualityDefs={props.qualityDefs} 
-                            imageLibrary={props.imageLibrary} 
-                            character={character} 
-                            locationDeckId={location!.deck} 
-                            deckDefs={props.deckDefs} 
-                            settings={props.settings} 
-                            currentDeckStats={currentDeckStats} 
-                        />
+                        <OpportunityHand hand={hand} onCardClick={showEvent} onDrawClick={handleDrawCard} isLoading={isLoading} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} character={character} locationDeckId={location!.deck} deckDefs={props.deckDefs} settings={props.settings} currentDeckStats={currentDeckStats} />
                     </div>
                 </>
             );
         }
 
         return (
-            // FIX 2: Increased maxWidth from '1000px' to '1600px'.
-            // This prevents the NexusLayout (which should be wide) from being squashed.
-            // LondonLayout handles its own constraints internally, so this won't break it.
             <div style={{ maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
-                {!isBlackCrown && (
-                    <div style={{ marginBottom: '2rem' }}>
-                        <TabBar />
-                    </div>
-                )}
-
+                {!isBlackCrown && <div style={{ marginBottom: '2rem' }}><TabBar /></div>}
                 {innerContent}
             </div>
         );
     };
-    // --- RENDER LAYOUT ---
+
     const renderLayout = () => {
         const layoutProps = {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
             settings: props.settings,
-            // Pass extra props for LondonLayout if needed
+            // Extra props for specific layouts if needed
             location: location!,
             imageLibrary: props.imageLibrary,
             onExit: handleExit,
@@ -377,9 +312,7 @@ export default function GameHub(props: GameHubProps) {
     return (
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             {renderLayout()}
-            {showMap && (
-                <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />
-            )}
+            {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
         </div>
     );
 }

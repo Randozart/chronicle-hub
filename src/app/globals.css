@@ -1097,6 +1097,7 @@ body {
     border: 1px solid var(--border-color);
     padding: 2rem;
     border-radius: var(--border-radius);
+    max-width: 900;
 }
 
 .storylet-text {
@@ -3130,49 +3131,60 @@ html[data-theme='revolutionary']::before {
 
 /* --- THEME: BLACK CROWN (Refined) --- */
 [data-theme='black-crown'] {
-    --bg-main: #696d69; /* Fallback color from container_bg.jpg */
+    --bg-main: #3a3d3a;
     --bg-panel: #e8e6e2;
-    --bg-item: transparent;
-    --bg-item-hover: rgba(0, 0, 0, 0.05);
     --border-color: #5a4632;
-    --border-light: #8b7d6b;
     --text-primary: #1a1a1a;
     --text-secondary: #333333;
-    --text-muted: #5c5c5c;
-    --accent-primary: #4a4a4a;
-    --accent-hover: #5a5a5a;
-    --accent-highlight: #a00; /* Red */
+    --accent-highlight: #a00;
     --font-main: "Special Elite", "Courier New", monospace;
     --border-radius: 0px;
 }
 
-
+/* 1. LAYER ONE: The "Void" Background */
 [data-theme='black-crown'].theme-wrapper {
-    background-color: var(--bg-main);
-    background-image: url('/themes/black-crown/container_bg.jpg') !important;
-    background-size: cover; /* Use 'cover' for a better fit */
+    background-color: #1a1c1a;
+    background-image: url('/themes/black-crown/body_bg.jpg') !important;
+    background-size: cover;
     background-attachment: fixed;
+    background-position: center;
     font-family: var(--font-main);
+    /* Flex to center the inner layout */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Hide default borders inside sidebar
-[data-theme='black-crown'] .layout-sidebar-col .action-box,
-[data-theme='black-crown'] .layout-sidebar-col .character-sheet {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 0 1rem;
-} */
-
-/* --- Black Crown Layout Overrides --- */
+/* 2. LAYER TWO: The "Desk Mat" Panel */
 [data-theme='black-crown'] .layout-grid-nexus {
-    /* Ensure the grid itself is transparent */
-    background-color: transparent;
+    background-image: url('/themes/black-crown/container_bg.jpg') !important;
+    background-size: cover;
+    background-position: center;
+    background-color: #696d69;
+    
+    /* FIX: Shrink the layout to reveal the background behind it */
+    width: 70%;
+    height: 100%; /* Leave gaps top/bottom */
+    min-height: 95vh;
+    margin: auto;
+    margin-top: 2em;
+    margin-bottom: 2em;
+    
+
+    
+    /* Add a shadow to lift the desk mat off the background */
+    box-shadow: 0 0 50px rgba(0,0,0,0.8);
+    border: 1px solid #000;
+    border-radius: 8px; 
+
 }
+
+
 [data-theme='black-crown'] .sidebar-panel {
     background: transparent;
     border-right: none;
     padding-top: 60px; /* Push content down from top */
+    min-width: 350px;
 }
 
 /* Apply paper texture to floating sidebar elements */
@@ -3209,14 +3221,18 @@ html[data-theme='revolutionary']::before {
     border: none;
     display: flex;
     justify-content: center;
-    gap: 4px; /* Space between tabs */
+    gap: 5px; /* Space between tabs */
     align-items: flex-end; /* Align icons to bottom of tab bg */
+}
+
+[data-theme='black-crown'] .tab-bar {
+    background-color: transparent;
 }
 
 [data-theme='black-crown'] .tab-btn {
     background-image: url('/themes/black-crown/tab_icons.png');
     background-repeat: no-repeat;
-    width: 53px; height: 50px;
+    width: 50px; height: 50px;
     /* FIX: Hide the button text */
     font-size: 0;
     color: transparent;
@@ -3264,19 +3280,52 @@ html[data-theme='revolutionary']::before {
 
 /* 4. Main Storylet Panel - Widened and Centered */
 [data-theme='black-crown'] .storylet-container {
-    /* Ensure the path matches your uploaded file exactly */
-    background-image: url('/themes/black-crown/storylet-intro_bg.jpg'); 
-    background-color: #e8e6e2; /* Fallback color */
-    background-size: 100% 100%; /* Stretch to fit */
-    background-repeat: no-repeat;
-    
-    /* Rotate texture if needed (experimental, usually better to rotate source image) */
-    /* transform: rotate(90deg); */ /* Uncomment only if you really want to rotate the whole div */
-    
+    background: transparent; border: none; box-shadow: none; padding: 0;
+    max-width: 950px; margin: 2rem auto;
+}
+
+/* Image/Text Split */
+[data-theme='black-crown'] .storylet-main-content {
+    background: transparent; border: none; box-shadow: none; padding: 0;
+    display: flex; flex-direction: row; align-items: flex-start; gap: 1rem;
+}
+
+/* Update: Apply paper texture ONLY to the text area */
+[data-theme='black-crown'] .storylet-text-content {
+    background-image: url('/themes/black-crown/storylet-intro_bg.jpg');
+    /* FIX: Width 100%, Height Auto to prevent ugly stretching */
+    background-size: 100% auto; 
+    background-color: #e8e6e2;
     border: 1px solid #000;
     box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    margin: 2rem auto;
-    padding: 2.5rem; /* Increased padding */
+    padding: 2.5rem;
+    flex-grow: 1; min-width: 0;
+}
+
+/* FIX: Quality Effects "On the text field" */
+[data-theme='black-crown'] .quality-changes-container {
+    /* Match the text content background */
+    background-image: url('/themes/black-crown/choice_bg.jpg'); 
+    background-size: 100% auto;
+    background-color: #e8e6e2;
+    
+    border: 1px solid #000;
+    border-top: none; /* Remove top border to merge */
+    
+    /* Pull it up to overlap the bottom of the text content */
+    margin-top: -2em; 
+    margin-bottom: 2em;
+    
+    padding: 1.5rem 2.5rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    
+    /* Ensure it aligns with the text content (not the image) */
+    /* Note: Since this is a sibling of storylet-main-content, we mimic the margin */
+    margin-left: 1em; /* Image width + gap approx */
+}
+/* Mobile fallback for the margin */
+@media (max-width: 800px) {
+    [data-theme='black-crown'] .quality-changes-container { margin-left: 0; }
 }
 
 
@@ -3309,16 +3358,21 @@ html[data-theme='revolutionary']::before {
     
     /* Current guess: Needs to move Right and Down */
     padding: 10px 20px 10px 10px; 
+    margin: 0; 
     
-    margin: 0 auto 2rem auto;
     width: fit-content;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+    
+    /* Optional: Add a drop shadow to the image frame itself so it pops off the desk */
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
+    box-shadow: none; /* Reset box-shadow as filter handles the complex shape better */
 }
 [data-theme='black-crown'] .storylet-image-frame img {
     border: 1px solid #555;
     max-height: 250px;
     display: block;
 }
+
 
 /* 6. Location Header Banner - Thicker */
 /* 6. Location Header Banner */
@@ -3335,7 +3389,9 @@ html[data-theme='revolutionary']::before {
     justify-content: center;
     align-items: center;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    margin-bottom: 3rem;
+    margin-bottom: 3rem;    
+    margin-top: 3rem;
+
 }
 [data-theme='black-crown'] .location-wrapper.mode-banner h1 {
     font-size: 2rem;
@@ -3361,7 +3417,8 @@ html[data-theme='revolutionary']::before {
     margin-bottom: 1.5rem;
     position: relative;
     padding: 1.5rem;
-    max-width: 850px; /* Match storylet width */
+    width: 100%; 
+    max-width: 950px; /* Match storylet width */
     margin-left: auto;
     margin-right: auto;
 }
@@ -3379,15 +3436,6 @@ html[data-theme='revolutionary']::before {
     background-size: contain;
     background-repeat: no-repeat;
     z-index: 10;
-}
-
-/* 8. Text & Button Colors */
-[data-theme='black-crown'] .text-emphasis {
-    color: var(--accent-highlight);
-    text-decoration: underline;
-    font-weight: bold;
-    background: none;
-    border: none;
 }
 
 [data-theme='black-crown'] .special-block-text {
@@ -3412,24 +3460,30 @@ html[data-theme='revolutionary']::before {
     background: linear-gradient(to bottom, #ff4d4d, #d63031);
 }
 
+/* Styling the switch button for Black Crown */
+[data-theme='black-crown'] .switch-char-btn {
+    background: transparent;
+    border: 1px solid #5a4632;
+    color: #3b2f2f;
+    font-family: var(--font-main);
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+[data-theme='black-crown'] .switch-char-btn:hover {
+    opacity: 1;
+    background: rgba(0,0,0,0.05);
+    border-color: #000;
+}
 /* --- UNIVERSAL TEXT STYLES (Apply to all themes) --- */
 
 .text-emphasis {
     /* This automatically picks up the Red color in Black Crown, 
        but will be Blue/Gold/etc in your other themes */
     color: var(--accent-highlight);
-    font-weight: bold;
-    font-style: italic;
     /* Optional: Black Crown uses underlines for emphasis */
     text-decoration: inherit; 
 }
 
-[data-theme='black-crown'] .text-emphasis {
-    background: transparent; border: none; padding: 0;
-    font-style: normal; font-weight: bold;
-    color: var(--accent-highlight);
-    text-decoration: underline;
-}
 
 
 .special-block-text {

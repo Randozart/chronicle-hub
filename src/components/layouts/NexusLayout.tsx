@@ -10,8 +10,7 @@ interface NexusLayoutProps {
 }
 
 export default function NexusLayout({ sidebarContent, mainContent, settings }: NexusLayoutProps) {
-    // Dynamic grid style: 360px sidebar for Black Crown, 320px default
-    const gridStyle = settings.visualTheme === 'black-crown' 
+    const gridStyle = settings?.visualTheme === 'black-crown' 
         ? { gridTemplateColumns: '360px 1fr' } 
         : { gridTemplateColumns: '320px 1fr' };
 
@@ -22,8 +21,8 @@ export default function NexusLayout({ sidebarContent, mainContent, settings }: N
                 {sidebarContent}
             </div>
             
-            {/* MAIN CONTENT */}
-            <div className="layout-column" style={{ overflow: 'hidden' }}>
+            {/* MAIN CONTENT - FIX: Enable vertical scrolling */}
+            <div className="layout-column" style={{ overflowY: 'auto', height: '100%', position: 'relative' }}>
                 {mainContent}
             </div>
         </div>
