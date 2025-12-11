@@ -87,11 +87,16 @@ export default function GameHub(props: GameHubProps) {
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
         setCharacter(prev => prev ? { ...prev, qualities: newQualities } : null);
     }, []);
+    
+    const handleCharacterUpdate = useCallback((newCharacterState: CharacterDocument) => {
+        console.log("Character state updated via handleCharacterUpdate.");
+        setCharacter(newCharacterState);
+    }, []);
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
-        handleQualitiesUpdate(newQualities);
+        setCharacter(prev => prev ? { ...prev, qualities: newQualities } : null);
         showEvent(redirectId ?? null);
-    }, [handleQualitiesUpdate, showEvent]);
+    }, [showEvent]);
 
     const handleCardPlayed = useCallback((cardId: string) => {
         setHand(prev => prev.filter(c => c.id !== cardId));
@@ -240,7 +245,7 @@ export default function GameHub(props: GameHubProps) {
         } else if (activeTab === 'possessions') {
             innerContent = (
                 <div className="content-panel">
-                    <Possessions qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => handleQualitiesUpdate(c.qualities)} storyId={props.storyId} imageLibrary={props.imageLibrary} settings={props.settings} />
+                    <Possessions qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={handleCharacterUpdate} storyId={props.storyId} imageLibrary={props.imageLibrary} settings={props.settings} />
                 </div>
             );
         } else if (isLoading) {

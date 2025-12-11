@@ -17,6 +17,7 @@ export default function LocationHeader({ location, imageLibrary, onOpenMap, onOp
     // This ensures we get the code regardless of which property name the database uses.
     // @ts-ignore - Ignoring TS error if one property doesn't exist on the specific type definition
     const imageCode = location.image;
+    const canTravel = !!location.regionId;
 
     return (
         <div className="location-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -68,18 +69,20 @@ export default function LocationHeader({ location, imageLibrary, onOpenMap, onOp
                 )}
 
                 {/* TRAVEL BUTTON */}
-                <button 
-                    onClick={onOpenMap}
-                    style={{
-                        background: 'var(--accent-primary)', color: 'white', border: 'none',
-                        padding: '0.75rem 1.5rem', borderRadius: '4px',
-                        fontWeight: 'bold', cursor: 'pointer',
-                        fontSize: '1rem', height: 'fit-content'
-                    }}
-                    className="hover:bg-[var(--accent-hover)] transition"
-                >
-                    Travel
-                </button>
+                {canTravel && (
+                    <button 
+                        onClick={onOpenMap}
+                        style={{
+                            background: 'var(--accent-primary)', color: 'white', border: 'none',
+                            padding: '0.75rem 1.5rem', borderRadius: '4px',
+                            fontWeight: 'bold', cursor: 'pointer',
+                            fontSize: '1rem', height: 'fit-content'
+                        }}
+                        className="hover:bg-[var(--accent-hover)] transition"
+                    >
+                        Travel
+                    </button>
+                )}
             </div>
         </div>
     );

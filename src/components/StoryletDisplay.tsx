@@ -230,6 +230,7 @@ export default function StoryletDisplay({
                     
                     let costDisplay = null;
                     if (showCost) {
+                        // ... (costDisplay logic remains the same)
                         const rawCost = option.computed_action_cost;
                         
                         if (typeof rawCost === 'number') {
@@ -266,11 +267,19 @@ export default function StoryletDisplay({
                                 )}
                                 <div className="option-text-wrapper">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                        <h3 style={{ margin: 0 }}>{option.name}</h3>
+                                        {/* --- FIX START --- */}
+                                        <h3 style={{ margin: 0, padding: 0 }}>
+                                            {/* We don't need a full <p> inside <h3>, so we can use the parser directly */}
+                                            {/* Or just wrap it. Let's wrap it for consistency. */}
+                                            <FormattedText text={option.name} />
+                                        </h3>
+                                        {/* --- FIX END --- */}
                                         {costDisplay}
                                     </div>
-                                    {option.short && <p className="option-short-desc">{option.short}</p>}
-                                    {option.meta && <p className="option-meta-text">{option.meta}</p>}
+                                    {/* --- FIX START --- */}
+                                    {option.short && <div className="option-short-desc"><FormattedText text={option.short} /></div>}
+                                    {option.meta && <div className="option-meta-text"><FormattedText text={option.meta} /></div>}
+                                    {/* --- FIX END --- */}
                                     {option.skillCheckText && (
                                         <p className="option-skill-check" style={{ color: option.chance !== null ? (option.chance > 80 ? '#2ecc71' : option.chance < 40 ? '#e74c3c' : '#f1c40f') : 'inherit' }}>
                                             {option.skillCheckText}

@@ -2,33 +2,33 @@
 
 import React from 'react';
 
-// Main component: Splits text into paragraphs and processes each line.
+// Main component: Correctly groups lines into paragraphs.
 export default function FormattedText({ text }: { text: string | undefined | null; }) {
     if (!text) return null;
 
-    const lines = text.split('\n');
+    // 1. Split the entire text block by one or more empty lines.
+    // This correctly identifies paragraphs separated by double (or more) newlines.
+    const paragraphs = text.split(/\n\s*\n/);
 
     return (
         <>
-            {lines.map((line, i) => {
-                // Check for the special Black Crown block-level format FIRST.
-                // The regex looks for the literal start and end tags on their own line.
-                const specialMatch = line.match(/^\[\\\\\|\\\](.*?)\[\/\|\/\/\]$/);
-                
-                if (specialMatch) {
-                    const content = specialMatch[1].trim();
-                    return (
-                        <div key={i} className="special-block-text">
-                            {`/// ${content} ///`}
-                        </div>
-                    );
-                }
+            {paragraphs.map((paragraph, i) => {
+                // Ignore empty paragraphs that might result from splitting.
+                if (!paragraph.trim()) return null;
 
-                // If it's not a special block, treat it as a standard paragraph
-                // and parse for inline formatting.
+                // 2. For each valid paragraph, split it into individual lines.
+                const lines = paragraph.split('\n');
+                
                 return (
-                    <p key={i} style={{ marginBottom: '0.75rem', minHeight: '1rem' }}>
-                        {parseInlineFormatting(line)}
+                    // 3. Render a single <p> tag for the entire paragraph.
+                    <p key={i} style={{ margin: '0 0 1em 0' }}> 
+                        {lines.map((line, j) => (
+                            <React.Fragment key={j}>
+                                {parseInlineFormatting(line)}
+                                {/* 4. Use <br /> for intentional line breaks WITHIN a paragraph. */}
+                                {j < lines.length - 1 && <br />} 
+                            </React.Fragment>
+                        ))}
                     </p>
                 );
             })}
@@ -40,9 +40,8 @@ export default function FormattedText({ text }: { text: string | undefined | nul
 function parseInlineFormatting(line: string): React.ReactNode[] {
     if (!line) return [];
 
-    // 1. Unified Regex for **Bold**, _Italic_, and [Emphasis]
-    // Note: We use [^\]]+ to match everything inside brackets
-    const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_| \*(?:.+?)\*|\[(?:[^\]]+)\])/g;
+    // This regex looks for **bold**, _italic_, *italic*, and [emphasis] blocks.
+    const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_|\*(?:.+?)\*|\[(?:[^\]]+)\])/g;
     
     const parts = line.split(formattingRegex);
 
@@ -51,13 +50,13 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
 
         // BOLD
         if (segment.startsWith('**') && segment.endsWith('**')) {
+            // Recursively parse content inside for nested formatting.
             return <strong key={i}>{parseInlineFormatting(segment.slice(2, -2))}</strong>;
         }
         
-        // ITALIC
-        if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith(' *') && segment.endsWith('*'))) {
-            const content = segment.startsWith('_') ? segment.slice(1, -1) : segment.slice(2, -1);
-            return <em key={i}>{parseInlineFormatting(content)}</em>;
+        // ITALIC (handles both _ and *)
+        if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith('*') && segment.endsWith('*'))) {
+            return <em key={i}>{parseInlineFormatting(segment.slice(1, -1))}</em>;
         }
         
         // UNIVERSAL EMPHASIS [ ]
@@ -69,6 +68,7 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
             );
         }
 
+        // If no formatting matches, return the plain text segment.
         return segment;
     });
 }

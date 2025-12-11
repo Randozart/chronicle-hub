@@ -78,14 +78,25 @@ export default async function GamePage({
     });
 
     let activeEvent = null;
-    if (eligibleAutofires.length > 0) {
-        // Force the highest priority autofire event
-        activeEvent = await getEvent(storyId, eligibleAutofires[0].id);
-        if (activeEvent) {
-             activeEvent = engine.renderStorylet(activeEvent) as Storylet;
-        }
+    const activeAutofire = eligibleAutofires[0];
+
+    if (activeAutofire) {
+        // Priority 1: An Autofire event is pending. It takes precedence.
+        console.log(`[GamePage] Autofire event triggered: ${activeAutofire.id}`);
+        activeEvent = await getEvent(storyId, activeAutofire.id);
+    } else if (character.currentStoryletId) {
+        // Priority 2: No autofire, but player was in a storylet. Resume it.
+        console.log(`[GamePage] Resuming saved storylet: ${character.currentStoryletId}`);
+        activeEvent = await getEvent(storyId, character.currentStoryletId);
     }
-    // --- AUTOFIRE LOGIC END ---
+    // Priority 3 (Default): No autofire and no saved storylet. activeEvent remains null.
+
+    // Render the event if one was found
+    if (activeEvent) {
+         // Cast to both types for safety, as getEvent can return either
+         activeEvent = engine.renderStorylet(activeEvent) as Storylet | Opportunity;
+    }
+    // --- AUTOFIRE & RESUME LOGIC END ---
 
     let initialHand: Opportunity[] = [];
     if (!activeEvent) {
