@@ -4,15 +4,24 @@ import { useState, useCallback, useEffect } from 'react';
 import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage, WorldConfig } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
+// import Elysium/Tabletop if needed
+import MapModal from './MapModal';
+import { GameEngine } from '@/engine/gameEngine';
+import CharacterLobby from './CharacterLobby';
+
+// Component Imports for Content Construction
+import CharacterSheet from './CharacterSheet';
+import LocationHeader from './LocationHeader';
+import LocationStorylets from './LocationStorylets';
+import OpportunityHand from './OpportunityHand';
+import StoryletDisplay from './StoryletDisplay';
+import ProfilePanel from './ProfilePanel';
+import Possessions from './Possessions';
+import ActionTimer from './ActionTimer';
+import WalletHeader from './WalletHeader';
+import MarketInterface from './MarketInterface';
 import ElysiumLayout from './layouts/ElysiumLayout';
 import TabletopLayout from './layouts/TabletopLayout';
-import { LayoutProps } from './layouts/LayoutProps';
-import MapModal from './MapModal';
-import GameImage from './GameImage';
-import { GameEngine } from '@/engine/gameEngine';
-import MarketInterface from './MarketInterface';
-import SystemMessageBanner from './SystemMessageBanner';
-import CharacterLobby from './CharacterLobby';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -26,7 +35,6 @@ interface GameHubProps {
         lastActionTimestamp?: string;
         portrait?: string | null; 
     }[];
-    
     qualityDefs: Record<string, QualityDefinition>;
     storyletDefs: Record<string, Storylet>;
     opportunityDefs: Record<string, Opportunity>; 
@@ -38,84 +46,52 @@ interface GameHubProps {
     storyId: string; 
     deckDefs: Record<string, DeckDefinition>;
     markets: Record<string, MarketDefinition>;
-    worldState: PlayerQualities; // <--- ADD THIS
+    worldState: PlayerQualities;
     systemMessage?: SystemMessage | null;
-    activeEvent?: Storylet | Opportunity | null; // <--- Add this
-
+    activeEvent?: Storylet | Opportunity | null;
 }
 
 export default function GameHub(props: GameHubProps) {
-    
-    
+    // State
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
     const [location, setLocation] = useState<LocationDefinition | null>(props.initialLocation);
     const [hand, setHand] = useState<Opportunity[]>(props.initialHand);
-    
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
+    
+    // Moved from Layouts: Active Tab State
+    const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
 
-    // Update useEffect to sync activeEvent
     useEffect(() => {
         setCharacter(props.initialCharacter);
         setLocation(props.initialLocation);
         setHand(props.initialHand);
-        // If the server passes a forced event (Autofire), use it. Otherwise clear it.
         setActiveEvent(props.activeEvent || null); 
         setShowMap(false);
         setShowMarket(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
 
-
-
-    // // --- HANDLERS ---
-    // const handleDismissMessage = async () => {
-    //     if (!props.systemMessage || !character) return;
-    //     try {
-    //         await fetch('/api/character/acknowledge-message', {
-    //             method: 'POST',
-    //             headers: { 'Content-Type': 'application/json' },
-    //             body: JSON.stringify({ characterId: character.characterId, messageId: props.systemMessage.id })
-    //         });
-    //     } catch (e) { console.error(e); }
-    // };
-
-    
-    
+    // --- HANDLERS (Same as before) ---
     const showEvent = useCallback(async (eventId: string | null) => {
-        if (!eventId) { 
-            setActiveEvent(null); 
-            return; 
-        }
+        if (!eventId) { setActiveEvent(null); return; }
         setIsLoading(true);
         try {
-            // We always fetch the RAW template. The client is the source of truth for rendering.
-            if (!character) return; // Add a safety check
-            const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}&characterId=${character.characterId}`);            if (!response.ok) throw new Error(`Event ${eventId} not found.`);
-                        
+            if (!character) return;
+            const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}&characterId=${character.characterId}`);
+            if (!response.ok) throw new Error(`Event ${eventId} not found.`);
             const rawEventData = await response.json();
-            setActiveEvent(rawEventData); // Set the raw, un-rendered event data
-
-        } catch (error) { 
-            console.error(error); 
-            setActiveEvent(null); 
-        } finally { 
-            setIsLoading(false); 
-        }
-    }, [props.storyId]); 
+            setActiveEvent(rawEventData);
+        } catch (error) { console.error(error); setActiveEvent(null); } finally { setIsLoading(false); }
+    }, [props.storyId, character]);
 
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
-        setCharacter(prevCharacter => {
-            if (!prevCharacter) return null;
-            return { ...prevCharacter, qualities: newQualities };
-        });
+        setCharacter(prev => prev ? { ...prev, qualities: newQualities } : null);
     }, []);
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
-        // First, update the character state immediately.
         handleQualitiesUpdate(newQualities);
-        // Then, trigger the navigation to the next event.
         showEvent(redirectId ?? null);
     }, [handleQualitiesUpdate, showEvent]);
 
@@ -142,135 +118,257 @@ export default function GameHub(props: GameHubProps) {
         setIsLoading(true);
         try {
             const res = await fetch('/api/travel', { 
-                method: 'POST', 
-                body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
+                method: 'POST', body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
             });
             const data = await res.json();
-            if (data.success) {
-                window.location.reload();
-            } else {
-                alert(data.error);
-            }
+            if (data.success) window.location.reload(); else alert(data.error);
         } catch(e) { console.error(e); } finally { setIsLoading(false); }
     }, [character, props.storyId]);
 
-    // const handleDeleteChar = async (charId: string, e: React.MouseEvent) => {
-    //     e.stopPropagation(); // Prevent clicking the card itself
-    //     if (!confirm("Permanently delete this character? This cannot be undone.")) return;
-        
-    //     try {
-    //         await fetch('/api/character/delete', {
-    //             method: 'DELETE',
-    //             body: JSON.stringify({ storyId: props.storyId, characterId: charId })
-    //         });
-    //         window.location.reload();
-    //     } catch (err) { console.error(err); }
-    // };
-
     const handleExit = useCallback(() => {
-        // Add ?menu=true to force the server to show the lobby
-        // even if we only have one character.
         window.location.href = `/play/${props.storyId}?menu=true`;
     }, [props.storyId]);
 
-    
-    // --- RENDER ---
 
-    // 1. LOBBY VIEW
+    // --- LOBBY VIEW ---
     if (!character) {
         return (
-                <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper">
-                <CharacterLobby 
-                    availableCharacters={props.availableCharacters} 
-                    storyId={props.storyId}
-                    imageLibrary={props.imageLibrary || {}}
-                    locations={props.locations || {}}
-                    settings={props.settings}
-                    initialCharacter={props.initialCharacter}
-                    systemMessage={props.systemMessage}
-                />
+            <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper">
+                <CharacterLobby availableCharacters={props.availableCharacters} storyId={props.storyId} imageLibrary={props.imageLibrary || {}} locations={props.locations || {}} settings={props.settings} initialCharacter={props.initialCharacter} systemMessage={props.systemMessage} />
             </div>
         );
     }
-
     if (!location) return <div>Loading location data...</div>;
-    
+
+    // --- ENGINE SETUP ---
     const worldConfig: WorldConfig = {
         settings: props.settings, qualities: props.qualityDefs, decks: props.deckDefs,
         locations: props.locations, regions: props.regions, images: props.imageLibrary,
         categories: props.categories || {}, char_create: {}, markets: props.markets,
     };
     const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
-    
-    // Render the active event using the LATEST character state
     const renderedActiveEvent = activeEvent ? renderEngine.renderStorylet(activeEvent) : null;
 
-    // --- CALCULATE DECK STATS ---
+    // Deck Stats
     let currentDeckStats = undefined;
-
-    if (character && location) {
-        // FIX: Construct a WorldConfig object from the individual props
-        const worldConfig = {
-            settings: props.settings,
-            qualities: props.qualityDefs,
-            decks: props.deckDefs,
-            locations: props.locations,
-            regions: props.regions,
-            images: props.imageLibrary,
-            categories: props.categories,
-            char_create: {}, 
-            markets: props.markets,
-        };
-
-        // Pass the full config to the engine
-        const engine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
-        
-        let currentDeckStats;
-        const deckDef = props.deckDefs[location.deck];
-        if (deckDef) {
-            const handVal = renderEngine.evaluateText(`{${deckDef.hand_size || 3}}`);
-            const handSize = parseInt(handVal, 10) || 3;
-            const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
-            const deckSize = parseInt(deckVal, 10) || 0;
-            currentDeckStats = { handSize, deckSize };
-        }
+    const deckDef = props.deckDefs[location.deck];
+    if (deckDef) {
+        const handVal = renderEngine.evaluateText(`{${deckDef.hand_size || 3}}`);
+        const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
+        currentDeckStats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
     }
 
+    // Market
     const locationMarket = location?.marketId;
     const regionMarket = (location?.regionId && props.regions[location.regionId]) ? props.regions[location.regionId].marketId : null;
     const activeMarketId = locationMarket || regionMarket || undefined;
     const activeMarketDefinition = activeMarketId && props.markets[activeMarketId] ? props.markets[activeMarketId] : null;
 
-    const layoutProps: LayoutProps = {
-        character, location, hand, isLoading, storyId: props.storyId,
-        activeEvent: renderedActiveEvent, // Pass the newly rendered event
-        
-        // Pass down all definitions and handlers
-        qualityDefs: props.qualityDefs, storyletDefs: props.storyletDefs, opportunityDefs: props.opportunityDefs,
-        settings: props.settings, imageLibrary: props.imageLibrary, categories: props.categories,
-        locationStorylets: props.locationStorylets, deckDefs: props.deckDefs, currentDeckStats,
-        currentMarketId: activeMarketId, 
-        
-        onOptionClick: showEvent,
-        onDrawClick: handleDrawCard,
-        onEventFinish: handleEventFinish,
-        onQualitiesUpdate: handleQualitiesUpdate,
-        onCardPlayed: handleCardPlayed,
-        onOpenMap: () => setShowMap(true),
-        onOpenMarket: () => setShowMarket(true),
-        onExit: handleExit,
+    // --- SHARED COMPONENTS ---
+    const TabBar = () => (
+        <div className="tab-bar">
+            <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
+            <button onClick={() => setActiveTab('possessions')} data-tab-id="possessions" className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
+            <button onClick={() => setActiveTab('profile')} data-tab-id="profile" className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
+        </div>
+    );
 
-        showMarket: showMarket,
-        activeMarket: activeMarketDefinition,
-        onCloseMarket: () => setShowMarket(false),
-        worldState: props.worldState
+    const actionQid = props.settings.actionId.replace('$', '');
+    const actionState = character.qualities[actionQid];
+    const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
+    const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
+
+    // --- CONTENT BUILDERS ---
+
+    const buildSidebar = () => {
+        const isBlackCrown = props.settings.visualTheme === 'black-crown';
+        
+        // 1. Black Crown Sidebar (Minimal, Tabs inside)
+        if (isBlackCrown) {
+            return (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                    <TabBar /> {/* Tabs live here for BC */}
+                    
+                    <div className="action-box">
+                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
+                        <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                    </div>
+
+                    <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
+                </div>
+            );
+        }
+
+        // 2. Default Sidebar
+        return (
+            <>
+                <div style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <WalletHeader qualities={character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                    <div className="action-box">
+                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
+                        <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                    </div>
+
+                    <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
+                </div>
+
+                <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                    <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
+                </div>
+            </>
+        );
     };
 
-    const style = props.settings.layoutStyle || 'nexus';
+    // In src/components/GameHub.tsx
+
+   const buildMainContent = () => {
+        const isBlackCrown = props.settings.visualTheme === 'black-crown';
+
+        let innerContent = null;
+
+        if (activeTab === 'profile') {
+            innerContent = (
+                <ProfilePanel 
+                    qualities={character.qualities} 
+                    qualityDefs={props.qualityDefs} 
+                    imageLibrary={props.imageLibrary} 
+                    categories={props.categories} 
+                    settings={props.settings} 
+                />
+            );
+        } else if (activeTab === 'possessions') {
+            innerContent = (
+                <Possessions 
+                    qualities={character.qualities} 
+                    equipment={character.equipment} 
+                    qualityDefs={props.qualityDefs} 
+                    equipCategories={props.settings.equipCategories || []} 
+                    onUpdateCharacter={(c) => handleQualitiesUpdate(c.qualities)} 
+                    storyId={props.storyId} 
+                    imageLibrary={props.imageLibrary} 
+                    settings={props.settings} 
+                />
+            );
+        } else if (isLoading) {
+            innerContent = <div className="loading-container"><p>Loading...</p></div>;
+        } else if (showMarket && activeMarketDefinition) {
+            innerContent = (
+                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                    <MarketInterface 
+                        market={activeMarketDefinition} 
+                        qualities={character.qualities} 
+                        qualityDefs={props.qualityDefs} 
+                        imageLibrary={props.imageLibrary} 
+                        settings={props.settings} 
+                        onClose={() => setShowMarket(false)} 
+                        onUpdate={handleQualitiesUpdate} 
+                        storyId={props.storyId} 
+                        characterId={character.characterId} 
+                        worldState={props.worldState} 
+                    />
+                </div>
+            );
+        } else if (renderedActiveEvent) {
+            innerContent = (
+                // FIX 1: Changed maxWidth from '800px' to '100%'. 
+                // This allows the CSS (.storylet-container) to control the width.
+                // For Black Crown, your CSS sets it to 950px. For others, it will fill the space.
+                <div style={{ maxWidth: '100%', margin: '0 auto' }}>
+                    <StoryletDisplay 
+                        eventData={renderedActiveEvent} 
+                        qualities={character.qualities} 
+                        onFinish={handleEventFinish} 
+                        onQualitiesUpdate={handleQualitiesUpdate} 
+                        onCardPlayed={handleCardPlayed} 
+                        qualityDefs={props.qualityDefs} 
+                        storyletDefs={props.storyletDefs} 
+                        opportunityDefs={props.opportunityDefs} 
+                        settings={props.settings} 
+                        imageLibrary={props.imageLibrary} 
+                        categories={props.categories} 
+                        storyId={props.storyId} 
+                        characterId={character.characterId} 
+                    />
+                </div>
+            );
+        } else {
+            // Default Story/Location View
+            innerContent = (
+                <>
+                    <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
+                        <LocationHeader 
+                            location={location!} 
+                            imageLibrary={props.imageLibrary} 
+                            onOpenMap={() => setShowMap(true)} 
+                            onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                        />
+                    </div>
+
+                    <div style={{ marginTop: '2rem' }}>
+                        <LocationStorylets 
+                            storylets={props.locationStorylets} 
+                            onStoryletClick={showEvent} 
+                            qualities={character.qualities} 
+                            qualityDefs={props.qualityDefs} 
+                            imageLibrary={props.imageLibrary} 
+                        />
+                    </div>
+                    <div style={{ marginTop: '3rem' }}>
+                        <OpportunityHand 
+                            hand={hand} 
+                            onCardClick={showEvent} 
+                            onDrawClick={handleDrawCard} 
+                            isLoading={isLoading} 
+                            qualities={character.qualities} 
+                            qualityDefs={props.qualityDefs} 
+                            imageLibrary={props.imageLibrary} 
+                            character={character} 
+                            locationDeckId={location!.deck} 
+                            deckDefs={props.deckDefs} 
+                            settings={props.settings} 
+                            currentDeckStats={currentDeckStats} 
+                        />
+                    </div>
+                </>
+            );
+        }
+
+        return (
+            // FIX 2: Increased maxWidth from '1000px' to '1600px'.
+            // This prevents the NexusLayout (which should be wide) from being squashed.
+            // LondonLayout handles its own constraints internally, so this won't break it.
+            <div style={{ maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+                {!isBlackCrown && (
+                    <div style={{ marginBottom: '2rem' }}>
+                        <TabBar />
+                    </div>
+                )}
+
+                {innerContent}
+            </div>
+        );
+    };
+    // --- RENDER LAYOUT ---
     const renderLayout = () => {
-        switch (style) {
+        const layoutProps = {
+            sidebarContent: buildSidebar(),
+            mainContent: buildMainContent(),
+            settings: props.settings,
+            // Pass extra props for LondonLayout if needed
+            location: location!,
+            imageLibrary: props.imageLibrary,
+            onExit: handleExit,
+            onOpenMap: () => setShowMap(true),
+            onOpenMarket: () => setShowMarket(true),
+            currentMarketId: activeMarketId
+        };
+
+        switch (props.settings.layoutStyle) {
             case 'london': return <LondonLayout {...layoutProps} />;
-            case 'elysium': return <ElysiumLayout {...layoutProps} />;
+            case 'elysium': return <ElysiumLayout {...layoutProps} />; 
             case 'tabletop': return <TabletopLayout {...layoutProps} />;
             default: return <NexusLayout {...layoutProps} />;
         }
@@ -280,15 +378,8 @@ export default function GameHub(props: GameHubProps) {
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             {renderLayout()}
             {showMap && (
-                <MapModal 
-                    currentLocationId={character.currentLocationId}
-                    locations={props.locations} regions={props.regions}
-                    imageLibrary={props.imageLibrary}
-                    onTravel={handleTravel} onClose={() => setShowMap(false)}
-                />
+                <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />
             )}
         </div>
     );
 }
-
-
