@@ -3180,58 +3180,13 @@ html[data-theme='revolutionary']::before {
 [data-theme='black-crown'] .layout-grid-nexus {
     display: grid;
     /* Wide sidebar (400px) for tabs */
-    grid-template-columns: 400px minmax(0, 1fr); 
-    gap: 3rem;
+grid-template-columns: 400px minmax(0, 1fr);
+    gap: 2rem;
     max-width: 1500px;
     width: 95%;
     height: 100%;
     margin: 4rem auto;
     align-items: start;
-}
-
-/* 3. SIDEBAR: The Manila Folder */
-[data-theme='black-crown'] .sidebar-panel {
-    background-color: var(--bg-panel);
-    border: 1px solid #b8b09e;
-    
-    /* NEW: Use the actual file */
-    background-image: url('/themes/black-crown/sidebar_bg.jpg');
-    background-size: cover;
-    background-repeat: no-repeat;
-    
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    
-    /* Subtle rotation for organic feel */
-    transform: rotate(-0.5deg);
-    
-    position: sticky;
-    top: 2rem;
-    max-height: calc(100vh - 4rem);
-    overflow-y: auto;
-    width: 100%;
-    z-index: 10;
-}
-
-/* Tabs: Wide and Integrated */
-[data-theme='black-crown'] .tab-bar {
-    background: rgba(0,0,0,0.1); /* Slight darken of the bg image */
-    padding: 0.75rem 0.75rem 0 0.75rem;
-    gap: 2px;
-    display: flex;
-}
-
-[data-theme='black-crown'] .tab-btn {
-    background: rgba(255,255,255,0.4);
-    color: #5c554a;
-    border: 1px solid #b0a890;
-    border-bottom: none;
-    border-radius: 4px 4px 0 0;
-    font-size: 0.8rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    padding: 0.8rem 0;
-    flex: 1; 
-    text-align: center;
 }
 
 [data-theme='black-crown'] .tab-btn.active {
@@ -3288,27 +3243,130 @@ html[data-theme='revolutionary']::before {
     filter: brightness(0.6) sepia(0.2) contrast(1.1);
 }
 
-/* 3. Header Content: Floats on top within the same stack */
-[data-theme='black-crown'] .location-wrapper.mode-banner .location-header {
-    grid-area: stack; 
-    align-self: end;  
+/* --- SIDEBAR: The Manila Folder (Corrected Layout) --- */
+
+/* 1. The Folder Container */
+[data-theme='black-crown'] .sidebar-panel {
+    background-color: var(--bg-panel);
+    border: 1px solid #b8b09e;
+    background-image: url('/themes/black-crown/sidebar_bg.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    box-shadow: inset 0 0 25px rgba(0,0,0,0.2), 0 5px 15px rgba(0,0,0,0.3);
     
-    position: relative;
-    z-index: 1;
+    position: sticky;
+    top: 2rem;
+    max-height: calc(100vh - 4rem);
+    
     width: 100%;
+    z-index: 10;
     
-    /* Spacing */
-    padding: 2rem 2rem 0.5rem 2rem; 
-    
-    /* FIX: Include padding in width calculation */
-    box-sizing: border-box; 
-    
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    transform: none;
+    /* NEW: Use Flexbox to manage the inner layout */
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden; /* Hide scrollbar from the folder itself */
 }
 
+/* The inner scrollable content area */
+[data-theme='black-crown'] .sidebar-content-scroll {
+    flex: 1 1 auto; /* Take up all available vertical space */
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+/* The fixed footer area */
+[data-theme='black-crown'] .sidebar-footer {
+    flex-shrink: 0; /* Prevent the footer from shrinking */
+    padding: 1.5rem;
+    padding-top: 0;
+}
+
+
+/* 2. THE TABS (Recessed, Borderless Look) */
+[data-theme='black-crown'] .tab-bar {
+    margin: 0;
+    margin-bottom: 0rem;
+    padding: 0;
+    gap: 0;
+    display: flex;
+    border-bottom: 1px solid #a8a08a;
+}
+
+[data-theme='black-crown'] .tab-btn {
+    flex-grow: 1;
+    background: transparent;
+    color: rgba(43, 38, 30, 0.6);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+    font-family: var(--font-main);
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 1px;
+    padding: 0.75rem 0.25rem;
+    border-radius: 4px 4px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+[data-theme='black-crown'] .tab-btn.active {
+    background: #f4f0e4;
+    color: var(--accent-highlight);
+    box-shadow: none;
+    border: 1px solid #a8a08a;
+    border-top: 2px solid var(--accent-highlight);
+    border-bottom: 1px solid #f4f0e4;
+    position: relative;
+    margin-bottom: -1px;
+}
+
+/* 3. The "Pasted-On" Paper Labels */
+[data-theme='black-crown'] .sidebar-panel .action-box,
+[data-theme='black-crown'] .sidebar-panel .character-sheet {
+    background-color: #f4f0e4; 
+    border: 1px solid #a8a08a; 
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    padding: 1rem;
+    margin: 0;
+}
+
+/* Merge the Action Box with the Tab Bar (no top margin) */
+[data-theme='black-crown'] .sidebar-panel .action-box {
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+
+/* Space out the Character Sheet */
+[data-theme='black-crown'] .sidebar-panel .character-sheet {
+    margin-top: 1.5rem;
+    border-radius: 4px;
+}
+
+/* ... (The rest of your sidebar typography and button styles can remain the same) ... */
+
+/* Switch Character Button (Slanted Stamp) */
+[data-theme='black-crown'] .switch-char-btn {
+    background: transparent;
+    border: 2px solid var(--accent-highlight);
+    color: var(--accent-highlight);
+    font-family: var(--font-main);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+    width: 100%;
+    padding: 0.75rem;
+    transform: rotate(-1deg);
+    transition: all 0.2s;
+}
+[data-theme='black-crown'] .switch-char-btn:hover {
+    background: rgba(138, 3, 3, 0.05);
+    opacity: 1;
+    transform: rotate(0deg) scale(1.01);
+}
 /* 4. Text Styling */
 [data-theme='black-crown'] .location-wrapper.mode-banner .location-text {
     text-align: left;
@@ -3332,7 +3390,26 @@ html[data-theme='revolutionary']::before {
     margin: 0 0 0.5rem 0;
     opacity: 0.9;
 }
-
+/* 3. Header Content: Floats on top within the same stack */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header {
+    grid-area: stack; 
+    align-self: end;  
+    
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    
+    /* Spacing */
+    padding: 2rem 2rem 0.5rem 2rem; 
+    
+    /* FIX: Include padding in width calculation */
+    box-sizing: border-box; 
+    
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none;
+}
 /* 5. Buttons */
 [data-theme='black-crown'] .location-wrapper.mode-banner .location-header > div:last-child {
     align-items: flex-end; 
@@ -3370,7 +3447,32 @@ html[data-theme='revolutionary']::before {
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-paper);
     transition: transform 0.2s ease-out;
-    position: relative;
+    
+    /* --- ADD THESE TWO LINES --- */
+    position: relative; 
+    overflow: visible;
+}
+
+/* The "Sticky Tape" on top of each option */
+[data-theme='black-crown'] .option-button::before {
+    content: '';
+    position: absolute;
+    
+    /* Positioning */
+    top: -12px; /* Pulls it up above the button's border */
+    left: 50%;
+    transform: translateX(-50%) rotate(-2.5deg); /* Center horizontally with a slight tilt */
+    
+    /* Size */
+    width: 120px;
+    height: 28px;
+    
+    /* Appearance of old, semi-transparent tape */
+    background: rgba(255, 255, 220, 0.3); /* Yellowish tint */
+    border-left: 1px solid rgba(200, 200, 150, 0.4);
+    border-right: 1px solid rgba(200, 200, 150, 0.4);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(1px); /* A subtle glass-like effect */
 }
 
 /* Alternating rotations for the messy look */
