@@ -3129,350 +3129,304 @@ html[data-theme='revolutionary']::before {
 }
 
 
-/* --- THEME: BLACK CROWN (Refined) --- */
+/* =========================================
+   THEME: BLACK CROWN (The Paranoid Archive)
+   ========================================= */
 [data-theme='black-crown'] {
-    --bg-main: #3a3d3a;
-    --bg-panel: #e8e6e2;
-    --border-color: #5a4632;
-    --text-primary: #1a1a1a;
-    --text-secondary: #333333;
-    --accent-highlight: #a00;
+    /* PALETTE: Mossy Void & Manila Folders */
+    --bg-main: #323337; /* Slightly lighter, mossy dark green */
+    
+    /* Buff / Manila Folder Colors */
+    --bg-panel: #e8e0c5; 
+    --bg-item: #f3ebd0; 
+    --bg-item-hover: #fffef5;
+    
+    --border-color: #2b261e; /* Dark Brown Ink */
+    --border-light: #8c857b;
+    
+    --text-primary: #1a1814;
+    --text-secondary: #3d3830;
+    --text-muted: #6b6354;
+    
+    --accent-primary: #2c241b; 
+    --accent-hover: #000000;
+    --accent-highlight: #8a0303; /* Deep Crimson Stamp */
+    
     --font-main: "Special Elite", "Courier New", monospace;
-    --border-radius: 0px;
+    --border-radius: 2px;
+    
+    /* UTILS */
+    --shadow-paper: 0 2px 4px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+    --shadow-float: 0 15px 30px rgba(0,0,0,0.5);
 }
 
-/* 1. LAYER ONE: The "Void" Background */
+/* 1. BACKGROUND: The Mossy Archive */
 [data-theme='black-crown'].theme-wrapper {
-    background-color: #1a1c1a;
-    background-image: url('/themes/black-crown/body_bg.jpg') !important;
-    background-size: cover;
+    background-color: var(--bg-main);
+    background-image: 
+        /* Lighter center (#2a3d2a) fading to dark corners (#0a120a) */
+        radial-gradient(circle at 50% 50%, #374237 0%, #0a120a 100%),
+        /* Noise Texture */
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+    background-blend-mode: overlay;
     background-attachment: fixed;
-    background-position: center;
-    font-family: var(--font-main);
-    /* Flex to center the inner layout */
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    min-height: 100vh;
+    height: auto;
+    overflow-y: auto;
+    display: block; 
 }
 
-/* 2. LAYER TWO: The "Desk Mat" Panel */
+/* 2. LAYOUT GRID */
 [data-theme='black-crown'] .layout-grid-nexus {
-    background-image: url('/themes/black-crown/container_bg.jpg') !important;
-    background-size: cover;
-    background-position: center;
-    background-color: #696d69;
-    
-    /* FIX: Shrink the layout to reveal the background behind it */
-    width: 70%;
-    height: 100%; /* Leave gaps top/bottom */
-    min-height: 95vh;
-    margin: auto;
-    margin-top: 2em;
-    margin-bottom: 2em;
-    
-
-    
-    /* Add a shadow to lift the desk mat off the background */
-    box-shadow: 0 0 50px rgba(0,0,0,0.8);
-    border: 1px solid #000;
-    border-radius: 8px; 
-
+    display: grid;
+    /* Wide sidebar (400px) for tabs */
+    grid-template-columns: 400px minmax(0, 1fr); 
+    gap: 3rem;
+    max-width: 1500px;
+    width: 95%;
+    height: 100%;
+    margin: 4rem auto;
+    align-items: start;
 }
 
-
+/* 3. SIDEBAR: The Manila Folder */
 [data-theme='black-crown'] .sidebar-panel {
-    background: transparent;
-    border-right: none;
-    padding-top: 60px; /* Push content down from top */
-    min-width: 350px;
-}
-
-/* Apply paper texture to floating sidebar elements */
-[data-theme='black-crown'] .sidebar-panel .action-box,
-[data-theme='black-crown'] .sidebar-panel .character-sheet {
+    background-color: var(--bg-panel);
+    border: 1px solid #b8b09e;
+    
+    /* NEW: Use the actual file */
     background-image: url('/themes/black-crown/sidebar_bg.jpg');
     background-size: cover;
-    /* border: 1px solid #000; */
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-    color: #2c1e12; /* Dark text for paper */
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-}
-[data-theme='black-crown'] .sidebar-panel .action-box h3,
-[data-theme='black-crown'] .sidebar-panel .character-sheet h3,
-[data-theme='black-crown'] .sidebar-panel .character-sheet .quality-name {
-    color: #000;
-}
-[data-theme='black-crown'] .sidebar-panel .character-sheet .quality-level {
-    color: var(--accent-highlight);
-}
-
-
-
-/* 3. Tab Bar & Icons - Exact Grid Mapping */
-[data-theme='black-crown'] .layout-sidebar-col .tab-bar {
-    background-image: url('/themes/black-crown/sidebar_tabs_bg.png');
-    background-repeat: no-repeat;
-    background-position: center top;
-    /* Height matches the background image */
-    min-height: 55px; 
-    padding: 0;
-    margin: 0 0 2rem 0; /* Space below tabs before paper starts */
-    border: none;
-    display: flex;
-    justify-content: center;
-    gap: 5px; /* Space between tabs */
-    align-items: flex-end; /* Align icons to bottom of tab bg */
-}
-
-[data-theme='black-crown'] .tab-bar {
-    background-color: transparent;
-}
-
-[data-theme='black-crown'] .tab-btn {
-    background-image: url('/themes/black-crown/tab_icons.png');
-    background-repeat: no-repeat;
-    width: 50px; height: 50px;
-    /* FIX: Hide the button text */
-    font-size: 0;
-    color: transparent;
-    text-shadow: none;
-    padding: 0;
-    border: none;
-    opacity: 1;
-    /* FIX: Rounded top-right corner */
-    border-top-right-radius: 8px; 
-}
-
-/* Left Column: Profile (0px offset) */
-[data-theme='black-crown'] .tab-btn[data-tab-id='profile'] { 
-    background-position: 0 0; 
-}
-[data-theme='black-crown'] .tab-btn[data-tab-id='profile']:hover { 
-    background-position: 0 -50px; 
-}
-[data-theme='black-crown'] .tab-btn[data-tab-id='profile'].active { 
-    background-position: 0 -100px; 
-}
-
-/* Middle Column: Story (60px + 10px gap = -70px offset) */
-[data-theme='black-crown'] .tab-btn[data-tab-id='story'] { 
-    background-position: -55px 0; 
-}
-[data-theme='black-crown'] .tab-btn[data-tab-id='story']:hover { 
-    background-position: -55px -50px; 
-}
-[data-theme='black-crown'] .tab-btn[data-tab-id='story'].active { 
-    background-position: -55px -100px; 
-}
-
-/* Right Column: Possessions (70px + 60px + 10px gap = -140px offset) */
-[data-theme='black-crown'] .tab-btn[data-tab-id='possessions'] { 
-    background-position: -110px 0; 
-}
-[data-theme='black-crown'] .tab-btn[data-tab-id='possessions']:hover { 
-    background-position: -110px -50px; 
-}
-[data-theme='black-crown'] .tab-btn[data-tab-id='possessions'].active { 
-    background-position: -110px -100px; 
-}
-
-
-/* 4. Main Storylet Panel - Widened and Centered */
-[data-theme='black-crown'] .storylet-container {
-    background: transparent; border: none; box-shadow: none; padding: 0;
-    max-width: 950px; margin: 2rem auto;
-}
-
-/* Image/Text Split */
-[data-theme='black-crown'] .storylet-main-content {
-    background: transparent; border: none; box-shadow: none; padding: 0;
-    display: flex; flex-direction: row; align-items: flex-start; gap: 1rem;
-}
-
-/* Update: Apply paper texture ONLY to the text area */
-[data-theme='black-crown'] .storylet-text-content {
-    background-image: url('/themes/black-crown/storylet-intro_bg.jpg');
-    /* FIX: Width 100%, Height Auto to prevent ugly stretching */
-    background-size: 100% auto; 
-    background-color: #e8e6e2;
-    border: 1px solid #000;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    padding: 2.5rem;
-    flex-grow: 1; min-width: 0;
-}
-
-/* FIX: Quality Effects "On the text field" */
-[data-theme='black-crown'] .quality-changes-container {
-    /* Match the text content background */
-    background-image: url('/themes/black-crown/choice_bg.jpg'); 
-    background-size: 100% auto;
-    background-color: #e8e6e2;
-    
-    border: 1px solid #000;
-    border-top: none; /* Remove top border to merge */
-    
-    /* Pull it up to overlap the bottom of the text content */
-    margin-top: -2em; 
-    margin-bottom: 2em;
-    
-    padding: 1.5rem 2.5rem;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    
-    /* Ensure it aligns with the text content (not the image) */
-    /* Note: Since this is a sibling of storylet-main-content, we mimic the margin */
-    margin-left: 1em; /* Image width + gap approx */
-}
-/* Mobile fallback for the margin */
-@media (max-width: 800px) {
-    [data-theme='black-crown'] .quality-changes-container { margin-left: 0; }
-}
-
-
-[data-theme='black-crown'] .option-button.locked::after {
-    content: 'LOCKED';
-    position: absolute;
-    top: 50%;
-    right: 1.5rem;
-    transform: translateY(-50%);
-    background: #a32424;
-    color: #f0d0d0;
-    font-size: 0.7rem;
-    font-family: sans-serif;
-    font-weight: bold;
-    padding: 3px 6px;
-    border: 1px solid #4d0000;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
-    box-shadow: inset 0 0 3px rgba(0,0,0,0.4);
-}
-/* 5. Image Frame Alignment */
-/* 5. FIX: Image Frame Alignment */
-[data-theme='black-crown'] .storylet-image-frame {
-    background-image: url('/themes/black-crown/files_large.png');
-    background-size: 100% 100%;
     background-repeat: no-repeat;
     
-    /* ADJUST THESE VALUES to move the image window */
-    /* If image is too far left, increase LEFT padding. */
-    /* If image is too far right, increase RIGHT padding. */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     
-    /* Current guess: Needs to move Right and Down */
-    padding: 10px 20px 10px 10px; 
-    margin: 0; 
+    /* Subtle rotation for organic feel */
+    transform: rotate(-0.5deg);
     
-    width: fit-content;
-    flex-shrink: 0;
-    
-    /* Optional: Add a drop shadow to the image frame itself so it pops off the desk */
-    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
-    box-shadow: none; /* Reset box-shadow as filter handles the complex shape better */
-}
-[data-theme='black-crown'] .storylet-image-frame img {
-    border: 1px solid #555;
-    max-height: 250px;
-    display: block;
-}
-
-
-/* 6. Location Header Banner - Thicker */
-/* 6. Location Header Banner */
-[data-theme='black-crown'] .location-wrapper.mode-banner .location-header {
-    background-image: url('/themes/black-crown/location_bg.jpg');
-    background-size: cover;
-    background-position: center;
-    border: 2px solid #000;
-    
-    /* INCREASED HEIGHT via Padding */
-    padding: 5rem 4rem; /* was 2rem 3rem */
-    
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    margin-bottom: 3rem;    
-    margin-top: 3rem;
-
-}
-[data-theme='black-crown'] .location-wrapper.mode-banner h1 {
-    font-size: 2rem;
-    color: #eee;
-    text-shadow: 2px 2px 0 #000;
-    font-style: italic;
-    font-family: serif;
-    margin: 0;
-}
-/* Hide sub-elements in banner mode */
-[data-theme='black-crown'] .location-wrapper.mode-banner .location-image-container,
-[data-theme='black-crown'] .location-wrapper.mode-banner h2 {
-    display: none;
-}
-
-/* 7. Option Buttons (Inset Style) */
-[data-theme='black-crown'] .option-button {
-    background-image: url('/themes/black-crown/choice_bg.jpg');
-    background-color: #dcd9d3;
-    background-size: cover;
-    border: 1px solid #999;
-    box-shadow: inset 1px 1px 5px rgba(0,0,0,0.1);
-    margin-bottom: 1.5rem;
-    position: relative;
-    padding: 1.5rem;
-    width: 100%; 
-    max-width: 950px; /* Match storylet width */
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* Sticky Tape on Options (Re-enabled) */
-[data-theme='black-crown'] .option-button::before {
-    content: '';
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100px; 
-    height: 25px;
-    background-image: url('/themes/black-crown/choice_tape.png');
-    background-size: contain;
-    background-repeat: no-repeat;
+    position: sticky;
+    top: 2rem;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    width: 100%;
     z-index: 10;
 }
 
-[data-theme='black-crown'] .special-block-text {
-    color: var(--accent-highlight);
-    text-shadow: 1px 0px 0px rgba(0,0,0,0.1);
+/* Tabs: Wide and Integrated */
+[data-theme='black-crown'] .tab-bar {
+    background: rgba(0,0,0,0.1); /* Slight darken of the bg image */
+    padding: 0.75rem 0.75rem 0 0.75rem;
+    gap: 2px;
+    display: flex;
 }
 
-/* Red Action Button */
-[data-theme='black-crown'] .option-action-btn {
-    position: absolute; bottom: 1rem; right: 1rem;
-    display: flex; align-items: stretch;
-    color: white; font-family: "Arial Black", sans-serif;
-    font-size: 0.9rem; cursor: pointer;
-    border: 1px solid #000; border-radius: 2px;
-    overflow: hidden; box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-}
-[data-theme='black-crown'] .option-action-btn .action-verb {
-    padding: 0.4rem 0.8rem;
-    background: linear-gradient(to bottom, #d63031, #b71540);
-}
-[data-theme='black-crown'] .option-action-btn:hover .action-verb {
-    background: linear-gradient(to bottom, #ff4d4d, #d63031);
+[data-theme='black-crown'] .tab-btn {
+    background: rgba(255,255,255,0.4);
+    color: #5c554a;
+    border: 1px solid #b0a890;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 0.8rem 0;
+    flex: 1; 
+    text-align: center;
 }
 
-/* Styling the switch button for Black Crown */
-[data-theme='black-crown'] .switch-char-btn {
+[data-theme='black-crown'] .tab-btn.active {
+    background: var(--bg-panel); /* Try to match the image tone roughly */
+    background-image: url('/themes/black-crown/sidebar_bg.jpg'); /* Match panel bg */
+    background-position: top center;
+    color: #000;
+    border-bottom: 1px solid var(--bg-panel);
+    margin-bottom: -1px;
+    z-index: 5;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+}
+
+/* 4. CONTENT AREA & HEADERS */
+[data-theme='black-crown'] .content-area {
+    overflow: visible !important;
+    height: auto !important;
+}
+
+/* 1. Wrapper: Define a Grid that stacks items on top of each other */
+[data-theme='black-crown'] .location-wrapper.mode-banner {
+    display: grid;
+    /* This creates one cell where everything lives */
+    grid-template-areas: "stack"; 
+    
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto 3rem auto;
+    
+    /* Decoration */
+    border: 4px solid #111;
+    box-shadow: var(--shadow-float);
+    background: #0c140c;
+    overflow: hidden;
+}
+
+/* 2. Background Layer: Dictates the height */
+[data-theme='black-crown'] .banner-bg-layer {
+    grid-area: stack; /* Put in the stack */
+    position: relative; /* Back in the document flow */
+    width: 100%;
+    height: auto;       /* Allow height to grow/shrink with image */
+    z-index: 0;
+}
+
+[data-theme='black-crown'] .banner-bg-layer img {
+    width: 100%;
+    height: auto;       /* Resize uniformly (Aspect Ratio preserved) */
+    display: block;     /* Remove bottom gap */
+    
+    /* Visual Filters */
+    mask-image: linear-gradient(to bottom, black 60%, rgba(0,0,0,0.8) 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 60%, rgba(0,0,0,0.8) 100%);
+    filter: brightness(0.6) sepia(0.2) contrast(1.1);
+}
+
+/* 3. Header Content: Floats on top within the same stack */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header {
+    grid-area: stack; 
+    align-self: end;  
+    
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    
+    /* Spacing */
+    padding: 2rem 2rem 0.5rem 2rem; 
+    
+    /* FIX: Include padding in width calculation */
+    box-sizing: border-box; 
+    
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none;
+}
+
+/* 4. Text Styling */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-text {
+    text-align: left;
+    margin-right: auto;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+}
+
+[data-theme='black-crown'] .location-wrapper.mode-banner h1 {
+    font-size: 3rem;
+    color: #fff;
+    border-bottom: 2px solid rgba(255,255,255,0.4);
+    margin: 0;
+    line-height: 1;
+    display: inline-block;
+}
+
+[data-theme='black-crown'] .location-wrapper.mode-banner h2 {
+    color: #ddd;
+    font-style: italic;
+    font-size: 1.1rem;
+    margin: 0 0 0.5rem 0;
+    opacity: 0.9;
+}
+
+/* 5. Buttons */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header > div:last-child {
+    align-items: flex-end; 
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* Cleanup */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header::after { display: none; }
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-image-container { display: none; }
+
+/* 5. MAIN STORYLET (Case File - Quirked) */
+[data-theme='black-crown'] .storylet-container {
+    background: #fdfaf0;
+    padding: 4rem;
+    border: 1px solid #ccc;
+    box-shadow: var(--shadow-float);
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto 3rem auto;
+    
+    /* Paper Texture */
+    background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    
+    /* Slight rotation for the main file */
+    transform: rotate(0.4deg);
+    overflow: visible !important;
+    height: auto !important;
+}
+
+/* 6. OPTIONS (Messy Stack of Index Cards) */
+[data-theme='black-crown'] .option-button {
+    background-color: var(--bg-item);
+    border: 1px solid #d1c8b0;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-paper);
+    transition: transform 0.2s ease-out;
+    position: relative;
+}
+
+/* Alternating rotations for the messy look */
+[data-theme='black-crown'] .option-button:nth-child(odd) {
+    transform: rotate(-0.6deg);
+}
+[data-theme='black-crown'] .option-button:nth-child(even) {
+    transform: rotate(0.6deg);
+}
+
+[data-theme='black-crown'] .option-button:hover {
+    background-color: #fff;
+    transform: scale(1.01) rotate(0deg) translateY(-3px); /* Straighten up on hover */
+    border-color: #999;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    z-index: 5;
+}
+
+/* 7. IMAGES (Polaroids & Paperclips) */
+[data-theme='black-crown'] .storylet-image-container {
+    background: #fff;
+    padding: 0.5rem 0.5rem 2.5rem 0.5rem;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    border: 1px solid #ddd;
+    /* Stronger rotation for images */
+    transform: rotate(-2deg);
+    max-width: 250px; 
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* CSS Paperclip on the image */
+[data-theme='black-crown'] .storylet-image-container::before {
+    content: '';
+    position: absolute;
+    top: -10px; left: 15px;
+    width: 12px; height: 35px;
+    border: 3px solid #666;
+    border-radius: 10px;
     background: transparent;
-    border: 1px solid #5a4632;
-    color: #3b2f2f;
-    font-family: var(--font-main);
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    z-index: 10;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
 }
-[data-theme='black-crown'] .switch-char-btn:hover {
-    opacity: 1;
-    background: rgba(0,0,0,0.05);
-    border-color: #000;
+
+/* 8. SCROLLBARS */
+[data-theme='black-crown'] ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+[data-theme='black-crown'] ::-webkit-scrollbar-track {
+    background: #0f1a0f; 
+}
+[data-theme='black-crown'] ::-webkit-scrollbar-thumb {
+    background: #5c554a;
+    border: 3px solid #0f1a0f; 
+    border-radius: 6px;
 }
 /* --- UNIVERSAL TEXT STYLES (Apply to all themes) --- */
 
@@ -3484,7 +3438,96 @@ html[data-theme='revolutionary']::before {
     text-decoration: inherit; 
 }
 
+/* --- DASHBOARD CARD OVERRIDES --- */
+/* Target elements that are BOTH a card and a theme-wrapper */
+.card.theme-wrapper {
+    /* Force the card to behave like a standard box, ignoring theme layout quirks */
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 250px; /* Ensure a good aspect ratio */
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+    transform: none !important; /* Stop the Black Crown rotation in the grid */
+    margin: 0 !important;
+    background-color: var(--bg-panel) !important;
+    padding: 0 !important; /* Let the internal divs handle padding */
+    overflow: hidden !important;
+}
 
+/* Fix the Content Container inside */
+.card.theme-wrapper > div:last-child {
+    padding: 1.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+/* Force the Button Container to sit at the bottom */
+.card.theme-wrapper > div:last-child > div:last-child {
+    margin-top: auto !important;
+    display: flex !important;
+    flex-direction: row !important; /* Force Side-by-Side */
+    gap: 10px !important;
+    width: 100% !important;
+}
+
+/* FIX THE BUTTONS specifically within these cards */
+.card.theme-wrapper .continue-button,
+.card.theme-wrapper .return-button {
+    /* Reset dimensions to fill the flex row properly */
+    width: auto !important;
+    height: auto !important;
+    flex: 1 1 0% !important; /* Share width equally */
+    
+    /* Reset typography and padding */
+    padding: 0.5rem 1rem !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    /* Ensure they look like buttons */
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    background: var(--bg-item) !important;
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+    
+    /* Stop any absolute positioning or transform from themes */
+    position: static !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Hover effects for dashboard buttons */
+.card.theme-wrapper .continue-button:hover,
+.card.theme-wrapper .return-button:hover {
+    background: var(--accent-primary) !important;
+    color: #fff !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* Specific Fix for Black Crown image container within Dashboard */
+.card.theme-wrapper[data-theme='black-crown'] > div:first-child {
+    border-bottom: 2px solid #000 !important;
+    padding: 0 !important; /* Remove the polaroid padding */
+    background: #000 !important;
+    transform: none !important; /* Remove rotation */
+    width: 100% !important;
+}
+
+/* Ensure images fit */
+.card.theme-wrapper img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border: none !important; /* Remove polaroid borders */
+    filter: none !important; /* Remove sepia filters in dashboard */
+}
 
 .special-block-text {
     text-align: center;

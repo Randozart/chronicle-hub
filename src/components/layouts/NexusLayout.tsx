@@ -10,19 +10,19 @@ interface NexusLayoutProps {
 }
 
 export default function NexusLayout({ sidebarContent, mainContent, settings }: NexusLayoutProps) {
-    const gridStyle = settings?.visualTheme === 'black-crown' 
-        ? { gridTemplateColumns: '360px 1fr' } 
-        : { gridTemplateColumns: '320px 1fr' };
-
     return (
-        <div className="layout-grid-nexus" style={gridStyle}>
-            {/* LEFT SIDEBAR */}
+        /* 
+           We remove any inline styles here. 
+           We rely 100% on the CSS grid to handle width and scrolling.
+        */
+        <div className="layout-grid-nexus">
+            {/* LEFT SIDEBAR - The fixed column */}
             <div className="sidebar-panel">
                 {sidebarContent}
             </div>
             
-            {/* MAIN CONTENT - FIX: Enable vertical scrolling */}
-            <div className="layout-column" style={{ overflowY: 'auto', height: '100%', position: 'relative' }}>
+            {/* MAIN CONTENT - The fluid column */}
+            <div className="layout-column content-area">
                 {mainContent}
             </div>
         </div>

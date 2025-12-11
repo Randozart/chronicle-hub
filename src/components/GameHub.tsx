@@ -21,6 +21,7 @@ import Possessions from './Possessions';
 import ActionTimer from './ActionTimer';
 import WalletHeader from './WalletHeader';
 import MarketInterface from './MarketInterface';
+import GameImage from '@/components/GameImage'; // Ensure this is imported!
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -172,13 +173,12 @@ export default function GameHub(props: GameHubProps) {
         </div>
     );
 
-    // --- CONTENT BUILDERS (The core of the refactor) ---
+    // --- CONTENT BUILDERS ---
 
     const buildSidebar = () => {
         const isBlackCrown = props.settings.visualTheme === 'black-crown';
         
         if (isBlackCrown) {
-            // Black Crown Sidebar: Minimal, Tabs inside, Sticky Footer
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
@@ -218,6 +218,17 @@ export default function GameHub(props: GameHubProps) {
 
     const buildMainContent = () => {
         const isBlackCrown = props.settings.visualTheme === 'black-crown';
+        const isBannerMode = isBlackCrown && props.settings.locationHeaderStyle === 'banner';
+        
+        // Use 'imageCode' to match your debugging logs
+        // @ts-ignore
+        const imageCode = location?.imageId || location?.image;
+
+        // Debug log (can be removed later)
+        if (isBannerMode) {
+            console.log("Banner Rendering:", { isBannerMode, imageCode });
+        }
+
         let innerContent = null;
 
         if (activeTab === 'profile') {
@@ -245,6 +256,18 @@ export default function GameHub(props: GameHubProps) {
                 <div style={{ maxWidth: '100%', margin: '0 auto' }}>
                     {isBlackCrown && (
                         <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
+                            {/* BANNER BACKGROUND */}
+                            {isBannerMode && imageCode && (
+                                <div className="banner-bg-layer">
+                                    <GameImage 
+                                        code={imageCode} 
+                                        type="location" 
+                                        imageLibrary={props.imageLibrary}
+                                        className="banner-img"
+                                    />
+                                </div>
+                            )}
+                            
                             <LocationHeader 
                                 location={location!} 
                                 imageLibrary={props.imageLibrary} 
@@ -254,7 +277,6 @@ export default function GameHub(props: GameHubProps) {
                         </div>
                     )}
                     
-                    
                     <StoryletDisplay eventData={renderedActiveEvent} qualities={character.qualities} onFinish={handleEventFinish} onQualitiesUpdate={handleQualitiesUpdate} onCardPlayed={handleCardPlayed} qualityDefs={props.qualityDefs} storyletDefs={props.storyletDefs} opportunityDefs={props.opportunityDefs} settings={props.settings} imageLibrary={props.imageLibrary} categories={props.categories} storyId={props.storyId} characterId={character.characterId} />
                 </div>
             );
@@ -262,9 +284,21 @@ export default function GameHub(props: GameHubProps) {
             // Default Story/Location View
             innerContent = (
                 <>
-                    {/* Header Logic: Show inside content flow ONLY for Black Crown to avoid duplicates in LondonLayout */}
+                    {/* Header Logic */}
                     {isBlackCrown && (
                         <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
+                            {/* BANNER BACKGROUND */}
+                            {isBannerMode && imageCode && (
+                                <div className="banner-bg-layer">
+                                    <GameImage 
+                                        code={imageCode} 
+                                        type="location" 
+                                        imageLibrary={props.imageLibrary}
+                                        className="banner-img"
+                                    />
+                                </div>
+                            )}
+
                             <LocationHeader location={location!} imageLibrary={props.imageLibrary} onOpenMap={() => setShowMap(true)} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} />
                         </div>
                     )}
@@ -292,7 +326,6 @@ export default function GameHub(props: GameHubProps) {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
             settings: props.settings,
-            // Extra props for specific layouts if needed
             location: location!,
             imageLibrary: props.imageLibrary,
             onExit: handleExit,

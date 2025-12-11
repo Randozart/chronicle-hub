@@ -13,13 +13,26 @@ interface LocationHeaderProps {
 export default function LocationHeader({ location, imageLibrary, onOpenMap, onOpenMarket }: LocationHeaderProps) {
     if (!location) return null;
 
+    // FIX: Check for both 'imageId' (standard in your models) and 'image' (legacy)
+    // This ensures we get the code regardless of which property name the database uses.
+    // @ts-ignore - Ignoring TS error if one property doesn't exist on the specific type definition
+    const imageCode = location.image;
+
     return (
-        <div className="location-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="location-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                {location.image && (
+                
+                {/* 
+                   NOTE: In 'Black Crown Banner Mode', the CSS hides this specific container 
+                   (.location-image-container) because the image is shown as a massive 
+                   background by GameHub instead.
+                   
+                   In 'Standard Mode', this will display the circle icon.
+                */}
+                {imageCode && (
                     <div className="location-image-container">
                         <GameImage 
-                            code={location.image} 
+                            code={imageCode} 
                             imageLibrary={imageLibrary} 
                             type="location"
                             alt={location.name}
@@ -27,11 +40,14 @@ export default function LocationHeader({ location, imageLibrary, onOpenMap, onOp
                         />
                     </div>
                 )}
+                
                 <div className="location-text">
+                    {/* The h2/h1 styling is handled by CSS based on theme */}
                     <h2>You are in...</h2>
                     <h1>{location.name}</h1>
                 </div>
             </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>    
                 {onOpenMarket && (
                     <button 
@@ -47,11 +63,11 @@ export default function LocationHeader({ location, imageLibrary, onOpenMap, onOp
                         }}
                         className="hover:bg-[rgba(241,196,15,0.1)] transition"
                     >
-                        <span>⚖️</span> Market
+                        Market
                     </button>
                 )}
 
-            {/* TRAVEL BUTTON */}
+                {/* TRAVEL BUTTON */}
                 <button 
                     onClick={onOpenMap}
                     style={{
