@@ -3139,9 +3139,9 @@ html[data-theme='revolutionary']::before {
     --bg-main: #1a1917; /* A very dark, warm gray for the absolute edge */
 
 /* NEW: Brighter, more open gradient colors */
---bg-void-dark: #2d2b27;
---bg-void-mid: #5a5850;    /* Slightly lighter mid-tone for a smoother fade */
---bg-void-light: #8a887d;   /* A much brighter, dusty khaki spotlight */
+--bg-void-dark: #2d2b27;    /* Keeps the edges dark for contrast */
+--bg-void-mid: #7a786f;     /* A wider, softer mid-tone to smooth the gradient */
+--bg-void-light: #d0eaaa;   /* A very bright, aged paper/bone color for the center */ /* A much brighter, dusty khaki spotlight */
     /* Buff / Manila Folder Colors */
     --bg-panel: #e8e0c5; 
     --bg-item: #f3ebd0; 
