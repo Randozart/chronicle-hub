@@ -3134,8 +3134,14 @@ html[data-theme='revolutionary']::before {
    ========================================= */
 [data-theme='black-crown'] {
     /* PALETTE: Mossy Void & Manila Folders */
-    --bg-main: #323337; /* Slightly lighter, mossy dark green */
     
+    /* NEW: Variables for the "Mysterious Void" gradient */
+    --bg-main: #1a1917; /* A very dark, warm gray for the absolute edge */
+
+/* NEW: Brighter, more open gradient colors */
+--bg-void-dark: #2d2b27;
+--bg-void-mid: #5a5850;    /* Slightly lighter mid-tone for a smoother fade */
+--bg-void-light: #8a887d;   /* A much brighter, dusty khaki spotlight */
     /* Buff / Manila Folder Colors */
     --bg-panel: #e8e0c5; 
     --bg-item: #f3ebd0; 
@@ -3162,12 +3168,25 @@ html[data-theme='revolutionary']::before {
 
 /* 1. BACKGROUND: The Mossy Archive */
 [data-theme='black-crown'].theme-wrapper {
-    background-color: var(--bg-main);
-    background-image: 
-        /* Lighter center (#2a3d2a) fading to dark corners (#0a120a) */
-        radial-gradient(circle at 50% 50%, #374237 0%, #0a120a 100%),
-        /* Noise Texture */
-        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+    /*
+       THE FIX: We use the single 'background' shorthand property.
+       This correctly layers the gradient ON TOP of the fallback color.
+       Layers are listed from top to bottom, with the final color being the base layer.
+    */
+     background:
+        /* Layer 3 (Top): The Noise Texture */
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E") fixed,
+
+        /* Layer 2 (Middle): The Radial Gradient */
+        radial-gradient(ellipse at center, 
+            var(--bg-void-light) 0%, 
+            var(--bg-void-mid) 50%,
+            var(--bg-void-dark) 90%
+        ) fixed,
+
+        /* Layer 1 (Bottom): The solid fallback color */
+        var(--bg-main);
+        
     background-blend-mode: overlay;
     background-attachment: fixed;
     min-height: 100vh;
@@ -3180,7 +3199,7 @@ html[data-theme='revolutionary']::before {
 [data-theme='black-crown'] .layout-grid-nexus {
     display: grid;
     /* Wide sidebar (400px) for tabs */
-grid-template-columns: 400px minmax(0, 1fr);
+    grid-template-columns: 400px minmax(0, 1fr);
     gap: 2rem;
     max-width: 1500px;
     width: 95%;
