@@ -2844,7 +2844,7 @@ html[data-theme='revolutionary']::before {
 .sidebar-panel {
     width: 280px;
     flex-shrink: 0;
-    background-color: var(--bg-panel);
+    /* background-color: var(--bg-panel); */
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
@@ -2930,7 +2930,7 @@ html[data-theme='revolutionary']::before {
     grid-template-columns: 320px 1fr; /* Slightly wider sidebar for Nexus */
     height: 100vh;
     overflow: hidden;
-    background-color: var(--bg-main);
+    /* background-color: var(--bg-main); */
 }
 
 /* Tabletop: Character | Visual | Story */
@@ -3127,6 +3127,323 @@ html[data-theme='revolutionary']::before {
     border: 1px dashed var(--accent-highlight);
 }
 
+
+/* --- THEME: BLACK CROWN (Refined) --- */
+[data-theme='black-crown'] {
+    --bg-main: #696d69; /* Fallback color from container_bg.jpg */
+    --bg-panel: #e8e6e2;
+    --bg-item: transparent;
+    --bg-item-hover: rgba(0, 0, 0, 0.05);
+    --border-color: #5a4632;
+    --border-light: #8b7d6b;
+    --text-primary: #1a1a1a;
+    --text-secondary: #333333;
+    --text-muted: #5c5c5c;
+    --accent-primary: #4a4a4a;
+    --accent-hover: #5a5a5a;
+    --accent-highlight: #a00; /* Red */
+    --font-main: "Special Elite", "Courier New", monospace;
+    --border-radius: 0px;
+}
+
+
+[data-theme='black-crown'].theme-wrapper {
+    background-color: var(--bg-main);
+    background-image: url('/themes/black-crown/container_bg.jpg') !important;
+    background-size: cover; /* Use 'cover' for a better fit */
+    background-attachment: fixed;
+    font-family: var(--font-main);
+}
+
+/* Hide default borders inside sidebar
+[data-theme='black-crown'] .layout-sidebar-col .action-box,
+[data-theme='black-crown'] .layout-sidebar-col .character-sheet {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0 1rem;
+} */
+
+/* --- Black Crown Layout Overrides --- */
+[data-theme='black-crown'] .layout-grid-nexus {
+    /* Ensure the grid itself is transparent */
+    background-color: transparent;
+}
+[data-theme='black-crown'] .sidebar-panel {
+    background: transparent;
+    border-right: none;
+    padding-top: 60px; /* Push content down from top */
+}
+
+/* Apply paper texture to floating sidebar elements */
+[data-theme='black-crown'] .sidebar-panel .action-box,
+[data-theme='black-crown'] .sidebar-panel .character-sheet {
+    background-image: url('/themes/black-crown/sidebar_bg.jpg');
+    background-size: cover;
+    /* border: 1px solid #000; */
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    color: #2c1e12; /* Dark text for paper */
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+[data-theme='black-crown'] .sidebar-panel .action-box h3,
+[data-theme='black-crown'] .sidebar-panel .character-sheet h3,
+[data-theme='black-crown'] .sidebar-panel .character-sheet .quality-name {
+    color: #000;
+}
+[data-theme='black-crown'] .sidebar-panel .character-sheet .quality-level {
+    color: var(--accent-highlight);
+}
+
+
+
+/* 3. Tab Bar & Icons - Exact Grid Mapping */
+[data-theme='black-crown'] .layout-sidebar-col .tab-bar {
+    background-image: url('/themes/black-crown/sidebar_tabs_bg.png');
+    background-repeat: no-repeat;
+    background-position: center top;
+    /* Height matches the background image */
+    min-height: 55px; 
+    padding: 0;
+    margin: 0 0 2rem 0; /* Space below tabs before paper starts */
+    border: none;
+    display: flex;
+    justify-content: center;
+    gap: 4px; /* Space between tabs */
+    align-items: flex-end; /* Align icons to bottom of tab bg */
+}
+
+[data-theme='black-crown'] .tab-btn {
+    background-image: url('/themes/black-crown/tab_icons.png');
+    background-repeat: no-repeat;
+    width: 53px; height: 50px;
+    /* FIX: Hide the button text */
+    font-size: 0;
+    color: transparent;
+    text-shadow: none;
+    padding: 0;
+    border: none;
+    opacity: 1;
+    /* FIX: Rounded top-right corner */
+    border-top-right-radius: 8px; 
+}
+
+/* Left Column: Profile (0px offset) */
+[data-theme='black-crown'] .tab-btn[data-tab-id='profile'] { 
+    background-position: 0 0; 
+}
+[data-theme='black-crown'] .tab-btn[data-tab-id='profile']:hover { 
+    background-position: 0 -50px; 
+}
+[data-theme='black-crown'] .tab-btn[data-tab-id='profile'].active { 
+    background-position: 0 -100px; 
+}
+
+/* Middle Column: Story (60px + 10px gap = -70px offset) */
+[data-theme='black-crown'] .tab-btn[data-tab-id='story'] { 
+    background-position: -55px 0; 
+}
+[data-theme='black-crown'] .tab-btn[data-tab-id='story']:hover { 
+    background-position: -55px -50px; 
+}
+[data-theme='black-crown'] .tab-btn[data-tab-id='story'].active { 
+    background-position: -55px -100px; 
+}
+
+/* Right Column: Possessions (70px + 60px + 10px gap = -140px offset) */
+[data-theme='black-crown'] .tab-btn[data-tab-id='possessions'] { 
+    background-position: -110px 0; 
+}
+[data-theme='black-crown'] .tab-btn[data-tab-id='possessions']:hover { 
+    background-position: -110px -50px; 
+}
+[data-theme='black-crown'] .tab-btn[data-tab-id='possessions'].active { 
+    background-position: -110px -100px; 
+}
+
+
+/* 4. Main Storylet Panel - Widened and Centered */
+[data-theme='black-crown'] .storylet-container {
+    /* Ensure the path matches your uploaded file exactly */
+    background-image: url('/themes/black-crown/storylet-intro_bg.jpg'); 
+    background-color: #e8e6e2; /* Fallback color */
+    background-size: 100% 100%; /* Stretch to fit */
+    background-repeat: no-repeat;
+    
+    /* Rotate texture if needed (experimental, usually better to rotate source image) */
+    /* transform: rotate(90deg); */ /* Uncomment only if you really want to rotate the whole div */
+    
+    border: 1px solid #000;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    max-width: 1200px; /* Increased from 700px */
+    margin: 2rem auto;
+    padding: 2.5rem; /* Increased padding */
+}
+
+
+[data-theme='black-crown'] .option-button.locked::after {
+    content: 'LOCKED';
+    position: absolute;
+    top: 50%;
+    right: 1.5rem;
+    transform: translateY(-50%);
+    background: #a32424;
+    color: #f0d0d0;
+    font-size: 0.7rem;
+    font-family: sans-serif;
+    font-weight: bold;
+    padding: 3px 6px;
+    border: 1px solid #4d0000;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+    box-shadow: inset 0 0 3px rgba(0,0,0,0.4);
+}
+/* 5. Image Frame Alignment */
+/* 5. FIX: Image Frame Alignment */
+[data-theme='black-crown'] .storylet-image-frame {
+    background-image: url('/themes/black-crown/files_large.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    
+    /* ADJUST THESE VALUES to move the image window */
+    /* If image is too far left, increase LEFT padding. */
+    /* If image is too far right, increase RIGHT padding. */
+    
+    /* Current guess: Needs to move Right and Down */
+    padding: 10px 20px 10px 10px; 
+    
+    margin: 0 auto 2rem auto;
+    width: fit-content;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+[data-theme='black-crown'] .storylet-image-frame img {
+    border: 1px solid #555;
+    max-height: 250px;
+    display: block;
+}
+
+/* 6. Location Header Banner - Thicker */
+/* 6. Location Header Banner */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header {
+    background-image: url('/themes/black-crown/location_bg.jpg');
+    background-size: cover;
+    background-position: center;
+    border: 2px solid #000;
+    
+    /* INCREASED HEIGHT via Padding */
+    padding: 5rem 4rem; /* was 2rem 3rem */
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    margin-bottom: 3rem;
+}
+[data-theme='black-crown'] .location-wrapper.mode-banner h1 {
+    font-size: 2rem;
+    color: #eee;
+    text-shadow: 2px 2px 0 #000;
+    font-style: italic;
+    font-family: serif;
+    margin: 0;
+}
+/* Hide sub-elements in banner mode */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-image-container,
+[data-theme='black-crown'] .location-wrapper.mode-banner h2 {
+    display: none;
+}
+
+/* 7. Option Buttons (Inset Style) */
+[data-theme='black-crown'] .option-button {
+    background-image: url('/themes/black-crown/choice_bg.jpg');
+    background-color: #dcd9d3;
+    background-size: cover;
+    border: 1px solid #999;
+    box-shadow: inset 1px 1px 5px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+    position: relative;
+    padding: 1.5rem;
+    max-width: 850px; /* Match storylet width */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Sticky Tape on Options (Re-enabled) */
+[data-theme='black-crown'] .option-button::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px; 
+    height: 25px;
+    background-image: url('/themes/black-crown/choice_tape.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: 10;
+}
+
+/* 8. Text & Button Colors */
+[data-theme='black-crown'] .text-emphasis {
+    color: var(--accent-highlight);
+    text-decoration: underline;
+    font-weight: bold;
+    background: none;
+    border: none;
+}
+
+[data-theme='black-crown'] .special-block-text {
+    color: var(--accent-highlight);
+    text-shadow: 1px 0px 0px rgba(0,0,0,0.1);
+}
+
+/* Red Action Button */
+[data-theme='black-crown'] .option-action-btn {
+    position: absolute; bottom: 1rem; right: 1rem;
+    display: flex; align-items: stretch;
+    color: white; font-family: "Arial Black", sans-serif;
+    font-size: 0.9rem; cursor: pointer;
+    border: 1px solid #000; border-radius: 2px;
+    overflow: hidden; box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+[data-theme='black-crown'] .option-action-btn .action-verb {
+    padding: 0.4rem 0.8rem;
+    background: linear-gradient(to bottom, #d63031, #b71540);
+}
+[data-theme='black-crown'] .option-action-btn:hover .action-verb {
+    background: linear-gradient(to bottom, #ff4d4d, #d63031);
+}
+
+/* --- UNIVERSAL TEXT STYLES (Apply to all themes) --- */
+
+.text-emphasis {
+    /* This automatically picks up the Red color in Black Crown, 
+       but will be Blue/Gold/etc in your other themes */
+    color: var(--accent-highlight);
+    font-weight: bold;
+    font-style: italic;
+    /* Optional: Black Crown uses underlines for emphasis */
+    text-decoration: inherit; 
+}
+
+[data-theme='black-crown'] .text-emphasis {
+    background: transparent; border: none; padding: 0;
+    font-style: normal; font-weight: bold;
+    color: var(--accent-highlight);
+    text-decoration: underline;
+}
+
+
+.special-block-text {
+    text-align: center;
+    font-family: var(--font-main);
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin: 1.5rem 0;
+    padding: 0.5rem;
+}
+
+/*The part which renders just HTML */
 html {
     scroll-behavior: smooth;
 }

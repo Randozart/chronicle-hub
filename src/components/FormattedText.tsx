@@ -2,64 +2,73 @@
 
 import React from 'react';
 
-export default function FormattedText({ text }: { text: string }) {
+// Main component: Splits text into paragraphs and processes each line.
+export default function FormattedText({ text }: { text: string | undefined | null; }) {
     if (!text) return null;
 
-    // Split by newlines first to handle paragraphs
-    const paragraphs = text.split('\n');
+    const lines = text.split('\n');
 
     return (
         <>
-            {paragraphs.map((line, i) => (
-                <p key={i} style={{ marginBottom: '0.75rem', minHeight: '1rem' }}>
-                    {parseMarkdown(line)}
-                </p>
-            ))}
+            {lines.map((line, i) => {
+                // Check for the special Black Crown block-level format FIRST.
+                // The regex looks for the literal start and end tags on their own line.
+                const specialMatch = line.match(/^\[\\\\\|\\\](.*?)\[\/\|\/\/\]$/);
+                
+                if (specialMatch) {
+                    const content = specialMatch[1].trim();
+                    return (
+                        <div key={i} className="special-block-text">
+                            {`/// ${content} ///`}
+                        </div>
+                    );
+                }
+
+                // If it's not a special block, treat it as a standard paragraph
+                // and parse for inline formatting.
+                return (
+                    <p key={i} style={{ marginBottom: '0.75rem', minHeight: '1rem' }}>
+                        {parseInlineFormatting(line)}
+                    </p>
+                );
+            })}
         </>
     );
 }
 
-// Simple parser for *italic*, **bold**, and _italic_
-function parseMarkdown(line: string): React.ReactNode[] {
+// Unified parser for all inline styles: **bold**, *italic*, _italic_, and [emphasis]
+function parseInlineFormatting(line: string): React.ReactNode[] {
     if (!line) return [];
 
-    // We use a regex that captures the delimiters and the content
-    // (\*\*|__)(.*?)\1  -> Bold
-    // (\*|_)(.*?)\1     -> Italic
+    // 1. Unified Regex for **Bold**, _Italic_, and [Emphasis]
+    // Note: We use [^\]]+ to match everything inside brackets
+    const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_| \*(?:.+?)\*|\[(?:[^\]]+)\])/g;
     
-    // Strategy: Split by bold, then map those chunks to split by italic
-    
-    const parts: React.ReactNode[] = [];
-    
-    // Split by BOLD (**text**)
-    const boldSplit = line.split(/(\*\*(?:.*?)\*\*)/g);
+    const parts = line.split(formattingRegex);
 
-    boldSplit.forEach((segment, bIdx) => {
+    return parts.map((segment, i) => {
+        if (!segment) return null;
+
+        // BOLD
         if (segment.startsWith('**') && segment.endsWith('**')) {
-            // This is bold content. Strip markers and render.
-            const content = segment.slice(2, -2);
-            // Allow italics INSIDE bold? (Recursive would be better, but simple is safer for now)
-            parts.push(<strong key={`b-${bIdx}`}>{parseItalics(content)}</strong>);
-        } else {
-            // Normal text (or maybe italic)
-            parts.push(<React.Fragment key={`n-${bIdx}`}>{parseItalics(segment)}</React.Fragment>);
+            return <strong key={i}>{parseInlineFormatting(segment.slice(2, -2))}</strong>;
         }
-    });
-
-    return parts;
-}
-
-function parseItalics(text: string): React.ReactNode[] {
-    // Split by ITALIC (*text* or _text_)
-    // Note: strict check to avoid matching "part_of_variable" if we weren't careful, 
-    // but ScribeScript variables should already be resolved by now.
-    const italicSplit = text.split(/(\*(?:[^*]+)\*|_(?:[^_]+)_)/g);
-    
-    return italicSplit.map((segment, i) => {
-        if ((segment.startsWith('*') && segment.endsWith('*')) || 
-            (segment.startsWith('_') && segment.endsWith('_'))) {
-            return <em key={i}>{segment.slice(1, -1)}</em>;
+        
+        // ITALIC
+        if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith(' *') && segment.endsWith('*'))) {
+            const content = segment.startsWith('_') ? segment.slice(1, -1) : segment.slice(2, -1);
+            return <em key={i}>{parseInlineFormatting(content)}</em>;
         }
+        
+        // UNIVERSAL EMPHASIS [ ]
+        if (segment.startsWith('[') && segment.endsWith(']')) {
+            return (
+                <span key={i} className="text-emphasis">
+                    {parseInlineFormatting(segment.slice(1, -1))}
+                </span>
+            );
+        }
+
         return segment;
     });
 }

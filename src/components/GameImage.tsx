@@ -19,49 +19,47 @@ export default function GameImage({ code, alt, type, className, imageLibrary, st
     let src = '';
     let finalAlt = alt || '';
 
+    // --- 1. PRIMARY PATH: Look in the Image Library ---
+    // This is the ideal and most robust way.
     const def = imageLibrary[code];
     if (def) {
-        src = def.url;
+        src = def.url; // The data converter should provide the full path, e.g., /images/storylets/pig.png
         if (!finalAlt) finalAlt = def.alt || code;
-    } else if (code.toLowerCase().startsWith('http')) {
+    } 
+    // --- 2. SECONDARY PATH: Handle external URLs ---
+    else if (code.toLowerCase().startsWith('http')) {
         src = code;
-    } else {
-        // --- THIS IS THE FIX ---
-        // Find the full filename (with extension) from the image library
-        // This is a fallback for cases where an image is referenced but not in the library
-        // (e.g., character creation previews)
+    } 
+    // --- 3. ROBUST FALLBACK: If not in library, build the path dynamically ---
+    // This will correctly handle "1" and other simple codes.
+    else {
+        // Correctly determine the folder based on the component's 'type' prop.
         const folder = type === 'location' ? 'locations' 
                      : type === 'icon' ? 'icons' 
-                     : 'storylets';
+                     : 'storylets'; // Default to 'storylets'
         
-        // Assume .png if not found, but this is less robust. The primary path is via imageLibrary.
+        // We don't know the extension, so we'll start with .png and let onError handle the rest.
         src = `/images/${folder}/${code}.png`;
     }
 
-    // A better fallback for GameImage would be to find the file extension
-    // However, since we're mostly relying on the library, let's refine the logic slightly.
-    // The converter generates the `world.json` which contains an `images` block.
-    // This component should ideally not exist. I will fix the converter to handle this.
-    
-    // The URL should be in the definition. The converter should create this.
-    if (def && !def.url.startsWith('http')) {
-         const folder = def.category === 'location' ? 'locations' 
-                     : def.category === 'icon' ? 'icons' 
-                     : 'storylets';
-        // This logic is a bit tangled. Let's simplify. The converter creates the `world.json`
-        // which includes the `images` object. Let's make the converter build the URL.
-    }
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        const currentSrc = e.currentTarget.src;
+        let nextSrc = '';
 
-    // Final simplified logic based on converter output
-    if (def) {
-        src = def.url; // The converter will now write the full URL path.
-        finalAlt = def.alt || code;
-    } else if (code.toLowerCase().startsWith('http')) {
-        src = code;
-    } else {
-        // This is a final fallback for hardcoded images not in the library.
-        src = `/images/icons/${code}.png`;
-    }
+        // Chain-load extensions: If .png fails, try .jpg. If .jpg fails, try .jpeg.
+        if (currentSrc.endsWith('.png')) {
+            nextSrc = currentSrc.replace('.png', '.jpg');
+        } else if (currentSrc.endsWith('.jpg')) {
+            nextSrc = currentSrc.replace('.jpg', '.jpeg');
+        }
+
+        // If we have a new source to try, set it. Otherwise, hide the element.
+        if (nextSrc && e.currentTarget.src !== nextSrc) {
+            e.currentTarget.src = nextSrc;
+        } else {
+            e.currentTarget.style.display = 'none'; // Final fallback: hide broken image
+        }
+    };
 
     return (
         <img 
@@ -69,9 +67,8 @@ export default function GameImage({ code, alt, type, className, imageLibrary, st
             alt={finalAlt} 
             className={className}
             style={style}
-            onError={(e) => {
-                e.currentTarget.style.display = 'none'; 
-            }}
+            // The onError handler makes the component smart about file extensions.
+            onError={handleImageError}
         />
     );
 }

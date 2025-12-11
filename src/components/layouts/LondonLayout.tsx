@@ -21,6 +21,15 @@ export default function LondonLayout(props: LayoutProps) {
     const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
     const handleActionRegen = () => props.onQualitiesUpdate({ ...props.character.qualities, [actionQid]: { ...actionState, level: currentActions + 1 } as any });
 
+    const TabBar = () => (
+        <div className="tab-bar">
+            {/* Add data-tab-id for CSS sprite targeting */}
+            <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
+            <button onClick={() => setActiveTab('possessions')} data-tab-id="possessions" className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
+            <button onClick={() => setActiveTab('profile')} data-tab-id="profile" className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
+        </div>
+    );
+
     const renderContent = () => {
         if (activeTab === 'profile') {
             return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />;
@@ -84,7 +93,7 @@ export default function LondonLayout(props: LayoutProps) {
         <div className="layout-column" style={{ height: '100vh' }}>
             
             {/* --- BANNER --- */}
-            <div style={{ position: 'relative', height: '250px', flexShrink: 0, overflow: 'hidden', borderBottom: '1px solid var(--border-color)' }}>
+            <div className="layout-banner" style={{ position: 'relative', height: '250px', flexShrink: 0, /* ...rest of styles */ }}>                
                 <div style={{ position: 'absolute', inset: 0 }}>
                     <GameImage code={props.location.image} imageLibrary={props.imageLibrary} type="location" alt="" className="banner-bg-image" />
                 </div>
@@ -116,29 +125,29 @@ export default function LondonLayout(props: LayoutProps) {
 
             {/* --- MAIN AREA --- */}
             <div className="content-area">
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
+                <div className="layout-main-grid" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
                     
                     {/* LEFT COLUMN */}
-                    <div className="layout-column" style={{ gap: '1rem' }}>
+                    <div className="layout-sidebar-col layout-column" style={{ gap: '1rem' }}>
                         <div className="action-box">
                             <h3 style={{ margin: '0 0 0.5rem 0' }}>{currentActions} / {maxActions}</h3>
                             <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={handleActionRegen} />
                         </div>
-                        
-                        <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)', overflow: 'hidden', background: 'var(--bg-panel)' }}>
-                            <WalletHeader qualities={props.character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
-                        </div>
-
+                        {props.settings.tabLocation !== 'sidebar' && (
+                            <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)', overflow: 'hidden', background: 'var(--bg-panel)' }}>
+                                <WalletHeader qualities={props.character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
+                            </div>
+                        )}
                         <CharacterSheet qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
                     </div>
 
                     {/* RIGHT COLUMN */}
-                    <div className="layout-column">
-                        <div className="tab-bar" style={{ marginBottom: '1rem', borderRadius: 'var(--border-radius)' }}>
-                            <button onClick={() => setActiveTab('story')} className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
-                            <button onClick={() => setActiveTab('possessions')} className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
-                            <button onClick={() => setActiveTab('profile')} className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
-                        </div>
+                    <div className="layout-content-col layout-column">
+                        {props.settings.tabLocation !== 'sidebar' && (
+                             <div style={{ marginBottom: '1rem', borderRadius: 'var(--border-radius)' }}>
+                                <TabBar />
+                             </div>
+                        )}
                         {renderContent()}
                     </div>
                 </div>

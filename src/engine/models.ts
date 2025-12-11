@@ -162,6 +162,8 @@ export interface WorldSettings {
     titleQualityId?: string;
     
     layoutStyle: LayoutStyle;
+    locationHeaderStyle?: 'standard' | 'banner' | 'hidden'; 
+    tabLocation?: 'main' | 'header' | 'sidebar';
     visualTheme?: string;
     enableParallax?: boolean;
     

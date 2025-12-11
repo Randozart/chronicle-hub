@@ -134,7 +134,7 @@ export default function StoryletDisplay({
             <div className="storylet-container">
                 <div className="storylet-main-content">
                     {resolution.image_code && (
-                        <div className="storylet-image-container">
+                        <div className="storylet-image-frame storylet-image-container"> 
                             <GameImage 
                                 code={resolution?.image_code || storylet.image_code} 
                                 imageLibrary={imageLibrary} 
@@ -201,7 +201,7 @@ export default function StoryletDisplay({
         <div className="storylet-container">
             <div className="storylet-main-content">
                 {storylet.image_code && (
-                    <div className="storylet-image-container">
+                    <div className="storylet-image-frame storylet-image-container"> 
                         <GameImage 
                             code={storylet.image_code} 
                             imageLibrary={imageLibrary} 

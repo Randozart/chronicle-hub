@@ -22,6 +22,15 @@ export default function NexusLayout(props: LayoutProps) {
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
     const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
 
+    // --- UNIVERSAL TAB BAR ---
+    const TabBar = () => (
+        <div className="tab-bar">
+            <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
+            <button onClick={() => setActiveTab('possessions')} data-tab-id="possessions" className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
+            <button onClick={() => setActiveTab('profile')} data-tab-id="profile" className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
+        </div>
+    );
+
     const renderContent = () => {
         if (activeTab === 'profile') {
             return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />;
@@ -75,12 +84,16 @@ export default function NexusLayout(props: LayoutProps) {
 
         return (
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                <LocationHeader 
-                    location={props.location} 
-                    imageLibrary={props.imageLibrary} 
-                    onOpenMap={props.onOpenMap}
-                    onOpenMarket={props.currentMarketId ? props.onOpenMarket : undefined}
-                />
+                {/* LOCATION HEADER / BANNER */}
+                <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
+                    <LocationHeader 
+                        location={props.location} 
+                        imageLibrary={props.imageLibrary} 
+                        onOpenMap={props.onOpenMap}
+                        onOpenMarket={props.currentMarketId ? props.onOpenMarket : undefined}
+                    />
+                </div>
+
                 <div style={{ marginTop: '2rem' }}>
                     <LocationStorylets storylets={props.locationStorylets} onStoryletClick={props.onOptionClick} qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} />
                 </div>
@@ -107,12 +120,18 @@ export default function NexusLayout(props: LayoutProps) {
     return (
         <div className="layout-grid-nexus">
             {/* LEFT SIDEBAR */}
-            <div className="sidebar-panel">
-                <div style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <WalletHeader qualities={props.character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
-                </div>
+            <div className="sidebar-panel" >
+                {/* Hide Wallet Header if tabs are in sidebar (to save space/match style) */}
+                {props.settings.tabLocation !== 'sidebar' && (
+                    <div style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <WalletHeader qualities={props.character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
+                    </div>
+                )}
 
                 <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                    {/* Render TABS in Sidebar if configured */}
+                    {props.settings.tabLocation === 'sidebar' && <TabBar />}
+
                     <div className="action-box">
                         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
@@ -128,11 +147,14 @@ export default function NexusLayout(props: LayoutProps) {
             
             {/* MAIN CONTENT */}
             <div className="layout-column" style={{ overflow: 'hidden' }}>
-                <div className="tab-bar">
-                    <button onClick={() => setActiveTab('story')} className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
-                    <button onClick={() => setActiveTab('possessions')} className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
-                    <button onClick={() => setActiveTab('profile')} className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
-                </div>
+                {/* Render TABS in Main if NOT in sidebar */}
+                {props.settings.tabLocation !== 'sidebar' && (
+                    <div className="tab-bar">
+                        <button onClick={() => setActiveTab('story')} className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
+                        <button onClick={() => setActiveTab('possessions')} className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
+                        <button onClick={() => setActiveTab('profile')} className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
+                    </div>
+                )}
                 
                 <div className="content-area" style={{ padding: '2rem' }}>
                     {renderContent()}
