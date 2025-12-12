@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { isEmailWhitelisted } from '@/engine/whitelistService';
 import { validatePassword } from '@/utils/validation';
 import { v4 as uuidv4 } from 'uuid';
+import { sendVerificationEmail } from '@/lib/email'; // <--- IMPORT THIS
 
 export async function POST(request: NextRequest) {
     try {
@@ -47,26 +48,21 @@ export async function POST(request: NextRequest) {
 
         await usersCollection.insertOne(newUserDocument);
 
-        // 3. Send Email (Fail Softly)
+        // 3. Send Email
         try {
             await sendVerificationEmail(email, verificationToken);
         } catch (emailError) {
             console.error("⚠️ Registration succeeded, but email failed to send:", emailError);
-            // We do NOT return an error here. We let the registration succeed.
-            // In dev/early alpha, this allows you to manually verify users in DB if email is broken.
+            // We do NOT fail the request. The user exists, but can't verify yet.
+            // They might need a "Resend Email" button later.
         }
 
         return NextResponse.json({ 
-            message: 'User registered successfully', 
-            userId: verificationToken 
+            message: 'User registered successfully. Please check your email.' 
         }, { status: 201 });
 
     } catch (error) {
         console.error('Registration error:', error);
         return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-}
-
-function sendVerificationEmail(email: any, verificationToken: string) {
-    throw new Error('Function not implemented.');
 }
