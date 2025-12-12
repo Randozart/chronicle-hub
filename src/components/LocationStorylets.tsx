@@ -1,11 +1,10 @@
 // src/components/LocationStorylets.tsx
 'use client';
 
-import { Storylet, PlayerQualities, WorldContent, QualityDefinition, ImageDefinition } from "@/engine/models";
-import { evaluateText } from "@/engine/textProcessor";
+import { Storylet, PlayerQualities, QualityDefinition, ImageDefinition } from "@/engine/models";
+import { evaluateText, evaluateCondition } from "@/engine/textProcessor";
 import GameImage from "./GameImage";
 
-// --- UPDATE THE PROPS INTERFACE ---
 interface LocationStoryletsProps {
     storylets: Storylet[];
     onStoryletClick: (storyletId: string) => void;
@@ -15,15 +14,20 @@ interface LocationStoryletsProps {
 }
 
 export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs, imageLibrary }: LocationStoryletsProps) {
-    console.log("[CLIENT] LocationStorylets received props:", JSON.stringify(storylets, null, 2));
+    // Filter storylets based on visibility condition
+    const visibleStorylets = storylets.filter(s => {
+        // If no condition, it's visible. If condition exists, evaluate it against current qualities.
+        // We pass empty objects for aliases/self as they aren't used in top-level visibility.
+        return evaluateCondition(s.visible_if, qualities, qualityDefs, {}, null, 0);
+    });
 
-    if (storylets.length === 0) return null;
+    if (visibleStorylets.length === 0) return null;
 
     return (
         <div className="location-storylets">
             <h2>Actions</h2>
             <div className="storylet-list-container">
-                {storylets.map(storylet => (
+                {visibleStorylets.map(storylet => (
                     <button 
                         key={storylet.id}
                         className="option-button"
@@ -35,7 +39,7 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                     <GameImage 
                                         code={storylet.image_code} 
                                         imageLibrary={imageLibrary} 
-                                        type="storylet" // or "icon" depending on component
+                                        type="storylet"
                                         alt={storylet.name}
                                         className="option-image"
                                     />

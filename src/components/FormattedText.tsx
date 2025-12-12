@@ -2,64 +2,73 @@
 
 import React from 'react';
 
-export default function FormattedText({ text }: { text: string }) {
+// Main component: Correctly groups lines into paragraphs.
+export default function FormattedText({ text }: { text: string | undefined | null; }) {
     if (!text) return null;
 
-    // Split by newlines first to handle paragraphs
-    const paragraphs = text.split('\n');
+    // 1. Split the entire text block by one or more empty lines.
+    // This correctly identifies paragraphs separated by double (or more) newlines.
+    const paragraphs = text.split(/\n\s*\n/);
 
     return (
         <>
-            {paragraphs.map((line, i) => (
-                <p key={i} style={{ marginBottom: '0.75rem', minHeight: '1rem' }}>
-                    {parseMarkdown(line)}
-                </p>
-            ))}
+            {paragraphs.map((paragraph, i) => {
+                // Ignore empty paragraphs that might result from splitting.
+                if (!paragraph.trim()) return null;
+
+                // 2. For each valid paragraph, split it into individual lines.
+                const lines = paragraph.split('\n');
+                
+                return (
+                    // 3. Render a single <p> tag for the entire paragraph.
+                    <p key={i} style={{ margin: '0 0 1em 0' }}> 
+                        {lines.map((line, j) => (
+                            <React.Fragment key={j}>
+                                {parseInlineFormatting(line)}
+                                {/* 4. Use <br /> for intentional line breaks WITHIN a paragraph. */}
+                                {j < lines.length - 1 && <br />} 
+                            </React.Fragment>
+                        ))}
+                    </p>
+                );
+            })}
         </>
     );
 }
 
-// Simple parser for *italic*, **bold**, and _italic_
-function parseMarkdown(line: string): React.ReactNode[] {
+// Unified parser for all inline styles: **bold**, *italic*, _italic_, and [emphasis]
+function parseInlineFormatting(line: string): React.ReactNode[] {
     if (!line) return [];
 
-    // We use a regex that captures the delimiters and the content
-    // (\*\*|__)(.*?)\1  -> Bold
-    // (\*|_)(.*?)\1     -> Italic
+    // This regex looks for **bold**, _italic_, *italic*, and [emphasis] blocks.
+    const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_|\*(?:.+?)\*|\[(?:[^\]]+)\])/g;
     
-    // Strategy: Split by bold, then map those chunks to split by italic
-    
-    const parts: React.ReactNode[] = [];
-    
-    // Split by BOLD (**text**)
-    const boldSplit = line.split(/(\*\*(?:.*?)\*\*)/g);
+    const parts = line.split(formattingRegex);
 
-    boldSplit.forEach((segment, bIdx) => {
+    return parts.map((segment, i) => {
+        if (!segment) return null;
+
+        // BOLD
         if (segment.startsWith('**') && segment.endsWith('**')) {
-            // This is bold content. Strip markers and render.
-            const content = segment.slice(2, -2);
-            // Allow italics INSIDE bold? (Recursive would be better, but simple is safer for now)
-            parts.push(<strong key={`b-${bIdx}`}>{parseItalics(content)}</strong>);
-        } else {
-            // Normal text (or maybe italic)
-            parts.push(<React.Fragment key={`n-${bIdx}`}>{parseItalics(segment)}</React.Fragment>);
+            // Recursively parse content inside for nested formatting.
+            return <strong key={i}>{parseInlineFormatting(segment.slice(2, -2))}</strong>;
         }
-    });
-
-    return parts;
-}
-
-function parseItalics(text: string): React.ReactNode[] {
-    // Split by ITALIC (*text* or _text_)
-    // Note: strict check to avoid matching "part_of_variable" if we weren't careful, 
-    // but ScribeScript variables should already be resolved by now.
-    const italicSplit = text.split(/(\*(?:[^*]+)\*|_(?:[^_]+)_)/g);
-    
-    return italicSplit.map((segment, i) => {
-        if ((segment.startsWith('*') && segment.endsWith('*')) || 
-            (segment.startsWith('_') && segment.endsWith('_'))) {
-            return <em key={i}>{segment.slice(1, -1)}</em>;
+        
+        // ITALIC (handles both _ and *)
+        if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith('*') && segment.endsWith('*'))) {
+            return <em key={i}>{parseInlineFormatting(segment.slice(1, -1))}</em>;
         }
+        
+        // UNIVERSAL EMPHASIS [ ]
+        if (segment.startsWith('[') && segment.endsWith(']')) {
+            return (
+                <span key={i} className="text-emphasis">
+                    {parseInlineFormatting(segment.slice(1, -1))}
+                </span>
+            );
+        }
+
+        // If no formatting matches, return the plain text segment.
         return segment;
     });
 }

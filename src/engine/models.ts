@@ -69,6 +69,7 @@ interface ContentCommon {
     folder?: string;
     return?: string;
     ordering?: number; // NEW
+    urgency?: 'Must' | 'High' | 'Normal'; 
 }
 
 export interface Storylet extends ContentCommon, LogicGates {
@@ -161,6 +162,8 @@ export interface WorldSettings {
     titleQualityId?: string;
     
     layoutStyle: LayoutStyle;
+    locationHeaderStyle?: 'standard' | 'banner' | 'hidden'; 
+    tabLocation?: 'main' | 'header' | 'sidebar';
     visualTheme?: string;
     enableParallax?: boolean;
     
@@ -174,6 +177,7 @@ export interface WorldSettings {
     // NEW
     systemMessage?: SystemMessage;
     allowScribeScriptInInputs?: boolean;
+    storynexusMode?: boolean; 
 }
 
 // All other config definitions remain largely the same, just with 'ordering' added

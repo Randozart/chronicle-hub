@@ -1,3 +1,4 @@
+// ... existing imports ...
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from 'bcrypt';
@@ -11,10 +12,13 @@ interface UserDocument {
     email: string;
     password?: string;
     acknowledgedPlatformMessages?: string[];
+    emailVerified?: Date | null; // Add type definition
 }
 
 export const authOptions: NextAuthOptions = {
+    // ... secret, strategy ...
     secret: process.env.NEXTAUTH_SECRET,
+    session: { strategy: "jwt" },
     providers: [
       CredentialsProvider({
         name: "Credentials",
@@ -31,6 +35,15 @@ export const authOptions: NextAuthOptions = {
             
             if (!user || !user.password) return null;
 
+            // --- UPDATED: VERIFICATION & WHITELIST CHECK ---
+            const isWhitelisted = await isEmailWhitelisted(user.email);
+
+            if (!user.emailVerified && !isWhitelisted) {
+                // If they aren't verified AND they aren't on the special list, block them.
+                throw new Error("Email not verified. Please check your inbox.");
+            }
+            // -----------------------------------------------
+
             const isValid = await bcrypt.compare(credentials.password, user.password);
             if (!isValid) return null;
             
@@ -42,13 +55,15 @@ export const authOptions: NextAuthOptions = {
         },
       }),
     ],
-    session: { strategy: "jwt" },
+    // ... pages ...
     pages: {
       signIn: "/login",
       error: "/login", 
     },
     callbacks: {
+        // ...
         async signIn({ user }) {
+            // whitelist check is still good to keep as a double layer
             if (!user.email) return false;
             return await isEmailWhitelisted(user.email);
         },

@@ -4,6 +4,7 @@ import { ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } fr
 import { useState, useMemo } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
+import { evaluateText } from "@/engine/textProcessor";
 
 interface PossessionsProps {
     qualities: PlayerQualities;
@@ -16,8 +17,11 @@ interface PossessionsProps {
     settings: WorldSettings;
 }
 
-const formatBonus = (bonusStr: string, qualityDefs: Record<string, QualityDefinition>) => {
-    return bonusStr.split(',').map(part => {
+const formatBonus = (bonusStr: string, qualityDefs: Record<string, QualityDefinition>, qualities: PlayerQualities) => {
+    // We also need to evaluate the bonus string in case it has logic
+    const evaluatedBonus = evaluateText(bonusStr, qualities, qualityDefs, null, 0);
+
+    return evaluatedBonus.split(',').map(part => {
         const match = part.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
         if (match) {
             const [, qid, op, val] = match;
@@ -69,20 +73,34 @@ export default function Possessions({
 
     // 1. Prepare Data
     const inventoryItems = useMemo(() => {
+        // --- FIX START ---
+        // First, create a set of all currently equipped item IDs for quick lookup.
+        const equippedIds = new Set(Object.values(equipment).filter(Boolean));
+
         return Object.keys(qualities)
             .map(qid => {
+                // Exclude currencies and system qualities as before
                 if (currencyIds.includes(qid)) return null;
+
+                // --- NEW LOGIC: Exclude equipped items from the inventory list ---
+                if (equippedIds.has(qid)) return null;
+
                 const def = qualityDefs[qid];
                 const state = qualities[qid];
                 if (!def || !state) return null;
+
                 const level = ('level' in state) ? state.level : 0;
                 if (level <= 0) return null;
+
+                // Only show Items and Equipables in this list
                 if (def.type !== 'I' && def.type !== 'E') return null;
                 
                 return { ...def, ...state, level };
             })
             .filter(Boolean as any);
-    }, [qualities, qualityDefs]);
+    // Add `equipment` to the dependency array so the list re-renders when you equip/unequip
+    }, [qualities, qualityDefs, equipment, currencyIds]);
+    // --- FIX END ---
 
     // 2. Group & Filter
     const grouped = useGroupedList(inventoryItems, groupBy, search);
@@ -170,13 +188,16 @@ export default function Possessions({
                             const isEquipable = item.type === 'E';
                             const category = item.category || '';
                             const isEquipped = Object.values(equipment).includes(item.id);
+                            
+                            const displayName = evaluateText(item.name, qualities, qualityDefs, { qid: item.id, state: item }, 0);
+                            const displayDesc = evaluateText(item.description, qualities, qualityDefs, { qid: item.id, state: item }, 0);
 
                             return (
                                 <div key={item.id} className="inventory-item card">
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <div style={{ width: '50px', flexShrink: 0 }}>
                                             <GameImage 
-                                                code={item.image || item.id} // Use Image Property
+                                                code={item.image || item.id} 
                                                 imageLibrary={imageLibrary} 
                                                 alt="" 
                                                 type="icon" 
@@ -185,14 +206,15 @@ export default function Possessions({
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div className="item-header">
-                                                <strong>{item.name}</strong>
+                                                {/* --- FIX 3: Use the evaluated variables --- */}
+                                                <strong>{displayName}</strong>
                                                 <span className="item-count">x{item.level}</span>
                                             </div>
-                                            <p className="item-desc">{item.description}</p>
+                                            <p className="item-desc">{displayDesc}</p>
                                             
                                             {item.bonus && (
                                                 <p className="item-bonus">
-                                                    {formatBonus(item.bonus, qualityDefs)}
+                                                    {formatBonus(item.bonus, qualityDefs, qualities)}
                                                 </p>
                                             )}
                                         </div>

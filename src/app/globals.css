@@ -1097,6 +1097,7 @@ body {
     border: 1px solid var(--border-color);
     padding: 2rem;
     border-radius: var(--border-radius);
+    max-width: 900;
 }
 
 .storylet-text {
@@ -2844,7 +2845,7 @@ html[data-theme='revolutionary']::before {
 .sidebar-panel {
     width: 280px;
     flex-shrink: 0;
-    background-color: var(--bg-panel);
+    /* background-color: var(--bg-panel); */
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
@@ -2930,7 +2931,7 @@ html[data-theme='revolutionary']::before {
     grid-template-columns: 320px 1fr; /* Slightly wider sidebar for Nexus */
     height: 100vh;
     overflow: hidden;
-    background-color: var(--bg-main);
+    /* background-color: var(--bg-main); */
 }
 
 /* Tabletop: Character | Visual | Story */
@@ -3127,6 +3128,539 @@ html[data-theme='revolutionary']::before {
     border: 1px dashed var(--accent-highlight);
 }
 
+
+/* =========================================
+   THEME: BLACK CROWN (The Paranoid Archive)
+   ========================================= */
+[data-theme='black-crown'] {
+    /* PALETTE: Mossy Void & Manila Folders */
+    
+    /* NEW: Variables for the "Mysterious Void" gradient */
+    --bg-main: #1a1917; /* A very dark, warm gray for the absolute edge */
+
+/* NEW: Brighter, more open gradient colors */
+--bg-void-dark: #2d2b27;    /* Keeps the edges dark for contrast */
+--bg-void-mid: #7a786f;     /* A wider, softer mid-tone to smooth the gradient */
+--bg-void-light: #d0eaaa;   /* A very bright, aged paper/bone color for the center */ /* A much brighter, dusty khaki spotlight */
+    /* Buff / Manila Folder Colors */
+    --bg-panel: #e8e0c5; 
+    --bg-item: #f3ebd0; 
+    --bg-item-hover: #fffef5;
+    
+    --border-color: #2b261e; /* Dark Brown Ink */
+    --border-light: #8c857b;
+    
+    --text-primary: #1a1814;
+    --text-secondary: #3d3830;
+    --text-muted: #6b6354;
+    
+    --accent-primary: #2c241b; 
+    --accent-hover: #000000;
+    --accent-highlight: #8a0303; /* Deep Crimson Stamp */
+    
+    --font-main: "Special Elite", "Courier New", monospace;
+    --border-radius: 2px;
+    
+    /* UTILS */
+    --shadow-paper: 0 2px 4px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+    --shadow-float: 0 15px 30px rgba(0,0,0,0.5);
+}
+
+/* 1. BACKGROUND: The Mossy Archive */
+[data-theme='black-crown'].theme-wrapper {
+    /*
+       THE FIX: We use the single 'background' shorthand property.
+       This correctly layers the gradient ON TOP of the fallback color.
+       Layers are listed from top to bottom, with the final color being the base layer.
+    */
+     background:
+        /* Layer 3 (Top): The Noise Texture */
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E") fixed,
+
+        /* Layer 2 (Middle): The Radial Gradient */
+        radial-gradient(ellipse at center, 
+            var(--bg-void-light) 0%, 
+            var(--bg-void-mid) 50%,
+            var(--bg-void-dark) 90%
+        ) fixed,
+
+        /* Layer 1 (Bottom): The solid fallback color */
+        var(--bg-main);
+        
+    background-blend-mode: overlay;
+    background-attachment: fixed;
+    min-height: 100vh;
+    height: auto;
+    overflow-y: auto;
+    display: block; 
+}
+
+/* 2. LAYOUT GRID */
+[data-theme='black-crown'] .layout-grid-nexus {
+    display: grid;
+    /* Wide sidebar (400px) for tabs */
+    grid-template-columns: 400px minmax(0, 1fr);
+    gap: 2rem;
+    max-width: 1500px;
+    width: 95%;
+    height: 100%;
+    margin: 4rem auto;
+    align-items: start;
+}
+
+[data-theme='black-crown'] .tab-btn.active {
+    background: var(--bg-panel); /* Try to match the image tone roughly */
+    background-image: url('/themes/black-crown/sidebar_bg.jpg'); /* Match panel bg */
+    background-position: top center;
+    color: #000;
+    border-bottom: 1px solid var(--bg-panel);
+    margin-bottom: -1px;
+    z-index: 5;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+}
+
+/* 4. CONTENT AREA & HEADERS */
+[data-theme='black-crown'] .content-area {
+    overflow: visible !important;
+    height: auto !important;
+}
+
+/* 1. Wrapper: Define a Grid that stacks items on top of each other */
+[data-theme='black-crown'] .location-wrapper.mode-banner {
+    display: grid;
+    /* This creates one cell where everything lives */
+    grid-template-areas: "stack"; 
+    
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto 3rem auto;
+    
+    /* Decoration */
+    border: 4px solid #111;
+    box-shadow: var(--shadow-float);
+    background: #0c140c;
+    overflow: hidden;
+}
+
+/* 2. Background Layer: Dictates the height */
+[data-theme='black-crown'] .banner-bg-layer {
+    grid-area: stack; /* Put in the stack */
+    position: relative; /* Back in the document flow */
+    width: 100%;
+    height: auto;       /* Allow height to grow/shrink with image */
+    z-index: 0;
+}
+
+[data-theme='black-crown'] .banner-bg-layer img {
+    width: 100%;
+    height: auto;       /* Resize uniformly (Aspect Ratio preserved) */
+    display: block;     /* Remove bottom gap */
+    
+    /* Visual Filters */
+    mask-image: linear-gradient(to bottom, black 60%, rgba(0,0,0,0.8) 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 60%, rgba(0,0,0,0.8) 100%);
+    filter: brightness(0.6) sepia(0.2) contrast(1.1);
+}
+
+/* --- SIDEBAR: The Manila Folder (Corrected Layout) --- */
+
+/* 1. The Folder Container */
+[data-theme='black-crown'] .sidebar-panel {
+    background-color: var(--bg-panel);
+    border: 1px solid #b8b09e;
+    background-image: url('/themes/black-crown/sidebar_bg.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    box-shadow: inset 0 0 25px rgba(0,0,0,0.2), 0 5px 15px rgba(0,0,0,0.3);
+    
+    position: sticky;
+    top: 2rem;
+    max-height: calc(100vh - 4rem);
+    
+    width: 100%;
+    z-index: 10;
+    
+    /* NEW: Use Flexbox to manage the inner layout */
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden; /* Hide scrollbar from the folder itself */
+}
+
+/* The inner scrollable content area */
+[data-theme='black-crown'] .sidebar-content-scroll {
+    flex: 1 1 auto; /* Take up all available vertical space */
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+/* The fixed footer area */
+[data-theme='black-crown'] .sidebar-footer {
+    flex-shrink: 0; /* Prevent the footer from shrinking */
+    padding: 1.5rem;
+    padding-top: 0;
+}
+
+
+/* 2. THE TABS (Recessed, Borderless Look) */
+[data-theme='black-crown'] .tab-bar {
+    margin: 0;
+    margin-bottom: 0rem;
+    padding: 0;
+    gap: 0;
+    display: flex;
+    border-bottom: 1px solid #a8a08a;
+}
+
+[data-theme='black-crown'] .tab-btn {
+    flex-grow: 1;
+    background: transparent;
+    color: rgba(43, 38, 30, 0.6);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+    font-family: var(--font-main);
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 1px;
+    padding: 0.75rem 0.25rem;
+    border-radius: 4px 4px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+[data-theme='black-crown'] .tab-btn.active {
+    background: #f4f0e4;
+    color: var(--accent-highlight);
+    box-shadow: none;
+    border: 1px solid #a8a08a;
+    border-top: 2px solid var(--accent-highlight);
+    border-bottom: 1px solid #f4f0e4;
+    position: relative;
+    margin-bottom: -1px;
+}
+
+/* 3. The "Pasted-On" Paper Labels */
+[data-theme='black-crown'] .sidebar-panel .action-box,
+[data-theme='black-crown'] .sidebar-panel .character-sheet {
+    background-color: #f4f0e4; 
+    border: 1px solid #a8a08a; 
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    padding: 1rem;
+    margin: 0;
+}
+
+/* Merge the Action Box with the Tab Bar (no top margin) */
+[data-theme='black-crown'] .sidebar-panel .action-box {
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+
+/* Space out the Character Sheet */
+[data-theme='black-crown'] .sidebar-panel .character-sheet {
+    margin-top: 1.5rem;
+    border-radius: 4px;
+}
+
+/* ... (The rest of your sidebar typography and button styles can remain the same) ... */
+
+/* Switch Character Button (Slanted Stamp) */
+[data-theme='black-crown'] .switch-char-btn {
+    background: transparent;
+    border: 2px solid var(--accent-highlight);
+    color: var(--accent-highlight);
+    font-family: var(--font-main);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+    width: 100%;
+    padding: 0.75rem;
+    transform: rotate(-1deg);
+    transition: all 0.2s;
+}
+[data-theme='black-crown'] .switch-char-btn:hover {
+    background: rgba(138, 3, 3, 0.05);
+    opacity: 1;
+    transform: rotate(0deg) scale(1.01);
+}
+/* 4. Text Styling */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-text {
+    text-align: left;
+    margin-right: auto;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+}
+
+[data-theme='black-crown'] .location-wrapper.mode-banner h1 {
+    font-size: 3rem;
+    color: #fff;
+    border-bottom: 2px solid rgba(255,255,255,0.4);
+    margin: 0;
+    line-height: 1;
+    display: inline-block;
+}
+
+[data-theme='black-crown'] .location-wrapper.mode-banner h2 {
+    color: #ddd;
+    font-style: italic;
+    font-size: 1.1rem;
+    margin: 0 0 0.5rem 0;
+    opacity: 0.9;
+}
+/* 3. Header Content: Floats on top within the same stack */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header {
+    grid-area: stack; 
+    align-self: end;  
+    
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    
+    /* Spacing */
+    padding: 2rem 2rem 0.5rem 2rem; 
+    
+    /* FIX: Include padding in width calculation */
+    box-sizing: border-box; 
+    
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none;
+}
+/* 5. Buttons */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header > div:last-child {
+    align-items: flex-end; 
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* Cleanup */
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-header::after { display: none; }
+[data-theme='black-crown'] .location-wrapper.mode-banner .location-image-container { display: none; }
+
+/* 5. MAIN STORYLET (Case File - Quirked) */
+[data-theme='black-crown'] .storylet-container {
+    background: #fdfaf0;
+    padding: 4rem;
+    border: 1px solid #ccc;
+    box-shadow: var(--shadow-float);
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto 3rem auto;
+    
+    /* Paper Texture */
+    background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    
+    /* Slight rotation for the main file */
+    transform: rotate(0.4deg);
+    overflow: visible !important;
+    height: auto !important;
+}
+
+/* 6. OPTIONS (Messy Stack of Index Cards) */
+[data-theme='black-crown'] .option-button {
+    background-color: var(--bg-item);
+    border: 1px solid #d1c8b0;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-paper);
+    transition: transform 0.2s ease-out;
+    
+    /* --- ADD THESE TWO LINES --- */
+    position: relative; 
+    overflow: visible;
+}
+
+/* The "Sticky Tape" on top of each option */
+[data-theme='black-crown'] .option-button::before {
+    content: '';
+    position: absolute;
+    
+    /* Positioning */
+    top: -12px; /* Pulls it up above the button's border */
+    left: 50%;
+    transform: translateX(-50%) rotate(-2.5deg); /* Center horizontally with a slight tilt */
+    
+    /* Size */
+    width: 120px;
+    height: 28px;
+    
+    /* Appearance of old, semi-transparent tape */
+    background: rgba(255, 255, 220, 0.3); /* Yellowish tint */
+    border-left: 1px solid rgba(200, 200, 150, 0.4);
+    border-right: 1px solid rgba(200, 200, 150, 0.4);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(1px); /* A subtle glass-like effect */
+}
+
+/* Alternating rotations for the messy look */
+[data-theme='black-crown'] .option-button:nth-child(odd) {
+    transform: rotate(-0.6deg);
+}
+[data-theme='black-crown'] .option-button:nth-child(even) {
+    transform: rotate(0.6deg);
+}
+
+[data-theme='black-crown'] .option-button:hover {
+    background-color: #fff;
+    transform: scale(1.01) rotate(0deg) translateY(-3px); /* Straighten up on hover */
+    border-color: #999;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    z-index: 5;
+}
+
+/* 7. IMAGES (Polaroids & Paperclips) */
+[data-theme='black-crown'] .storylet-image-container {
+    background: #fff;
+    padding: 0.5rem 0.5rem 2.5rem 0.5rem;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    border: 1px solid #ddd;
+    /* Stronger rotation for images */
+    transform: rotate(-2deg);
+    max-width: 250px; 
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* CSS Paperclip on the image */
+[data-theme='black-crown'] .storylet-image-container::before {
+    content: '';
+    position: absolute;
+    top: -10px; left: 15px;
+    width: 12px; height: 35px;
+    border: 3px solid #666;
+    border-radius: 10px;
+    background: transparent;
+    z-index: 10;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+/* 8. SCROLLBARS */
+[data-theme='black-crown'] ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+[data-theme='black-crown'] ::-webkit-scrollbar-track {
+    background: #0f1a0f; 
+}
+[data-theme='black-crown'] ::-webkit-scrollbar-thumb {
+    background: #5c554a;
+    border: 3px solid #0f1a0f; 
+    border-radius: 6px;
+}
+/* --- UNIVERSAL TEXT STYLES (Apply to all themes) --- */
+
+.text-emphasis {
+    /* This automatically picks up the Red color in Black Crown, 
+       but will be Blue/Gold/etc in your other themes */
+    color: var(--accent-highlight);
+    /* Optional: Black Crown uses underlines for emphasis */
+    text-decoration: inherit; 
+}
+
+/* --- DASHBOARD CARD OVERRIDES --- */
+/* Target elements that are BOTH a card and a theme-wrapper */
+.card.theme-wrapper {
+    /* Force the card to behave like a standard box, ignoring theme layout quirks */
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 250px; /* Ensure a good aspect ratio */
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+    transform: none !important; /* Stop the Black Crown rotation in the grid */
+    margin: 0 !important;
+    background-color: var(--bg-panel) !important;
+    padding: 0 !important; /* Let the internal divs handle padding */
+    overflow: hidden !important;
+}
+
+/* Fix the Content Container inside */
+.card.theme-wrapper > div:last-child {
+    padding: 1.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+/* Force the Button Container to sit at the bottom */
+.card.theme-wrapper > div:last-child > div:last-child {
+    margin-top: auto !important;
+    display: flex !important;
+    flex-direction: row !important; /* Force Side-by-Side */
+    gap: 10px !important;
+    width: 100% !important;
+}
+
+/* FIX THE BUTTONS specifically within these cards */
+.card.theme-wrapper .continue-button,
+.card.theme-wrapper .return-button {
+    /* Reset dimensions to fill the flex row properly */
+    width: auto !important;
+    height: auto !important;
+    flex: 1 1 0% !important; /* Share width equally */
+    
+    /* Reset typography and padding */
+    padding: 0.5rem 1rem !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    /* Ensure they look like buttons */
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    background: var(--bg-item) !important;
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+    
+    /* Stop any absolute positioning or transform from themes */
+    position: static !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Hover effects for dashboard buttons */
+.card.theme-wrapper .continue-button:hover,
+.card.theme-wrapper .return-button:hover {
+    background: var(--accent-primary) !important;
+    color: #fff !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* Specific Fix for Black Crown image container within Dashboard */
+.card.theme-wrapper[data-theme='black-crown'] > div:first-child {
+    border-bottom: 2px solid #000 !important;
+    padding: 0 !important; /* Remove the polaroid padding */
+    background: #000 !important;
+    transform: none !important; /* Remove rotation */
+    width: 100% !important;
+}
+
+/* Ensure images fit */
+.card.theme-wrapper img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border: none !important; /* Remove polaroid borders */
+    filter: none !important; /* Remove sepia filters in dashboard */
+}
+
+.special-block-text {
+    text-align: center;
+    font-family: var(--font-main);
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin: 1.5rem 0;
+    padding: 0.5rem;
+}
+
+/*The part which renders just HTML */
 html {
     scroll-behavior: smooth;
 }

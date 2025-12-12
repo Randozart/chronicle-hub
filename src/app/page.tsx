@@ -72,9 +72,19 @@ export default function Dashboard() {
             {/* HEADER */}
             <div style={{ background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', padding: '0 2rem', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '24px', height: '24px', background: 'var(--accent-highlight)', borderRadius: '4px' }} />
-                    <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>Chronicle Hub</h1>
-                </div>
+                    <img 
+                        src="/logo-w.svg" 
+                        alt="ChronicleHub Logo" 
+                        style={{ 
+                            width: '48px', 
+                            height: '48px', 
+                            color: 'var(--accent-highlight)' // The SVG will be this color!
+                        }} 
+                    />
+                    <h1 style={{ fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
+                        Chronicle<span style={{ color: 'var(--accent-highlight)' }}>Hub</span>
+                    </h1>                
+                    </div>
                 <Link href="/docs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }} className="hover:text-white transition">
                     Documentation
                 </Link>

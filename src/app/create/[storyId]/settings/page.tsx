@@ -5,6 +5,7 @@ import { WorldSettings, QualityType, CharCreateRule, QualityDefinition } from '@
 import CollaboratorManager from './components/CollaboratorManager';
 import ThemePreview from './components/ThemePreview';
 import SmartArea from '@/components/admin/SmartArea';
+import { DataManagement } from './components/DataManagement';
 
 // --- TYPES ---
 interface SettingsForm extends WorldSettings {
@@ -552,7 +553,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     }}
                 />
             </div>
-            
+            <DataManagement storyId={storyId} />
             <CollaboratorManager storyId={storyId} />
             <div className="admin-form-footer" style={{ justifyContent: 'flex-end' }}><button onClick={handleSave} disabled={isSaving} className="save-btn">{isSaving ? 'Saving...' : 'Save All Settings'}</button></div>
         </div>

@@ -1,113 +1,59 @@
 'use client';
 
-import { useState } from 'react';
-import { LayoutProps } from './LayoutProps';
-import CharacterSheet from '../CharacterSheet';
-import LocationStorylets from '../LocationStorylets';
-import OpportunityHand from '../OpportunityHand';
-import StoryletDisplay from '../StoryletDisplay';
-import ProfilePanel from '../ProfilePanel';
-import Possessions from '../Possessions';
-import ActionTimer from '../ActionTimer';
+import React from 'react';
+import { WorldSettings, LocationDefinition, ImageDefinition } from '@/engine/models';
 import GameImage from '../GameImage';
-import WalletHeader from '../WalletHeader';
 
-export default function LondonLayout(props: LayoutProps) {
-    const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
+interface LondonLayoutProps {
+    sidebarContent: React.ReactNode;
+    mainContent: React.ReactNode;
+    location: LocationDefinition;
+    imageLibrary: Record<string, ImageDefinition>;
+    settings: WorldSettings;
+    onExit: () => void;
+    onOpenMap: () => void;
+    onOpenMarket: () => void;
+    currentMarketId?: string;
+}
 
-    const actionQid = props.settings.actionId.replace('$', '');
-    const actionState = props.character.qualities[actionQid];
-    const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
-    const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
-    const handleActionRegen = () => props.onQualitiesUpdate({ ...props.character.qualities, [actionQid]: { ...actionState, level: currentActions + 1 } as any });
-
-    const renderContent = () => {
-        if (activeTab === 'profile') {
-            return <ProfilePanel qualities={props.character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />;
-        }        
-        if (activeTab === 'possessions') {
-            return <Possessions qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={(c) => props.onQualitiesUpdate(c.qualities)} storyId={props.character.storyId} imageLibrary={props.imageLibrary} settings={props.settings}/>;
-        }
-                
-        if (props.isLoading) return <div className="loading-container"><p>Loading...</p></div>;
-        
-        if (props.activeEvent) {
-            return (
-                <StoryletDisplay
-                    eventData={props.activeEvent}
-                    qualities={props.character.qualities}
-                    onFinish={props.onEventFinish}
-                    onQualitiesUpdate={props.onQualitiesUpdate}
-                    onCardPlayed={props.onCardPlayed}
-                    qualityDefs={props.qualityDefs}
-                    storyletDefs={props.storyletDefs}
-                    opportunityDefs={props.opportunityDefs} 
-                    settings={props.settings}
-                    imageLibrary={props.imageLibrary}
-                    categories={props.categories}
-                    storyId={props.storyId}
-                    characterId={props.character.characterId}
-                />
-            );
-        }
-
-        return (
-            <>
-                <div style={{ marginBottom: '2rem', background: 'var(--bg-item)', padding: '1.5rem', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
-                    <LocationStorylets
-                        storylets={props.locationStorylets}
-                        onStoryletClick={props.onOptionClick}
-                        qualities={props.character.qualities}
-                        qualityDefs={props.qualityDefs}
-                        imageLibrary={props.imageLibrary}
-                    />
-                </div>
-                <OpportunityHand 
-                    hand={props.hand} 
-                    onCardClick={props.onOptionClick}
-                    onDrawClick={props.onDrawClick}
-                    isLoading={props.isLoading} 
-                    qualities={props.character.qualities}
-                    qualityDefs={props.qualityDefs}
-                    imageLibrary={props.imageLibrary}
-                    character={props.character}
-                    locationDeckId={props.location.deck}
-                    deckDefs={props.deckDefs}
-                    settings={props.settings}
-                    currentDeckStats={props.currentDeckStats}
-                />
-            </>
-        );
-    };
-
+export default function LondonLayout({ 
+    sidebarContent, 
+    mainContent, 
+    location, 
+    imageLibrary, 
+    onExit, 
+    onOpenMap, 
+    onOpenMarket, 
+    currentMarketId 
+}: LondonLayoutProps) {
     return (
         <div className="layout-column" style={{ height: '100vh' }}>
             
             {/* --- BANNER --- */}
-            <div style={{ position: 'relative', height: '250px', flexShrink: 0, overflow: 'hidden', borderBottom: '1px solid var(--border-color)' }}>
+            <div className="layout-banner" style={{ position: 'relative', height: '250px', flexShrink: 0, overflow: 'hidden', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ position: 'absolute', inset: 0 }}>
-                    <GameImage code={props.location.image} imageLibrary={props.imageLibrary} type="location" alt="" className="banner-bg-image" />
+                    <GameImage code={location.image} imageLibrary={imageLibrary} type="location" alt="" className="banner-bg-image" />
                 </div>
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--bg-main), transparent)' }} />
                 
                 <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10 }}>
-                    <button onClick={props.onExit} className="switch-char-btn" style={{ background: 'rgba(0,0,0,0.6)', color: 'white', width: 'auto', border: '1px solid rgba(255,255,255,0.3)' }}>
+                    <button onClick={onExit} className="switch-char-btn" style={{ background: 'rgba(0,0,0,0.6)', color: 'white', width: 'auto', border: '1px solid rgba(255,255,255,0.3)' }}>
                         Switch Character
                     </button>
                 </div>
 
                 <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', padding: '2rem', textAlign: 'center', width: '100%', maxWidth: '1200px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <h1 style={{ fontSize: '3rem', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', color: 'var(--accent-highlight)' }}>
-                        {props.location.name}
+                        {location.name}
                     </h1>
                     
                     <div style={{ display: 'flex', gap: '10px' }}>
-                         {props.currentMarketId && (
-                            <button onClick={props.onOpenMarket} style={{ background: 'rgba(241, 196, 15, 0.2)', border: '1px solid #f1c40f', color: '#f1c40f', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backdropFilter: 'blur(5px)' }}>
+                         {currentMarketId && (
+                            <button onClick={onOpenMarket} style={{ background: 'rgba(241, 196, 15, 0.2)', border: '1px solid #f1c40f', color: '#f1c40f', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backdropFilter: 'blur(5px)' }}>
                                 Market
                             </button>
                         )}
-                        <button onClick={props.onOpenMap} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid var(--text-primary)', color: 'var(--text-primary)', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backdropFilter: 'blur(5px)' }}>
+                        <button onClick={onOpenMap} style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid var(--text-primary)', color: 'var(--text-primary)', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backdropFilter: 'blur(5px)' }}>
                             Travel
                         </button>
                     </div>
@@ -116,30 +62,12 @@ export default function LondonLayout(props: LayoutProps) {
 
             {/* --- MAIN AREA --- */}
             <div className="content-area">
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
-                    
-                    {/* LEFT COLUMN */}
-                    <div className="layout-column" style={{ gap: '1rem' }}>
-                        <div className="action-box">
-                            <h3 style={{ margin: '0 0 0.5rem 0' }}>{currentActions} / {maxActions}</h3>
-                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={props.character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={handleActionRegen} />
-                        </div>
-                        
-                        <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius)', overflow: 'hidden', background: 'var(--bg-panel)' }}>
-                            <WalletHeader qualities={props.character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
-                        </div>
-
-                        <CharacterSheet qualities={props.character.qualities} equipment={props.character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
+                <div className="layout-main-grid" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
+                    <div className="layout-sidebar-col layout-column" style={{ gap: '1rem' }}>
+                        {sidebarContent}
                     </div>
-
-                    {/* RIGHT COLUMN */}
-                    <div className="layout-column">
-                        <div className="tab-bar" style={{ marginBottom: '1rem', borderRadius: 'var(--border-radius)' }}>
-                            <button onClick={() => setActiveTab('story')} className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
-                            <button onClick={() => setActiveTab('possessions')} className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
-                            <button onClick={() => setActiveTab('profile')} className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
-                        </div>
-                        {renderContent()}
+                    <div className="layout-content-col layout-column">
+                        {mainContent}
                     </div>
                 </div>
             </div>
