@@ -17,7 +17,9 @@
     "prismjs": "1.30.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "react-simple-code-editor": "0.14.1"
+    "react-simple-code-editor": "0.14.1",
+    "sanitize-html": "^2.17.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -26,6 +28,7 @@
     "@types/prismjs": "1.26.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sanitize-html": "^2.16.0",
     "@types/uuid": "9.0.8",
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.2.3",
