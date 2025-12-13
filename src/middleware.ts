@@ -19,7 +19,9 @@ export async function middleware(req: NextRequest) {
         pathname.startsWith('/images') || 
         pathname.startsWith('/themes') ||
         pathname === '/favicon.ico' ||
-        pathname === '/logo-w.svg'
+        pathname === '/logo-w.svg' ||
+        pathname.startsWith('/playground/ligature')  
+
 
     ) {
         // If logged in, redirect OUT of login/register pages to Home
