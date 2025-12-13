@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import * as Tone from 'tone';
 import { ParsedTrack, SequenceEvent, InstrumentDefinition } from '@/engine/audio/models';
 import { resolveNote } from '@/engine/audio/scales';
-import { getOrMakeInstrument } from '@/engine/audio/synth';
+import { getOrMakeInstrument, disposeInstruments } from '@/engine/audio/synth';
 import { LigatureParser } from '@/engine/audio/parser';
 
 interface AudioContextType {
@@ -21,12 +21,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     
-    // --- REFS FOR PERSISTENT STATE ---
     const currentTrackRef = useRef<ParsedTrack | null>(null);
     const instrumentDefsRef = useRef<InstrumentDefinition[]>([]);
     const scheduledPartsRef = useRef<Tone.Part[]>([]);
-    
-    // --- NEW REFS TO FIX SCOPE ERROR ---
     const currentSourceRef = useRef<string>('');
     const currentInstrumentsRef = useRef<InstrumentDefinition[]>([]);
 
@@ -45,13 +42,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
 
     const stop = () => {
+        // 1. Clear any pending function calls (like our loop callback)
         Tone.Transport.cancel(); 
         
+        // 2. Explicitly stop and dispose of every Tone.Part we created.
+        // This removes all musical events from the timeline.
         scheduledPartsRef.current.forEach(part => {
-            part.stop(0);
-            part.dispose();
+            part.stop(0); // Stop immediately
+            part.dispose(); // Clean up memory
         });
-        scheduledPartsRef.current = [];
+        scheduledPartsRef.current = []; // Clear the reference array for the next playthrough
+
+        // 3. (Optional but good practice) Release instrument voices
+        // If you want a hard cut instead of a fade-out, you can add this.
+        // For musical looping, we can omit this to allow release tails to overlap slightly.
+        // Object.values(instrumentCache).forEach(synth => synth.releaseAll());
 
         currentTrackRef.current = null;
         setIsPlaying(false);
@@ -63,12 +68,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         const parser = new LigatureParser();
         const track = parser.parse(ligatureSource);
         
-        stop(); 
+        stop(); // This now performs a full cleanup
 
-        // --- STORE SOURCE FOR THE LOOP ---
         currentSourceRef.current = ligatureSource;
         currentInstrumentsRef.current = instruments;
-
         currentTrackRef.current = track;
         instrumentDefsRef.current = instruments;
         
@@ -83,6 +86,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(true);
     };
     
+    // The playSequenceFrom function is now correct because stop() cleans up properly.
+    // It can remain as it was in the previous version.
     const playSequenceFrom = (playlistStartIndex: number) => {
         const track = currentTrackRef.current;
         if (!track) return;
@@ -139,6 +144,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                             synth.triggerAttackRelease(value.notes, value.duration, time);
                         }, toneEvents).start(0);
 
+                        // Keep track of this new part so we can clean it up later
                         scheduledPartsRef.current.push(part);
                     }
                 }
@@ -146,12 +152,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             currentBar += longestPatternBars;
         }
 
-        // Schedule the loop to happen at the end of the entire sequence
+        // The loop is also now cleaner. We just recall playTrack.
         Tone.Transport.scheduleOnce(() => {
-            // Use the refs to get the original source and instruments for a clean restart
             playTrack(currentSourceRef.current, currentInstrumentsRef.current);
         }, `${currentBar}:0:0`);
     };
+
+    // Cleanup on component unmount
+    useEffect(() => {
+        return () => {
+            stop();
+            disposeInstruments();
+        }
+    }, []);
 
     return (
         <AudioContext.Provider value={{ playTrack, stop, isPlaying, initializeAudio }}>

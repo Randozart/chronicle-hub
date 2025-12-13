@@ -133,6 +133,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                         onDelete={() => handleDelete(selectedItem.id, 'track')}
                         // Pass all instruments so the editor can preview sound
                         availableInstruments={items.filter(i => i.category === 'instrument') as InstrumentDefinition[]}
+                        enableDownload={true}
                     />
                 )}
                 {!selectedItem && <div style={{padding:'2rem', color:'#666'}}>Select an Audio Asset</div>}
