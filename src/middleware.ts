@@ -14,6 +14,7 @@ export async function middleware(req: NextRequest) {
         pathname.startsWith('/api/auth') ||     
         pathname === '/login' || 
         pathname === '/register' ||
+        pathname === '/verify-email' || // <--- ADD THIS LINE
         pathname.startsWith('/_next') || 
         pathname.startsWith('/images') || 
         pathname.startsWith('/themes') ||
