@@ -120,33 +120,64 @@ export class GameEngine {
     }
 
     public renderStorylet(storylet: Storylet | Opportunity): Storylet | Opportunity {
-        const rendered = JSON.parse(JSON.stringify(storylet));
-        const evalAndAssign = (obj: any, key: string) => { if (obj[key]) { obj[key] = this.evaluateText(obj[key]); } };
-        
-        evalAndAssign(rendered, 'name');
-        evalAndAssign(rendered, 'text');
-        evalAndAssign(rendered, 'short');
-        evalAndAssign(rendered, 'metatext');
-        evalAndAssign(rendered, 'image_code');
-        
-        if (rendered.options) { 
-            rendered.options = rendered.options.map((opt: ResolveOption) => { 
-                const rOpt = { ...opt }; 
-                evalAndAssign(rOpt, 'name'); 
-                evalAndAssign(rOpt, 'short'); 
-                evalAndAssign(rOpt, 'meta'); 
-                evalAndAssign(rOpt, 'image_code'); 
-                
-                if (rOpt.action_cost) {
-                    const costStr = this.evaluateText(`{${rOpt.action_cost}}`);
-                    rOpt.computed_action_cost = isNaN(Number(costStr)) ? costStr : Number(costStr);
+        // 1. Create a Deep Copy (to avoid mutating the cached definition)
+        const copy = JSON.parse(JSON.stringify(storylet));
+
+        // 2. Recursively evaluate ALL strings in the object
+        const rendered = this.deepEvaluate(copy);
+
+        // 3. Post-Processing for numeric/special fields
+        if (rendered.options) {
+            rendered.options.forEach((opt: ResolveOption) => {
+                // Action Cost needs to be a number for the UI to check affordability
+                if (opt.action_cost) {
+                    // It's already been evaluated to a string by deepEvaluate (e.g., "1")
+                    const costVal = parseInt(String(opt.action_cost), 10);
+                    opt.computed_action_cost = isNaN(costVal) ? opt.action_cost : costVal;
                 } else {
-                    rOpt.computed_action_cost = 0;
+                    opt.computed_action_cost = 0;
                 }
-                return rOpt; 
-            }); 
+            });
         }
+
         return rendered;
+    }
+
+    /**
+     * Recursively walks an object. If it finds a string with ScribeScript syntax,
+     * it evaluates it.
+     */
+    private deepEvaluate(obj: any): any {
+        if (typeof obj === 'string') {
+            // Optimization: Only run parser if it looks dynamic
+            // We check for { (logic block), $ (variable), # (world), or @ (alias)
+            if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@')) {
+                return this.evaluateText(obj);
+            }
+            return obj;
+        }
+
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.deepEvaluate(item));
+        }
+
+        if (obj && typeof obj === 'object') {
+            // It's an object (and not null). Iterate keys.
+            for (const key in obj) {
+                // SAFETY: Skip structural IDs and Keys that must remain static
+                // 'id': Breaking this breaks the database link
+                // 'deck': Breaking this breaks deck logic
+                // 'ordering': Used for sorting, usually numeric
+                if (['id', 'deck', 'ordering', 'worldId', 'ownerId', '_id'].includes(key)) {
+                    continue;
+                }
+
+                obj[key] = this.deepEvaluate(obj[key]);
+            }
+            return obj;
+        }
+
+        return obj;
     }
 
     // --- EFFECT API ---
