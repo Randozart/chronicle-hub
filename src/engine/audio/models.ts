@@ -2,7 +2,10 @@
 
 // --- STORAGE TYPES (MongoDB) ---
 
-export type SynthType = 'triangle' | 'sine' | 'square' | 'sawtooth' | 'fmsquare' | 'fmsawtooth' | 'amsquare' | 'amsawtooth';
+export type SynthType = 
+    | 'triangle' | 'sine' | 'square' | 'sawtooth' 
+    | 'fmsine' | 'fmsquare' | 'fmsawtooth' | 'fmtriangle'
+    | 'amsine' | 'amsquare' | 'amsawtooth' | 'amtriangle';
 
 export interface EnvelopeDef {
     attack: number;
