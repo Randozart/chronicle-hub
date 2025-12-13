@@ -1,5 +1,5 @@
 // src/utils/prism-scribescript.ts
-import Prism from 'prismjs';
+import Prism from '@/lib/prism-core';
 
 Prism.languages.scribescript = {
     // 1. Logic Blocks { ... }
@@ -62,7 +62,7 @@ Prism.languages.scribescript = {
             // This renders plain text inside the block as comments (grey).
             'text': {
                 pattern: /[^@$%{}|:;,[\]().<>=+\-]+/,
-                alias: 'comment' 
+                alias: 'natural' 
             }
         }
     },

@@ -3660,6 +3660,28 @@ html[data-theme='revolutionary']::before {
     padding: 0.5rem;
 }
 
+.token.comment { color: #5c6370; }
+.token.punctuation { color: #abb2bf; }
+.token.operator { color: #e06c75; }
+.token.keyword { color: #c678dd; } /* Headers */
+.token.important { color: #c67d8d; font-weight: bold; } /* Scribe braces */
+
+/* ScribeScript Specific */
+.token.variable { color: #61afef; }
+.token.attr-name { color: #d19a66; } /* Config Keys */
+.token.natural { color: #CBBDA9; }
+
+
+/* Ligature Specific */
+.token.function { color: #61afef; } /* Track Names */
+.token.string { color: #98c379; } /* Tuplets */
+.token.number { color: #d19a66; } /* Notes */
+
+.scribe-editor-wrapper:focus-within {
+    border-color: #61afef;
+    box-shadow: 0 0 0 1px #61afef;
+}
+
 /*The part which renders just HTML */
 html {
     scroll-behavior: smooth;

@@ -1,9 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import { DEFAULT_INSTRUMENT_LIST } from '@/engine/audio/presets';
-import TrackEditor from '@/app/create/[storyId]/audio/components/TrackEditor'; // We can reuse this!
+import dynamic from 'next/dynamic';
+
+const TrackEditor = dynamic(() => import('@/app/create/[storyId]/audio/components/TrackEditor'), {
+    ssr: false,
+    loading: () => <div style={{ color: '#555', padding: '2rem' }}>Loading Audio Lab...</div>
+});
 
 // Use the same demo track from the admin page
 const DEMO_TRACK_SOURCE = `[CONFIG]
@@ -38,12 +43,17 @@ Intro_Bass
 `;
 
 export default function LigaturePlayground() {
-    // We manage state locally instead of fetching from a DB
-    const [track, setTrack] = useState<LigatureTrack>({
-        id: 'demo_track',
-        name: 'Ligature Demo',
-        source: DEMO_TRACK_SOURCE,
-    });
+    // --- APPLY THE SAME DELAY PATTERN ---
+    const [track, setTrack] = useState<LigatureTrack | null>(null);
+
+    useEffect(() => {
+        // Set the initial track data only on the client after mount
+        setTrack({
+            id: 'demo_track',
+            name: 'Ligature Demo',
+            source: DEMO_TRACK_SOURCE,
+        });
+    }, []);
     
     // The available instruments are our hardcoded presets
     const availableInstruments = DEFAULT_INSTRUMENT_LIST;
@@ -55,13 +65,20 @@ export default function LigaturePlayground() {
                 <p style={{ color: '#888', marginBottom: '2rem' }}>
                     Experiment with the ChronicleHub procedural audio engine. Changes are not saved.
                 </p>
-                <TrackEditor 
-                    data={track}
-                    onSave={(updatedData) => setTrack(updatedData as LigatureTrack)} // Just updates local state
-                    onDelete={() => {}} // No-op
-                    availableInstruments={availableInstruments}
-                    enableDownload ={true}
-                />
+                {/* --- RENDER TRACKEDITOR CONDITIONALLY --- */}
+                {track ? (
+                    <TrackEditor 
+                        data={track}
+                        onSave={(updatedData) => setTrack(updatedData as LigatureTrack)}
+                        onDelete={() => {}}
+                        availableInstruments={availableInstruments}
+                        enableDownload={true}
+                        isPlayground={true} // <-- ADD THIS
+
+                    />
+                ) : (
+                    <div>Loading Editor...</div> // Or your loading component
+                )}
             </div>
         </div>
     );
