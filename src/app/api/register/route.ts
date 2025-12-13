@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: passError }, { status: 400 });
         }
 
-        // 2. Whitelist Check
-        if (!await isEmailWhitelisted(email)) {
-             return NextResponse.json({ message: 'Invite Only: Your email is not on the list.' }, { status: 403 });
-        }
+        // // 2. Whitelist Check
+        // if (!await isEmailWhitelisted(email)) {
+        //      return NextResponse.json({ message: 'Invite Only: Your email is not on the list.' }, { status: 403 });
+        // }
 
         const client = await clientPromise;
         const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');

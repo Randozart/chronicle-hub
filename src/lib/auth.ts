@@ -64,8 +64,9 @@ export const authOptions: NextAuthOptions = {
         // ...
         async signIn({ user }) {
             // whitelist check is still good to keep as a double layer
-            if (!user.email) return false;
-            return await isEmailWhitelisted(user.email);
+            return true;
+            // if (!user.email) return false;
+            // return await isEmailWhitelisted(user.email);
         },
         async jwt({ token, user }) {
             if (user) token.id = user.id;

@@ -1,20 +1,55 @@
 'use client';
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Add useSearchParams
 import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [error, setError] = useState('');
+  const [isResending, setIsResending] = useState(false);
+  const [resendStatus, setResendStatus] = useState('');
+
+  // Check for URL messages (e.g. from registration redirect)
+  const registered = searchParams.get('registered');
+  const verified = searchParams.get('verified');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     const res = await signIn('credentials', { email, password, redirect: false, callbackUrl: "/" });
-    if (res?.error) setError('Invalid email or password.');
-    else router.push('/');
+    
+    if (res?.error) {
+        // Detect the specific error string from auth.ts
+        if (res.error.includes("Email not verified")) {
+            setError("Email not verified.");
+        } else {
+            setError('Invalid email or password.');
+        }
+    } else {
+        router.push('/');
+    }
+  };
+
+  const handleResend = async () => {
+      if (!email) return;
+      setIsResending(true);
+      try {
+          const res = await fetch('/api/auth/resend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+          });
+          setResendStatus("Email sent!");
+      } catch (e) {
+          setResendStatus("Error sending.");
+      } finally {
+          setIsResending(false);
+      }
   };
 
   return (
@@ -23,7 +58,30 @@ export default function LoginPage() {
         <h1 style={{ marginTop: 0, color: '#fff', textAlign: 'center', fontSize: '1.8rem' }}>Welcome Back</h1>
         <p style={{ textAlign: 'center', color: '#666', marginBottom: '2rem' }}>Enter the Chronicle</p>
         
-        {error && <div style={{ background: 'rgba(231, 76, 60, 0.2)', color: '#ff6b6b', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
+        {/* SUCCESS MESSAGES */}
+        {registered && <div style={{ background: 'rgba(46, 204, 113, 0.2)', color: '#2ecc71', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>Account created! Check your email.</div>}
+        {verified && <div style={{ background: 'rgba(46, 204, 113, 0.2)', color: '#2ecc71', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>Email Verified! Please log in.</div>}
+
+        {/* ERROR MESSAGES */}
+        {error && (
+            <div style={{ background: 'rgba(231, 76, 60, 0.2)', color: '#ff6b6b', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>
+                {error}
+                {/* RESEND BUTTON inside error */}
+                {error === "Email not verified." && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                        <button 
+                            type="button" 
+                            onClick={handleResend} 
+                            disabled={isResending}
+                            style={{ background: 'transparent', border: '1px solid #ff6b6b', color: '#ff6b6b', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                        >
+                            {isResending ? "Sending..." : "Resend Verification Link"}
+                        </button>
+                        {resendStatus && <div style={{ marginTop: '5px', color: '#fff' }}>{resendStatus}</div>}
+                    </div>
+                )}
+            </div>
+        )}
 
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', color: '#aaa', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Email</label>
