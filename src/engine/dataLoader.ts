@@ -33,7 +33,9 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
             settings: worldDocument.settings,
             images: worldDocument.images,
             regions: {},
-            markets: {}
+            markets: {},
+            instruments: {}, // <-- ADD THIS
+            music: {}        // <-- ADD THIS
         };
 
         // Inject IDs into the config objects
@@ -52,6 +54,17 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
         if (rawContent.regions) {
             for (const key in rawContent.regions) {
                 processedContent.regions[key] = { ...rawContent.regions[key], id: key };
+            }
+        }
+
+        if (rawContent.instruments) {
+            for (const key in rawContent.instruments) {
+                processedContent.instruments[key] = { ...rawContent.instruments[key], id: key };
+            }
+        }
+        if (rawContent.music) {
+            for (const key in rawContent.music) {
+                processedContent.music[key] = { ...rawContent.music[key], id: key };
             }
         }
         
