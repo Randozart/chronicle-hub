@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
 import { evaluateText } from "@/engine/textProcessor";
+import { GameEngine } from '@/engine/gameEngine';
 
 interface PossessionsProps {
     qualities: PlayerQualities;
@@ -48,6 +49,14 @@ export default function Possessions({
     const [groupBy, setGroupBy] = useState("category");
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
 
+    // 1. Instantiate Engine for Universal ScribeScript
+    // We create a minimal config since we only need qualities and settings for item rendering
+    const engine = useMemo(() => new GameEngine(
+        qualities, 
+        { qualities: qualityDefs, settings } as any, 
+        equipment
+    ), [qualities, qualityDefs, settings, equipment]);
+
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
         setIsLoading(true);
@@ -71,18 +80,13 @@ export default function Possessions({
         }
     };
 
-    // 1. Prepare Data
+    // 2. Prepare Data
     const inventoryItems = useMemo(() => {
-        // --- FIX START ---
-        // First, create a set of all currently equipped item IDs for quick lookup.
         const equippedIds = new Set(Object.values(equipment).filter(Boolean));
 
         return Object.keys(qualities)
             .map(qid => {
-                // Exclude currencies and system qualities as before
                 if (currencyIds.includes(qid)) return null;
-
-                // --- NEW LOGIC: Exclude equipped items from the inventory list ---
                 if (equippedIds.has(qid)) return null;
 
                 const def = qualityDefs[qid];
@@ -92,17 +96,17 @@ export default function Possessions({
                 const level = ('level' in state) ? state.level : 0;
                 if (level <= 0) return null;
 
-                // Only show Items and Equipables in this list
                 if (def.type !== 'I' && def.type !== 'E') return null;
                 
-                return { ...def, ...state, level };
+                // RENDER ITEM (ScribeScript Support)
+                // This resolves dynamic names, descriptions, and images.
+                const merged = { ...def, ...state, level };
+                return engine.render(merged);
             })
             .filter(Boolean as any);
-    // Add `equipment` to the dependency array so the list re-renders when you equip/unequip
-    }, [qualities, qualityDefs, equipment, currencyIds]);
-    // --- FIX END ---
+    }, [qualities, qualityDefs, equipment, currencyIds, engine]);
 
-    // 2. Group & Filter
+    // 3. Group & Filter
     const grouped = useGroupedList(inventoryItems, groupBy, search);
     const groups = Object.keys(grouped).sort();
 
@@ -113,11 +117,14 @@ export default function Possessions({
             <div className="equipment-slots">
                 {equipCategories.map(slot => {
                     const equippedId = equipment[slot];
-                    const equippedItem = equippedId ? qualityDefs[equippedId] : null;
-                    // Look up the definition to check properties
-                    const equippedDef = equippedId ? qualityDefs[equippedId] : null;
+                    // Render equipped item if it exists
+                    let equippedItem = null;
+                    if (equippedId && qualityDefs[equippedId]) {
+                        // Apply engine rendering here too for equipped items
+                        equippedItem = engine.render({ ...qualityDefs[equippedId], ...qualities[equippedId] });
+                    }
 
-                    // Check for 'cursed' property (assuming properties is a comma-separated string)
+                    const equippedDef = equippedId ? qualityDefs[equippedId] : null;
                     const isCursed = equippedDef?.tags?.includes('cursed');
 
                     return (
@@ -128,19 +135,19 @@ export default function Possessions({
                                 <div className="equipped-item">
                                     <div style={{ margin: '0.5rem auto', width: '60px' }}>
                                         <GameImage 
-                                            code={equippedItem.image || equippedItem.id} 
+                                            code={equippedItem.image || equippedItem.id} // Dynamic
                                             imageLibrary={imageLibrary}
                                             alt=""
                                             type="icon"
                                             className="option-image"
                                         />
                                     </div>
-                                    <strong>{equippedItem.name}</strong>
+                                    <strong>{equippedItem.name}</strong> {/* Dynamic */}
                                     {equippedId && (
                                         <button 
                                             className="unequip-btn"
                                             onClick={() => handleEquipToggle(slot, null)}
-                                            disabled={isLoading || isCursed} // Disable if cursed
+                                            disabled={isLoading || isCursed}
                                             style={isCursed ? { opacity: 0.5, cursor: 'not-allowed', background: '#555' } : {}}
                                         >
                                             {isCursed ? "Cursed" : "Unequip"}
@@ -189,9 +196,8 @@ export default function Possessions({
                             const category = item.category || '';
                             const isEquipped = Object.values(equipment).includes(item.id);
                             
-                            const displayName = evaluateText(item.name, qualities, qualityDefs, { qid: item.id, state: item }, 0);
-                            const displayDesc = evaluateText(item.description, qualities, qualityDefs, { qid: item.id, state: item }, 0);
-
+                            // Properties are already evaluated by engine.render() in the useMemo above!
+                            
                             return (
                                 <div key={item.id} className="inventory-item card">
                                     <div style={{ display: 'flex', gap: '10px' }}>
@@ -206,11 +212,10 @@ export default function Possessions({
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div className="item-header">
-                                                {/* --- FIX 3: Use the evaluated variables --- */}
-                                                <strong>{displayName}</strong>
+                                                <strong>{item.name}</strong>
                                                 <span className="item-count">x{item.level}</span>
                                             </div>
-                                            <p className="item-desc">{displayDesc}</p>
+                                            <p className="item-desc">{item.description}</p>
                                             
                                             {item.bonus && (
                                                 <p className="item-bonus">

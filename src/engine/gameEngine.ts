@@ -119,19 +119,20 @@ export class GameEngine {
         };
     }
 
+     public render<T>(obj: T): T {
+        const copy = JSON.parse(JSON.stringify(obj));
+        return this.deepEvaluate(copy);
+    }
+
+    // 2. UPDATED: Storylet Renderer (Wraps generic render + specific post-processing)
     public renderStorylet(storylet: Storylet | Opportunity): Storylet | Opportunity {
-        // 1. Create a Deep Copy (to avoid mutating the cached definition)
-        const copy = JSON.parse(JSON.stringify(storylet));
+        // Use the generic deep evaluator first
+        const rendered = this.render(storylet);
 
-        // 2. Recursively evaluate ALL strings in the object
-        const rendered = this.deepEvaluate(copy);
-
-        // 3. Post-Processing for numeric/special fields
+        // Post-Processing for specific logic fields that need to be numbers, not strings
         if (rendered.options) {
             rendered.options.forEach((opt: ResolveOption) => {
-                // Action Cost needs to be a number for the UI to check affordability
                 if (opt.action_cost) {
-                    // It's already been evaluated to a string by deepEvaluate (e.g., "1")
                     const costVal = parseInt(String(opt.action_cost), 10);
                     opt.computed_action_cost = isNaN(costVal) ? opt.action_cost : costVal;
                 } else {

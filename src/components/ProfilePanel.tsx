@@ -4,13 +4,13 @@ import { useState, useMemo } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import { evaluateText } from "@/engine/textProcessor";
 import GameImage from "./GameImage";
+import { GameEngine } from '@/engine/gameEngine';
 
 interface ProfilePanelProps {
     qualities: PlayerQualities;
     qualityDefs: Record<string, QualityDefinition>;
     imageLibrary: Record<string, ImageDefinition>;
     categories: Record<string, CategoryDefinition>;
-    // NEW: We need settings to know style preferences
     settings: WorldSettings; 
 }
 
@@ -18,13 +18,20 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category"); 
 
-    // 1. Extract Identity
+    // 1. Instantiate Engine
+    const engine = useMemo(() => new GameEngine(
+        qualities, 
+        { qualities: qualityDefs, settings } as any, 
+        {}
+    ), [qualities, qualityDefs, settings]);
+
+    // 2. Extract Identity
     const nameState = qualities['player_name'];
     const portraitState = qualities['player_portrait'];
     const playerName = (nameState?.type === 'S') ? nameState.stringValue : "Unknown Drifter";
     const portraitCode = (portraitState?.type === 'S') ? portraitState.stringValue : "default_avatar";
 
-    // 2. Extract Title (If enabled)
+    // 3. Extract Title
     let playerTitle = "";
     if (settings.enableTitle && settings.titleQualityId) {
         const qid = settings.titleQualityId.replace('$', '');
@@ -32,34 +39,31 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
         const titleDef = qualityDefs[qid];
         
         if (titleState) {
-            // If it's a String quality, show the value ("The Exiled Prince")
             if (titleState.type === QualityType.String) {
                 playerTitle = titleState.stringValue;
             } 
-            // If it's a Stat (Renown), show the *Name* of the quality which might be dynamic
-            // e.g. Name: "{ $l > 50 : The Legend | The Novice }"
             else if (titleDef) {
                 playerTitle = evaluateText(titleDef.name, qualities, qualityDefs, null, 0);
             }
         }
     }
 
-    // 3. Calculate Portrait Styles
+    // 4. Styles
     const showPortrait = settings.enablePortrait !== false;
     const shape = settings.portraitStyle || 'circle';
     
     const portraitStyles: React.CSSProperties = {
         width: shape === 'rect' ? '100px' : '100px',
-        height: shape === 'rect' ? '133px' : '100px', // 3:4 ratio for rect
+        height: shape === 'rect' ? '133px' : '100px', 
         borderRadius: shape === 'circle' ? '50%' : '8px',
         overflow: 'hidden',
         border: '3px solid var(--accent-primary)',
         boxShadow: '0 0 15px rgba(0,0,0,0.5)',
         flexShrink: 0,
-        background: '#000' // Fallback
+        background: '#000' 
     };
 
-    // 4. Prepare List
+    // 5. Prepare List
     const flatList = useMemo(() => {
         return Object.keys(qualities)
             .map(qid => {
@@ -67,14 +71,17 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 const state = qualities[qid];
                 if (!def || !state) return null;
                 if (def.tags?.includes('hidden')) return null;
-                // Hide the title quality itself from the list to avoid duplication? Optional.
                 if (qid === settings.titleQualityId?.replace('$', '')) return null; 
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
                 if (state.type !== 'S' && state.level === 0) return null;
-                return { ...def, ...state };
+                
+                // RENDER QUALITY
+                // This resolves dynamic names/descriptions in the list
+                const merged = { ...def, ...state };
+                return engine.render(merged);
             })
             .filter(Boolean as any);
-    }, [qualities, qualityDefs, settings.titleQualityId]);
+    }, [qualities, qualityDefs, settings.titleQualityId, engine]);
 
     const grouped = useGroupedList(flatList, groupBy, search);
     const groups = Object.keys(grouped).sort();
@@ -103,7 +110,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 <div>
                     <h1 style={{ margin: 0, fontSize: '2rem', color: 'var(--text-primary)' }}>{playerName}</h1>
                     
-                    {/* TITLE DISPLAY */}
                     {playerTitle && (
                         <h3 style={{ 
                             margin: '0.25rem 0 0.5rem 0', 
@@ -149,10 +155,12 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                         )}
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                <span className="q-name">{evaluateText(q.name, qualities, qualityDefs, null, 0)}</span>
+                                                {/* Pre-rendered name */}
+                                                <span className="q-name">{q.name}</span> 
                                                 <span className="q-val">{q.type === 'S' ? q.stringValue : q.level}</span>
                                             </div>
-                                            <p className="q-desc">{evaluateText(q.description, qualities, qualityDefs, null, 0)}</p>
+                                            {/* Pre-rendered description */}
+                                            <p className="q-desc">{q.description}</p>
                                             {q.type === 'P' && (
                                                 <div className="mini-progress-bar">
                                                     <div className="fill" style={{ width: `${(q.changePoints / (q.level + 1)) * 100}%` }} />

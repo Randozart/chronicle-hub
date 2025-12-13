@@ -21,7 +21,7 @@ import Possessions from './Possessions';
 import ActionTimer from './ActionTimer';
 import WalletHeader from './WalletHeader';
 import MarketInterface from './MarketInterface';
-import GameImage from '@/components/GameImage'; // Ensure this is imported!
+import GameImage from '@/components/GameImage';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -149,7 +149,14 @@ export default function GameHub(props: GameHubProps) {
         locations: props.locations, regions: props.regions, images: props.imageLibrary,
         categories: props.categories || {}, char_create: {}, markets: props.markets,
     };
+    
+    // Instantiate Engine once per render cycle
     const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
+    
+    // 1. Render Location (Resolves { $season } in name or image)
+    const renderedLocation = renderEngine.render(location);
+
+    // 2. Render Active Event
     const renderedActiveEvent = activeEvent ? renderEngine.renderStorylet(activeEvent) : null;
 
     let currentDeckStats = undefined;
@@ -225,9 +232,9 @@ export default function GameHub(props: GameHubProps) {
         const isBlackCrown = props.settings.visualTheme === 'black-crown';
         const isBannerMode = isBlackCrown && props.settings.locationHeaderStyle === 'banner';
         
-        // Use 'imageCode' to match your debugging logs
+        // Use renderedLocation properties
         // @ts-ignore
-        const imageCode = location?.imageId || location?.image;
+        const imageCode = renderedLocation?.imageId || renderedLocation?.image;
 
         // Debug log (can be removed later)
         if (isBannerMode) {
@@ -274,7 +281,7 @@ export default function GameHub(props: GameHubProps) {
                             )}
                             
                             <LocationHeader 
-                                location={location!} 
+                                location={renderedLocation!} // Use renderedLocation
                                 imageLibrary={props.imageLibrary} 
                                 onOpenMap={() => setShowMap(true)} 
                                 onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
@@ -304,7 +311,7 @@ export default function GameHub(props: GameHubProps) {
                                 </div>
                             )}
 
-                            <LocationHeader location={location!} imageLibrary={props.imageLibrary} onOpenMap={() => setShowMap(true)} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} />
+                            <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={() => setShowMap(true)} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} />
                         </div>
                     )}
 
@@ -331,7 +338,7 @@ export default function GameHub(props: GameHubProps) {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
             settings: props.settings,
-            location: location!,
+            location: renderedLocation!, // Use renderedLocation
             imageLibrary: props.imageLibrary,
             onExit: handleExit,
             onOpenMap: () => setShowMap(true),
