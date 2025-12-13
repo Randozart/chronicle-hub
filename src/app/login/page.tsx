@@ -1,20 +1,21 @@
 'use client';
+
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; // Add useSearchParams
+import { useState, Suspense } from 'react'; // Added Suspense
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
+// 1. We split the logic into an inner component
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Safe to use here now
   
   const [error, setError] = useState('');
   const [isResending, setIsResending] = useState(false);
   const [resendStatus, setResendStatus] = useState('');
 
-  // Check for URL messages (e.g. from registration redirect)
   const registered = searchParams.get('registered');
   const verified = searchParams.get('verified');
 
@@ -24,7 +25,6 @@ export default function LoginPage() {
     const res = await signIn('credentials', { email, password, redirect: false, callbackUrl: "/" });
     
     if (res?.error) {
-        // Detect the specific error string from auth.ts
         if (res.error.includes("Email not verified")) {
             setError("Email not verified.");
         } else {
@@ -53,7 +53,6 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-main)' }}>
       <form onSubmit={handleSubmit} style={{ background: '#1e1e1e', padding: '2.5rem', borderRadius: '12px', border: '1px solid #333', width: '100%', maxWidth: '400px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
         <h1 style={{ marginTop: 0, color: '#fff', textAlign: 'center', fontSize: '1.8rem' }}>Welcome Back</h1>
         <p style={{ textAlign: 'center', color: '#666', marginBottom: '2rem' }}>Enter the Chronicle</p>
@@ -66,7 +65,7 @@ export default function LoginPage() {
         {error && (
             <div style={{ background: 'rgba(231, 76, 60, 0.2)', color: '#ff6b6b', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>
                 {error}
-                {/* RESEND BUTTON inside error */}
+                {/* RESEND BUTTON */}
                 {error === "Email not verified." && (
                     <div style={{ marginTop: '0.5rem' }}>
                         <button 
@@ -101,6 +100,16 @@ export default function LoginPage() {
             Need an account? <Link href="/register" style={{ color: '#61afef', textDecoration: 'none' }}>Register</Link>
         </p>
       </form>
+  );
+}
+
+// 2. The Default Export wraps it in Suspense
+export default function LoginPage() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-main)' }}>
+      <Suspense fallback={<div style={{color:'#ccc'}}>Loading login...</div>}>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }
