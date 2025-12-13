@@ -7,6 +7,11 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "Chronicle Hub",
   description: "Create and play text-based RPGs",
+  icons: {
+    icon: '/logo.svg', // Path relative to the 'public' folder
+    // You can also add an apple touch icon if you have one
+    // apple: '/images/apple-icon.png', 
+  },
 };
 
 export default function RootLayout({
