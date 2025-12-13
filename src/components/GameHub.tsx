@@ -22,6 +22,8 @@ import ActionTimer from './ActionTimer';
 import WalletHeader from './WalletHeader';
 import MarketInterface from './MarketInterface';
 import GameImage from '@/components/GameImage';
+import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
+import { useAudio } from '@/providers/AudioProvider';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -49,6 +51,8 @@ interface GameHubProps {
     worldState: PlayerQualities;
     systemMessage?: SystemMessage | null;
     activeEvent?: Storylet | Opportunity | null;
+    instruments?: Record<string, InstrumentDefinition>;
+    musicTracks?: Record<string, LigatureTrack>;
 }
 
 export default function GameHub(props: GameHubProps) {
@@ -61,6 +65,7 @@ export default function GameHub(props: GameHubProps) {
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
+    const { playTrack } = useAudio(); // Get control from Provider
 
     useEffect(() => {
         setCharacter(props.initialCharacter);
@@ -83,6 +88,21 @@ export default function GameHub(props: GameHubProps) {
             setActiveEvent(rawEventData);
         } catch (error) { console.error(error); setActiveEvent(null); } finally { setIsLoading(false); }
     }, [props.storyId, character]);
+
+    useEffect(() => {
+        // Check if current location has a music track ID
+        // (You'll need to add 'musicTrackId' to LocationDefinition later)
+        const trackId = (location as any).musicTrackId; 
+
+        if (trackId && props.musicTracks && props.musicTracks[trackId]) {
+            const trackSource = props.musicTracks[trackId].source;
+            
+            // Convert dictionary to array for the provider
+            const instrumentList = props.instruments ? Object.values(props.instruments) : [];
+            
+            playTrack(trackSource, instrumentList);
+        }
+    }, [location, props.musicTracks, props.instruments]);
 
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
         setCharacter(prev => prev ? { ...prev, qualities: newQualities } : null);
@@ -145,9 +165,18 @@ export default function GameHub(props: GameHubProps) {
 
     // --- ENGINE & DATA PREP ---
     const worldConfig: WorldConfig = {
-        settings: props.settings, qualities: props.qualityDefs, decks: props.deckDefs,
-        locations: props.locations, regions: props.regions, images: props.imageLibrary,
-        categories: props.categories || {}, char_create: {}, markets: props.markets,
+        settings: props.settings, 
+        qualities: props.qualityDefs, 
+        decks: props.deckDefs,
+        locations: props.locations, 
+        regions: props.regions, 
+        images: props.imageLibrary,
+        categories: props.categories || {}, 
+        char_create: {}, 
+        markets: props.markets,
+        // --- ADD THESE TWO LINES ---
+        instruments: props.instruments || {},
+        music: props.musicTracks || {}
     };
     
     // Instantiate Engine once per render cycle
