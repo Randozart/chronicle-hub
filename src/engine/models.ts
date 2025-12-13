@@ -1,5 +1,7 @@
 // src/engine/models.ts
 
+import { InstrumentDefinition, LigatureTrack } from './audio/models';
+
 export enum QualityType {
     Pyramidal = 'P',
     Counter = 'C',
@@ -202,6 +204,9 @@ export interface WorldConfig {
     categories?: Record<string, CategoryDefinition>;
     regions: Record<string, MapRegion>;
     markets: Record<string, MarketDefinition>;
+
+    instruments: Record<string, InstrumentDefinition>;
+    music: Record<string, LigatureTrack>;
 }
 
 // --- RUNTIME STATE ---

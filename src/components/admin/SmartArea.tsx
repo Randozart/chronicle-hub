@@ -2,9 +2,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import ScribeEditor from './ScribeEditor';
 import SparkleIcon from '@/components/icons/SparkleIcon';
 import ScribeAssistant from '@/components/admin/ScribeAssistant';
+import dynamic from 'next/dynamic';
+
+// --- DYNAMICALLY IMPORT SCRIBEEDITOR WITH SSR DISABLED ---
+const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
+    ssr: false,
+    loading: () => <div style={{ minHeight: '38px', background: '#111', borderRadius: '4px', border: '1px solid #333' }} />
+});
 
 interface Props {
     label: string;
@@ -35,9 +41,6 @@ export default function SmartArea({
     }, []);
 
     const handleInsert = (text: string) => {
-        // If field is empty, insert directly.
-        // If ending with space, insert directly.
-        // Otherwise append space then insert.
         const prefix = (value && value.length > 0 && !value.endsWith(' ')) ? " " : "";
         onChange(value + prefix + text);
     };
@@ -80,6 +83,7 @@ export default function SmartArea({
                 onChange={onChange} 
                 minHeight={minHeight}
                 placeholder={placeholder}
+                language="scribescript"
             />
         </div>
     );

@@ -21,6 +21,7 @@
     "react-simple-code-editor": "0.14.1",
     "resend": "^6.6.0",
     "sanitize-html": "^2.17.0",
+    "tone": "^15.1.22",
     "zod": "^4.1.13"
   },
   "devDependencies": {

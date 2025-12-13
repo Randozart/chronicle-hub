@@ -1,22 +1,25 @@
+// src/components/admin/ScribeEditor.tsx
 'use client';
 
-import React from 'react';
 import Editor from 'react-simple-code-editor';
-import Prism from '@/utils/prism-scribescript'; 
-import 'prismjs/themes/prism-tomorrow.css'; 
+
+// Import the new hook
+import { usePrism } from '@/hooks/usePrism';
 
 interface Props {
     value: string;
     onChange: (val: string) => void;
     placeholder?: string;
     minHeight?: string;
+    language?: 'scribescript' | 'ligature';
 }
 
-export default function ScribeEditor({ value, onChange, placeholder, minHeight = "100px" }: Props) {
+export default function ScribeEditor({ value, onChange, placeholder, minHeight = "100px", language = 'scribescript' }: Props) {
     
-    const highlight = (code: string) => {
-        return Prism.highlight(code, Prism.languages.scribescript, 'scribescript');
-    };
+    // --- THE FIX ---
+    // Get the stable highlighting function from our custom hook.
+    // This is now completely decoupled from the component's render cycle.
+    const highlight = usePrism(language);
 
     return (
         <div 
@@ -28,13 +31,12 @@ export default function ScribeEditor({ value, onChange, placeholder, minHeight =
                 fontSize: '14px',
                 lineHeight: '1.5',
                 position: 'relative',
-                // We move minHeight to the editor container to ensure it grows
             }}
         >
             <Editor
                 value={value || ""}
                 onValueChange={onChange}
-                highlight={highlight}
+                highlight={highlight} // Use the function from the hook
                 padding={10}
                 style={{
                     fontFamily: '"Fira Code", "Fira Mono", monospace',
@@ -46,12 +48,21 @@ export default function ScribeEditor({ value, onChange, placeholder, minHeight =
             />
             
             <style jsx global>{`
-                .token.variable { color: #61afef; font-weight: bold; } 
-                .token.logic-block { color: #c678dd; } 
-                .token.tag { color: #98c379; } 
-                .token.operator { color: #e06c75; } 
+                /* General Tokens */
+                .token.comment { color: #5c6370; }
                 .token.punctuation { color: #abb2bf; }
-                .token.attr-name { color: #d19a66; }
+                .token.operator { color: #e06c75; }
+                .token.keyword { color: #c678dd; } /* Headers */
+                .token.important { color: #c678dd; font-weight: bold; } /* Scribe braces */
+
+                /* ScribeScript Specific */
+                .token.variable { color: #61afef; }
+                .token.attr-name { color: #d19a66; } /* Config Keys */
+                
+                /* Ligature Specific */
+                .token.function { color: #61afef; } /* Track Names */
+                .token.string { color: #98c379; } /* Tuplets */
+                .token.number { color: #d19a66; } /* Notes */
                 
                 .scribe-editor-wrapper:focus-within {
                     border-color: #61afef;

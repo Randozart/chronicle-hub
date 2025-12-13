@@ -40,7 +40,9 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
         images: injectIds(worldDoc.content.images) || {},
         categories: injectIds(worldDoc.content.categories) || {},
         regions: injectIds(worldDoc.content.regions) || {},
-        markets: injectIds(worldDoc.content.markets) || {}
+        markets: injectIds(worldDoc.content.markets) || {},
+        instruments: injectIds(worldDoc.content.instruments) || {},
+        music: injectIds(worldDoc.content.music) || {}
     };
 });
 
@@ -106,7 +108,7 @@ const injectIds = <T>(dict: Record<string, T> | undefined): Record<string, T> =>
 
 export const updateWorldConfigItem = async (
     worldId: string, 
-    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings' | 'char_create' | 'categories' | 'root', 
+    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings' | 'char_create' | 'categories' | 'root' | 'instruments' | 'music', 
     itemId: string, 
     data: any
 ): Promise<boolean> => {
