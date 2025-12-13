@@ -18,15 +18,21 @@ export interface EnvelopeDef {
 export interface InstrumentDefinition {
     id: string;
     name: string;
-    type: 'synth' | 'sampler'; // Sampler reserved for future phases
+    type: 'synth' | 'sampler';
     config: {
-        oscillator?: { type: SynthType };
+        // --- THIS IS THE FIX ---
+        // Allow any standard Tone.js oscillator options by using a flexible record type.
+        oscillator?: {
+            type: SynthType;
+            [key: string]: any; // Allows properties like 'modulationType'
+        };
+        // -------------------------
+        
         envelope?: EnvelopeDef;
-        volume?: number; // dB (-infinity to 0)
-        polyphony?: number; // Max simultaneous voices (default 4)
+        volume?: number;
+        polyphony?: number;
     };
 }
-
 // Stored in the 'worlds' collection under content.music
 export interface LigatureTrack {
     id: string;
@@ -51,9 +57,21 @@ export interface ParsedTrack {
     playlist: PlaylistItem[];
 }
 
-export interface PlaylistItem {
-    patternIds: string[]; // Supports layering: ["Bass_A", "Lead_A"]
-    transposition: number;
+export type PlaylistItem = PatternPlaylistItem | CommandPlaylistItem;
+
+
+export interface PatternPlaylistItem {
+    type: 'pattern',
+    patterns: {
+        id: string;
+        transposition: number;
+    }[];
+}
+
+export interface CommandPlaylistItem {
+    type: 'command';
+    command: 'BPM' | 'Scale';
+    value: string;
 }
 
 export interface ParsedPattern {

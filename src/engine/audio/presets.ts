@@ -15,6 +15,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 0.1
             },
             volume: -10
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
         }
     },
     'retro_flute': {
@@ -30,6 +32,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 0.5
             },
             volume: -8
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
         }
     },
     
@@ -48,6 +52,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 0.2
             },
             volume: -6
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
         }
     },
     'sub_bass': {
@@ -63,6 +69,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 0.3
             },
             volume: -5
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
         }
     },
 
@@ -80,6 +88,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 2.0   // Long fade out
             },
             volume: -15 // Pads sit back in the mix
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
         }
     },
     'glass_pad': {
@@ -95,6 +105,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 2.5
             },
             volume: -12
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
         }
     },
 
@@ -112,6 +124,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 0.2
             },
             volume: -8
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
         }
     },
     'bell': {
@@ -127,6 +141,69 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 release: 2.5
             },
             volume: -8
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
+        }
+    },
+
+    // --- CINEMATIC ---
+    'cello_section': {
+        id: 'cello_section',
+        name: 'Low Strings',
+        type: 'synth',
+        config: {
+            oscillator: { type: 'fmsawtooth', modulationType: 'sine' },
+            envelope: { attack: 0.4, decay: 0.1, sustain: 0.9, release: 1.2 },
+            volume: -12
+            ,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
+        }
+    },
+    'violin_section': {
+        id: 'violin_section',
+        name: 'High Strings',
+        type: 'synth',
+        config: {
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.6, decay: 0.2, sustain: 0.7, release: 1.0 },
+            volume: -18,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
+        }
+    },
+    'french_horn': {
+        id: 'french_horn',
+        name: 'Brass Horn',
+        type: 'synth',
+        config: {
+            oscillator: { type: 'fmsawtooth', modulationType: 'square' },
+            envelope: { attack: 0.2, decay: 0.3, sustain: 0.6, release: 0.5 },
+            volume: -9,
+            polyphony: 12 // <-- INCREASE FROM DEFAULT
+
+        }
+    },
+    'choir_aahs': {
+        id: 'choir_aahs',
+        name: 'Synth Choir',
+        type: 'synth',
+        config: {
+            oscillator: { type: 'amsine', modulationType: 'sawtooth' },
+            envelope: { attack: 1.2, decay: 0.5, sustain: 0.8, release: 2.0 },
+            volume: -20,
+            polyphony: 16 // <-- INCREASE SIGNIFICANTLY
+        }
+    },
+    'timpani_hit': {
+        id: 'timpani_hit',
+        name: 'Timpani Hit',
+        type: 'synth',
+        config: {
+            // A sine wave with a pitch envelope creates a convincing drum sound
+            oscillator: { type: 'sine' },
+            // We need to add pitch envelope support to our synth factory for this
+            // For now, this is a placeholder. It will sound like a low 'thump'.
+            envelope: { attack: 0.01, decay: 0.8, sustain: 0, release: 0.2 },
+            volume: -4
         }
     }
 };
