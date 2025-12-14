@@ -58,7 +58,7 @@ export default function TrackEditor({
     const [status, setStatus] = useState("");
     const [editorValue, setEditorValue] = useState("");
     const [isClient, setIsClient] = useState(false);
-    const [mockQualities, setMockQualities] = useState<PlayerQualities>({}); // <-- NEW STATE
+    const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
 
     useEffect(() => {
         setIsClient(true);
@@ -68,7 +68,7 @@ export default function TrackEditor({
 
     const handlePlay = () => {
         try {
-            playTrack(form.source, availableInstruments, mockQualities); // <-- PASS QUALITIES
+            playTrack(form.source, availableInstruments, mockQualities);
             setStatus("Playing...");
         } catch (e: any) {
             setStatus("Error: " + e.message);
@@ -113,6 +113,15 @@ export default function TrackEditor({
             return formatted;
         });
     };
+
+    // --- RESTORED: GROUP BY CATEGORY ---
+    const groupedInsts = availableInstruments.reduce((acc, curr) => {
+        const cat = curr.category || 'Uncategorized';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(curr.id);
+        return acc;
+    }, {} as Record<string, string[]>);
+    // -----------------------------------
 
     return (
         <div style={{ height: '100%', display: 'flex', gap: '2rem' }}>
@@ -164,9 +173,23 @@ export default function TrackEditor({
                     <PianoRoll source={editorValue} qualities={mockQualities} />
                 </div>
 
-                <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666' }}>
-                    <strong>Available Instruments:</strong> {availableInstruments.map(i => i.id).join(', ')}
+                {/* --- RESTORED: CATEGORY LIST --- */}
+                <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '200px' }}>
+                    <strong style={{ color: '#aaa' }}>Available Instruments:</strong>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
+                        {Object.keys(groupedInsts).sort().map(cat => (
+                            <div key={cat}>
+                                <div style={{ color: '#61afef', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', fontSize: '0.7rem' }}>{cat}</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    {groupedInsts[cat].map(id => (
+                                        <div key={id} style={{ fontFamily: 'monospace' }}>{id}</div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
+                {/* ------------------------------- */}
 
                 {!isPlayground && (
                     <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', marginTop: '1rem', alignSelf: 'flex-start' }}>

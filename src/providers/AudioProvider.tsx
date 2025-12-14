@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
-import { ParsedTrack, SequenceEvent, InstrumentDefinition, NoteDef, PlaylistItem } from '@/engine/audio/models';
+import { ParsedTrack, InstrumentDefinition, NoteDef } from '@/engine/audio/models';
 import { resolveNote } from '@/engine/audio/scales';
 import { getOrMakeInstrument, disposeInstruments, AnyInstrument } from '@/engine/audio/synth';
 import { LigatureParser } from '@/engine/audio/parser';
@@ -28,7 +28,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const scheduledPartsRef = useRef<Tone.Part[]>([]);
     const currentSourceRef = useRef<string>('');
     const currentInstrumentsRef = useRef<InstrumentDefinition[]>([]);
-    const currentMockQualitiesRef = useRef<PlayerQualities>({}); // <-- NEW REF
+    const currentMockQualitiesRef = useRef<PlayerQualities>({}); 
     const noteCacheRef = useRef<Map<string, string>>(new Map());
     
     const activeSynthsRef = useRef<Set<AnyInstrument>>(new Set());
@@ -39,8 +39,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         try {
             await Tone.start();
             limiterRef.current = new Tone.Limiter(-1).toDestination();
-            if (Tone.Transport.state !== 'started') {
-                Tone.Transport.start();
+            
+            // --- FIX: Use getTransport() ---
+            if (Tone.getTransport().state !== 'started') {
+                Tone.getTransport().start();
             }
             setIsInitialized(true);
             console.log("Audio Engine Started");
@@ -50,8 +52,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
 
     const stop = () => {
-        Tone.Transport.stop();
-        Tone.Transport.cancel(); 
+        const transport = Tone.getTransport(); // --- FIX: Get instance
+        
+        transport.stop();
+        transport.cancel(); 
         
         scheduledPartsRef.current.forEach(part => {
             part.stop(0);
@@ -73,19 +77,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const playTrack = async (
         ligatureSource: string, 
         instruments: InstrumentDefinition[],
-        mockQualities: PlayerQualities = {} // <-- NEW ARGUMENT
+        mockQualities: PlayerQualities = {}
     ) => {
         if (!isInitialized) await initializeAudio();
         
         const parser = new LigatureParser();
-        // Pass mock qualities to parser
         const track = parser.parse(ligatureSource, mockQualities);
         
         stop(); 
 
         currentSourceRef.current = ligatureSource;
         currentInstrumentsRef.current = instruments;
-        currentMockQualitiesRef.current = mockQualities; // Store for loop
+        currentMockQualitiesRef.current = mockQualities;
         
         currentTrackRef.current = track;
         instrumentDefsRef.current = instruments;
@@ -109,27 +112,31 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             setIsLoadingSamples(false);
         }
 
-        Tone.Transport.position = "0:0:0";
-        Tone.Transport.bpm.value = track.config.bpm;
-        Tone.Transport.swing = track.config.swing || 0;
+        const transport = Tone.getTransport(); // --- FIX: Get instance
+
+        transport.position = "0:0:0";
+        transport.bpm.value = track.config.bpm;
+        transport.swing = track.config.swing || 0;
         
         playSequenceFrom(0); 
 
-        if (Tone.Transport.state !== 'started') Tone.Transport.start();
+        if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
     
     const playSequenceFrom = (playlistStartIndex: number) => {
         const track = currentTrackRef.current;
         if (!track) return;
+        
+        const transport = Tone.getTransport(); // --- FIX: Get instance for scheduling
 
         let totalBars = 0;
         let runningConfig = { ...track.config };
 
         for (const item of track.playlist) {
             if (item.type === 'command') {
-                Tone.Transport.scheduleOnce((time) => {
-                    if (item.command === 'BPM') Tone.Transport.bpm.rampTo(parseFloat(item.value), 0.1, time);
+                transport.scheduleOnce((time) => { // --- FIX: Use instance
+                    if (item.command === 'BPM') transport.bpm.rampTo(parseFloat(item.value), 0.1, time);
                     if (item.command === 'Scale') {
                         const [root, mode] = item.value.split(' ');
                         runningConfig.scaleRoot = root;
@@ -219,15 +226,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             totalBars += longestPatternBars;
         }
 
-        Tone.Transport.loop = true;
-        Tone.Transport.loopEnd = `${totalBars}:0:0`;
+        transport.loop = true;
+        transport.loopEnd = `${totalBars}:0:0`;
+        transport.start();
+        setIsPlaying(true);
     };
 
     const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number): string => {
         const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}`;
-        if (noteCacheRef.current.has(key)) {
-            return noteCacheRef.current.get(key)!;
-        }
+        if (noteCacheRef.current.has(key)) return noteCacheRef.current.get(key)!;
         const resolved = resolveNote(noteDef.degree + transpose, root, mode, noteDef.octaveShift, noteDef.accidental, noteDef.isNatural);
         noteCacheRef.current.set(key, resolved);
         return resolved;
