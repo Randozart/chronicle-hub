@@ -116,6 +116,13 @@ export default function TrackEditor({
         });
     };
 
+    const groupedInsts = availableInstruments.reduce((acc, curr) => {
+        const cat = curr.category || 'Uncategorized';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(curr.id);
+        return acc;
+    }, {} as Record<string, string[]>);
+
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
@@ -165,8 +172,16 @@ export default function TrackEditor({
                 <PianoRoll source={editorValue} />
             </div>
             
-            <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666' }}>
-                <strong>Available Instruments:</strong> {availableInstruments.map(i => i.id).join(', ')}
+             <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '150px' }}>
+                <strong style={{ color: '#aaa' }}>Available Instruments:</strong>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
+                    {Object.entries(groupedInsts).map(([cat, ids]) => (
+                        <div key={cat}>
+                            <div style={{ color: '#61afef', fontWeight: 'bold', marginBottom: '2px' }}>{cat}</div>
+                            {ids.map(id => <div key={id} style={{ marginLeft: '5px' }}>• {id}</div>)}
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {!isPlayground && (

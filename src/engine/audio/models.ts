@@ -1,7 +1,5 @@
 // src/engine/audio/models.ts
 
-// --- STORAGE TYPES (MongoDB) ---
-
 export type SynthType = 
     | 'triangle' | 'sine' | 'square' | 'sawtooth' 
     | 'fmsine' | 'fmsquare' | 'fmsawtooth' | 'fmtriangle'
@@ -9,8 +7,8 @@ export type SynthType =
 
 export interface EnvelopeDef {
     attack: number;
-    decay: number;
-    sustain: number; // 0-1 volume level
+    decay?: number;   // <-- Made Optional
+    sustain?: number; // <-- Made Optional
     release: number;
 }
 
@@ -18,12 +16,19 @@ export interface InstrumentDefinition {
     id: string;
     name: string;
     type: 'synth' | 'sampler';
+    category?: string; // <-- NEW FIELD FOR UI GROUPING
     config: {
         oscillator?: {
             type: SynthType;
             [key: string]: any; 
         };
         envelope?: EnvelopeDef;
+
+        // SAMPLER SPECIFIC
+        urls?: Record<string, string>;
+        baseUrl?: string;
+        
+        // COMMON
         volume?: number;
         polyphony?: number;
     };
@@ -35,7 +40,7 @@ export interface LigatureTrack {
     source: string; 
 }
 
-// --- RUNTIME TYPES (Parser Output) ---
+// --- RUNTIME TYPES ---
 
 export interface ParsedTrack {
     config: {
@@ -55,10 +60,10 @@ export interface ParsedTrack {
 
 export type PlaylistItem = PatternPlaylistItem | CommandPlaylistItem;
 
-// New: Defines volume/transpose changes
 export interface PatternModifier {
     transpose: number;
     volume: number;
+    pan: number;
 }
 
 export interface PatternPlaylistItem {
@@ -66,8 +71,9 @@ export interface PatternPlaylistItem {
     patterns: {
         id: string;
         transposition: number;
-        // We can add 'volume' here later if needed for playlist-level mixing
+        volume?: number;
     }[];
+    modifiers?: Record<string, PatternModifier>;
 }
 
 export interface CommandPlaylistItem {
@@ -80,7 +86,7 @@ export interface ParsedPattern {
     id: string;
     duration: number;
     tracks: Record<string, SequenceEvent[]>; 
-    trackModifiers: Record<string, PatternModifier>; // <--- THIS WAS MISSING
+    trackModifiers: Record<string, PatternModifier>;
 }
 
 export interface SequenceEvent {

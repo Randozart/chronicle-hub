@@ -1,69 +1,66 @@
+// src/engine/audio/synth.ts
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 
-// Cache instruments to prevent recreating them (expensive)
-// We strictly type this as PolySynth to avoid namespace errors
-const instrumentCache: Record<string, Tone.PolySynth> = {};
+// Union type: It can be a Synth OR a Sampler
+export type AnyInstrument = Tone.PolySynth | Tone.Sampler;
 
-export function getOrMakeInstrument(def: InstrumentDefinition): Tone.PolySynth {
+const instrumentCache: Record<string, AnyInstrument> = {};
+
+export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
     if (instrumentCache[def.id]) {
         return instrumentCache[def.id];
     }
 
     const config = def.config;
-    let synth: Tone.PolySynth;
+    let inst: AnyInstrument;
 
-    // Default Envelope Settings
-    const envelope = {
-        attack: config.envelope?.attack ?? 0.01,
-        decay: config.envelope?.decay ?? 0.1,
-        sustain: config.envelope?.sustain ?? 0.5,
-        release: config.envelope?.release ?? 1
-    };
-
-    const oscType = config.oscillator?.type || 'triangle';
-
-    // 1. CHOOSE SYNTH ARCHITECTURE
-    // We use 'as any' for the options object to prevent TypeScript from being 
-    // overly pedantic about the union types of different synth configurations.
-    
-    if (oscType.startsWith('fm')) {
-        synth = new Tone.PolySynth(Tone.FMSynth, {
-            oscillator: { type: oscType as any },
-            envelope: envelope,
-            modulation: { type: 'sine' }, 
-            modulationIndex: 10
-        } as any).toDestination();
+    // 1. SAMPLER LOGIC
+    if (def.type === 'sampler' && config.urls) {
+        inst = new Tone.Sampler({
+            urls: config.urls,
+            baseUrl: config.baseUrl || "",
+            // Default envelope for samplers acts as a gate
+            attack: config.envelope?.attack || 0,
+            release: config.envelope?.release || 1,
+            onload: () => {
+                // Optional: You could dispatch a global event here to hide a loading spinner
+                console.log(`[Audio] Loaded samples for ${def.name}`);
+            }
+        }).toDestination();
     } 
-    else if (oscType.startsWith('am')) {
-        synth = new Tone.PolySynth(Tone.AMSynth, {
-            oscillator: { type: oscType as any },
-            envelope: envelope
-        } as any).toDestination();
-    } 
+    // 2. SYNTH LOGIC
     else {
-        // Standard Subtractive (Triangle, Saw, Square)
-        synth = new Tone.PolySynth(Tone.Synth, {
-            oscillator: { type: oscType as any },
-            envelope: envelope
+        const envelope = {
+            attack: config.envelope?.attack ?? 0.01,
+            decay: config.envelope?.decay ?? 0.1,
+            sustain: config.envelope?.sustain ?? 0.5,
+            release: config.envelope?.release ?? 1
+        };
+
+        const oscType = config.oscillator?.type || 'triangle';
+        
+        let SynthClass: any = Tone.Synth;
+        if (oscType.startsWith('fm')) SynthClass = Tone.FMSynth;
+        if (oscType.startsWith('am')) SynthClass = Tone.AMSynth;
+
+        inst = new Tone.PolySynth(SynthClass, {
+            oscillator: { type: oscType as any, ...config.oscillator },
+            envelope: envelope,
         } as any).toDestination();
+
+        // Synths have a maxPolyphony property
+        (inst as Tone.PolySynth).maxPolyphony = config.polyphony || 32;
     }
 
-    // 2. SET VOLUME
-    // Tone.js uses decibels. -infinity is silent, 0 is full volume.
-    synth.volume.value = config.volume || -10; 
+    // 3. COMMON VOLUME
+    // Tone.js volume is in Decibels
+    inst.volume.value = config.volume || -10; 
 
-    // 3. SET POLYPHONY LIMIT
-    // Prevents performance issues if too many notes play
-    synth.maxPolyphony = config.polyphony || 6;
-
-    instrumentCache[def.id] = synth;
-    return synth;
+    instrumentCache[def.id] = inst;
+    return inst;
 }
 
-/**
- * Cleanup function to free audio context when world unloads
- */
 export function disposeInstruments() {
     Object.values(instrumentCache).forEach(inst => inst.dispose());
     for (const key in instrumentCache) delete instrumentCache[key];

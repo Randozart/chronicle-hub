@@ -23,6 +23,13 @@ export default function InstrumentEditor({ data, onSave, onDelete }: { data: Ins
         setForm(next);
     };
 
+    const groupedPresets = Object.values(AUDIO_PRESETS).reduce((acc, curr) => {
+        const cat = curr.category || 'Uncategorized';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(curr);
+        return acc;
+    }, {} as Record<string, InstrumentDefinition[]>);
+
     const handleLoadPreset = (presetId: string) => {
         const preset = AUDIO_PRESETS[presetId];
         if (preset) {
@@ -64,15 +71,19 @@ export default function InstrumentEditor({ data, onSave, onDelete }: { data: Ins
 
             {/* --- NEW: PRESET LOADER --- */}
             <div className="form-group" style={{ background: '#111', padding: '1rem', borderRadius: '4px', border: '1px dashed #444', marginBottom: '1.5rem' }}>
-                <label className="form-label" style={{ color: '#98c379' }}>Load Preset (Overwrites Settings)</label>
+                <label className="form-label" style={{ color: '#98c379' }}>Load Preset</label>
                 <select 
                     className="form-select" 
                     onChange={(e) => handleLoadPreset(e.target.value)}
-                    value="" // Always reset to empty after selection
+                    value=""
                 >
                     <option value="" disabled>-- Select a Sound --</option>
-                    {Object.values(AUDIO_PRESETS).map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                    {Object.keys(groupedPresets).sort().map(cat => (
+                        <optgroup key={cat} label={cat}>
+                            {groupedPresets[cat].map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </optgroup>
                     ))}
                 </select>
             </div>
