@@ -1,37 +1,17 @@
 import { ParsedTrack, ParsedPattern, SequenceEvent, NoteDef, PlaylistItem, NoteGroup } from './models';
-import { resolveNote } from './scales'; // Make sure this is imported
 
 export class LigatureParser {
     
     // REGEX for tokenizing a pattern row
     private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\([0-9]+\))?|\d+['#b%,]*|[-.|])/g;
-    private noteCache: Map<string, string> = new Map(); // <-- ADD CACHE
 
-    private resolveAndCacheNote(
-        noteDef: NoteDef, 
-        root: string, 
-        mode: string,
-        transpose: number
-    ): string {
-        const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}`;
-        if (this.noteCache.has(key)) {
-            return this.noteCache.get(key)!;
-        }
-        const resolved = resolveNote(
-            noteDef.degree + transpose,
-            root, mode,
-            noteDef.octaveShift,
-            noteDef.accidental,
-            noteDef.isNatural
-        );
-        this.noteCache.set(key, resolved);
-        return resolved;
-    }
+    // REMOVED: noteCache, resolveAndCacheNote (These belong in AudioProvider)
 
     public parse(rawSource: string): ParsedTrack {
+        // ... (parse method remains the same) ...
         const lines = rawSource.split('\n')
-            .map(l => l.split('//')[0].trim()) // Strip comments
-            .filter(l => l.length > 0);        // Remove empty lines
+            .map(l => l.split('//')[0].trim()) 
+            .filter(l => l.length > 0);   
 
         const track: ParsedTrack = {
             config: { 
@@ -57,11 +37,11 @@ export class LigatureParser {
                     currentPatternId = header.split(':')[1].trim();
                     track.patterns[currentPatternId] = { 
                         id: currentPatternId, 
-                        duration: 0, // Will be calculated by rows
+                        duration: 0, 
                         tracks: {} 
                     };
                 } else {
-                    currentSection = header.toUpperCase(); // Normalize header names
+                    currentSection = header.toUpperCase(); 
                     currentPatternId = '';
                 }
                 continue;
@@ -81,25 +61,20 @@ export class LigatureParser {
         return track;
     }
 
-    // --- SECTION PARSERS ---
-
+    // ... (parseConfig, parseInstrument, parseDefinition remain the same) ...
     private parseConfig(line: string, track: ParsedTrack) {
         const parts = line.split(':');
         if (parts.length < 2) return;
-        
         const key = parts[0].trim();
         const val = parts[1].trim();
-
         if (key === 'BPM') track.config.bpm = parseFloat(val) || 120;
         if (key === 'Grid' || key === 'Res') track.config.grid = parseInt(val) || 4;
         if (key === 'Swing') track.config.swing = (parseInt(val) || 0) / 100;
-        
         if (key === 'Scale') {
             const scaleParts = val.split(' ');
             track.config.scaleRoot = scaleParts[0];
             track.config.scaleMode = scaleParts[1] || 'Major';
         }
-        
         if (key === 'Time' || key === 'TimeSig') {
             const timeParts = val.split('/');
             track.config.timeSig = [parseInt(timeParts[0]) || 4, parseInt(timeParts[1]) || 4];
@@ -111,31 +86,19 @@ export class LigatureParser {
         if (name && id) track.instruments[name] = id;
     }
 
-     private parseDefinition(line: string, track: ParsedTrack) {
-        // This is the implementation for the [DEFINITIONS] block
+    private parseDefinition(line: string, track: ParsedTrack) {
         const [aliasRaw, valRaw] = line.split('=').map(s => s.trim());
-        
         if (!aliasRaw || !valRaw || !aliasRaw.startsWith('@')) return;
-
-        // Handle Logic Alias: @Name = {{ ... }}
-        if (valRaw.startsWith('{{')) {
-            // Logic aliases are handled by the ScribeScript pre-parser.
-            // Here, we just acknowledge them, but the real work is done before parsing.
-            // For now, we don't need to store them in the parsed track structure.
-            return; 
-        }
+        if (valRaw.startsWith('{{')) return; // Logic aliases handled by pre-parser
         
-        // Handle Chord Alias: @Name = [1, 5]
         if (valRaw.startsWith('[')) {
             const alias = aliasRaw.substring(1);
             const cleanVal = valRaw.replace(/[\[\]]/g, '');
             const parts = cleanVal.split(',').map(s => s.trim()).filter(Boolean);
-            
             const noteGroup: NoteGroup = parts.map(p => this.parseNoteToken(p));
             track.definitions[alias] = noteGroup;
         }
     }
-
 
     private parsePatternRow(line: string, track: ParsedTrack, patternId: string) {
         const pipeIndex = line.indexOf('|');
@@ -148,6 +111,12 @@ export class LigatureParser {
         if (!pattern) return;
         if (!pattern.tracks[trackName]) pattern.tracks[trackName] = [];
         const sequence = pattern.tracks[trackName];
+
+        // --- TIMING CALCULATION ---
+        const { grid, timeSig } = track.config;
+        const quarterNotesPerBeat = 4 / timeSig[1];
+        const slotsPerBeat = grid * quarterNotesPerBeat;
+        // --------------------------
 
         const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
         let currentTime = 0; // In Grid Slots
@@ -167,17 +136,16 @@ export class LigatureParser {
                 continue;
             }
 
-            // --- REWRITTEN AND SIMPLIFIED TUPLET LOGIC ---
+            // --- FIXED TUPLET LOGIC (Beat Duration) ---
             if (token.startsWith('(')) {
                 const inner = token.substring(1, token.length - 1);
-                // The regex now correctly finds notes separated by whitespace inside the parens
                 const subMatches = inner.match(/(\d+['#b%,]*|@\w+)/g); 
                 
                 if (subMatches && subMatches.length > 0) {
                     const count = subMatches.length;
-                    // A tuplet's total duration is ONE grid slot.
-                    // The duration of each note inside is a fraction of that.
-                    const durationPerNote = 1.0 / count; 
+                    
+                    // FIX: Divide the BEAT (slotsPerBeat), not 1.0
+                    const durationPerNote = slotsPerBeat / count; 
                     
                     subMatches.forEach((subToken, idx) => {
                         const notes = this.resolveNotes(subToken, track.definitions);
@@ -191,11 +159,11 @@ export class LigatureParser {
                     });
                 }
                 
-                // A tuplet advances the timeline by exactly ONE grid slot.
-                currentTime++; 
+                // FIX: Advance by a full BEAT
+                currentTime += slotsPerBeat; 
                 continue;
             }
-            // --- END REWRITE ---
+            // ------------------------------------------
 
             const notes = this.resolveNotes(token, track.definitions);
             if (notes.length > 0) {
@@ -204,43 +172,35 @@ export class LigatureParser {
             currentTime++;
         }
         
-        const { grid, timeSig } = track.config;
-        const quarterNotesPerBeat = 4 / timeSig[1];
-        const slotsPerBeat = grid * quarterNotesPerBeat;
         const slotsPerBar = slotsPerBeat * timeSig[0];
-        
         const barCount = (content.match(/\|/g) || []).length - 1;
         const expectedDurationInSlots = barCount > 0 ? barCount * slotsPerBar : currentTime;
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
     }
 
+    // ... (parsePlaylistRow, resolveNotes, parseNoteToken remain the same) ...
     private parsePlaylistRow(line: string, track: ParsedTrack) {
         const trimmed = line.trim();
         if (!trimmed) return;
-
-        // --- NEW LOGIC: Check for command syntax ---
+        
+        // Command check
         if (trimmed.includes('=')) {
             const parts = trimmed.split('=');
-            if (parts.length === 2) {
+             if (parts.length === 2) {
                 const key = parts[0].trim();
                 const value = parts[1].trim();
                 if (key === 'BPM' || key === 'Scale') {
-                    track.playlist.push({
-                        type: 'command',
-                        command: key,
-                        value: value
-                    });
-                    return; // Done with this line
+                    track.playlist.push({ type: 'command', command: key, value: value });
+                    return; 
                 }
             }
         }
-        // -----------------------------------------
 
-        // If not a command, parse as a pattern group
         const items = trimmed.split(',').map(s => s.trim()).filter(Boolean);
         const patterns: { id: string; transposition: number }[] = [];
 
         items.forEach(item => {
+            // Match: Name(transposition) e.g. Theme_A(+2)
             const match = item.match(/^([a-zA-Z0-9_]+)(?:\(\s*([+-]?\d+)\s*\))?$/);
             if (match) {
                 patterns.push({
@@ -253,14 +213,10 @@ export class LigatureParser {
         if (patterns.length > 0) {
             track.playlist.push({
                 type: 'pattern',
-                patterns
+                patterns: patterns // <-- Matches your model structure
             });
         }
-
     }
-
-
-    // --- TOKEN RESOLUTION HELPERS ---
 
     private resolveNotes(token: string, defs: Record<string, NoteGroup>): NoteDef[] {
         if (token.startsWith('@')) {
@@ -270,7 +226,6 @@ export class LigatureParser {
                 const shiftArg = match[2] ? parseInt(match[2]) : 1;
                 const definition = defs[aliasName];
                 if (!definition) return [];
-                
                 const degreeOffset = shiftArg - 1;
                 return definition.map(n => ({ ...n, degree: n.degree + degreeOffset }));
             }
@@ -281,14 +236,11 @@ export class LigatureParser {
     private parseNoteToken(token: string): NoteDef {
         const match = token.match(/^(\d+)(.*)$/);
         if (!match) return { degree: 1, octaveShift: 0, accidental: 0, isNatural: false };
-
         const degree = parseInt(match[1]);
         const mods = match[2];
-
         let octaveShift = 0;
         let accidental = 0;
         let isNatural = false;
-
         for (const char of mods) {
             if (char === "'") octaveShift++;
             if (char === ',') octaveShift--;
@@ -296,7 +248,6 @@ export class LigatureParser {
             if (char === 'b') accidental--;
             if (char === '%') isNatural = true;
         }
-
         return { degree, octaveShift, accidental, isNatural };
     }
 }

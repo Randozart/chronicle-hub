@@ -1,48 +1,48 @@
-import Prism from '@/lib/prism-core';
+// src/utils/prism-ligature.ts
 
-Prism.languages.ligature = {
-    comment: {
+export const ligatureGrammar = {
+    'comment': {
         pattern: /\/\/.*/,
         greedy: true
     },
-
-    header: {
+    'header': {
         pattern: /^\[.*?\]$/m,
         alias: 'keyword'
     },
-
+    'logic-block': {
+        pattern: /\{\{(?:[^{}]|\{\{[^{}]*\}\})*\}\}/,
+        alias: 'important'
+    },
     'track-name': {
         pattern: /^\s*[A-Za-z0-9_]+\s*(?=\|)/m,
         alias: 'function'
     },
-
-    bar: {
+    'bar': {
         pattern: /\|/,
         alias: 'operator'
     },
-
-    tuplet: {
+    'tuplet': {
         pattern: /\((?:[^()]+)\)/,
         alias: 'string'
     },
-
-    alias: {
+    'alias': {
         pattern: /@\w+(?:\(\s*[+-]?\d+\s*\))?/,
         alias: 'variable'
     },
-
-    note: {
+    'note': {
         pattern: /\b\d+['#b%,]*/,
         alias: 'number'
     },
-
-    sustain: {
+    'sustain': {
         pattern: /-/,
         alias: 'comment'
     },
-
-    silence: {
-        pattern: /\./,
+    'silence': {
+        pattern: /\./, // Correctly escaped literal dot
         alias: 'comment'
+    },
+    'config-key': {
+        pattern: /^\s*[a-zA-Z0-9_]+\s*(?=:)/m,
+        alias: 'attr-name'
     }
 };

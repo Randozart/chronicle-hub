@@ -1,21 +1,13 @@
 // src/utils/prism-scribescript.ts
-import Prism from '@/lib/prism-core';
 
-Prism.languages.scribescript = {
-    // 1. Logic Blocks { ... }
+export const scribescriptGrammar = {
     'logic-block': {
-        // Matches the outer block. 
-        // Logic inside 'inside' will tokenize the contents.
-        pattern: /\{(?:[^{}]|\{[^{}]*\})*\}/,
+        pattern: /\{(?:[^{}]|\{\{[^{}]*\}\})*\}/,
         inside: {
-            // --- A. BLOCK WRAPPERS (The Engine Sigils) ---
-            // We color { and } distinctly to show where logic starts/ends
             'logic-delimiter': {
                 pattern: /[{}]/,
                 alias: 'important' 
             },
-
-            // --- B. DATA SIGILS & IDENTIFIERS ---
             'macro': {
                 pattern: /%[a-zA-Z0-9_]+/,
                 alias: 'function' 
@@ -26,48 +18,30 @@ Prism.languages.scribescript = {
             },
             'alias': {
                 pattern: /@[a-zA-Z0-9_]+/,
-                alias: 'builtin' // Distinct color (often teal/green) for local aliases
+                alias: 'builtin'
             },
             'self-ref': {
                 pattern: /\$\./,
                 alias: 'keyword'
             },
-
-            // --- C. KEYS (before colon) ---
             'key': {
                 pattern: /\b[a-zA-Z0-9_]+(?=:)/,
                 alias: 'attr-name'
             },
-
-            // --- D. FLOW CONTROL ---
-            // Pipe, Colon, Semicolon are functional operators, not just punctuation
             'flow-operator': {
                 pattern: /[|:;]/,
                 alias: 'operator'
             },
-
-            // --- E. STANDARD OPERATORS ---
-            'operator': />=|<=|!=|==|>>|<<|[=+\-><]/,
-            
-            // --- F. PUNCTUATION ---
-            // Commas, brackets, parens, dots
-            'punctuation': /[\[\](),.]/,
-
-            // --- G. LITERALS ---
-            'number': /\b\d+\b/,
-            'keyword': /\b(true|false|recur|unique|invert|first|last|all)\b/,
-
-            // --- H. CATCH-ALL TEXT (Grey) ---
-            // Matches any sequence of characters that are NOT syntax control characters.
-            // This renders plain text inside the block as comments (grey).
+            'operator': { pattern: />=|<=|!=|==|>>|<<|[=+\-><]/ },
+            'punctuation': { pattern: /[\[\](),.]/ },
+            'number': { pattern: /\b\d+\b/ },
+            'keyword': { pattern: /\b(true|false|recur|unique|invert|first|last|all)\b/ },
             'text': {
                 pattern: /[^@$%{}|:;,[\]().<>=+\-]+/,
                 alias: 'natural' 
             }
         }
     },
-    
-    // 2. Effect Metadata [key: value]
     'metadata': {
         pattern: /\[.*?\]/,
         inside: {
@@ -83,7 +57,6 @@ Prism.languages.scribescript = {
                 pattern: /:/,
                 alias: 'operator'
             },
-            // Metadata values are text by default
             'string': {
                 pattern: /[^:\[\]]+/,
                 alias: 'comment'
@@ -91,5 +64,3 @@ Prism.languages.scribescript = {
         }
     }
 };
-
-export default Prism;
