@@ -1,10 +1,11 @@
-// src/app/create/[storyId]/audio/components/TrackEditor.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { LigatureTrack, InstrumentDefinition } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
+import { PlayerQualities } from '@/engine/models';
+import ScribeDebugger from '@/components/admin/ScribeDebugger';
 import PianoRoll from '@/components/admin/PianoRoll';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
@@ -57,6 +58,7 @@ export default function TrackEditor({
     const [status, setStatus] = useState("");
     const [editorValue, setEditorValue] = useState("");
     const [isClient, setIsClient] = useState(false);
+    const [mockQualities, setMockQualities] = useState<PlayerQualities>({}); // <-- NEW STATE
 
     useEffect(() => {
         setIsClient(true);
@@ -66,7 +68,7 @@ export default function TrackEditor({
 
     const handlePlay = () => {
         try {
-            playTrack(form.source, availableInstruments);
+            playTrack(form.source, availableInstruments, mockQualities); // <-- PASS QUALITIES
             setStatus("Playing...");
         } catch (e: any) {
             setStatus("Error: " + e.message);
@@ -88,7 +90,7 @@ export default function TrackEditor({
         if (confirm("Replace the current track with a blank template?")) {
             const newSource = EMPTY_TEMPLATE;
             setForm({ ...form, source: newSource });
-            setEditorValue(newSource); // Also update the editor's direct state
+            setEditorValue(newSource);
         }
     };
 
@@ -105,90 +107,78 @@ export default function TrackEditor({
     };
 
     const handleFormat = () => {
-        // --- THE FIX ---
-        // We now update the 'editorValue' directly, which is what the ScribeEditor is displaying.
-        // We can use a callback to ensure we are formatting the most up-to-date version of the text.
         setEditorValue(currentEditorValue => {
             const formatted = formatLigatureSource(currentEditorValue);
-            // We also need to update the main 'form' state so that 'Play' and 'Save' use the formatted text.
             setForm(prevForm => ({ ...prevForm, source: formatted }));
             return formatted;
         });
     };
 
-    const groupedInsts = availableInstruments.reduce((acc, curr) => {
-        const cat = curr.category || 'Uncategorized';
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(curr.id);
-        return acc;
-    }, {} as Record<string, string[]>);
-
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <h2 style={{ margin: 0 }}>Track: {form.name}</h2>
-                    <span style={{ fontSize: '0.8rem', color: isPlaying ? '#98c379' : '#777' }}>{isPlaying ? "▶ PLAYING" : status}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button onClick={handleClear} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
-                        New Template
-                    </button>
-                    <button onClick={handleFormat} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
-                        Format Grid
-                    </button>
-                    {isPlaying ? (
-                        <button onClick={handleStop} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>■ Stop</button>
-                    ) : (
-                        <button onClick={handlePlay} className="save-btn" style={{ background: '#98c379', color: '#000' }}>▶ Play Preview</button>
-                    )}
-                    {enableDownload && (
-                        <button onClick={handleDownload} style={{ background: '#56B6C2', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                            Download .lig
+        <div style={{ height: '100%', display: 'flex', gap: '2rem' }}>
+            {/* LEFT COLUMN: EDITOR */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <h2 style={{ margin: 0 }}>Track: {form.name}</h2>
+                        <span style={{ fontSize: '0.8rem', color: isPlaying ? '#98c379' : '#777' }}>{isPlaying ? "▶ PLAYING" : status}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <button onClick={handleClear} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
+                            New Template
                         </button>
-                    )}
-                    {!isPlayground && (
-                        <button onClick={() => onSave(form)} className="save-btn">Save</button>
+                        <button onClick={handleFormat} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
+                            Format Grid
+                        </button>
+                        {isPlaying ? (
+                            <button onClick={handleStop} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>■ Stop</button>
+                        ) : (
+                            <button onClick={handlePlay} className="save-btn" style={{ background: '#98c379', color: '#000' }}>▶ Play Preview</button>
+                        )}
+                        {enableDownload && (
+                            <button onClick={handleDownload} style={{ background: '#56B6C2', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                Download .lig
+                            </button>
+                        )}
+                        {!isPlayground && (
+                            <button onClick={() => onSave(form)} className="save-btn">Save</button>
+                        )}
+                    </div>
+                </div>
+
+                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <label className="form-label">Ligature Source Code</label>
+                    {isClient && (
+                        <ScribeEditor 
+                            value={editorValue} 
+                            onChange={handleSourceChange} 
+                            minHeight="400px"
+                            placeholder="[CONFIG]..."
+                            language="ligature"
+                        />
                     )}
                 </div>
-            </div>
+                
+                <div style={{ marginBottom: '1rem' }}>
+                    <label className="form-label">Pattern Visualization</label>
+                    <PianoRoll source={editorValue} qualities={mockQualities} />
+                </div>
 
-            <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <label className="form-label">Ligature Source Code</label>
-                {isClient && (
-                    <ScribeEditor 
-                        value={editorValue} 
-                        onChange={handleSourceChange} 
-                        minHeight="400px" // Reduce slightly to fit piano roll
-                        placeholder="[CONFIG]..."
-                        language="ligature"
-                    />
+                <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666' }}>
+                    <strong>Available Instruments:</strong> {availableInstruments.map(i => i.id).join(', ')}
+                </div>
+
+                {!isPlayground && (
+                    <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', marginTop: '1rem', alignSelf: 'flex-start' }}>
+                        Delete Track
+                    </button>
                 )}
             </div>
 
-            {/* NEW VISUALIZER SECTION */}
-            <div style={{ minHeight: '150px', marginBottom: '1rem' }}>
-                <label className="form-label">Pattern Visualization</label>
-                <PianoRoll source={editorValue} />
+            {/* RIGHT COLUMN: DEBUGGER */}
+            <div style={{ width: '300px', flexShrink: 0 }}>
+                <ScribeDebugger onUpdate={setMockQualities} />
             </div>
-            
-             <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '150px' }}>
-                <strong style={{ color: '#aaa' }}>Available Instruments:</strong>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
-                    {Object.entries(groupedInsts).map(([cat, ids]) => (
-                        <div key={cat}>
-                            <div style={{ color: '#61afef', fontWeight: 'bold', marginBottom: '2px' }}>{cat}</div>
-                            {ids.map(id => <div key={id} style={{ marginLeft: '5px' }}>• {id}</div>)}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {!isPlayground && (
-                <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', marginTop: '1rem', alignSelf: 'flex-start' }}>
-                    Delete Track
-                </button>
-            )}
         </div>
     );
 }

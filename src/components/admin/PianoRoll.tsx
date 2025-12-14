@@ -2,12 +2,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { ParsedTrack } from '@/engine/audio/models';
 import { LigatureParser } from '@/engine/audio/parser';
+import { PlayerQualities } from '@/engine/models';
 
 interface Props {
     source: string;
+    qualities?: PlayerQualities; // <-- NEW PROP
 }
 
-export default function PianoRoll({ source }: Props) {
+export default function PianoRoll({ source, qualities = {} }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
@@ -16,10 +18,10 @@ export default function PianoRoll({ source }: Props) {
     useEffect(() => {
         try {
             const parser = new LigatureParser();
-            const track = parser.parse(source);
+            // Pass mock qualities to parser for accurate visualization
+            const track = parser.parse(source, qualities); 
             setParsedTrack(track);
             
-            // Default to the first pattern if none selected, or if current selection is gone
             const patternKeys = Object.keys(track.patterns);
             if (patternKeys.length > 0) {
                 if (!selectedPatternId || !track.patterns[selectedPatternId]) {
@@ -31,9 +33,9 @@ export default function PianoRoll({ source }: Props) {
         } catch (e) {
             // Ignore parsing errors while typing
         }
-    }, [source]);
+    }, [source, qualities, selectedPatternId]);
 
-    // 2. Draw Canvas
+    // 2. Draw Canvas (Same as before)
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas || !parsedTrack || !selectedPatternId) return;
@@ -49,26 +51,20 @@ export default function PianoRoll({ source }: Props) {
         const totalSlots = pattern.duration;
         const trackNames = Object.keys(pattern.tracks);
 
-        // --- DIMENSIONS ---
-        const SLOT_W = 12;      // Width of one 16th note
-        const ROW_H = 60;       // Height of one Instrument Track
-        const HEADER_W = 80;    // Width of the label area
-        const NOTE_H = 6;       // Height of a single note block
+        const SLOT_W = 12;
+        const ROW_H = 60;
+        const HEADER_W = 80;
+        const NOTE_H = 6;
 
-        canvas.width = HEADER_W + (totalSlots * SLOT_W) + 50; // Extra padding
+        canvas.width = HEADER_W + (totalSlots * SLOT_W) + 50;
         canvas.height = Math.max(150, trackNames.length * ROW_H);
 
-        // --- BACKGROUND ---
         ctx.fillStyle = '#111';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // --- GRID DRAWING ---
         ctx.lineWidth = 1;
         for (let x = 0; x <= totalSlots; x++) {
             const xPos = HEADER_W + (x * SLOT_W);
-            
-            // Determine Line Strength
-            // Bar Line (Based on 4/4 assumption for visuals, or config if available)
             const isBar = x % (slotsPerBeat * 4) === 0; 
             const isBeat = x % slotsPerBeat === 0;
 
@@ -77,81 +73,59 @@ export default function PianoRoll({ source }: Props) {
             ctx.lineTo(xPos, canvas.height);
 
             if (isBar) {
-                ctx.strokeStyle = '#444'; // Bright Bar Line
+                ctx.strokeStyle = '#444';
             } else if (isBeat) {
-                ctx.strokeStyle = '#2a2a2a'; // Dim Beat Line
+                ctx.strokeStyle = '#2a2a2a';
             } else {
-                ctx.strokeStyle = '#1a1a1a'; // Faint Subdiv Line
+                ctx.strokeStyle = '#1a1a1a';
             }
             ctx.stroke();
         }
 
-        // --- TRACKS & NOTES ---
         trackNames.forEach((name, trackIndex) => {
             const yStart = trackIndex * ROW_H;
             const events = pattern.tracks[name];
 
-            // 1. Track Background (Zebra Striping)
             if (trackIndex % 2 === 0) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
                 ctx.fillRect(0, yStart, canvas.width, ROW_H);
             }
 
-            // 2. Track Label
             ctx.fillStyle = '#181a1f';
             ctx.fillRect(0, yStart, HEADER_W, ROW_H);
             ctx.fillStyle = '#888';
             ctx.font = 'bold 11px monospace';
             ctx.fillText(name.substring(0, 10), 5, yStart + (ROW_H / 2) + 4);
             
-            // Border between tracks
             ctx.strokeStyle = '#333';
             ctx.beginPath();
             ctx.moveTo(0, yStart + ROW_H);
             ctx.lineTo(canvas.width, yStart + ROW_H);
             ctx.stroke();
 
-            // 3. Draw Notes
             events.forEach(evt => {
                 const x = HEADER_W + (evt.time * SLOT_W);
                 const w = Math.max(SLOT_W - 1, (evt.duration * SLOT_W) - 1);
                 
-                // --- VISUAL PITCH CALCULATION ---
-                // We map scale degrees (1-7) to a vertical position within the row.
-                // Higher degree = Higher Y (Smaller Y value).
-                // Center line is roughly degree 1 of current octave.
                 const noteDef = evt.notes[0];
                 if (!noteDef) return;
 
                 const degree = noteDef.degree;
                 const octave = noteDef.octaveShift;
-                
-                // Calculate relative height. 
-                // 1 = Bottomish. 7 = Topish. Octaves shift significantly.
-                // Base offset + (Degree * Step) + (Octave * LargeStep)
                 const relativePitch = (degree) + (octave * 7);
-                
-                // Map pitch to Y pixels. 
-                // Center of row is roughly pitch 4.
-                // Invert so higher pitch is lower Y value.
                 const centerY = yStart + (ROW_H / 2);
-                const yOffset = (relativePitch - 4) * -4; // -4 pixels per scale step
+                const yOffset = (relativePitch - 4) * -4; 
                 
                 const noteY = Math.max(yStart + 2, Math.min(yStart + ROW_H - NOTE_H - 2, centerY + yOffset));
 
-                // Color Coding
                 const colors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6', '#e74c3c'];
                 ctx.fillStyle = colors[(degree - 1) % 7] || '#888';
                 
-                // Shadow for depth
                 ctx.globalAlpha = 0.3;
                 ctx.fillRect(x + 2, noteY + 2, w, NOTE_H);
-                
-                // Main Note Block
                 ctx.globalAlpha = 0.9;
                 ctx.fillRect(x, noteY, w, NOTE_H);
                 
-                // Note Label (Small)
                 if (w > 15) {
                     ctx.fillStyle = '#000';
                     ctx.font = '8px sans-serif';
@@ -163,11 +137,10 @@ export default function PianoRoll({ source }: Props) {
                     ctx.fillText(label, x + 2, noteY + NOTE_H - 1);
                 }
             });
-            
             ctx.globalAlpha = 1.0;
         });
 
-    }, [parsedTrack, selectedPatternId]);
+    }, [source, parsedTrack, selectedPatternId]); // Updated dependencies
 
     if (!parsedTrack) return null;
 

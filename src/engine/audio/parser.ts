@@ -1,23 +1,33 @@
 import { ParsedTrack, ParsedPattern, SequenceEvent, NoteDef, PlaylistItem, NoteGroup, PatternPlaylistItem, CommandPlaylistItem } from './models';
+import { PlayerQualities } from '@/engine/models';
+import { evaluateText } from '@/engine/textProcessor';
 
 export class LigatureParser {
     
-    private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|\d+['#b%,]*|[-.|])/g;
+    // REGEX for tokenizing a pattern row
+    private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\([0-9]+\))?|\d+['#b%,]*|[-.|])/g;
 
-    public parse(rawSource: string): ParsedTrack {
-        const lines = rawSource.split('\n')
+    public parse(rawSource: string, mockQualities: PlayerQualities = {}): ParsedTrack {
+        
+        // --- 1. SCRIBESCRIPT PRE-PASS ---
+        let processedSource = rawSource;
+        try {
+            // Evaluate the entire file as a text template.
+            // This resolves {{ $combat ? 120 : 100 }} before parsing.
+            processedSource = evaluateText(rawSource, mockQualities, {}, null, 0);
+        } catch (e) {
+            console.warn("Ligature ScribeScript Pre-Pass Error:", e);
+        }
+        // --------------------------------
+
+        const lines = processedSource.split('\n')
             .map(l => l.split('//')[0].trim()) // Strip comments
             .filter(l => l.length > 0);        // Remove empty lines
 
         const track: ParsedTrack = {
             config: { 
-                bpm: 120, 
-                grid: 4, 
-                timeSig: [4, 4], 
-                scaleRoot: 'C', 
-                scaleMode: 'Major', 
-                swing: 0,
-                humanize: 0 // <--- ADD THIS FIX
+                bpm: 120, grid: 4, timeSig: [4, 4], 
+                scaleRoot: 'C', scaleMode: 'Major', swing: 0, humanize: 0
             },
             instruments: {},
             definitions: {},
@@ -25,8 +35,6 @@ export class LigatureParser {
             playlist: []
         };
 
-        // ... (rest of the file remains the same)
-        
         let currentSection = '';
         let currentPatternId = '';
 
@@ -40,12 +48,12 @@ export class LigatureParser {
                     currentPatternId = header.split(':')[1].trim();
                     track.patterns[currentPatternId] = { 
                         id: currentPatternId, 
-                        duration: 0, // Will be calculated by rows
+                        duration: 0, 
                         tracks: {},
                         trackModifiers: {}
                     };
                 } else {
-                    currentSection = header.toUpperCase(); // Normalize header names
+                    currentSection = header.toUpperCase(); 
                     currentPatternId = '';
                 }
                 continue;
@@ -65,8 +73,8 @@ export class LigatureParser {
         return track;
     }
 
-    // ... (keep the rest of the existing methods: parseConfig, parseInstrument, parseDefinition, parsePatternRow, parsePlaylistRow, resolveNotes, parseNoteToken)
-    
+    // --- SECTION PARSERS ---
+
     private parseConfig(line: string, track: ParsedTrack) {
         const parts = line.split(':');
         if (parts.length < 2) return;
@@ -77,7 +85,6 @@ export class LigatureParser {
         if (key === 'BPM') track.config.bpm = parseFloat(val) || 120;
         if (key === 'Grid' || key === 'Res') track.config.grid = parseInt(val) || 4;
         
-        // Humanize & Swing parsing (0-100 range in text -> 0.0-1.0 in float)
         if (key === 'Swing') track.config.swing = (parseInt(val) || 0) / 100;
         if (key === 'Humanize') track.config.humanize = (parseInt(val) || 0) / 100; 
         
@@ -100,56 +107,46 @@ export class LigatureParser {
 
     private parseDefinition(line: string, track: ParsedTrack) {
         const [aliasRaw, valRaw] = line.split('=').map(s => s.trim());
-        
         if (!aliasRaw || !valRaw || !aliasRaw.startsWith('@')) return;
+        // Logic aliases are handled by pre-pass, so we ignore {{...}} here
+        if (valRaw.startsWith('{{')) return; 
         
-        const alias = aliasRaw.substring(1);
-        const cleanVal = valRaw.replace(/[\[\]]/g, '');
-        const parts = cleanVal.split(',').map(s => s.trim()).filter(Boolean);
-        
-        const noteGroup: NoteGroup = parts.map(p => this.parseNoteToken(p));
-        track.definitions[alias] = noteGroup;
+        if (valRaw.startsWith('[')) {
+            const alias = aliasRaw.substring(1);
+            const cleanVal = valRaw.replace(/[\[\]]/g, '');
+            const parts = cleanVal.split(',').map(s => s.trim()).filter(Boolean);
+            const noteGroup: NoteGroup = parts.map(p => this.parseNoteToken(p));
+            track.definitions[alias] = noteGroup;
+        }
     }
 
     private parsePatternRow(line: string, track: ParsedTrack, patternId: string) {
         const pipeIndex = line.indexOf('|');
         if (pipeIndex === -1) return;
 
-        // --- 1. PARSE TRACK NAME & MODIFIERS ---
         const leftSide = line.substring(0, pipeIndex).trim();
         const content = line.substring(pipeIndex);
         
         let trackName = leftSide;
-        let modifiers: { transpose: number, volume: number, pan: number } | undefined;
+        let modifiers: any = undefined;
 
-        // Regex matches "Name" or "Name(args)"
+        // Parse modifiers: "Bass(v:-5)"
         const match = leftSide.match(/^([a-zA-Z0-9_]+)(?:\((.*)\))?$/);
-        
         if (match) {
             trackName = match[1];
-            
-            // If modifiers exist inside parens
             if (match[2]) {
                 modifiers = { transpose: 0, volume: 0, pan: 0 };
                 const modParts = match[2].split(',');
-                
-                modParts.forEach(p => {
-                    // Check for shorthand shorthand "+7" or "-2" (Transpose)
+                modParts.forEach((p: string) => {
                     const cleanP = p.trim();
-                    if (/^[+-]?\d+$/.test(cleanP)) {
-                        modifiers!.transpose = parseInt(cleanP);
-                        return;
-                    }
-
-                    // Check for key:value pairs
-                    const [k, v] = cleanP.split(':').map(s => s.trim());
+                    if (/^[+-]?\d+$/.test(cleanP)) { modifiers.transpose = parseInt(cleanP); return; }
+                    const [k, v] = cleanP.split(':').map((s: string) => s.trim());
                     const num = parseFloat(v);
-                    
                     if (!isNaN(num)) {
-                        if (['v', 'vol', 'volume'].includes(k)) modifiers!.volume = num;
-                        if (['t', 'trans', 'transpose'].includes(k)) modifiers!.transpose = num;
-                        if (['p', 'pan'].includes(k)) modifiers!.pan = num;
-                        if (['o', 'oct', 'octave'].includes(k)) modifiers!.transpose += (num * 12);
+                        if (['v', 'vol', 'volume'].includes(k)) modifiers.volume = num;
+                        if (['t', 'trans', 'transpose'].includes(k)) modifiers.transpose = num;
+                        if (['p', 'pan'].includes(k)) modifiers.pan = num;
+                        if (['o', 'oct', 'octave'].includes(k)) modifiers.transpose += (num * 12);
                     }
                 });
             }
@@ -160,37 +157,26 @@ export class LigatureParser {
         if (!pattern.tracks[trackName]) pattern.tracks[trackName] = [];
         const sequence = pattern.tracks[trackName];
 
-        // Store modifiers in the pattern object for the AudioProvider to read
         if (modifiers) {
             if (!pattern.trackModifiers) pattern.trackModifiers = {};
             pattern.trackModifiers[trackName] = modifiers;
         }
 
-        // --- 2. SETUP TIMING MATH ---
         const { grid, timeSig } = track.config;
-        const quarterNotesPerBeat = 4 / timeSig[1]; // 4/4=1, 6/8=0.5
+        const quarterNotesPerBeat = 4 / timeSig[1];
         const slotsPerBeat = grid * quarterNotesPerBeat;
         const slotsPerBar = slotsPerBeat * timeSig[0];
 
-        // --- 3. PARSE GRID TOKENS ---
         const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
-        let currentTime = 0; // In Grid Slots
+        let currentTime = 0; 
 
         for (const token of tokens) {
-            // A. BAR LINE (Visual only)
             if (token === '|') continue;
+            if (token === '.') { currentTime++; continue; }
 
-            // B. REST
-            if (token === '.') { 
-                currentTime++; 
-                continue; 
-            }
-
-            // C. SUSTAIN
             if (token === '-') {
                 if (sequence.length > 0) {
                     const lastEvent = sequence[sequence.length - 1];
-                    // Only extend if it's visually adjacent
                     if (lastEvent && lastEvent.time + lastEvent.duration >= currentTime) {
                         lastEvent.duration++;
                     }
@@ -199,7 +185,6 @@ export class LigatureParser {
                 continue;
             }
 
-            // D. TUPLET (Notes played over 1 BEAT)
             if (token.startsWith('(')) {
                 const inner = token.substring(1, token.length - 1);
                 const subMatches = inner.match(/(\d+['#b%,]*|@\w+)/g); 
@@ -219,12 +204,10 @@ export class LigatureParser {
                         }
                     });
                 }
-                
-                currentTime += slotsPerBeat; // Advance by exactly 1 beat
+                currentTime += slotsPerBeat; 
                 continue;
             }
 
-            // E. STANDARD NOTE
             const notes = this.resolveNotes(token, track.definitions);
             if (notes.length > 0) {
                 sequence.push({ time: currentTime, duration: 1, notes });
@@ -232,14 +215,11 @@ export class LigatureParser {
             currentTime++;
         }
         
-        // --- 4. CALCULATE DURATION ---
         const barCount = (content.match(/\|/g) || []).length - 1;
-        
-        // Duration is determined by explicit bar count if pipes exist, otherwise by tokens
         const expectedDurationInSlots = barCount > 0 ? barCount * slotsPerBar : currentTime;
-        
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
     }
+
     private parsePlaylistRow(line: string, track: ParsedTrack) {
         const trimmed = line.trim();
         if (!trimmed) return;
