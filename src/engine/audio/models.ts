@@ -14,30 +14,25 @@ export interface EnvelopeDef {
     release: number;
 }
 
-// Stored in the 'worlds' collection under content.instruments
 export interface InstrumentDefinition {
     id: string;
     name: string;
     type: 'synth' | 'sampler';
     config: {
-        // --- THIS IS THE FIX ---
-        // Allow any standard Tone.js oscillator options by using a flexible record type.
         oscillator?: {
             type: SynthType;
-            [key: string]: any; // Allows properties like 'modulationType'
+            [key: string]: any; 
         };
-        // -------------------------
-        
         envelope?: EnvelopeDef;
         volume?: number;
         polyphony?: number;
     };
 }
-// Stored in the 'worlds' collection under content.music
+
 export interface LigatureTrack {
     id: string;
     name: string;
-    source: string; // The raw .lig text content
+    source: string; 
 }
 
 // --- RUNTIME TYPES (Parser Output) ---
@@ -45,26 +40,33 @@ export interface LigatureTrack {
 export interface ParsedTrack {
     config: {
         bpm: number;
-        grid: number;       // Slots per Quarter Note
-        timeSig: [number, number]; // [4, 4]
-        scaleRoot: string;  // "C"
-        scaleMode: string;  // "Minor"
-        swing: number;      // 0.0 to 1.0
+        grid: number;
+        timeSig: [number, number];
+        scaleRoot: string;
+        scaleMode: string;
+        swing: number;
+        humanize: number;
     };
-    instruments: Record<string, string>; // TrackName -> InstrumentID
-    definitions: Record<string, NoteGroup>; // @Alias -> [1, 3, 5]
+    instruments: Record<string, string>;
+    definitions: Record<string, NoteGroup>;
     patterns: Record<string, ParsedPattern>;
     playlist: PlaylistItem[];
 }
 
 export type PlaylistItem = PatternPlaylistItem | CommandPlaylistItem;
 
+// New: Defines volume/transpose changes
+export interface PatternModifier {
+    transpose: number;
+    volume: number;
+}
 
 export interface PatternPlaylistItem {
     type: 'pattern',
     patterns: {
         id: string;
         transposition: number;
+        // We can add 'volume' here later if needed for playlist-level mixing
     }[];
 }
 
@@ -76,23 +78,22 @@ export interface CommandPlaylistItem {
 
 export interface ParsedPattern {
     id: string;
-    duration: number; // In Quarter Notes
-    tracks: Record<string, SequenceEvent[]>; // Key is Instrument Name
+    duration: number;
+    tracks: Record<string, SequenceEvent[]>; 
+    trackModifiers: Record<string, PatternModifier>; // <--- THIS WAS MISSING
 }
 
-// A single event in time
 export interface SequenceEvent {
-    time: number;       // Absolute grid slot index (0, 1, 2...)
-    duration: number;   // Length in grid slots
-    notes: NoteDef[];   // Array to support polyphony/chords
+    time: number;       
+    duration: number;   
+    notes: NoteDef[];   
 }
 
 export interface NoteDef {
-    degree: number;       // 1-7
-    octaveShift: number;  // +1, -1, 0
-    accidental: number;   // +1 (#), -1 (b), 0
-    isNatural: boolean;   // True if % symbol used
+    degree: number;       
+    octaveShift: number;  
+    accidental: number;   
+    isNatural: boolean;   
 }
 
-// Intermediate type for Aliases
 export type NoteGroup = NoteDef[];

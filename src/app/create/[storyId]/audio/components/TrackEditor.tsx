@@ -5,6 +5,7 @@ import { LigatureTrack, InstrumentDefinition } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
+import PianoRoll from '@/components/admin/PianoRoll';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
@@ -151,11 +152,17 @@ export default function TrackEditor({
                     <ScribeEditor 
                         value={editorValue} 
                         onChange={handleSourceChange} 
-                        minHeight="500px"
+                        minHeight="400px" // Reduce slightly to fit piano roll
                         placeholder="[CONFIG]..."
                         language="ligature"
                     />
                 )}
+            </div>
+
+            {/* NEW VISUALIZER SECTION */}
+            <div style={{ minHeight: '150px', marginBottom: '1rem' }}>
+                <label className="form-label">Pattern Visualization</label>
+                <PianoRoll source={editorValue} />
             </div>
             
             <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666' }}>

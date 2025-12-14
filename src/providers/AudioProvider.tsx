@@ -21,17 +21,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     
-    // Refs for state that shouldn't trigger re-renders
+    const currentTrackRef = useRef<ParsedTrack | null>(null);
     const instrumentDefsRef = useRef<InstrumentDefinition[]>([]);
     const scheduledPartsRef = useRef<Tone.Part[]>([]);
+    const currentSourceRef = useRef<string>('');
+    const currentInstrumentsRef = useRef<InstrumentDefinition[]>([]);
     const noteCacheRef = useRef<Map<string, string>>(new Map());
     const activeSynthsRef = useRef<Set<Tone.PolySynth>>(new Set());
+    const limiterRef = useRef<Tone.Limiter | null>(null);
 
     const initializeAudio = async () => {
         if (isInitialized) return;
         try {
             await Tone.start();
-            // We only start the transport once and let it run forever.
+            limiterRef.current = new Tone.Limiter(-1).toDestination();
             if (Tone.Transport.state !== 'started') {
                 Tone.Transport.start();
             }
@@ -43,14 +46,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
 
     const stop = () => {
-        // This is now the primary way to stop music.
         Tone.Transport.stop();
         Tone.Transport.cancel(); 
         
-        scheduledPartsRef.current.forEach(part => part.dispose());
+        scheduledPartsRef.current.forEach(part => {
+            part.stop(0);
+            part.dispose();
+        });
         scheduledPartsRef.current = [];
 
-        activeSynthsRef.current.forEach(synth => synth.releaseAll());
+        activeSynthsRef.current.forEach(synth => {
+            synth.releaseAll();
+        });
         activeSynthsRef.current.clear();
         
         noteCacheRef.current.clear(); 
@@ -60,20 +67,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const playTrack = async (ligatureSource: string, instruments: InstrumentDefinition[]) => {
         if (!isInitialized) await initializeAudio();
         
-        stop(); // Ensure a completely clean slate before starting
-
         const parser = new LigatureParser();
         const track = parser.parse(ligatureSource);
         
+        stop(); 
+
+        currentSourceRef.current = ligatureSource;
+        currentInstrumentsRef.current = instruments;
+        currentTrackRef.current = track;
         instrumentDefsRef.current = instruments;
         
+        Tone.Transport.position = "0:0:0";
+        
         Tone.Transport.bpm.value = track.config.bpm;
-        Tone.Transport.position = "0:0:0"; // Always rewind
-
+        Tone.Transport.swing = track.config.swing || 0;
+        
         let totalBars = 0;
         let runningConfig = { ...track.config };
 
-        // --- NEW LOGIC: Build the entire sequence of parts ---
         for (const item of track.playlist) {
             if (item.type === 'command') {
                 Tone.Transport.scheduleOnce((time) => {
@@ -89,91 +100,87 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
             let longestPatternBars = 0;
 
-            item.patterns.forEach(patternEntry => {
-                const { id: patId, transposition } = patternEntry;
-
-                const pattern = track.patterns[patId];
+            // --- FIX IS HERE: Use item.patterns instead of item.patternIds ---
+            item.patterns.forEach((patData) => {
+                const pattern = track.patterns[patData.id];
                 if (!pattern) return;
 
                 const { grid, timeSig } = runningConfig;
                 const quarterNotesPerBeat = 4 / timeSig[1];
                 const slotsPerBeat = grid * quarterNotesPerBeat;
                 const slotsPerBar = slotsPerBeat * timeSig[0];
-
                 const patternBars = Math.ceil(pattern.duration / slotsPerBar);
                 longestPatternBars = Math.max(longestPatternBars, patternBars);
 
                 for (const [trackName, events] of Object.entries(pattern.tracks)) {
                     const instId = track.instruments[trackName];
                     const instDef = instrumentDefsRef.current.find(d => d.id === instId);
-                    if (!instDef) continue;
+                    
+                    if (instDef) {
+                        const synth = getOrMakeInstrument(instDef);
+                        if (limiterRef.current) {
+                            synth.disconnect();
+                            synth.connect(limiterRef.current);
+                        }
+                        activeSynthsRef.current.add(synth);
 
-                    const synth = getOrMakeInstrument(instDef);
-                    activeSynthsRef.current.add(synth);
+                        const toneEvents = events.map(event => {
+                            const noteNames = event.notes.map(n => 
+                                resolveAndCacheNote(
+                                    n,
+                                    runningConfig.scaleRoot,
+                                    runningConfig.scaleMode,
+                                    patData.transposition // <-- Use per-pattern transposition
+                                )
+                            );
+                            
+                            const timeInSlots = event.time;
+                            const bar = Math.floor(timeInSlots / slotsPerBar);
+                            const beat = Math.floor((timeInSlots % slotsPerBar) / slotsPerBeat);
+                            const sixteenth = (timeInSlots % slotsPerBeat) / (grid / 4);
+                            
+                            const durationSeconds = event.duration * (60 / runningConfig.bpm / (runningConfig.grid / 4));
+                            
+                            return {
+                                time: `${totalBars + bar}:${beat}:${sixteenth}`,
+                                duration: durationSeconds,
+                                notes: noteNames,
+                            };
+                        });
+                        
+                        const part = new Tone.Part((time, value) => {
+                            // Simple Humanization Logic
+                            const humanizeAmt = runningConfig.humanize || 0;
+                            let offset = 0;
+                            let velocity = 1;
 
-                    const toneEvents = events.map(event => {
-                        const noteNames = event.notes.map(n =>
-                            resolveAndCacheNote(
-                                n,
-                                runningConfig.scaleRoot,
-                                runningConfig.scaleMode,
-                                transposition // ✅ per-pattern
-                            )
-                        );
-
-                        const timeInSlots = event.time;
-                        const bar = Math.floor(timeInSlots / slotsPerBar);
-                        const beat = Math.floor((timeInSlots % slotsPerBar) / slotsPerBeat);
-                        const sixteenth = (timeInSlots % slotsPerBeat) / (grid / 4);
-
-                        const durationSeconds =
-                            event.duration * (60 / runningConfig.bpm / (runningConfig.grid / 4));
-
-                        return {
-                            time: `${totalBars + bar}:${beat}:${sixteenth}`,
-                            duration: durationSeconds,
-                            notes: noteNames
-                        };
-                    });
-
-                    const part = new Tone.Part((time, value) => {
-                        synth.triggerAttackRelease(value.notes, value.duration, time);
-                    }, toneEvents).start(0);
-
-                    scheduledPartsRef.current.push(part);
+                            if (humanizeAmt > 0) {
+                                offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
+                                velocity = 1 - (Math.random() * 0.2 * humanizeAmt);
+                            }
+                            
+                            synth.triggerAttackRelease(value.notes, value.duration, time + offset, velocity);
+                        }, toneEvents).start(0);
+                        
+                        scheduledPartsRef.current.push(part);
+                    }
                 }
             });
-
             totalBars += longestPatternBars;
         }
 
-        // --- NEW LOOPING LOGIC ---
-        // Set the transport to loop over the entire calculated length of the song.
         Tone.Transport.loop = true;
         Tone.Transport.loopEnd = `${totalBars}:0:0`;
-        // -------------------------
-
         Tone.Transport.start();
         setIsPlaying(true);
     };
 
-    const resolveAndCacheNote = (
-        noteDef: NoteDef, 
-        root: string, 
-        mode: string,
-        transpose: number
-    ): string => {
+    const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number): string => {
         const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}`;
         if (noteCacheRef.current.has(key)) {
             return noteCacheRef.current.get(key)!;
         }
-        const resolved = resolveNote(
-            noteDef.degree + transpose,
-            root, mode,
-            noteDef.octaveShift,
-            noteDef.accidental,
-            noteDef.isNatural
-        );
+        const resolved = resolveNote(noteDef.degree + transpose, root, mode, noteDef.octaveShift, noteDef.accidental, noteDef.isNatural);
         noteCacheRef.current.set(key, resolved);
         return resolved;
     };
