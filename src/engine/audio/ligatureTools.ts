@@ -277,3 +277,181 @@ function generatePatternHash(pattern: ParsedPattern, similarity: 'exact' | 'rhyt
     }
     return hashString;
 }
+
+export function rescaleBPM(source: string, factor: number, mockQualities: PlayerQualities = {}): string {
+    if (factor <= 0) return source; // Avoid invalid scaling
+
+    const parser = new LigatureParser();
+    let parsedTrack = parser.parse(source, mockQualities);
+
+    // 1. Rescale the BPM in the config
+    parsedTrack.config.bpm = Math.round(parsedTrack.config.bpm * factor);
+
+    // 2. Rescale all timings in every pattern
+    for (const patternId in parsedTrack.patterns) {
+        const pattern = parsedTrack.patterns[patternId];
+        
+        // Scale the total duration of the pattern
+        pattern.duration *= factor;
+
+        // Scale the time and duration of every single event
+        for (const trackName in pattern.tracks) {
+            pattern.tracks[trackName].forEach(event => {
+                event.time *= factor;
+                event.duration *= factor;
+            });
+        }
+    }
+
+    const finalSource = serializeParsedTrack(parsedTrack);
+    return formatLigatureSource(finalSource);
+}
+
+export function polishLigatureSource(source: string, mockQualities: PlayerQualities = {}): string {
+    const parser = new LigatureParser();
+    let parsedTrack = parser.parse(source, mockQualities);
+
+    // Run the cleanup tasks in sequence
+    parsedTrack = cleanupDefinitions(parsedTrack);
+    parsedTrack = pruneUnusedInstruments(parsedTrack);
+    parsedTrack = renamePatterns(parsedTrack);
+
+    const finalSource = serializeParsedTrack(parsedTrack);
+    return formatLigatureSource(finalSource);
+}
+
+// --- NEW, EXPANDED DICTIONARY ---
+const INTERVAL_TO_CHORD_NAME: Record<string, string> = {
+    // Dyads (2-note chords)
+    '2': 'M2', '3': 'm3', '4': 'M3', '5': 'P4', '6': 'tri', '7': 'P5',
+    '8': 'm6', '9': 'M6', '10': 'm7', '11': 'M7', '12': 'oct', '0': 'uni',
+    // Triads (3-note chords)
+    '4,7': 'maj', '3,7': 'min', '3,6': 'dim', '4,8': 'aug',
+    '5,7': 'sus4', '2,7': 'sus2',
+    // Sevenths (4-note chords)
+    '4,7,10': '7', '3,7,10': 'm7', '4,7,11': 'maj7',
+    '3,6,9': 'dim7', '3,6,10': 'm7b5' // half-diminished
+};
+
+/**
+ * A new, comprehensive function that first deduplicates and then renames chord definitions,
+ * now with inversion detection.
+ */
+function cleanupDefinitions(track: ParsedTrack): ParsedTrack {
+    if (!track.definitions || Object.keys(track.definitions).length === 0) {
+        return track;
+    }
+
+    const modeKey = track.config.scaleMode.charAt(0).toUpperCase() + track.config.scaleMode.slice(1);
+    const scaleIntervals = MODES[modeKey] || MODES['Major'];
+    
+    // --- PASS 1: Deduplicate definitions to find unique chord shapes ---
+    const canonicalDefinitions = new Map<string, NoteDef[]>(); // Map<signature, notes>
+    for (const notes of Object.values(track.definitions)) {
+        const signature = getNoteSignature(notes);
+        if (!canonicalDefinitions.has(signature)) {
+            canonicalDefinitions.set(signature, notes);
+        }
+    }
+
+    // --- PASS 2: Rename the unique shapes with inversion detection ---
+    const finalDefinitions: Record<string, NoteDef[]> = {};
+    const nameCollisionCounter: Record<string, number> = {};
+    let unrecognizedCounter = 1;
+
+    for (const notes of canonicalDefinitions.values()) {
+        let bestName: string | null = null;
+
+        // Inversion Analysis Loop: Try each note as a potential root
+        for (const potentialRoot of notes) {
+            const rootSemitone = degreeToSemitone(potentialRoot.degree, scaleIntervals) + (potentialRoot.octaveShift * 12) + potentialRoot.accidental;
+
+            const intervals = notes
+                .filter(n => n !== potentialRoot) // Exclude the root itself
+                .map(n => {
+                    const noteSemitone = degreeToSemitone(n.degree, scaleIntervals) + (n.octaveShift * 12) + n.accidental;
+                    // Normalize interval to be within an octave and positive
+                    return ((noteSemitone - rootSemitone) % 12 + 12) % 12;
+                })
+                .sort((a, b) => a - b);
+            
+            // Unison (e.g., [5,5]) would have no intervals. Add a '0' to represent it.
+            if (notes.length > 1 && intervals.length === 0) {
+                 intervals.push(0);
+            }
+            
+            const intervalSignature = intervals.join(',');
+            const quality = INTERVAL_TO_CHORD_NAME[intervalSignature];
+
+            if (quality) {
+                const rootName = `${potentialRoot.degree}`.replace(/['#,b%]/g, '');
+                bestName = `@${rootName}${quality}`;
+                break; // Found a match, stop trying other inversions
+            }
+        }
+
+        // If no match was found after trying all inversions, assign a fallback name
+        if (!bestName) {
+            bestName = `@chord_unrec_${unrecognizedCounter++}`;
+        }
+        
+        // Handle potential naming collisions (e.g., two different chords are named @1maj)
+        if (finalDefinitions[bestName]) {
+            nameCollisionCounter[bestName] = (nameCollisionCounter[bestName] || 1) + 1;
+            bestName = `${bestName}_${nameCollisionCounter[bestName]}`;
+        }
+
+        finalDefinitions[bestName] = notes;
+    }
+    
+    track.definitions = finalDefinitions;
+    return track;
+}
+
+
+function pruneUnusedInstruments(track: ParsedTrack): ParsedTrack {
+    const usedTrackNames = new Set<string>();
+    Object.values(track.patterns).forEach(pattern => {
+        Object.keys(pattern.tracks).forEach(trackName => usedTrackNames.add(trackName));
+    });
+
+    const newInstruments: Record<string, any> = {};
+    for (const instrumentName of Object.keys(track.instruments)) {
+        if (usedTrackNames.has(instrumentName)) {
+            newInstruments[instrumentName] = track.instruments[instrumentName];
+        }
+    }
+    track.instruments = newInstruments;
+    return track;
+}
+
+function renamePatterns(track: ParsedTrack): ParsedTrack {
+    const renameMap = new Map<string, string>();
+    const instrumentCounters: Record<string, number> = {};
+    const newPatterns: Record<string, ParsedPattern> = {};
+    for (const playlistItem of track.playlist) {
+        if (playlistItem.type !== 'pattern') continue;
+        for (const pat of playlistItem.patterns) {
+            const oldId = pat.id;
+            if (renameMap.has(oldId)) {
+                pat.id = renameMap.get(oldId)!;
+            } else {
+                const pattern = track.patterns[oldId];
+                if (!pattern) continue;
+                const baseName = Object.keys(pattern.tracks)[0]?.replace(/_L\d+$/, '') || 'pattern';
+                instrumentCounters[baseName] = (instrumentCounters[baseName] || 0) + 1;
+                const newId = `${baseName}_${instrumentCounters[baseName]}`;
+                renameMap.set(oldId, newId);
+                pat.id = newId;
+            }
+        }
+    }
+    for (const [oldId, newId] of renameMap.entries()) {
+        const patternData = track.patterns[oldId];
+        if (patternData) {
+            newPatterns[newId] = { ...patternData, id: newId };
+        }
+    }
+    track.patterns = newPatterns;
+    return track;
+}
