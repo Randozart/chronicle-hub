@@ -108,6 +108,7 @@ export class LigatureParser {
                         if (['d', 'dec', 'decay'].includes(k)) overrides.decay = v;
                         if (['s', 'sus', 'sustain'].includes(k)) overrides.sustain = v;
                         if (['r', 'rel', 'release'].includes(k)) overrides.release = v;
+                        if (['o', 'oct', 'octave'].includes(k)) overrides.octaveOffset = v;
                     }
                 }
             });

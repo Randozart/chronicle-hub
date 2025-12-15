@@ -751,501 +751,3388 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     //         volume: -6
     //     }
     // }
-    'bass_electric': {
-        'id': 'bass_electric',
-        'name': 'Bass Electric',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/bass-electric/',
-            'urls': {
-                'E2': 'E2.mp3',
-                'E3': 'E3.mp3',
-                'E4': 'E4.mp3',
-                'G2': 'G2.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3'
+    bass_electric: {
+        id: 'bass_electric',
+        name: 'Bass Electric',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/bass-electric/',
+            urls: {
+                E2: 'E2.mp3',
+                E3: 'E3.mp3',
+                E4: 'E4.mp3',
+                G2: 'G2.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'bassoon': {
-        'id': 'bassoon',
-        'name': 'Bassoon',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/bassoon/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'E4': 'E4.mp3',
-                'G2': 'G2.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3'
+    bassoon: {
+        id: 'bassoon',
+        name: 'Bassoon',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/bassoon/',
+            urls: {
+                A2: 'A2.mp3',
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                E4: 'E4.mp3',
+                G2: 'G2.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'cello': {
-        'id': 'cello',
-        'name': 'Cello',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/cello/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'B2': 'B2.mp3',
-                'B3': 'B3.mp3',
-                'B4': 'B4.mp3',
-                'C2': 'C2.mp3',
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'D2': 'D2.mp3',
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'E2': 'E2.mp3',
-                'E3': 'E3.mp3',
-                'E4': 'E4.mp3',
-                'F2': 'F2.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3',
-                'G2': 'G2.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3'
+    cello: {
+        id: 'cello',
+        name: 'Cello',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/cello/',
+            urls: {
+                A2: 'A2.mp3',
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                B2: 'B2.mp3',
+                B3: 'B3.mp3',
+                B4: 'B4.mp3',
+                C2: 'C2.mp3',
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                D2: 'D2.mp3',
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                E2: 'E2.mp3',
+                E3: 'E3.mp3',
+                E4: 'E4.mp3',
+                F2: 'F2.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3',
+                G2: 'G2.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'clarinet': {
-        'id': 'clarinet',
-        'name': 'Clarinet',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/clarinet/',
-            'urls': {
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'D5': 'D5.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3',
-                'F5': 'F5.mp3'
+    clarinet: {
+        id: 'clarinet',
+        name: 'Clarinet',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/clarinet/',
+            urls: {
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                D5: 'D5.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3',
+                F5: 'F5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'contrabass': {
-        'id': 'contrabass',
-        'name': 'Contrabass',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/contrabass/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'B3': 'B3.mp3',
-                'C2': 'C2.mp3',
-                'D2': 'D2.mp3',
-                'E2': 'E2.mp3',
-                'E3': 'E3.mp3'
+    contrabass: {
+        id: 'contrabass',
+        name: 'Contrabass',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/contrabass/',
+            urls: {
+                A2: 'A2.mp3',
+                B3: 'B3.mp3',
+                C2: 'C2.mp3',
+                D2: 'D2.mp3',
+                E2: 'E2.mp3',
+                E3: 'E3.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'flute': {
-        'id': 'flute',
-        'name': 'Flute',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/flute/',
-            'urls': {
-                'A4': 'A4.mp3',
-                'A5': 'A5.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'E4': 'E4.mp3',
-                'E5': 'E5.mp3'
+    flute: {
+        id: 'flute',
+        name: 'Flute',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/flute/',
+            urls: {
+                A4: 'A4.mp3',
+                A5: 'A5.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                E4: 'E4.mp3',
+                E5: 'E5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'guitar_acoustic': {
-        'id': 'guitar_acoustic',
-        'name': 'Guitar Acoustic',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/guitar-acoustic/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'B2': 'B2.mp3',
-                'B3': 'B3.mp3',
-                'B4': 'B4.mp3',
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'D2': 'D2.mp3',
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'D5': 'D5.mp3',
-                'E2': 'E2.mp3',
-                'E3': 'E3.mp3',
-                'E4': 'E4.mp3',
-                'F2': 'F2.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3',
-                'G2': 'G2.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3'
+    guitar_acoustic: {
+        id: 'guitar_acoustic',
+        name: 'Guitar Acoustic',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/guitar-acoustic/',
+            urls: {
+                A2: 'A2.mp3',
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                B2: 'B2.mp3',
+                B3: 'B3.mp3',
+                B4: 'B4.mp3',
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                D2: 'D2.mp3',
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                D5: 'D5.mp3',
+                E2: 'E2.mp3',
+                E3: 'E3.mp3',
+                E4: 'E4.mp3',
+                F2: 'F2.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3',
+                G2: 'G2.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'guitar_electric': {
-        'id': 'guitar_electric',
-        'name': 'Guitar Electric',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/guitar-electric/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'A5': 'A5.mp3',
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'E2': 'E2.mp3'
+    guitar_electric: {
+        id: 'guitar_electric',
+        name: 'Guitar Electric',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/guitar-electric/',
+            urls: {
+                A2: 'A2.mp3',
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                A5: 'A5.mp3',
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                E2: 'E2.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'harmonium': {
-        'id': 'harmonium',
-        'name': 'Harmonium',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/harmonium/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'B2': 'B2.mp3',
-                'B3': 'B3.mp3',
-                'B4': 'B4.mp3',
-                'C2': 'C2.mp3',
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'D2': 'D2.mp3',
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'D5': 'D5.mp3',
-                'E2': 'E2.mp3',
-                'E3': 'E3.mp3',
-                'E4': 'E4.mp3',
-                'F2': 'F2.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3',
-                'G2': 'G2.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3'
+    harmonium: {
+        id: 'harmonium',
+        name: 'Harmonium',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/harmonium/',
+            urls: {
+                A2: 'A2.mp3',
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                B2: 'B2.mp3',
+                B3: 'B3.mp3',
+                B4: 'B4.mp3',
+                C2: 'C2.mp3',
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                D2: 'D2.mp3',
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                D5: 'D5.mp3',
+                E2: 'E2.mp3',
+                E3: 'E3.mp3',
+                E4: 'E4.mp3',
+                F2: 'F2.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3',
+                G2: 'G2.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'harp': {
-        'id': 'harp',
-        'name': 'Harp',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/harp/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A4': 'A4.mp3',
-                'B3': 'B3.mp3',
-                'B5': 'B5.mp3',
-                'C3': 'C3.mp3',
-                'C5': 'C5.mp3',
-                'D2': 'D2.mp3',
-                'D4': 'D4.mp3',
-                'E3': 'E3.mp3',
-                'E5': 'E5.mp3',
-                'F2': 'F2.mp3',
-                'F4': 'F4.mp3',
-                'G3': 'G3.mp3',
-                'G5': 'G5.mp3'
+    harp: {
+        id: 'harp',
+        name: 'Harp',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/harp/',
+            urls: {
+                A2: 'A2.mp3',
+                A4: 'A4.mp3',
+                B3: 'B3.mp3',
+                B5: 'B5.mp3',
+                C3: 'C3.mp3',
+                C5: 'C5.mp3',
+                D2: 'D2.mp3',
+                D4: 'D4.mp3',
+                E3: 'E3.mp3',
+                E5: 'E5.mp3',
+                F2: 'F2.mp3',
+                F4: 'F4.mp3',
+                G3: 'G3.mp3',
+                G5: 'G5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'organ': {
-        'id': 'organ',
-        'name': 'Organ',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/organ/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'A5': 'A5.mp3',
-                'C2': 'C2.mp3',
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3'
+    organ: {
+        id: 'organ',
+        name: 'Organ',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/organ/',
+            urls: {
+                A2: 'A2.mp3',
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                A5: 'A5.mp3',
+                C2: 'C2.mp3',
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'piano': {
-        'id': 'piano',
-        'name': 'Piano',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/piano/',
-            'urls': {
-                'A2': 'A2.mp3',
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'A5': 'A5.mp3',
-                'B2': 'B2.mp3',
-                'B3': 'B3.mp3',
-                'B4': 'B4.mp3',
-                'B5': 'B5.mp3',
-                'C2': 'C2.mp3',
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'D2': 'D2.mp3',
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'D5': 'D5.mp3',
-                'E2': 'E2.mp3',
-                'E3': 'E3.mp3',
-                'E4': 'E4.mp3',
-                'E5': 'E5.mp3',
-                'F2': 'F2.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3',
-                'F5': 'F5.mp3',
-                'G2': 'G2.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3',
-                'G5': 'G5.mp3'
+    piano: {
+        id: 'piano',
+        name: 'Piano',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/piano/',
+            urls: {
+                A2: 'A2.mp3',
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                A5: 'A5.mp3',
+                B2: 'B2.mp3',
+                B3: 'B3.mp3',
+                B4: 'B4.mp3',
+                B5: 'B5.mp3',
+                C2: 'C2.mp3',
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                D2: 'D2.mp3',
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                D5: 'D5.mp3',
+                E2: 'E2.mp3',
+                E3: 'E3.mp3',
+                E4: 'E4.mp3',
+                E5: 'E5.mp3',
+                F2: 'F2.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3',
+                F5: 'F5.mp3',
+                G2: 'G2.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3',
+                G5: 'G5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'saxophone': {
-        'id': 'saxophone',
-        'name': 'Saxophone',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/saxophone/',
-            'urls': {
-                'A4': 'A4.mp3',
-                'A5': 'A5.mp3',
-                'B3': 'B3.mp3',
-                'B4': 'B4.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'D5': 'D5.mp3',
-                'E3': 'E3.mp3',
-                'E4': 'E4.mp3',
-                'E5': 'E5.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3',
-                'F5': 'F5.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3',
-                'G5': 'G5.mp3'
+    saxophone: {
+        id: 'saxophone',
+        name: 'Saxophone',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/saxophone/',
+            urls: {
+                A4: 'A4.mp3',
+                A5: 'A5.mp3',
+                B3: 'B3.mp3',
+                B4: 'B4.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                D5: 'D5.mp3',
+                E3: 'E3.mp3',
+                E4: 'E4.mp3',
+                E5: 'E5.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3',
+                F5: 'F5.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3',
+                G5: 'G5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'trombone': {
-        'id': 'trombone',
-        'name': 'Trombone',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/trombone/',
-            'urls': {
-                'C3': 'C3.mp3',
-                'C4': 'C4.mp3',
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'F2': 'F2.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3'
+    trombone: {
+        id: 'trombone',
+        name: 'Trombone',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/trombone/',
+            urls: {
+                C3: 'C3.mp3',
+                C4: 'C4.mp3',
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                F2: 'F2.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'trumpet': {
-        'id': 'trumpet',
-        'name': 'Trumpet',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/trumpet/',
-            'urls': {
-                'A3': 'A3.mp3',
-                'A5': 'A5.mp3',
-                'C4': 'C4.mp3',
-                'D5': 'D5.mp3',
-                'F3': 'F3.mp3',
-                'F4': 'F4.mp3',
-                'F5': 'F5.mp3',
-                'G4': 'G4.mp3'
+    trumpet: {
+        id: 'trumpet',
+        name: 'Trumpet',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/trumpet/',
+            urls: {
+                A3: 'A3.mp3',
+                A5: 'A5.mp3',
+                C4: 'C4.mp3',
+                D5: 'D5.mp3',
+                F3: 'F3.mp3',
+                F4: 'F4.mp3',
+                F5: 'F5.mp3',
+                G4: 'G4.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'tuba': {
-        'id': 'tuba',
-        'name': 'Tuba',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/tuba/',
-            'urls': {
-                'D3': 'D3.mp3',
-                'D4': 'D4.mp3',
-                'F2': 'F2.mp3',
-                'F3': 'F3.mp3'
+    tuba: {
+        id: 'tuba',
+        name: 'Tuba',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/tuba/',
+            urls: {
+                D3: 'D3.mp3',
+                D4: 'D4.mp3',
+                F2: 'F2.mp3',
+                F3: 'F3.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'violin': {
-        'id': 'violin',
-        'name': 'Violin',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/violin/',
-            'urls': {
-                'A3': 'A3.mp3',
-                'A4': 'A4.mp3',
-                'A5': 'A5.mp3',
-                'C4': 'C4.mp3',
-                'C5': 'C5.mp3',
-                'E4': 'E4.mp3',
-                'E5': 'E5.mp3',
-                'G3': 'G3.mp3',
-                'G4': 'G4.mp3',
-                'G5': 'G5.mp3'
+    violin: {
+        id: 'violin',
+        name: 'Violin',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/violin/',
+            urls: {
+                A3: 'A3.mp3',
+                A4: 'A4.mp3',
+                A5: 'A5.mp3',
+                C4: 'C4.mp3',
+                C5: 'C5.mp3',
+                E4: 'E4.mp3',
+                E5: 'E5.mp3',
+                G3: 'G3.mp3',
+                G4: 'G4.mp3',
+                G5: 'G5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
         }
     },
-    'xylophone': {
-        'id': 'xylophone',
-        'name': 'Xylophone',
-        'category': 'ToneJS Instruments',
-        'type': 'sampler',
-        'config': {
-            'baseUrl': '/sounds/standard/tonejs/xylophone/',
-            'urls': {
-                'C5': 'C5.mp3',
-                'G4': 'G4.mp3',
-                'G5': 'G5.mp3'
+    xylophone: {
+        id: 'xylophone',
+        name: 'Xylophone',
+        category: 'ToneJS Instruments',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tonejs/xylophone/',
+            urls: {
+                C5: 'C5.mp3',
+                G4: 'G4.mp3',
+                G5: 'G5.mp3'
             },
-            'envelope': {
-                'attack': 0.05,
-                'release': 1
+            
+            envelope: {
+                attack: 0.05,
+                release: 1
             },
-            'volume': -8
+            volume: -8
+        }
+    },
+    accordion: {
+        id: 'accordion',
+        name: 'Accordion',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/accordion-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    acoustic_bass: {
+        id: 'acoustic_bass',
+        name: 'Acoustic Bass',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/acoustic_bass-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    acoustic_grand_piano: {
+        id: 'acoustic_grand_piano',
+        name: 'Acoustic Grand Piano',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/acoustic_grand_piano-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    acoustic_guitar_nylon: {
+        id: 'acoustic_guitar_nylon',
+        name: 'Acoustic Guitar Nylon',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/acoustic_guitar_nylon-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    acoustic_guitar_steel: {
+        id: 'acoustic_guitar_steel',
+        name: 'Acoustic Guitar Steel',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/acoustic_guitar_steel-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    agogo: {
+        id: 'agogo',
+        name: 'Agogo',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/agogo-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    alto_sax: {
+        id: 'alto_sax',
+        name: 'Alto Sax',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/alto_sax-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    applause: {
+        id: 'applause',
+        name: 'Applause',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/applause-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    bagpipe: {
+        id: 'bagpipe',
+        name: 'Bagpipe',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/bagpipe-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    banjo: {
+        id: 'banjo',
+        name: 'Banjo',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/banjo-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    baritone_sax: {
+        id: 'baritone_sax',
+        name: 'Baritone Sax',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/baritone_sax-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    bird_tweet: {
+        id: 'bird_tweet',
+        name: 'Bird Tweet',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/bird_tweet-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    blown_bottle: {
+        id: 'blown_bottle',
+        name: 'Blown Bottle',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/blown_bottle-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    brass_section: {
+        id: 'brass_section',
+        name: 'Brass Section',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/brass_section-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    breath_noise: {
+        id: 'breath_noise',
+        name: 'Breath Noise',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/breath_noise-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    bright_acoustic_piano: {
+        id: 'bright_acoustic_piano',
+        name: 'Bright Acoustic Piano',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/bright_acoustic_piano-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    celesta: {
+        id: 'celesta',
+        name: 'Celesta',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/celesta-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    church_organ: {
+        id: 'church_organ',
+        name: 'Church Organ',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/church_organ-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    clavinet: {
+        id: 'clavinet',
+        name: 'Clavinet',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/clavinet-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    distortion_guitar: {
+        id: 'distortion_guitar',
+        name: 'Distortion Guitar',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/distortion_guitar-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    drawbar_organ: {
+        id: 'drawbar_organ',
+        name: 'Drawbar Organ',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/drawbar_organ-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    dulcimer: {
+        id: 'dulcimer',
+        name: 'Dulcimer',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/dulcimer-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    electric_bass_finger: {
+        id: 'electric_bass_finger',
+        name: 'Electric Bass Finger',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/electric_bass_finger-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    electric_bass_pick: {
+        id: 'electric_bass_pick',
+        name: 'Electric Bass Pick',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/electric_bass_pick-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    electric_grand_piano: {
+        id: 'electric_grand_piano',
+        name: 'Electric Grand Piano',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/electric_grand_piano-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    electric_piano_1: {
+        id: 'electric_piano_1',
+        name: 'Electric Piano 1',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/electric_piano_1-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    electric_piano_2: {
+        id: 'electric_piano_2',
+        name: 'Electric Piano 2',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/electric_piano_2-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    english_horn: {
+        id: 'english_horn',
+        name: 'English Horn',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/english_horn-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fiddle: {
+        id: 'fiddle',
+        name: 'Fiddle',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fiddle-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fretless_bass: {
+        id: 'fretless_bass',
+        name: 'Fretless Bass',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fretless_bass-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_1_rain: {
+        id: 'fx_1_rain',
+        name: 'Fx 1 Rain',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_1_rain-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_2_soundtrack: {
+        id: 'fx_2_soundtrack',
+        name: 'Fx 2 Soundtrack',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_2_soundtrack-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_3_crystal: {
+        id: 'fx_3_crystal',
+        name: 'Fx 3 Crystal',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_3_crystal-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_4_atmosphere: {
+        id: 'fx_4_atmosphere',
+        name: 'Fx 4 Atmosphere',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_4_atmosphere-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_5_brightness: {
+        id: 'fx_5_brightness',
+        name: 'Fx 5 Brightness',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_5_brightness-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_6_goblins: {
+        id: 'fx_6_goblins',
+        name: 'Fx 6 Goblins',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_6_goblins-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_7_echoes: {
+        id: 'fx_7_echoes',
+        name: 'Fx 7 Echoes',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_7_echoes-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    fx_8_scifi: {
+        id: 'fx_8_scifi',
+        name: 'Fx 8 Scifi',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/fx_8_scifi-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    glockenspiel: {
+        id: 'glockenspiel',
+        name: 'Glockenspiel',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/glockenspiel-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    guitar_fret_noise: {
+        id: 'guitar_fret_noise',
+        name: 'Guitar Fret Noise',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/guitar_fret_noise-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    guitar_harmonics: {
+        id: 'guitar_harmonics',
+        name: 'Guitar Harmonics',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/guitar_harmonics-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    gunshot: {
+        id: 'gunshot',
+        name: 'Gunshot',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/gunshot-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    harmonica: {
+        id: 'harmonica',
+        name: 'Harmonica',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/harmonica-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    harpsichord: {
+        id: 'harpsichord',
+        name: 'Harpsichord',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/harpsichord-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    helicopter: {
+        id: 'helicopter',
+        name: 'Helicopter',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/helicopter-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    honkytonk_piano: {
+        id: 'honkytonk_piano',
+        name: 'Honkytonk Piano',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/honkytonk_piano-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    kalimba: {
+        id: 'kalimba',
+        name: 'Kalimba',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/kalimba-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    koto: {
+        id: 'koto',
+        name: 'Koto',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/koto-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_1_square: {
+        id: 'lead_1_square',
+        name: 'Lead 1 Square',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_1_square-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_2_sawtooth: {
+        id: 'lead_2_sawtooth',
+        name: 'Lead 2 Sawtooth',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_2_sawtooth-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_3_calliope: {
+        id: 'lead_3_calliope',
+        name: 'Lead 3 Calliope',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_3_calliope-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_4_chiff: {
+        id: 'lead_4_chiff',
+        name: 'Lead 4 Chiff',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_4_chiff-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_5_charang: {
+        id: 'lead_5_charang',
+        name: 'Lead 5 Charang',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_5_charang-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_6_voice: {
+        id: 'lead_6_voice',
+        name: 'Lead 6 Voice',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_6_voice-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_7_fifths: {
+        id: 'lead_7_fifths',
+        name: 'Lead 7 Fifths',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_7_fifths-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    lead_8_bass__lead: {
+        id: 'lead_8_bass__lead',
+        name: 'Lead 8 Bass  Lead',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/lead_8_bass__lead-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    marimba: {
+        id: 'marimba',
+        name: 'Marimba',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/marimba-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    melodic_tom: {
+        id: 'melodic_tom',
+        name: 'Melodic Tom',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/melodic_tom-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    music_box: {
+        id: 'music_box',
+        name: 'Music Box',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/music_box-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    muted_trumpet: {
+        id: 'muted_trumpet',
+        name: 'Muted Trumpet',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/muted_trumpet-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    oboe: {
+        id: 'oboe',
+        name: 'Oboe',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/oboe-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    ocarina: {
+        id: 'ocarina',
+        name: 'Ocarina',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/ocarina-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    orchestra_hit: {
+        id: 'orchestra_hit',
+        name: 'Orchestra Hit',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/orchestra_hit-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    orchestral_harp: {
+        id: 'orchestral_harp',
+        name: 'Orchestral Harp',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/orchestral_harp-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    overdriven_guitar: {
+        id: 'overdriven_guitar',
+        name: 'Overdriven Guitar',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/overdriven_guitar-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_1_new_age: {
+        id: 'pad_1_new_age',
+        name: 'Pad 1 New Age',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_1_new_age-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_2_warm: {
+        id: 'pad_2_warm',
+        name: 'Pad 2 Warm',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_2_warm-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_3_polysynth: {
+        id: 'pad_3_polysynth',
+        name: 'Pad 3 Polysynth',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_3_polysynth-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_4_choir: {
+        id: 'pad_4_choir',
+        name: 'Pad 4 Choir',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_4_choir-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_5_bowed: {
+        id: 'pad_5_bowed',
+        name: 'Pad 5 Bowed',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_5_bowed-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_6_metallic: {
+        id: 'pad_6_metallic',
+        name: 'Pad 6 Metallic',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_6_metallic-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_7_halo: {
+        id: 'pad_7_halo',
+        name: 'Pad 7 Halo',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_7_halo-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pad_8_sweep: {
+        id: 'pad_8_sweep',
+        name: 'Pad 8 Sweep',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pad_8_sweep-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pan_flute: {
+        id: 'pan_flute',
+        name: 'Pan Flute',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pan_flute-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    percussive_organ: {
+        id: 'percussive_organ',
+        name: 'Percussive Organ',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/percussive_organ-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    pizzicato_strings: {
+        id: 'pizzicato_strings',
+        name: 'Pizzicato Strings',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/pizzicato_strings-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    recorder: {
+        id: 'recorder',
+        name: 'Recorder',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/recorder-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    reed_organ: {
+        id: 'reed_organ',
+        name: 'Reed Organ',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/reed_organ-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    reverse_cymbal: {
+        id: 'reverse_cymbal',
+        name: 'Reverse Cymbal',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/reverse_cymbal-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    rock_organ: {
+        id: 'rock_organ',
+        name: 'Rock Organ',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/rock_organ-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    seashore: {
+        id: 'seashore',
+        name: 'Seashore',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/seashore-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    shakuhachi: {
+        id: 'shakuhachi',
+        name: 'Shakuhachi',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/shakuhachi-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    shamisen: {
+        id: 'shamisen',
+        name: 'Shamisen',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/shamisen-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    shanai: {
+        id: 'shanai',
+        name: 'Shanai',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/shanai-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    sitar: {
+        id: 'sitar',
+        name: 'Sitar',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/sitar-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    slap_bass_1: {
+        id: 'slap_bass_1',
+        name: 'Slap Bass 1',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/slap_bass_1-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    slap_bass_2: {
+        id: 'slap_bass_2',
+        name: 'Slap Bass 2',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/slap_bass_2-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    soprano_sax: {
+        id: 'soprano_sax',
+        name: 'Soprano Sax',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/soprano_sax-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    steel_drums: {
+        id: 'steel_drums',
+        name: 'Steel Drums',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/steel_drums-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    string_ensemble_1: {
+        id: 'string_ensemble_1',
+        name: 'String Ensemble 1',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/string_ensemble_1-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    string_ensemble_2: {
+        id: 'string_ensemble_2',
+        name: 'String Ensemble 2',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/string_ensemble_2-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_bass_1: {
+        id: 'synth_bass_1',
+        name: 'Synth Bass 1',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_bass_1-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_bass_2: {
+        id: 'synth_bass_2',
+        name: 'Synth Bass 2',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_bass_2-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_brass_1: {
+        id: 'synth_brass_1',
+        name: 'Synth Brass 1',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_brass_1-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_brass_2: {
+        id: 'synth_brass_2',
+        name: 'Synth Brass 2',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_brass_2-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_choir: {
+        id: 'synth_choir',
+        name: 'Synth Choir',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_choir-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_drum: {
+        id: 'synth_drum',
+        name: 'Synth Drum',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_drum-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_strings_1: {
+        id: 'synth_strings_1',
+        name: 'Synth Strings 1',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_strings_1-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    synth_strings_2: {
+        id: 'synth_strings_2',
+        name: 'Synth Strings 2',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/synth_strings_2-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    taiko_drum: {
+        id: 'taiko_drum',
+        name: 'Taiko Drum',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/taiko_drum-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    tango_accordion: {
+        id: 'tango_accordion',
+        name: 'Tango Accordion',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/tango_accordion-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    telephone_ring: {
+        id: 'telephone_ring',
+        name: 'Telephone Ring',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/telephone_ring-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    tenor_sax: {
+        id: 'tenor_sax',
+        name: 'Tenor Sax',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/tenor_sax-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    timpani: {
+        id: 'timpani',
+        name: 'Timpani',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/timpani-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    tinkle_bell: {
+        id: 'tinkle_bell',
+        name: 'Tinkle Bell',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/tinkle_bell-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    tubular_bells: {
+        id: 'tubular_bells',
+        name: 'Tubular Bells',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/tubular_bells-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    vibraphone: {
+        id: 'vibraphone',
+        name: 'Vibraphone',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/vibraphone-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    viola: {
+        id: 'viola',
+        name: 'Viola',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/viola-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    voice_oohs: {
+        id: 'voice_oohs',
+        name: 'Voice Oohs',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/voice_oohs-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    whistle: {
+        id: 'whistle',
+        name: 'Whistle',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/whistle-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
+        }
+    },
+    woodblock: {
+        id: 'woodblock',
+        name: 'Woodblock',
+        category: 'Musyng Kite',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/musyng_kite/woodblock-mp3/',
+            urls: {
+                A1: 'A1.mp3',
+                C2: 'C2.mp3',
+                G2: 'G2.mp3',
+                C3: 'C3.mp3',
+                G3: 'G3.mp3',
+                C4: 'C4.mp3',
+                G4: 'G4.mp3',
+                C5: 'C5.mp3',
+                G5: 'G5.mp3',
+                C6: 'C6.mp3'
+            },
+            envelope: {
+                attack: 0.05,
+                release: 1
+            },
+            volume: -8
         }
     }
 

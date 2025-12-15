@@ -1,20 +1,19 @@
 // src/engine/audio/synth.ts
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
+import { Note } from 'tonal';
 
-// We union the types here
 export type AnyInstrument = Tone.PolySynth | Tone.Sampler;
 
 const instrumentCache: Record<string, AnyInstrument> = {};
 
-// Helper to generate a unique key for caching based on config
 function getCacheKey(def: InstrumentDefinition): string {
-    // We create a signature based on the ID and the specific overridden values
     const sig = JSON.stringify({
         id: def.id,
         vol: def.config.volume,
         env: def.config.envelope,
-        osc: def.config.oscillator // In case we allow osc overrides later
+        osc: def.config.oscillator,
+        offset: def.config.octaveOffset // Include offset in cache key
     });
     return sig;
 }
@@ -29,22 +28,37 @@ export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
     const config = def.config;
     let inst: AnyInstrument;
 
-    // 1. SAMPLER
     if (def.type === 'sampler' && config.urls) {
+        
+        // --- THE FIX: Remap URLs for Transposition ---
+        let finalUrls = config.urls;
+        const offset = config.octaveOffset || 0;
+
+        if (offset !== 0) {
+            finalUrls = {};
+            for (const noteName in config.urls) {
+                const midi = Note.midi(noteName);
+                if (midi !== null) {
+                    // Transpose the MIDI note number and get the new name
+                    const newMidi = midi + (offset * 12);
+                    const newNoteName = Note.fromMidi(newMidi);
+                    finalUrls[newNoteName] = config.urls[noteName];
+                } else {
+                    // Fallback for non-standard note names
+                    finalUrls[noteName] = config.urls[noteName];
+                }
+            }
+        }
+        // ---------------------------------------------
+        
         inst = new Tone.Sampler({
-            urls: config.urls,
+            urls: finalUrls, // Use the remapped URLs
             baseUrl: config.baseUrl || "",
-            // Tone.Sampler handles envelope slightly differently, but accepts these options
             attack: config.envelope?.attack || 0,
             release: config.envelope?.release || 1,
-            onload: () => {
-                // Optional: Console log for debug
-                // console.log(`[Audio] Loaded samples for ${def.name}`);
-            }
         }).toDestination();
-    } 
-    // 2. SYNTH
-    else {
+        
+    } else {
         const envelope = {
             attack: config.envelope?.attack ?? 0.01,
             decay: config.envelope?.decay ?? 0.1,
@@ -63,11 +77,9 @@ export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
             envelope: envelope,
         } as any).toDestination();
 
-        // Synths have a maxPolyphony property
         (inst as Tone.PolySynth).maxPolyphony = config.polyphony || 32;
     }
 
-    // 3. COMMON VOLUME
     inst.volume.value = config.volume || -10; 
 
     instrumentCache[cacheKey] = inst;

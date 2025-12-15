@@ -27,6 +27,7 @@ export interface InstrumentDefinition {
         // SAMPLER SPECIFIC
         urls?: Record<string, string>;
         baseUrl?: string;
+        octaveOffset?: number; // <-- NEW: e.g., -1 to shift everything down an octave
         
         // COMMON
         volume?: number;
