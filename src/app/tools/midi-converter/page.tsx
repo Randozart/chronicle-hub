@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
 import dynamic from 'next/dynamic';
 import { convertMidiToLigature } from '@/engine/audio/midiConverter'; 
-import { rescaleBPM, processLigature, polishLigatureSource } from '@/engine/audio/ligatureTools';
+import { rescaleBPM, refactorScale, processLigature, polishLigatureSource } from '@/engine/audio/ligatureTools';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
 
@@ -19,6 +19,12 @@ export default function MidiConverterPage() {
         scaleRoot: 'auto',
         scaleMode: 'major'
     });
+    
+    // --- NEW State for the refactor tool ---
+    const [refactorOptions, setRefactorOptions] = useState({
+        scaleRoot: 'A#',
+        scaleMode: 'minor'
+    });
 
     // State for refinement tools
     const [shouldFoldLanes, setShouldFoldLanes] = useState(true);
@@ -28,6 +34,13 @@ export default function MidiConverterPage() {
     const [patternAggressiveness, setPatternAggressiveness] = useState<0 | 1 | 2 | 3>(1);
 
     const aggressivenessLabels = ['Exact Match', 'Quantize Grid (Ignore . vs -)', 'Beat Fingerprint (Fuzzy)', 'Melodic Only (Ignore Rhythm)'];
+
+    // Effect to update refactor options when the main scale changes
+    useEffect(() => {
+        if(options.scaleRoot !== 'auto') {
+            setRefactorOptions({ scaleRoot: options.scaleRoot, scaleMode: options.scaleMode });
+        }
+    }, [options.scaleRoot, options.scaleMode]);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -70,6 +83,22 @@ export default function MidiConverterPage() {
             setStatus(`Error rescaling BPM: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
+
+    // --- NEW HANDLER FOR SCALE REFACTORING ---
+    const handleRefactorScale = () => {
+        if (!ligatureSource) return;
+        setStatus(`Refactoring to ${refactorOptions.scaleRoot} ${refactorOptions.scaleMode}...`);
+        try {
+            const newSource = refactorScale(ligatureSource, refactorOptions.scaleRoot, refactorOptions.scaleMode);
+            setLigatureSource(newSource);
+            // Update the main options to reflect this change
+            setOptions(prev => ({...prev, scaleRoot: refactorOptions.scaleRoot, scaleMode: refactorOptions.scaleMode}));
+            setStatus(`Scale refactored successfully.`);
+        } catch (error) {
+            console.error(error);
+            setStatus(`Error refactoring scale: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    };
     
     const handleOptimizeClick = () => {
         if (!ligatureSource) return;
@@ -79,8 +108,8 @@ export default function MidiConverterPage() {
                 foldLanes: shouldFoldLanes,
                 extractPatterns: shouldExtractPatterns,
                 foldAggressiveness: foldAggressiveness,
-                patternSimilarity: useTransposition ? 'transpositional' : 'exact', // This now controls transposition
-                patternAggressiveness: patternAggressiveness, // This controls the fuzzy rhythm
+                patternSimilarity: useTransposition ? 'transpositional' : 'exact',
+                patternAggressiveness: patternAggressiveness,
             });
             setLigatureSource(newSource);
             setStatus('Optimization complete.');
@@ -108,7 +137,7 @@ export default function MidiConverterPage() {
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 <h1 style={{ color: '#61afef' }}>MIDI to Ligature Converter</h1>
                 <p style={{ color: '#888', marginBottom: '2rem' }}>
-                    Workflow: 1. Convert → 2. Rescale BPM → 3. Refine & Polish
+                    Workflow: 1. Convert → 2. Re-interpret → 3. Refine & Polish
                 </p>
 
                 {/* Step 1: Conversion */}
@@ -123,13 +152,25 @@ export default function MidiConverterPage() {
                     <pre style={{ margin: '1rem 0', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#777', whiteSpace: 'pre-wrap' }}>{status}</pre>
                 </div>
 
-                {/* Step 2: Rhythmic Interpretation */}
+                {/* --- UPDATED Step 2: Fundamental Re-interpretation --- */}
                  <div style={{ marginTop: '2rem', background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
-                    <h3 style={{ marginTop: 0, color: '#e5c07b' }}>2. Rhythmic Interpretation</h3>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                         <p style={{ margin: 0, color: '#888' }}>Adjust the base tempo to simplify complex rhythms before optimizing.</p>
-                         <button disabled={!ligatureSource} onClick={() => handleRescaleBPM(2)} style={{ background: '#98c379', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Double BPM (x2)</button>
-                         <button disabled={!ligatureSource} onClick={() => handleRescaleBPM(0.5)} style={{ background: '#e06c75', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Halve BPM (/2)</button>
+                    <h3 style={{ marginTop: 0, color: '#e5c07b' }}>2. Re-interpretation</h3>
+                    <div style={{display: 'flex', gap: '2rem', alignItems: 'flex-end'}}>
+                        <div>
+                            <p style={{ margin: '0 0 0.5rem 0', color: '#888' }}>Adjust base tempo to simplify rhythms.</p>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                <button disabled={!ligatureSource} onClick={() => handleRescaleBPM(2)} style={{ background: '#98c379', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Double BPM (x2)</button>
+                                <button disabled={!ligatureSource} onClick={() => handleRescaleBPM(0.5)} style={{ background: '#e06c75', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Halve BPM (/2)</button>
+                            </div>
+                        </div>
+                        <div style={{borderLeft: '1px solid #333', paddingLeft: '2rem'}}>
+                             <p style={{ margin: '0 0 0.5rem 0', color: '#888' }}>Re-interpret notes into a new key.</p>
+                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                <div className="form-group"><label className="form-label">Target Key</label><select value={refactorOptions.scaleRoot} onChange={e => setRefactorOptions({...refactorOptions, scaleRoot: e.target.value})} className="form-select"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select></div>
+                                <div className="form-group"><label className="form-label">Target Mode</label><select value={refactorOptions.scaleMode} onChange={e => setRefactorOptions({...refactorOptions, scaleMode: e.target.value})} className="form-select"><option value="major">Major</option><option value="minor">Minor</option><option value="dorian">Dorian</option></select></div>
+                                <button disabled={!ligatureSource} onClick={handleRefactorScale} style={{ background: '#61afef', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Refactor Scale</button>
+                             </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -142,14 +183,11 @@ export default function MidiConverterPage() {
                             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={shouldFoldLanes} onChange={e => setShouldFoldLanes(e.target.checked)} />Fold Instrument Lanes</label>
                             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}><input type="checkbox" checked={useTransposition} onChange={e => setUseTransposition(e.target.checked)} />Find Transposed Patterns</label>
                         </div>
-
-                        {/* --- NEW SLIDER --- */}
                         <div className="form-group" style={{ flexGrow: 1}}>
                              <h4 style={{color: '#61afef', margin: '0 0 0.5rem 0'}}>Pattern Matching Aggressiveness</h4>
                              <input type="range" min="0" max="3" step="1" value={patternAggressiveness} onChange={e => setPatternAggressiveness(Number(e.target.value) as any)} style={{width: '100%'}} />
                              <div style={{textAlign: 'center', color: '#98c379', fontWeight: 'bold', marginTop: '0.5rem'}}>{aggressivenessLabels[patternAggressiveness]}</div>
                         </div>
-                        
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center', alignSelf: 'center' }}>
                             <button disabled={!ligatureSource} onClick={handleOptimizeClick} style={{ background: '#56B6C2', color: '#000', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Refine Structure</button>
                             <button disabled={!ligatureSource} onClick={handlePolishClick} style={{ background: '#C678DD', color: '#000', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Polish Names</button>
@@ -166,11 +204,4 @@ export default function MidiConverterPage() {
             </div>
         </div>
     );
-}
-
-// Dummy property on ParsedPattern to satisfy the type checker for our new logic
-declare module '@/engine/audio/models' {
-    interface ParsedPattern {
-        sourceString?: string;
-    }
 }

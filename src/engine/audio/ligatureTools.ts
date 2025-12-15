@@ -1,12 +1,12 @@
 // src/engine/audio/ligatureTools.ts
-
+import { Note, Scale } from 'tonal';
 import { LigatureParser } from './parser';
 import { serializeParsedTrack } from './serializer';
 import { formatLigatureSource } from './formatter';
 import { ParsedTrack, ParsedPattern, SequenceEvent, NoteDef, PlaylistItem, PatternPlaylistItem } from './models';
 import { PlayerQualities } from '../models';
 // --- NEW IMPORT --- Using your official scale definitions for accuracy
-import { MODES } from './scales';
+import { MODES, resolveNote  } from './scales';
 
 interface LigatureToolOptions {
     foldLanes?: boolean;
@@ -547,3 +547,81 @@ function renamePatterns(track: ParsedTrack): ParsedTrack {
     return track;
 }
 
+export function refactorScale(
+    source: string, 
+    newScaleRoot: string, 
+    newScaleMode: string, 
+    mockQualities: PlayerQualities = {}
+): string {
+    const parser = new LigatureParser();
+    const parsedTrack = parser.parse(source, mockQualities);
+
+    const originalScaleRoot = parsedTrack.config.scaleRoot;
+    const originalScaleMode = parsedTrack.config.scaleMode;
+
+    const newScale = Scale.get(`${newScaleRoot} ${newScaleMode.toLowerCase()}`);
+    if (newScale.empty) {
+        throw new Error(`Invalid target scale: ${newScaleRoot} ${newScaleMode}`);
+    }
+
+    const allNoteDefs: NoteDef[] = [];
+    Object.values(parsedTrack.patterns).forEach(p => Object.values(p.tracks).forEach(t => t.forEach(e => allNoteDefs.push(...e.notes))));
+    Object.values(parsedTrack.definitions).forEach(d => allNoteDefs.push(...d));
+
+    for (const note of allNoteDefs) {
+        const absolutePitch = resolveNote(
+            note.degree, originalScaleRoot, originalScaleMode, 
+            note.octaveShift, note.accidental, note.isNatural
+        );
+        const newNoteDef = absoluteNoteToDegree(absolutePitch, newScale);
+        
+        Object.assign(note, newNoteDef);
+    }
+
+    parsedTrack.config.scaleRoot = newScaleRoot;
+    parsedTrack.config.scaleMode = newScaleMode.charAt(0).toUpperCase() + newScaleMode.slice(1).toLowerCase();
+
+    const finalSource = serializeParsedTrack(parsedTrack);
+    return formatLigatureSource(finalSource);
+}
+
+/**
+ * Helper function to convert an absolute pitch (e.g., "C#4") to a Ligature NoteDef
+ * relative to a given target scale. (REWRITTEN)
+ */
+function absoluteNoteToDegree(absolutePitch: string, targetScale: any): NoteDef {
+    const pc = Note.pitchClass(absolutePitch);
+    const octave = Note.octave(absolutePitch) ?? 4;
+    const referenceOctave = 4;
+
+    const degreeIndex = targetScale.notes.indexOf(pc);
+
+    if (degreeIndex > -1) {
+        // The note is directly in the scale.
+        const degree = degreeIndex + 1;
+        const octaveShift = octave - referenceOctave;
+        return { degree, octaveShift, accidental: 0, isNatural: false };
+    } else {
+        // The note is an accidental. Find the closest note in the scale.
+        let minInterval = 12;
+        let bestMatch = { degree: 1, accidental: 0 };
+        const pitchMidi = Note.midi(pc + "4")!;
+
+        targetScale.notes.forEach((scaleNotePc: string, index: number) => {
+            const scaleNoteMidi = Note.midi(scaleNotePc + "4")!;
+            let interval = pitchMidi - scaleNoteMidi;
+
+            // Normalize to the smallest interval (-6 to +6)
+            if (interval > 6) interval -= 12;
+            if (interval < -6) interval += 12;
+
+            if (Math.abs(interval) < Math.abs(minInterval)) {
+                minInterval = interval;
+                bestMatch = { degree: index + 1, accidental: interval };
+            }
+        });
+        
+        const octaveShift = octave - referenceOctave;
+        return { ...bestMatch, octaveShift, isNatural: false };
+    }
+}
