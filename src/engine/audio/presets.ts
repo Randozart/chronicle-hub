@@ -634,26 +634,26 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             volume: -12
         }
     },
-    'electric_guitar': {
-        id: 'electric_guitar',
-        name: 'Clean Electric Guitar',
-        category: 'Standard Sampler',
-        type: 'sampler',
-        config: {
-            baseUrl: '/sounds/standard/electric_guitar/',
-            urls: {
-                'C3': 'C3.mp3',
-                'G3': 'G3.mp3',
-                'C4': 'C4.mp3',
-                'G4': 'G4.mp3'
-            },
-            envelope: {
-                attack: 0.005, // Very fast attack for pluck
-                release: 0.5   // Standard guitar sustain
-            },
-            volume: -8
-        }
-    },
+    // 'electric_guitar': {
+    //     id: 'electric_guitar',
+    //     name: 'Clean Electric Guitar',
+    //     category: 'Standard Sampler',
+    //     type: 'sampler',
+    //     config: {
+    //         baseUrl: '/sounds/standard/electric_guitar/',
+    //         urls: {
+    //             'C3': 'C3.mp3',
+    //             'G3': 'G3.mp3',
+    //             'C4': 'C4.mp3',
+    //             'G4': 'G4.mp3'
+    //         },
+    //         envelope: {
+    //             attack: 0.005, // Very fast attack for pluck
+    //             release: 0.5   // Standard guitar sustain
+    //         },
+    //         volume: -8
+    //     }
+    // },
     'standard_kit': {
         id: 'standard_kit',
         name: 'Standard Drum Kit',
@@ -686,69 +686,566 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             volume: -4
         }
     },
-    // --- ELECTRIC GUITAR (METAL/HARD ROCK) ---
-    'electric_guitar_distorted': {
-        id: 'electric_guitar_distorted',
-        name: 'Distorted Electric Guitar',
-        category: 'Standard Sampler',
-        type: 'sampler',
-        config: {
-            baseUrl: '/sounds/standard/electric_guitar_distorted/',
-            urls: {
-                'C3': 'C3.wav',
-                'G3': 'G3.wav',
-                'C4': 'C4.wav',
-                'G4': 'G4.wav'
-            },
-            envelope: {
-                attack: 0.005,
-                release: 0.6
-            },
-            volume: -6
-        }
-    },
+    // // --- ELECTRIC GUITAR (METAL/HARD ROCK) ---
+    // 'electric_guitar_distorted': {
+    //     id: 'electric_guitar_distorted',
+    //     name: 'Distorted Electric Guitar',
+    //     category: 'Standard Sampler',
+    //     type: 'sampler',
+    //     config: {
+    //         baseUrl: '/sounds/standard/electric_guitar_distorted/',
+    //         urls: {
+    //             'C3': 'C3.wav',
+    //             'G3': 'G3.wav',
+    //             'C4': 'C4.wav',
+    //             'G4': 'G4.wav'
+    //         },
+    //         envelope: {
+    //             attack: 0.005,
+    //             release: 0.6
+    //         },
+    //         volume: -6
+    //     }
+    // },
 
-    // --- MODERN ROCK DRUM KIT ---
-    'rock_kit': {
-        id: 'rock_kit',
-        name: 'Rock Drum Kit',
-        category: 'Standard Sampler',
-        type: 'sampler',
-        config: {
-            baseUrl: '/sounds/standard/rock_kit/',
-            urls: {
-                'C4': 'Kick.mp3',
-                'D4': 'Snare.mp3',
-                'E4': 'Tom_Low.mp3',
-                'F4': 'HiHat_Closed.mp3',
-                'G4': 'Tom_High.mp3',
-                'A4': 'HiHat_Open.mp3',
-                'B4': 'Crash.mp3',
-                'C5': 'Ride.mp3'
-            },
-            envelope: {
-                attack: 0.001,
-                release: 1.2
-            },
-            volume: -4
-        }
-    },
+    // // --- MODERN ROCK DRUM KIT ---
+    // 'rock_kit': {
+    //     id: 'rock_kit',
+    //     name: 'Rock Drum Kit',
+    //     category: 'Standard Sampler',
+    //     type: 'sampler',
+    //     config: {
+    //         baseUrl: '/sounds/standard/rock_kit/',
+    //         urls: {
+    //             'C4': 'Kick.mp3',
+    //             'D4': 'Snare.mp3',
+    //             'E4': 'Tom_Low.mp3',
+    //             'F4': 'HiHat_Closed.mp3',
+    //             'G4': 'Tom_High.mp3',
+    //             'A4': 'HiHat_Open.mp3',
+    //             'B4': 'Crash.mp3',
+    //             'C5': 'Ride.mp3'
+    //         },
+    //         envelope: {
+    //             attack: 0.001,
+    //             release: 1.2
+    //         },
+    //         volume: -4
+    //     }
+    // },
 
-    // --- OPTIONAL: ELECTRIC BASS ---
-    'electric_bass': {
-        id: 'electric_bass',
-        name: 'Rock Electric Bass',
-        category: 'Standard Sampler',
-        type: 'sampler',
-        config: {
-            baseUrl: '/sounds/standard/electric_bass/',
-            urls: {
-                'C2': 'C2.mp3',
+    // // --- OPTIONAL: ELECTRIC BASS ---
+    // 'electric_bass': {
+    //     id: 'electric_bass',
+    //     name: 'Rock Electric Bass',
+    //     category: 'Standard Sampler',
+    //     type: 'sampler',
+    //     config: {
+    //         baseUrl: '/sounds/standard/electric_bass/',
+    //         urls: {
+    //             'C2': 'C2.mp3',
+    //             'G2': 'G2.mp3',
+    //             'C3': 'C3.mp3',
+    //         },
+    //         envelope: { attack: 0.01, release: 1.0 },
+    //         volume: -6
+    //     }
+    // }
+    'bass_electric': {
+        'id': 'bass_electric',
+        'name': 'Bass Electric',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/bass-electric/',
+            'urls': {
+                'E2': 'E2.mp3',
+                'E3': 'E3.mp3',
+                'E4': 'E4.mp3',
                 'G2': 'G2.mp3',
-                'C3': 'C3.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3'
             },
-            envelope: { attack: 0.01, release: 1.0 },
-            volume: -6
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'bassoon': {
+        'id': 'bassoon',
+        'name': 'Bassoon',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/bassoon/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'E4': 'E4.mp3',
+                'G2': 'G2.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'cello': {
+        'id': 'cello',
+        'name': 'Cello',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/cello/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'B2': 'B2.mp3',
+                'B3': 'B3.mp3',
+                'B4': 'B4.mp3',
+                'C2': 'C2.mp3',
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'D2': 'D2.mp3',
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'E2': 'E2.mp3',
+                'E3': 'E3.mp3',
+                'E4': 'E4.mp3',
+                'F2': 'F2.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3',
+                'G2': 'G2.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'clarinet': {
+        'id': 'clarinet',
+        'name': 'Clarinet',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/clarinet/',
+            'urls': {
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'D5': 'D5.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3',
+                'F5': 'F5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'contrabass': {
+        'id': 'contrabass',
+        'name': 'Contrabass',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/contrabass/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'B3': 'B3.mp3',
+                'C2': 'C2.mp3',
+                'D2': 'D2.mp3',
+                'E2': 'E2.mp3',
+                'E3': 'E3.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'flute': {
+        'id': 'flute',
+        'name': 'Flute',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/flute/',
+            'urls': {
+                'A4': 'A4.mp3',
+                'A5': 'A5.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'E4': 'E4.mp3',
+                'E5': 'E5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'guitar_acoustic': {
+        'id': 'guitar_acoustic',
+        'name': 'Guitar Acoustic',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/guitar-acoustic/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'B2': 'B2.mp3',
+                'B3': 'B3.mp3',
+                'B4': 'B4.mp3',
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'D2': 'D2.mp3',
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'D5': 'D5.mp3',
+                'E2': 'E2.mp3',
+                'E3': 'E3.mp3',
+                'E4': 'E4.mp3',
+                'F2': 'F2.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3',
+                'G2': 'G2.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'guitar_electric': {
+        'id': 'guitar_electric',
+        'name': 'Guitar Electric',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/guitar-electric/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'A5': 'A5.mp3',
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'E2': 'E2.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'harmonium': {
+        'id': 'harmonium',
+        'name': 'Harmonium',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/harmonium/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'B2': 'B2.mp3',
+                'B3': 'B3.mp3',
+                'B4': 'B4.mp3',
+                'C2': 'C2.mp3',
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'D2': 'D2.mp3',
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'D5': 'D5.mp3',
+                'E2': 'E2.mp3',
+                'E3': 'E3.mp3',
+                'E4': 'E4.mp3',
+                'F2': 'F2.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3',
+                'G2': 'G2.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'harp': {
+        'id': 'harp',
+        'name': 'Harp',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/harp/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A4': 'A4.mp3',
+                'B3': 'B3.mp3',
+                'B5': 'B5.mp3',
+                'C3': 'C3.mp3',
+                'C5': 'C5.mp3',
+                'D2': 'D2.mp3',
+                'D4': 'D4.mp3',
+                'E3': 'E3.mp3',
+                'E5': 'E5.mp3',
+                'F2': 'F2.mp3',
+                'F4': 'F4.mp3',
+                'G3': 'G3.mp3',
+                'G5': 'G5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'organ': {
+        'id': 'organ',
+        'name': 'Organ',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/organ/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'A5': 'A5.mp3',
+                'C2': 'C2.mp3',
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'piano': {
+        'id': 'piano',
+        'name': 'Piano',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/piano/',
+            'urls': {
+                'A2': 'A2.mp3',
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'A5': 'A5.mp3',
+                'B2': 'B2.mp3',
+                'B3': 'B3.mp3',
+                'B4': 'B4.mp3',
+                'B5': 'B5.mp3',
+                'C2': 'C2.mp3',
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'D2': 'D2.mp3',
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'D5': 'D5.mp3',
+                'E2': 'E2.mp3',
+                'E3': 'E3.mp3',
+                'E4': 'E4.mp3',
+                'E5': 'E5.mp3',
+                'F2': 'F2.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3',
+                'F5': 'F5.mp3',
+                'G2': 'G2.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3',
+                'G5': 'G5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'saxophone': {
+        'id': 'saxophone',
+        'name': 'Saxophone',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/saxophone/',
+            'urls': {
+                'A4': 'A4.mp3',
+                'A5': 'A5.mp3',
+                'B3': 'B3.mp3',
+                'B4': 'B4.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'D5': 'D5.mp3',
+                'E3': 'E3.mp3',
+                'E4': 'E4.mp3',
+                'E5': 'E5.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3',
+                'F5': 'F5.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3',
+                'G5': 'G5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'trombone': {
+        'id': 'trombone',
+        'name': 'Trombone',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/trombone/',
+            'urls': {
+                'C3': 'C3.mp3',
+                'C4': 'C4.mp3',
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'F2': 'F2.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'trumpet': {
+        'id': 'trumpet',
+        'name': 'Trumpet',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/trumpet/',
+            'urls': {
+                'A3': 'A3.mp3',
+                'A5': 'A5.mp3',
+                'C4': 'C4.mp3',
+                'D5': 'D5.mp3',
+                'F3': 'F3.mp3',
+                'F4': 'F4.mp3',
+                'F5': 'F5.mp3',
+                'G4': 'G4.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'tuba': {
+        'id': 'tuba',
+        'name': 'Tuba',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/tuba/',
+            'urls': {
+                'D3': 'D3.mp3',
+                'D4': 'D4.mp3',
+                'F2': 'F2.mp3',
+                'F3': 'F3.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'violin': {
+        'id': 'violin',
+        'name': 'Violin',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/violin/',
+            'urls': {
+                'A3': 'A3.mp3',
+                'A4': 'A4.mp3',
+                'A5': 'A5.mp3',
+                'C4': 'C4.mp3',
+                'C5': 'C5.mp3',
+                'E4': 'E4.mp3',
+                'E5': 'E5.mp3',
+                'G3': 'G3.mp3',
+                'G4': 'G4.mp3',
+                'G5': 'G5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
+        }
+    },
+    'xylophone': {
+        'id': 'xylophone',
+        'name': 'Xylophone',
+        'category': 'ToneJS Instruments',
+        'type': 'sampler',
+        'config': {
+            'baseUrl': '/sounds/standard/tonejs/xylophone/',
+            'urls': {
+                'C5': 'C5.mp3',
+                'G4': 'G4.mp3',
+                'G5': 'G5.mp3'
+            },
+            'envelope': {
+                'attack': 0.05,
+                'release': 1
+            },
+            'volume': -8
         }
     }
 
