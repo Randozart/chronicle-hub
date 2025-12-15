@@ -9,39 +9,25 @@ export class LigatureParser {
     private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|\d+['#b%,]*|[-.|])/g;
 
     private preParseScribeScript(source: string, mockQualities: PlayerQualities): string {
-        // This regex finds single-brace blocks `{...}`.
         const scribeRegex = /\{((?:[^{}]|\{[^{}]*\})*?)\}/g;
-        
-        // This is a "replacer" function that gets called for each match.
         return source.replace(scribeRegex, (fullMatch, expression) => {
-            // fullMatch is "{ $combat ? 160 : 120 }"
-            // expression is "$combat ? 160 : 120"
-            
-            // We only evaluate if it looks like a ScribeScript variable.
             if (!expression.match(/[\$@%]/)) {
                 return fullMatch; 
             }
             try {
-                // --- THE FIX ---
-                // We pass the ENTIRE block with braces `{...}` to evaluateText.
-                // evaluateText is built to handle the full ScribeScript syntax,
-                // including the custom ": |" conditional logic.
                 return evaluateText(fullMatch, mockQualities, {}, null, 0);
             } catch (e) {
                 console.warn(`Ligature ScribeScript Pre-Pass Error on expression: "${expression}"`, e);
-                return fullMatch; // On error, return the original block to prevent crashes.
+                return fullMatch; 
             }
         });
     }
 
     public parse(rawSource: string, mockQualities: PlayerQualities = {}): ParsedTrack {
-        
         const processedSource = this.preParseScribeScript(rawSource, mockQualities);
-
         const lines = processedSource.split('\n')
             .map(l => l.split('//')[0].trim())
             .filter(l => l.length > 0);
-
         const track: ParsedTrack = {
             config: { 
                 bpm: 120, grid: 4, timeSig: [4, 4], 
@@ -49,16 +35,13 @@ export class LigatureParser {
             },
             instruments: {}, definitions: {}, patterns: {}, playlist: []
         };
-        
         let currentSection = '';
         let currentPatternId = '';
-
         for (const line of lines) {
             const sectionMatch = line.match(/^\[(.*?)\]$/);
             if (sectionMatch) {
                 const header = sectionMatch[1].trim();
                 const headerKey = header.split(':')[0].toUpperCase();
-                
                 if (['PATTERN', 'PAT', 'P'].includes(headerKey)) {
                     currentSection = 'PATTERN';
                     currentPatternId = header.split(':')[1].trim();
@@ -74,14 +57,12 @@ export class LigatureParser {
                 }
                 continue;
             }
-
             if (['CONFIG', 'CFG', 'CONF'].includes(currentSection)) this.parseConfig(line, track);
             else if (['INSTRUMENTS', 'INST', 'INS'].includes(currentSection)) this.parseInstrument(line, track);
             else if (['DEFINITIONS', 'DEF', 'DEFS'].includes(currentSection)) this.parseDefinition(line, track);
             else if (currentSection === 'PATTERN' && currentPatternId) this.parsePatternRow(line, track, currentPatternId);
             else if (['PLAYLIST', 'PLAY', 'SEQ', 'LIST'].includes(currentSection)) this.parsePlaylistRow(line, track);
         }
-
         return track;
     }
 
@@ -108,21 +89,12 @@ export class LigatureParser {
     private parseInstrument(line: string, track: ParsedTrack) {
         const parts = line.split(':');
         if (parts.length < 2) return;
-        
         const name = parts[0].trim();
-        // Join back the rest in case the config string contained colons (unlikely but safe)
         const rest = parts.slice(1).join(':').trim();
-        
-        // Match ID and optional Parens with flexible whitespace
-        // ^([a-zA-Z0-9_]+)  -> Capture ID
-        // \s*               -> Allow spaces
-        // (?:\((.*)\))?     -> Optional non-capturing group for parens, capturing content inside
         const match = rest.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?$/);
         if (!match) return;
-
         const id = match[1];
         const overrides: any = {};
-
         if (match[2]) {
             const modParts = match[2].split(',');
             modParts.forEach(p => {
@@ -130,7 +102,6 @@ export class LigatureParser {
                 if (parts.length === 2) {
                     const k = parts[0].trim().toLowerCase();
                     const v = parseFloat(parts[1].trim());
-
                     if (!isNaN(v)) {
                         if (['v', 'vol', 'volume'].includes(k)) overrides.volume = v;
                         if (['a', 'att', 'attack'].includes(k)) overrides.attack = v;
@@ -141,15 +112,13 @@ export class LigatureParser {
                 }
             });
         }
-        
         track.instruments[name] = { id, overrides };
     }
 
     private parseDefinition(line: string, track: ParsedTrack) {
         const [aliasRaw, valRaw] = line.split('=').map(s => s.trim());
         if (!aliasRaw || !valRaw || !aliasRaw.startsWith('@')) return;
-        if (valRaw.startsWith('{')) return; // Logic aliases are resolved by pre-pass
-        
+        if (valRaw.startsWith('{')) return; 
         if (valRaw.startsWith('[')) {
             const alias = aliasRaw.substring(1);
             const cleanVal = valRaw.replace(/[\[\]]/g, '');
@@ -162,71 +131,34 @@ export class LigatureParser {
     private parsePatternRow(line: string, track: ParsedTrack, patternId: string) {
         const pipeIndex = line.indexOf('|');
         if (pipeIndex === -1) return;
-
         const leftSide = line.substring(0, pipeIndex).trim();
         const content = line.substring(pipeIndex);
-        
         let trackName = leftSide;
         let modifiers: PatternModifier | undefined;
-
-        // Updated Regex for flexible whitespace
         const match = leftSide.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?$/);
-        
         if (match) {
             trackName = match[1];
-            
             if (match[2]) {
-                modifiers = { transpose: 0, volume: 0, pan: 0 };
-                const modParts = match[2].split(',');
-                
-                modParts.forEach(p => {
-                    const cleanP = p.trim();
-                    
-                    // Shorthand transposition "+2"
-                    if (/^[+-]?\d+$/.test(cleanP)) {
-                        modifiers!.transpose = parseInt(cleanP);
-                        return;
-                    }
-
-                    const parts = cleanP.split(':');
-                    if (parts.length === 2) {
-                        const k = parts[0].trim().toLowerCase();
-                        const v = parseFloat(parts[1].trim());
-                        
-                        if (!isNaN(v)) {
-                            if (['v', 'vol', 'volume'].includes(k)) modifiers!.volume = v;
-                            if (['t', 'trans', 'transpose'].includes(k)) modifiers!.transpose = v;
-                            if (['p', 'pan'].includes(k)) modifiers!.pan = v;
-                            if (['o', 'oct', 'octave'].includes(k)) modifiers!.transpose += (v * 12);
-                        }
-                    }
-                });
+                modifiers = this.parseModifiers(match[2]);
             }
         }
-
         const pattern = track.patterns[patternId];
         if (!pattern) return;
         if (!pattern.tracks[trackName]) pattern.tracks[trackName] = [];
-        
         if (modifiers) {
             if (!pattern.trackModifiers) pattern.trackModifiers = {};
             pattern.trackModifiers[trackName] = modifiers;
         }
-
         const sequence = pattern.tracks[trackName];
-
         const { grid, timeSig } = track.config;
         const quarterNotesPerBeat = 4 / timeSig[1];
         const slotsPerBeat = grid * quarterNotesPerBeat;
         const slotsPerBar = slotsPerBeat * timeSig[0];
-
         const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
         let currentTime = 0; 
-
         for (const token of tokens) {
             if (token === '|') continue;
             if (token === '.') { currentTime++; continue; }
-
             if (token === '-') {
                 if (sequence.length > 0) {
                     const lastEvent = sequence[sequence.length - 1];
@@ -237,37 +169,53 @@ export class LigatureParser {
                 currentTime++;
                 continue;
             }
-
             if (token.startsWith('(')) {
-                const inner = token.substring(1, token.length - 1);
-                const subMatches = inner.match(/(\d+['#b%,]*|@\w+(\(\d+\))?)/g); 
+                const inner = token.substring(1, token.length - 1).trim();
+                // *** BUG FIX IS HERE ***
+                // Split by whitespace instead of using a faulty regex to correctly capture all tokens.
+                const subTokens = inner.split(/\s+/).filter(Boolean);
                 
-                if (subMatches && subMatches.length > 0) {
-                    const count = subMatches.length;
-                    const durationPerNote = slotsPerBeat / count; 
+                if (subTokens.length > 0) {
+                    const durationPerNote = slotsPerBeat / subTokens.length; 
+                    let tupletTime = 0;
                     
-                    subMatches.forEach((subToken, idx) => {
+                    for (const subToken of subTokens) {
+                         if (subToken === '.') {
+                            tupletTime += durationPerNote;
+                            continue;
+                        }
+                        if (subToken === '-') {
+                            if (sequence.length > 0) {
+                                const lastEvent = sequence[sequence.length - 1];
+                                // Check if the last note was part of this tuplet
+                                if (lastEvent && lastEvent.time >= currentTime && lastEvent.time < (currentTime + slotsPerBeat)) {
+                                    lastEvent.duration += durationPerNote;
+                                }
+                            }
+                            tupletTime += durationPerNote;
+                            continue;
+                        }
+
                         const notes = this.resolveNotes(subToken, track.definitions);
                         if (notes.length > 0) {
                             sequence.push({
-                                time: currentTime + (idx * durationPerNote),
+                                time: currentTime + tupletTime,
                                 duration: durationPerNote,
                                 notes
                             });
                         }
-                    });
+                        tupletTime += durationPerNote;
+                    }
                 }
                 currentTime += slotsPerBeat; 
                 continue;
             }
-
             const notes = this.resolveNotes(token, track.definitions);
             if (notes.length > 0) {
                 sequence.push({ time: currentTime, duration: 1, notes });
             }
             currentTime++;
         }
-        
         const barCount = (content.match(/\|/g) || []).length - 1;
         const expectedDurationInSlots = barCount > 0 ? barCount * slotsPerBar : currentTime;
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
@@ -276,7 +224,6 @@ export class LigatureParser {
     private parsePlaylistRow(line: string, track: ParsedTrack) {
         const trimmed = line.trim();
         if (!trimmed) return;
-
         if (trimmed.includes('=')) {
             const parts = trimmed.split('=');
             if (parts.length === 2) {
@@ -288,40 +235,26 @@ export class LigatureParser {
                 }
             }
         }
-        
         const items = trimmed.split(',').map(s => s.trim()).filter(Boolean);
-        
-        // This object will hold the final parsed data for the row
         const playlistItem: PatternPlaylistItem = {
             type: 'pattern',
-            patterns: [], // Initialize as an empty array
+            patterns: [],
             modifiers: {}
         };
-
         items.forEach(item => {
             const match = item.match(/^([a-zA-Z0-9_]+)(?:\((.*)\))?$/);
             if (match) {
                 const patId = match[1];
-                let mods: PatternModifier = { transpose: 0, volume: 0, pan: 0 };
-                
-                if (match[2]) {
-                    // Reuse the robust modifier parser
-                    mods = this.parseModifiers(match[2]);
-                }
-
-                // Add the pattern to the list for this row
+                let mods = this.parseModifiers(match[2] || '');
                 playlistItem.patterns.push({ 
                     id: patId, 
-                    transposition: mods.transpose, // <-- Directly use the parsed value
+                    transposition: mods.transpose,
                     volume: mods.volume
                 });
-
-                // Store the full modifier object if needed for other properties like pan
                 if (!playlistItem.modifiers) playlistItem.modifiers = {};
                 playlistItem.modifiers[patId] = mods;
             }
         });
-
         if (playlistItem.patterns.length > 0) {
             track.playlist.push(playlistItem);
         }

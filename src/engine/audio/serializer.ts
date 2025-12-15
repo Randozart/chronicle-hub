@@ -1,9 +1,17 @@
-import { ParsedTrack, SequenceEvent, NoteDef } from './models';
+// src/engine/audio/serializer.ts
+
+import { ParsedTrack, SequenceEvent, NoteDef, ParsedPattern } from './models';
+
+// Helper to generate a consistent signature for a note array
+function getNoteSignature(notes: NoteDef[]): string {
+    return notes
+        .map(n => `${n.degree},${n.octaveShift},${n.accidental},${n.isNatural}`)
+        .sort()
+        .join(';');
+}
 
 export function serializeParsedTrack(track: ParsedTrack): string {
   const lines: string[] = [];
-
-  /* ================= CONFIG ================= */
 
   lines.push('[CONFIG]');
   lines.push(`BPM: ${track.config.bpm}`);
@@ -12,84 +20,132 @@ export function serializeParsedTrack(track: ParsedTrack): string {
   lines.push(`Scale: ${track.config.scaleRoot} ${track.config.scaleMode}`);
   lines.push('');
 
-  /* ================= INSTRUMENTS ================= */
-
   lines.push('[INSTRUMENTS]');
   for (const [name, inst] of Object.entries(track.instruments)) {
     lines.push(`${name}: ${inst.id}`);
   }
   lines.push('');
 
-  /* ================= DEFINITIONS ================= */
-
+  // *** FIX ***: Build a reverse map from note signatures to alias names.
+  const aliasMap = new Map<string, string>();
   if (Object.keys(track.definitions).length > 0) {
     lines.push('[DEFINITIONS]');
     for (const [name, notes] of Object.entries(track.definitions)) {
-      lines.push(`@${name} = [${notes.map(serializeNote).join(', ')}]`);
+      const alias = name.startsWith('@') ? name : `@${name}`;
+      lines.push(`${alias} = [${notes.map(serializeNote).join(', ')}]`);
+      aliasMap.set(getNoteSignature(notes), alias);
     }
     lines.push('');
   }
-
-  /* ================= PATTERNS ================= */
 
   for (const pattern of Object.values(track.patterns)) {
     lines.push(`[PATTERN: ${pattern.id}]`);
-
+    const maxTrackNameLength = Math.max(...Object.keys(pattern.tracks).map(name => name.length), 0);
     for (const [trackName, events] of Object.entries(pattern.tracks)) {
-      lines.push(`${trackName} | ${serializeEvents(events)}`);
+      const serializedLine = serializeEvents(events, pattern, track.config, aliasMap);
+      lines.push(`${trackName.padEnd(maxTrackNameLength)} |${serializedLine}|`);
     }
-
     lines.push('');
   }
-
-  /* ================= PLAYLIST ================= */
 
   lines.push('[PLAYLIST]');
   for (const item of track.playlist) {
     if (item.type === 'command') {
       lines.push(`${item.command}=${item.value}`);
     } else {
-      lines.push(
-        item.patterns
-          .map(p =>
-            p.transposition
-              ? `${p.id}(${p.transposition})`
-              : p.id
-          )
-          .join(', ')
-      );
+      lines.push(item.patterns.map(p => p.transposition ? `${p.id}(${p.transposition})` : p.id).join(', '));
     }
   }
 
   return lines.join('\n');
 }
 
-/* ================= Helpers ================= */
+// *** REBUILT SERIALIZER LOGIC ***
+function serializeEvents(
+    events: SequenceEvent[],
+    pattern: ParsedPattern,
+    config: ParsedTrack['config'],
+    aliasMap: Map<string, string>
+): string {
+    const { grid, timeSig } = config;
+    const slotsPerBeat = grid * (4 / timeSig[1]);
+    const slotsPerBar = slotsPerBeat * timeSig[0];
+    const totalBars = Math.ceil(pattern.duration / slotsPerBar);
+    let output = '';
 
-function serializeEvents(events: SequenceEvent[]): string {
-  const slots: Record<number, SequenceEvent> = {};
-  events.forEach(e => (slots[Math.round(e.time)] = e));
+    for (let i = 0; i < totalBars; i++) {
+        let barOutput = '';
+        const barStart = i * slotsPerBar;
 
-  const maxTime = Math.max(...events.map(e => e.time + e.duration), 0);
-  const result: string[] = [];
+        for (let j = 0; j < timeSig[0]; j++) {
+            const beatStart = barStart + j * slotsPerBeat;
+            const beatEnd = beatStart + slotsPerBeat;
+            const eventsInBeat = events.filter(e => e.time >= beatStart && e.time < beatEnd);
 
-  for (let t = 0; t < maxTime; t++) {
-    const ev = slots[t];
-    if (!ev) {
-      result.push('.');
-      continue;
+            // --- TUPLET DETECTION ---
+            let isTuplet = false;
+            if (eventsInBeat.length > 0) {
+                const step = slotsPerBeat / grid;
+                for (const event of eventsInBeat) {
+                    if (event.time % step !== 0 || event.duration % step !== 0) {
+                        isTuplet = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (isTuplet) {
+                const TUPLER_RESOLUTION = 24; // High-res grid for reconstructing tuplets
+                const tupletSlots = new Array(TUPLER_RESOLUTION).fill('.');
+                
+                for (const event of eventsInBeat) {
+                    const relativeTime = event.time - beatStart;
+                    const startSlot = Math.round((relativeTime / slotsPerBeat) * TUPLER_RESOLUTION);
+                    const durationSlots = Math.round((event.duration / slotsPerBeat) * TUPLER_RESOLUTION);
+                    
+                    if (startSlot < TUPLER_RESOLUTION) {
+                        tupletSlots[startSlot] = serializeNoteOrAlias(event.notes, aliasMap);
+                        for (let k = 1; k < durationSlots; k++) {
+                            if (startSlot + k < TUPLER_RESOLUTION) {
+                                tupletSlots[startSlot + k] = '-';
+                            }
+                        }
+                    }
+                }
+                barOutput += ` (${tupletSlots.join(' ')})`;
+            } else {
+                // --- REGULAR GRID LOGIC ---
+                const beatSlots = new Array(grid).fill('.');
+                for (const event of eventsInBeat) {
+                    const slotIndex = Math.round((event.time - beatStart) / (slotsPerBeat / grid));
+                    const durationSlots = Math.round(event.duration / (slotsPerBeat / grid));
+                    
+                    if (slotIndex < grid) {
+                        beatSlots[slotIndex] = serializeNoteOrAlias(event.notes, aliasMap);
+                         for (let k = 1; k < durationSlots; k++) {
+                            if (slotIndex + k < grid) {
+                                beatSlots[slotIndex + k] = '-';
+                            }
+                        }
+                    }
+                }
+                barOutput += ` ${beatSlots.join(' ')}`;
+            }
+        }
+        output += `${barOutput} |`;
     }
+    return output.slice(0, -2); // Remove trailing space and pipe
+}
 
-    result.push(ev.notes.map(serializeNote).join('+'));
-
-    for (let d = 1; d < ev.duration; d++) {
-      result.push('-');
+function serializeNoteOrAlias(notes: NoteDef[], aliasMap: Map<string, string>): string {
+    if (notes.length > 1) {
+        const sig = getNoteSignature(notes);
+        if (aliasMap.has(sig)) {
+            return aliasMap.get(sig)!;
+        }
+        return notes.map(serializeNote).join('+');
     }
-
-    t += ev.duration - 1;
-  }
-
-  return result.join(' ');
+    return serializeNote(notes[0]);
 }
 
 function serializeNote(n: NoteDef): string {

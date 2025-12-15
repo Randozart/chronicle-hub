@@ -6,10 +6,10 @@ export type SynthType =
     | 'amsine' | 'amsquare' | 'amsawtooth' | 'amtriangle';
 
 export interface EnvelopeDef {
-    attack: number;
-    decay?: number;   // <-- Made Optional
-    sustain?: number; // <-- Made Optional
-    release: number;
+    attack?: number;  // <-- Make Optional
+    decay?: number;
+    sustain?: number;
+    release?: number; // <-- Make Optional
 }
 
 export interface InstrumentDefinition {
