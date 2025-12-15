@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { PlayerQualities } from '@/engine/models';
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
 import PianoRoll from '@/components/admin/PianoRoll';
+import PatternLibrary from '@/engine/audio/components/PatternLibrary';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
@@ -60,7 +61,6 @@ export default function TrackEditor({
     const [isClient, setIsClient] = useState(false);
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
     const [optTolerance, setOptTolerance] = useState<0 | 1 | 2 | 3>(2);
-
 
     useEffect(() => {
         setIsClient(true);
@@ -116,19 +116,30 @@ export default function TrackEditor({
         });
     };
 
-    // --- RESTORED: GROUP BY CATEGORY ---
+    // --- 2. NEW HANDLER FOR SNIPPET INSERTION ---
+    const handleInsertSnippet = (textToInsert: string) => {
+        const newValue = editorValue + textToInsert;
+        setEditorValue(newValue);
+        setForm(prev => ({ ...prev, source: newValue }));
+    };
+
     const groupedInsts = availableInstruments.reduce((acc, curr) => {
         const cat = curr.category || 'Uncategorized';
         if (!acc[cat]) acc[cat] = [];
         acc[cat].push(curr.id);
         return acc;
     }, {} as Record<string, string[]>);
-    // -----------------------------------
 
     return (
-        <div style={{ height: '100%', display: 'flex', gap: '2rem' }}>
-            {/* LEFT COLUMN: EDITOR */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column',minWidth: '800px' }}>
+        // --- 3. UPDATED 3-COLUMN LAYOUT ---
+        <div style={{ height: '100%', display: 'flex', gap: '1rem' }}>
+            {/* LEFT COLUMN: DEBUGGER */}
+            <div style={{ width: '250px', flexShrink: 0 }}>
+                <ScribeDebugger onUpdate={setMockQualities} />
+            </div>
+
+            {/* MIDDLE (MAIN) COLUMN: EDITOR */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '800px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <h2 style={{ margin: 0 }}>Track: {form.name}</h2>
@@ -176,7 +187,6 @@ export default function TrackEditor({
                     <PianoRoll source={editorValue} qualities={mockQualities} />
                 </div>
 
-                {/* --- RESTORED: CATEGORY LIST --- */}
                 <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '200px' }}>
                     <strong style={{ color: '#aaa' }}>Available Instruments:</strong>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
@@ -192,7 +202,6 @@ export default function TrackEditor({
                         ))}
                     </div>
                 </div>
-                {/* ------------------------------- */}
 
                 {!isPlayground && (
                     <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', marginTop: '1rem', alignSelf: 'flex-start' }}>
@@ -201,9 +210,9 @@ export default function TrackEditor({
                 )}
             </div>
 
-            {/* RIGHT COLUMN: DEBUGGER */}
-            <div style={{ width: '300px', flexShrink: 0 }}>
-                <ScribeDebugger onUpdate={setMockQualities} />
+            {/* RIGHT COLUMN: PATTERN LIBRARY */}
+            <div style={{ width: '250px', flexShrink: 0 }}>
+                <PatternLibrary onInsert={handleInsertSnippet} />
             </div>
         </div>
     );
