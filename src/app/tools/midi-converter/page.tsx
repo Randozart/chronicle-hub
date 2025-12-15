@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Midi } from '@tonejs/midi';
 import dynamic from 'next/dynamic';
 import { convertMidiToLigature } from '@/engine/audio/midiConverter'; 
-// Import all our tool functions
 import { rescaleBPM, processLigature, polishLigatureSource } from '@/engine/audio/ligatureTools';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
@@ -25,7 +24,10 @@ export default function MidiConverterPage() {
     const [shouldFoldLanes, setShouldFoldLanes] = useState(true);
     const [shouldExtractPatterns, setShouldExtractPatterns] = useState(true);
     const [foldAggressiveness, setFoldAggressiveness] = useState<'low' | 'high'>('high');
-    const [patternSimilarity, setPatternSimilarity] = useState<'exact' | 'rhythmic' | 'transpositional'>('transpositional');
+    const [useTransposition, setUseTransposition] = useState(true);
+    const [patternAggressiveness, setPatternAggressiveness] = useState<0 | 1 | 2 | 3>(1);
+
+    const aggressivenessLabels = ['Exact Match', 'Quantize Grid (Ignore . vs -)', 'Beat Fingerprint (Fuzzy)', 'Melodic Only (Ignore Rhythm)'];
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -51,15 +53,13 @@ export default function MidiConverterPage() {
             setStatus(`Error: ${e.message}`);
         }
     };
-
-    // --- NEW HANDLER FOR BPM RESCALING ---
+    
     const handleRescaleBPM = (factor: number) => {
         if (!ligatureSource) return;
         setStatus(`Rescaling BPM by a factor of ${factor}...`);
         try {
             const newSource = rescaleBPM(ligatureSource, factor);
             setLigatureSource(newSource);
-            // Also update the BPM in the UI options for consistency
             const currentBpmMatch = newSource.match(/BPM:\s*(\d+)/);
             if (currentBpmMatch) {
                 setOptions(prev => ({...prev, bpm: parseInt(currentBpmMatch[1])}));
@@ -79,7 +79,8 @@ export default function MidiConverterPage() {
                 foldLanes: shouldFoldLanes,
                 extractPatterns: shouldExtractPatterns,
                 foldAggressiveness: foldAggressiveness,
-                patternSimilarity: patternSimilarity,
+                patternSimilarity: useTransposition ? 'transpositional' : 'exact', // This now controls transposition
+                patternAggressiveness: patternAggressiveness, // This controls the fuzzy rhythm
             });
             setLigatureSource(newSource);
             setStatus('Optimization complete.');
@@ -107,13 +108,12 @@ export default function MidiConverterPage() {
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 <h1 style={{ color: '#61afef' }}>MIDI to Ligature Converter</h1>
                 <p style={{ color: '#888', marginBottom: '2rem' }}>
-                    Workflow: 1. Convert → 2. Rescale BPM → 3. Refine & Optimize → 4. Polish & Rename
+                    Workflow: 1. Convert → 2. Rescale BPM → 3. Refine & Polish
                 </p>
 
                 {/* Step 1: Conversion */}
                 <div style={{ background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
                     <h3 style={{ marginTop: 0, color: '#e5c07b' }}>1. Convert MIDI</h3>
-                    {/* ... (grid of inputs is unchanged) ... */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                         <div className="form-group"><label className="form-label">MIDI File</label><input type="file" accept=".mid,.midi" onChange={handleFileChange} className="form-input"/></div>
                         <div className="form-group"><label className="form-label">BPM (0=auto)</label><input type="number" value={options.bpm} onChange={e => setOptions({...options, bpm: parseInt(e.target.value)})} className="form-input" /></div>
@@ -123,7 +123,7 @@ export default function MidiConverterPage() {
                     <pre style={{ margin: '1rem 0', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#777', whiteSpace: 'pre-wrap' }}>{status}</pre>
                 </div>
 
-                {/* --- NEW Step 2: Rhythmic Interpretation --- */}
+                {/* Step 2: Rhythmic Interpretation */}
                  <div style={{ marginTop: '2rem', background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
                     <h3 style={{ marginTop: 0, color: '#e5c07b' }}>2. Rhythmic Interpretation</h3>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -132,21 +132,24 @@ export default function MidiConverterPage() {
                          <button disabled={!ligatureSource} onClick={() => handleRescaleBPM(0.5)} style={{ background: '#e06c75', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Halve BPM (/2)</button>
                     </div>
                 </div>
-
-                {/* Step 3 & 4: Refinement and Polishing */}
+                
+                {/* Step 3: Refinement and Polishing */}
                 <div style={{ marginTop: '2rem', background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
                     <h3 style={{ marginTop: 0, color: '#e5c07b' }}>3. Refine & Polish</h3>
                     <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                         <div className="form-group">
-                            <h4 style={{color: '#61afef', marginBottom: '0.5rem'}}>Structural Refinement</h4>
+                            <h4 style={{color: '#61afef', margin: '0 0 0.5rem 0'}}>Options</h4>
                             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={shouldFoldLanes} onChange={e => setShouldFoldLanes(e.target.checked)} />Fold Instrument Lanes</label>
-                            <select value={foldAggressiveness} onChange={e => setFoldAggressiveness(e.target.value as any)} className="form-select" style={{ marginTop: '0.5rem', display: shouldFoldLanes ? 'block' : 'none' }}><option value="high">Aggressive</option><option value="low">Conservative</option></select>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}><input type="checkbox" checked={useTransposition} onChange={e => setUseTransposition(e.target.checked)} />Find Transposed Patterns</label>
                         </div>
-                        <div className="form-group">
-                             <h4 style={{color: 'transparent', marginBottom: '0.5rem'}}>_</h4>
-                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={shouldExtractPatterns} onChange={e => setShouldExtractPatterns(e.target.checked)} />Extract Repeated Patterns</label>
-                             <select value={patternSimilarity} onChange={e => setPatternSimilarity(e.target.value as any)} className="form-select" style={{ marginTop: '0.5rem', display: shouldExtractPatterns ? 'block' : 'none' }}><option value="exact">Exact Match</option><option value="transpositional">Transpositional Match</option><option value="rhythmic" disabled>Rhythmic Match</option></select>
+
+                        {/* --- NEW SLIDER --- */}
+                        <div className="form-group" style={{ flexGrow: 1}}>
+                             <h4 style={{color: '#61afef', margin: '0 0 0.5rem 0'}}>Pattern Matching Aggressiveness</h4>
+                             <input type="range" min="0" max="3" step="1" value={patternAggressiveness} onChange={e => setPatternAggressiveness(Number(e.target.value) as any)} style={{width: '100%'}} />
+                             <div style={{textAlign: 'center', color: '#98c379', fontWeight: 'bold', marginTop: '0.5rem'}}>{aggressivenessLabels[patternAggressiveness]}</div>
                         </div>
+                        
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center', alignSelf: 'center' }}>
                             <button disabled={!ligatureSource} onClick={handleOptimizeClick} style={{ background: '#56B6C2', color: '#000', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Refine Structure</button>
                             <button disabled={!ligatureSource} onClick={handlePolishClick} style={{ background: '#C678DD', color: '#000', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Polish Names</button>
@@ -163,4 +166,11 @@ export default function MidiConverterPage() {
             </div>
         </div>
     );
+}
+
+// Dummy property on ParsedPattern to satisfy the type checker for our new logic
+declare module '@/engine/audio/models' {
+    interface ParsedPattern {
+        sourceString?: string;
+    }
 }

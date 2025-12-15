@@ -13,6 +13,8 @@ interface LigatureToolOptions {
     extractPatterns?: boolean;
     foldAggressiveness?: 'low' | 'high';
     patternSimilarity?: 'exact' | 'rhythmic' | 'transpositional';
+    // NEW: A numeric level for fuzzy matching
+    patternAggressiveness?: 0 | 1 | 2 | 3;
 }
 
 // --- MAIN ROUTER FUNCTION ---
@@ -31,7 +33,8 @@ export function processLigature(
         if (options.patternSimilarity === 'transpositional') {
             parsedTrack = extractTransposedPatterns(parsedTrack);
         } else {
-            parsedTrack = extractRepeatedPatterns(parsedTrack, options.patternSimilarity || 'exact');
+            // Pass the numeric aggressiveness level to the pattern extractor
+            parsedTrack = extractRepeatedPatterns(parsedTrack, options.patternAggressiveness || 0);
         }
     }
     const finalSource = serializeParsedTrack(parsedTrack);
@@ -234,23 +237,53 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
     track.playlist = newPlaylist;
     return track;
 }
-function extractRepeatedPatterns(track: ParsedTrack, similarity: 'exact' | 'rhythmic'): ParsedTrack {
+function extractRepeatedPatterns(track: ParsedTrack, aggressiveness: 0 | 1 | 2 | 3): ParsedTrack {
     const patternHashes = new Map<string, string>();
     const canonicalPatterns = new Set<string>();
+    const sustainCounts = new Map<string, number>();
+
     for (const playlistItem of track.playlist) {
         if (playlistItem.type !== 'pattern') continue;
         for (const pat of playlistItem.patterns) {
             const pattern = track.patterns[pat.id];
             if (!pattern) continue;
-            const hash = generatePatternHash(pattern, similarity);
+
+            const hash = generateFuzzyPatternHash(pattern, aggressiveness, track.config);
+            
             if (patternHashes.has(hash)) {
-                pat.id = patternHashes.get(hash)!;
+                const canonicalId = patternHashes.get(hash)!;
+                
+                // *** FIX IS HERE: Calculate sustain count directly ***
+                let currentSustains = 0;
+                for (const trackName in pattern.tracks) {
+                    const events = pattern.tracks[trackName];
+                    const totalDurationInSlots = events.reduce((sum, event) => sum + event.duration, 0);
+                    currentSustains += Math.round(totalDurationInSlots) - events.length;
+                }
+
+                if (currentSustains > (sustainCounts.get(canonicalId) || 0)) {
+                    sustainCounts.set(canonicalId, currentSustains);
+                    const canonicalPattern = track.patterns[canonicalId];
+                    if (canonicalPattern) {
+                        canonicalPattern.tracks = pattern.tracks; 
+                    }
+                }
+                pat.id = canonicalId; // Point to the canonical pattern
             } else {
                 patternHashes.set(hash, pat.id);
                 canonicalPatterns.add(pat.id);
+
+                let currentSustains = 0;
+                for (const trackName in pattern.tracks) {
+                    const events = pattern.tracks[trackName];
+                    const totalDurationInSlots = events.reduce((sum, event) => sum + event.duration, 0);
+                    currentSustains += Math.round(totalDurationInSlots) - events.length;
+                }
+                sustainCounts.set(pat.id, currentSustains);
             }
         }
     }
+
     const newPatterns: Record<string, ParsedPattern> = {};
     for (const patId of canonicalPatterns) {
         if (track.patterns[patId]) newPatterns[patId] = track.patterns[patId];
@@ -258,6 +291,64 @@ function extractRepeatedPatterns(track: ParsedTrack, similarity: 'exact' | 'rhyt
     track.patterns = newPatterns;
     return track;
 }
+
+
+
+function generateFuzzyPatternHash(pattern: ParsedPattern, aggressiveness: 0 | 1 | 2 | 3, config: ParsedTrack['config']): string {
+    let hashString = '';
+    const sortedTrackNames = Object.keys(pattern.tracks).sort();
+    
+    for (const trackName of sortedTrackNames) {
+        hashString += `${trackName}:`;
+        const events = [...pattern.tracks[trackName]].sort((a, b) => a.time - b.time);
+
+        switch (aggressiveness) {
+            // Level 0: Exact Match
+            case 0:
+                for (const event of events) {
+                    const noteStr = event.notes.map(n => `${n.degree},${n.octaveShift},${n.accidental}`).sort().join(';');
+                    hashString += `|${event.time.toFixed(3)}:${event.duration.toFixed(3)}:${noteStr}`;
+                }
+                break;
+
+            // Level 1: Quantize to Grid (ignore sustain vs. rest)
+            case 1:
+                const slots = new Set<number>();
+                for (const event of events) {
+                    slots.add(Math.round(event.time));
+                }
+                const noteSequence = events.map(e => getNoteSignature(e.notes)).join(',');
+                hashString += Array.from(slots).sort((a,b)=>a-b).join(',') + `_` + noteSequence;
+                break;
+            
+            // Level 2: Beat Fingerprint (note count & placement)
+            case 2:
+                const { grid, timeSig } = config;
+                const slotsPerBeat = grid * (4 / timeSig[1]);
+                const beats: string[] = [];
+                for(let i = 0; i < timeSig[0]; i++) {
+                    const beatStart = i * slotsPerBeat;
+                    const beatEnd = (i + 1) * slotsPerBeat;
+                    const eventsInBeat = events.filter(e => e.time >= beatStart && e.time < beatEnd);
+                    if (eventsInBeat.length === 0) continue;
+                    
+                    const firstNotePos = Math.round((eventsInBeat[0].time - beatStart) / slotsPerBeat * 4); // Position as 0,1,2,3
+                    beats.push(`${eventsInBeat.length}n@${firstNotePos}`);
+                }
+                hashString += beats.join('_');
+                break;
+
+            // Level 3: Melodic Only (ignore all rhythm)
+            case 3:
+                hashString += events.map(e => getNoteSignature(e.notes)).join(',');
+                break;
+        }
+        hashString += '//';
+    }
+    return hashString;
+}
+
+
 function generatePatternHash(pattern: ParsedPattern, similarity: 'exact' | 'rhythmic'): string {
     let hashString = '';
     const sortedTrackNames = Object.keys(pattern.tracks).sort();
@@ -455,3 +546,4 @@ function renamePatterns(track: ParsedTrack): ParsedTrack {
     track.patterns = newPatterns;
     return track;
 }
+
