@@ -5,18 +5,17 @@ import { serializeParsedTrack } from './serializer';
 import { formatLigatureSource } from './formatter';
 import { ParsedTrack, ParsedPattern, SequenceEvent, NoteDef, PlaylistItem, PatternPlaylistItem } from './models';
 import { PlayerQualities } from '../models';
+// --- NEW IMPORT --- Using your official scale definitions for accuracy
+import { MODES } from './scales';
 
 interface LigatureToolOptions {
     foldLanes?: boolean;
     extractPatterns?: boolean;
     foldAggressiveness?: 'low' | 'high';
-    patternSimilarity?: 'exact' | 'rhythmic';
+    patternSimilarity?: 'exact' | 'rhythmic' | 'transpositional';
 }
 
-/**
- * The main entry point for all Ligature post-processing tools.
- * It orchestrates the parsing, manipulation, and serialization steps.
- */
+// --- MAIN ROUTER FUNCTION ---
 export function processLigature(
     source: string, 
     options: LigatureToolOptions,
@@ -24,44 +23,191 @@ export function processLigature(
 ): string {
     const parser = new LigatureParser();
     let parsedTrack = parser.parse(source, mockQualities);
-
-    // STEP 1: Always normalize to single-bar patterns. This simplifies all subsequent tools.
     parsedTrack = normalizePatternsToBars(parsedTrack);
-
-    // STEP 2: Fold instrument lanes if requested.
     if (options.foldLanes) {
-        parsedTrack = foldInstrumentLanes(parsedTrack, options.foldAggressiveness || 'high');
+        parsedTrack = foldInstrumentLanes(parsedTrack);
     }
-
-    // STEP 3: Extract (deduplicate) repeated patterns if requested.
     if (options.extractPatterns) {
-        parsedTrack = extractRepeatedPatterns(parsedTrack, options.patternSimilarity || 'exact');
+        if (options.patternSimilarity === 'transpositional') {
+            parsedTrack = extractTransposedPatterns(parsedTrack);
+        } else {
+            parsedTrack = extractRepeatedPatterns(parsedTrack, options.patternSimilarity || 'exact');
+        }
     }
-
-    // Final Step: Serialize back to a string and format it.
     const finalSource = serializeParsedTrack(parsedTrack);
     return formatLigatureSource(finalSource);
 }
 
+// --- HELPER to create a unique signature for a set of notes ---
+function getNoteSignature(notes: NoteDef[]): string {
+    return notes
+      .map(n => `${n.degree},${n.octaveShift},${n.accidental},${n.isNatural}`)
+      .sort()
+      .join(';');
+}
 
+// --- FOLD LANES (Now with intelligent de-duplication) ---
+function foldInstrumentLanes(track: ParsedTrack): ParsedTrack {
+    const trackGroups: Record<string, string[]> = {};
+    Object.keys(track.instruments).forEach(trackName => {
+        const baseName = trackName.replace(/_L\d+$/, '');
+        if (!trackGroups[baseName]) trackGroups[baseName] = [];
+        trackGroups[baseName].push(trackName);
+    });
+
+    // *** FIX 1: Create a reverse-map of existing chord definitions ***
+    const definitionsMap = new Map<string, string>();
+    if (track.definitions) {
+        for (const [alias, notes] of Object.entries(track.definitions)) {
+            definitionsMap.set(getNoteSignature(notes), alias);
+        }
+    }
+    let chordCounter = Object.keys(track.definitions || {}).length + 1;
+
+    for (const playlistItem of track.playlist) {
+        if (playlistItem.type !== 'pattern') continue;
+        for (const baseName in trackGroups) {
+            const lanes = trackGroups[baseName];
+            if (lanes.length <= 1) continue;
+            // ... (rest of the setup is the same)
+            const baseLaneName = lanes.find(l => !l.match(/_L\d+$/)) || lanes[0];
+            const otherLaneNames = lanes.filter(l => l !== baseLaneName);
+            const basePat = playlistItem.patterns.find(p => track.patterns[p.id]?.tracks[baseLaneName]);
+            if (!basePat) continue;
+            const baseEvents = track.patterns[basePat.id].tracks[baseLaneName];
+
+            for (const otherLane of otherLaneNames) {
+                const otherPat = playlistItem.patterns.find(p => track.patterns[p.id]?.tracks[otherLane]);
+                if (!otherPat) continue;
+                const otherEvents = track.patterns[otherPat.id].tracks[otherLane];
+                for (const otherEvent of otherEvents) {
+                    const existingEvent = baseEvents.find(e => Math.abs(e.time - otherEvent.time) < 0.01);
+                    if (existingEvent) {
+                        const combinedNotes = [...existingEvent.notes, ...otherEvent.notes];
+                        const uniqueNoteDefs: NoteDef[] = [];
+                        const noteSignatures = new Set<string>();
+                        for (const note of combinedNotes) {
+                            const sig = `${note.degree},${note.octaveShift},${note.accidental}`;
+                            if (!noteSignatures.has(sig)) { uniqueNoteDefs.push(note); noteSignatures.add(sig); }
+                        }
+                        uniqueNoteDefs.sort((a, b) => a.degree - b.degree || a.octaveShift - b.octaveShift);
+                        existingEvent.notes = uniqueNoteDefs;
+
+                        // *** FIX 1 (cont.): Only create a definition if it's a new shape ***
+                        if (uniqueNoteDefs.length > 1) {
+                            const signature = getNoteSignature(uniqueNoteDefs);
+                            if (!definitionsMap.has(signature)) {
+                                if (!track.definitions) track.definitions = {};
+                                const newAlias = `@chord${chordCounter++}`;
+                                track.definitions[newAlias] = uniqueNoteDefs;
+                                definitionsMap.set(signature, newAlias);
+                            }
+                        }
+                    } else {
+                        baseEvents.push(otherEvent);
+                    }
+                }
+                playlistItem.patterns = playlistItem.patterns.filter(p => p.id !== otherPat.id);
+                delete track.patterns[otherPat.id];
+            }
+            baseEvents.sort((a, b) => a.time - b.time);
+        }
+    }
+    return track;
+}
+
+// --- TRANSPOSITIONAL DEDUPLICATION (Now with accurate semitone logic) ---
+function extractTransposedPatterns(track: ParsedTrack): ParsedTrack {
+    const patternFingerprints = new Map<string, { id: string, anchorDegree: number }>();
+    const canonicalPatterns = new Set<string>();
+    
+    // *** FIX 2: Use the official scale definitions for accurate semitone calculation ***
+    const modeKey = track.config.scaleMode.charAt(0).toUpperCase() + track.config.scaleMode.slice(1);
+    const scaleIntervals = MODES[modeKey] || MODES['Major'];
+
+    for (const playlistItem of track.playlist) {
+        if (playlistItem.type !== 'pattern') continue;
+        for (const pat of playlistItem.patterns) {
+            const pattern = track.patterns[pat.id];
+            if (!pattern) continue;
+            const { hash, anchorDegree } = generateTranspositionalHash(pattern, scaleIntervals);
+            if (!hash) continue; 
+            if (patternFingerprints.has(hash)) {
+                const canonical = patternFingerprints.get(hash)!;
+                const transposeAmount = anchorDegree - canonical.anchorDegree;
+                pat.id = canonical.id;
+                pat.transposition = (pat.transposition || 0) + transposeAmount;
+            } else {
+                patternFingerprints.set(hash, { id: pat.id, anchorDegree: anchorDegree });
+                canonicalPatterns.add(pat.id);
+            }
+        }
+    }
+    const newPatterns: Record<string, ParsedPattern> = {};
+    for (const patId of canonicalPatterns) {
+        if (track.patterns[patId]) newPatterns[patId] = track.patterns[patId];
+    }
+    track.patterns = newPatterns;
+    return track;
+}
+
+// *** FIX 2 (cont.): Helper to convert Ligature degree to absolute semitone ***
+function degreeToSemitone(degree: number, intervals: number[]): number {
+    const zeroBasedDegree = degree - 1;
+    const octave = Math.floor(zeroBasedDegree / 7);
+    const scaleIndex = (zeroBasedDegree % 7 + 7) % 7; // safe modulo for negative degrees
+    return intervals[scaleIndex] + (octave * 12);
+}
+
+function generateTranspositionalHash(pattern: ParsedPattern, scaleIntervals: number[]): { hash: string, anchorDegree: number } {
+    let anchorInfo: { note: NoteDef, time: number } | null = null;
+    for (const trackName of Object.keys(pattern.tracks)) {
+        for (const event of pattern.tracks[trackName]) {
+            if (event.notes && event.notes.length > 0) {
+                if (!anchorInfo || event.time < anchorInfo.time) {
+                    anchorInfo = { note: event.notes[0], time: event.time };
+                }
+            }
+        }
+    }
+    if (!anchorInfo) return { hash: '', anchorDegree: 0 };
+    const anchorNote = anchorInfo.note;
+    const anchorDegree = (anchorNote.degree - 1) + (anchorNote.octaveShift * 7);
+    const anchorSemitone = degreeToSemitone(anchorNote.degree, scaleIntervals) + (anchorNote.octaveShift * 12) + anchorNote.accidental;
+
+    let hashString = '';
+    const sortedTrackNames = Object.keys(pattern.tracks).sort();
+    for (const trackName of sortedTrackNames) {
+        hashString += `${trackName}:`;
+        const events = [...pattern.tracks[trackName]].sort((a, b) => a.time - b.time);
+        for (const event of events) {
+            const noteIntervals = event.notes
+                .map(n => {
+                    const noteSemitone = degreeToSemitone(n.degree, scaleIntervals) + (n.octaveShift * 12) + n.accidental;
+                    return noteSemitone - anchorSemitone;
+                })
+                .sort((a, b) => a - b)
+                .join(',');
+            hashString += `|${event.time.toFixed(3)}:${event.duration.toFixed(3)}:${noteIntervals}`;
+        }
+        hashString += '//';
+    }
+    return { hash: hashString, anchorDegree: anchorDegree };
+}
+
+
+// --- NORMALIZATION AND NON-TRANSPOSED DEDUPLICATION (No changes needed here) ---
 function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
     const newPatterns: Record<string, ParsedPattern> = {};
     const newPlaylist: PlaylistItem[] = [];
     const { grid, timeSig } = track.config;
     const slotsPerBar = grid * (4 / timeSig[1]) * timeSig[0];
-
     for (const playlistItem of track.playlist) {
-        if (playlistItem.type === 'command') {
-            newPlaylist.push(playlistItem);
-            continue;
-        }
+        if (playlistItem.type === 'command') { newPlaylist.push(playlistItem); continue; }
         let maxBarsInRow = 0;
         for (const pat of playlistItem.patterns) {
             const pattern = track.patterns[pat.id];
-            if (pattern) {
-                const bars = Math.ceil(pattern.duration / slotsPerBar);
-                maxBarsInRow = Math.max(maxBarsInRow, bars);
-            }
+            if (pattern) maxBarsInRow = Math.max(maxBarsInRow, Math.ceil(pattern.duration / slotsPerBar));
         }
         for (let i = 0; i < maxBarsInRow; i++) {
             const newPlaylistItem: PatternPlaylistItem = { type: 'pattern', patterns: [] };
@@ -88,76 +234,6 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
     track.playlist = newPlaylist;
     return track;
 }
-
-function foldInstrumentLanes(track: ParsedTrack, aggressiveness: 'low' | 'high'): ParsedTrack {
-    const trackGroups: Record<string, string[]> = {};
-    Object.keys(track.instruments).forEach(trackName => {
-        const baseName = trackName.replace(/_L\d+$/, '');
-        if (!trackGroups[baseName]) trackGroups[baseName] = [];
-        trackGroups[baseName].push(trackName);
-    });
-
-    let chordCounter = 1;
-
-    for (const playlistItem of track.playlist) {
-        if (playlistItem.type !== 'pattern') continue;
-
-        for (const baseName in trackGroups) {
-            const lanes = trackGroups[baseName];
-            if (lanes.length <= 1) continue;
-            const baseLaneName = lanes.find(l => !l.match(/_L\d+$/)) || lanes[0];
-            const otherLaneNames = lanes.filter(l => l !== baseLaneName);
-            const basePat = playlistItem.patterns.find(p => track.patterns[p.id]?.tracks[baseLaneName]);
-            if (!basePat) continue;
-            const basePattern = track.patterns[basePat.id];
-            const baseEvents = basePattern.tracks[baseLaneName];
-
-            for (const otherLane of otherLaneNames) {
-                const otherPat = playlistItem.patterns.find(p => track.patterns[p.id]?.tracks[otherLane]);
-                if (!otherPat) continue;
-                const otherEvents = track.patterns[otherPat.id].tracks[otherLane];
-
-                for (const otherEvent of otherEvents) {
-                    const existingEvent = baseEvents.find(e => Math.abs(e.time - otherEvent.time) < 0.01);
-
-                    if (existingEvent) {
-                        const combinedNotes = [...existingEvent.notes, ...otherEvent.notes];
-                        const uniqueNoteDefs: NoteDef[] = [];
-                        const noteSignatures = new Set<string>();
-                        for (const note of combinedNotes) {
-                            const sig = `${note.degree},${note.octaveShift},${note.accidental}`;
-                            if (!noteSignatures.has(sig)) {
-                                uniqueNoteDefs.push(note);
-                                noteSignatures.add(sig);
-                            }
-                        }
-                        
-                        // *** FIX ***: Sort notes to create a canonical representation for chords.
-                        uniqueNoteDefs.sort((a, b) => a.degree - b.degree || a.octaveShift - b.octaveShift);
-                        existingEvent.notes = uniqueNoteDefs;
-
-                        if (uniqueNoteDefs.length > 1) {
-                            if (!track.definitions) track.definitions = {};
-                            const defName = `@chord${chordCounter++}`;
-                            track.definitions[defName] = uniqueNoteDefs;
-                        }
-                    } else {
-                        const interruptingSustain = baseEvents.find(e => e.time < otherEvent.time && (e.time + e.duration) > otherEvent.time);
-                        if (interruptingSustain && aggressiveness === 'high') {
-                            interruptingSustain.duration = otherEvent.time - interruptingSustain.time;
-                        }
-                        baseEvents.push(otherEvent);
-                    }
-                }
-                playlistItem.patterns = playlistItem.patterns.filter(p => p.id !== otherPat.id);
-                delete track.patterns[otherPat.id];
-            }
-            baseEvents.sort((a, b) => a.time - b.time);
-        }
-    }
-    return track;
-}
-
 function extractRepeatedPatterns(track: ParsedTrack, similarity: 'exact' | 'rhythmic'): ParsedTrack {
     const patternHashes = new Map<string, string>();
     const canonicalPatterns = new Set<string>();
@@ -182,7 +258,6 @@ function extractRepeatedPatterns(track: ParsedTrack, similarity: 'exact' | 'rhyt
     track.patterns = newPatterns;
     return track;
 }
-
 function generatePatternHash(pattern: ParsedPattern, similarity: 'exact' | 'rhythmic'): string {
     let hashString = '';
     const sortedTrackNames = Object.keys(pattern.tracks).sort();

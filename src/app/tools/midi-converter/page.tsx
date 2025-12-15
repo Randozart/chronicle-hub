@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Midi } from '@tonejs/midi';
 import dynamic from 'next/dynamic';
 import { convertMidiToLigature } from '@/engine/audio/midiConverter'; 
-// --- NEW IMPORT ---
 import { processLigature } from '@/engine/audio/ligatureTools';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
@@ -16,55 +15,47 @@ export default function MidiConverterPage() {
     // State for conversion options
     const [options, setOptions] = useState({
         grid: 4,
-        bpm: 0, // 0 means 'auto'
+        bpm: 0,
         scaleRoot: 'auto',
         scaleMode: 'major'
     });
 
-    // --- NEW STATE FOR REFINEMENT TOOLS ---
+    // State for refinement tools
     const [shouldFoldLanes, setShouldFoldLanes] = useState(true);
     const [shouldExtractPatterns, setShouldExtractPatterns] = useState(true);
     const [foldAggressiveness, setFoldAggressiveness] = useState<'low' | 'high'>('high');
-    const [patternSimilarity, setPatternSimilarity] = useState<'exact' | 'rhythmic'>('exact');
+    const [patternSimilarity, setPatternSimilarity] = useState<'exact' | 'rhythmic' | 'transpositional'>('exact');
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         setStatus(`Parsing "${file.name}"...`);
-
         try {
             const arrayBuffer = await file.arrayBuffer();
             const midi = new Midi(arrayBuffer);
-            
             const { source, warnings, detected } = convertMidiToLigature(midi, options);
-
             setLigatureSource(source);
-            
             if (options.bpm === 0) setOptions(prev => ({ ...prev, bpm: detected.bpm }));
             if (options.scaleRoot === 'auto') {
                 const [root, mode] = detected.key.split(' ');
                 setOptions(prev => ({ ...prev, scaleRoot: root, scaleMode: mode.toLowerCase() }));
             }
-            
             let finalStatus = "Conversion successful!";
             if (warnings.length > 0) {
                 finalStatus += `\nDetected: ${detected.key} @ ${detected.bpm} BPM.\nWarnings:\n- ${warnings.join('\n- ')}`;
             }
             setStatus(finalStatus);
-
         } catch (e: any) {
             setStatus(`Error: ${e.message}`);
         }
     };
     
-    // --- NEW HANDLER FOR OUR TOOLS ---
     const handleOptimizeClick = () => {
         if (!ligatureSource) {
             setStatus('Nothing to optimize.');
             return;
         }
-
         setStatus('Optimizing Ligature source...');
         try {
             const newSource = processLigature(ligatureSource, {
@@ -120,7 +111,6 @@ export default function MidiConverterPage() {
                     </pre>
                 </div>
                 
-                {/* --- NEW/REPLACED REFINEMENT TOOLS SECTION --- */}
                 <div style={{ marginTop: '2rem', background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
                     <h3 style={{ color: '#C678DD', marginTop: 0 }}>Refinement Tools</h3>
                     <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
@@ -143,9 +133,11 @@ export default function MidiConverterPage() {
                                 <input type="checkbox" checked={shouldExtractPatterns} onChange={e => setShouldExtractPatterns(e.target.checked)} />
                                 Extract Repeated Patterns
                             </label>
-                            {shouldExtractPatterns && (
+                             {shouldExtractPatterns && (
+                                // *** MODIFIED SELECT BOX ***
                                  <select value={patternSimilarity} onChange={e => setPatternSimilarity(e.target.value as any)} className="form-select" style={{ marginTop: '0.5rem' }}>
                                     <option value="exact">Exact Match</option>
+                                    <option value="transpositional">Transpositional Match</option>
                                     <option value="rhythmic" disabled>Rhythmic Match (Soon)</option>
                                 </select>
                             )}
