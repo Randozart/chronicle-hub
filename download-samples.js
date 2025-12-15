@@ -5,28 +5,12 @@ const https = require('https');
 const BASE_DIR = './public/sounds/standard';
 
 const SAMPLES = {
-    // ... (Keep your existing piano/violin/etc. if they worked) ...
-
     'electric_guitar': {
-        // Source: Benjamin Gleitzman's "FatBoy" soundfont conversion
-        // Note: The folder name is "electric_guitar_clean-mp3"
-        'C3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/C3.mp3',
-        'G3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/G3.mp3',
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/G4.mp3'
-    },
-    'standard_kit': {
-        // Standard General MIDI mapping (Channel 10)
-        // Note: Filenames are MIDI numbers. 
-        // 36 (C1) = Kick, 38 (D1) = Snare, 42 (F#1) = Closed HH
-        'Kick.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/36.mp3',
-        'Snare.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/38.mp3',
-        'HiHat_Closed.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/42.mp3',
-        'HiHat_Open.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/46.mp3',
-        'Crash.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/49.mp3',
-        'Tom_High.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/50.mp3',
-        'Tom_Low.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/45.mp3'
-    }
+    'C3.wav': 'https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/master/samples/BlackAndGreenGuitars_C3.wav',
+    'G3.wav': 'https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/master/samples/BlackAndGreenGuitars_G3.wav',
+    'C4.wav': 'https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/master/samples/BlackAndGreenGuitars_C4.wav',
+    'G4.wav': 'https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/master/samples/BlackAndGreenGuitars_G4.wav'
+},
 };
 
 async function downloadFile(url, dest) {

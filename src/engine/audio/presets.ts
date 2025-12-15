@@ -685,7 +685,73 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             },
             volume: -4
         }
+    },
+    // --- ELECTRIC GUITAR (METAL/HARD ROCK) ---
+    'electric_guitar_distorted': {
+        id: 'electric_guitar_distorted',
+        name: 'Distorted Electric Guitar',
+        category: 'Standard Sampler',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/electric_guitar_distorted/',
+            urls: {
+                'C3': 'C3.wav',
+                'G3': 'G3.wav',
+                'C4': 'C4.wav',
+                'G4': 'G4.wav'
+            },
+            envelope: {
+                attack: 0.005,
+                release: 0.6
+            },
+            volume: -6
+        }
+    },
+
+    // --- MODERN ROCK DRUM KIT ---
+    'rock_kit': {
+        id: 'rock_kit',
+        name: 'Rock Drum Kit',
+        category: 'Standard Sampler',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/rock_kit/',
+            urls: {
+                'C4': 'Kick.mp3',
+                'D4': 'Snare.mp3',
+                'E4': 'Tom_Low.mp3',
+                'F4': 'HiHat_Closed.mp3',
+                'G4': 'Tom_High.mp3',
+                'A4': 'HiHat_Open.mp3',
+                'B4': 'Crash.mp3',
+                'C5': 'Ride.mp3'
+            },
+            envelope: {
+                attack: 0.001,
+                release: 1.2
+            },
+            volume: -4
+        }
+    },
+
+    // --- OPTIONAL: ELECTRIC BASS ---
+    'electric_bass': {
+        id: 'electric_bass',
+        name: 'Rock Electric Bass',
+        category: 'Standard Sampler',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/electric_bass/',
+            urls: {
+                'C2': 'C2.mp3',
+                'G2': 'G2.mp3',
+                'C3': 'C3.mp3',
+            },
+            envelope: { attack: 0.01, release: 1.0 },
+            volume: -6
+        }
     }
+
 };
 
 export const DEFAULT_INSTRUMENT_LIST = Object.values(AUDIO_PRESETS);
