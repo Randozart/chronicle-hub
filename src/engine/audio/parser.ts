@@ -132,10 +132,13 @@ export class LigatureParser {
     private parsePatternRow(line: string, track: ParsedTrack, patternId: string) {
         const pipeIndex = line.indexOf('|');
         if (pipeIndex === -1) return;
+
         const leftSide = line.substring(0, pipeIndex).trim();
         const content = line.substring(pipeIndex);
+        
         let trackName = leftSide;
         let modifiers: PatternModifier | undefined;
+
         const match = leftSide.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?$/);
         if (match) {
             trackName = match[1];
@@ -157,9 +160,11 @@ export class LigatureParser {
         const slotsPerBar = slotsPerBeat * timeSig[0];
         const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
         let currentTime = 0; 
+
         for (const token of tokens) {
             if (token === '|') continue;
             if (token === '.') { currentTime++; continue; }
+
             if (token === '-') {
                 if (sequence.length > 0) {
                     const lastEvent = sequence[sequence.length - 1];
@@ -170,53 +175,43 @@ export class LigatureParser {
                 currentTime++;
                 continue;
             }
-            if (token.startsWith('(')) {
-                const inner = token.substring(1, token.length - 1).trim();
-                // *** BUG FIX IS HERE ***
-                // Split by whitespace instead of using a faulty regex to correctly capture all tokens.
-                const subTokens = inner.split(/\s+/).filter(Boolean);
-                
-                if (subTokens.length > 0) {
-                    const durationPerNote = slotsPerBeat / subTokens.length; 
-                    let tupletTime = 0;
-                    
-                    for (const subToken of subTokens) {
-                         if (subToken === '.') {
-                            tupletTime += durationPerNote;
-                            continue;
-                        }
-                        if (subToken === '-') {
-                            if (sequence.length > 0) {
-                                const lastEvent = sequence[sequence.length - 1];
-                                // Check if the last note was part of this tuplet
-                                if (lastEvent && lastEvent.time >= currentTime && lastEvent.time < (currentTime + slotsPerBeat)) {
-                                    lastEvent.duration += durationPerNote;
-                                }
-                            }
-                            tupletTime += durationPerNote;
-                            continue;
-                        }
 
+            // --- REVERTED TUPLET LOGIC (Tuplet = 1 Slot) ---
+            if (token.startsWith('(')) {
+                const inner = token.substring(1, token.length - 1);
+                // Correctly split by whitespace for multiple notes inside
+                const subMatches = inner.split(/\s+/).filter(Boolean);
+                
+                if (subMatches.length > 0) {
+                    const count = subMatches.length;
+                    // Divide a SINGLE grid slot's duration by the number of notes
+                    const durationPerNote = 1.0 / count; 
+                    
+                    subMatches.forEach((subToken, idx) => {
                         const notes = this.resolveNotes(subToken, track.definitions);
                         if (notes.length > 0) {
                             sequence.push({
-                                time: currentTime + tupletTime,
+                                time: currentTime + (idx * durationPerNote),
                                 duration: durationPerNote,
                                 notes
                             });
                         }
-                        tupletTime += durationPerNote;
-                    }
+                    });
                 }
-                currentTime += slotsPerBeat; 
+                
+                // Advance the timeline by only ONE grid slot
+                currentTime++; 
                 continue;
             }
+            // --- END REVERT ---
+
             const notes = this.resolveNotes(token, track.definitions);
             if (notes.length > 0) {
                 sequence.push({ time: currentTime, duration: 1, notes });
             }
             currentTime++;
         }
+        
         const barCount = (content.match(/\|/g) || []).length - 1;
         const expectedDurationInSlots = barCount > 0 ? barCount * slotsPerBar : currentTime;
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
@@ -310,5 +305,122 @@ export class LigatureParser {
             if (char === '%') isNatural = true;
         }
         return { degree, octaveShift, accidental, isNatural };
+    }
+
+    public stringify(track: ParsedTrack): string {
+        let output = "";
+
+        // 1. [CONFIG]
+        output += `[CONFIG]\n`;
+        output += `BPM: ${track.config.bpm}\n`;
+        output += `Grid: ${track.config.grid}\n`;
+        output += `Time: ${track.config.timeSig.join('/')}\n`;
+        output += `Scale: ${track.config.scaleRoot} ${track.config.scaleMode}\n`;
+        if (track.config.humanize > 0) output += `Humanize: ${Math.round(track.config.humanize * 100)}\n`;
+        if (track.config.swing > 0) output += `Swing: ${Math.round(track.config.swing * 100)}\n`;
+        output += '\n';
+
+        // 2. [INSTRUMENTS]
+        if (Object.keys(track.instruments).length > 0) {
+            output += `[INSTRUMENTS]\n`;
+            for (const name in track.instruments) {
+                const config = track.instruments[name];
+                let mods = '';
+                if (Object.keys(config.overrides).length > 0) {
+                    const parts = [];
+                    if(config.overrides.volume) parts.push(`v:${config.overrides.volume}`);
+                    if(config.overrides.attack) parts.push(`a:${config.overrides.attack}`);
+                    if(config.overrides.decay) parts.push(`d:${config.overrides.decay}`);
+                    if(config.overrides.sustain) parts.push(`s:${config.overrides.sustain}`);
+                    if(config.overrides.release) parts.push(`r:${config.overrides.release}`);
+                    mods = `(${parts.join(', ')})`;
+                }
+                output += `${name}: ${config.id}${mods}\n`;
+            }
+            output += '\n';
+        }
+
+        // 3. [DEFINITIONS]
+        if (Object.keys(track.definitions).length > 0) {
+            output += `[DEFINITIONS]\n`;
+            for (const alias in track.definitions) {
+                const notes = track.definitions[alias].map(this.stringifyNote).join(', ');
+                output += `@${alias} = [${notes}]\n`;
+            }
+            output += '\n';
+        }
+
+        // 4. [PATTERNS]
+        for (const patternId in track.patterns) {
+            const pattern = track.patterns[patternId];
+            output += `[PATTERN: ${pattern.id}]\n`;
+            
+            for (const trackName in pattern.tracks) {
+                const events = pattern.tracks[trackName];
+                const gridLine = this.stringifyPatternRow(pattern, trackName, track.config);
+                output += `${gridLine}\n`;
+            }
+            output += '\n';
+        }
+
+        // 5. [PLAYLIST]
+        output += `[PLAYLIST]\n`;
+        track.playlist.forEach(item => {
+            if (item.type === 'command') {
+                output += `${item.command}=${item.value}\n`;
+            } else {
+                const patternsStr = item.patterns.map(p => {
+                    let mods = '';
+                    if (p.transposition !== 0) mods += p.transposition > 0 ? `+${p.transposition}` : p.transposition;
+                    if (p.volume !== undefined && p.volume !== 0) mods += `${mods ? ', ' : ''}v:${p.volume}`;
+                    return mods ? `${p.id}(${mods})` : p.id;
+                }).join(', ');
+                output += `${patternsStr}\n`;
+            }
+        });
+
+        return output;
+    }
+
+    private stringifyNote(note: NoteDef): string {
+        let str = String(note.degree);
+        if (note.accidental > 0) str += '#'.repeat(note.accidental);
+        if (note.accidental < 0) str += 'b'.repeat(Math.abs(note.accidental));
+        if (note.octaveShift > 0) str += "'".repeat(note.octaveShift);
+        if (note.octaveShift < 0) str += ",".repeat(Math.abs(note.octaveShift));
+        if (note.isNatural) str += '%';
+        return str;
+    }
+
+    private stringifyPatternRow(pattern: ParsedPattern, trackName: string, config: ParsedTrack['config']): string {
+        const events = pattern.tracks[trackName] || [];
+        const gridSlots: string[] = new Array(pattern.duration).fill('.');
+        
+        events.forEach(event => {
+            if (event.time < gridSlots.length) {
+                // For now, handle single notes. Tuplets are complex to reverse-engineer.
+                if (event.duration >= 1) { 
+                    gridSlots[Math.round(event.time)] = this.stringifyNote(event.notes[0]);
+                    for (let i = 1; i < Math.round(event.duration); i++) {
+                        if (Math.round(event.time) + i < gridSlots.length) {
+                            gridSlots[Math.round(event.time) + i] = '-';
+                        }
+                    }
+                }
+            }
+        });
+
+        const { grid, timeSig } = config;
+        const slotsPerBeat = grid * (4 / timeSig[1]);
+        const slotsPerBar = slotsPerBeat * timeSig[0];
+
+        let line = `${trackName.padEnd(12)} |`;
+        for (let i = 0; i < gridSlots.length; i++) {
+            if (i > 0 && i % slotsPerBar === 0) line += ' |';
+            if (i > 0 && i % slotsPerBeat === 0) line += '  ';
+            line += ` ${gridSlots[i]}`;
+        }
+        line += ' |';
+        return line;
     }
 }

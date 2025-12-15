@@ -1,20 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { LigatureTrack, InstrumentDefinition } from '@/engine/audio/models';
+import { LigatureTrack, InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
 import { PlayerQualities } from '@/engine/models';
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
-import PianoRoll from '@/components/admin/PianoRoll';
+import { mergeLigatureSnippet } from '@/engine/audio/merger';
+import { LigatureParser } from '@/engine/audio/parser';
 import PatternLibrary from '@/engine/audio/components/PatternLibrary';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
     loading: () => <div style={{ minHeight: '500px', background: '#111', borderRadius: '4px', padding: '1rem', color: '#555' }}>Loading Editor...</div>
 });
+const PianoRoll = dynamic(() => import('@/components/admin/PianoRoll'), { ssr: false });
 
-const EMPTY_TEMPLATE = `[CONFIG]
+const EMPTY_TEMPLATE = `
+[CONFIG]
 BPM: 120
 Grid: 4
 Time: 4/4
@@ -35,7 +38,7 @@ Scale: C Minor
 [PLAYLIST]
 // Arrange patterns here
 // Example: Main
-`;
+`; // Keep your existing template string
 
 interface Props {
     data: LigatureTrack;
@@ -54,33 +57,52 @@ export default function TrackEditor({
     enableDownload = false,
     isPlayground = false 
 }: Props) {
-    const [form, setForm] = useState(data);
+    // --- NEW STATE MANAGEMENT FOR TWO-WAY BINDING ---
+    const [source, setSource] = useState(data.source || "");
+    const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
+    const parser = new LigatureParser();
+    // ---------------------------------------------
+
     const { playTrack, stop, isPlaying } = useAudio();
     const [status, setStatus] = useState("");
-    const [editorValue, setEditorValue] = useState("");
     const [isClient, setIsClient] = useState(false);
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
-    const [optTolerance, setOptTolerance] = useState<0 | 1 | 2 | 3>(2);
-
+    
+    // Initial parse on load
     useEffect(() => {
         setIsClient(true);
-        setEditorValue(data.source || "");
-        setForm(data);
-    }, [data]);
+        try {
+            setParsedTrack(parser.parse(data.source, mockQualities));
+        } catch(e) {}
+        setSource(data.source);
+    }, [data, mockQualities]);
+
+    // Handler for text editor changes
+    const handleSourceChange = (newSource: string) => {
+        setSource(newSource);
+        try {
+            // When text changes, update the parsed object for the piano roll
+            setParsedTrack(parser.parse(newSource, mockQualities));
+        } catch(e) {}
+    };
+
+    // Handler for piano roll changes
+    const handlePianoRollChange = (newSource: string) => {
+        // When piano roll changes, it gives us new source text. Update everything.
+        setSource(newSource);
+        try {
+            setParsedTrack(parser.parse(newSource, mockQualities));
+        } catch(e) {}
+    };
 
     const handlePlay = () => {
         try {
-            playTrack(form.source, availableInstruments, mockQualities);
+            playTrack(source, availableInstruments, mockQualities);
             setStatus("Playing...");
         } catch (e: any) {
             setStatus("Error: " + e.message);
             stop();
         }
-    };
-
-    const handleSourceChange = (newSource: string) => {
-        setEditorValue(newSource);
-        setForm(prev => ({ ...prev, source: newSource }));
     };
 
     const handleStop = () => {
@@ -90,18 +112,16 @@ export default function TrackEditor({
 
     const handleClear = () => {
         if (confirm("Replace the current track with a blank template?")) {
-            const newSource = EMPTY_TEMPLATE;
-            setForm({ ...form, source: newSource });
-            setEditorValue(newSource);
+            handleSourceChange(EMPTY_TEMPLATE); // Use the handler to keep state in sync
         }
     };
 
     const handleDownload = () => {
-        const blob = new Blob([form.source], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([source], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${form.id || 'track'}.lig`;
+        a.download = `${data.id || 'track'}.lig`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -109,19 +129,23 @@ export default function TrackEditor({
     };
 
     const handleFormat = () => {
-        setEditorValue(currentEditorValue => {
-            const formatted = formatLigatureSource(currentEditorValue);
-            setForm(prevForm => ({ ...prevForm, source: formatted }));
-            return formatted;
-        });
+        handleSourceChange(formatLigatureSource(source));
     };
 
-    // --- 2. NEW HANDLER FOR SNIPPET INSERTION ---
     const handleInsertSnippet = (textToInsert: string) => {
-        const newValue = editorValue + textToInsert;
-        setEditorValue(newValue);
-        setForm(prev => ({ ...prev, source: newValue }));
+        handleSourceChange(mergeLigatureSnippet(source, textToInsert));
     };
+    
+    const handleSaveClick = () => {
+        // Create a data object that matches the parent's expectation
+        const saveData: LigatureTrack & { category: 'track' } = {
+            id: data.id,
+            name: data.name, // Assuming name doesn't change here, or add a form field for it
+            source: source,
+            category: 'track' // Add category for handleSave
+        };
+        onSave(saveData);
+    }
 
     const groupedInsts = availableInstruments.reduce((acc, curr) => {
         const cat = curr.category || 'Uncategorized';
@@ -131,7 +155,6 @@ export default function TrackEditor({
     }, {} as Record<string, string[]>);
 
     return (
-        // --- 3. UPDATED 3-COLUMN LAYOUT ---
         <div style={{ height: '100%', display: 'flex', gap: '1rem' }}>
             {/* LEFT COLUMN: DEBUGGER */}
             <div style={{ width: '250px', flexShrink: 0 }}>
@@ -142,7 +165,7 @@ export default function TrackEditor({
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '800px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <h2 style={{ margin: 0 }}>Track: {form.name}</h2>
+                        <h2 style={{ margin: 0 }}>Track: {data.name}</h2>
                         <span style={{ fontSize: '0.8rem', color: isPlaying ? '#98c379' : '#777' }}>{isPlaying ? "▶ PLAYING" : status}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -164,16 +187,25 @@ export default function TrackEditor({
                             </button>
                         )}
                         {!isPlayground && (
-                            <button onClick={() => onSave(form)} className="save-btn">Save</button>
+                            <button onClick={handleSaveClick} className="save-btn">Save</button>
                         )}
                     </div>
                 </div>
-
+                <div style={{ marginBottom: '1rem' }}>
+                    <label className="form-label">Visual Editor</label>
+                    {isClient && (
+                        <PianoRoll 
+                            source={source} 
+                            qualities={mockQualities}
+                            onChange={handlePianoRollChange}
+                        />
+                    )}
+                </div>
                 <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '800px'}}>
                     <label className="form-label">Ligature Source Code</label>
                     {isClient && (
                         <ScribeEditor 
-                            value={editorValue} 
+                            value={source} 
                             onChange={handleSourceChange} 
                             minHeight="400px"
                             placeholder="[CONFIG]..."
@@ -182,10 +214,7 @@ export default function TrackEditor({
                     )}
                 </div>
                 
-                <div style={{ marginBottom: '1rem' }}>
-                    <label className="form-label">Pattern Visualization</label>
-                    <PianoRoll source={editorValue} qualities={mockQualities} />
-                </div>
+                
 
                 <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '200px' }}>
                     <strong style={{ color: '#aaa' }}>Available Instruments:</strong>

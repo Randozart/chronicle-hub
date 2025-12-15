@@ -7,6 +7,7 @@ import { resolveNote } from '@/engine/audio/scales';
 import { getOrMakeInstrument, disposeInstruments, AnyInstrument } from '@/engine/audio/synth';
 import { LigatureParser } from '@/engine/audio/parser';
 import { PlayerQualities } from '@/engine/models';
+import { TransportClass } from 'tone/build/esm/core/clock/Transport';
 
 interface AudioContextType {
     playTrack: (source: string, instruments: InstrumentDefinition[], qualities?: PlayerQualities) => void;
@@ -87,7 +88,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         currentInstrumentsRef.current = instruments;
         currentMockQualitiesRef.current = mockQualities;
         
-        currentTrackRef.current = track;
+        currentTrackRef.current = track; // Set the ref here
         instrumentDefsRef.current = instruments;
         
         const instrumentsUsed = Object.values(track.instruments); 
@@ -96,18 +97,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             const baseDef = instruments.find(i => i.id === instConfig.id);
             if (!baseDef) return null;
             
-            // --- MERGE LOGIC ---
-            // Create a new definition object with overrides applied
             const mergedDef: InstrumentDefinition = {
                 ...baseDef,
                 config: {
                     ...baseDef.config,
                     volume: instConfig.overrides.volume ?? baseDef.config.volume,
                     envelope: {
-                        // Spread existing first
                         ...baseDef.config.envelope,
-                        // Then apply overrides. 
-                        // The 'as number' casts are safe because 0 is a valid fallback.
                         attack: (instConfig.overrides.attack !== undefined ? instConfig.overrides.attack : baseDef.config.envelope?.attack) || 0.01,
                         decay: instConfig.overrides.decay ?? baseDef.config.envelope?.decay,
                         sustain: instConfig.overrides.sustain ?? baseDef.config.envelope?.sustain,
@@ -118,26 +114,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             return mergedDef;
         }).filter(Boolean) as InstrumentDefinition[];
         
-        const loadPromises: Promise<void>[] = [];
-
+        let hasSamplers = false;
         neededDefs.forEach(def => {
-            const inst = getOrMakeInstrument(def); 
-            if (def.type === 'sampler' && inst instanceof Tone.Sampler) {
-                if (!inst.loaded) {
-                    loadPromises.push(new Promise(resolve => {
-                        resolve(); 
-                    }));
-                }
-            }
+            getOrMakeInstrument(def); 
+            if (def.type === 'sampler') hasSamplers = true;
         });
 
-        if (loadPromises.length > 0) {
+        if (hasSamplers) {
             setIsLoadingSamples(true);
-            try {
-                await Tone.loaded(); 
-            } catch(e) {
-                console.error("Failed to load samples:", e);
-            }
+            try { await Tone.loaded(); } catch(e) { console.error("Failed to load samples:", e); }
             setIsLoadingSamples(false);
         }
 
@@ -147,20 +132,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         transport.bpm.value = track.config.bpm;
         transport.swing = track.config.swing || 0;
         
-        // Pass the transport instance explicitly to avoid redeclaration issues
+        // --- FIX: Pass only the required arguments ---
         playSequenceFrom(0, transport); 
 
         if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
     
-    // --- UPDATED SIGNATURE: Accept transport as argument ---
-    const playSequenceFrom = (playlistStartIndex: number, transport: any) => {
+    const playSequenceFrom = (playlistStartIndex: number, transport: TransportClass) => {
+        // The track is read from the ref, so it doesn't need to be passed.
         const track = currentTrackRef.current;
         if (!track) return;
         
-        // We reuse the transport instance passed from playTrack
-
         let totalBars = 0;
         let runningConfig = { ...track.config };
 
@@ -191,15 +174,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 longestPatternBars = Math.max(longestPatternBars, patternBars);
 
                 for (const [trackName, events] of Object.entries(pattern.tracks)) {
-                    // 1. Get the specific config for this track name from the PARSED file
                     const instConfig = track.instruments[trackName];
                     if (!instConfig) continue; 
 
-                    // 2. Find the base definition from the available presets
                     const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
                     
                     if (baseDef) {
-                        // --- RE-MERGE FOR PLAYBACK ---
                         const mergedDef: InstrumentDefinition = {
                             ...baseDef,
                             config: {
@@ -279,8 +259,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
         transport.loop = true;
         transport.loopEnd = `${totalBars}:0:0`;
-        transport.start();
-        setIsPlaying(true);
     };
 
     const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number): string => {
