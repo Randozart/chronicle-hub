@@ -175,7 +175,8 @@ Humanize: ${humanizeAmt}
             }
         });
 
-        lanes.forEach((laneData, laneIndex) => {
+        // --- COMPRESSION & GENERATION ---
+       lanes.forEach((laneData, laneIndex) => {
             const suffix = laneIndex === 0 ? "" : `_L${laneIndex}`;
             const trackName = `${baseName}${suffix}`;
             
@@ -185,6 +186,8 @@ Humanize: ${humanizeAmt}
             allLayerIds.push(patternId);
 
             let patternContent = `\n[PATTERN: ${patternId}]\n`;
+            
+            // Start the single long line
             let gridLine = `${trackName.padEnd(16)} |`;
             
             for (let b = 0; b < totalBars; b++) {
@@ -213,21 +216,19 @@ Humanize: ${humanizeAmt}
                             gridLine += ` ${val.padEnd(2)}`;
                         }
                     } else {
-                        // FIX: When writing tuplets, strip trailing sustain/rests to keep it clean? 
-                        // No, precise timing requires full length.
                         const tupletContent = cleanBeat.join(' ');
                         gridLine += ` (${tupletContent})`;
                     }
                     
                     gridLine += '  ';
                 }
+                
+                // --- BAR END ---
+                // NO NEWLINE HERE. Just a pipe.
                 gridLine += ' | ';
-                if ((b + 1) % 4 === 0) {
-                    gridLine += `\n${"".padEnd(16)} | `;
-                }
             }
             
-            patternContent += gridLine + '\n';
+            patternContent += gridLine + '\n'; // Newline only at end of pattern
             patternBlocks.push(patternContent);
         });
     });

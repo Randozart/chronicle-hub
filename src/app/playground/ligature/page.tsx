@@ -60,7 +60,7 @@ export default function LigaturePlayground() {
 
     return (
         <div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#ccc' }}>
-            <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '1500px', margin: '0 auto' }}>
                 <h1 style={{ color: '#61afef' }}>Ligature Playground</h1>
                 <p style={{ color: '#888', marginBottom: '2rem' }}>
                     Experiment with the ChronicleHub procedural audio engine. Changes are not saved.

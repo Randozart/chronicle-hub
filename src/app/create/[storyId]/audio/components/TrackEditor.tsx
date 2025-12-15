@@ -126,7 +126,7 @@ export default function TrackEditor({
     return (
         <div style={{ height: '100%', display: 'flex', gap: '2rem' }}>
             {/* LEFT COLUMN: EDITOR */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column',minWidth: '800px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <h2 style={{ margin: 0 }}>Track: {form.name}</h2>
@@ -155,7 +155,7 @@ export default function TrackEditor({
                     </div>
                 </div>
 
-                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '800px'}}>
                     <label className="form-label">Ligature Source Code</label>
                     {isClient && (
                         <ScribeEditor 

@@ -1,91 +1,31 @@
-// download-samples.js
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
 const BASE_DIR = './public/sounds/standard';
 
-// VSCO 2 Community Edition samples via GitHub CDN (gleitz/midi-js-soundfonts)
-// These are pre-converted to MP3 for web use.
 const SAMPLES = {
-    // --- STRINGS ---
-    'violin': {
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/violin-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/violin-mp3/G4.mp3',
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/violin-mp3/C5.mp3',
-        'A5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/violin-mp3/A5.mp3'
-    },
-    'cello': {
-        'C3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/cello-mp3/C3.mp3',
-        'G3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/cello-mp3/G3.mp3',
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/cello-mp3/C4.mp3'
-    },
-    'contrabass': {
-        'C2.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/contrabass-mp3/C2.mp3',
-        'G2.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/contrabass-mp3/G2.mp3',
-        'C3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/contrabass-mp3/C3.mp3'
-    },
-    'pizzicato_strings': {
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/pizzicato_strings-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/pizzicato_strings-mp3/G4.mp3'
-    },
+    // ... (Keep your existing piano/violin/etc. if they worked) ...
 
-    // --- WOODWINDS ---
-    'flute': {
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/flute-mp3/C5.mp3',
-        'G5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/flute-mp3/G5.mp3',
-        'C6.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/flute-mp3/C6.mp3'
+    'electric_guitar': {
+        // Source: Benjamin Gleitzman's "FatBoy" soundfont conversion
+        // Note: The folder name is "electric_guitar_clean-mp3"
+        'C3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/C3.mp3',
+        'G3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/G3.mp3',
+        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/C4.mp3',
+        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FatBoy/electric_guitar_clean-mp3/G4.mp3'
     },
-    'clarinet': {
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/clarinet-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/clarinet-mp3/G4.mp3',
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/clarinet-mp3/C5.mp3'
-    },
-    'oboe': {
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/oboe-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/oboe-mp3/G4.mp3',
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/oboe-mp3/C5.mp3'
-    },
-    'bassoon': {
-        'C3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/bassoon-mp3/C3.mp3',
-        'G3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/bassoon-mp3/G3.mp3',
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/bassoon-mp3/C4.mp3'
-    },
-
-    // --- BRASS ---
-    'horn': {
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/french_horn-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/french_horn-mp3/G4.mp3'
-    },
-    'trumpet': {
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/trumpet-mp3/C5.mp3',
-        'G5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/trumpet-mp3/G5.mp3'
-    },
-    'trombone': {
-        'C3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/trombone-mp3/C3.mp3',
-        'G3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/trombone-mp3/G3.mp3'
-    },
-    'tuba': {
-        'C2.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/tuba-mp3/C2.mp3',
-        'G2.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/tuba-mp3/G2.mp3'
-    },
-
-    // --- KEYS & PERCUSSION ---
-    'piano': {
-        'C3.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/acoustic_grand_piano-mp3/C3.mp3',
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/acoustic_grand_piano-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/acoustic_grand_piano-mp3/G4.mp3',
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/acoustic_grand_piano-mp3/C5.mp3'
-    },
-    'organ': {
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/church_organ-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/church_organ-mp3/G4.mp3',
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/church_organ-mp3/C5.mp3'
-    },
-    'choir': {
-        'C4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/choir_aahs-mp3/C4.mp3',
-        'G4.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/choir_aahs-mp3/G4.mp3',
-        'C5.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/MusyngKite/choir_aahs-mp3/C5.mp3'
+    'standard_kit': {
+        // Standard General MIDI mapping (Channel 10)
+        // Note: Filenames are MIDI numbers. 
+        // 36 (C1) = Kick, 38 (D1) = Snare, 42 (F#1) = Closed HH
+        'Kick.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/36.mp3',
+        'Snare.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/38.mp3',
+        'HiHat_Closed.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/42.mp3',
+        'HiHat_Open.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/46.mp3',
+        'Crash.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/49.mp3',
+        'Tom_High.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/50.mp3',
+        'Tom_Low.mp3': 'https://raw.githubusercontent.com/gleitz/midi-js-soundfonts/master/FluidR3_GM/drum_kit-mp3/45.mp3'
     }
 };
 
@@ -93,8 +33,13 @@ async function downloadFile(url, dest) {
     return new Promise((resolve, reject) => {
         const file = fs.createWriteStream(dest);
         https.get(url, (response) => {
+            // Follow redirects if necessary (Github raw sometimes redirects)
+            if (response.statusCode === 302 || response.statusCode === 301) {
+                downloadFile(response.headers.location, dest).then(resolve).catch(reject);
+                return;
+            }
             if (response.statusCode !== 200) {
-                reject(`Failed to download: ${response.statusCode}`);
+                reject(`Failed to download ${url}: ${response.statusCode}`);
                 return;
             }
             response.pipe(file);
@@ -119,7 +64,12 @@ async function main() {
             const dest = path.join(dir, filename);
             if (!fs.existsSync(dest)) {
                 console.log(`Downloading ${instrument}/${filename}...`);
-                await downloadFile(url, dest);
+                try {
+                    await downloadFile(url, dest);
+                } catch (e) {
+                    console.error(e);
+                    // Continue even if one fails
+                }
             }
         }
     }

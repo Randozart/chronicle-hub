@@ -633,6 +633,58 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             envelope: { attack: 1.0, release: 2.0 },
             volume: -12
         }
+    },
+    'electric_guitar': {
+        id: 'electric_guitar',
+        name: 'Clean Electric Guitar',
+        category: 'Standard Sampler',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/electric_guitar/',
+            urls: {
+                'C3': 'C3.mp3',
+                'G3': 'G3.mp3',
+                'C4': 'C4.mp3',
+                'G4': 'G4.mp3'
+            },
+            envelope: {
+                attack: 0.005, // Very fast attack for pluck
+                release: 0.5   // Standard guitar sustain
+            },
+            volume: -8
+        }
+    },
+    'standard_kit': {
+        id: 'standard_kit',
+        name: 'Standard Drum Kit',
+        category: 'Standard Sampler',
+        type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/standard_kit/',
+            // MAPPING: Ligature Note -> Audio File
+            // We map these to the "C4" octave range because that's usually the default center
+            // 1 (C4) -> Kick
+            // 2 (D4) -> Snare
+            // 3 (E4) -> Low Tom
+            // 4 (F4) -> Closed Hi-Hat
+            // 5 (G4) -> High Tom
+            // 6 (A4) -> Open Hi-Hat
+            // 7 (B4) -> Crash
+            urls: {
+                'C4': 'Kick.mp3',
+                'D4': 'Snare.mp3',
+                'E4': 'Tom_Low.mp3',
+                'F4': 'HiHat_Closed.mp3',
+                'G4': 'Tom_High.mp3',
+                'A4': 'HiHat_Open.mp3',
+                'B4': 'Crash.mp3'
+            },
+            envelope: {
+                attack: 0.001, // Instant percussive attack
+                release: 1.0   // Let cymbals ring out
+            },
+            volume: -4
+        }
     }
 };
 
