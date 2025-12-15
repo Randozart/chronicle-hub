@@ -59,6 +59,8 @@ export default function TrackEditor({
     const [editorValue, setEditorValue] = useState("");
     const [isClient, setIsClient] = useState(false);
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
+    const [optTolerance, setOptTolerance] = useState<0 | 1 | 2 | 3>(2);
+
 
     useEffect(() => {
         setIsClient(true);
@@ -139,6 +141,42 @@ export default function TrackEditor({
                         <button onClick={handleFormat} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
                             Format Grid
                         </button>
+                        <button
+                            onClick={() => {
+                                try {
+                                const { optimizeLigatureSource } = require('@/engine/audio/optimizeSource');
+                                const optimized = optimizeLigatureSource(editorValue, optTolerance, mockQualities);
+                                setEditorValue(optimized);
+                                setForm(prev => ({ ...prev, source: optimized }));
+                                setStatus('Optimized.');
+                                } catch (e: any) {
+                                setStatus('Optimize error: ' + e.message);
+                                }
+                            }}
+                            style={{
+                                background: '#56B6C2',
+                                color: '#000',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '4px',
+                                fontWeight: 'bold'
+                            }}
+                            >
+                            Optimize
+                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={3}
+                                    step={1}
+                                    value={optTolerance}
+                                    onChange={e => setOptTolerance(Number(e.target.value) as any)}
+                                />
+                                <span style={{ fontSize: '0.75rem', color: '#61afef' }}>
+                                    {['Strict', 'Conservative', 'Balanced', 'Aggressive'][optTolerance]}
+                                </span>
+                            </div>
+
                         {isPlaying ? (
                             <button onClick={handleStop} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>■ Stop</button>
                         ) : (

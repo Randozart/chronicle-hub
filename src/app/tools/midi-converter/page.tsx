@@ -10,7 +10,8 @@ const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
 export default function MidiConverterPage() {
     const [ligatureSource, setLigatureSource] = useState<string>('');
     const [status, setStatus] = useState<string>('Upload a .mid file to begin.');
-    
+    const [optTolerance, setOptTolerance] = useState<0 | 1 | 2 | 3>(2);
+
     // --- NEW STATE FOR USER OVERRIDES ---
     const [options, setOptions] = useState({
         grid: 4,
@@ -90,6 +91,50 @@ export default function MidiConverterPage() {
                     <pre style={{ margin: '1rem 0', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#777', whiteSpace: 'pre-wrap' }}>
                         {status}
                     </pre>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '1rem' }}>
+                        <label style={{ fontSize: '0.8rem', color: '#aaa' }}>
+                            Optimization Aggression
+                        </label>
+
+                        <input
+                            type="range"
+                            min={0}
+                            max={3}
+                            step={1}
+                            value={optTolerance}
+                            onChange={e => setOptTolerance(Number(e.target.value) as any)}
+                        />
+
+                        <span style={{ fontSize: '0.8rem', color: '#61afef' }}>
+                            {['Strict', 'Conservative', 'Balanced', 'Aggressive'][optTolerance]}
+                        </span>
+
+                        <button
+                            disabled={!ligatureSource}
+                            onClick={() => {
+                            try {
+                                const { optimizeLigatureSource } = require('@/engine/audio/optimizeSource');
+                                const optimized = optimizeLigatureSource(ligatureSource, optTolerance);
+                                setLigatureSource(optimized);
+                                setStatus('Optimization applied.');
+                            } catch (e: any) {
+                                setStatus('Optimization error: ' + e.message);
+                            }
+                            }}
+                            style={{
+                            marginLeft: 'auto',
+                            background: '#56B6C2',
+                            color: '#000',
+                            border: 'none',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                            }}
+                        >
+                            Optimize Ligature
+                        </button>
+                        </div>
                 </div>
                 
                 {ligatureSource && (
