@@ -1,17 +1,18 @@
-// src/engine/audio/midiConverter.ts
 import { Midi } from '@tonejs/midi';
 import { Note, Scale } from 'tonal';
 
 interface ConversionOptions {
-    grid?: number;
+    grid?: number; 
     bpm?: number;
     scaleRoot?: string;
     scaleMode?: string;
 }
 
+// --- BULLETPROOF KEY DETECTION (No external dependency on Key module) ---
 function detectKey(notes: string[]): string {
     const uniqueNotes = Array.from(new Set(notes));
     const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    
     let bestKey = 'C major';
     let maxMatches = -1;
 
@@ -20,6 +21,7 @@ function detectKey(notes: string[]): string {
             const scaleName = `${root} ${mode}`;
             const scaleNotes = Scale.get(scaleName).notes;
             const matches = uniqueNotes.filter(n => scaleNotes.includes(n)).length;
+            
             if (matches > maxMatches) {
                 maxMatches = matches;
                 bestKey = scaleName;
@@ -29,12 +31,44 @@ function detectKey(notes: string[]): string {
     return bestKey;
 }
 
+function getNoteString(midi: number, scaleNotes: string[], root: string, octaveOffset: number): string {
+    const noteName = Note.fromMidi(midi);
+    const pc = Note.pitchClass(noteName);
+    const octave = Note.octave(noteName) || 4;
+    
+    let noteStr = "";
+    const degreeIndex = scaleNotes.indexOf(pc);
+
+    if (degreeIndex > -1) {
+        noteStr = String(degreeIndex + 1);
+    } else {
+        const midiNum = midi;
+        for (let j = 1; j < 6; j++) {
+            const lowerMidi = midiNum - j;
+            const lowerPc = Note.pitchClass(Note.fromMidi(lowerMidi));
+            const idx = scaleNotes.indexOf(lowerPc);
+            if (idx > -1) {
+                noteStr = `${idx + 1}${'#'.repeat(j)}`;
+                break;
+            }
+        }
+        if (!noteStr) noteStr = "1";
+    }
+
+    const diff = octave - 4; 
+    if (diff > 0) noteStr += "'".repeat(diff);
+    if (diff < 0) noteStr += ",".repeat(Math.abs(diff));
+
+    return noteStr;
+}
+
 export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
     const warnings: string[] = [];
     
-    // --- 1. CONFIGURATION ---
+    // 1. CONFIGURATION
     const detectedBpm = Math.round(midi.header.tempos[0]?.bpm || 120);
     const bpm = options.bpm && options.bpm > 0 ? options.bpm : detectedBpm;
+    const targetGrid = options.grid || 4; 
 
     let keySignature = `${options.scaleRoot} ${options.scaleMode}`;
     if (!options.scaleRoot || options.scaleRoot === 'auto') {
@@ -42,104 +76,87 @@ export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
         keySignature = detectKey(allNotes);
     }
     if (keySignature.includes('undefined')) keySignature = 'C major';
-    
     const [scaleRoot, scaleMode] = keySignature.split(' ');
+    
     const scale = Scale.get(`${scaleRoot} ${scaleMode.toLowerCase()}`);
-    if (scale.notes.length === 0) warnings.push(`Could not find scale for ${keySignature}.`);
     const scaleNotePcs = scale.notes;
-    
-    let useTriplets = false;
-    midi.tracks.forEach(t => t.notes.forEach(n => {
-        const sixteenths = n.time * (bpm / 60) * 4;
-        if (Math.abs(sixteenths - Math.round(sixteenths)) > 0.1) useTriplets = true;
-    }));
-    const grid = options.grid || (useTriplets ? 12 : 4);
-    
+
     const timeSig = midi.header.timeSignatures[0]?.timeSignature || [4, 4];
-    const slotsPerBeat = grid;
+    
+    // 2. DETECT RESOLUTION (The "Mega Grid")
+    let neededGrid = 4;
+    let totalError = 0;
+    let noteCount = 0;
+    const testGrids = [4, 6, 8, 12, 16, 24]; 
+    
+    for (const testG of testGrids) {
+        let missCount = 0;
+        midi.tracks.forEach(t => t.notes.forEach(n => {
+            const beatPos = n.time * (bpm / 60);
+            const slot = beatPos * testG;
+            const error = Math.abs(slot - Math.round(slot));
+            if (error > 0.15) missCount++;
+        }));
+        if (missCount / Math.max(1, midi.tracks.reduce((a,b)=>a+b.notes.length,0)) < 0.1) {
+            neededGrid = testG;
+            break;
+        }
+        neededGrid = testG;
+    }
+
+    midi.tracks.forEach(t => t.notes.forEach(n => {
+        const beatPos = n.time * (bpm / 60);
+        const slot = beatPos * neededGrid;
+        totalError += Math.abs(slot - Math.round(slot));
+        noteCount++;
+    }));
+    const humanizeAmt = noteCount > 0 ? Math.min(100, Math.round((totalError / noteCount) * 200)) : 0;
+
+    const slotsPerBeat = neededGrid;
     const slotsPerBar = slotsPerBeat * timeSig[0];
 
-    // --- 2. GENERATE SOURCE ---
+    // 3. BUILD SOURCE
     let source = `[CONFIG]
 BPM: ${bpm}
-Grid: ${grid}
+Grid: ${targetGrid}
 Time: ${timeSig[0]}/${timeSig[1]}
 Scale: ${scaleRoot} ${scaleMode.charAt(0).toUpperCase() + scaleMode.slice(1)}
+Humanize: ${humanizeAmt}
 
 [INSTRUMENTS]
 `;
 
     const patternBlocks: string[] = [];
-    const allLayerIds: string[] = []; // Collects all generated track IDs for the playlist
+    const allLayerIds: string[] = [];
 
-    // --- 3. PROCESS TRACKS (Polyphonic Lane Splitting) ---
+    // 4. PROCESS TRACKS
     midi.tracks.forEach((track, i) => {
         if (track.notes.length === 0) return;
 
         let baseName = (track.instrument.name || `Track_${i + 1}`).replace(/[^a-zA-Z0-9_]/g, '_');
         
-        // Calculate Dimensions
         const totalDuration = Math.max(...track.notes.map(n => n.time + n.duration));
         const totalSlots = Math.ceil(totalDuration * (bpm / 60) * slotsPerBeat);
         const totalBars = Math.ceil(totalSlots / slotsPerBar);
         const finalSlotCount = totalBars * slotsPerBar;
 
-        // --- DYNAMIC LANES ---
-        // lanes[0] = Main track, lanes[1] = Polyphony layer 1, etc.
-        const lanes: string[][] = [];
+        const lanes: (string | null)[][] = [];
 
         track.notes.forEach(note => {
             const startSlot = Math.round(note.time * (bpm / 60) * slotsPerBeat);
             const durationSlots = Math.max(1, Math.round(note.duration * (bpm / 60) * slotsPerBeat));
 
             if (startSlot < finalSlotCount) {
-                // Convert Note
-                const notePc = Note.pitchClass(note.name);
-                const octave = Note.octave(note.name) || 4;
-                const degreeIndex = scaleNotePcs.indexOf(notePc);
-                let noteStr = ".";
-                
-                if (degreeIndex > -1) {
-                    noteStr = String(degreeIndex + 1);
-                } else {
-                    const midiNum = Note.midi(note.name) as number;
-                    let bestDegree = 1;
-                    let minDist = 12;
-                    scaleNotePcs.forEach((pc, idx) => {
-                        const scaleMidi = Note.midi(`${pc}${octave}`);
-                        if(scaleMidi) {
-                            const dist = midiNum - scaleMidi;
-                            if (Math.abs(dist) < Math.abs(minDist)) {
-                                minDist = dist;
-                                bestDegree = idx + 1;
-                            }
-                        }
-                    });
-                    noteStr = String(bestDegree);
-                    if (minDist > 0) noteStr += '#'.repeat(minDist);
-                    if (minDist < 0) noteStr += 'b'.repeat(Math.abs(minDist));
-                }
+                const noteStr = getNoteString(note.midi, scaleNotePcs, scaleRoot, 0);
 
-                const octaveDiff = octave - 4;
-                if (octaveDiff > 0) noteStr += "'".repeat(octaveDiff);
-                if (octaveDiff < 0) noteStr += ",".repeat(Math.abs(octaveDiff));
-
-                // --- FIND A LANE ---
-                // Look for the first lane that is EMPTY at this start slot
                 let placed = false;
                 for (let l = 0; l < lanes.length; l++) {
-                    // Check if this lane is free for the duration of the note
                     let isFree = true;
                     for(let t = 0; t < durationSlots; t++) {
-                        if (lanes[l][startSlot + t] !== undefined) {
-                            isFree = false; 
-                            break;
-                        }
+                        if (lanes[l][startSlot + t] !== undefined) { isFree = false; break; }
                     }
-                    
                     if (isFree) {
                         lanes[l][startSlot] = noteStr;
-                        // Fill sustain
                         for (let s = 1; s < durationSlots; s++) {
                             if (startSlot + s < finalSlotCount) lanes[l][startSlot + s] = '-';
                         }
@@ -147,10 +164,8 @@ Scale: ${scaleRoot} ${scaleMode.charAt(0).toUpperCase() + scaleMode.slice(1)}
                         break;
                     }
                 }
-
-                // If no lane was free, create a new one
                 if (!placed) {
-                    const newLane = new Array(finalSlotCount).fill(undefined); // undefined means "empty"
+                    const newLane = new Array(finalSlotCount).fill(undefined);
                     newLane[startSlot] = noteStr;
                     for (let s = 1; s < durationSlots; s++) {
                         if (startSlot + s < finalSlotCount) newLane[startSlot + s] = '-';
@@ -160,12 +175,10 @@ Scale: ${scaleRoot} ${scaleMode.charAt(0).toUpperCase() + scaleMode.slice(1)}
             }
         });
 
-        // --- GENERATE OUTPUT FOR EACH LANE ---
         lanes.forEach((laneData, laneIndex) => {
             const suffix = laneIndex === 0 ? "" : `_L${laneIndex}`;
             const trackName = `${baseName}${suffix}`;
             
-            // Register instrument (all layers map to same base sound)
             source += `${trackName}: ${baseName.toLowerCase()}\n`;
             
             const patternId = `${trackName}_Seq`;
@@ -174,34 +187,53 @@ Scale: ${scaleRoot} ${scaleMode.charAt(0).toUpperCase() + scaleMode.slice(1)}
             let patternContent = `\n[PATTERN: ${patternId}]\n`;
             let gridLine = `${trackName.padEnd(16)} |`;
             
-            let currentGridLine = `${trackName.padEnd(16)} |`; 
+            for (let b = 0; b < totalBars; b++) {
+                const barStart = b * slotsPerBar;
+                
+                for (let beat = 0; beat < timeSig[0]; beat++) {
+                    const beatStart = barStart + (beat * slotsPerBeat);
+                    const beatData = laneData.slice(beatStart, beatStart + slotsPerBeat);
+                    
+                    const cleanBeat = beatData.map(x => x || '.');
+                    const step = slotsPerBeat / targetGrid; 
+                    let canCompress = true;
+                    
+                    for(let k=0; k<cleanBeat.length; k++) {
+                        if (k % step !== 0) {
+                            if (cleanBeat[k] !== '.' && cleanBeat[k] !== '-') {
+                                canCompress = false;
+                                break;
+                            }
+                        }
+                    }
 
-            for (let i = 0; i < finalSlotCount; i++) {
-                // Bar Line (Start of new bar)
-                if (i > 0 && i % slotsPerBar === 0) {
-                    currentGridLine += ' | '; 
+                    if (canCompress) {
+                        for(let k=0; k<targetGrid; k++) {
+                            const val = cleanBeat[k * step];
+                            gridLine += ` ${val.padEnd(2)}`;
+                        }
+                    } else {
+                        // FIX: When writing tuplets, strip trailing sustain/rests to keep it clean? 
+                        // No, precise timing requires full length.
+                        const tupletContent = cleanBeat.join(' ');
+                        gridLine += ` (${tupletContent})`;
+                    }
+                    
+                    gridLine += '  ';
                 }
-                // Beat Space
-                else if (i > 0 && i % slotsPerBeat === 0) {
-                    currentGridLine += '  ';
+                gridLine += ' | ';
+                if ((b + 1) % 4 === 0) {
+                    gridLine += `\n${"".padEnd(16)} | `;
                 }
-
-                // Note
-                currentGridLine += ` ${(laneData[i] || '.').padEnd(2)}`;
             }
-
-            // End of track pipe
-            currentGridLine += ' |'; 
             
-            patternContent += currentGridLine;
+            patternContent += gridLine + '\n';
             patternBlocks.push(patternContent);
         });
     });
 
     source += `\n${patternBlocks.join('\n')}`;
-
-    source += `\n\n[PLAYLIST]\n`;
-    source += allLayerIds.join(', ');
+    source += `\n\n[PLAYLIST]\n${allLayerIds.join(', ')}\n`;
 
     return { 
         source, 
