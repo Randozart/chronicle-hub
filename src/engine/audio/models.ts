@@ -52,11 +52,24 @@ export interface ParsedTrack {
         swing: number;
         humanize: number;
     };
-    instruments: Record<string, string>;
+    instruments: Record<string, InstrumentConfig>; 
     definitions: Record<string, NoteGroup>;
     patterns: Record<string, ParsedPattern>;
     playlist: PlaylistItem[];
 }
+
+export interface InstrumentConfig {
+    id: string; // The base preset ID (e.g., 'hq_violin')
+    overrides: {
+        volume?: number;
+        attack?: number;
+        decay?: number;
+        sustain?: number;
+        release?: number;
+        // Add more specific overrides here if needed
+    };
+}
+
 
 export type PlaylistItem = PatternPlaylistItem | CommandPlaylistItem;
 

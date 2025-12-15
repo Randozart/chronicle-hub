@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
-import { ParsedTrack, InstrumentDefinition, NoteDef } from '@/engine/audio/models';
+import { ParsedTrack, InstrumentDefinition, NoteDef, PlaylistItem } from '@/engine/audio/models';
 import { resolveNote } from '@/engine/audio/scales';
 import { getOrMakeInstrument, disposeInstruments, AnyInstrument } from '@/engine/audio/synth';
 import { LigatureParser } from '@/engine/audio/parser';
@@ -39,8 +39,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         try {
             await Tone.start();
             limiterRef.current = new Tone.Limiter(-1).toDestination();
-            
-            // --- FIX: Use getTransport() ---
             if (Tone.getTransport().state !== 'started') {
                 Tone.getTransport().start();
             }
@@ -52,8 +50,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
 
     const stop = () => {
-        const transport = Tone.getTransport(); // --- FIX: Get instance
-        
+        const transport = Tone.getTransport();
         transport.stop();
         transport.cancel(); 
         
@@ -93,16 +90,48 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         currentTrackRef.current = track;
         instrumentDefsRef.current = instruments;
         
-        const instrumentsUsed = new Set(Object.values(track.instruments));
-        const neededDefs = instruments.filter(i => instrumentsUsed.has(i.id));
+        const instrumentsUsed = Object.values(track.instruments); 
         
-        let hasSamplers = false;
+        const neededDefs = instrumentsUsed.map(instConfig => {
+            const baseDef = instruments.find(i => i.id === instConfig.id);
+            if (!baseDef) return null;
+            
+            // --- MERGE LOGIC ---
+            // Create a new definition object with overrides applied
+            const mergedDef: InstrumentDefinition = {
+                ...baseDef,
+                config: {
+                    ...baseDef.config,
+                    volume: instConfig.overrides.volume ?? baseDef.config.volume,
+                    envelope: {
+                        // Spread existing first
+                        ...baseDef.config.envelope,
+                        // Then apply overrides. 
+                        // The 'as number' casts are safe because 0 is a valid fallback.
+                        attack: (instConfig.overrides.attack !== undefined ? instConfig.overrides.attack : baseDef.config.envelope?.attack) || 0.01,
+                        decay: instConfig.overrides.decay ?? baseDef.config.envelope?.decay,
+                        sustain: instConfig.overrides.sustain ?? baseDef.config.envelope?.sustain,
+                        release: (instConfig.overrides.release !== undefined ? instConfig.overrides.release : baseDef.config.envelope?.release) || 1
+                    }
+                }
+            };
+            return mergedDef;
+        }).filter(Boolean) as InstrumentDefinition[];
+        
+        const loadPromises: Promise<void>[] = [];
+
         neededDefs.forEach(def => {
-            getOrMakeInstrument(def); 
-            if (def.type === 'sampler') hasSamplers = true;
+            const inst = getOrMakeInstrument(def); 
+            if (def.type === 'sampler' && inst instanceof Tone.Sampler) {
+                if (!inst.loaded) {
+                    loadPromises.push(new Promise(resolve => {
+                        resolve(); 
+                    }));
+                }
+            }
         });
 
-        if (hasSamplers) {
+        if (loadPromises.length > 0) {
             setIsLoadingSamples(true);
             try {
                 await Tone.loaded(); 
@@ -112,30 +141,32 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             setIsLoadingSamples(false);
         }
 
-        const transport = Tone.getTransport(); // --- FIX: Get instance
+        const transport = Tone.getTransport(); 
 
         transport.position = "0:0:0";
         transport.bpm.value = track.config.bpm;
         transport.swing = track.config.swing || 0;
         
-        playSequenceFrom(0); 
+        // Pass the transport instance explicitly to avoid redeclaration issues
+        playSequenceFrom(0, transport); 
 
         if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
     
-    const playSequenceFrom = (playlistStartIndex: number) => {
+    // --- UPDATED SIGNATURE: Accept transport as argument ---
+    const playSequenceFrom = (playlistStartIndex: number, transport: any) => {
         const track = currentTrackRef.current;
         if (!track) return;
         
-        const transport = Tone.getTransport(); // --- FIX: Get instance for scheduling
+        // We reuse the transport instance passed from playTrack
 
         let totalBars = 0;
         let runningConfig = { ...track.config };
 
         for (const item of track.playlist) {
             if (item.type === 'command') {
-                transport.scheduleOnce((time) => { // --- FIX: Use instance
+                transport.scheduleOnce((time: number) => {
                     if (item.command === 'BPM') transport.bpm.rampTo(parseFloat(item.value), 0.1, time);
                     if (item.command === 'Scale') {
                         const [root, mode] = item.value.split(' ');
@@ -160,11 +191,31 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 longestPatternBars = Math.max(longestPatternBars, patternBars);
 
                 for (const [trackName, events] of Object.entries(pattern.tracks)) {
-                    const instId = track.instruments[trackName];
-                    const instDef = instrumentDefsRef.current.find(d => d.id === instId);
+                    // 1. Get the specific config for this track name from the PARSED file
+                    const instConfig = track.instruments[trackName];
+                    if (!instConfig) continue; 
+
+                    // 2. Find the base definition from the available presets
+                    const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
                     
-                    if (instDef) {
-                        const synth = getOrMakeInstrument(instDef);
+                    if (baseDef) {
+                        // --- RE-MERGE FOR PLAYBACK ---
+                        const mergedDef: InstrumentDefinition = {
+                            ...baseDef,
+                            config: {
+                                ...baseDef.config,
+                                volume: instConfig.overrides.volume ?? baseDef.config.volume,
+                                envelope: {
+                                    ...baseDef.config.envelope,
+                                    attack: (instConfig.overrides.attack !== undefined ? instConfig.overrides.attack : baseDef.config.envelope?.attack) || 0.01,
+                                    decay: instConfig.overrides.decay ?? baseDef.config.envelope?.decay,
+                                    sustain: instConfig.overrides.sustain ?? baseDef.config.envelope?.sustain,
+                                    release: (instConfig.overrides.release !== undefined ? instConfig.overrides.release : baseDef.config.envelope?.release) || 1
+                                }
+                            }
+                        };
+
+                        const synth = getOrMakeInstrument(mergedDef);
                         
                         if (limiterRef.current) {
                             try { synth.disconnect(); } catch(e) {} 
@@ -234,7 +285,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number): string => {
         const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}`;
-        if (noteCacheRef.current.has(key)) return noteCacheRef.current.get(key)!;
+        if (noteCacheRef.current.has(key)) {
+            return noteCacheRef.current.get(key)!;
+        }
         const resolved = resolveNote(noteDef.degree + transpose, root, mode, noteDef.octaveShift, noteDef.accidental, noteDef.isNatural);
         noteCacheRef.current.set(key, resolved);
         return resolved;

@@ -2,34 +2,48 @@
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 
-// Union type: It can be a Synth OR a Sampler
+// We union the types here
 export type AnyInstrument = Tone.PolySynth | Tone.Sampler;
 
 const instrumentCache: Record<string, AnyInstrument> = {};
 
+// Helper to generate a unique key for caching based on config
+function getCacheKey(def: InstrumentDefinition): string {
+    // We create a signature based on the ID and the specific overridden values
+    const sig = JSON.stringify({
+        id: def.id,
+        vol: def.config.volume,
+        env: def.config.envelope,
+        osc: def.config.oscillator // In case we allow osc overrides later
+    });
+    return sig;
+}
+
 export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
-    if (instrumentCache[def.id]) {
-        return instrumentCache[def.id];
+    const cacheKey = getCacheKey(def);
+
+    if (instrumentCache[cacheKey]) {
+        return instrumentCache[cacheKey];
     }
 
     const config = def.config;
     let inst: AnyInstrument;
 
-    // 1. SAMPLER LOGIC
+    // 1. SAMPLER
     if (def.type === 'sampler' && config.urls) {
         inst = new Tone.Sampler({
             urls: config.urls,
             baseUrl: config.baseUrl || "",
-            // Default envelope for samplers acts as a gate
+            // Tone.Sampler handles envelope slightly differently, but accepts these options
             attack: config.envelope?.attack || 0,
             release: config.envelope?.release || 1,
             onload: () => {
-                // Optional: You could dispatch a global event here to hide a loading spinner
-                console.log(`[Audio] Loaded samples for ${def.name}`);
+                // Optional: Console log for debug
+                // console.log(`[Audio] Loaded samples for ${def.name}`);
             }
         }).toDestination();
     } 
-    // 2. SYNTH LOGIC
+    // 2. SYNTH
     else {
         const envelope = {
             attack: config.envelope?.attack ?? 0.01,
@@ -54,10 +68,9 @@ export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
     }
 
     // 3. COMMON VOLUME
-    // Tone.js volume is in Decibels
     inst.volume.value = config.volume || -10; 
 
-    instrumentCache[def.id] = inst;
+    instrumentCache[cacheKey] = inst;
     return inst;
 }
 

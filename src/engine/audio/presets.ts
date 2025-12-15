@@ -56,9 +56,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         id: 'vapor_lead', name: 'Vaporwave Lead', category: 'Basic', type: 'synth',
         config: { oscillator: { type: 'sawtooth', modulationType: 'triangle' }, envelope: { attack: 0.05, decay: 0.2, sustain: 0.7, release: 0.5 }, volume: -6, polyphony: 12 }
     },
-        "000_bodhran_sidel": {
-        "id": "000_bodhran_sidel",
-        "name": "000 Bodhran SideL",
+        "bodhran_sidel": {
+        "id": "bodhran_sidel",
+        "name": "Bodhran Side",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -74,9 +74,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "001_bodran_skinl": {
-        "id": "001_bodran_skinl",
-        "name": "001 Bodran SkinL",
+    "bodhran_skinl": {
+        "id": "bodhran_skinl",
+        "name": "Bodhran Skin",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -92,9 +92,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "002_crwth": {
-        "id": "002_crwth",
-        "name": "002 Crwth",
+    "crwth": {
+        "id": "crwth",
+        "name": "Crwth",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -110,9 +110,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "003_brass_lure_start": {
-        "id": "003_brass_lure_start",
-        "name": "003 brass-lure start",
+    "brass_lure_start": {
+        "id": "brass_lure_start",
+        "name": "Brass Lure Start",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -128,9 +128,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "004_bukkehornl": {
-        "id": "004_bukkehornl",
-        "name": "004 BukkehornL",
+    "bukkehornl": {
+        "id": "bukkehornl",
+        "name": "Bukkehorn",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -148,9 +148,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "005_bukkehornstartl": {
-        "id": "005_bukkehornstartl",
-        "name": "005 BukkehornStartL",
+    "bukkehornstartl": {
+        "id": "bukkehornstartl",
+        "name": "Bukkehorn Start",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -166,9 +166,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "006_celtic_harp_c2l": {
-        "id": "006_celtic_harp_c2l",
-        "name": "006 celtic harp-c2L",
+    "celtic_harp_c2l": {
+        "id": "celtic_harp_c2l",
+        "name": "Celtic Harp",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -184,9 +184,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "007_conchcontinuel": {
-        "id": "007_conchcontinuel",
-        "name": "007 ConchContinueL",
+    "conchcontinuel": {
+        "id": "conchcontinuel",
+        "name": "Conch Continue",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -202,9 +202,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "008_conchl": {
-        "id": "008_conchl",
-        "name": "008 ConchL",
+    "conchl": {
+        "id": "conchl",
+        "name": "Conch",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -220,9 +220,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "009_cornemusecontinuel": {
-        "id": "009_cornemusecontinuel",
-        "name": "009 cornemuseContinueL",
+    "cornemusecontinuel": {
+        "id": "cornemusecontinuel",
+        "name": "Cornemuse Continue",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -239,9 +239,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "010_cornemusestartl": {
-        "id": "010_cornemusestartl",
-        "name": "010 cornemuseStartL",
+    "cornemusestartl": {
+        "id": "cornemusestartl",
+        "name": "Cornemuse Start",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -257,9 +257,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "012_irish_lyre_harpl": {
-        "id": "012_irish_lyre_harpl",
-        "name": "012 IRISH LYRE HARPL",
+    "irish_lyre_harpl": {
+        "id": "irish_lyre_harpl",
+        "name": "Irish Lyre Harp",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -275,9 +275,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "013_jaw_harp": {
-        "id": "013_jaw_harp",
-        "name": "013 jaw harp",
+    "jaw_harp": {
+        "id": "jaw_harp",
+        "name": "Jaw Harp",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -293,9 +293,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "015_jouhikkol": {
-        "id": "015_jouhikkol",
-        "name": "015 JouhikkoL",
+    "jouhikkol": {
+        "id": "jouhikkol",
+        "name": "Jouhikko",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -311,9 +311,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "016_nyckelharpa2l": {
-        "id": "016_nyckelharpa2l",
-        "name": "016 Nyckelharpa2L",
+    "nyckelharpa2l": {
+        "id": "nyckelharpa2l",
+        "name": "Nyckelharpa 2",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -329,9 +329,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "017_prillarhorncontinuel": {
-        "id": "017_prillarhorncontinuel",
-        "name": "017 PrillarhornContinueL",
+    "prillarhorncontinuel": {
+        "id": "prillarhorncontinuel",
+        "name": "Prillarhorn Continue",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -347,9 +347,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "018_prillarhornl": {
-        "id": "018_prillarhornl",
-        "name": "018 PrillarhornL",
+    "prillarhornl": {
+        "id": "prillarhornl",
+        "name": "Prillarhorn",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -365,9 +365,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "020_psalmodikonl": {
-        "id": "020_psalmodikonl",
-        "name": "020 PsalmodikonL",
+    "psalmodikonl": {
+        "id": "psalmodikonl",
+        "name": "Psalmodikon",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -383,9 +383,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "021_sheepboneflutecontil": {
-        "id": "021_sheepboneflutecontil",
-        "name": "021 sheepboneflutecontiL",
+    "sheepboneflutecontil": {
+        "id": "sheepboneflutecontil",
+        "name": "Sheepbone Flute Continue",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -401,9 +401,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "022_sheepboneflutestartl": {
-        "id": "022_sheepboneflutestartl",
-        "name": "022 sheepboneflutestartL",
+    "sheepboneflutestartl": {
+        "id": "sheepboneflutestartl",
+        "name": "Sheepbone Flute Start",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -419,9 +419,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "024_tagelharpa2l": {
-        "id": "024_tagelharpa2l",
-        "name": "024 tagelharpa2L",
+    "tagelharpa2l": {
+        "id": "tagelharpa2l",
+        "name": "Tagelharpa 2",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -437,9 +437,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "026_tagelharpa3l": {
-        "id": "026_tagelharpa3l",
-        "name": "026 tagelharpa3L",
+    "tagelharpa3l": {
+        "id": "tagelharpa3l",
+        "name": "Tagelharpa 3",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -455,9 +455,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "028_tin_whistle_startl": {
-        "id": "028_tin_whistle_startl",
-        "name": "028 tin whistle startL",
+    "tin_whistle_startl": {
+        "id": "tin_whistle_startl",
+        "name": "Tin Whistle Start",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -473,9 +473,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "volume": -5
         }
     },
-    "029_hurdy_gurdy": {
-        "id": "029_hurdy_gurdy",
-        "name": "029 Hurdy Gurdy",
+    "hurdy_gurdy": {
+        "id": "hurdy_gurdy",
+        "name": "Hurdy Gurdy",
         "category": "Ancient Instruments",
 
         "type": "sampler",
@@ -492,9 +492,148 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             },
             "volume": -5
         }
+    },
+    'hq_violin': {
+        id: 'hq_violin', name: 'Violin', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/violin/',
+            urls: { 'C4': 'C4.mp3', 'G4': 'G4.mp3', 'C5': 'C5.mp3', 'A5': 'A5.mp3' },
+            envelope: { attack: 0.1, release: 1.5 },
+            volume: -8
+        }
+    },
+    'hq_cello': {
+        id: 'hq_cello', name: 'Cello', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/cello/',
+            urls: { 'C3': 'C3.mp3', 'G3': 'G3.mp3', 'C4': 'C4.mp3' },
+            envelope: { attack: 0.1, release: 1.5 },
+            volume: -6
+        }
+    },
+    'hq_contrabass': {
+        id: 'hq_contrabass', name: 'Contrabass', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/contrabass/',
+            urls: { 'C2': 'C2.mp3', 'G2': 'G2.mp3', 'C3': 'C3.mp3' },
+            envelope: { attack: 0.2, release: 1.5 },
+            volume: -5
+        }
+    },
+    'hq_pizzicato': {
+        id: 'hq_pizzicato', name: 'Pizzicato Strings', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/pizzicato_strings/',
+            urls: { 'C4': 'C4.mp3', 'G4': 'G4.mp3' },
+            envelope: { attack: 0, release: 0.3 }, // Short release for plucks
+            volume: -6
+        }
+    },
+
+    // Woodwinds
+    'hq_flute': {
+        id: 'hq_flute', name: 'Flute', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/flute/',
+            urls: { 'C5': 'C5.mp3', 'G5': 'G5.mp3', 'C6': 'C6.mp3' },
+            envelope: { attack: 0.1, release: 0.5 },
+            volume: -12
+        }
+    },
+    'hq_clarinet': {
+        id: 'hq_clarinet', name: 'Clarinet', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/clarinet/',
+            urls: { 'C4': 'C4.mp3', 'G4': 'G4.mp3', 'C5': 'C5.mp3' },
+            envelope: { attack: 0.05, release: 0.5 },
+            volume: -10
+        }
+    },
+    'hq_oboe': {
+        id: 'hq_oboe', name: 'Oboe', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/oboe/',
+            urls: { 'C4': 'C4.mp3', 'G4': 'G4.mp3', 'C5': 'C5.mp3' },
+            envelope: { attack: 0.05, release: 0.5 },
+            volume: -10
+        }
+    },
+    'hq_bassoon': {
+        id: 'hq_bassoon', name: 'Bassoon', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/bassoon/',
+            urls: { 'C3': 'C3.mp3', 'G3': 'G3.mp3', 'C4': 'C4.mp3' },
+            envelope: { attack: 0.05, release: 0.5 },
+            volume: -8
+        }
+    },
+
+    // Brass
+    'hq_horn': {
+        id: 'hq_horn', name: 'French Horn', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/horn/',
+            urls: { 'C4': 'C4.mp3', 'G4': 'G4.mp3' },
+            envelope: { attack: 0.2, release: 2.0 },
+            volume: -8
+        }
+    },
+    'hq_trumpet': {
+        id: 'hq_trumpet', name: 'Trumpet', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/trumpet/',
+            urls: { 'C5': 'C5.mp3', 'G5': 'G5.mp3' },
+            envelope: { attack: 0.05, release: 1.0 },
+            volume: -8
+        }
+    },
+    'hq_trombone': {
+        id: 'hq_trombone', name: 'Trombone', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/trombone/',
+            urls: { 'C3': 'C3.mp3', 'G3': 'G3.mp3' },
+            envelope: { attack: 0.1, release: 1.2 },
+            volume: -7
+        }
+    },
+    'hq_tuba': {
+        id: 'hq_tuba', name: 'Tuba', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/tuba/',
+            urls: { 'C2': 'C2.mp3', 'G2': 'G2.mp3' },
+            envelope: { attack: 0.2, release: 1.0 },
+            volume: -4
+        }
+    },
+
+    // Keys & Choir
+    'hq_piano': {
+        id: 'hq_piano', name: 'Grand Piano', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/piano/',
+            urls: { 'C3': 'C3.mp3', 'C4': 'C4.mp3', 'G4': 'G4.mp3', 'C5': 'C5.mp3' },
+            envelope: { attack: 0, release: 2.0 },
+            volume: -5
+        }
+    },
+    'hq_organ': {
+        id: 'hq_organ', name: 'Church Organ', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/organ/',
+            urls: { 'C4': 'C4.mp3', 'G4': 'G4.mp3', 'C5': 'C5.mp3' },
+            envelope: { attack: 0.1, release: 2.5 },
+            volume: -5
+        }
+    },
+    'hq_choir': {
+        id: 'hq_choir', name: 'Choir Aahs', category: 'VSCO 2', type: 'sampler',
+        config: {
+            baseUrl: '/sounds/standard/choir/',
+            urls: { 'C4': 'C4.mp3', 'G4': 'G4.mp3', 'C5': 'C5.mp3' },
+            envelope: { attack: 1.0, release: 2.0 },
+            volume: -12
+        }
     }
-    
-    
 };
 
 export const DEFAULT_INSTRUMENT_LIST = Object.values(AUDIO_PRESETS);

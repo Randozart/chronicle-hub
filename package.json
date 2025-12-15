@@ -9,6 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@tonaljs/core": "^5.0.2",
+    "@tonaljs/key": "^4.11.2",
+    "@tonaljs/note": "^4.12.1",
+    "@tonaljs/pcset": "^4.10.1",
+    "@tonaljs/scale": "^4.13.3",
+    "@tonejs/midi": "^2.0.28",
     "@xyflow/react": "12.9.3",
     "bcrypt": "^6.0.0",
     "mongodb": "^7.0.0",
@@ -21,6 +27,7 @@
     "react-simple-code-editor": "0.14.1",
     "resend": "^6.6.0",
     "sanitize-html": "^2.17.0",
+    "tonal": "^6.4.2",
     "tone": "^15.1.22",
     "zod": "^4.1.13"
   },
