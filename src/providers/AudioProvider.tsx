@@ -1,3 +1,4 @@
+// src/providers/AudioProvider.tsx
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -88,7 +89,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         currentInstrumentsRef.current = instruments;
         currentMockQualitiesRef.current = mockQualities;
         
-        currentTrackRef.current = track; // Set the ref here
+        currentTrackRef.current = track; 
         instrumentDefsRef.current = instruments;
         
         const instrumentsUsed = Object.values(track.instruments); 
@@ -127,20 +128,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
 
         const transport = Tone.getTransport(); 
-
         transport.position = "0:0:0";
         transport.bpm.value = track.config.bpm;
         transport.swing = track.config.swing || 0;
         
-        // --- FIX: Pass only the required arguments ---
         playSequenceFrom(0, transport); 
 
         if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
     
+    // --- UPDATED SCHEDULING LOGIC ---
     const playSequenceFrom = (playlistStartIndex: number, transport: TransportClass) => {
-        // The track is read from the ref, so it doesn't need to be passed.
         const track = currentTrackRef.current;
         if (!track) return;
         
@@ -160,101 +159,113 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 continue;
             }
 
-            let longestPatternBars = 0;
+            const { grid, timeSig } = runningConfig;
+            const slotsPerBar = grid * (4 / timeSig[1]) * timeSig[0];
 
-            item.patterns.forEach((patData) => {
-                const pattern = track.patterns[patData.id];
-                if (!pattern) return;
+            // 1. Calculate Chain Durations (in Bars)
+            let maxChainBars = 0;
+            const layerDurations: number[] = [];
 
-                const { grid, timeSig } = runningConfig;
-                const quarterNotesPerBeat = 4 / timeSig[1];
-                const slotsPerBeat = grid * quarterNotesPerBeat;
-                const slotsPerBar = slotsPerBeat * timeSig[0];
-                const patternBars = Math.ceil(pattern.duration / slotsPerBar);
-                longestPatternBars = Math.max(longestPatternBars, patternBars);
+            item.layers.forEach((layer, layerIndex) => {
+                let chainSlots = 0;
+                layer.items.forEach(chainItem => {
+                    const pattern = track.patterns[chainItem.id];
+                    if (pattern) chainSlots += pattern.duration;
+                });
+                const chainBars = Math.ceil(chainSlots / slotsPerBar);
+                layerDurations[layerIndex] = chainBars;
+                maxChainBars = Math.max(maxChainBars, chainBars);
+            });
 
-                for (const [trackName, events] of Object.entries(pattern.tracks)) {
-                    const instConfig = track.instruments[trackName];
-                    if (!instConfig) continue; 
-
-                    const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
+            // 2. Schedule Each Layer (Looping if needed)
+            item.layers.forEach((layer, layerIndex) => {
+                let currentBarOffset = 0;
+                
+                // Keep repeating the chain until we cover the maxChainBars duration
+                while (currentBarOffset < maxChainBars) {
                     
-                    if (baseDef) {
-                        const mergedDef: InstrumentDefinition = {
-                            ...baseDef,
-                            config: {
-                                ...baseDef.config,
-                                volume: instConfig.overrides.volume ?? baseDef.config.volume,
-                                envelope: {
-                                    ...baseDef.config.envelope,
-                                    attack: (instConfig.overrides.attack !== undefined ? instConfig.overrides.attack : baseDef.config.envelope?.attack) || 0.01,
-                                    decay: instConfig.overrides.decay ?? baseDef.config.envelope?.decay,
-                                    sustain: instConfig.overrides.sustain ?? baseDef.config.envelope?.sustain,
-                                    release: (instConfig.overrides.release !== undefined ? instConfig.overrides.release : baseDef.config.envelope?.release) || 1
-                                }
-                            }
-                        };
+                    for (const chainItem of layer.items) {
+                        // Stop if we've exceeded the allocated time for this row
+                        if (currentBarOffset >= maxChainBars) break;
 
-                        const synth = getOrMakeInstrument(mergedDef);
-                        
-                        if (limiterRef.current) {
-                            try { synth.disconnect(); } catch(e) {} 
-                            synth.connect(limiterRef.current);
+                        const pattern = track.patterns[chainItem.id];
+                        if (!pattern) continue;
+
+                        const patternBars = Math.ceil(pattern.duration / slotsPerBar);
+
+                        // Schedule events for this pattern instance
+                        for (const [trackName, events] of Object.entries(pattern.tracks)) {
+                            const instConfig = track.instruments[trackName];
+                            if (!instConfig) continue; 
+                            
+                            // Find synth...
+                            const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
+                            if (baseDef) {
+                                const mergedDef = { ...baseDef, config: { ...baseDef.config, volume: instConfig.overrides.volume ?? baseDef.config.volume } }; // Simplified merge for scheduling
+                                const synth = getOrMakeInstrument(mergedDef);
+                                
+                                if (limiterRef.current) {
+                                    try { synth.disconnect(); } catch(e) {} 
+                                    synth.connect(limiterRef.current);
+                                }
+                                activeSynthsRef.current.add(synth);
+
+                                const trackMod = pattern.trackModifiers[trackName];
+                                const playlistVolume = chainItem.volume || 0; 
+                                const trackVolume = trackMod?.volume || 0;
+                                const totalVolDb = playlistVolume + trackVolume;
+                                let baseVelocity = Math.pow(10, totalVolDb / 20);
+                                baseVelocity = Math.max(0, Math.min(1, baseVelocity));
+
+                                const toneEvents = events.map(event => {
+                                    const noteNames = event.notes.map(n => 
+                                        resolveAndCacheNote(
+                                            n,
+                                            runningConfig.scaleRoot,
+                                            runningConfig.scaleMode,
+                                            chainItem.transposition + (trackMod?.transpose || 0)
+                                        )
+                                    );
+                                    
+                                    const timeInSlots = event.time;
+                                    const bar = Math.floor(timeInSlots / slotsPerBar);
+                                    const beat = Math.floor((timeInSlots % slotsPerBar) / (grid * (4 / timeSig[1])));
+                                    const sixteenth = (timeInSlots % (grid * (4 / timeSig[1]))) / (grid / 4);
+                                    
+                                    const durationSeconds = event.duration * (60 / runningConfig.bpm / (runningConfig.grid / 4));
+                                    
+                                    return {
+                                        // Absolute Time: Start of Playlist Row + Current Chain Loop Offset + Event Time
+                                        time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
+                                        duration: durationSeconds,
+                                        notes: noteNames,
+                                    };
+                                });
+
+                                const part = new Tone.Part((time, value) => {
+                                    const humanizeAmt = runningConfig.humanize || 0;
+                                    let offset = 0;
+                                    let finalVel = baseVelocity;
+                                    if (humanizeAmt > 0) {
+                                        offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
+                                        finalVel = baseVelocity * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
+                                    }
+                                    finalVel = Math.max(0, Math.min(1, finalVel));
+                                    synth.triggerAttackRelease(value.notes, value.duration, time + offset, finalVel);
+                                }, toneEvents).start(0);
+                                
+                                scheduledPartsRef.current.push(part);
+                            }
                         }
                         
-                        activeSynthsRef.current.add(synth);
-
-                        const trackMod = pattern.trackModifiers[trackName];
-                        const playlistVolume = patData.volume || 0; 
-                        const trackVolume = trackMod?.volume || 0;
-                        const totalVolDb = playlistVolume + trackVolume;
-
-                        let baseVelocity = Math.pow(10, totalVolDb / 20);
-                        baseVelocity = Math.max(0, Math.min(1, baseVelocity));
-
-                        const toneEvents = events.map(event => {
-                            const noteNames = event.notes.map(n => 
-                                resolveAndCacheNote(
-                                    n,
-                                    runningConfig.scaleRoot,
-                                    runningConfig.scaleMode,
-                                    patData.transposition + (trackMod?.transpose || 0)
-                                )
-                            );
-                            
-                            const timeInSlots = event.time;
-                            const bar = Math.floor(timeInSlots / slotsPerBar);
-                            const beat = Math.floor((timeInSlots % slotsPerBar) / slotsPerBeat);
-                            const sixteenth = (timeInSlots % slotsPerBeat) / (grid / 4);
-                            
-                            const durationSeconds = event.duration * (60 / runningConfig.bpm / (runningConfig.grid / 4));
-                            
-                            return {
-                                time: `${totalBars + bar}:${beat}:${sixteenth}`,
-                                duration: durationSeconds,
-                                notes: noteNames,
-                            };
-                        });
-                        
-                        const part = new Tone.Part((time, value) => {
-                            const humanizeAmt = runningConfig.humanize || 0;
-                            let offset = 0;
-                            let finalVel = baseVelocity;
-
-                            if (humanizeAmt > 0) {
-                                offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
-                                finalVel = baseVelocity * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
-                            }
-                            
-                            finalVel = Math.max(0, Math.min(1, finalVel));
-                            synth.triggerAttackRelease(value.notes, value.duration, time + offset, finalVel);
-                        }, toneEvents).start(0);
-                        
-                        scheduledPartsRef.current.push(part);
+                        // Advance local chain cursor
+                        currentBarOffset += patternBars;
                     }
                 }
             });
-            totalBars += longestPatternBars;
+
+            // Advance Global Cursor by the length of the longest chain
+            totalBars += maxChainBars;
         }
 
         transport.loop = true;

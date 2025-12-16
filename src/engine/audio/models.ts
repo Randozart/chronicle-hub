@@ -6,28 +6,27 @@ export type SynthType =
     | 'amsine' | 'amsquare' | 'amsawtooth' | 'amtriangle';
 
 export interface EnvelopeDef {
-    attack?: number;  // <-- Make Optional
+    attack?: number;
     decay?: number;
     sustain?: number;
-    release?: number; // <-- Make Optional
+    release?: number;
 }
 
 export interface InstrumentDefinition {
     id: string;
     name: string;
     type: 'synth' | 'sampler';
-    category?: string; // <-- NEW FIELD FOR UI GROUPING
+    category?: string;
     config: {
         oscillator?: {
             type: SynthType;
             [key: string]: any; 
         };
         envelope?: EnvelopeDef;
-
         // SAMPLER SPECIFIC
         urls?: Record<string, string>;
         baseUrl?: string;
-        octaveOffset?: number; // <-- NEW: e.g., -1 to shift everything down an octave
+        octaveOffset?: number;
         
         // COMMON
         volume?: number;
@@ -67,10 +66,8 @@ export interface InstrumentConfig {
         decay?: number;
         sustain?: number;
         release?: number;
-        // Add more specific overrides here if needed
     };
 }
-
 
 export type PlaylistItem = PatternPlaylistItem | CommandPlaylistItem;
 
@@ -80,15 +77,24 @@ export interface PatternModifier {
     pan: number;
 }
 
+// --- NEW STRUCTURE ---
 export interface PatternPlaylistItem {
     type: 'pattern',
-    patterns: {
-        id: string;
-        transposition: number;
-        volume?: number;
-    }[];
-    modifiers?: Record<string, PatternModifier>;
+    // A Playlist Row consists of parallel Layers
+    layers: Layer[];
 }
+
+// A Layer is a sequence (Chain) of patterns played in order
+export interface Layer {
+    items: ChainItem[];
+}
+
+export interface ChainItem {
+    id: string;
+    transposition: number;
+    volume?: number;
+}
+// ---------------------
 
 export interface CommandPlaylistItem {
     type: 'command';

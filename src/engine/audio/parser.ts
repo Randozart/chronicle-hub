@@ -1,6 +1,6 @@
 // src/engine/audio/parser.ts
 
-import { ParsedTrack, ParsedPattern, SequenceEvent, NoteDef, PlaylistItem, NoteGroup, CommandPlaylistItem, PatternPlaylistItem, PatternModifier } from './models';
+import { ParsedTrack, ParsedPattern, NoteDef, PlaylistItem, NoteGroup, PatternPlaylistItem, PatternModifier, Layer, ChainItem } from './models';
 import { PlayerQualities } from '@/engine/models';
 import { evaluateText } from '@/engine/textProcessor';
 
@@ -26,7 +26,7 @@ export class LigatureParser {
     public parse(rawSource: string, mockQualities: PlayerQualities = {}): ParsedTrack {
         const processedSource = this.preParseScribeScript(rawSource, mockQualities);
         const lines = processedSource.split('\n')
-            .map(l => l.split('//')[0].trimEnd()) // Trim End only to preserve indentation logic if needed, though split('|') handles it.
+            .map(l => l.split('//')[0].trimEnd())
             .filter(l => l.trim().length > 0);
 
         const track: ParsedTrack = {
@@ -39,8 +39,6 @@ export class LigatureParser {
 
         let currentSection = '';
         let currentPatternId = '';
-        
-        // Context state for "Stacked Bars"
         let lastPatternTrackName = '';
 
         for (const line of lines) {
@@ -60,7 +58,6 @@ export class LigatureParser {
                         tracks: {},
                         trackModifiers: {} 
                     };
-                    // Reset track context when entering a new pattern
                     lastPatternTrackName = ''; 
                 } else {
                     currentSection = header.toUpperCase();
@@ -73,7 +70,6 @@ export class LigatureParser {
             else if (['INSTRUMENTS', 'INST', 'INS'].includes(currentSection)) this.parseInstrument(trimmedLine, track);
             else if (['DEFINITIONS', 'DEF', 'DEFS'].includes(currentSection)) this.parseDefinition(trimmedLine, track);
             else if (currentSection === 'PATTERN' && currentPatternId) {
-                // Pass the context, receive the (possibly updated) context back
                 lastPatternTrackName = this.parsePatternRow(line, track, currentPatternId, lastPatternTrackName);
             }
             else if (['PLAYLIST', 'PLAY', 'SEQ', 'LIST'].includes(currentSection)) this.parsePlaylistRow(trimmedLine, track);
@@ -138,22 +134,23 @@ export class LigatureParser {
         track.instruments[name] = { id, overrides };
     }
 
+    // --- UPDATED DEFINITION PARSING (Whitespace Support) ---
     private parseDefinition(line: string, track: ParsedTrack) {
         const [aliasRaw, valRaw] = line.split('=').map(s => s.trim());
         if (!aliasRaw || !valRaw || !aliasRaw.startsWith('@')) return;
-        
         if (valRaw.startsWith('{')) return; 
 
         if (valRaw.startsWith('[')) {
             const alias = aliasRaw.substring(1);
             const cleanVal = valRaw.replace(/[\[\]]/g, '');
-            const parts = cleanVal.split(',').map(s => s.trim()).filter(Boolean);
+            // Split by whitespace only. 
+            // NOTE: Commas are now treated as part of the token (e.g., '1,') unless user updates code.
+            const parts = cleanVal.split(/\s+/).filter(Boolean);
             const noteGroup: NoteGroup = parts.map(p => this.parseNoteToken(p));
             track.definitions[alias] = noteGroup;
         }
     }
 
-    // UPDATED: Returns the track name used for this row (to support stacking)
     private parsePatternRow(line: string, track: ParsedTrack, patternId: string, lastTrackName: string): string {
         const pipeIndex = line.indexOf('|');
         if (pipeIndex === -1) return lastTrackName;
@@ -164,15 +161,11 @@ export class LigatureParser {
         let trackName = leftSide;
         let modifiers: PatternModifier | undefined;
 
-        // --- STACKING LOGIC ---
-        // If left side is empty, inherit the previous track name
         if (!trackName && lastTrackName) {
             trackName = lastTrackName;
         } else if (!trackName) {
-            // Empty and no previous context? Invalid.
             return '';
         }
-        // ----------------------
 
         const match = leftSide.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?$/);
         if (match) {
@@ -185,7 +178,6 @@ export class LigatureParser {
         const pattern = track.patterns[patternId];
         if (!pattern) return trackName;
 
-        // Ensure array exists
         if (!pattern.tracks[trackName]) pattern.tracks[trackName] = [];
         
         if (modifiers) {
@@ -196,8 +188,7 @@ export class LigatureParser {
         const sequence = pattern.tracks[trackName];
         
         const { grid, timeSig } = track.config;
-        const quarterNotesPerBeat = 4 / timeSig[1];
-        const slotsPerBeat = grid * quarterNotesPerBeat;
+        const slotsPerBeat = grid * (4 / timeSig[1]);
         const slotsPerBar = slotsPerBeat * timeSig[0];
 
         const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
@@ -208,13 +199,7 @@ export class LigatureParser {
             if (token === '.') { currentTime++; continue; }
 
             if (token === '-') {
-                // Find the closest previous event on THIS track to extend
                 if (sequence.length > 0) {
-                    // Logic to find the event that ended exactly at currentTime
-                    // We iterate backwards because in a polyphonic stack, the note to sustain
-                    // might not be the absolute last one pushed if multiple notes started at the same time.
-                    // However, for basic Ligature logic, extending the 'last added' is standard.
-                    // Improved logic: Find an event that ends at `currentTime`
                     const lastEvent = sequence[sequence.length - 1];
                     if (lastEvent && Math.abs((lastEvent.time + lastEvent.duration) - currentTime) < 0.01) {
                         lastEvent.duration++;
@@ -224,7 +209,6 @@ export class LigatureParser {
                 continue;
             }
 
-            // New Tuplet Logic (Single Slot)
             if (token.startsWith('(')) {
                 const inner = token.substring(1, token.length - 1);
                 const subMatches = inner.split(/\s+/).filter(Boolean);
@@ -262,43 +246,50 @@ export class LigatureParser {
         return trackName;
     }
 
+    // --- UPDATED PLAYLIST PARSING (Layers & Chains) ---
     private parsePlaylistRow(line: string, track: ParsedTrack) {
-        const parts = line.split('=');
-        if (parts.length === 2 && line.includes('=')) {
-            const key = parts[0].trim().toUpperCase();
-            const value = parts[1].trim();
-            if (key === 'BPM' || key === 'SCALE') {
-                track.playlist.push({ type: 'command', command: key as 'BPM' | 'Scale', value: value });
-                return;
+        const trimmed = line.trim();
+        if (trimmed.includes('=')) {
+            const parts = trimmed.split('=');
+            if (parts.length === 2) {
+                const key = parts[0].trim().toUpperCase();
+                const value = parts[1].trim();
+                if (key === 'BPM' || key === 'SCALE') {
+                    track.playlist.push({ type: 'command', command: key as 'BPM' | 'Scale', value: value });
+                    return;
+                }
             }
         }
 
-        const items = line.split(',').map(s => s.trim()).filter(Boolean);
-        const playlistItem: PatternPlaylistItem = {
-            type: 'pattern',
-            patterns: [],
-            modifiers: {}
-        };
+        // 1. Split by Comma -> Layers
+        const layerStrings = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        const layers: Layer[] = [];
 
-        items.forEach(item => {
-            const match = item.match(/^([a-zA-Z0-9_]+)(?:\((.*)\))?$/);
-            if (match) {
-                const patId = match[1];
-                let mods = this.parseModifiers(match[2] || '');
-                
-                playlistItem.patterns.push({ 
-                    id: patId, 
-                    transposition: mods.transpose,
-                    volume: mods.volume
-                });
+        layerStrings.forEach(layerStr => {
+            // 2. Split by Plus -> Chain Items
+            const chainStrings = layerStr.split('+').map(s => s.trim()).filter(Boolean);
+            const chain: ChainItem[] = [];
 
-                if (!playlistItem.modifiers) playlistItem.modifiers = {};
-                playlistItem.modifiers[patId] = mods;
+            chainStrings.forEach(itemStr => {
+                const match = itemStr.match(/^([a-zA-Z0-9_]+)(?:\((.*)\))?$/);
+                if (match) {
+                    const patId = match[1];
+                    const mods = this.parseModifiers(match[2] || '');
+                    chain.push({
+                        id: patId,
+                        transposition: mods.transpose,
+                        volume: mods.volume
+                    });
+                }
+            });
+
+            if (chain.length > 0) {
+                layers.push({ items: chain });
             }
         });
 
-        if (playlistItem.patterns.length > 0) {
-            track.playlist.push(playlistItem);
+        if (layers.length > 0) {
+            track.playlist.push({ type: 'pattern', layers: layers });
         }
     }
 
@@ -359,10 +350,7 @@ export class LigatureParser {
         return { degree, octaveShift, accidental, isNatural };
     }
 
-    // public stringify(track: ParsedTrack): string {
-    //     // ... (This function is generally handled by serializer.ts now, 
-    //     // but if it stays here, it would need the same update as serializer.ts)
-    //     // For now, focusing on the Parsing logic.
-    //     return ""; 
-    // }
+    public stringify(track: ParsedTrack): string {
+        return ""; // Handled by serializer
+    }
 }
