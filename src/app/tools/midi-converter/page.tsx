@@ -20,7 +20,7 @@ export default function MidiConverterPage() {
         scaleMode: 'major'
     });
     
-    // --- NEW State for the refactor tool ---
+    // State for the refactor tool
     const [refactorOptions, setRefactorOptions] = useState({
         scaleRoot: 'A#',
         scaleMode: 'minor'
@@ -84,14 +84,12 @@ export default function MidiConverterPage() {
         }
     };
 
-    // --- NEW HANDLER FOR SCALE REFACTORING ---
     const handleRefactorScale = () => {
         if (!ligatureSource) return;
         setStatus(`Refactoring to ${refactorOptions.scaleRoot} ${refactorOptions.scaleMode}...`);
         try {
             const newSource = refactorScale(ligatureSource, refactorOptions.scaleRoot, refactorOptions.scaleMode);
             setLigatureSource(newSource);
-            // Update the main options to reflect this change
             setOptions(prev => ({...prev, scaleRoot: refactorOptions.scaleRoot, scaleMode: refactorOptions.scaleMode}));
             setStatus(`Scale refactored successfully.`);
         } catch (error) {
@@ -135,70 +133,132 @@ export default function MidiConverterPage() {
     return (
         <div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#ccc' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                <h1 style={{ color: '#61afef' }}>MIDI to Ligature Converter</h1>
-                <p style={{ color: '#888', marginBottom: '2rem' }}>
-                    Workflow: 1. Convert → 2. Re-interpret → 3. Refine & Polish
-                </p>
-
-                {/* Step 1: Conversion */}
-                <div style={{ background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
-                    <h3 style={{ marginTop: 0, color: '#e5c07b' }}>1. Convert MIDI</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                        <div className="form-group"><label className="form-label">MIDI File</label><input type="file" accept=".mid,.midi" onChange={handleFileChange} className="form-input"/></div>
-                        <div className="form-group"><label className="form-label">BPM (0=auto)</label><input type="number" value={options.bpm} onChange={e => setOptions({...options, bpm: parseInt(e.target.value)})} className="form-input" /></div>
-                        <div className="form-group"><label className="form-label">Key Root</label><select value={options.scaleRoot} onChange={e => setOptions({...options, scaleRoot: e.target.value})} className="form-select"><option value="auto">Auto-Detect</option><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select></div>
-                        <div className="form-group"><label className="form-label">Key Mode</label><select value={options.scaleMode} onChange={e => setOptions({...options, scaleMode: e.target.value})} className="form-select"><option value="major">Major</option><option value="minor">Minor</option><option value="dorian">Dorian</option></select></div>
-                    </div>
-                    <pre style={{ margin: '1rem 0', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#777', whiteSpace: 'pre-wrap' }}>{status}</pre>
+                <div style={{ marginBottom: '2rem' }}>
+                    <h1 style={{ color: '#61afef', margin: '0 0 0.5rem 0', fontSize: '2rem' }}>MIDI to Ligature Converter</h1>
+                    <p style={{ color: '#888', margin: 0 }}>
+                        Convert MIDI files into narrative-ready Ligature code.
+                    </p>
                 </div>
 
-                {/* --- UPDATED Step 2: Fundamental Re-interpretation --- */}
-                 <div style={{ marginTop: '2rem', background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
-                    <h3 style={{ marginTop: 0, color: '#e5c07b' }}>2. Re-interpretation</h3>
-                    <div style={{display: 'flex', gap: '2rem', alignItems: 'flex-end'}}>
-                        <div>
-                            <p style={{ margin: '0 0 0.5rem 0', color: '#888' }}>Adjust base tempo to simplify rhythms.</p>
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <button disabled={!ligatureSource} onClick={() => handleRescaleBPM(2)} style={{ background: '#98c379', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Double BPM (x2)</button>
-                                <button disabled={!ligatureSource} onClick={() => handleRescaleBPM(0.5)} style={{ background: '#e06c75', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Halve BPM (/2)</button>
+                {/* --- WORKFLOW GRID --- */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+                    
+                    {/* STEP 1: IMPORT */}
+                    <div style={{ background: '#21252b', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ background: 'rgba(97, 175, 239, 0.1)', padding: '1rem', borderBottom: '1px solid #333' }}>
+                            <h3 style={{ margin: 0, color: '#61afef', fontSize: '1rem', textTransform: 'uppercase' }}>1. Import MIDI</h3>
+                        </div>
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Select File</label>
+                                <input type="file" accept=".mid,.midi" onChange={handleFileChange} className="form-input" style={{ padding: '0.5rem' }}/>
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Key Root</label>
+                                    <select value={options.scaleRoot} onChange={e => setOptions({...options, scaleRoot: e.target.value})} className="form-select">
+                                        <option value="auto">Auto-Detect</option>
+                                        {['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].map(k => <option key={k}>{k}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Key Mode</label>
+                                    <select value={options.scaleMode} onChange={e => setOptions({...options, scaleMode: e.target.value})} className="form-select">
+                                        <option value="major">Major</option>
+                                        <option value="minor">Minor</option>
+                                        <option value="dorian">Dorian</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="form-label">BPM Override (0 = Auto)</label>
+                                <input type="number" value={options.bpm} onChange={e => setOptions({...options, bpm: parseInt(e.target.value)})} className="form-input" />
                             </div>
                         </div>
-                        <div style={{borderLeft: '1px solid #333', paddingLeft: '2rem'}}>
-                             <p style={{ margin: '0 0 0.5rem 0', color: '#888' }}>Re-interpret notes into a new key.</p>
-                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <div className="form-group"><label className="form-label">Target Key</label><select value={refactorOptions.scaleRoot} onChange={e => setRefactorOptions({...refactorOptions, scaleRoot: e.target.value})} className="form-select"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select></div>
-                                <div className="form-group"><label className="form-label">Target Mode</label><select value={refactorOptions.scaleMode} onChange={e => setRefactorOptions({...refactorOptions, scaleMode: e.target.value})} className="form-select"><option value="major">Major</option><option value="minor">Minor</option><option value="dorian">Dorian</option></select></div>
-                                <button disabled={!ligatureSource} onClick={handleRefactorScale} style={{ background: '#61afef', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Refactor Scale</button>
-                             </div>
+                    </div>
+
+                    {/* STEP 2: REINTERPRET */}
+                    <div style={{ background: '#21252b', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden', opacity: ligatureSource ? 1 : 0.5, pointerEvents: ligatureSource ? 'auto' : 'none' }}>
+                        <div style={{ background: 'rgba(229, 192, 123, 0.1)', padding: '1rem', borderBottom: '1px solid #333' }}>
+                            <h3 style={{ margin: 0, color: '#e5c07b', fontSize: '1rem', textTransform: 'uppercase' }}>2. Re-Interpret</h3>
+                        </div>
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            
+                            <div>
+                                <label className="form-label" style={{ marginBottom: '0.5rem' }}>Tempo Scaling</label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button onClick={() => handleRescaleBPM(2)} style={{ flex: 1, background: '#2c313a', border: '1px solid #444', color: '#ccc', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}>x2 (Double)</button>
+                                    <button onClick={() => handleRescaleBPM(0.5)} style={{ flex: 1, background: '#2c313a', border: '1px solid #444', color: '#ccc', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}>/2 (Half)</button>
+                                </div>
+                            </div>
+
+                            <div style={{ borderTop: '1px solid #333', paddingTop: '1.5rem' }}>
+                                <label className="form-label" style={{ marginBottom: '0.5rem' }}>Target Key</label>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <select value={refactorOptions.scaleRoot} onChange={e => setRefactorOptions({...refactorOptions, scaleRoot: e.target.value})} className="form-select" style={{ width: '80px' }}>
+                                        {['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].map(k => <option key={k}>{k}</option>)}
+                                    </select>
+                                    <select value={refactorOptions.scaleMode} onChange={e => setRefactorOptions({...refactorOptions, scaleMode: e.target.value})} className="form-select" style={{ flex: 1 }}>
+                                        <option value="major">Major</option>
+                                        <option value="minor">Minor</option>
+                                        <option value="dorian">Dorian</option>
+                                    </select>
+                                </div>
+                                <button onClick={handleRefactorScale} style={{ width: '100%', background: '#e5c07b', color: '#000', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    Apply Key Change
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* STEP 3: REFINE */}
+                    <div style={{ background: '#21252b', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden', opacity: ligatureSource ? 1 : 0.5, pointerEvents: ligatureSource ? 'auto' : 'none' }}>
+                        <div style={{ background: 'rgba(152, 195, 121, 0.1)', padding: '1rem', borderBottom: '1px solid #333' }}>
+                            <h3 style={{ margin: 0, color: '#98c379', fontSize: '1rem', textTransform: 'uppercase' }}>3. Refine & Polish</h3>
+                        </div>
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={shouldFoldLanes} onChange={e => setShouldFoldLanes(e.target.checked)} /> Fold Lanes
+                                </label>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={useTransposition} onChange={e => setUseTransposition(e.target.checked)} /> Detect Transpose
+                                </label>
+                            </div>
+
+                            <div>
+                                <label className="form-label">Pattern Matching Aggressiveness</label>
+                                <input type="range" min="0" max="3" step="1" value={patternAggressiveness} onChange={e => setPatternAggressiveness(Number(e.target.value) as any)} style={{width: '100%', accentColor: '#98c379'}} />
+                                <div style={{ fontSize: '0.75rem', color: '#98c379', textAlign: 'center', marginTop: '4px' }}>
+                                    {aggressivenessLabels[patternAggressiveness]}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <button onClick={handleOptimizeClick} style={{ flex: 1, background: '#98c379', color: '#000', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    Optimize Structure
+                                </button>
+                                <button onClick={handlePolishClick} style={{ flex: 1, background: '#56B6C2', color: '#000', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    Polish Names
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                {/* Step 3: Refinement and Polishing */}
-                <div style={{ marginTop: '2rem', background: '#21252b', padding: '2rem', borderRadius: '8px', border: '1px solid #333' }}>
-                    <h3 style={{ marginTop: 0, color: '#e5c07b' }}>3. Refine & Polish</h3>
-                    <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                        <div className="form-group">
-                            <h4 style={{color: '#61afef', margin: '0 0 0.5rem 0'}}>Options</h4>
-                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={shouldFoldLanes} onChange={e => setShouldFoldLanes(e.target.checked)} />Fold Instrument Lanes</label>
-                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}><input type="checkbox" checked={useTransposition} onChange={e => setUseTransposition(e.target.checked)} />Find Transposed Patterns</label>
-                        </div>
-                        <div className="form-group" style={{ flexGrow: 1}}>
-                             <h4 style={{color: '#61afef', margin: '0 0 0.5rem 0'}}>Pattern Matching Aggressiveness</h4>
-                             <input type="range" min="0" max="3" step="1" value={patternAggressiveness} onChange={e => setPatternAggressiveness(Number(e.target.value) as any)} style={{width: '100%'}} />
-                             <div style={{textAlign: 'center', color: '#98c379', fontWeight: 'bold', marginTop: '0.5rem'}}>{aggressivenessLabels[patternAggressiveness]}</div>
-                        </div>
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center', alignSelf: 'center' }}>
-                            <button disabled={!ligatureSource} onClick={handleOptimizeClick} style={{ background: '#56B6C2', color: '#000', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Refine Structure</button>
-                            <button disabled={!ligatureSource} onClick={handlePolishClick} style={{ background: '#C678DD', color: '#000', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Polish Names</button>
-                        </div>
-                    </div>
+
+                {/* STATUS BAR */}
+                <div style={{ margin: '2rem 0', padding: '1rem', background: '#111', borderRadius: '4px', borderLeft: '4px solid #61afef', color: '#ccc', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                    {status}
                 </div>
                 
+                {/* EDITOR */}
                 {ligatureSource && (
                     <div style={{ marginTop: '2rem' }}>
-                        <h3 style={{ color: '#98c379' }}>Ligature Code</h3>
-                        <ScribeEditor value={ligatureSource} onChange={setLigatureSource} language="ligature" minHeight="400px"/>
+                        <h3 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '1rem' }}>Generated Code</h3>
+                        <ScribeEditor value={ligatureSource} onChange={setLigatureSource} language="ligature" minHeight="500px"/>
                     </div>
                 )}
             </div>

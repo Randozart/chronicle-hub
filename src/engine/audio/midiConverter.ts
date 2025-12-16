@@ -2,6 +2,7 @@
 
 import { Midi } from '@tonejs/midi';
 import { Note, Scale } from 'tonal';
+import { AUDIO_PRESETS } from './presets'; // Import your presets
 
 interface ConversionOptions {
     grid?: number; 
@@ -10,7 +11,72 @@ interface ConversionOptions {
     scaleMode?: string;
 }
 
-// ... (detectKey and getNoteString remain the same as previous step) ...
+// --- INTELLIGENT INSTRUMENT MATCHING ---
+function findBestPreset(midiName: string, isPercussion: boolean): string {
+    // 1. Hard Percussion Check
+    const lowerName = midiName.toLowerCase();
+    if (isPercussion || lowerName.includes('drum') || lowerName.includes('kit') || lowerName.includes('perc')) {
+        return 'standard_kit';
+    }
+
+    if (!midiName) return 'retro_lead';
+
+    // 2. Normalize strings for fuzzy matching (remove spaces, underscores, casing)
+    const search = lowerName.replace(/[^a-z0-9]/g, '');
+    
+    // 3. Scan Presets
+    let bestMatch: string | null = null;
+    let bestScore = 0; // Simple score: length of the match
+
+    for (const [id, def] of Object.entries(AUDIO_PRESETS)) {
+        if (def.type !== 'sampler' && def.type !== 'synth') continue;
+
+        const presetIdClean = id.replace(/[^a-z0-9]/g, '');
+        const presetNameClean = def.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        // A. Exact ID match (Best)
+        if (presetIdClean === search) return id;
+
+        // B. ID contains MIDI name (e.g. 'hqviolin' contains 'violin')
+        if (presetIdClean.includes(search)) {
+            if (search.length > bestScore) {
+                bestScore = search.length;
+                bestMatch = id;
+            }
+        }
+        
+        // C. MIDI name contains ID (e.g. 'violinsolo' contains 'violin') - weaker match usually, but valid
+        if (search.includes(presetIdClean)) {
+             if (presetIdClean.length > bestScore) {
+                bestScore = presetIdClean.length;
+                bestMatch = id;
+            }
+        }
+
+        // D. Name definitions (e.g. 'String Ensemble')
+        if (presetNameClean.includes(search) || search.includes(presetNameClean)) {
+             // Give a modest score for name matches
+             if (Math.min(search.length, presetNameClean.length) > bestScore) {
+                 bestScore = Math.min(search.length, presetNameClean.length);
+                 bestMatch = id;
+             }
+        }
+    }
+
+    if (bestMatch) return bestMatch;
+
+    // 4. Keyword Fallbacks (Generic Categories)
+    if (lowerName.includes('bass')) return 'fm_bass';
+    if (lowerName.includes('piano')) return 'hq_piano';
+    if (lowerName.includes('string')) return 'hq_violin';
+    if (lowerName.includes('pad')) return 'warm_pad';
+    if (lowerName.includes('lead')) return 'retro_lead';
+    if (lowerName.includes('horn') || lowerName.includes('brass')) return 'french_horn';
+
+    return 'retro_lead'; // Final default
+}
+
+// --- KEY DETECTION ---
 function detectKey(notes: string[]): string {
     const uniqueNotes = Array.from(new Set(notes));
     const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -70,6 +136,7 @@ export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
     // 1. CONFIGURATION
     const detectedBpm = Math.round(midi.header.tempos[0]?.bpm || 120);
     const bpm = options.bpm && options.bpm > 0 ? options.bpm : detectedBpm;
+    
     const timeSig = midi.header.timeSignatures[0]?.timeSignature || [4, 4];
 
     let keySignature = `${options.scaleRoot} ${options.scaleMode}`;
@@ -83,10 +150,9 @@ export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
     const scale = Scale.get(`${scaleRoot} ${scaleMode.toLowerCase()}`);
     const scaleNotePcs = scale.notes;
 
-    // 2. DETECT RESOLUTION (The "Mega Grid")
+    
+    // 2. DETECT RESOLUTION
     let neededGrid = 4;
-    let totalError = 0;
-    let noteCount = 0;
     const testGrids = [4, 6, 8, 12, 16, 24]; 
     
     for (const testG of testGrids) {
@@ -104,6 +170,8 @@ export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
         neededGrid = testG;
     }
 
+    let noteCount = 0;
+    let totalError = 0;
     midi.tracks.forEach(t => t.notes.forEach(n => {
         const beatPos = n.time * (bpm / 60);
         const slot = beatPos * neededGrid;
@@ -133,19 +201,18 @@ Humanize: ${humanizeAmt}
     midi.tracks.forEach((track, i) => {
         if (track.notes.length === 0) return;
 
-        // Just one clean name per MIDI track now
         let baseName = (track.instrument.name || `Track_${i + 1}`).replace(/[^a-zA-Z0-9_]/g, '_');
         
-        // Define the instrument ONCE
-        source += `${baseName}: ${track.instrument.name ? 'standard_kit' : 'retro_lead'} // Detect or Default\n`;
-
+        // --- AUTO-DETECT INSTRUMENT ---
+        const isPercussion = track.instrument.percussion || false;
+        const detectedPreset = findBestPreset(track.instrument.name, isPercussion);
+        source += `${baseName}: ${detectedPreset}\n`;
+        
         const totalDuration = Math.max(...track.notes.map(n => n.time + n.duration));
         const totalSlots = Math.ceil(totalDuration * (bpm / 60) * slotsPerBeat);
         const totalBars = Math.ceil(totalSlots / slotsPerBar);
         const finalSlotCount = totalBars * slotsPerBar;
 
-        // Lane Logic is still needed to separate overlapping notes, 
-        // but we visualize them as stacked rows, not separate instruments.
         const lanes: (string | null)[][] = [];
 
         track.notes.forEach(note => {
@@ -181,38 +248,29 @@ Humanize: ${humanizeAmt}
             }
         });
 
-        // --- PATTERN GENERATION ---
+        // --- GENERATION ---
         const patternId = `${baseName}_Seq`;
         allLayerIds.push(patternId);
 
         let patternContent = `\n[PATTERN: ${patternId}]\n`;
         
-        // Iterate lanes, but print them as stacked rows for the SAME track name
         lanes.forEach((laneData, laneIndex) => {
-            
-            // First lane gets the name, others get whitespace padding
-            let prefix = laneIndex === 0 ? baseName : ""; 
-            
-            // Start the line
+            const prefix = laneIndex === 0 ? baseName : ""; 
             let gridLine = `${prefix.padEnd(16)} |`;
             
             for (let b = 0; b < totalBars; b++) {
                 const barStart = b * slotsPerBar;
-                
                 for (let beat = 0; beat < timeSig[0]; beat++) {
                     const beatStart = barStart + (beat * slotsPerBeat);
                     const beatData = laneData.slice(beatStart, beatStart + slotsPerBeat);
-                    
                     const cleanBeat = beatData.map(x => x || '.');
                     
                     for(let k=0; k<slotsPerBeat; k++) {
                         const val = cleanBeat[k];
                         gridLine += ` ${val.padEnd(2)}`;
                     }
-                    
                     gridLine += '  ';
                 }
-                
                 gridLine += ' | ';
             }
             patternContent += gridLine + '\n';

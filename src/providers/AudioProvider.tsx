@@ -62,12 +62,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         });
         scheduledPartsRef.current = [];
 
+        // Release all notes on active synths to prevent hanging
         activeSynthsRef.current.forEach(synth => {
             if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
                 synth.releaseAll();
             }
         });
-        activeSynthsRef.current.clear();
+        
+        // Note: We do NOT dispose instruments here anymore. 
+        // We let the cache persist to prevent reloading samples on every stop/play.
+        // disposeInstruments() is only called on unmount.
+        
         noteCacheRef.current.clear(); 
         currentTrackRef.current = null;
         setIsPlaying(false);
@@ -92,12 +97,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         currentTrackRef.current = track; 
         instrumentDefsRef.current = instruments;
         
-        const instrumentsUsed = Object.values(track.instruments); 
-        
-        const neededDefs = instrumentsUsed.map(instConfig => {
+        // --- OPTIMIZATION: PRE-LOAD INSTRUMENTS ---
+        // Instead of doing this inside the loop, we map TrackName -> SynthInstance once.
+        const trackSynthMap = new Map<string, AnyInstrument>();
+        let hasSamplers = false;
+
+        for (const [trackName, instConfig] of Object.entries(track.instruments)) {
             const baseDef = instruments.find(i => i.id === instConfig.id);
-            if (!baseDef) return null;
-            
+            if (!baseDef) continue;
+
             const mergedDef: InstrumentDefinition = {
                 ...baseDef,
                 config: {
@@ -112,14 +120,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
             };
-            return mergedDef;
-        }).filter(Boolean) as InstrumentDefinition[];
-        
-        let hasSamplers = false;
-        neededDefs.forEach(def => {
-            getOrMakeInstrument(def); 
-            if (def.type === 'sampler') hasSamplers = true;
-        });
+
+            const synth = getOrMakeInstrument(mergedDef);
+            if (baseDef.type === 'sampler') hasSamplers = true;
+
+            // Connect once
+            if (limiterRef.current) {
+                try { synth.disconnect(); } catch(e) {} 
+                synth.connect(limiterRef.current);
+            }
+            
+            activeSynthsRef.current.add(synth);
+            trackSynthMap.set(trackName, synth);
+        }
 
         if (hasSamplers) {
             setIsLoadingSamples(true);
@@ -132,14 +145,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         transport.bpm.value = track.config.bpm;
         transport.swing = track.config.swing || 0;
         
-        playSequenceFrom(0, transport); 
+        // Pass the pre-configured map to the scheduler
+        playSequenceFrom(0, transport, trackSynthMap); 
 
         if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
     
-    // --- UPDATED SCHEDULING LOGIC ---
-    const playSequenceFrom = (playlistStartIndex: number, transport: TransportClass) => {
+    const playSequenceFrom = (
+        playlistStartIndex: number, 
+        transport: TransportClass, 
+        trackSynthMap: Map<string, AnyInstrument>
+    ) => {
         const track = currentTrackRef.current;
         if (!track) return;
         
@@ -172,44 +189,54 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                     const pattern = track.patterns[chainItem.id];
                     if (pattern) chainSlots += pattern.duration;
                 });
-                const chainBars = Math.ceil(chainSlots / slotsPerBar);
+                // Fix: Ensure we don't divide by zero if something is malformed
+                const safeSlotsPerBar = slotsPerBar || 16;
+                const chainBars = Math.ceil(chainSlots / safeSlotsPerBar);
                 layerDurations[layerIndex] = chainBars;
                 maxChainBars = Math.max(maxChainBars, chainBars);
             });
+
+            // Safeguard: If no duration, skip this playlist item
+            if (maxChainBars === 0) continue;
 
             // 2. Schedule Each Layer (Looping if needed)
             item.layers.forEach((layer, layerIndex) => {
                 let currentBarOffset = 0;
                 
+                // *** CRITICAL FIX: Loop Protection ***
+                let loopGuard = 0;
+                const MAX_LOOPS = 1000; // Hard limit to prevent browser crash
+
                 // Keep repeating the chain until we cover the maxChainBars duration
                 while (currentBarOffset < maxChainBars) {
                     
+                    if (loopGuard++ > MAX_LOOPS) {
+                        console.warn("Infinite Loop Detected in Ligature AudioProvider. Breaking.");
+                        break;
+                    }
+
+                    // Track if we actually advanced time in this iteration
+                    const startOffset = currentBarOffset;
+
                     for (const chainItem of layer.items) {
-                        // Stop if we've exceeded the allocated time for this row
                         if (currentBarOffset >= maxChainBars) break;
 
                         const pattern = track.patterns[chainItem.id];
+                        // If pattern missing, skip
                         if (!pattern) continue;
 
                         const patternBars = Math.ceil(pattern.duration / slotsPerBar);
+                        
+                        // If pattern has 0 duration (e.g. empty pattern), force it to 1 bar 
+                        // or skip it to prevent infinite loop. 
+                        // Standard Rest patterns should have duration.
+                        if (patternBars === 0) continue; 
 
                         // Schedule events for this pattern instance
                         for (const [trackName, events] of Object.entries(pattern.tracks)) {
-                            const instConfig = track.instruments[trackName];
-                            if (!instConfig) continue; 
-                            
-                            // Find synth...
-                            const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
-                            if (baseDef) {
-                                const mergedDef = { ...baseDef, config: { ...baseDef.config, volume: instConfig.overrides.volume ?? baseDef.config.volume } }; // Simplified merge for scheduling
-                                const synth = getOrMakeInstrument(mergedDef);
-                                
-                                if (limiterRef.current) {
-                                    try { synth.disconnect(); } catch(e) {} 
-                                    synth.connect(limiterRef.current);
-                                }
-                                activeSynthsRef.current.add(synth);
-
+                            // OPTIMIZATION: Use the pre-connected synth
+                            const synth = trackSynthMap.get(trackName);
+                            if (synth) {
                                 const trackMod = pattern.trackModifiers[trackName];
                                 const playlistVolume = chainItem.volume || 0; 
                                 const trackVolume = trackMod?.volume || 0;
@@ -229,13 +256,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                     
                                     const timeInSlots = event.time;
                                     const bar = Math.floor(timeInSlots / slotsPerBar);
-                                    const beat = Math.floor((timeInSlots % slotsPerBar) / (grid * (4 / timeSig[1])));
-                                    const sixteenth = (timeInSlots % (grid * (4 / timeSig[1]))) / (grid / 4);
+                                    // Use safe math for beat/sixteenth calculation
+                                    const beatDivisor = (grid * (4 / timeSig[1])) || 1;
+                                    const beat = Math.floor((timeInSlots % slotsPerBar) / beatDivisor);
+                                    const sixteenthDivisor = (grid / 4) || 1;
+                                    const sixteenth = (timeInSlots % beatDivisor) / sixteenthDivisor;
                                     
-                                    const durationSeconds = event.duration * (60 / runningConfig.bpm / (runningConfig.grid / 4));
+                                    const durationSeconds = event.duration * (60 / runningConfig.bpm / sixteenthDivisor);
                                     
                                     return {
-                                        // Absolute Time: Start of Playlist Row + Current Chain Loop Offset + Event Time
                                         time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
                                         duration: durationSeconds,
                                         notes: noteNames,
@@ -258,8 +287,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                             }
                         }
                         
-                        // Advance local chain cursor
                         currentBarOffset += patternBars;
+                    }
+
+                    // *** CRITICAL FIX: If we didn't advance time at all in this loop iteration (e.g. empty chain), break to avoid freeze.
+                    if (currentBarOffset === startOffset) {
+                        break; 
                     }
                 }
             });
