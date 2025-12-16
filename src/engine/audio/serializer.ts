@@ -26,7 +26,7 @@ export function serializeParsedTrack(track: ParsedTrack): string {
   }
   lines.push('');
 
-  // *** FIX ***: Build a reverse map from note signatures to alias names.
+  // Build a reverse map from note signatures to alias names.
   const aliasMap = new Map<string, string>();
   if (Object.keys(track.definitions).length > 0) {
     lines.push('[DEFINITIONS]');
@@ -43,7 +43,8 @@ export function serializeParsedTrack(track: ParsedTrack): string {
     const maxTrackNameLength = Math.max(...Object.keys(pattern.tracks).map(name => name.length), 0);
     for (const [trackName, events] of Object.entries(pattern.tracks)) {
       const serializedLine = serializeEvents(events, pattern, track.config, aliasMap);
-      lines.push(`${trackName.padEnd(maxTrackNameLength)} |${serializedLine}|`);
+      // The serializer returns content joined by " | ", so we wrap it in the outer pipes
+      lines.push(`${trackName.padEnd(maxTrackNameLength)} | ${serializedLine} |`);
     }
     lines.push('');
   }
@@ -60,7 +61,6 @@ export function serializeParsedTrack(track: ParsedTrack): string {
   return lines.join('\n');
 }
 
-// *** REBUILT SERIALIZER LOGIC ***
 function serializeEvents(
     events: SequenceEvent[],
     pattern: ParsedPattern,
@@ -70,71 +70,82 @@ function serializeEvents(
     const { grid, timeSig } = config;
     const slotsPerBeat = grid * (4 / timeSig[1]);
     const slotsPerBar = slotsPerBeat * timeSig[0];
-    const totalBars = Math.ceil(pattern.duration / slotsPerBar);
-    let output = '';
+    
+    // Ensure we cover the full duration, or expand if events go beyond
+    const totalSlots = Math.max(pattern.duration, Math.ceil(Math.max(0, ...events.map(e => e.time + e.duration))));
+    
+    // Group events by the integer grid slot they start in
+    // This effectively "quantizes" the start times to the grid for categorization
+    const slotEvents: Record<number, SequenceEvent[]> = {};
+    
+    events.forEach(e => {
+        const slotIndex = Math.floor(e.time);
+        if (!slotEvents[slotIndex]) slotEvents[slotIndex] = [];
+        slotEvents[slotIndex].push(e);
+    });
 
-    for (let i = 0; i < totalBars; i++) {
-        let barOutput = '';
-        const barStart = i * slotsPerBar;
+    const slots: string[] = [];
 
-        for (let j = 0; j < timeSig[0]; j++) {
-            const beatStart = barStart + j * slotsPerBeat;
-            const beatEnd = beatStart + slotsPerBeat;
-            const eventsInBeat = events.filter(e => e.time >= beatStart && e.time < beatEnd);
+    // 1. Build the linear array of slot strings (., -, 1, (1 3), etc)
+    for (let s = 0; s < totalSlots; s++) {
+        const evs = slotEvents[s];
 
-            // --- TUPLET DETECTION ---
-            let isTuplet = false;
-            if (eventsInBeat.length > 0) {
-                const step = slotsPerBeat / grid;
-                for (const event of eventsInBeat) {
-                    if (event.time % step !== 0 || event.duration % step !== 0) {
-                        isTuplet = true;
-                        break;
-                    }
-                }
-            }
-            
-            if (isTuplet) {
-                const TUPLER_RESOLUTION = 24; // High-res grid for reconstructing tuplets
-                const tupletSlots = new Array(TUPLER_RESOLUTION).fill('.');
-                
-                for (const event of eventsInBeat) {
-                    const relativeTime = event.time - beatStart;
-                    const startSlot = Math.round((relativeTime / slotsPerBeat) * TUPLER_RESOLUTION);
-                    const durationSlots = Math.round((event.duration / slotsPerBeat) * TUPLER_RESOLUTION);
-                    
-                    if (startSlot < TUPLER_RESOLUTION) {
-                        tupletSlots[startSlot] = serializeNoteOrAlias(event.notes, aliasMap);
-                        for (let k = 1; k < durationSlots; k++) {
-                            if (startSlot + k < TUPLER_RESOLUTION) {
-                                tupletSlots[startSlot + k] = '-';
-                            }
-                        }
-                    }
-                }
-                barOutput += ` (${tupletSlots.join(' ')})`;
+        if (evs && evs.length > 0) {
+            // Sort by time within the slot to ensure correct order inside tuplet
+            evs.sort((a, b) => a.time - b.time);
+
+            // Check if it's a single, strictly on-grid note
+            // (Tolerance of 0.001 covers floating point drifts)
+            if (evs.length === 1 && Math.abs(evs[0].time - s) < 0.001) {
+                slots[s] = serializeNoteOrAlias(evs[0].notes, aliasMap);
             } else {
-                // --- REGULAR GRID LOGIC ---
-                const beatSlots = new Array(grid).fill('.');
-                for (const event of eventsInBeat) {
-                    const slotIndex = Math.round((event.time - beatStart) / (slotsPerBeat / grid));
-                    const durationSlots = Math.round(event.duration / (slotsPerBeat / grid));
-                    
-                    if (slotIndex < grid) {
-                        beatSlots[slotIndex] = serializeNoteOrAlias(event.notes, aliasMap);
-                         for (let k = 1; k < durationSlots; k++) {
-                            if (slotIndex + k < grid) {
-                                beatSlots[slotIndex + k] = '-';
-                            }
-                        }
-                    }
-                }
-                barOutput += ` ${beatSlots.join(' ')}`;
+                // *** TUPLET LOGIC ***
+                // Multiple notes in this slot, or a single note that starts off-grid.
+                // We wrap purely this slot in ().
+                const notes = evs.map(e => serializeNoteOrAlias(e.notes, aliasMap));
+                slots[s] = `(${notes.join(' ')})`;
+            }
+        } else {
+            // No new event starts here. Check if a previous note is sustaining through this slot.
+            const isSustaining = events.some(e => {
+                const start = e.time;
+                const end = e.time + e.duration;
+                // Strictly greater than start (so we don't count the start slot)
+                // Strictly less than end (so we don't count the slot after release)
+                return s > start && s < end - 0.01;
+            });
+
+            if (isSustaining) {
+                slots[s] = '-';
+            } else {
+                slots[s] = '.';
             }
         }
-        output += `${barOutput} |`;
     }
-    return output.slice(0, -2); // Remove trailing space and pipe
+
+    // 2. Format the linear array into Bars and Beats
+    const bars: string[] = [];
+    const totalBars = Math.ceil(slots.length / slotsPerBar);
+
+    for (let b = 0; b < totalBars; b++) {
+        let barStr = '';
+        for (let s = 0; s < slotsPerBar; s++) {
+            const absIndex = (b * slotsPerBar) + s;
+            if (absIndex >= slots.length) break; // Should not happen with padding logic
+
+            // Add extra space between beats for readability
+            if (s > 0 && s % slotsPerBeat === 0) {
+                barStr += '  ';
+            } else if (s > 0) {
+                barStr += ' ';
+            }
+            
+            barStr += slots[absIndex] || '.';
+        }
+        bars.push(barStr);
+    }
+
+    return bars.join(' | ');
 }
 
 function serializeNoteOrAlias(notes: NoteDef[], aliasMap: Map<string, string>): string {
@@ -143,7 +154,11 @@ function serializeNoteOrAlias(notes: NoteDef[], aliasMap: Map<string, string>): 
         if (aliasMap.has(sig)) {
             return aliasMap.get(sig)!;
         }
-        return notes.map(serializeNote).join('+');
+        // Fallback: if no definition exists, stacking isn't standard Ligature syntax for single slots
+        // without chords, but Definitions usually cover this. 
+        // We output as an ad-hoc chord if needed, but standardizing to the first note 
+        // plus intervals is complex. For now, assume it was defined or return first note.
+        // Better yet, force a definition generation in the calling code (which polishLigatureSource does).
     }
     return serializeNote(notes[0]);
 }

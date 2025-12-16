@@ -1,3 +1,5 @@
+// src/engine/audio/midiConverter.ts
+
 import { Midi } from '@tonejs/midi';
 import { Note, Scale } from 'tonal';
 
@@ -8,7 +10,7 @@ interface ConversionOptions {
     scaleMode?: string;
 }
 
-// --- BULLETPROOF KEY DETECTION (No external dependency on Key module) ---
+// ... (detectKey and getNoteString remain the same as previous step) ...
 function detectKey(notes: string[]): string {
     const uniqueNotes = Array.from(new Set(notes));
     const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -68,7 +70,7 @@ export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
     // 1. CONFIGURATION
     const detectedBpm = Math.round(midi.header.tempos[0]?.bpm || 120);
     const bpm = options.bpm && options.bpm > 0 ? options.bpm : detectedBpm;
-    const targetGrid = options.grid || 4; 
+    const timeSig = midi.header.timeSignatures[0]?.timeSignature || [4, 4];
 
     let keySignature = `${options.scaleRoot} ${options.scaleMode}`;
     if (!options.scaleRoot || options.scaleRoot === 'auto') {
@@ -81,8 +83,6 @@ export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
     const scale = Scale.get(`${scaleRoot} ${scaleMode.toLowerCase()}`);
     const scaleNotePcs = scale.notes;
 
-    const timeSig = midi.header.timeSignatures[0]?.timeSignature || [4, 4];
-    
     // 2. DETECT RESOLUTION (The "Mega Grid")
     let neededGrid = 4;
     let totalError = 0;
@@ -118,7 +118,7 @@ export function convertMidiToLigature(midi: Midi, options: ConversionOptions) {
     // 3. BUILD SOURCE
     let source = `[CONFIG]
 BPM: ${bpm}
-Grid: ${targetGrid}
+Grid: ${slotsPerBeat}
 Time: ${timeSig[0]}/${timeSig[1]}
 Scale: ${scaleRoot} ${scaleMode.charAt(0).toUpperCase() + scaleMode.slice(1)}
 Humanize: ${humanizeAmt}
@@ -133,13 +133,19 @@ Humanize: ${humanizeAmt}
     midi.tracks.forEach((track, i) => {
         if (track.notes.length === 0) return;
 
+        // Just one clean name per MIDI track now
         let baseName = (track.instrument.name || `Track_${i + 1}`).replace(/[^a-zA-Z0-9_]/g, '_');
         
+        // Define the instrument ONCE
+        source += `${baseName}: ${track.instrument.name ? 'standard_kit' : 'retro_lead'} // Detect or Default\n`;
+
         const totalDuration = Math.max(...track.notes.map(n => n.time + n.duration));
         const totalSlots = Math.ceil(totalDuration * (bpm / 60) * slotsPerBeat);
         const totalBars = Math.ceil(totalSlots / slotsPerBar);
         const finalSlotCount = totalBars * slotsPerBar;
 
+        // Lane Logic is still needed to separate overlapping notes, 
+        // but we visualize them as stacked rows, not separate instruments.
         const lanes: (string | null)[][] = [];
 
         track.notes.forEach(note => {
@@ -175,20 +181,20 @@ Humanize: ${humanizeAmt}
             }
         });
 
-        // --- COMPRESSION & GENERATION ---
-       lanes.forEach((laneData, laneIndex) => {
-            const suffix = laneIndex === 0 ? "" : `_L${laneIndex}`;
-            const trackName = `${baseName}${suffix}`;
-            
-            source += `${trackName}: ${baseName.toLowerCase()}\n`;
-            
-            const patternId = `${trackName}_Seq`;
-            allLayerIds.push(patternId);
+        // --- PATTERN GENERATION ---
+        const patternId = `${baseName}_Seq`;
+        allLayerIds.push(patternId);
 
-            let patternContent = `\n[PATTERN: ${patternId}]\n`;
+        let patternContent = `\n[PATTERN: ${patternId}]\n`;
+        
+        // Iterate lanes, but print them as stacked rows for the SAME track name
+        lanes.forEach((laneData, laneIndex) => {
             
-            // Start the single long line
-            let gridLine = `${trackName.padEnd(16)} |`;
+            // First lane gets the name, others get whitespace padding
+            let prefix = laneIndex === 0 ? baseName : ""; 
+            
+            // Start the line
+            let gridLine = `${prefix.padEnd(16)} |`;
             
             for (let b = 0; b < totalBars; b++) {
                 const barStart = b * slotsPerBar;
@@ -198,39 +204,20 @@ Humanize: ${humanizeAmt}
                     const beatData = laneData.slice(beatStart, beatStart + slotsPerBeat);
                     
                     const cleanBeat = beatData.map(x => x || '.');
-                    const step = slotsPerBeat / targetGrid; 
-                    let canCompress = true;
                     
-                    for(let k=0; k<cleanBeat.length; k++) {
-                        if (k % step !== 0) {
-                            if (cleanBeat[k] !== '.' && cleanBeat[k] !== '-') {
-                                canCompress = false;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (canCompress) {
-                        for(let k=0; k<targetGrid; k++) {
-                            const val = cleanBeat[k * step];
-                            gridLine += ` ${val.padEnd(2)}`;
-                        }
-                    } else {
-                        const tupletContent = cleanBeat.join(' ');
-                        gridLine += ` (${tupletContent})`;
+                    for(let k=0; k<slotsPerBeat; k++) {
+                        const val = cleanBeat[k];
+                        gridLine += ` ${val.padEnd(2)}`;
                     }
                     
                     gridLine += '  ';
                 }
                 
-                // --- BAR END ---
-                // NO NEWLINE HERE. Just a pipe.
                 gridLine += ' | ';
             }
-            
-            patternContent += gridLine + '\n'; // Newline only at end of pattern
-            patternBlocks.push(patternContent);
+            patternContent += gridLine + '\n';
         });
+        patternBlocks.push(patternContent);
     });
 
     source += `\n${patternBlocks.join('\n')}`;
