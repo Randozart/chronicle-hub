@@ -7,7 +7,9 @@ import {
   SequenceEvent,
   NoteDef,
   PatternPlaylistItem,
-  PatternModifier
+  PatternModifier,
+  Layer,
+  ChainItem
 } from '../models';
 
 /* =========================================================
@@ -74,7 +76,7 @@ export function optimizeLigature(
 }
 
 /* =========================================================
- * Tool #3 — Pattern Atomizer
+ * Tool #3 — Pattern Atomizer (Updated for Layers & Chains)
  * =======================================================*/
 
 function atomizePatterns(track: ParsedTrack, ctx: OptimizerContext): ParsedTrack {
@@ -86,32 +88,42 @@ function atomizePatterns(track: ParsedTrack, ctx: OptimizerContext): ParsedTrack
       newPlaylist.push(item);
       continue;
     }
+    
+    const newLayers: Layer[] = [];
 
-    const expanded: PatternPlaylistItem['patterns'] = [];
+    // Iterate through parallel layers
+    for (const layer of item.layers) {
+        const newChainItems: ChainItem[] = [];
 
-    for (const ref of item.patterns) {
-      const pattern = track.patterns[ref.id];
-      const barCount = Math.ceil(pattern.duration / ctx.slotsPerBar);
+        // Iterate through sequential chain items
+        for (const ref of layer.items) {
+            const pattern = track.patterns[ref.id];
+            if (!pattern) continue;
 
-      for (let bar = 0; bar < barCount; bar++) {
-        const id = `${pattern.id}_bar${bar}`;
+            const barCount = Math.ceil(pattern.duration / ctx.slotsPerBar);
 
-        if (!newPatterns[id]) {
-          newPatterns[id] = slicePattern(pattern, bar, ctx);
+            for (let bar = 0; bar < barCount; bar++) {
+                const newSliceId = `${pattern.id}_bar${bar}`;
+
+                // Create the slice only if it hasn't been created already
+                if (!newPatterns[newSliceId]) {
+                    newPatterns[newSliceId] = slicePattern(pattern, bar, ctx);
+                }
+
+                // Add the 1-bar slice to the new chain
+                newChainItems.push({
+                    id: newSliceId,
+                    transposition: ref.transposition,
+                    volume: ref.volume
+                });
+            }
         }
-
-        expanded.push({
-          id,
-          transposition: ref.transposition,
-          volume: ref.volume
-        });
-      }
+        newLayers.push({ items: newChainItems });
     }
 
     newPlaylist.push({
       type: 'pattern',
-      patterns: expanded,
-      modifiers: item.modifiers
+      layers: newLayers,
     });
   }
 
@@ -161,7 +173,6 @@ function foldTracks(track: ParsedTrack, ctx: OptimizerContext): ParsedTrack {
 
 function foldPatternTracks(pattern: ParsedPattern, ctx: OptimizerContext): ParsedPattern {
   const folded: ParsedPattern['tracks'] = {};
-
   const groups = groupTracks(Object.keys(pattern.tracks));
 
   for (const group of groups) {
@@ -213,13 +224,12 @@ function mergeNotes(a: NoteDef[], b: NoteDef[]): NoteDef[] {
 }
 
 /* =========================================================
- * Tool #2 — Pattern Deduplication (Transposition-Aware)
+ * Tool #2 — Pattern Deduplication (Updated for Layers & Chains)
  * =======================================================*/
 
 function dedupePatterns(track: ParsedTrack, ctx: OptimizerContext): ParsedTrack {
   const fingerprintMap = new Map<string, string>();
   const newPatterns: Record<string, ParsedPattern> = {};
-
   const patternTranspose: Record<string, number> = {};
 
   for (const [id, pattern] of Object.entries(track.patterns)) {
@@ -238,25 +248,31 @@ function dedupePatterns(track: ParsedTrack, ctx: OptimizerContext): ParsedTrack 
   const newPlaylist = track.playlist.map(item => {
     if (item.type !== 'pattern') return item;
 
+    // Map through the new structure
+    const newLayers = item.layers.map(layer => ({
+        items: layer.items.map((p: ChainItem) => {
+            const offset = patternTranspose[p.id] || 0;
+            const master = fingerprintMap.get(
+                fingerprintPattern(track.patterns[p.id], ctx).fingerprint
+            )!;
+            
+            return {
+                ...p,
+                id: master,
+                transposition: p.transposition + offset
+            };
+        })
+    }));
+
     return {
       ...item,
-      patterns: item.patterns.map(p => {
-        const offset = patternTranspose[p.id] || 0;
-        const master = fingerprintMap.get(
-          fingerprintPattern(track.patterns[p.id], ctx).fingerprint
-        )!;
-
-        return {
-          ...p,
-          id: master,
-          transposition: p.transposition + offset
-        };
-      })
+      layers: newLayers
     };
   });
 
   return { ...track, patterns: newPatterns, playlist: newPlaylist };
 }
+
 
 function fingerprintPattern(pattern: ParsedPattern, ctx: OptimizerContext) {
   const pitches: number[] = [];
