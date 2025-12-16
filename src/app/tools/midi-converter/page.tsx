@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
 import dynamic from 'next/dynamic';
 import { convertMidiToLigature } from '@/engine/audio/midiConverter'; 
-import { rescaleBPM, refactorScale, processLigature, polishLigatureSource } from '@/engine/audio/ligatureTools';
+import { rescaleBPM, refactorScale, processLigature, polishLigatureSource, atomizeRepetitions, consolidateVerticals } from '@/engine/audio/ligatureTools';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
 
@@ -130,6 +130,33 @@ export default function MidiConverterPage() {
         }
     };
 
+    // --- NEW HANDLERS ---
+    const handleAtomizeClick = () => {
+        if (!ligatureSource) return;
+        setStatus('Extracting atomic motifs...');
+        try {
+            const newSource = atomizeRepetitions(ligatureSource);
+            setLigatureSource(newSource);
+            setStatus('Motif extraction complete.');
+        } catch(error) {
+            console.error(error);
+            setStatus(`Error extracting motifs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    };
+
+    const handleConsolidateClick = () => {
+        if (!ligatureSource) return;
+        setStatus('Consolidating vertical layers...');
+        try {
+            const newSource = consolidateVerticals(ligatureSource);
+            setLigatureSource(newSource);
+            setStatus('Consolidation complete.');
+        } catch(error) {
+            console.error(error);
+            setStatus(`Error consolidating: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    };
+
     return (
         <div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#ccc' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -247,6 +274,32 @@ export default function MidiConverterPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* STEP 4: ADVANCED */}
+                    <div style={{ background: '#21252b', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden', opacity: ligatureSource ? 1 : 0.5, pointerEvents: ligatureSource ? 'auto' : 'none' }}>
+                        <div style={{ background: 'rgba(198, 120, 221, 0.1)', padding: '1rem', borderBottom: '1px solid #333' }}>
+                            <h3 style={{ margin: 0, color: '#c678dd', fontSize: '1rem', textTransform: 'uppercase' }}>4. Advanced Compression</h3>
+                        </div>
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div>
+                                <p style={{ color: '#888', fontSize: '0.8rem', marginBottom: '0.5rem', marginTop: 0 }}>
+                                    Break patterns into repeating 1-bar motifs (A + B + A). Good for repeating riffs.
+                                </p>
+                                <button onClick={handleAtomizeClick} style={{ width: '100%', background: '#c678dd', color: '#000', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    Extract Motifs
+                                </button>
+                            </div>
+                            <div style={{ borderTop: '1px solid #333', paddingTop: '1.5rem' }}>
+                                <p style={{ color: '#888', fontSize: '0.8rem', marginBottom: '0.5rem', marginTop: 0 }}>
+                                    Merge instruments that always play together into single patterns. Reduces playlist rows.
+                                </p>
+                                <button onClick={handleConsolidateClick} style={{ width: '100%', background: '#61afef', color: '#000', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    Merge Layers
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 {/* STATUS BAR */}

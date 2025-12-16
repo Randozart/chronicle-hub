@@ -823,3 +823,302 @@ function optimizeChains(track: ParsedTrack): ParsedTrack {
     return track;
 }
 
+export function atomizeRepetitions(source: string, mockQualities: PlayerQualities = {}): string {
+    const parser = new LigatureParser();
+    let track = parser.parse(source, mockQualities);
+    const { grid, timeSig } = track.config;
+    const slotsPerBar = grid * (4 / timeSig[1]) * timeSig[0];
+
+    // 1. Slice EVERYTHING into bars and fingerprint them
+    const barHashes = new Map<string, { count: number, example: ParsedPattern }>();
+    const patternSlices: Record<string, string[]> = {}; 
+
+    for (const patId in track.patterns) {
+        const pattern = track.patterns[patId];
+        const numBars = Math.ceil(pattern.duration / slotsPerBar);
+        patternSlices[patId] = [];
+
+        for (let i = 0; i < numBars; i++) {
+            const slice = createBarSlice(pattern, i, slotsPerBar);
+            const hash = generateFuzzyPatternHash(slice, 0, track.config);
+            
+            if (!barHashes.has(hash)) {
+                barHashes.set(hash, { count: 0, example: slice });
+            }
+            barHashes.get(hash)!.count++;
+            patternSlices[patId].push(hash);
+        }
+    }
+
+    // 2. Identify "Motifs"
+    const motifMap = new Map<string, string>(); 
+    let motifCounter = 1;
+
+    for (const [hash, data] of barHashes.entries()) {
+        if (data.count >= 2) {
+            const isSilence = !hash.includes(':'); 
+            let motifId = "";
+            if(isSilence) {
+                 motifId = `REST_${grid}`;
+                 if(!track.patterns[motifId]) {
+                     track.patterns[motifId] = { id: motifId, duration: slotsPerBar, tracks: {}, trackModifiers: {} };
+                 }
+            } else {
+                const mainTrack = Object.keys(data.example.tracks)[0] || "Motif";
+                motifId = `${mainTrack}_m${motifCounter++}`;
+                data.example.id = motifId;
+                track.patterns[motifId] = data.example;
+            }
+            motifMap.set(hash, motifId);
+        }
+    }
+
+    // 3. Rewrite Playlist
+    for (const item of track.playlist) {
+        if (item.type !== 'pattern') continue;
+
+        item.layers.forEach(layer => {
+            const newItems: ChainItem[] = [];
+            
+            for (const chainItem of layer.items) {
+                const patId = chainItem.id;
+                const slices = patternSlices[patId];
+                
+                if (!slices) {
+                    newItems.push(chainItem);
+                    continue;
+                }
+
+                const decomposed: ChainItem[] = [];
+
+                for (const hash of slices) {
+                    if (motifMap.has(hash)) {
+                        decomposed.push({ 
+                            id: motifMap.get(hash)!, 
+                            transposition: chainItem.transposition,
+                            volume: chainItem.volume
+                        });
+                    } else {
+                        // Unique bar
+                        const uniqueId = `${patId}_u_${Math.random().toString(36).substr(2,4)}`;
+                        const example = barHashes.get(hash)!.example;
+                        example.id = uniqueId;
+                        track.patterns[uniqueId] = example;
+                        
+                        decomposed.push({
+                            id: uniqueId,
+                            transposition: chainItem.transposition,
+                            volume: chainItem.volume
+                        });
+                    }
+                }
+                newItems.push(...decomposed);
+            }
+            layer.items = newItems;
+        });
+    }
+
+    // NOTE: optimizeChains() removed from here. 
+    // We want to keep the granular A+B+A structure visible.
+    
+    track = renamePatterns(track);
+
+    return formatLigatureSource(serializeParsedTrack(track));
+}
+
+function createBarSlice(pattern: ParsedPattern, barIndex: number, slotsPerBar: number): ParsedPattern {
+    const start = barIndex * slotsPerBar;
+    const end = start + slotsPerBar;
+    const newTracks: Record<string, SequenceEvent[]> = {};
+
+    for (const [name, events] of Object.entries(pattern.tracks)) {
+        const sliceEvents = events
+            .filter(e => e.time >= start && e.time < end)
+            .map(e => ({ ...e, time: e.time - start }));
+        
+        if (sliceEvents.length > 0) newTracks[name] = sliceEvents;
+    }
+
+    return {
+        id: 'temp',
+        duration: slotsPerBar,
+        tracks: newTracks,
+        trackModifiers: pattern.trackModifiers
+    };
+}
+
+export function consolidateVerticals(source: string, mockQualities: PlayerQualities = {}): string {
+    const parser = new LigatureParser();
+    let track = parser.parse(source, mockQualities);
+
+    // 1. Identify "Layer Signatures" (The unique chain content of a layer)
+    // We map Signature -> List of Playlist Rows where it appears
+    const layerAppearances = new Map<string, Set<number>>();
+    // We also need to map Signature -> Example Layer Object (to read patterns from later)
+    const layerExamples = new Map<string, Layer>();
+
+    track.playlist.forEach((item, rowIndex) => {
+        if (item.type !== 'pattern') return;
+        item.layers.forEach(layer => {
+            // Signature: "PatA(0)+PatB(12)"
+            const sig = layer.items.map(i => `${i.id}(${i.transposition})`).join('+');
+            if (!layerAppearances.has(sig)) {
+                layerAppearances.set(sig, new Set());
+                layerExamples.set(sig, layer);
+            }
+            layerAppearances.get(sig)!.add(rowIndex);
+        });
+    });
+
+    const signatures = Array.from(layerAppearances.keys());
+    const mergedSignatures = new Set<string>(); // Keep track of what we've merged
+    
+    // 2. Find Cohorts (Signatures that appear in identical rows)
+    for (let i = 0; i < signatures.length; i++) {
+        const sigA = signatures[i];
+        if (mergedSignatures.has(sigA)) continue;
+        const rowsA = layerAppearances.get(sigA)!;
+
+        // Candidate cohort starts with A
+        const cohort = [sigA];
+
+        for (let j = i + 1; j < signatures.length; j++) {
+            const sigB = signatures[j];
+            if (mergedSignatures.has(sigB)) continue;
+            const rowsB = layerAppearances.get(sigB)!;
+
+            // Check for exact set equality (Same rows)
+            if (rowsA.size === rowsB.size && [...rowsA].every(r => rowsB.has(r))) {
+                cohort.push(sigB);
+                mergedSignatures.add(sigB);
+            }
+        }
+
+        // 3. Merge Cohorts
+        if (cohort.length > 1) {
+            // We have multiple layers (instruments) that always play together.
+            // We will merge them into the patterns of the first layer (Target).
+            
+            const targetSig = cohort[0];
+            const targetLayer = layerExamples.get(targetSig)!;
+            
+            // Iterate over the OTHER layers in the cohort
+            for (let k = 1; k < cohort.length; k++) {
+                const sourceSig = cohort[k];
+                const sourceLayer = layerExamples.get(sourceSig)!;
+
+                // Merge source patterns into target patterns
+                // Assumption: Cohorts have identical chain structure (length/timing) 
+                // because they are on the same rows. If not, this is risky, but standard 
+                // normalizing usually ensures alignment.
+                
+                sourceLayer.items.forEach((sourceItem, itemIdx) => {
+                    if (!targetLayer.items[itemIdx]) return; // Mismatch safety
+                    
+                    const targetPatId = targetLayer.items[itemIdx].id;
+                    const sourcePatId = sourceItem.id;
+                    
+                    const targetPat = track.patterns[targetPatId];
+                    const sourcePat = track.patterns[sourcePatId];
+
+                    if (targetPat && sourcePat) {
+                        // Copy tracks from Source to Target
+                        for (const [trackName, events] of Object.entries(sourcePat.tracks)) {
+                            // Avoid collision if same instrument name used
+                            let safeName = trackName;
+                            if (targetPat.tracks[safeName]) {
+                                safeName = `${trackName}_dup`;
+                            }
+                            targetPat.tracks[safeName] = events;
+                            
+                            // Copy modifiers
+                            if (sourcePat.trackModifiers && sourcePat.trackModifiers[trackName]) {
+                                if (!targetPat.trackModifiers) targetPat.trackModifiers = {};
+                                targetPat.trackModifiers[safeName] = sourcePat.trackModifiers[trackName];
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    // 4. Update Playlist (Remove the merged-in layers)
+    // We rebuild the playlist rows.
+    for (const item of track.playlist) {
+        if (item.type !== 'pattern') continue;
+        
+        const newLayers: Layer[] = [];
+        const seenCohortRows = new Set<string>(); // avoid adding merged parts
+
+        // Check which signatures are in this row
+        // We need to know which signature corresponds to which layer index *before* we filter
+        
+        // Actually, simpler: 
+        // For every layer, check its signature.
+        // If the signature is in `mergedSignatures`, skip it UNLESS it is the `targetSig` (the first one in the cohort).
+        // But we don't know which one was the target here easily.
+        
+        // Re-calculate the Cohort Leader for every layer
+        item.layers.forEach(layer => {
+            const sig = layer.items.map(i => `${i.id}(${i.transposition})`).join('+');
+            
+            // Find if this sig belongs to a merged cohort
+            // (Re-running the search is inefficient but safe for this scale)
+            // Ideally we cached the "Leader" mapping.
+            
+            // Let's assume we kept `mergedSignatures` only for the *consumed* ones.
+            // But my logic above added *all* cohort members to `mergedSignatures`.
+            // Let's refine the loop above.
+        });
+    }
+    
+    // --- RE-RUNNING THE MERGE WITH DELETION LOGIC INCLUDED ---
+    // (To avoid the complexity above, we'll do the deletion in the Playlist scan directly)
+    
+    // A Set of signatures that should be REMOVED (because they were merged into something else)
+    const signaturesToRemove = new Set<string>();
+    
+    // Re-run cohort logic strictly to populate signaturesToRemove
+    const processedSigs = new Set<string>();
+    
+    for (let i = 0; i < signatures.length; i++) {
+        const sigA = signatures[i];
+        if (processedSigs.has(sigA)) continue;
+        const rowsA = layerAppearances.get(sigA)!;
+        
+        // Find cohort
+        for (let j = i + 1; j < signatures.length; j++) {
+            const sigB = signatures[j];
+            if (processedSigs.has(sigB)) continue;
+            const rowsB = layerAppearances.get(sigB)!;
+
+            if (rowsA.size === rowsB.size && [...rowsA].every(r => rowsB.has(r))) {
+                // A is Leader, B is Follower.
+                // We already merged B into A in step 3 (conceptually).
+                // Now mark B for deletion.
+                signaturesToRemove.add(sigB);
+                processedSigs.add(sigB);
+            }
+        }
+        processedSigs.add(sigA);
+    }
+
+    // Final Playlist Clean
+    for (const item of track.playlist) {
+        if (item.type !== 'pattern') continue;
+        item.layers = item.layers.filter(layer => {
+            const sig = layer.items.map(i => `${i.id}(${i.transposition})`).join('+');
+            return !signaturesToRemove.has(sig);
+        });
+    }
+
+    // 5. Cleanup
+    track = pruneUnusedInstruments(track); // Patterns now contain tracks from deleted layers, ensure instruments are kept?
+    // Actually, pruneUnusedInstruments checks track.patterns. Since we merged the tracks INTO the surviving patterns,
+    // the instrument references are preserved.
+    
+    track = renamePatterns(track);
+
+    return formatLigatureSource(serializeParsedTrack(track));
+}
