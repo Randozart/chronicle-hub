@@ -24,19 +24,19 @@ export function processLigature(
     const parser = new LigatureParser();
     let parsedTrack = parser.parse(source, mockQualities);
     
-    // 1. Normalize
+    // 1. Normalize: Split long patterns into 1-bar chunks (Crucial: Must fill gaps with RESTs)
     parsedTrack = normalizePatternsToBars(parsedTrack);
 
-    // 2. Verticalize
+    // 2. Verticalize: Organize into Song Sections BEFORE deduplication to preserve structure.
     parsedTrack = verticalizePlaylist(parsedTrack);
 
-    // 3. Optimize Chains
+    // 3. Optimize Chains: Merge sequential segments (A+B+C -> Pattern_ABC)
     parsedTrack = optimizeChains(parsedTrack);
 
-    // 4. Exact Deduplication (Will now respect duration!)
+    // 4. Exact Deduplication: Now we merge identical patterns.
     parsedTrack = extractRepeatedPatterns(parsedTrack, 0);
 
-    // 5. Fold Lanes
+    // 5. Fold Lanes: Handle Polyphony
     if (options.foldLanes) {
         parsedTrack = foldInstrumentLanes(parsedTrack);
     }
@@ -54,11 +54,7 @@ export function processLigature(
     parsedTrack = pruneUnusedDefinitions(parsedTrack); 
     parsedTrack = cleanupDefinitions(parsedTrack);
     parsedTrack = pruneUnusedInstruments(parsedTrack);
-    
-    // *** NEW STEP: Prune Silent Layers ***
-    parsedTrack = pruneSilentLayers(parsedTrack);
-    // -------------------------------------
-
+    parsedTrack = pruneSilentLayers(parsedTrack); // New step to remove columns of only rests
     parsedTrack = renamePatterns(parsedTrack);
 
     const finalSource = serializeParsedTrack(parsedTrack);
@@ -253,8 +249,10 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
     for (const playlistItem of track.playlist) {
         if (playlistItem.type === 'command') { newPlaylist.push(playlistItem); continue; }
         
+        const newLayers: Layer[] = [];
+
+        // 1. Calculate Max Bars for this Row to ensure alignment
         let maxBars = 0;
-        // First pass: Calculate max length of this row
         playlistItem.layers.forEach(layer => {
             let layerDuration = 0;
             layer.items.forEach(item => {
@@ -263,8 +261,6 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
             });
             maxBars = Math.max(maxBars, Math.ceil(layerDuration / slotsPerBar));
         });
-
-        const newLayers: Layer[] = [];
 
         for (const layer of playlistItem.layers) {
             const newChain: ChainItem[] = [];
@@ -277,23 +273,25 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
                 const numBars = Math.ceil(originalPattern.duration / slotsPerBar);
                 
                 for(let i = 0; i < numBars; i++) {
-                    let hasEvents = false;
+                    let isContentBar = false;
                     const barStart = i * slotsPerBar;
                     const barEnd = (i + 1) * slotsPerBar;
 
+                    // FIX: Check for OVERLAP, not just event starts.
+                    // This ensures bars with only sustaining notes are considered "Active",
+                    // preventing the Verticalizer from slicing the song prematurely.
                     for (const trackEvents of Object.values(originalPattern.tracks)) {
-                        if (trackEvents.some(e => e.time >= barStart && e.time < barEnd)) {
-                            hasEvents = true;
+                        if (trackEvents.some(e => e.time < barEnd && (e.time + e.duration) > barStart)) {
+                            isContentBar = true;
                             break;
                         }
                     }
 
-                    if (!hasEvents) {
-                        // *** INSERT SILENCE ***
+                    if (!isContentBar) {
+                        // Truly empty bar -> Insert REST
                         newChain.push({ id: getRestPatternId(), transposition: 0 });
                     } else {
-                        // *** CREATE CONTENT SLICE ***
-                        // Create unique ID for this slice initially (to avoid premature merging)
+                        // Content bar (Notes or Sustain) -> Create Pattern Slice
                         const newId = `${chainItem.id}_b${i}_${Math.random().toString(36).substr(2, 4)}`;
                         
                         const newPattern: ParsedPattern = { id: newId, duration: slotsPerBar, tracks: {}, trackModifiers: originalPattern.trackModifiers };
@@ -303,7 +301,9 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
                                 .filter(e => e.time >= barStart && e.time < barEnd)
                                 .map(e => ({ ...e, time: e.time - barStart }));
                             
-                            if (eventsInBar.length > 0) newPattern.tracks[trackName] = eventsInBar;
+                            if (eventsInBar.length > 0) {
+                                newPattern.tracks[trackName] = eventsInBar;
+                            }
                         }
                         newPatterns[newId] = newPattern;
                         newChain.push({ ...chainItem, id: newId });
@@ -312,7 +312,7 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
                 }
             }
 
-            // PAD END OF LAYER IF SHORT
+            // PAD END OF LAYER IF SHORT (Aligns all layers to maxBars)
             while (currentBarIndex < maxBars) {
                 newChain.push({ id: getRestPatternId(), transposition: 0 });
                 currentBarIndex++;
@@ -328,8 +328,6 @@ function normalizePatternsToBars(track: ParsedTrack): ParsedTrack {
     track.playlist = newPlaylist;
     return track;
 }
-
-// ... (Helpers and other exports) ...
 
 function degreeToSemitone(degree: number, intervals: number[]): number {
     const zeroBasedDegree = degree - 1;
@@ -470,44 +468,6 @@ function extractTransposedPatterns(track: ParsedTrack): ParsedTrack {
     return track;
 }
 
-function generateTranspositionalHash(pattern: ParsedPattern, scaleIntervals: number[]): { hash: string, anchorDegree: number } {
-    let anchorInfo: { note: NoteDef, time: number } | null = null;
-    for (const trackName of Object.keys(pattern.tracks)) {
-        for (const event of pattern.tracks[trackName]) {
-            if (event.notes && event.notes.length > 0) {
-                if (!anchorInfo || event.time < anchorInfo.time) {
-                    anchorInfo = { note: event.notes[0], time: event.time };
-                }
-            }
-        }
-    }
-    if (!anchorInfo) return { hash: '', anchorDegree: 0 };
-    
-    const anchorNote = anchorInfo.note;
-    const anchorDegree = (anchorNote.degree - 1) + (anchorNote.octaveShift * 7);
-    const anchorSemitone = degreeToSemitone(anchorNote.degree, scaleIntervals) + (anchorNote.octaveShift * 12) + anchorNote.accidental;
-
-    let hashString = `DUR:${pattern.duration}||`;
-    
-    const sortedTrackNames = Object.keys(pattern.tracks).sort();
-    for (const trackName of sortedTrackNames) {
-        hashString += `${trackName}:`;
-        const events = [...pattern.tracks[trackName]].sort((a, b) => a.time - b.time);
-        for (const event of events) {
-            const noteIntervals = event.notes
-                .map(n => {
-                    const noteSemitone = degreeToSemitone(n.degree, scaleIntervals) + (n.octaveShift * 12) + n.accidental;
-                    return noteSemitone - anchorSemitone;
-                })
-                .sort((a, b) => a - b)
-                .join(',');
-            hashString += `|${event.time.toFixed(3)}:${event.duration.toFixed(3)}:${noteIntervals}`;
-        }
-        hashString += '//';
-    }
-    return { hash: hashString, anchorDegree: anchorDegree };
-}
-
 function extractRepeatedPatterns(track: ParsedTrack, aggressiveness: 0 | 1 | 2 | 3): ParsedTrack {
     const patternHashes = new Map<string, string>();
     const canonicalPatterns = new Set<string>();
@@ -577,25 +537,25 @@ function generateFuzzyPatternHash(pattern: ParsedPattern, aggressiveness: 0 | 1 
                     hashString += `|${event.time.toFixed(3)}:${event.duration.toFixed(3)}:${noteStr}`;
                 }
                 break;
-            // ... (cases 1, 2, 3 remain the same)
             case 1: 
                 const slots = new Set<number>();
                 for (const event of events) slots.add(Math.round(event.time));
-                const noteSequence1 = events.map(e => getNoteSignature(e.notes)).join(',');
-                hashString += Array.from(slots).sort((a,b)=>a-b).join(',') + `_` + noteSequence1;
+                const noteSequence = events.map(e => getNoteSignature(e.notes)).join(',');
+                hashString += Array.from(slots).sort((a,b)=>a-b).join(',') + `_` + noteSequence;
                 break;
             case 2: 
-                // ... (existing case 2 code)
                 const { grid, timeSig } = config;
                 const slotsPerBeat = grid * (4 / timeSig[1]);
+                const beats: string[] = [];
                 for(let i = 0; i < timeSig[0]; i++) {
                     const beatStart = i * slotsPerBeat;
                     const beatEnd = (i + 1) * slotsPerBeat;
                     const eventsInBeat = events.filter(e => e.time >= beatStart && e.time < beatEnd);
                     if (eventsInBeat.length === 0) continue;
                     const firstNotePos = Math.round((eventsInBeat[0].time - beatStart) / slotsPerBeat * 4);
-                    hashString += `${eventsInBeat.length}n@${firstNotePos}_`;
+                    beats.push(`${eventsInBeat.length}n@${firstNotePos}`);
                 }
+                hashString += beats.join('_');
                 break;
             case 3: 
                 hashString += events.map(e => getNoteSignature(e.notes)).join(',');
@@ -604,6 +564,44 @@ function generateFuzzyPatternHash(pattern: ParsedPattern, aggressiveness: 0 | 1 
         hashString += '//';
     }
     return hashString;
+}
+
+function generateTranspositionalHash(pattern: ParsedPattern, scaleIntervals: number[]): { hash: string, anchorDegree: number } {
+    let anchorInfo: { note: NoteDef, time: number } | null = null;
+    for (const trackName of Object.keys(pattern.tracks)) {
+        for (const event of pattern.tracks[trackName]) {
+            if (event.notes && event.notes.length > 0) {
+                if (!anchorInfo || event.time < anchorInfo.time) {
+                    anchorInfo = { note: event.notes[0], time: event.time };
+                }
+            }
+        }
+    }
+    if (!anchorInfo) return { hash: '', anchorDegree: 0 };
+    const anchorNote = anchorInfo.note;
+    const anchorDegree = (anchorNote.degree - 1) + (anchorNote.octaveShift * 7);
+    const anchorSemitone = degreeToSemitone(anchorNote.degree, scaleIntervals) + (anchorNote.octaveShift * 12) + anchorNote.accidental;
+
+    // *** FIX: Include Duration in Hash ***
+    let hashString = `DUR:${pattern.duration}||`; 
+    
+    const sortedTrackNames = Object.keys(pattern.tracks).sort();
+    for (const trackName of sortedTrackNames) {
+        hashString += `${trackName}:`;
+        const events = [...pattern.tracks[trackName]].sort((a, b) => a.time - b.time);
+        for (const event of events) {
+            const noteIntervals = event.notes
+                .map(n => {
+                    const noteSemitone = degreeToSemitone(n.degree, scaleIntervals) + (n.octaveShift * 12) + n.accidental;
+                    return noteSemitone - anchorSemitone;
+                })
+                .sort((a, b) => a - b)
+                .join(',');
+            hashString += `|${event.time.toFixed(3)}:${event.duration.toFixed(3)}:${noteIntervals}`;
+        }
+        hashString += '//';
+    }
+    return { hash: hashString, anchorDegree: anchorDegree };
 }
 
 export function rescaleBPM(source: string, factor: number, mockQualities: PlayerQualities = {}): string {
@@ -673,27 +671,17 @@ function verticalizePlaylist(track: ParsedTrack): ParsedTrack {
     const newPlaylist: PlaylistItem[] = [];
     
     for (const item of track.playlist) {
-        // Pass commands (BPM, Scale) through untouched
-        if (item.type === 'command') {
-            newPlaylist.push(item);
-            continue;
-        }
+        if (item.type === 'command') { newPlaylist.push(item); continue; }
 
-        // We assume normalizePatternsToBars has left us with 1 Item containing N Layers
         const layers = item.layers;
         if (layers.length === 0) continue;
 
-        // Calculate total duration (in bars) from the first layer
-        // (Normalization ensures all layers are equal length via padding)
         const totalBars = layers[0].items.length;
         if (totalBars === 0) continue;
 
-        // Helper: "Texture" = A binary signature representing Active vs Resting instruments
-        // e.g., "101" means Layer 1 active, Layer 2 rest, Layer 3 active.
         const getTextureSignature = (barIndex: number): string => {
             return layers.map(layer => {
                 const item = layer.items[barIndex];
-                // Treat explicit REST patterns or missing items as "Inactive"
                 return (item && !item.id.startsWith('REST')) ? '1' : '0';
             }).join('');
         };
@@ -701,22 +689,44 @@ function verticalizePlaylist(track: ParsedTrack): ParsedTrack {
         let currentBlockStart = 0;
         let currentTexture = getTextureSignature(0);
 
+        // MINIMUM SECTION LENGTH (Phrasing)
+        // We force sections to be at least 4 bars long, unless the song ends.
+        // This keeps "fills" in bar 4 attached to the main phrase.
+        const MIN_PHRASE_LENGTH = 4;
+
         for (let i = 1; i < totalBars; i++) {
             const newTexture = getTextureSignature(i);
+            const currentLength = i - currentBlockStart;
             
-            // If texture changes (instrument enters or leaves), Break the Block
             if (newTexture !== currentTexture) {
-                newPlaylist.push(createSlice(layers, currentBlockStart, i));
-                currentBlockStart = i;
-                currentTexture = newTexture;
+                // Only split if we've met the minimum length, OR if it's a "Silence" break (texture 0000)
+                const isSilence = newTexture.indexOf('1') === -1;
+                
+                if (currentLength >= MIN_PHRASE_LENGTH || isSilence) {
+                    newPlaylist.push(createSlice(layers, currentBlockStart, i));
+                    currentBlockStart = i;
+                    currentTexture = newTexture;
+                }
+                // Else: Ignore the texture change (e.g., drum fill entering at bar 4) 
+                // and extend the current block.
             }
         }
         
-        // Push the final block
         newPlaylist.push(createSlice(layers, currentBlockStart, totalBars));
     }
 
     track.playlist = newPlaylist;
+    return track;
+}
+
+function pruneSilentLayers(track: ParsedTrack): ParsedTrack {
+    for (const item of track.playlist) {
+        if (item.type !== 'pattern') continue;
+        item.layers = item.layers.filter(layer => {
+            const isSilent = layer.items.every(chainItem => chainItem.id.startsWith('REST'));
+            return !isSilent;
+        });
+    }
     return track;
 }
 
@@ -742,26 +752,29 @@ function optimizeChains(track: ParsedTrack): ParsedTrack {
         item.layers.forEach(layer => {
             if (layer.items.length <= 1) return;
 
-            // Strategy A: Reduce Repeats (A + A + A -> A)
-            // Checks if every item in the chain is identical
+            // Strategy A: Reduce Repeats
             const firstId = layer.items[0].id;
             const firstTrans = layer.items[0].transposition;
             const allSame = layer.items.every(it => it.id === firstId && it.transposition === firstTrans);
             
             if (allSame) {
-                // If they are all the same, just keep one. The engine handles looping.
                 layer.items = [layer.items[0]];
                 return;
             }
 
-            // Strategy B: Merge Sequential Segments (A + B + C -> New Pattern ABC)
-            // This restores "long patterns" for readability.
-            // We only merge if there are no complex per-item volume overrides blocking us.
+            // Strategy B: Merge Sequential Segments
             const cleanChain = layer.items.every(it => (!it.volume || it.volume === 0));
-            
-            if (cleanChain) {
-                // Create a new merged pattern
-                const combinedId = `${layer.items[0].id}_merged_${Math.random().toString(36).substr(2, 5)}`; 
+            const isRestChain = layer.items.every(it => it.id.startsWith('REST'));
+
+            if (cleanChain && !isRestChain) {
+                
+                // Smart Naming: Find first non-REST pattern to name this segment
+                const firstRealPattern = layer.items.find(it => !it.id.startsWith('REST'));
+                const baseName = firstRealPattern ? firstRealPattern.id : layer.items[0].id;
+                
+                // Unique ID for the merged pattern
+                const combinedId = `${baseName}_seq_${Math.random().toString(36).substr(2, 4)}`; 
+                
                 const combinedPattern: ParsedPattern = {
                     id: combinedId,
                     duration: 0,
@@ -775,18 +788,14 @@ function optimizeChains(track: ParsedTrack): ParsedTrack {
                     const p = track.patterns[chainItem.id];
                     if (!p) continue;
 
-                    // 1. Merge Duration
                     combinedPattern.duration += p.duration;
 
-                    // 2. Merge Tracks
                     for (const [trackName, events] of Object.entries(p.tracks)) {
                         if (!combinedPattern.tracks[trackName]) combinedPattern.tracks[trackName] = [];
                         
-                        // Shift events in time by the current offset
                         const shiftedEvents = events.map(e => ({
                             ...e,
                             time: e.time + currentTimeOffset,
-                            // If chain item had transposition, bake it into the notes now
                             notes: e.notes.map(n => ({
                                 ...n,
                                 degree: n.degree + (chainItem.transposition || 0)
@@ -794,21 +803,17 @@ function optimizeChains(track: ParsedTrack): ParsedTrack {
                         }));
                         combinedPattern.tracks[trackName].push(...shiftedEvents);
                     }
-                    
-                    // 3. Merge Modifiers (Simple copy, assuming consistency within a track lane)
                     if (p.trackModifiers) {
                         for(const [t, m] of Object.entries(p.trackModifiers)) {
                             combinedPattern.trackModifiers[t] = m;
                         }
                     }
-
                     currentTimeOffset += p.duration;
                 }
 
-                // Register the new pattern
                 newPatterns[combinedId] = combinedPattern;
                 
-                // Update the Playlist Layer to point to this single new pattern
+                // Replace the chain with the single new pattern
                 layer.items = [{ id: combinedId, transposition: 0 }];
             }
         });
@@ -818,15 +823,3 @@ function optimizeChains(track: ParsedTrack): ParsedTrack {
     return track;
 }
 
-function pruneSilentLayers(track: ParsedTrack): ParsedTrack {
-    for (const item of track.playlist) {
-        if (item.type !== 'pattern') continue;
-
-        // Filter out layers where EVERY item in the chain is a REST pattern
-        item.layers = item.layers.filter(layer => {
-            const isSilent = layer.items.every(chainItem => chainItem.id.startsWith('REST'));
-            return !isSilent;
-        });
-    }
-    return track;
-}
