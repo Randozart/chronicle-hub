@@ -24,24 +24,24 @@ export function processLigature(
     const parser = new LigatureParser();
     let parsedTrack = parser.parse(source, mockQualities);
     
-    // 1. Normalize: Split long patterns into 1-bar chunks (Crucial: Must fill gaps with RESTs)
+    // 1. Normalize
     parsedTrack = normalizePatternsToBars(parsedTrack);
 
-    // 2. Verticalize: Organize into Song Sections BEFORE deduplication to preserve structure.
+    // 2. Verticalize
     parsedTrack = verticalizePlaylist(parsedTrack);
 
-    // 3. Optimize Chains: Merge sequential segments (A+B+C -> Pattern_ABC)
+    // 3. Optimize Chains
     parsedTrack = optimizeChains(parsedTrack);
 
-    // 4. Exact Deduplication: Now we merge identical patterns.
+    // 4. Exact Deduplication (Will now respect duration!)
     parsedTrack = extractRepeatedPatterns(parsedTrack, 0);
 
-    // 5. Fold Lanes: Handle Polyphony
+    // 5. Fold Lanes
     if (options.foldLanes) {
         parsedTrack = foldInstrumentLanes(parsedTrack);
     }
 
-    // 6. Fuzzy Deduplication: Find similar motifs
+    // 6. Fuzzy Deduplication
     if (options.extractPatterns) {
         if (options.patternSimilarity === 'transpositional') {
             parsedTrack = extractTransposedPatterns(parsedTrack);
@@ -54,6 +54,11 @@ export function processLigature(
     parsedTrack = pruneUnusedDefinitions(parsedTrack); 
     parsedTrack = cleanupDefinitions(parsedTrack);
     parsedTrack = pruneUnusedInstruments(parsedTrack);
+    
+    // *** NEW STEP: Prune Silent Layers ***
+    parsedTrack = pruneSilentLayers(parsedTrack);
+    // -------------------------------------
+
     parsedTrack = renamePatterns(parsedTrack);
 
     const finalSource = serializeParsedTrack(parsedTrack);
@@ -477,11 +482,13 @@ function generateTranspositionalHash(pattern: ParsedPattern, scaleIntervals: num
         }
     }
     if (!anchorInfo) return { hash: '', anchorDegree: 0 };
+    
     const anchorNote = anchorInfo.note;
     const anchorDegree = (anchorNote.degree - 1) + (anchorNote.octaveShift * 7);
     const anchorSemitone = degreeToSemitone(anchorNote.degree, scaleIntervals) + (anchorNote.octaveShift * 12) + anchorNote.accidental;
 
-    let hashString = '';
+    let hashString = `DUR:${pattern.duration}||`;
+    
     const sortedTrackNames = Object.keys(pattern.tracks).sort();
     for (const trackName of sortedTrackNames) {
         hashString += `${trackName}:`;
@@ -556,43 +563,41 @@ function extractRepeatedPatterns(track: ParsedTrack, aggressiveness: 0 | 1 | 2 |
 }
 
 function generateFuzzyPatternHash(pattern: ParsedPattern, aggressiveness: 0 | 1 | 2 | 3, config: ParsedTrack['config']): string {
-    let hashString = '';
-    const sortedTrackNames = Object.keys(pattern.tracks).sort();
+    // *** FIX: Include Duration in Hash ***
+    let hashString = `DUR:${pattern.duration}||`; 
     
+    const sortedTrackNames = Object.keys(pattern.tracks).sort();
     for (const trackName of sortedTrackNames) {
         hashString += `${trackName}:`;
         const events = [...pattern.tracks[trackName]].sort((a, b) => a.time - b.time);
-
         switch (aggressiveness) {
-            case 0: // Exact
+            case 0: 
                 for (const event of events) {
                     const noteStr = event.notes.map(n => `${n.degree},${n.octaveShift},${n.accidental}`).sort().join(' ');
                     hashString += `|${event.time.toFixed(3)}:${event.duration.toFixed(3)}:${noteStr}`;
                 }
                 break;
-            case 1: // Quantized Grid
+            // ... (cases 1, 2, 3 remain the same)
+            case 1: 
                 const slots = new Set<number>();
-                for (const event of events) {
-                    slots.add(Math.round(event.time));
-                }
-                const noteSequence = events.map(e => getNoteSignature(e.notes)).join(',');
-                hashString += Array.from(slots).sort((a,b)=>a-b).join(',') + `_` + noteSequence;
+                for (const event of events) slots.add(Math.round(event.time));
+                const noteSequence1 = events.map(e => getNoteSignature(e.notes)).join(',');
+                hashString += Array.from(slots).sort((a,b)=>a-b).join(',') + `_` + noteSequence1;
                 break;
-            case 2: // Beat Fingerprint
+            case 2: 
+                // ... (existing case 2 code)
                 const { grid, timeSig } = config;
                 const slotsPerBeat = grid * (4 / timeSig[1]);
-                const beats: string[] = [];
                 for(let i = 0; i < timeSig[0]; i++) {
                     const beatStart = i * slotsPerBeat;
                     const beatEnd = (i + 1) * slotsPerBeat;
                     const eventsInBeat = events.filter(e => e.time >= beatStart && e.time < beatEnd);
                     if (eventsInBeat.length === 0) continue;
                     const firstNotePos = Math.round((eventsInBeat[0].time - beatStart) / slotsPerBeat * 4);
-                    beats.push(`${eventsInBeat.length}n@${firstNotePos}`);
+                    hashString += `${eventsInBeat.length}n@${firstNotePos}_`;
                 }
-                hashString += beats.join('_');
                 break;
-            case 3: // Melodic Only
+            case 3: 
                 hashString += events.map(e => getNoteSignature(e.notes)).join(',');
                 break;
         }
@@ -810,5 +815,18 @@ function optimizeChains(track: ParsedTrack): ParsedTrack {
     }
 
     track.patterns = newPatterns;
+    return track;
+}
+
+function pruneSilentLayers(track: ParsedTrack): ParsedTrack {
+    for (const item of track.playlist) {
+        if (item.type !== 'pattern') continue;
+
+        // Filter out layers where EVERY item in the chain is a REST pattern
+        item.layers = item.layers.filter(layer => {
+            const isSilent = layer.items.every(chainItem => chainItem.id.startsWith('REST'));
+            return !isSilent;
+        });
+    }
     return track;
 }
