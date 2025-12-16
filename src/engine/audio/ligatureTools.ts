@@ -386,45 +386,69 @@ function renamePatterns(track: ParsedTrack): ParsedTrack {
     return track;
 }
 
+const NOTES_ORDER = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
 function absoluteNoteToDegree(absolutePitch: string, targetScale: any): NoteDef {
     const pc = Note.pitchClass(absolutePitch);
-    const octave = Note.octave(absolutePitch) ?? 4;
-    const referenceOctave = 4; 
+    const inputMidi = Note.midi(absolutePitch); // e.g. C4 = 60
+    
+    if (inputMidi === null) return { degree: 1, octaveShift: 0, accidental: 0, isNatural: false };
 
-    const degreeIndex = targetScale.notes.indexOf(pc);
+    // 1. Get Scale Root
+    const tonic = targetScale.tonic || 'C';
+    const tonicPC = Note.pitchClass(tonic);
+    
+    // 2. Find Degree & Interval
+    let degreeIndex = targetScale.notes.indexOf(pc);
+    let accidental = 0;
+    let matchPC = pc;
 
-    if (degreeIndex > -1) {
-        return { 
-            degree: degreeIndex + 1, 
-            octaveShift: octave - referenceOctave, 
-            accidental: 0, 
-            isNatural: false 
-        };
-    } else {
-        const pitchMidi = Note.midi(`${pc}4`);
-        if (pitchMidi === null) return { degree: 1, octaveShift: 0, accidental: 0, isNatural: false };
-
-        let bestMatch = { degree: 1, accidental: 0 };
-        let minDiff = 12;
-
-        targetScale.notes.forEach((scalePc: string, idx: number) => {
-            const scaleMidi = Note.midi(`${scalePc}4`)!;
-            let diff = pitchMidi - scaleMidi;
+    if (degreeIndex === -1) {
+        // Chromatic: Find nearest neighbor
+        let bestDiff = 12;
+        targetScale.notes.forEach((scalePC: string, idx: number) => {
+            // Calculate chromatic distance
+            const noteVal = NOTES_ORDER.indexOf(pc);
+            const scaleVal = NOTES_ORDER.indexOf(scalePC);
+            let diff = noteVal - scaleVal;
+            // Wrap to shortest path (-6 to +6)
             if (diff > 6) diff -= 12;
             if (diff < -6) diff += 12;
 
-            if (Math.abs(diff) < Math.abs(minDiff)) {
-                minDiff = diff;
-                bestMatch = { degree: idx + 1, accidental: diff };
+            if (Math.abs(diff) < Math.abs(bestDiff)) {
+                bestDiff = diff;
+                degreeIndex = idx;
+                matchPC = scalePC;
             }
         });
-
-        return { 
-            ...bestMatch, 
-            octaveShift: octave - referenceOctave, 
-            isNatural: false 
-        };
+        accidental = bestDiff;
     }
+
+    // 3. Calculate "Theoretical Reference Pitch"
+    // Ligature assumes "0 shift" means the note falls within the octave starting at C4 + RootOffset.
+    
+    const rootVal = NOTES_ORDER.indexOf(tonicPC); // 0-11 (e.g. A=9)
+    
+    // Calculate interval from Root to the Matched Note (always positive 0-11)
+    let interval = NOTES_ORDER.indexOf(matchPC) - rootVal;
+    if (interval < 0) interval += 12; 
+    
+    // Theoretical MIDI = BaseC4 (60) + RootOffset + Interval
+    // e.g. A Minor (Root A=9), Degree 3 (C, interval 3): 60 + 9 + 3 = 72 (C5)
+    const theoreticalMidi = 60 + rootVal + interval;
+
+    // 4. Calculate Shift
+    // e.g. Input C4 (60). Theoretical C5 (72). Diff -12. Shift -1.
+    // e.g. Input C5 (72). Theoretical C5 (72). Diff 0. Shift 0.
+    const diff = inputMidi - theoreticalMidi;
+    const octaveShift = Math.round(diff / 12);
+
+    return { 
+        degree: degreeIndex + 1, 
+        octaveShift: octaveShift, 
+        accidental: accidental, 
+        isNatural: false 
+    };
 }
 
 // --- DEDUPLICATION (Transpositional & Repeated) ---

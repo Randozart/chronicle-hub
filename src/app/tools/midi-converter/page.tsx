@@ -12,7 +12,6 @@ export default function MidiConverterPage() {
     const [ligatureSource, setLigatureSource] = useState<string>('');
     const [status, setStatus] = useState<string>('Upload a .mid file to begin.');
     
-    // State for conversion options
     const [options, setOptions] = useState({
         grid: 4,
         bpm: 0,
@@ -20,13 +19,11 @@ export default function MidiConverterPage() {
         scaleMode: 'major'
     });
     
-    // State for the refactor tool
     const [refactorOptions, setRefactorOptions] = useState({
-        scaleRoot: 'A#',
-        scaleMode: 'minor'
+        scaleRoot: 'C',
+        scaleMode: 'major'
     });
 
-    // State for refinement tools
     const [shouldFoldLanes, setShouldFoldLanes] = useState(true);
     const [shouldExtractPatterns, setShouldExtractPatterns] = useState(true);
     const [foldAggressiveness, setFoldAggressiveness] = useState<'low' | 'high'>('high');
@@ -35,7 +32,7 @@ export default function MidiConverterPage() {
 
     const aggressivenessLabels = ['Exact Match', 'Quantize Grid (Ignore . vs -)', 'Beat Fingerprint (Fuzzy)', 'Melodic Only (Ignore Rhythm)'];
 
-    // Effect to update refactor options when the main scale changes
+    // Sync refactor options when main options change (e.g. after file load)
     useEffect(() => {
         if(options.scaleRoot !== 'auto') {
             setRefactorOptions({ scaleRoot: options.scaleRoot, scaleMode: options.scaleMode });
@@ -53,10 +50,14 @@ export default function MidiConverterPage() {
             const { source, warnings, detected } = convertMidiToLigature(midi, options);
             setLigatureSource(source);
             if (options.bpm === 0) setOptions(prev => ({ ...prev, bpm: detected.bpm }));
+            
+            // Default to C Major if auto is selected, or use detected if available/reliable
             if (options.scaleRoot === 'auto') {
+                // If the converter returns "C Major" as default, we accept it.
                 const [root, mode] = detected.key.split(' ');
                 setOptions(prev => ({ ...prev, scaleRoot: root, scaleMode: mode.toLowerCase() }));
             }
+            
             let finalStatus = "Conversion successful!";
             if (warnings.length > 0) {
                 finalStatus += `\nDetected: ${detected.key} @ ${detected.bpm} BPM.\nWarnings:\n- ${warnings.join('\n- ')}`;
@@ -97,6 +98,44 @@ export default function MidiConverterPage() {
             setStatus(`Error refactoring scale: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
+
+    // --- NEW: Toggle Relative Major/Minor ---
+    const handleToggleRelative = () => {
+        if (!ligatureSource) return;
+        
+        const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const currentRootIndex = roots.indexOf(refactorOptions.scaleRoot);
+        if (currentRootIndex === -1) return;
+
+        let newRoot = '';
+        let newMode = '';
+
+        if (refactorOptions.scaleMode.toLowerCase() === 'major') {
+            // Major -> Relative Minor (Down 3 semitones / Up 9)
+            const newIndex = (currentRootIndex - 3 + 12) % 12;
+            newRoot = roots[newIndex];
+            newMode = 'minor';
+        } else {
+            // Minor -> Relative Major (Up 3 semitones)
+            const newIndex = (currentRootIndex + 3) % 12;
+            newRoot = roots[newIndex];
+            newMode = 'major';
+        }
+
+        // Update state and trigger refactor immediately
+        setRefactorOptions({ scaleRoot: newRoot, scaleMode: newMode });
+        
+        setStatus(`Swapping to relative ${newMode} (${newRoot})...`);
+        try {
+            const newSource = refactorScale(ligatureSource, newRoot, newMode);
+            setLigatureSource(newSource);
+            setOptions(prev => ({...prev, scaleRoot: newRoot, scaleMode: newMode}));
+            setStatus(`Swapped to relative ${newMode} (${newRoot}).`);
+        } catch (error) {
+            console.error(error);
+            setStatus(`Error swapping keys: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    };
     
     const handleOptimizeClick = () => {
         if (!ligatureSource) return;
@@ -130,7 +169,6 @@ export default function MidiConverterPage() {
         }
     };
 
-    // --- NEW HANDLERS ---
     const handleAtomizeClick = () => {
         if (!ligatureSource) return;
         setStatus('Extracting atomic motifs...');
@@ -167,7 +205,6 @@ export default function MidiConverterPage() {
                     </p>
                 </div>
 
-                {/* --- WORKFLOW GRID --- */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
                     
                     {/* STEP 1: IMPORT */}
@@ -179,24 +216,6 @@ export default function MidiConverterPage() {
                             <div className="form-group">
                                 <label className="form-label">Select File</label>
                                 <input type="file" accept=".mid,.midi" onChange={handleFileChange} className="form-input" style={{ padding: '0.5rem' }}/>
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="form-group">
-                                    <label className="form-label">Key Root</label>
-                                    <select value={options.scaleRoot} onChange={e => setOptions({...options, scaleRoot: e.target.value})} className="form-select">
-                                        <option value="auto">Auto-Detect</option>
-                                        {['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].map(k => <option key={k}>{k}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Key Mode</label>
-                                    <select value={options.scaleMode} onChange={e => setOptions({...options, scaleMode: e.target.value})} className="form-select">
-                                        <option value="major">Major</option>
-                                        <option value="minor">Minor</option>
-                                        <option value="dorian">Dorian</option>
-                                    </select>
-                                </div>
                             </div>
                             
                             <div className="form-group">
@@ -233,9 +252,14 @@ export default function MidiConverterPage() {
                                         <option value="dorian">Dorian</option>
                                     </select>
                                 </div>
-                                <button onClick={handleRefactorScale} style={{ width: '100%', background: '#e5c07b', color: '#000', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                    Apply Key Change
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button onClick={handleToggleRelative} style={{ flex: 1, background: '#2c313a', border: '1px solid #444', color: '#e5c07b', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                        Swap Relative
+                                    </button>
+                                    <button onClick={handleRefactorScale} style={{ flex: 1, background: '#e5c07b', color: '#000', border: 'none', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                        Apply
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

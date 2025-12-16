@@ -28,7 +28,6 @@ export function getRootIndex(note: string): number {
 
 /**
  * The Core Physics: Converts Ligature Data -> Tone.js Frequency
- * This version is rewritten to be mathematically robust and prevent type coercion bugs.
  */
 export function resolveNote(
     degree: number,
@@ -39,9 +38,6 @@ export function resolveNote(
     isNatural: boolean = false
 ): string {
     
-    // --- START FINAL FIX ---
-
-    // 1. Sanitize all inputs to ensure they are numbers, not strings.
     const numDegree = Number(degree) || 1;
     const numOctaveShift = Number(octaveShift) || 0;
     const numAccidental = Number(accidental) || 0;
@@ -49,33 +45,29 @@ export function resolveNote(
     const modeKey = isNatural ? 'Major' : (modeName.charAt(0).toUpperCase() + modeName.slice(1).toLowerCase());
     const intervals = MODES[modeKey] || MODES['Major'];
 
-    // 2. Normalize Degree and calculate octave wraps from it
     const zeroIndexedDegree = numDegree - 1;
     const octaveWrapsFromDegree = Math.floor(zeroIndexedDegree / 7);
-    const scaleIndex = (zeroIndexedDegree % 7 + 7) % 7; // Safe modulo for negatives
+    const scaleIndex = (zeroIndexedDegree % 7 + 7) % 7; 
 
-    // 3. Get the semitone offset for the note within the scale
     const intervalOffset = intervals[scaleIndex];
     
-    // 4. Calculate a single, absolute semitone value from C0
-    // This avoids intermediate variables that can be mis-typed.
     const rootIndex = getRootIndex(rootName);
-    const baseOctave = 4; // Our reference "middle C" octave
+    const baseOctave = 4; // C4 as center
 
     const totalSemitones = 
-        (baseOctave * 12) +                  // Start at middle C octave
-        rootIndex +                          // Add root note offset (e.g., D is +2)
-        intervalOffset +                     // Add scale interval (e.g., minor 3rd is +3)
-        numAccidental +                      // Add sharp/flat modifier (+1 / -1)
-        (numOctaveShift * 12) +              // Add octave shifts from ',' or "'"
-        (octaveWrapsFromDegree * 12);        // Add octave shifts from degree (e.g., 8 is one octave up)
+        (baseOctave * 12) +                  
+        rootIndex +                          
+        intervalOffset +                     
+        numAccidental +                      
+        (numOctaveShift * 12) +              
+        (octaveWrapsFromDegree * 12);        
 
-    // 5. Derive the final note name and octave from the absolute semitone value
+    // REVERTED FIX: The calculation was correct originally.
+    // 48 / 12 = 4 -> "C4".
     const finalOctave = Math.floor(totalSemitones / 12);
-    const finalNoteIndex = totalSemitones % 12;
+    const finalNoteIndex = ((totalSemitones % 12) + 12) % 12; // Safe modulo
+    
     const noteName = NOTES[finalNoteIndex];
-
-    // --- END FINAL FIX ---
 
     return `${noteName}${finalOctave}`;
 }
