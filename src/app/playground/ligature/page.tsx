@@ -134,7 +134,88 @@ Melody_A + Melody_B, Bass_Complex, Drum_Loop
 // Here we play A, then A again but pitched up an octave (+12).
 Melody_A + Melody_A(+12), Pads_Swell
 `
-    }
+    },
+    "noir_jazz": {
+    name: "Midnight Blues (Noir Jazz)",
+    description: "A moody, swinging jazz piece demonstrating swing, advanced chords (7ths), stacked polyphonic drums, and complex playlist chaining.",
+    source: `[CONFIG]
+// BPM is slow for a moody, detective-office feel.
+BPM: 95
+Scale: D Minor
+Grid: 4
+
+// Swing is crucial for a jazz feel. 50 is a good starting point.
+// It delays every second 16th note, creating a "shuffling" rhythm.
+Swing: 50
+Humanize: 30
+
+[INSTRUMENTS]
+//Heavily modified trumpet with volume, attack, release and decay for atmospherics
+Trumpet: muted_trumpet(v:+10, a:0.5, r:2.0, d:2.5) 
+Bass: acoustic_bass(v:+10)
+Drums: standard_kit(v:-5, d: 1.5)
+Pad: warm_pad(a:1.5, r:3.0) // Slow attack/release for atmosphere
+
+[DEFINITIONS]
+// Jazz harmony relies on 7th chords. Whitespace separated.
+@min7 = [1 3b 5 7b]
+@dom7 = [1 3 5 7b] // Used for the 'V' chord
+
+[PATTERN: Drum_Beat_Swing]
+// FEATURE: Stacked Bars for Polyphony
+// Three lines with no name after the first inherit "Drums".
+// This builds a full drum kit on one instrument.
+// Note Mapping for standard_kit: 1=Kick, 2=Snare, 4=Hi-Hat
+Drums | 1 . . . . . . . 1 . . . . . . . |
+      | . . . . 2 . . . . . . . 2 . . . |
+      | 4 . 4 . 4 . 4 . 4 . 4 . 4 . 4 . |
+
+[PATTERN: Bass_Walk_i]
+// A 2-bar walking bassline for the 'i' chord (Dm)
+Bass(o:-1) | 1, . 3b, . 5, . 7b, . | 1 . 7b, . 5, . 3b, . |
+
+[PATTERN: Bass_Walk_iv]
+// A 2-bar walking bassline for the 'iv' chord (Gm)
+Bass(o:-1) | 4, . 6b, . 1 . 3b . | 4 . 3b . 1 . 6b, . |
+
+[PATTERN: Pad_Dm7]
+// A long pad for the Dm7 chord
+Pad(v:-15, o:-2) | @min7 - - - - - - - - - - - - - - - |
+
+[PATTERN: Pad_Gm7]
+// Pad for the Gm7 chord, transposed from the Dm7 definition
+Pad(v:-15, o:-2) | @min7(4) - - - - - - - - - - - - - - - |
+
+[PATTERN: Trumpet_Intro]
+// A lonely, simple intro melody.
+Trumpet(o:-1) | 3b . . . 5 - - - | 4 . . . 3b - - - |
+
+[PATTERN: Trumpet_Main]
+// A more complex melody using a "blue note" (4#).
+Trumpet(o:-1) | 1 . (3b 2 1) 5, . . | 4# . . . 5 - - - | 1' . 7b . 5 . 3b . | 4# - - - . . . . |
+
+[PLAYLIST]
+// The song is arranged in sections using playlist rows.
+
+// Section 1: Atmosphere (2 bars)
+// Just the intro melody and a pad chord.
+Trumpet_Intro, Pad_Dm7
+
+// Section 2: The Groove Begins (4 bars)
+// Bass and Drums start. The Pad continues.
+// Bass_Walk_i is 2 bars, so it loops twice (Elastic Looping).
+// Drum_Beat_Swing is 1 bar, so it loops four times.
+// Pad_Dm7 is 1 bar, so it loops four times.
+Bass_Walk_i, Drum_Beat_Swing, Pad_Dm7
+
+// Section 3: The Full Arrangement (8 bars)
+// FEATURE: Playlist Chaining (+)
+// The Trumpet plays its Intro, then the Main theme.
+// Bass and Pads change chords halfway through.
+// Drums keep the steady beat.
+Trumpet_Intro + Trumpet_Main, Bass_Walk_i + Bass_Walk_iv, Pad_Dm7 + Pad_Gm7, Drum_Beat_Swing
+`
+}
 };
 
 export default function LigaturePlayground() {

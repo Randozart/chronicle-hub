@@ -3,6 +3,7 @@
 import { ParsedTrack, ParsedPattern, NoteDef, PlaylistItem, NoteGroup, PatternPlaylistItem, PatternModifier, Layer, ChainItem } from './models';
 import { PlayerQualities } from '@/engine/models';
 import { evaluateText } from '@/engine/textProcessor';
+import { MODES } from './scales'; // <--- IMPORT MODES
 
 export class LigatureParser {
     
@@ -92,7 +93,8 @@ export class LigatureParser {
         if (key === 'Scale') {
             const scaleParts = val.split(' ');
             track.config.scaleRoot = scaleParts[0];
-            track.config.scaleMode = scaleParts[1] || 'Major';
+            // FIX: Support multi-word scale names like "Harmonic Minor"
+            track.config.scaleMode = scaleParts.slice(1).join(' ') || 'Major';
         }
         if (key === 'Time' || key === 'TimeSig') {
             const timeParts = val.split('/');
@@ -171,7 +173,8 @@ export class LigatureParser {
         if (match) {
             trackName = match[1];
             if (match[2]) {
-                modifiers = this.parseModifiers(match[2]);
+                // Pass track for context
+                modifiers = this.parseModifiers(match[2], track);
             }
         }
 
@@ -261,12 +264,10 @@ export class LigatureParser {
             }
         }
 
-        // 1. Split by Comma -> Layers
         const layerStrings = trimmed.split(',').map(s => s.trim()).filter(Boolean);
         const layers: Layer[] = [];
 
         layerStrings.forEach(layerStr => {
-            // 2. Split by Plus -> Chain Items
             const chainStrings = layerStr.split('+').map(s => s.trim()).filter(Boolean);
             const chain: ChainItem[] = [];
 
@@ -274,26 +275,21 @@ export class LigatureParser {
                 const match = itemStr.match(/^([a-zA-Z0-9_]+)(?:\((.*)\))?$/);
                 if (match) {
                     const patId = match[1];
-                    const mods = this.parseModifiers(match[2] || '');
-                    chain.push({
-                        id: patId,
+                    // Pass track for context
+                    let mods = this.parseModifiers(match[2] || '', track);
+                    chain.push({ 
+                        id: patId, 
                         transposition: mods.transpose,
                         volume: mods.volume
                     });
                 }
             });
-
-            if (chain.length > 0) {
-                layers.push({ items: chain });
-            }
+            if (chain.length > 0) layers.push({ items: chain });
         });
-
-        if (layers.length > 0) {
-            track.playlist.push({ type: 'pattern', layers: layers });
-        }
+        if (layers.length > 0) track.playlist.push({ type: 'pattern', layers });
     }
 
-    private parseModifiers(raw: string): PatternModifier {
+    private parseModifiers(raw: string, track: ParsedTrack): PatternModifier {
         const mods: PatternModifier = { transpose: 0, volume: 0, pan: 0 };
         const parts = raw.split(',').map(s => s.trim());
         
@@ -304,17 +300,27 @@ export class LigatureParser {
             }
             const [key, val] = p.split(':').map(s => s.trim());
             const numVal = parseFloat(val);
+
             if (!isNaN(numVal)) {
                 if (['v', 'vol'].includes(key)) mods.volume = numVal;
                 if (['p', 'pan'].includes(key)) mods.pan = numVal;
                 if (['t', 'trans'].includes(key)) mods.transpose += numVal;
-                if (['o', 'oct'].includes(key)) mods.transpose += (numVal * 12);
+                
+                if (['o', 'oct'].includes(key)) {
+                    // Find the current scale definition from the config
+                    const modeKey = Object.keys(MODES).find(k => k.toLowerCase() === track.config.scaleMode.toLowerCase()) || 'Major';
+                    const intervals = MODES[modeKey];
+                    // An octave is equal to the number of notes in the scale
+                    const scaleLength = intervals.length;
+                    
+                    mods.transpose += (numVal * scaleLength); 
+                }
             }
         });
         return mods;
     }
 
-    private resolveNotes(token: string, defs: Record<string, NoteGroup>): NoteDef[] {
+        private resolveNotes(token: string, defs: Record<string, NoteGroup>): NoteDef[] {
         if (token.startsWith('@')) {
             const match = token.match(/^@(\w+)(?:\((\d+)\))?$/);
             if (match) {

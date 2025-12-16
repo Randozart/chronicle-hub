@@ -20,8 +20,10 @@ export async function middleware(req: NextRequest) {
         pathname.startsWith('/themes') ||
         pathname === '/favicon.ico' ||
         pathname === '/logo-w.svg' ||
-        pathname.startsWith('/playground/ligature')  
+        pathname === '/logo.svg' ||
 
+        pathname.startsWith('/playground/ligature')  ||
+        pathname.startsWith('/sounds') 
 
     ) {
         // If logged in, redirect OUT of login/register pages to Home
