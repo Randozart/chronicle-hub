@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Midi } from '@tonejs/midi';
 import dynamic from 'next/dynamic';
 import { convertMidiToLigature } from '@/engine/audio/midiConverter'; 
@@ -11,7 +11,8 @@ const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
 export default function MidiConverterPage() {
     const [ligatureSource, setLigatureSource] = useState<string>('');
     const [status, setStatus] = useState<string>('Upload a .mid file to begin.');
-    
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const [options, setOptions] = useState({
         grid: 4,
         bpm: 0,
@@ -67,7 +68,27 @@ export default function MidiConverterPage() {
             setStatus(`Error: ${e.message}`);
         }
     };
-    
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setStatus(`Importing "${file.name}"...`);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result as string;
+            setLigatureSource(text);
+            setStatus(`Successfully imported "${file.name}". Ready for refinement.`);
+        };
+        reader.onerror = () => {
+            setStatus('Error: Failed to read file.');
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    };
     const handleRescaleBPM = (factor: number) => {
         if (!ligatureSource) return;
         setStatus(`Rescaling BPM by a factor of ${factor}...`);
@@ -197,6 +218,13 @@ export default function MidiConverterPage() {
 
     return (
         <div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#ccc' }}>
+             <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileImport} 
+                style={{ display: 'none' }} 
+                accept=".lig,.txt"
+            />
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
                     <h1 style={{ color: '#61afef', margin: '0 0 0.5rem 0', fontSize: '2rem' }}>MIDI to Ligature Converter</h1>
@@ -210,18 +238,26 @@ export default function MidiConverterPage() {
                     {/* STEP 1: IMPORT */}
                     <div style={{ background: '#21252b', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
                         <div style={{ background: 'rgba(97, 175, 239, 0.1)', padding: '1rem', borderBottom: '1px solid #333' }}>
-                            <h3 style={{ margin: 0, color: '#61afef', fontSize: '1rem', textTransform: 'uppercase' }}>1. Import MIDI</h3>
+                            <h3 style={{ margin: 0, color: '#61afef', fontSize: '1rem', textTransform: 'uppercase' }}>1. Import File</h3>
                         </div>
                         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div className="form-group">
-                                <label className="form-label">Select File</label>
+                                <label className="form-label">Select MIDI File</label>
                                 <input type="file" accept=".mid,.midi" onChange={handleFileChange} className="form-input" style={{ padding: '0.5rem' }}/>
                             </div>
-                            
-                            <div className="form-group">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#888' }}>
+                                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #333' }} />
+                                OR
+                                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #333' }} />
+                            </div>
+                            <button onClick={handleImportClick} style={{ background: '#2c313a', border: '1px solid #444', color: '#ccc', padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', textAlign: 'center' }}>
+                                Import Existing .lig File
+                            </button>
+                                                    
+                            {/* <div className="form-group">
                                 <label className="form-label">BPM Override (0 = Auto)</label>
                                 <input type="number" value={options.bpm} onChange={e => setOptions({...options, bpm: parseInt(e.target.value)})} className="form-input" />
-                            </div>
+                            </div> */}
                         </div>
                     </div>
 

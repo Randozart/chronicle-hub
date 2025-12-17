@@ -30,11 +30,13 @@ export function processLigature(
     // 2. Verticalize: Organize into Song Sections BEFORE deduplication to preserve structure.
     parsedTrack = verticalizePlaylist(parsedTrack);
 
-    // 3. Optimize Chains: Merge sequential segments (A+B+C -> Pattern_ABC)
-    parsedTrack = optimizeChains(parsedTrack);
+
 
     // 4. Exact Deduplication: Now we merge identical patterns.
     parsedTrack = extractRepeatedPatterns(parsedTrack, 0);
+
+    // 3. Optimize Chains: Merge sequential segments (A+B+C -> Pattern_ABC)
+    parsedTrack = optimizeChains(parsedTrack);
 
     // 5. Fold Lanes: Handle Polyphony
     if (options.foldLanes) {

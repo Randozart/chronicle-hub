@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // --- ADD useRef ---
 import { LigatureTrack, InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
@@ -66,7 +66,8 @@ export default function TrackEditor({
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
-    
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     useEffect(() => {
         setIsClient(true);
         try {
@@ -80,7 +81,34 @@ export default function TrackEditor({
         const errors = lintLigature(source);
         setLintErrors(errors);
     }, [source]);
+    const handleImportClick = () => {
+        // Programmatically clicks the hidden file input element
+        fileInputRef.current?.click();
+    };
 
+    const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result;
+            if (typeof text === 'string') {
+                // Reuse your existing handler to update the state
+                handleSourceChange(text);
+                setStatus('File imported successfully.');
+            } else {
+                setStatus('Error: Could not read file content.');
+            }
+        };
+        reader.onerror = () => {
+            setStatus('Error: Failed to read file.');
+        };
+        reader.readAsText(file);
+
+        // Reset the input value to allow re-uploading the same file
+        event.target.value = '';
+    };
     const handleSourceChange = (newSource: string) => {
         setSource(newSource);
         try {
@@ -157,6 +185,13 @@ export default function TrackEditor({
 
     return (
         <div style={{ height: '100%', display: 'flex', gap: '1rem' }}>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileImport} 
+                style={{ display: 'none' }} 
+                accept=".lig,.txt"
+            />
             {/* LEFT COLUMN: DEBUGGER */}
             <div style={{ width: '250px', flexShrink: 0 }}>
                 <ScribeDebugger onUpdate={setMockQualities} />
@@ -170,6 +205,10 @@ export default function TrackEditor({
                         <span style={{ fontSize: '0.8rem', color: isPlaying ? '#98c379' : '#777' }}>{isPlaying ? "▶ PLAYING" : status}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <button onClick={handleImportClick} style={{ background: 'transparent', border: '1px solid #56B6C2', color: '#56B6C2', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
+                           Import .lig
+                        </button>
+                        
                         <button onClick={handleClear} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
                             New Template
                         </button>

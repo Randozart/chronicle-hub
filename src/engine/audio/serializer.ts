@@ -143,5 +143,21 @@ function serializeNote(n: NoteDef): string {
   if (n.octaveShift > 0) out += `'`.repeat(n.octaveShift);
   if (n.octaveShift < 0) out += ','.repeat(-n.octaveShift);
   if (n.isNatural) out += '%';
+
+  // MODIFICATION START: Serialize note-level properties and effects
+  const props: string[] = [];
+  if (n.volume !== undefined && !isNaN(n.volume)) {
+    props.push(`v:${n.volume}`);
+  }
+  if (props.length > 0) {
+    out += `(${props.join(',')})`;
+  }
+
+  if (n.effects && n.effects.length > 0) {
+    const effectStr = n.effects.map(e => `${e.code}${e.value.toString(16).toUpperCase().padStart(2, '0')}`).join(',');
+    out += `^[${effectStr}]`;
+  }
+  // MODIFICATION END
+
   return out;
 }
