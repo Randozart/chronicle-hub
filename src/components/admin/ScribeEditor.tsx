@@ -129,9 +129,12 @@ export default function ScribeEditor({
 
                 .token.builtin { color: #e5c07b !important; } 
                 .token.class-name { color: #e5c07b; }
-                .token.attr-value { color: #56b6c2; }
+                .token.attr-value { color: #4dcec8ff; }
                 .token.sustain { color: #eaeaeb; font-weight: bold; }
 
+                .token.effect-block { color: #7949ffff; }
+
+                             
                 .scribe-editor-wrapper:focus-within {
                     border-color: #61afef;
                     box-shadow: 0 0 0 1px #61afef;
@@ -151,7 +154,9 @@ export default function ScribeEditor({
                 }
                 .scribe-editor-wrapper::-webkit-scrollbar-thumb:hover {
                     background: #61afef;
-                }
+            }
+
+
             `}</style>
         </div>
     );
