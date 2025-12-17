@@ -184,7 +184,7 @@ Pad(v:-15, o:-2) | @min7 - - - - - - - - - - - - - - - |
 
 [PATTERN: Pad_Gm7]
 // Pad for the Gm7 chord, transposed from the Dm7 definition
-Pad(v:-15, o:-2) | @min7(4) - - - - - - - - - - - - - - - |
+Pad(4, v:-15, o:-2) | @min7 - - - - - - - - - - - - - - - |
 
 [PATTERN: Trumpet_Intro]
 // A lonely, simple intro melody.

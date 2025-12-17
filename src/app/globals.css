@@ -3676,7 +3676,23 @@ html[data-theme='revolutionary']::before {
 .token.function { color: #61afef; } /* Track Names */
 .token.string { color: #98c379; } /* Tuplets */
 .token.number { color: #d19a66; } /* Notes */
+/* New Octave/Accidental Color (Yellow/Gold) */
+.token.builtin { color: #e5c07b !important; } 
 
+/* Sustain Mark (Pearl White) */
+.token.sustain { color: #eaeaeb; font-weight: bold; }
+
+/* Tuplets (Green) */
+.token.string { color: #98c379; }
+
+/* Track Names (Blue) */
+.token.function { color: #61afef; }
+
+/* Modifiers (Cyan) */
+.token.attr-value { color: #56b6c2; }
+
+/* Class Name (Definitions - Teal/Yellow) */
+.token.class-name { color: #e5c07b; }
 .scribe-editor-wrapper:focus-within {
     border-color: #61afef;
     box-shadow: 0 0 0 1px #61afef;

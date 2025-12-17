@@ -3,7 +3,7 @@
 import { ParsedTrack, ParsedPattern, NoteDef, PlaylistItem, NoteGroup, PatternPlaylistItem, PatternModifier, Layer, ChainItem } from './models';
 import { PlayerQualities } from '@/engine/models';
 import { evaluateText } from '@/engine/textProcessor';
-import { MODES } from './scales'; // <--- IMPORT MODES
+import { MODES } from './scales'; 
 
 export class LigatureParser {
     
@@ -48,32 +48,36 @@ export class LigatureParser {
             
             if (sectionMatch) {
                 const header = sectionMatch[1].trim();
-                const headerKey = header.split(':')[0].toUpperCase();
+                const headerParts = header.split(':');
+                const headerKey = headerParts[0].toUpperCase();
                 
                 if (['PATTERN', 'PAT', 'P'].includes(headerKey)) {
                     currentSection = 'PATTERN';
-                    currentPatternId = header.split(':')[1].trim();
-                    track.patterns[currentPatternId] = { 
-                        id: currentPatternId, 
-                        duration: 0,
-                        tracks: {},
-                        trackModifiers: {} 
-                    };
-                    lastPatternTrackName = ''; 
+                    currentPatternId = (headerParts[1] || '').trim();
+                    
+                    if (currentPatternId) {
+                        track.patterns[currentPatternId] = { 
+                            id: currentPatternId, 
+                            duration: 0,
+                            tracks: {},
+                            trackModifiers: {} 
+                        };
+                        lastPatternTrackName = ''; 
+                    }
                 } else {
-                    currentSection = header.toUpperCase();
+                    currentSection = headerKey;
                     currentPatternId = '';
                 }
                 continue;
             }
 
-            if (['CONFIG', 'CFG', 'CONF'].includes(currentSection)) this.parseConfig(trimmedLine, track);
-            else if (['INSTRUMENTS', 'INST', 'INS'].includes(currentSection)) this.parseInstrument(trimmedLine, track);
-            else if (['DEFINITIONS', 'DEF', 'DEFS'].includes(currentSection)) this.parseDefinition(trimmedLine, track);
+            if (['CONFIG', 'CFG', 'CONF', 'C'].includes(currentSection)) this.parseConfig(trimmedLine, track);
+            else if (['INSTRUMENTS', 'INST', 'INS', 'I'].includes(currentSection)) this.parseInstrument(trimmedLine, track);
+            else if (['DEFINITIONS', 'DEF', 'DEFS', 'D'].includes(currentSection)) this.parseDefinition(trimmedLine, track);
             else if (currentSection === 'PATTERN' && currentPatternId) {
                 lastPatternTrackName = this.parsePatternRow(line, track, currentPatternId, lastPatternTrackName);
             }
-            else if (['PLAYLIST', 'PLAY', 'SEQ', 'LIST'].includes(currentSection)) this.parsePlaylistRow(trimmedLine, track);
+            else if (['PLAYLIST', 'PLAY', 'SEQ', 'LIST', 'L', 'TRACK', 'T'].includes(currentSection)) this.parsePlaylistRow(trimmedLine, track);
         }
 
         return track;
@@ -93,7 +97,6 @@ export class LigatureParser {
         if (key === 'Scale') {
             const scaleParts = val.split(' ');
             track.config.scaleRoot = scaleParts[0];
-            // FIX: Support multi-word scale names like "Harmonic Minor"
             track.config.scaleMode = scaleParts.slice(1).join(' ') || 'Major';
         }
         if (key === 'Time' || key === 'TimeSig') {
@@ -136,7 +139,6 @@ export class LigatureParser {
         track.instruments[name] = { id, overrides };
     }
 
-    // --- UPDATED DEFINITION PARSING (Whitespace Support) ---
     private parseDefinition(line: string, track: ParsedTrack) {
         const [aliasRaw, valRaw] = line.split('=').map(s => s.trim());
         if (!aliasRaw || !valRaw || !aliasRaw.startsWith('@')) return;
@@ -145,8 +147,6 @@ export class LigatureParser {
         if (valRaw.startsWith('[')) {
             const alias = aliasRaw.substring(1);
             const cleanVal = valRaw.replace(/[\[\]]/g, '');
-            // Split by whitespace only. 
-            // NOTE: Commas are now treated as part of the token (e.g., '1,') unless user updates code.
             const parts = cleanVal.split(/\s+/).filter(Boolean);
             const noteGroup: NoteGroup = parts.map(p => this.parseNoteToken(p));
             track.definitions[alias] = noteGroup;
@@ -173,7 +173,6 @@ export class LigatureParser {
         if (match) {
             trackName = match[1];
             if (match[2]) {
-                // Pass track for context
                 modifiers = this.parseModifiers(match[2], track);
             }
         }
@@ -249,7 +248,6 @@ export class LigatureParser {
         return trackName;
     }
 
-    // --- UPDATED PLAYLIST PARSING (Layers & Chains) ---
     private parsePlaylistRow(line: string, track: ParsedTrack) {
         const trimmed = line.trim();
         if (trimmed.includes('=')) {
@@ -275,7 +273,6 @@ export class LigatureParser {
                 const match = itemStr.match(/^([a-zA-Z0-9_]+)(?:\((.*)\))?$/);
                 if (match) {
                     const patId = match[1];
-                    // Pass track for context
                     let mods = this.parseModifiers(match[2] || '', track);
                     chain.push({ 
                         id: patId, 
@@ -305,12 +302,9 @@ export class LigatureParser {
                 if (['v', 'vol'].includes(key)) mods.volume = numVal;
                 if (['p', 'pan'].includes(key)) mods.pan = numVal;
                 if (['t', 'trans'].includes(key)) mods.transpose += numVal;
-                
                 if (['o', 'oct'].includes(key)) {
-                    // Find the current scale definition from the config
                     const modeKey = Object.keys(MODES).find(k => k.toLowerCase() === track.config.scaleMode.toLowerCase()) || 'Major';
                     const intervals = MODES[modeKey];
-                    // An octave is equal to the number of notes in the scale
                     const scaleLength = intervals.length;
                     
                     mods.transpose += (numVal * scaleLength); 
@@ -320,7 +314,7 @@ export class LigatureParser {
         return mods;
     }
 
-        private resolveNotes(token: string, defs: Record<string, NoteGroup>): NoteDef[] {
+    private resolveNotes(token: string, defs: Record<string, NoteGroup>): NoteDef[] {
         if (token.startsWith('@')) {
             const match = token.match(/^@(\w+)(?:\((\d+)\))?$/);
             if (match) {
@@ -356,7 +350,4 @@ export class LigatureParser {
         return { degree, octaveShift, accidental, isNatural };
     }
 
-    public stringify(track: ParsedTrack): string {
-        return ""; // Handled by serializer
-    }
 }
