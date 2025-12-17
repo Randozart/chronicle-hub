@@ -126,7 +126,8 @@ export interface NoteDef {
     octaveShift: number;  
     accidental: number;   
     isNatural: boolean;   
-    // --- NEW: Per-note effects ---
+    
+    volume?: number; // v:+10
     effects?: EffectCommand[];
 }
 

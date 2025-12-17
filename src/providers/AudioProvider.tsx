@@ -222,7 +222,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                             const trackMod = pattern.trackModifiers[trackName];
                             const trackEffects = trackMod?.effects || [];
                             
-                            // Get accurate base volume for resets
+                            // Base volume for this instrument (used for resets and relative calcs)
                             const baseVolume = instConfig?.overrides.volume ?? baseDef?.config.volume ?? -10;
 
                             if (synth) {
@@ -261,8 +261,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                 });
 
                                 const part = new Tone.Part((time, value) => {
-                                    // 1. SAFETY RESET: Hard reset volume at the exact start of this note event
-                                    // This "snaps" the volume back if the previous note faded out.
+                                    // 1. SAFETY RESET: Snap volume back to baseline at Note Start
                                     synth.volume.cancelScheduledValues(time);
                                     synth.volume.setValueAtTime(baseVolume, time);
 
@@ -276,35 +275,53 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                     }
                                     finalVel = Math.max(0, Math.min(1, finalVel));
 
-                                    // 3. Trigger Attack
+                                    // 3. Trigger
                                     synth.triggerAttackRelease(value.notes, value.duration, time + offset, finalVel);
 
-                                    // 4. Apply Effects
-                                    const noteEffects = value.noteDefs[0]?.effects || [];
+                                    // 4. Effects
+                                     const noteEffects = value.noteDefs[0]?.effects || [];
                                     const activeEffects = [...instEffects, ...trackEffects, ...noteEffects];
 
+                                    if (activeEffects.length > 0) {
+                                        console.log(`[Audio] Note: ${value.notes[0]} | Time: ${time.toFixed(3)} | Dur: ${value.duration.toFixed(3)} | BaseVol: ${baseVolume}`);
+                                    }
+
                                     activeEffects.forEach(fx => {
-                                        // V: Volume Slide (Fade Out / Set Target)
-                                        if (fx.code === 'V') {
-                                            const targetVol = -Math.abs(fx.value); 
+                                        // F: Fade Out
+                                        if (fx.code === 'F') {
+                                            // F10 means "Fade down by 10dB"
+                                            // F0 means "Fade to Silence"
+                                            let targetVol = -100;
+                                            
+                                            if (fx.value !== 0) {
+                                                // Calculate relative target: Base - Amount
+                                                // We use Math.abs to ensure we subtract, even if user typed F-10
+                                                targetVol = baseVolume - Math.abs(fx.value);
+                                            }
+
+                                            // Debug
+                                            // console.log(`FADE: ${baseVolume} -> ${targetVol}`);
+
                                             synth.volume.setValueAtTime(baseVolume, time + offset);
-                                            synth.volume.linearRampToValueAtTime(targetVol, time + offset + value.duration);
+                                            synth.volume.rampTo(targetVol, value.duration - 0.1, time + offset);
                                         }
-                                        
-                                        // S: Swell (Fade In)
+                                        // S: Swell
                                         else if (fx.code === 'S') {
-                                            // Start at silent (-100dB), ramp up to Base Volume
-                                            // value can adjust curve or start point in future
-                                            synth.volume.setValueAtTime(-100, time + offset);
-                                            synth.volume.linearRampToValueAtTime(baseVolume, time + offset + value.duration);
+                                            // S10 -> Start 10dB lower. S0 -> Start at Silence
+                                            const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
+                                            const startVol = baseVolume - range;
+
+                                            // Anchor Start -> Ramp to Base
+                                            synth.volume.setValueAtTime(startVol, time + offset);
+                                            synth.volume.rampTo(baseVolume, value.duration - 0.1, time + offset);
                                         }
                                     });
-
                                 }, toneEvents).start(0);
                                 
                                 scheduledPartsRef.current.push(part);
                             }
                         }
+                        
                         currentBarOffset += patternBars;
                     }
                     if (currentBarOffset === startOffset) break; 
