@@ -659,6 +659,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         name: 'Standard Drum Kit',
         category: 'Standard Sampler',
         type: 'sampler',
+        mapping: 'chromatic', // <--- DECLARE MAPPING BEHAVIOR
         config: {
             baseUrl: '/sounds/standard/standard_kit/',
             // MAPPING: Ligature Note -> Audio File

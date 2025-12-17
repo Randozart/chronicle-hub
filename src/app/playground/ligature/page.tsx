@@ -132,7 +132,7 @@ Melody_A + Melody_B, Bass_Complex, Drum_Loop
 // 3. Modifiers in Chains
 // You can transpose individual links in a chain.
 // Here we play A, then A again but pitched up an octave (+12).
-Melody_A + Melody_A(+12), Pads_Swell
+Melody_A + Melody_A(o:+1), Pads_Swell
 `
     },
     "noir_jazz": {
@@ -162,37 +162,42 @@ Pad: warm_pad(a:1.5, r:3.0) // Slow attack/release for atmosphere
 @dom7 = [1 3 5 7b] // Used for the 'V' chord
 
 [PATTERN: Drum_Beat_Swing]
-// FEATURE: Stacked Bars for Polyphony
-// Three lines with no name after the first inherit "Drums".
-// This builds a full drum kit on one instrument.
-// Note Mapping for standard_kit: 1=Kick, 2=Snare, 4=Hi-Hat
-Drums | 1 . . . . . . . 1 . . . . . . . |
-      | . . . . 2 . . . . . . . 2 . . . |
-      | 4 . 4 . 4 . 4 . 4 . 4 . 4 . 4 . |
+// This pattern uses the 'standard_kit' which is a CHROMATIC instrument.
+// Its notes are FIXED and DO NOT change with the song's key, so take this in mind.
+// The scale degrees map to a piano keyboard (C4 = 1, D4 = 2, etc.)
+// 1 -> C4 -> Kick
+// 2 -> D4 -> Snare
+// 4 -> F4 -> Closed Hi-Hat (Used here to simulate a Ride Cymbal)
+
+// This creates a classic jazz "swing" pattern.
+// With Swing: 50, the "4 . 4 ." becomes a "long-short" rhythm.
+Drums | 1 . . . . . . .   1 . . . . . . . |
+      | . . . . 2 . . .   . . . . 2 . . . |
+      | 4 . 4 . 4 . 4 .   4 . 4 . 4 . 4 . |
 
 [PATTERN: Bass_Walk_i]
 // A 2-bar walking bassline for the 'i' chord (Dm)
-Bass(o:-1) | 1, . 3b, . 5, . 7b, . | 1 . 7b, . 5, . 3b, . |
+Bass(o:-1) | 1, . 3b, .   5, . 7b, .   1 . 7b, .   5, . 3b, . |
 
 [PATTERN: Bass_Walk_iv]
 // A 2-bar walking bassline for the 'iv' chord (Gm)
-Bass(o:-1) | 4, . 6b, . 1 . 3b . | 4 . 3b . 1 . 6b, . |
+Bass(o:-1) | 4, . 6b, .   1 . 3b .   4 . 3b .   1 . 6b, . |
 
 [PATTERN: Pad_Dm7]
 // A long pad for the Dm7 chord
-Pad(v:-15, o:-2) | @min7 - - - - - - - - - - - - - - - |
+Pad(v:-15, o:-2) | @min7 - - -   - - - -   - - - -   - - - - |
 
 [PATTERN: Pad_Gm7]
 // Pad for the Gm7 chord, transposed from the Dm7 definition
-Pad(4, v:-15, o:-2) | @min7 - - - - - - - - - - - - - - - |
+Pad(4, v:-15, o:-2) | @min7 - - -   - - - -   - - - -   - - - - |
 
 [PATTERN: Trumpet_Intro]
 // A lonely, simple intro melody.
-Trumpet(o:-1) | 3b . . . 5 - - - | 4 . . . 3b - - - |
+Trumpet(o:-1) | 3b . . .   5 - - -   4 . . .   3b - - - |
 
 [PATTERN: Trumpet_Main]
 // A more complex melody using a "blue note" (4#).
-Trumpet(o:-1) | 1 . (3b 2 1) 5, . . | 4# . . . 5 - - - | 1' . 7b . 5 . 3b . | 4# - - - . . . . |
+Trumpet(o:-1) | 1 3b 2 1   5, . . .   4# . . .   5 - - - | 1' . 7b .   5 . 3b .   4# - - -   . . . . |
 
 [PLAYLIST]
 // The song is arranged in sections using playlist rows.

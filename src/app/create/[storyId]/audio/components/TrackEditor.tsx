@@ -9,6 +9,7 @@ import ScribeDebugger from '@/components/admin/ScribeDebugger';
 import { mergeLigatureSnippet } from '@/engine/audio/merger';
 import { LigatureParser } from '@/engine/audio/parser';
 import PatternLibrary from '@/engine/audio/components/PatternLibrary';
+import { lintLigature, LintError } from '@/engine/audio/linter'; // Import Linter
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
@@ -16,29 +17,25 @@ const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), {
 });
 const PianoRoll = dynamic(() => import('@/components/admin/PianoRoll'), { ssr: false });
 
-const EMPTY_TEMPLATE = `
-[CONFIG]
+const EMPTY_TEMPLATE = `[CONFIG]
 BPM: 120
 Grid: 4
 Time: 4/4
 Scale: C Minor
 
 [INSTRUMENTS]
-// TrackName: InstrumentID
-// Example: Lead: retro_lead
+
 
 [DEFINITIONS]
-// @AliasName = [NoteDefs]
-// Example: @Power = [1, 5]
+
 
 [PATTERN: Main]
-// TrackName | Beat 1   Beat 2   Beat 3   Beat 4   |
-// Example: Lead | 1 . . .  3 . . .  5 . . .  4 . . . |
+
 
 [PLAYLIST]
-// Arrange patterns here
-// Example: Main
-`; // Keep your existing template string
+
+
+`;
 
 interface Props {
     data: LigatureTrack;
@@ -57,18 +54,19 @@ export default function TrackEditor({
     enableDownload = false,
     isPlayground = false 
 }: Props) {
-    // --- NEW STATE MANAGEMENT FOR TWO-WAY BINDING ---
     const [source, setSource] = useState(data.source || "");
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const parser = new LigatureParser();
-    // ---------------------------------------------
+
+    // --- LINTER STATE ---
+    const [lintErrors, setLintErrors] = useState<LintError[]>([]);
+    // --------------------
 
     const { playTrack, stop, isPlaying } = useAudio();
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
     
-    // Initial parse on load
     useEffect(() => {
         setIsClient(true);
         try {
@@ -77,18 +75,20 @@ export default function TrackEditor({
         setSource(data.source);
     }, [data, mockQualities]);
 
-    // Handler for text editor changes
+    // Linter Effect
+    useEffect(() => {
+        const errors = lintLigature(source);
+        setLintErrors(errors);
+    }, [source]);
+
     const handleSourceChange = (newSource: string) => {
         setSource(newSource);
         try {
-            // When text changes, update the parsed object for the piano roll
             setParsedTrack(parser.parse(newSource, mockQualities));
         } catch(e) {}
     };
 
-    // Handler for piano roll changes
     const handlePianoRollChange = (newSource: string) => {
-        // When piano roll changes, it gives us new source text. Update everything.
         setSource(newSource);
         try {
             setParsedTrack(parser.parse(newSource, mockQualities));
@@ -96,6 +96,8 @@ export default function TrackEditor({
     };
 
     const handlePlay = () => {
+        // Prevent play if critical errors exist? Optional.
+        // For now, allow it, but maybe warn.
         try {
             playTrack(source, availableInstruments, mockQualities);
             setStatus("Playing...");
@@ -112,7 +114,7 @@ export default function TrackEditor({
 
     const handleClear = () => {
         if (confirm("Replace the current track with a blank template?")) {
-            handleSourceChange(EMPTY_TEMPLATE); // Use the handler to keep state in sync
+            handleSourceChange(EMPTY_TEMPLATE); 
         }
     };
 
@@ -137,12 +139,11 @@ export default function TrackEditor({
     };
     
     const handleSaveClick = () => {
-        // Create a data object that matches the parent's expectation
         const saveData: LigatureTrack & { category: 'track' } = {
             id: data.id,
-            name: data.name, // Assuming name doesn't change here, or add a form field for it
+            name: data.name,
             source: source,
-            category: 'track' // Add category for handleSave
+            category: 'track'
         };
         onSave(saveData);
     }
@@ -191,6 +192,7 @@ export default function TrackEditor({
                         )}
                     </div>
                 </div>
+                
                 <div style={{ marginBottom: '1rem' }}>
                     <label className="form-label">Visual Editor</label>
                     {isClient && (
@@ -201,6 +203,35 @@ export default function TrackEditor({
                         />
                     )}
                 </div>
+
+                {/* MOVED: Linter Output is now ABOVE source code */}
+                {lintErrors.length > 0 && (
+                    <div style={{ 
+                        marginBottom: '0.5rem', 
+                        padding: '0.75rem', 
+                        background: '#2c2525', 
+                        border: '1px solid #e06c75', 
+                        borderRadius: '4px',
+                        maxHeight: '150px',
+                        overflowY: 'auto'
+                    }}>
+                        <div style={{ color: '#e06c75', fontWeight: 'bold', fontSize: '0.75rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                            {lintErrors.length} Issues Found
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {lintErrors.map((err, i) => (
+                                <div key={i} style={{ fontSize: '0.8rem', display: 'flex', gap: '8px' }}>
+                                    <span style={{ color: '#aaa', fontFamily: 'monospace', minWidth: '40px' }}>Ln {err.line}</span>
+                                    <span style={{ color: err.severity === 'error' ? '#e06c75' : '#e5c07b' }}>
+                                        {err.message}
+                                    </span>
+                                    {err.context && <span style={{ color: '#666' }}>({err.context})</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '800px'}}>
                     <label className="form-label">Ligature Source Code</label>
                     {isClient && (
@@ -210,11 +241,10 @@ export default function TrackEditor({
                             minHeight="400px"
                             placeholder="[CONFIG]..."
                             language="ligature"
+                            errors={lintErrors} // Pass errors to highlight line numbers
                         />
                     )}
                 </div>
-                
-                
 
                 <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '200px' }}>
                     <strong style={{ color: '#aaa' }}>Available Instruments:</strong>

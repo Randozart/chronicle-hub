@@ -152,168 +152,168 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(true);
     };
     
-    const playSequenceFrom = (
-        playlistStartIndex: number, 
-        transport: TransportClass, 
-        trackSynthMap: Map<string, AnyInstrument>
-    ) => {
-        const track = currentTrackRef.current;
-        if (!track) return;
-        
-        let totalBars = 0;
-        let runningConfig = { ...track.config };
+    // Replace this method in AudioProvider.tsx
+const playSequenceFrom = (
+    playlistStartIndex: number, 
+    transport: TransportClass, 
+    trackSynthMap: Map<string, AnyInstrument>
+) => {
+    const track = currentTrackRef.current;
+    if (!track) return;
+    
+    let totalBars = 0;
+    let runningConfig = { ...track.config };
 
-        for (const item of track.playlist) {
-            if (item.type === 'command') {
-                transport.scheduleOnce((time: number) => {
-                    if (item.command === 'BPM') transport.bpm.rampTo(parseFloat(item.value), 0.1, time);
-                    if (item.command === 'Scale') {
-                        const [root, mode] = item.value.split(' ');
-                        runningConfig.scaleRoot = root;
-                        runningConfig.scaleMode = mode || 'Major';
-                    }
-                }, `${totalBars}:0:0`);
-                continue;
-            }
-
-            const { grid, timeSig } = runningConfig;
-            const slotsPerBar = grid * (4 / timeSig[1]) * timeSig[0];
-
-            // 1. Calculate Chain Durations (in Bars)
-            let maxChainBars = 0;
-            const layerDurations: number[] = [];
-
-            item.layers.forEach((layer, layerIndex) => {
-                let chainSlots = 0;
-                layer.items.forEach(chainItem => {
-                    const pattern = track.patterns[chainItem.id];
-                    if (pattern) chainSlots += pattern.duration;
-                });
-                // Fix: Ensure we don't divide by zero if something is malformed
-                const safeSlotsPerBar = slotsPerBar || 16;
-                const chainBars = Math.ceil(chainSlots / safeSlotsPerBar);
-                layerDurations[layerIndex] = chainBars;
-                maxChainBars = Math.max(maxChainBars, chainBars);
-            });
-
-            // Safeguard: If no duration, skip this playlist item
-            if (maxChainBars === 0) continue;
-
-            // 2. Schedule Each Layer (Looping if needed)
-            item.layers.forEach((layer, layerIndex) => {
-                let currentBarOffset = 0;
-                
-                // *** CRITICAL FIX: Loop Protection ***
-                let loopGuard = 0;
-                const MAX_LOOPS = 1000; // Hard limit to prevent browser crash
-
-                // Keep repeating the chain until we cover the maxChainBars duration
-                while (currentBarOffset < maxChainBars) {
-                    
-                    if (loopGuard++ > MAX_LOOPS) {
-                        console.warn("Infinite Loop Detected in Ligature AudioProvider. Breaking.");
-                        break;
-                    }
-
-                    // Track if we actually advanced time in this iteration
-                    const startOffset = currentBarOffset;
-
-                    for (const chainItem of layer.items) {
-                        if (currentBarOffset >= maxChainBars) break;
-
-                        const pattern = track.patterns[chainItem.id];
-                        // If pattern missing, skip
-                        if (!pattern) continue;
-
-                        const patternBars = Math.ceil(pattern.duration / slotsPerBar);
-                        
-                        // If pattern has 0 duration (e.g. empty pattern), force it to 1 bar 
-                        // or skip it to prevent infinite loop. 
-                        // Standard Rest patterns should have duration.
-                        if (patternBars === 0) continue; 
-
-                        // Schedule events for this pattern instance
-                        for (const [trackName, events] of Object.entries(pattern.tracks)) {
-                            // OPTIMIZATION: Use the pre-connected synth
-                            const synth = trackSynthMap.get(trackName);
-                            if (synth) {
-                                const trackMod = pattern.trackModifiers[trackName];
-                                const playlistVolume = chainItem.volume || 0; 
-                                const trackVolume = trackMod?.volume || 0;
-                                const totalVolDb = playlistVolume + trackVolume;
-                                let baseVelocity = Math.pow(10, totalVolDb / 20);
-                                baseVelocity = Math.max(0, Math.min(1, baseVelocity));
-
-                                const toneEvents = events.map(event => {
-                                    const noteNames = event.notes.map(n => 
-                                        resolveAndCacheNote(
-                                            n,
-                                            runningConfig.scaleRoot,
-                                            runningConfig.scaleMode,
-                                            chainItem.transposition + (trackMod?.transpose || 0)
-                                        )
-                                    );
-                                    
-                                    const timeInSlots = event.time;
-                                    const bar = Math.floor(timeInSlots / slotsPerBar);
-                                    // Use safe math for beat/sixteenth calculation
-                                    const beatDivisor = (grid * (4 / timeSig[1])) || 1;
-                                    const beat = Math.floor((timeInSlots % slotsPerBar) / beatDivisor);
-                                    const sixteenthDivisor = (grid / 4) || 1;
-                                    const sixteenth = (timeInSlots % beatDivisor) / sixteenthDivisor;
-                                    
-                                    const durationSeconds = event.duration * (60 / runningConfig.bpm / sixteenthDivisor);
-                                    
-                                    return {
-                                        time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
-                                        duration: durationSeconds,
-                                        notes: noteNames,
-                                    };
-                                });
-
-                                const part = new Tone.Part((time, value) => {
-                                    const humanizeAmt = runningConfig.humanize || 0;
-                                    let offset = 0;
-                                    let finalVel = baseVelocity;
-                                    if (humanizeAmt > 0) {
-                                        offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
-                                        finalVel = baseVelocity * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
-                                    }
-                                    finalVel = Math.max(0, Math.min(1, finalVel));
-                                    synth.triggerAttackRelease(value.notes, value.duration, time + offset, finalVel);
-                                }, toneEvents).start(0);
-                                
-                                scheduledPartsRef.current.push(part);
-                            }
-                        }
-                        
-                        currentBarOffset += patternBars;
-                    }
-
-                    // *** CRITICAL FIX: If we didn't advance time at all in this loop iteration (e.g. empty chain), break to avoid freeze.
-                    if (currentBarOffset === startOffset) {
-                        break; 
-                    }
+    for (const item of track.playlist) {
+        if (item.type === 'command') {
+            transport.scheduleOnce((time: number) => {
+                if (item.command === 'BPM') transport.bpm.rampTo(parseFloat(item.value), 0.1, time);
+                if (item.command === 'Scale') {
+                    const [root, mode] = item.value.split(' ');
+                    runningConfig.scaleRoot = root;
+                    runningConfig.scaleMode = mode || 'Major';
                 }
+            }, `${totalBars}:0:0`);
+            continue;
+        }
+
+        const { grid, timeSig } = runningConfig;
+        const slotsPerBar = grid * (4 / timeSig[1]) * timeSig[0];
+        let maxChainBars = 0;
+        
+        item.layers.forEach(layer => {
+            let chainSlots = 0;
+            layer.items.forEach(chainItem => {
+                const pattern = track.patterns[chainItem.id];
+                if (pattern) chainSlots += pattern.duration;
             });
+            const safeSlotsPerBar = slotsPerBar || 1;
+            const chainBars = Math.ceil(chainSlots / safeSlotsPerBar);
+            maxChainBars = Math.max(maxChainBars, chainBars);
+        });
 
-            // Advance Global Cursor by the length of the longest chain
-            totalBars += maxChainBars;
-        }
+        if (maxChainBars === 0) continue;
 
-        transport.loop = true;
-        transport.loopEnd = `${totalBars}:0:0`;
-    };
+        item.layers.forEach(layer => {
+            let currentBarOffset = 0;
+            let loopGuard = 0;
+            const MAX_LOOPS = 1000;
 
-    const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number): string => {
-        const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}`;
-        if (noteCacheRef.current.has(key)) {
-            return noteCacheRef.current.get(key)!;
-        }
-        const resolved = resolveNote(noteDef.degree + transpose, root, mode, noteDef.octaveShift, noteDef.accidental, noteDef.isNatural);
-        noteCacheRef.current.set(key, resolved);
-        return resolved;
-    };
+            while (currentBarOffset < maxChainBars) {
+                if (loopGuard++ > MAX_LOOPS) { console.warn("Infinite Loop Detected. Breaking."); break; }
+                const startOffset = currentBarOffset;
+
+                for (const chainItem of layer.items) {
+                    if (currentBarOffset >= maxChainBars) break;
+                    const pattern = track.patterns[chainItem.id];
+                    if (!pattern) continue;
+                    const patternBars = Math.ceil(pattern.duration / slotsPerBar) || 1;
+
+                    for (const [trackName, events] of Object.entries(pattern.tracks)) {
+                        const synth = trackSynthMap.get(trackName);
+                        // Lookup Definition to check mapping
+                        const instConfig = track.instruments[trackName];
+                        // Note: instrumentDefsRef holds the definition list passed to playTrack
+                        const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
+                        
+                        if (synth && baseDef) {
+                            // Default to 'diatonic' (scale-relative) if undefined
+                            const mapping = baseDef.mapping || 'diatonic';
+
+                            const trackMod = pattern.trackModifiers[trackName];
+                            const playlistVolume = chainItem.volume || 0; 
+                            const trackVolume = trackMod?.volume || 0;
+                            const totalVolDb = playlistVolume + trackVolume;
+                            let baseVelocity = Math.pow(10, totalVolDb / 20);
+                            baseVelocity = Math.max(0, Math.min(1, baseVelocity));
+
+                            const toneEvents = events.map(event => {
+                                const noteNames = event.notes.map(n => 
+                                    resolveAndCacheNote(
+                                        n,
+                                        runningConfig.scaleRoot,
+                                        runningConfig.scaleMode,
+                                        chainItem.transposition + (trackMod?.transpose || 0),
+                                        mapping // Pass mapping
+                                    )
+                                );
+                                const timeInSlots = event.time;
+                                const bar = Math.floor(timeInSlots / slotsPerBar);
+                                const beatDivisor = (grid * (4 / timeSig[1])) || 1;
+                                const beat = Math.floor((timeInSlots % slotsPerBar) / beatDivisor);
+                                const sixteenthDivisor = (grid / 4) || 1;
+                                const sixteenth = (timeInSlots % beatDivisor) / sixteenthDivisor;
+                                const durationSeconds = event.duration * (60 / runningConfig.bpm / sixteenthDivisor);
+                                return {
+                                    time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
+                                    duration: durationSeconds,
+                                    notes: noteNames,
+                                };
+                            });
+
+                            const part = new Tone.Part((time, value) => {
+                                const humanizeAmt = runningConfig.humanize || 0;
+                                let offset = 0;
+                                let finalVel = baseVelocity;
+                                if (humanizeAmt > 0) {
+                                    offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
+                                    finalVel = baseVelocity * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
+                                }
+                                finalVel = Math.max(0, Math.min(1, finalVel));
+                                synth.triggerAttackRelease(value.notes, value.duration, time + offset, finalVel);
+                            }, toneEvents).start(0);
+                            
+                            scheduledPartsRef.current.push(part);
+                        }
+                    }
+                    currentBarOffset += patternBars;
+                }
+                if (currentBarOffset === startOffset) break; 
+            }
+        });
+        totalBars += maxChainBars;
+    }
+
+    transport.loop = true;
+    transport.loopEnd = `${totalBars}:0:0`;
+};
+
+// Replace this method in AudioProvider.tsx
+const resolveAndCacheNote = (
+    noteDef: NoteDef, 
+    root: string, 
+    mode: string, 
+    transpose: number, 
+    mapping: 'diatonic' | 'chromatic' // New Param
+): string => {
+    
+    // Unique cache key including mapping strategy
+    const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}-${mapping}`;
+    
+    if (noteCacheRef.current.has(key)) {
+        return noteCacheRef.current.get(key)!;
+    }
+    
+    // LOGIC: If chromatic, we force isNatural=true.
+    // In resolveNote(), isNatural=true forces the scale to 'Major'.
+    // Since 'Major' is Chromatic relative to C (0, 2, 4...), 
+    // this effectively maps 1->C, 2->D, 3->E... regardless of the song's actual Key (A Minor, etc).
+    // This assumes the sampler is mapped to C Major keys (C4, D4, E4...).
+    
+    const forceNatural = mapping === 'chromatic';
+    
+    const resolved = resolveNote(
+        noteDef.degree + transpose, 
+        root, 
+        mode, 
+        noteDef.octaveShift, 
+        noteDef.accidental, 
+        noteDef.isNatural || forceNatural
+    );
+    
+    noteCacheRef.current.set(key, resolved);
+    return resolved;
+};
 
     useEffect(() => {
         return () => {

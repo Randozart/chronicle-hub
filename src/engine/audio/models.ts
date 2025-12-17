@@ -17,6 +17,8 @@ export interface InstrumentDefinition {
     name: string;
     type: 'synth' | 'sampler';
     category?: string;
+    mapping?: 'diatonic' | 'chromatic';
+
     config: {
         oscillator?: {
             type: SynthType;
