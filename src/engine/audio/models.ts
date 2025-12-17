@@ -12,6 +12,13 @@ export interface EnvelopeDef {
     release?: number;
 }
 
+// --- NEW: Tracker Effect Command ---
+export interface EffectCommand {
+    code: string; // e.g. 'P', 'V', 'A'
+    value: number; // e.g. 15, 0
+}
+// ----------------------------------
+
 export interface InstrumentDefinition {
     id: string;
     name: string;
@@ -25,12 +32,9 @@ export interface InstrumentDefinition {
             [key: string]: any; 
         };
         envelope?: EnvelopeDef;
-        // SAMPLER SPECIFIC
         urls?: Record<string, string>;
         baseUrl?: string;
         octaveOffset?: number;
-        
-        // COMMON
         volume?: number;
         polyphony?: number;
     };
@@ -40,9 +44,8 @@ export interface LigatureTrack {
     id: string;
     name: string;
     source: string; 
+    category?: string;
 }
-
-// --- RUNTIME TYPES ---
 
 export interface ParsedTrack {
     config: {
@@ -61,13 +64,16 @@ export interface ParsedTrack {
 }
 
 export interface InstrumentConfig {
-    id: string; // The base preset ID (e.g., 'hq_violin')
+    id: string; 
     overrides: {
         volume?: number;
         attack?: number;
         decay?: number;
         sustain?: number;
         release?: number;
+        octaveOffset?: number;
+        // --- NEW: Instrument-level effects ---
+        effects?: EffectCommand[];
     };
 }
 
@@ -77,16 +83,15 @@ export interface PatternModifier {
     transpose: number;
     volume: number;
     pan: number;
+    // --- NEW: Track-level effects ---
+    effects?: EffectCommand[];
 }
 
-// --- NEW STRUCTURE ---
 export interface PatternPlaylistItem {
     type: 'pattern',
-    // A Playlist Row consists of parallel Layers
     layers: Layer[];
 }
 
-// A Layer is a sequence (Chain) of patterns played in order
 export interface Layer {
     items: ChainItem[];
 }
@@ -96,7 +101,6 @@ export interface ChainItem {
     transposition: number;
     volume?: number;
 }
-// ---------------------
 
 export interface CommandPlaylistItem {
     type: 'command';
@@ -122,6 +126,8 @@ export interface NoteDef {
     octaveShift: number;  
     accidental: number;   
     isNatural: boolean;   
+    // --- NEW: Per-note effects ---
+    effects?: EffectCommand[];
 }
 
 export type NoteGroup = NoteDef[];

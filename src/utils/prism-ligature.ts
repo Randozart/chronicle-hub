@@ -1,5 +1,7 @@
 export const ligatureGrammar = {
     'comment': { pattern: /\/\/.*|\/\*[\s\S]*?\*\// },
+        // Standalone Notes (Outside blocks) -> Orange
+
     
     // Definitions: @Root = [ 1 3 5 ]
     'definition': {
@@ -73,15 +75,24 @@ export const ligatureGrammar = {
 
     'alias-ref': { pattern: /@\w+/, alias: 'variable' },
     
-    // Standalone Notes (Outside blocks) -> Orange
-    'note-complex': {
-        pattern: /\b\d+['#b%,]*/,
-        inside: {
-            'octave-shift': { pattern: /['#,b%]+/, alias: 'builtin' }, // Yellow
-            'number': /\d+/ // Orange
-        }
-    },
-    
+
     'sustain-mark': { pattern: /-/, alias: 'sustain' }, 
     'silence': { pattern: /\./, alias: 'comment' }, 
+
+        'note-complex': {
+        pattern: /\b\d+['#b%,]*(?:\^\[.*?\])?/, // Update pattern to include suffix
+        inside: {
+            'octave-shift': { pattern: /['#,b%]+/, alias: 'builtin' }, 
+            'effect-block': {
+                pattern: /\^\[.*?\]/,
+                alias: 'function', // Blue (or choose another)
+                inside: {
+                    'punctuation': /[\^\[\]]/,
+                    'number': /\d+/, // Orange values
+                    'attr-name': /[A-Z]+/ // Effect Code
+                }
+            },
+            'number': /\d+/ 
+        }
+    },
 };
