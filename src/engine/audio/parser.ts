@@ -11,7 +11,7 @@ export class LigatureParser {
     // Group 2: @alias
     // Group 3: Note with optional ^[...] suffix
     // Group 4: Rhythmic symbols
-    private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\^\[.*?\])?)|[-.|])/g;
+    private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|[-.|])/g;
 
     private preParseScribeScript(source: string, mockQualities: PlayerQualities): string {
         const scribeRegex = /\{((?:[^{}]|\{[^{}]*\})*?)\}/g;
@@ -115,77 +115,73 @@ export class LigatureParser {
         const name = parts[0].trim();
         const rest = parts.slice(1).join(':').trim();
         
-        const match = rest.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?$/);
+        // Regex: ID + Optional (Props) + Optional ^[Effects]
+        const match = rest.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?(?:\^\[(.*)\])?$/);
         if (!match) return;
         
         const id = match[1];
+        const propsRaw = match[2];
+        const effectsRaw = match[3];
+
         const overrides: any = {};
         
-        if (match[2]) {
-            // Updated Modifier Parsing is shared for Instruments and Patterns
-            const mods = this.parseModifiers(match[2], track);
-            
-            if (mods.volume !== 0) overrides.volume = mods.volume;
-            // Map legacy props if they were parsed by parseModifiers?
-            // Actually parseModifiers returns PatternModifier. 
-            // We need to parse instrument specific props too.
-            // Let's reuse parseModifiers but augment it, OR just manually parse the bracket here for instrument specific keys.
-            
-            const modParts = match[2].split(',');
+        // 1. Parse Properties (v:10, a:0.1)
+        if (propsRaw) {
+            const modParts = propsRaw.split(',');
             modParts.forEach(p => {
                 const parts = p.split(':');
                 if (parts.length === 2) {
                     const k = parts[0].trim().toLowerCase();
-                    const vStr = parts[1].trim();
-                    
-                    // --- NEW: Parse Effects t:[...] ---
-                    if (k === 't') {
-                        overrides.effects = this.parseEffectsArray(vStr);
-                    } else {
-                        const v = parseFloat(vStr);
-                        if (!isNaN(v)) {
-                            if (['v', 'vol', 'volume'].includes(k)) overrides.volume = v;
-                            if (['a', 'att', 'attack'].includes(k)) overrides.attack = v;
-                            if (['d', 'dec', 'decay'].includes(k)) overrides.decay = v;
-                            if (['s', 'sus', 'sustain'].includes(k)) overrides.sustain = v;
-                            if (['r', 'rel', 'release'].includes(k)) overrides.release = v;
-                            if (['o', 'oct', 'octave'].includes(k)) overrides.octaveOffset = v;
-                        }
+                    const v = parseFloat(parts[1].trim());
+                    if (!isNaN(v)) {
+                        if (['v', 'vol', 'volume'].includes(k)) overrides.volume = v;
+                        if (['a', 'att', 'attack'].includes(k)) overrides.attack = v;
+                        if (['d', 'dec', 'decay'].includes(k)) overrides.decay = v;
+                        if (['s', 'sus', 'sustain'].includes(k)) overrides.sustain = v;
+                        if (['r', 'rel', 'release'].includes(k)) overrides.release = v;
+                        if (['o', 'oct', 'octave'].includes(k)) overrides.octaveOffset = v;
                     }
                 }
             });
+        }
+
+        // 2. Parse Effects ^[F20]
+        if (effectsRaw) {
+            overrides.effects = this.parseEffectsArray(effectsRaw);
         }
         
         track.instruments[name] = { id, overrides };
     }
 
     private parseDefinition(line: string, track: ParsedTrack) {
-        // Updated Regex to capture trailing modifiers: @Arp = [1 3 5](t:[...])
-        // Group 1: Alias, Group 2: Content, Group 3: Optional Modifiers
-        const match = line.match(/(@\w+)\s*=\s*\[(.*?)\](?:\^?\((.*)\))?/);
+        // Regex: @Alias = [List](Props)^[Effects]
+        const match = line.match(/(@\w+)\s*=\s*\[(.*?)\](?:\((.*)\))?(?:\^\[(.*)\])?/);
         if (!match) return;
 
         const alias = match[1].substring(1);
         const content = match[2];
-        const modifierStr = match[3];
+        const propsRaw = match[3];
+        const effectsRaw = match[4];
 
+        // Split by whitespace
         const parts = content.split(/\s+/).filter(Boolean);
         const noteGroup: NoteGroup = parts.map(p => this.parseNoteToken(p));
 
-        // Apply Definition-Level Modifiers (Effects)
-        if (modifierStr) {
-            const mods = this.parseModifiers(modifierStr, track);
-            if (mods.effects) {
-                noteGroup.forEach(n => {
-                    n.effects = [...(n.effects || []), ...mods.effects!];
-                });
-            }
+        // Apply Definition-Level Modifiers
+        if (propsRaw || effectsRaw) {
+            const mods = this.parseModifiers(propsRaw || '', track);
+            const effects = effectsRaw ? this.parseEffectsArray(effectsRaw) : [];
+
+            noteGroup.forEach(n => {
+                if (mods.volume) n.volume = (n.volume || 0) + mods.volume;
+                if (effects.length > 0) n.effects = [...(n.effects || []), ...effects];
+            });
         }
 
         track.definitions[alias] = noteGroup;
     }
 
-    private parsePatternRow(line: string, track: ParsedTrack, patternId: string, lastTrackName: string): string {
+   private parsePatternRow(line: string, track: ParsedTrack, patternId: string, lastTrackName: string): string {
         const pipeIndex = line.indexOf('|');
         if (pipeIndex === -1) return lastTrackName;
 
@@ -201,11 +197,18 @@ export class LigatureParser {
             return '';
         }
 
-        const match = leftSide.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?$/);
+        // Regex: Name + Optional (Props) + Optional ^[Effects]
+        const match = leftSide.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?(?:\^\[(.*)\])?$/);
         if (match) {
             trackName = match[1];
-            if (match[2]) {
-                modifiers = this.parseModifiers(match[2], track);
+            const propsRaw = match[2];
+            const effectsRaw = match[3];
+
+            if (propsRaw || effectsRaw) {
+                modifiers = this.parseModifiers(propsRaw || '', track);
+                if (effectsRaw) {
+                    modifiers.effects = this.parseEffectsArray(effectsRaw);
+                }
             }
         }
 
@@ -221,18 +224,15 @@ export class LigatureParser {
 
         const sequence = pattern.tracks[trackName];
         const { grid, timeSig } = track.config;
-        const slotsPerBeat = grid * (4 / timeSig[1]);
-        const slotsPerBar = slotsPerBeat * timeSig[0];
-
+        
         const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
         let currentTime = 0; 
 
         for (const token of tokens) {
             if (token === '|') continue;
             if (token === '.') { currentTime++; continue; }
-
             if (token === '-') {
-                if (sequence.length > 0) {
+                 if (sequence.length > 0) {
                     const lastEvent = sequence[sequence.length - 1];
                     if (lastEvent && Math.abs((lastEvent.time + lastEvent.duration) - currentTime) < 0.01) {
                         lastEvent.duration++;
@@ -245,11 +245,9 @@ export class LigatureParser {
             if (token.startsWith('(')) {
                 const inner = token.substring(1, token.length - 1);
                 const subMatches = inner.split(/\s+/).filter(Boolean);
-                
                 if (subMatches.length > 0) {
                     const count = subMatches.length;
                     const durationPerNote = 1.0 / count; 
-                    
                     subMatches.forEach((subToken, idx) => {
                         const notes = this.resolveNotes(subToken, track.definitions);
                         if (notes.length > 0) {
@@ -272,6 +270,8 @@ export class LigatureParser {
             currentTime++;
         }
         
+        const slotsPerBeat = grid * (4 / timeSig[1]);
+        const slotsPerBar = slotsPerBeat * timeSig[0];
         const barCount = (content.match(/\|/g) || []).length - 1;
         const expectedDurationInSlots = barCount > 0 ? barCount * slotsPerBar : currentTime;
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
@@ -317,10 +317,9 @@ export class LigatureParser {
         if (layers.length > 0) track.playlist.push({ type: 'pattern', layers });
     }
 
-        private parseEffectsArray(raw: string): EffectCommand[] {
+    private parseEffectsArray(raw: string): EffectCommand[] {
         const clean = raw.replace(/[\[\]]/g, '');
         const items = clean.split(',').map(s => s.trim()).filter(Boolean);
-        
         return items.map(item => {
             const code = item.charAt(0).toUpperCase();
             const valStr = item.substring(1);
@@ -328,7 +327,6 @@ export class LigatureParser {
             return { code, value: isNaN(val) ? 0 : val };
         });
     }
-
 
     private parseModifiers(raw: string, track: ParsedTrack): PatternModifier {
         const mods: PatternModifier = { transpose: 0, volume: 0, pan: 0 };
@@ -382,17 +380,17 @@ export class LigatureParser {
 
     // Updated Note Token Parsing
     private parseNoteToken(token: string): NoteDef {
-        // 1. Digits, 2. Modifiers, 3. Effect Block
-        const match = token.match(/^(\d+)(['#b%,]*)(?:\^\[(.*?)\])?$/);
+        // Regex: Digits + Mods + Optional(Props) + Optional^[Effects]
+        const match = token.match(/^(\d+)(['#b%,]*)(?:\(([^)]*)\))?(?:\^\[(.*?)\])?$/);
         
         if (!match) return { degree: 1, octaveShift: 0, accidental: 0, isNatural: false };
         
         const degree = parseInt(match[1]);
         const mods = match[2];
-        const effectsRaw = match[3];
+        const propsRaw = match[3];
+        const effectsRaw = match[4];
         
         let octaveShift = 0; let accidental = 0; let isNatural = false;
-        
         for (const char of mods) {
             if (char === "'") octaveShift++;
             if (char === ',') octaveShift--;
@@ -403,6 +401,18 @@ export class LigatureParser {
 
         const noteDef: NoteDef = { degree, octaveShift, accidental, isNatural };
         
+        // Parse Props (v:10)
+        if (propsRaw) {
+            const parts = propsRaw.split(',');
+            parts.forEach(p => {
+                const [k, v] = p.split(':').map(s => s.trim());
+                if (k === 'v' || k === 'vol') {
+                    noteDef.volume = parseFloat(v);
+                }
+            });
+        }
+
+        // Parse Effects ^[F20]
         if (effectsRaw) {
             noteDef.effects = this.parseEffectsArray(effectsRaw);
         }

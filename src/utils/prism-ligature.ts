@@ -79,17 +79,27 @@ export const ligatureGrammar = {
     'sustain-mark': { pattern: /-/, alias: 'sustain' }, 
     'silence': { pattern: /\./, alias: 'comment' }, 
 
-        'note-complex': {
-        pattern: /\b\d+['#b%,]*(?:\^\[.*?\])?/, // Update pattern to include suffix
+    'note-complex': {
+        // Matches: Digits + Mods + Optional(Props) + Optional^[Effects]
+        pattern: /\b\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?/,
         inside: {
             'octave-shift': { pattern: /['#,b%]+/, alias: 'builtin' }, 
             'effect-block': {
                 pattern: /\^\[.*?\]/,
-                alias: 'function', // Blue (or choose another)
+                alias: 'function',
                 inside: {
                     'punctuation': /[\^\[\]]/,
-                    'number': /\d+/, // Orange values
-                    'attr-name': /[A-Z]+/ // Effect Code
+                    'number': /\d+/, 
+                    'attr-name': /[A-Z]+/ 
+                }
+            },
+            'prop-block': {
+                pattern: /\([^)]*\)/,
+                alias: 'attr-value',
+                inside: {
+                    'punctuation': /[()]/,
+                    'attr-name': /[a-z]+:/,
+                    'number': /-?\d+/
                 }
             },
             'number': /\d+/ 

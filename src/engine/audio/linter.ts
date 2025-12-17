@@ -12,7 +12,7 @@ export interface LintError {
 const HEADER_REGEX = /^\[(.*?)\]$/;
 
 // UPDATED TOKEN REGEX: Includes optional ^t:[...] suffix in the capture group
-const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|\d+['#b%,]*(?:\^\[.*?\])?|[-.|])/g;
+const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|[-.|])/g;
 
 export function lintLigature(source: string): LintError[] {
     const errors: LintError[] = [];

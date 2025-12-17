@@ -225,11 +225,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                             // Base volume for this instrument (used for resets and relative calcs)
                             const baseVolume = instConfig?.overrides.volume ?? baseDef?.config.volume ?? -10;
 
-                            if (synth) {
+                             if (synth) {
                                 const playlistVolume = chainItem.volume || 0; 
                                 const trackVolume = trackMod?.volume || 0;
                                 const totalVolDb = playlistVolume + trackVolume;
                                 
+                                // Base velocity from Track/Playlist levels
                                 let baseVelocity = Math.pow(10, totalVolDb / 20);
                                 baseVelocity = Math.max(0, Math.min(1, baseVelocity));
 
@@ -244,6 +245,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                         )
                                     );
                                     
+                                    // NEW: Calculate Event Velocity including Note-Level Volume Modifiers (v:10)
+                                    let eventVelocity = baseVelocity;
+                                    // Use the first note's volume as the event volume (polyphony limitation)
+                                    const noteVol = event.notes[0]?.volume || 0;
+                                    
+                                    if (noteVol !== 0) {
+                                        const combinedDb = totalVolDb + noteVol;
+                                        eventVelocity = Math.pow(10, combinedDb / 20);
+                                    }
+                                    eventVelocity = Math.max(0, Math.min(1, eventVelocity));
+                                    
                                     const timeInSlots = event.time;
                                     const bar = Math.floor(timeInSlots / slotsPerBar);
                                     const beatDivisor = (grid * (4 / timeSig[1])) || 1;
@@ -256,66 +268,48 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                         time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
                                         duration: durationSeconds,
                                         notes: noteNames,
+                                        velocity: eventVelocity, // PASS VELOCITY
                                         noteDefs: event.notes
                                     };
                                 });
 
                                 const part = new Tone.Part((time, value) => {
-                                    // 1. SAFETY RESET: Snap volume back to baseline at Note Start
                                     synth.volume.cancelScheduledValues(time);
                                     synth.volume.setValueAtTime(baseVolume, time);
 
-                                    // 2. Humanize
+                                    // Humanize applied to the calculated velocity
+                                    let finalVel = value.velocity;
                                     const humanizeAmt = runningConfig.humanize || 0;
                                     let offset = 0;
-                                    let finalVel = baseVelocity;
+                                    
                                     if (humanizeAmt > 0) {
                                         offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
-                                        finalVel = baseVelocity * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
+                                        finalVel = finalVel * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
+                                        // Update time for humanize offset
+                                        time += offset;
                                     }
                                     finalVel = Math.max(0, Math.min(1, finalVel));
 
-                                    // 3. Trigger
-                                    synth.triggerAttackRelease(value.notes, value.duration, time + offset, finalVel);
+                                    synth.triggerAttackRelease(value.notes, value.duration, time, finalVel);
 
-                                    // 4. Effects
-                                     const noteEffects = value.noteDefs[0]?.effects || [];
+                                    // Effects Logic (Already provided in previous step, ensuring consistency)
+                                    const noteEffects = value.noteDefs[0]?.effects || [];
                                     const activeEffects = [...instEffects, ...trackEffects, ...noteEffects];
-
-                                    if (activeEffects.length > 0) {
-                                        console.log(`[Audio] Note: ${value.notes[0]} | Time: ${time.toFixed(3)} | Dur: ${value.duration.toFixed(3)} | BaseVol: ${baseVolume}`);
-                                    }
-
+                                    
                                     activeEffects.forEach(fx => {
-                                        // F: Fade Out
                                         if (fx.code === 'F') {
-                                            // F10 means "Fade down by 10dB"
-                                            // F0 means "Fade to Silence"
-                                            let targetVol = -100;
-                                            
-                                            if (fx.value !== 0) {
-                                                // Calculate relative target: Base - Amount
-                                                // We use Math.abs to ensure we subtract, even if user typed F-10
-                                                targetVol = baseVolume - Math.abs(fx.value);
-                                            }
-
-                                            // Debug
-                                            // console.log(`FADE: ${baseVolume} -> ${targetVol}`);
-
-                                            synth.volume.setValueAtTime(baseVolume, time + offset);
-                                            synth.volume.rampTo(targetVol, value.duration - 0.1, time + offset);
-                                        }
-                                        // S: Swell
-                                        else if (fx.code === 'S') {
-                                            // S10 -> Start 10dB lower. S0 -> Start at Silence
+                                            const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
+                                            const targetVol = baseVolume - range;
+                                            synth.volume.setValueAtTime(baseVolume, time);
+                                            synth.volume.rampTo(targetVol, value.duration - 0.1, time);
+                                        } else if (fx.code === 'S') {
                                             const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
                                             const startVol = baseVolume - range;
-
-                                            // Anchor Start -> Ramp to Base
-                                            synth.volume.setValueAtTime(startVol, time + offset);
-                                            synth.volume.rampTo(baseVolume, value.duration - 0.1, time + offset);
+                                            synth.volume.setValueAtTime(startVol, time);
+                                            synth.volume.rampTo(baseVolume, value.duration - 0.1, time);
                                         }
                                     });
+
                                 }, toneEvents).start(0);
                                 
                                 scheduledPartsRef.current.push(part);
