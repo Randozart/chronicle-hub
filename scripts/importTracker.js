@@ -1,29 +1,22 @@
-// scripts/importTracker.js - Final Version
-// Run: node scripts/importTracker.js convert-tracker-dump ./patterns.txt ./manifest.txt ./raw_samples ./output_dir "Category" --scale="C Minor"
+// scripts/importTracker.js - The "C-5 Standard" Version
+// Usage: node scripts/importTracker.js convert-tracker-dump <patterns> <manifest> <samples> <out> <category> [--scale="B Minor"]
 
 const fs = require('fs/promises');
 const path = require('path');
 const { Note, Scale } = require('tonal');
 
 // --- CONSTANTS ---
-const REFERENCE_C5_FREQ = 33452;
-const C5_MIDI = Note.midi('C5');
 const NOTE_OFF = '===';
 const DEFAULT_TICKS_PER_ROW = 6;
 
 // --- HELPER FUNCTIONS ---
 
-function calculateBaseNote(c5freq) {
-    if (c5freq <= 0) return 'C4';
-    const semitoneOffset = 12 * Math.log2(c5freq / REFERENCE_C5_FREQ);
-    const baseMidiNote = Math.round(C5_MIDI + semitoneOffset);
-    return Note.fromMidi(baseMidiNote);
-}
-
 function parseTrackerNote(noteStr) {
     if (!noteStr || noteStr.startsWith('.') || noteStr.startsWith('^')) return null;
     if (noteStr === NOTE_OFF) return NOTE_OFF;
-    const note = noteStr.substring(0, 2).replace('-', 'b');
+    
+    // FIX: Remove '-' (Natural)
+    const note = noteStr.substring(0, 2).replace('-', ''); 
     const octave = noteStr.substring(2, 3);
     return `${note}${octave}`;
 }
@@ -31,10 +24,7 @@ function parseTrackerNote(noteStr) {
 function normalizeTrackerVolume(trackerVol, globalVolMultiplier) {
     if (trackerVol === null || isNaN(trackerVol) || trackerVol <= 0) return null;
     if (trackerVol >= 64) return Math.round(20 * Math.log10(globalVolMultiplier));
-    
-    // Scale 0-64 to linear amplitude then to dB
     const linearAmplitude = (trackerVol / 64.0) * globalVolMultiplier;
-    // Logarithmic falloff
     const db = 20 * Math.log10(linearAmplitude);
     return Math.round(db);
 }
@@ -69,8 +59,6 @@ function absoluteNoteToRelative(absoluteNote, scaleRoot, scaleMode) {
     const tonicMidi = Note.midi(scale.tonic + "4"); 
     const degreeInScaleMidi = Note.midi(scale.notes[bestMatch.degree - 1] + "4");
     
-    // Calculate octave shift relative to how the scale wraps
-    // Simply: (TargetMIDI - (TonicMIDI + Interval)) / 12
     const interval = degreeInScaleMidi - tonicMidi; 
     const finalOctaveShift = Math.floor((inputMidi - tonicMidi - interval + 6) / 12);
     
@@ -86,11 +74,7 @@ function serializeRelativeNote(noteDef) {
     return out; 
 }
 
-/**
- * Calculates a Ligature effect string based on tracker command.
- * Assuming standard 64 volume range.
- */
-function translateEffect(effCmd, durationRows) {
+function translateEffect(effCmd, durationRows, currentSpeed) {
     if (!effCmd || effCmd.length < 3) return null;
     
     const cmd = effCmd.charAt(0).toUpperCase();
@@ -98,36 +82,37 @@ function translateEffect(effCmd, durationRows) {
     const value = parseInt(valHex, 16);
     if (isNaN(value)) return null;
 
-    // Separate x and y (nibbles)
     const x = (value & 0xF0) >> 4;
     const y = (value & 0x0F);
     
-    // speed in tracker ticks (default 6)
-    const ticksPerRow = DEFAULT_TICKS_PER_ROW; 
+    const ticksPerRow = currentSpeed || DEFAULT_TICKS_PER_ROW; 
     
-    // Tracker 'Dxy' or 'Cxy' logic:
-    // If x is non-zero, slide up/down by x. If y is non-zero, slide by y.
-    // Usually only one is active per row in standard MOD/XM unless fine slides.
-    // Simplifying: take the larger nibble as the slide amount per tick.
-    const slidePerTick = Math.max(x, y);
-    
-    // Total drop over the duration of the note (in tracker units 0-64)
+    let slidePerTick = 0;
+    let isSlideUp = false;
+    let isSlideDown = false;
+
+    if (cmd === 'D' || cmd === 'K' || cmd === 'L') {
+        if (x === 0 && y > 0) {
+            slidePerTick = y;
+            isSlideDown = true;
+        } else if (y === 0 && x > 0) {
+            slidePerTick = x;
+            isSlideUp = true;
+        }
+    } else if (cmd === 'C') { 
+         slidePerTick = Math.max(x, y); 
+         isSlideUp = true; 
+    }
+
+    if (slidePerTick === 0) return null;
+
     const totalChange = slidePerTick * ticksPerRow * durationRows;
-    
-    // Convert 0-64 tracker volume to rough dB or % for Ligature
-    // Ligature Fxx is "Fade by xx". Let's map 64 units to 100 (full fade).
     const scaledVal = Math.min(100, Math.round((totalChange / 64) * 100));
     
     if (scaledVal <= 0) return null;
 
-    // D = Volume Slide Down (Fade)
-    if (cmd === 'D') {
-        return `^[F${scaledVal}]`;
-    }
-    // C = Volume Slide Up (Swell) - Note: In some trackers 'A' is vol slide, but following prompt specs 'C'
-    if (cmd === 'C') {
-        return `^[S${scaledVal}]`;
-    }
+    if (isSlideDown) return `^[F${scaledVal}]`; 
+    if (isSlideUp) return `^[S${scaledVal}]`;   
     
     return null;
 }
@@ -164,10 +149,11 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
         const isPercussive = instrumentId.includes('kick') || instrumentId.includes('snare') || instrumentId.includes('hat') || instrumentId.includes('perc');
         const releaseTime = isPercussive ? 0.5 : 2.0;
         
-        const baseNote = calculateBaseNote(c5Freq);
+        // FIX: The tracker explicitly states these files are "C-5".
+        // We map them all to C4 (Standard Middle C in Tone.js) so relative pitch is perfect.
+        const baseNote = "C5"; 
         const sampleNumPadded = String(sampleNum).padStart(2, '0');
         
-        // Match sample file (e.g. 01.wav, sample_01.wav)
         const fileRegex = new RegExp(`(^|[^0-9])${sampleNumPadded}([^0-9]|$)`);
         const foundFileName = allRawFiles.find(f => fileRegex.test(f));
         
@@ -182,8 +168,13 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
         await fs.mkdir(instrumentDir, { recursive: true });
         await fs.copyFile(sourceSamplePath, path.join(instrumentDir, outputFileName));
         
-        // Add loop property to preset if it's not percussive
-        const loopConfig = isPercussive ? undefined : { enabled: true };
+        // Loop defaults to false (safer)
+        const loopConfig = { 
+            enabled: true, 
+            start: 0, 
+            end: 0,
+            type: 'forward'
+        };
 
         const definition = {
             id: instrumentId,
@@ -194,7 +185,8 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
                 urls: { [baseNote]: outputFileName },
                 envelope: { attack: 0.01, release: releaseTime },
                 volume: baseDb,
-                loop: loopConfig // New Loop Property
+                octaveOffset: 0, // Standard tracker->midi adjustment
+                loop: loopConfig
             },
         };
         allDefinitions.push(`'${instrumentId}': ${JSON.stringify(definition, null, 4)}`);
@@ -208,10 +200,10 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
     const patternsData = {}; 
     let orderList = []; 
     let initialBpm = 125; 
+    let initialSpeed = 6; 
     let rowsPerPattern = 64; 
     const allUsedInstruments = new Set();
     
-    // Parse Headers
     for (const line of patternLines) { 
         if (line.startsWith('Orders:')) { 
             orderList = line.substring('Orders:'.length).trim().split(',').map(o => o.trim()).filter(o => o !== '-' && o !== ''); 
@@ -221,43 +213,52 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
         } 
     }
 
-    // Parse Grid
     let globalRowIndex = 0; 
     for (const line of patternLines) { 
         if (!line.startsWith('|')) continue; 
         
-        // Calculate which unique Pattern ID this row belongs to based on the Order List
         const patternOrderIndex = Math.floor(globalRowIndex / rowsPerPattern); 
         const patternId = orderList[patternOrderIndex]; 
-        
+        const currentRowInPattern = globalRowIndex % rowsPerPattern;
+
         if (patternId === undefined) continue; 
         
-        // Initialize Pattern Storage only if it doesn't exist
-        // This effectively ignores duplicates in the linear dump
         if (!patternsData[patternId]) { 
-            patternsData[patternId] = { rows: [] }; 
+            patternsData[patternId] = { rows: [], jumps: [] }; 
         } else if (patternsData[patternId].rows.length >= rowsPerPattern) {
-            // If we've already filled this pattern from a previous order occurrence, skip
             globalRowIndex++;
             continue;
         }
 
-        // Standard Tracker Channel Width: | Note Inst Vol Eff |
-        // Example: |C-5 01 v64 ...| 
-        // We split by pipe.
         const channels = line.split('|').slice(1, -1); 
         const rowEvents = []; 
         
         channels.forEach((content) => { 
-            // Parsing fixed width logic
             const noteStr = content.substring(0, 3);
             const instNum = content.substring(3, 5);
             const volStr = content.substring(5, 8);
-            const effStr = content.substring(8, 11); // Effect Column usually here
+            const effStr = content.substring(8, 11);
 
             const instId = manifestMap.get(instNum); 
             if (instId) allUsedInstruments.add(instId); 
             
+            if (globalRowIndex < 64 && effStr.startsWith('A')) {
+                const spd = parseInt(effStr.substring(1), 16);
+                if (!isNaN(spd) && spd > 0) {
+                    if (spd !== initialSpeed) {
+                        console.log(`> Detected Speed Change A${effStr.substring(1)} at Row ${globalRowIndex}. Setting Initial Speed to ${spd}.`);
+                        initialSpeed = spd;
+                    }
+                }
+            }
+
+            if (effStr.startsWith('B')) {
+                const jumpOrder = parseInt(effStr.substring(1), 16);
+                if (!isNaN(jumpOrder)) {
+                    patternsData[patternId].jumps.push({ row: currentRowInPattern, toOrder: jumpOrder });
+                }
+            }
+
             rowEvents.push({ 
                 note: parseTrackerNote(noteStr), 
                 instrumentId: instId, 
@@ -272,27 +273,37 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
     
     // --- Part 3: Generate Ligature Source ---
     console.log('\nPHASE 3: Generating Ligature Source...');
-    const grid = parseInt(options.grid || '12', 10); 
-    const speed = parseInt(options.speed || '6', 10); // Ticks per row
-    const slotsPerRow = grid / speed; 
     
-    let ligSource = `[CONFIG]\nBPM: ${initialBpm}\nGrid: ${grid}\nTime: 4/4\nScale: ${scaleRoot} ${scaleMode}\n\n[INSTRUMENTS]\n`;
+    const adjustedBpm = Math.round(initialBpm * (6.0 / initialSpeed));
+    if (adjustedBpm !== initialBpm) {
+        console.log(`> Adjusting BPM from ${initialBpm} to ${adjustedBpm} based on Speed A${initialSpeed.toString(16)}.`);
+    }
+
+    const grid = parseInt(options.grid || '12', 10); 
+    const speed = parseInt(options.speed || '4', 10); 
+    const slotsPerRow = grid / speed; 
+    const slotsPerBar = grid * 4; 
+    const rowsPerBeat = grid / slotsPerRow;
+    console.log(`> Grid ${grid} / Speed ${speed} = ${slotsPerRow.toFixed(2)} slots per row.`);
+    console.log(`> This means 1 Beat = ${rowsPerBeat} Tracker Rows.`);
+
+    let ligSource = `[CONFIG]\nBPM: ${adjustedBpm}\nGrid: ${grid}\nTime: 4/4\nScale: ${scaleRoot} ${scaleMode}\n\n[INSTRUMENTS]\n`;
     Array.from(allUsedInstruments).sort().forEach(id => { ligSource += `${id}: ${id}\n`; });
     
-    // Generate Unique Patterns
-    // Get unique IDs from patternsData
     const uniqueIds = Object.keys(patternsData).sort();
 
     for (const id of uniqueIds) {
         ligSource += `\n[PATTERN: P${id}]\n`;
         const pat = patternsData[id]; 
-        const totalSlots = Math.ceil(pat.rows.length * slotsPerRow);
+        
+        const rawSlotsNeeded = Math.ceil(pat.rows.length * slotsPerRow);
+        const remainder = rawSlotsNeeded % slotsPerBar;
+        const totalSlots = remainder === 0 ? rawSlotsNeeded : rawSlotsNeeded + (slotsPerBar - remainder);
         
         Array.from(allUsedInstruments).sort().forEach(instId => {
             let slots = new Array(totalSlots).fill('.'); 
             const noteEvents = [];
             
-            // Collect events for this instrument
             for (let rIndex = 0; rIndex < pat.rows.length; rIndex++) { 
                 const event = pat.rows[rIndex].find(c => c && c.instrumentId === instId && c.note); 
                 if (event) { 
@@ -304,28 +315,20 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
                 } 
             }
             
-            // Render events to slots
             for (let i = 0; i < noteEvents.length; i++) {
                 const evt = noteEvents[i];
-                if (evt.type === 'off') continue; // Handled by duration of previous 'on'
+                if (evt.type === 'off') continue;
 
                 const nextEvt = noteEvents[i+1];
                 let endRow = nextEvt ? nextEvt.row : pat.rows.length;
-                
-                // Calculate duration in tracker rows
                 const durationRows = endRow - evt.row;
-                
-                // --- Effect Translation ---
-                const effectString = translateEffect(evt.effect, durationRows);
-                // --------------------------
+                const effectString = translateEffect(evt.effect, durationRows, initialSpeed);
 
                 const relativeNoteDef = absoluteNoteToRelative(evt.note, scaleRoot, scaleMode);
                 let noteString = serializeRelativeNote(relativeNoteDef);
                 
                 const normalizedVolume = normalizeTrackerVolume(evt.volume, globalVolMultiplier);
                 if (normalizedVolume !== null) { noteString += `(v:${normalizedVolume})`; }
-                
-                // Inject Effect
                 if (effectString) { noteString += effectString; }
 
                 const startSlot = Math.floor(evt.row * slotsPerRow); 
@@ -342,7 +345,6 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
             
             const lineContent = slots.join(' ');
             if (lineContent.replace(/[| .-]/g, '').trim().length > 0) {
-                const slotsPerBar = grid * 4; 
                 let finalLine = `${instId.padEnd(20)} |`;
                 for (let b = 0; b < Math.ceil(totalSlots / slotsPerBar); b++) { 
                     const barSlice = slots.slice(b * slotsPerBar, (b + 1) * slotsPerBar); 
@@ -353,10 +355,47 @@ async function convertTrackerDump(patternsPath, manifestPath, rawSamplesPath, ou
         });
     }
     
-    // Generate Playlist from Order List
+    // --- PLAYLIST WALKER ---
     ligSource += `\n[PLAYLIST]\n`; 
-    // Join standard Pxx IDs with newlines
-    orderList.forEach(pId => { ligSource += `P${pId}\n`; });
+    
+    const visited = new Set(); 
+    let currentOrderIndex = 0;
+    let safetyCounter = 0;
+    
+    while (currentOrderIndex < orderList.length && safetyCounter < 500) {
+        safetyCounter++;
+        const pId = orderList[currentOrderIndex];
+        
+        if (!patternsData[pId]) {
+            currentOrderIndex++;
+            continue;
+        }
+
+        ligSource += `P${pId}\n`;
+        
+        const pat = patternsData[pId];
+        let jumpToOrder = -1;
+        
+        for (const row of pat.rows) {
+            const jumpCmd = row.find(c => c && c.effect && c.effect.startsWith('B'));
+            if (jumpCmd) {
+                jumpToOrder = parseInt(jumpCmd.effect.substring(1), 16);
+            }
+        }
+        
+        if (jumpToOrder !== -1) {
+            const loopKey = `${currentOrderIndex}->${jumpToOrder}`;
+            if (visited.has(loopKey)) {
+                console.log(`> Detected Loop at Order ${currentOrderIndex} jumping to ${jumpToOrder}. Stopping playlist generation.`);
+                break;
+            }
+            visited.add(loopKey);
+            currentOrderIndex = jumpToOrder;
+            console.log(`> Jump Detected: Pattern P${pId} -> Order Index ${jumpToOrder}`);
+        } else {
+            currentOrderIndex++;
+        }
+    }
     
     const presetsOutputPath = path.join(outputPath, '_presets_output.ts'); 
     const songOutputPath = path.join(outputPath, '_song_output.lig');

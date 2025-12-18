@@ -4145,15 +4145,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_bass_guitar/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4167,15 +4171,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_low_string/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4189,15 +4197,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_mid_string/",
         "urls": {
-            "A4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4211,15 +4223,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_ominous/",
         "urls": {
-            "A4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4233,15 +4249,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_ominous_low/",
         "urls": {
-            "Gb4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4262,8 +4282,12 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4277,15 +4301,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_atmosphere/",
         "urls": {
-            "Db4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4299,15 +4327,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_crystal/",
         "urls": {
-            "Db4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4321,15 +4353,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_drum_lofi_pattern/",
         "urls": {
-            "F3": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4343,15 +4379,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_low_buzz/",
         "urls": {
-            "Db4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4365,15 +4405,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_error_buzz/",
         "urls": {
-            "Eb4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4387,15 +4431,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_atmos_rumble/",
         "urls": {
-            "Bb4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4409,13 +4457,20 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_tap/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -9
+        "volume": -9,
+        "octaveOffset": 0,
+        "loop": {
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
+        }
     }
 },
 
@@ -4428,13 +4483,20 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_thump/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -9
+        "volume": -9,
+        "octaveOffset": 0,
+        "loop": {
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
+        }
     }
 },
 
@@ -4447,13 +4509,20 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_hit/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -9
+        "volume": -9,
+        "octaveOffset": 0,
+        "loop": {
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
+        }
     }
 },
 
@@ -4466,15 +4535,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_drum_break/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4488,13 +4561,20 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_deep/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -9
+        "volume": -9,
+        "octaveOffset": 0,
+        "loop": {
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
+        }
     }
 },
 
@@ -4507,13 +4587,20 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_soft/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -9
+        "volume": -9,
+        "octaveOffset": 0,
+        "loop": {
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
+        }
     }
 },
 
@@ -4526,15 +4613,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_swelling/",
         "urls": {
-            "C3": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4548,13 +4639,20 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_long_snare/",
         "urls": {
-            "F4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -9
+        "volume": -9,
+        "octaveOffset": 0,
+        "loop": {
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
+        }
     }
 },
 
@@ -4567,15 +4665,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_hard_hit/",
         "urls": {
-            "F5": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 },
@@ -4589,15 +4691,19 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "config": {
         "baseUrl": "/sounds/tracker/de_bass_drum/",
         "urls": {
-            "F4": "sample.flac"
+            "C5": "sample.flac"
         },
         "envelope": {
             "attack": 0.01,
             "release": 2
         },
         "volume": -9,
+        "octaveOffset": 0,
         "loop": {
-            "enabled": true
+            "enabled": true,
+            "start": 0,
+            "end": 0,
+            "type": "forward"
         }
     }
 }
