@@ -3,12 +3,10 @@ import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 import { Note } from 'tonal';
 
-// Redefine this to only include triggerable instruments
-export type AnyInstrument = Tone.PolySynth | Tone.Sampler;
+export type AnySoundSource = Tone.PolySynth | Tone.Sampler;
 
-// The cache now stores an object containing the sound source and its effects chain
 const instrumentCache: Record<string, {
-    source: AnyInstrument;
+    source: AnySoundSource;
     effects: Tone.ToneAudioNode[];
 }> = {};
 
@@ -24,15 +22,20 @@ function getCacheKey(def: InstrumentDefinition): string {
     });
 }
 
-export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
+export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<AnySoundSource> {
     const cacheKey = getCacheKey(def);
 
-    if (instrumentCache[cacheKey]) {
-        return instrumentCache[cacheKey].source;
+    // If an old version with the same ID exists, dispose it to ensure we're using fresh settings.
+    const oldEntry = Object.entries(instrumentCache).find(([key]) => JSON.parse(key).id === def.id);
+    if (oldEntry) {
+        const [key, graph] = oldEntry;
+        graph.effects.forEach(e => e.dispose());
+        graph.source.dispose();
+        delete instrumentCache[key];
     }
 
     const config = def.config;
-    let sourceInst: AnyInstrument; // The sound source (Sampler or Synth)
+    let sourceInst: AnySoundSource;
 
     if (def.type === 'sampler' && config.urls) {
         let finalUrls = config.urls;
@@ -52,11 +55,17 @@ export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
             }
         }
         
-        sourceInst = new Tone.Sampler({
-            urls: finalUrls,
-            baseUrl: config.baseUrl || "",
-            attack: config.envelope?.attack || 0,
-            release: config.envelope?.release || 1,
+        // --- ASYNC LOADING FIX ---
+        // Wrap sampler creation in a promise that resolves on load.
+        sourceInst = await new Promise<Tone.Sampler>((resolve, reject) => {
+            const sampler = new Tone.Sampler({
+                urls: finalUrls,
+                baseUrl: config.baseUrl || "",
+                attack: config.envelope?.attack || 0,
+                release: config.envelope?.release || 1,
+                onload: () => resolve(sampler),
+                onerror: (err) => reject(new Error(`Could not load sample: ${err}`))
+            });
         });
         
         if (config.loop && config.loop.enabled) {
@@ -92,11 +101,9 @@ export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
 
     sourceInst.volume.value = config.volume || -10; 
 
-    // --- AUDIO GRAPH ROUTING ---
     const effects: Tone.ToneAudioNode[] = [];
     let finalNode: Tone.ToneAudioNode = sourceInst;
 
-    // Panning Logic
     if (config.panning && config.panning.enabled) {
         const panner = new Tone.AutoPanner({
             frequency: config.panning.frequency || 2,
@@ -104,29 +111,21 @@ export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
             depth: config.panning.depth || 1,
         }).start();
         
-        // Chain: instrument -> panner
         finalNode.connect(panner);
-        finalNode = panner; // The end of the chain is now the panner
+        finalNode = panner;
         effects.push(panner);
     }
-
-    // Connect the end of the chain to the destination
+    
     finalNode.toDestination();
     
-    // Cache the entire graph for proper disposal
     instrumentCache[cacheKey] = { source: sourceInst, effects };
-
-    // Always return the sound source, which is what gets triggered
     return sourceInst;
 }
 
 export function disposeInstruments() {
     Object.values(instrumentCache).forEach(graph => {
-        // Dispose all effects in the chain
         graph.effects.forEach(effect => effect.dispose());
-        // Dispose the source instrument
         graph.source.dispose();
     });
-    // Clear the cache
     for (const key in instrumentCache) delete instrumentCache[key];
 }

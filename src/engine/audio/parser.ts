@@ -106,21 +106,22 @@ export class LigatureParser {
         const name = parts[0].trim();
         const rest = parts.slice(1).join(':').trim();
         
-        const match = rest.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?(?:\^\[(.*)\])?$/);
+        // UPDATED REGEX: Capture ID and (overrides)
+        const match = rest.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?/);
         if (!match) return;
         
         const id = match[1];
         const propsRaw = match[2];
-        const effectsRaw = match[3];
+
         const overrides: any = {};
         
         if (propsRaw) {
             const modParts = propsRaw.split(',');
             modParts.forEach(p => {
-                const parts = p.split(':');
-                if (parts.length === 2) {
-                    const k = parts[0].trim().toLowerCase();
-                    const v = parseFloat(parts[1].trim());
+                const [key, val] = p.split(':').map(s => s.trim());
+                if (key && val) {
+                    const k = key.toLowerCase();
+                    const v = parseFloat(val);
                     if (!isNaN(v)) {
                         if (['v', 'vol', 'volume'].includes(k)) overrides.volume = v;
                         if (['a', 'att', 'attack'].includes(k)) overrides.attack = v;
@@ -132,7 +133,6 @@ export class LigatureParser {
                 }
             });
         }
-        if (effectsRaw) overrides.effects = this.parseEffectsArray(effectsRaw);
         
         track.instruments[name] = { id, overrides };
     }

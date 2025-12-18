@@ -2804,10 +2804,23 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
                 C6: 'C6.mp3'
             },
             envelope: {
-                attack: 0.05,
-                release: 1
+                attack: 0.1, // A slightly slower attack for a more "breathy" feel
+                release: 0.6 // Shorter release for cleaner note transitions with noteCut
             },
-            volume: -8
+            volume: -8,
+            
+            // --- ENHANCEMENTS ---
+            
+            // 1. Make the instrument monophonic for realistic melodic lines.
+            noteCut: true,
+
+            // 2. Add subtle stereo movement to make it feel more alive.
+            panning: {
+                enabled: true,
+                type: 'sine',
+                frequency: 0.5, // Very slow drift
+                depth: 0.2      // Shallow pan, just enough to create width
+            }
         }
     },
     oboe: {

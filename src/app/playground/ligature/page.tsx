@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { InstrumentDefinition } from '@/engine/audio/models';
-import { DEFAULT_INSTRUMENT_LIST } from '@/engine/audio/presets';
+import { DEFAULT_INSTRUMENT_LIST, AUDIO_PRESETS } from '@/engine/audio/presets';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 
@@ -11,14 +11,7 @@ const TrackEditor = dynamic(() => import('@/app/create/[storyId]/audio/component
     loading: () => <div style={{ color: '#555', padding: '2rem' }}>Loading Audio Lab...</div>
 });
 
-// FIX: Local interface to solve any potential import issues with LigatureTrack
-interface LigatureTrack {
-    id: string;
-    name: string;
-    source: string;
-    category?: string;
-}
-
+interface LigatureTrack { id: string; name: string; source: string; category?: string; }
 
 const PRESETS: Record<string, { name: string, description: string, source: string }> = {
     "neon": {
@@ -311,10 +304,24 @@ function PlaygroundContent() {
     const [track, setTrack] = useState<LigatureTrack | null>(null);
     const [selectedPreset, setSelectedPreset] = useState("neon");
     const searchParams = useSearchParams();
+    const [localInstruments, setLocalInstruments] = useState<InstrumentDefinition[]>([]);
 
     useEffect(() => {
-        const demoCode = searchParams.get('demo');
+        try {
+            const saved = localStorage.getItem('playground_instruments');
+            const customInstruments = saved ? JSON.parse(saved) : [];
+            
+            // Combine default and custom, ensuring custom overrides defaults
+            const instMap = new Map<string, InstrumentDefinition>();
+            DEFAULT_INSTRUMENT_LIST.forEach(inst => instMap.set(inst.id, inst));
+            customInstruments.forEach((inst: InstrumentDefinition) => instMap.set(inst.id, inst));
+            
+            setLocalInstruments(Array.from(instMap.values()));
+        } catch (e) {
+            setLocalInstruments(DEFAULT_INSTRUMENT_LIST);
+        }
 
+        const demoCode = searchParams.get('demo');
         if (demoCode && HIDDEN_PRESETS[demoCode]) {
             const p = HIDDEN_PRESETS[demoCode as keyof typeof HIDDEN_PRESETS];
             setTrack({ id: `demo_${demoCode}`, name: p.name, source: p.source });
@@ -332,31 +339,60 @@ function PlaygroundContent() {
         }
     };
 
-    const availableInstruments = DEFAULT_INSTRUMENT_LIST;
-    const filteredInstruments = availableInstruments.filter(inst => inst.category !== 'Deus Ex');
+    const handleUpdatePlaygroundInstrument = (updatedInst: InstrumentDefinition) => {
+        let newInstruments = [...localInstruments];
+        const isDefaultPreset = !!AUDIO_PRESETS[updatedInst.id];
+        
+        if (isDefaultPreset && updatedInst.category !== 'Custom') {
+            // This is a default preset being edited for the first time. "Save As".
+            const newName = prompt("Save as new custom instrument. Enter a name:", `${updatedInst.name} Custom`);
+            if (!newName) return;
+            
+            const newId = newName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            if (localInstruments.some(inst => inst.id === newId)) {
+                alert("An instrument with this ID already exists.");
+                return;
+            }
+
+            const newInstrument = { ...updatedInst, id: newId, name: newName, category: 'Custom' };
+            newInstruments.push(newInstrument);
+
+        } else {
+            // This is already a custom instrument, so just update it.
+            let found = false;
+            newInstruments = newInstruments.map(inst => {
+                if (inst.id === updatedInst.id) {
+                    found = true;
+                    return updatedInst;
+                }
+                return inst;
+            });
+            if (!found) newInstruments.push(updatedInst); // Should not happen, but safe
+        }
+
+        setLocalInstruments(newInstruments);
+        // Save only the "Custom" instruments to localStorage to avoid bloating
+        const customInstruments = newInstruments.filter(inst => inst.category === 'Custom');
+        localStorage.setItem('playground_instruments', JSON.stringify(customInstruments));
+        alert(`Instrument '${updatedInst.name}' saved to browser storage.`);
+    };
 
     return (
         <div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#ccc' }}>
             <div style={{ maxWidth: '1500px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                    <h1 style={{ color: '#61afef', margin: '0 0 0.5rem 0', fontSize: '2rem', letterSpacing: '-1px' }}>
-                        Ligature Playground
-                    </h1>
-                    <p style={{ color: '#888', margin: 0 }}>
-                        A showcase of the ChronicleHub generative audio engine.
-                    </p>
+                    <h1 style={{ color: '#61afef', margin: '0 0 0.5rem 0' }}>Ligature Playground</h1>
                 </div>
 
-                <div style={{ background: '#21252b', border: '1px solid #333', borderRadius: '8px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flexShrink: 0, minWidth: '300px' }}>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#e5c07b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
-                                Select Demo Track
-                            </label>
+                <div style={{ background: '#21252b', border: '1px solid #333', padding: '1.5rem', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#e5c07b', fontWeight: 'bold' }}>Select Demo Track</label>
+                            {/* FIX: Restored styles to the dropdown */}
                             <select 
                                 value={selectedPreset} 
                                 onChange={(e) => loadPreset(e.target.value)}
-                                style={{ width: '100%', background: '#181a1f', color: '#fff', border: '1px solid #61afef', padding: '0.75rem 1rem', borderRadius: '4px', cursor: 'pointer', outline: 'none', fontSize: '1rem', fontWeight: 'bold' }}
+                                style={{ width: '300px', background: '#181a1f', color: '#fff', border: '1px solid #61afef', padding: '0.75rem', borderRadius: '4px', fontSize: '1rem' }}
                             >
                                 {Object.entries(PRESETS).map(([key, data]) => (
                                     <option key={key} value={key}>{data.name}</option>
@@ -364,13 +400,8 @@ function PlaygroundContent() {
                             </select>
                         </div>
                         <div style={{ flex: 1, borderLeft: '1px solid #333', paddingLeft: '2rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <span style={{ color: '#61afef', fontSize: '1.2rem' }}>ℹ️</span>
-                                <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>
-                                    About: {track?.name}
-                                </h3>
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#aaa', lineHeight: '1.6' }}>
+                            <h3>About: {track?.name}</h3>
+                            <p style={{ margin: 0, color: '#aaa' }}>
                                 {(PRESETS[selectedPreset] || HIDDEN_PRESETS[selectedPreset as keyof typeof HIDDEN_PRESETS])?.description}
                             </p>
                         </div>
@@ -381,27 +412,25 @@ function PlaygroundContent() {
                     <TrackEditor 
                         key={track.id} 
                         data={track}
-                        onSave={(updatedData) => setTrack(updatedData as LigatureTrack)}
+                        onSave={() => {}}
                         onDelete={() => {}}
-                        availableInstruments={availableInstruments}
+                        availableInstruments={localInstruments}
+                        onUpdateInstrument={handleUpdatePlaygroundInstrument}
                         enableDownload={true}
                         isPlayground={true}
                         hideCategories={['Deus Ex']}
                     />
                 ) : (
-                    <div style={{ textAlign: 'center', padding: '4rem', color: '#555' }}>
-                        Loading...
-                    </div>
+                    <div>Loading...</div>
                 )}
             </div>
         </div>
     );
 }
 
-// This is the Server Component shell that provides the Suspense boundary
 export default function LigaturePlaygroundPage() {
     return (
-        <Suspense fallback={<div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#666', textAlign: 'center' }}>Loading Playground...</div>}>
+        <Suspense fallback={<div>Loading...</div>}>
             <PlaygroundContent />
         </Suspense>
     );

@@ -5,8 +5,12 @@ import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import InstrumentEditor from './components/InstrumentEditor';
 import TrackEditor from './components/TrackEditor';
+import InstrumentLibrary from './components/InstrumentLibrary';
+import { AUDIO_PRESETS } from '@/engine/audio/presets'; // NEW: Import global presets
 
 type AudioItem = (InstrumentDefinition | LigatureTrack) & { category: 'instrument' | 'track' };
+
+const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\n[PATTERN: Main]\n\n[PLAYLIST]\n`;
 
 export default function AudioAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -14,20 +18,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // 1. Fetch Data
     useEffect(() => {
-        // We reuse the generic config endpoint because we mapped 'instruments' and 'music' in models
-        // But we probably need a dedicated GET route or use the generic one if you updated the GET routes.
-        // Let's assume you updated /api/admin/config or similar, 
-        // OR we just fetch the world config. 
-        // For simplicity, let's assume you created a generic GET or we fetch the big config.
-        // Actually, let's create a specific fetcher here for clarity using the generic pattern implies we might need specific routes.
-        // Let's assume we added /api/admin/audio which returns { instruments: [], tracks: [] }
-        // For now, I'll mock the fetch logic to use the Generic Config loader pattern if it existed, 
-        // but since we didn't write specific GET routes for audio yet, let's write a quick one or fetch from world config.
-        
-        // Let's fetch the full config to be safe/easy, or use the pattern you used for qualities.
-        // Ideally: GET /api/admin/audio?storyId=...
         fetch(`/api/admin/audio?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => {
@@ -47,11 +38,8 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         const name = prompt(`New ${type} name:`);
         if (!name) return;
         const id = name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        
         if (items.find(i => i.id === id)) return alert("ID exists");
-
         let newItem: AudioItem;
-
         if (type === 'instrument') {
             newItem = {
                 id, name, category: 'instrument', type: 'synth',
@@ -59,30 +47,20 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             };
         } else {
             newItem = {
-                id, name, category: 'track', source: `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\n[PATTERN: Main]\n\n[PLAYLIST]\n`
+                id, name, category: 'track', source: EMPTY_TEMPLATE
             };
         }
-
         setItems(prev => [...prev, newItem]);
         setSelectedId(id);
     };
 
     const handleSave = async (updated: AudioItem) => {
-        // Strip the transient 'category' field before saving if needed, 
-        // or just use it to direct the API call.
         const endpointCat = updated.category === 'instrument' ? 'instruments' : 'music';
-        
         await fetch('/api/admin/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                storyId, 
-                category: endpointCat, 
-                itemId: updated.id, 
-                data: updated 
-            })
+            body: JSON.stringify({ storyId, category: endpointCat, itemId: updated.id, data: updated })
         });
-        
         setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
         alert("Saved");
     };
@@ -95,49 +73,73 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         setSelectedId(null);
     };
 
+    const handleUpdateInstrument = (updatedInstrument: InstrumentDefinition) => {
+        const itemToSave: AudioItem = { ...updatedInstrument, category: 'instrument' };
+        handleSave(itemToSave);
+    };
+
     const selectedItem = items.find(i => i.id === selectedId);
+    
+    // UPDATED: Create a comprehensive, de-duplicated list of all instruments
+    const allInstrumentsMap = new Map<string, InstrumentDefinition>();
+    // First, add all global presets
+    Object.values(AUDIO_PRESETS).forEach(preset => allInstrumentsMap.set(preset.id, preset));
+    // Then, add/overwrite with instruments from the current world's database
+    items.filter(i => i.category === 'instrument').forEach(inst => allInstrumentsMap.set(inst.id, inst as InstrumentDefinition));
+    const allInstruments = Array.from(allInstrumentsMap.values());
 
     return (
-        <div className="admin-split-view">
-            <div className="admin-list-col">
-                 <div className="list-header" style={{display:'flex', gap:'10px'}}>
-                    <span>Audio</span>
+        <div style={{ display: 'grid', gridTemplateColumns: selectedItem?.category === 'track' ? 'auto 1fr 250px' : 'auto 1fr', height: 'calc(100vh - 50px)' }}>
+            <div style={{ borderRight: '1px solid #333', height: 'calc(100vh - 50px)', position: 'sticky', top: '50px' }}>
+                 <div className="list-header" style={{display:'flex', gap:'10px', alignItems: 'center', justifyContent: 'space-between'}}>
+                    <span>Audio Assets</span>
                     <div style={{display:'flex', gap:'5px'}}>
                         <button className="new-btn" onClick={() => handleCreate('instrument')}>+ Inst</button>
                         <button className="new-btn" onClick={() => handleCreate('track')}>+ Track</button>
                     </div>
                 </div>
                 <AdminListSidebar 
-                    title="" // Hidden title since we have custom header
+                    title="Audio"
                     items={items}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
-                    onCreate={() => {}} // Handled above
+                    onCreate={() => {}}
                     groupOptions={[{ label: "Type", key: "category" }]}
                     defaultGroupByKey="category"
                 />
             </div>
 
-            <div className="admin-editor-col">
+            <div style={{ overflowY: 'auto', padding: '1rem' }}>
                 {selectedItem?.category === 'instrument' && (
                     <InstrumentEditor 
+                        key={selectedItem.id}
                         data={selectedItem as InstrumentDefinition} 
-                        onSave={handleSave} 
-                        onDelete={() => handleDelete(selectedItem.id, 'instrument')} 
+                        onSave={(d) => handleSave({ ...d, category: 'instrument' })} 
+                        onDelete={() => handleDelete(selectedItem.id, 'instrument')}
                     />
                 )}
                 {selectedItem?.category === 'track' && (
                     <TrackEditor 
+                        key={selectedItem.id}
                         data={selectedItem as LigatureTrack} 
                         onSave={handleSave} 
                         onDelete={() => handleDelete(selectedItem.id, 'track')}
-                        // Pass all instruments so the editor can preview sound
-                        availableInstruments={items.filter(i => i.category === 'instrument') as InstrumentDefinition[]}
+                        availableInstruments={allInstruments} // Pass the combined list
+                        onUpdateInstrument={handleUpdateInstrument}
                         enableDownload={true}
                     />
                 )}
-                {!selectedItem && <div style={{padding:'2rem', color:'#666'}}>Select an Audio Asset</div>}
+                {!selectedItem && <div style={{padding:'2rem', color:'#666'}}>Select an Audio Asset to begin.</div>}
             </div>
+
+            {selectedItem?.category === 'track' && (
+                <div style={{ width: '250px', borderLeft: '1px solid #333' }}>
+                    <InstrumentLibrary 
+                        instruments={allInstruments} // Pass the combined list
+                        onSelect={(instrumentId) => setSelectedId(instrumentId)}
+                    />
+                </div>
+            )}
         </div>
     );
 }
