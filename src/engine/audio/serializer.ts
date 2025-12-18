@@ -1,5 +1,4 @@
 // src/engine/audio/serializer.ts
-
 import { ParsedTrack, SequenceEvent, NoteDef, ParsedPattern } from './models';
 
 function getNoteSignature(notes: NoteDef[]): string {
@@ -21,7 +20,15 @@ export function serializeParsedTrack(track: ParsedTrack): string {
 
   lines.push('[INSTRUMENTS]');
   for (const [name, inst] of Object.entries(track.instruments)) {
-    lines.push(`${name}: ${inst.id}`);
+    let extra = '';
+    const props = [];
+    if (inst.overrides.volume !== undefined) props.push(`v:${inst.overrides.volume}`);
+    // Add other overrides if necessary
+    
+    if (props.length > 0) extra += `(${props.join(',')})`;
+    // Serialize Instrument Effects if they exist in model (currently mostly handled in pattern notes)
+    
+    lines.push(`${name}: ${inst.id}${extra}`);
   }
   lines.push('');
 
@@ -30,7 +37,6 @@ export function serializeParsedTrack(track: ParsedTrack): string {
     lines.push('[DEFINITIONS]');
     for (const [name, notes] of Object.entries(track.definitions)) {
       const alias = name.startsWith('@') ? name : `@${name}`;
-      // FIX: Join with SPACE for new syntax
       lines.push(`${alias} = [${notes.map(serializeNote).join(' ')}]`);
       aliasMap.set(getNoteSignature(notes), alias);
     }
@@ -52,24 +58,21 @@ export function serializeParsedTrack(track: ParsedTrack): string {
     if (item.type === 'command') {
       lines.push(`${item.command}=${item.value}`);
     } else {
-      // Serialize Layers & Chains
       const layerStrings = item.layers.map(layer => {
           return layer.items.map(p => {
               let mods = '';
               if (p.transposition !== 0) mods += p.transposition > 0 ? `+${p.transposition}` : p.transposition;
               if (p.volume !== undefined && p.volume !== 0) mods += `${mods ? ', ' : ''}v:${p.volume}`;
               return mods ? `${p.id}(${mods})` : p.id;
-          }).join(' + '); // Chain separator
+          }).join(' + ');
       });
-      
-      lines.push(layerStrings.join(', ')); // Layer separator
+      lines.push(layerStrings.join(', '));
     }
   }
 
   return lines.join('\n');
 }
 
-// ... (serializeEvents logic from previous fix remains valid and is reused here) ...
 function serializeEvents(
     events: SequenceEvent[],
     pattern: ParsedPattern,
@@ -144,7 +147,6 @@ function serializeNote(n: NoteDef): string {
   if (n.octaveShift < 0) out += ','.repeat(-n.octaveShift);
   if (n.isNatural) out += '%';
 
-  // MODIFICATION START: Serialize note-level properties and effects
   const props: string[] = [];
   if (n.volume !== undefined && !isNaN(n.volume)) {
     props.push(`v:${n.volume}`);
@@ -153,11 +155,11 @@ function serializeNote(n: NoteDef): string {
     out += `(${props.join(',')})`;
   }
 
+  // RE-ADDED: Serialize Effects
   if (n.effects && n.effects.length > 0) {
-    const effectStr = n.effects.map(e => `${e.code}${e.value.toString(16).toUpperCase().padStart(2, '0')}`).join(',');
+    const effectStr = n.effects.map(e => `${e.code}${e.value}`).join(',');
     out += `^[${effectStr}]`;
   }
-  // MODIFICATION END
 
   return out;
 }

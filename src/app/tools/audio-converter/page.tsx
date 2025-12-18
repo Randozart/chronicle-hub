@@ -8,7 +8,8 @@ import { convertItToLigature } from '@/engine/audio/tracker/converter';
 import { rescaleBPM, refactorScale, processLigature, polishLigatureSource, atomizeRepetitions, consolidateVerticals } from '@/engine/audio/ligatureTools';
 import { useAudio } from '@/providers/AudioProvider';
 import { InstrumentDefinition } from '@/engine/audio/models';
-import { disposeInstruments } from '@/engine/audio/synth'; // Import dispose logic
+import { disposeInstruments } from '@/engine/audio/synth';
+import { AUDIO_PRESETS } from '@/engine/audio/presets'; // Import global presets for MIDI fallback
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
@@ -22,7 +23,14 @@ const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem',
 const inputStyle: React.CSSProperties = { width: '100%', background: '#111', border: '1px solid #444', color: '#ccc', padding: '6px', borderRadius: '4px', fontSize: '0.9rem' };
 
 export default function AudioConverterPage() {
-    const { playTrack, stop, isPlaying } = useAudio();
+    // FIX: Destructure all required properties from the audio context
+    const { 
+        playTrack, stop, isPlaying,
+        limiterSettings, setLimiterSettings,
+        masterVolume, setMasterVolume
+    } = useAudio();
+    
+    // --- State ---
     const [ligatureSource, setLigatureSource] = useState<string>('');
     const [presetsSource, setPresetsSource] = useState<string>(''); 
     const [generatedPresets, setGeneratedPresets] = useState<InstrumentDefinition[]>([]);
@@ -30,10 +38,13 @@ export default function AudioConverterPage() {
     
     const [status, setStatus] = useState<string>('Upload a .mid, .it, or .umx file to begin.');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [showMasterSettings, setShowMasterSettings] = useState(false); // FIX: Added state for popup
 
-    const [options, setOptions] = useState({ grid: 4, speed: 4, bpm: 0, scaleRoot: 'auto', scaleMode: 'major', sampleVol: 60 }); // Default Vol 60 (~50%)
+    // Conversion Options
+    const [options, setOptions] = useState({ grid: 4, speed: 4, bpm: 0, scaleRoot: 'auto', scaleMode: 'major', sampleVol: 60 });
     const [detectModulation, setDetectModulation] = useState(false);
     
+    // Tool Options
     const [refactorOptions, setRefactorOptions] = useState({ scaleRoot: 'C', scaleMode: 'major' });
     const [shouldFoldLanes, setShouldFoldLanes] = useState(true);
     const [shouldExtractPatterns, setShouldExtractPatterns] = useState(true);
@@ -56,7 +67,7 @@ export default function AudioConverterPage() {
         setStatus(`Parsing "${file.name}"...`);
         setZipBlob(null);
         stop();
-        disposeInstruments(); // FORCE CACHE CLEAR
+        disposeInstruments();
 
         try {
             const arrayBuffer = await file.arrayBuffer();
@@ -109,12 +120,13 @@ export default function AudioConverterPage() {
     const handlePlay = () => {
         if (!ligatureSource) return;
         
-        if (presetsSource && !window.confirm("For local playback, ensure you have extracted the samples to /public/sounds/tracker/. Proceed?")) {
-            return;
-        }
-
         try {
-            playTrack(ligatureSource, generatedPresets.length > 0 ? generatedPresets : []);
+            // FIX: Use generated presets for IT, or fall back to global presets for MIDI
+            const instrumentsToPlay = generatedPresets.length > 0 
+                ? generatedPresets 
+                : Object.values(AUDIO_PRESETS);
+
+            playTrack(ligatureSource, instrumentsToPlay);
             setStatus("Playing...");
         } catch(e: any) {
             setStatus("Error: " + e.message);
@@ -255,7 +267,7 @@ export default function AudioConverterPage() {
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', color: '#ccc' }}>
                                 <input type="checkbox" checked={detectModulation} onChange={e => setDetectModulation(e.target.checked)} /> 
-                                Auto-Detect Modulation (Relative Keys)
+                                Auto-Detect Modulation
                             </label>
                         </div>
                         <label style={{ display: 'block', padding: '0.8rem', background: '#61afef', color: '#000', textAlign: 'center', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -264,29 +276,100 @@ export default function AudioConverterPage() {
                         </label>
                     </div>
 
-                    {/* (Other panels unchanged except for min-width handling in parent grid) */}
-                    {/* ... */}
+                    <div style={{...panelStyle, opacity: ligatureSource ? 1 : 0.5, pointerEvents: ligatureSource ? 'auto' : 'none'}}>
+                        <h3 style={{ margin: '0 0 1rem 0', color: '#e5c07b', fontSize: '0.9rem', textTransform: 'uppercase' }}>2. Transformation</h3>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={labelStyle}>Retiming</label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button onClick={() => handleRescaleBPM(2)} style={btnStyle}>x2 Double</button>
+                                <button onClick={() => handleRescaleBPM(0.5)} style={btnStyle}>/2 Half</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Harmonic Shift</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <select style={{...inputStyle, width:'60px'}} value={refactorOptions.scaleRoot} onChange={e => setRefactorOptions({...refactorOptions, scaleRoot: e.target.value})}>
+                                    {['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].map(k => <option key={k}>{k}</option>)}
+                                </select>
+                                <select style={{...inputStyle, flex:1}} value={refactorOptions.scaleMode} onChange={e => setRefactorOptions({...refactorOptions, scaleMode: e.target.value})}>
+                                    <option value="major">Major</option>
+                                    <option value="minor">Minor</option>
+                                    <option value="dorian">Dorian</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button onClick={handleToggleRelative} style={{...btnStyle, color:'#e5c07b'}}>Swap Relative</button>
+                                <button onClick={handleRefactorScale} style={{...btnStyle, background:'#e5c07b', color:'#000'}}>Apply</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{...panelStyle, opacity: ligatureSource ? 1 : 0.5, pointerEvents: ligatureSource ? 'auto' : 'none'}}>
+                        <h3 style={{ margin: '0 0 1rem 0', color: '#98c379', fontSize: '0.9rem', textTransform: 'uppercase' }}>3. Structure</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                <input type="checkbox" checked={shouldFoldLanes} onChange={e => setShouldFoldLanes(e.target.checked)} /> Fold Lanes
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                <input type="checkbox" checked={useTransposition} onChange={e => setUseTransposition(e.target.checked)} /> Deduplicate via Transpose
+                            </label>
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={labelStyle}>Fuzzy Match: {aggressivenessLabels[patternAggressiveness]}</label>
+                            <input type="range" min="0" max="3" step="1" value={patternAggressiveness} onChange={e => setPatternAggressiveness(Number(e.target.value) as any)} style={{width: '100%', accentColor: '#98c379'}} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <button onClick={handleOptimizeClick} style={{...btnStyle, background:'#98c379', color:'#000'}}>Optimize</button>
+                            <button onClick={handlePolishClick} style={btnStyle}>Polish</button>
+                            <button onClick={handleAtomizeClick} style={btnStyle}>Atomize</button>
+                            <button onClick={handleConsolidateClick} style={btnStyle}>Consolidate</button>
+                        </div>
+                    </div>
                 </div>
 
-                {/* STATUS BAR */}
                 <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#111', borderRadius: '4px', borderLeft: '4px solid #61afef', color: '#ccc', fontFamily: 'monospace', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>{status}</span>
-                    {isPlaying ? (
-                        <button onClick={handleStop} style={{...btnStyle, background: '#e06c75', color: '#fff'}}>■ Stop Playback</button>
-                    ) : (
-                        <button onClick={handlePlay} style={{...btnStyle, background: '#98c379', color: '#000', opacity: ligatureSource ? 1 : 0.5}}>▶ Play Preview</button>
-                    )}
+                    <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
+                        <div style={{ position: 'relative' }}>
+                            <button onClick={() => setShowMasterSettings(!showMasterSettings)} style={{...btnStyle, background: '#21252b'}}>
+                                🎚️ Master {masterVolume !== 0 ? `(${masterVolume > 0 ? '+' : ''}${masterVolume}dB)` : ''}
+                            </button>
+                            {showMasterSettings && (
+                                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', zIndex: 100, background: '#181a1f', border: '1px solid #61afef', borderRadius: '4px', padding: '1rem', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                                    <h4 style={{ margin: '0 0 1rem 0', color: '#61afef' }}>Master Bus</h4>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={labelStyle}>Master Volume: {masterVolume} dB</label>
+                                        <input type="range" min="-30" max="10" step="1" value={masterVolume} onChange={e => setMasterVolume(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#61afef' }} />
+                                    </div>
+                                    <div style={{ borderTop: '1px solid #333', paddingTop: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <label style={{ fontSize: '0.9rem', color: '#ccc' }}>Limiter</label>
+                                            <input type="checkbox" checked={limiterSettings.enabled} onChange={e => setLimiterSettings({...limiterSettings, enabled: e.target.checked})} />
+                                        </div>
+                                        {limiterSettings.enabled && (
+                                            <div>
+                                                <label style={labelStyle}>Threshold: {limiterSettings.threshold} dB</label>
+                                                <input type="range" min="-40" max="0" step="1" value={limiterSettings.threshold} onChange={e => setLimiterSettings({...limiterSettings, threshold: parseInt(e.target.value)})} style={{ width: '100%', accentColor: '#98c379' }}/>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {isPlaying ? (
+                            <button onClick={handleStop} style={{...btnStyle, background: '#e06c75', color: '#fff'}}>■ Stop</button>
+                        ) : (
+                            <button onClick={handlePlay} style={{...btnStyle, background: '#98c379', color: '#000', opacity: ligatureSource ? 1 : 0.5}}>▶ Play</button>
+                        )}
+                    </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: presetsSource ? '2fr 1fr' : '1fr', gap: '1.5rem', height: '600px' }}>
-                    
-                    {/* FIXED: Min Width to prevent infinite expansion */}
                     <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', color: '#ccc' }}>Ligature Source</h3>
                             <span style={{ fontSize: '0.8rem', color: '#666' }}>{ligatureSource.length} chars</span>
                         </div>
-                        {/* FIXED: Min Width on Editor Container */}
                         <div style={{ flex: 1, border: '1px solid #333', borderRadius: '4px', overflow: 'hidden', minWidth: 0 }}>
                             <ScribeEditor value={ligatureSource} onChange={setLigatureSource} language="ligature" minHeight="100%"/>
                         </div>

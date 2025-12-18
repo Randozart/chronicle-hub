@@ -1,6 +1,7 @@
 // src/engine/audio/formatter.ts
 
-const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|\d+['#b%,]*|[-.|])/g;
+// Updated Regex to include ^[...]
+const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|[-.|])/g;
 
 export function formatLigatureSource(source: string): string {
     const lines = source.split('\n');
@@ -8,10 +9,12 @@ export function formatLigatureSource(source: string): string {
     let currentPatternLines: { trackName: string, content: string, originalIndex: number }[] = [];
     let inPatternBlock = false;
 
+    // ... (The rest of the function remains exactly the same logic, 
+    //      it just relies on the regex to split correctly) ...
+    
     const flushPattern = () => {
         if (currentPatternLines.length === 0) return;
 
-        // --- FETCH CONFIG FROM THE RAW SOURCE STRING ---
         let grid = 4, timeSig = [4, 4];
         const configBlock = source.split('[CONFIG]')[1]?.split('[')[0] || '';
         const gridMatch = configBlock.match(/Grid:\s*(\d+)/);
@@ -21,7 +24,6 @@ export function formatLigatureSource(source: string): string {
         
         const quarterNotesPerBeat = 4 / timeSig[1];
         const slotsPerBeat = grid * quarterNotesPerBeat;
-        // ---------------------------------------------
 
         const parsedTracks = currentPatternLines.map(line => {
             const tokens = line.content.match(TOKEN_REGEX) || [];
@@ -64,7 +66,7 @@ export function formatLigatureSource(source: string): string {
                 for (let j = 0; j < (widths?.length || 0); j++) {
                     const token = bar[j] || '';
                     if (j > 0 && j % slotsPerBeat === 0) {
-                        line += '  '; // Beat separator
+                        line += '  '; 
                     }
                     line += ` ${token.padEnd(widths[j] || 0)}`;
                 }
@@ -73,7 +75,6 @@ export function formatLigatureSource(source: string): string {
             return line;
         });
 
-        // Replace original lines with formatted ones
         currentPatternLines.forEach((line, index) => {
             outputLines[line.originalIndex] = formattedLines[index];
         });
@@ -84,10 +85,10 @@ export function formatLigatureSource(source: string): string {
     lines.forEach((line, index) => {
         const trimmed = line.trim();
         const sectionMatch = trimmed.match(/^\[(.*?)\]$/);
-        outputLines[index] = line; // Pre-fill with original line to preserve it
+        outputLines[index] = line; 
 
         if (sectionMatch) {
-            flushPattern(); // Format the previous block before moving on
+            flushPattern(); 
             inPatternBlock = sectionMatch[1].startsWith('PATTERN:');
         } else if (inPatternBlock && trimmed.includes('|')) {
             const pipeIndex = trimmed.indexOf('|');
@@ -97,6 +98,6 @@ export function formatLigatureSource(source: string): string {
         }
     });
 
-    flushPattern(); // Format the very last pattern
+    flushPattern(); 
     return outputLines.join('\n');
 }

@@ -81,11 +81,14 @@ export function polishLigatureSource(source: string, mockQualities: PlayerQualit
 
 function getNoteSignature(notes: NoteDef[]): string {
     return notes
-      .map(n => `${n.degree},${n.octaveShift},${n.accidental},${n.isNatural}`)
+      .map(n => {
+          // Include effects in signature to prevent bad merges
+          const fxSig = n.effects ? n.effects.map(e => `${e.code}${e.value}`).join('') : '';
+          return `${n.degree},${n.octaveShift},${n.accidental},${n.isNatural},${fxSig}`
+      })
       .sort()
       .join(' ');
 }
-
 function pruneUnusedDefinitions(track: ParsedTrack): ParsedTrack {
     // 1. Collect signatures of all notes played in all patterns
     const usedSignatures = new Set<string>();
