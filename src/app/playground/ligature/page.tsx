@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { InstrumentDefinition } from '@/engine/audio/models';
 import { DEFAULT_INSTRUMENT_LIST } from '@/engine/audio/presets';
 import dynamic from 'next/dynamic';
@@ -307,7 +307,7 @@ de_bass_guitar__5
     }
 };
 
-export default function LigaturePlayground() {
+function PlaygroundContent() {
     const [track, setTrack] = useState<LigatureTrack | null>(null);
     const [selectedPreset, setSelectedPreset] = useState("neon");
     const searchParams = useSearchParams();
@@ -316,16 +316,10 @@ export default function LigaturePlayground() {
         const demoCode = searchParams.get('demo');
 
         if (demoCode && HIDDEN_PRESETS[demoCode]) {
-            console.log(`Loading hidden demo: ${demoCode}`);
             const p = HIDDEN_PRESETS[demoCode as keyof typeof HIDDEN_PRESETS];
-            setTrack({
-                id: `demo_${demoCode}`,
-                name: p.name,
-                source: p.source,
-            });
+            setTrack({ id: `demo_${demoCode}`, name: p.name, source: p.source });
             setSelectedPreset(demoCode);
         } else {
-            // Default behavior if no (valid) code is found
             loadPreset("neon");
         }
     }, [searchParams]);
@@ -333,24 +327,17 @@ export default function LigaturePlayground() {
     const loadPreset = (key: string) => {
         if (PRESETS[key]) {
             const p = PRESETS[key];
-            setTrack({
-                id: `demo_${key}`,
-                name: p.name,
-                source: p.source,
-            });
+            setTrack({ id: `demo_${key}`, name: p.name, source: p.source });
             setSelectedPreset(key);
         }
     };
 
     const availableInstruments = DEFAULT_INSTRUMENT_LIST;
-
-    
+    const filteredInstruments = availableInstruments.filter(inst => inst.category !== 'Deus Ex');
 
     return (
         <div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#ccc' }}>
             <div style={{ maxWidth: '1500px', margin: '0 auto' }}>
-                
-                {/* Header */}
                 <div style={{ marginBottom: '2rem' }}>
                     <h1 style={{ color: '#61afef', margin: '0 0 0.5rem 0', fontSize: '2rem', letterSpacing: '-1px' }}>
                         Ligature Playground
@@ -360,44 +347,22 @@ export default function LigaturePlayground() {
                     </p>
                 </div>
 
-                {/* Control Deck */}
-                <div style={{ 
-                    background: '#21252b', 
-                    border: '1px solid #333', 
-                    borderRadius: '8px', 
-                    padding: '1.5rem', 
-                    marginBottom: '2rem',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                }}>
+                <div style={{ background: '#21252b', border: '1px solid #333', borderRadius: '8px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
                     <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        
                         <div style={{ flexShrink: 0, minWidth: '300px' }}>
-                            <label style={{ 
-                                display: 'block', fontSize: '0.7rem', 
-                                color: '#e5c07b', fontWeight: 'bold', 
-                                textTransform: 'uppercase', marginBottom: '8px',
-                                letterSpacing: '1px'
-                            }}>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#e5c07b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
                                 Select Demo Track
                             </label>
                             <select 
                                 value={selectedPreset} 
                                 onChange={(e) => loadPreset(e.target.value)}
-                                style={{ 
-                                    width: '100%',
-                                    background: '#181a1f', color: '#fff', 
-                                    border: '1px solid #61afef', 
-                                    padding: '0.75rem 1rem', borderRadius: '4px', cursor: 'pointer',
-                                    outline: 'none', fontSize: '1rem', fontWeight: 'bold'
-                                }}
+                                style={{ width: '100%', background: '#181a1f', color: '#fff', border: '1px solid #61afef', padding: '0.75rem 1rem', borderRadius: '4px', cursor: 'pointer', outline: 'none', fontSize: '1rem', fontWeight: 'bold' }}
                             >
                                 {Object.entries(PRESETS).map(([key, data]) => (
                                     <option key={key} value={key}>{data.name}</option>
                                 ))}
-                                {/* Hidden preset is not listed here */}
                             </select>
                         </div>
-
                         <div style={{ flex: 1, borderLeft: '1px solid #333', paddingLeft: '2rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                 <span style={{ color: '#61afef', fontSize: '1.2rem' }}>ℹ️</span>
@@ -425,10 +390,19 @@ export default function LigaturePlayground() {
                     />
                 ) : (
                     <div style={{ textAlign: 'center', padding: '4rem', color: '#555' }}>
-                        Initializing Audio Engine...
+                        Loading...
                     </div>
                 )}
             </div>
         </div>
+    );
+}
+
+// This is the Server Component shell that provides the Suspense boundary
+export default function LigaturePlaygroundPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#666', textAlign: 'center' }}>Loading Playground...</div>}>
+            <PlaygroundContent />
+        </Suspense>
     );
 }
