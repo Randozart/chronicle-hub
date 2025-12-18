@@ -128,4 +128,11 @@ export interface NoteDef {
     effects?: EffectCommand[];
 }
 
+export interface LigatureTrack {
+    id: string;
+    name: string;
+    source: string; 
+    category?: string;
+}
+
 export type NoteGroup = NoteDef[];
