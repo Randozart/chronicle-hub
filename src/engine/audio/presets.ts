@@ -4181,9 +4181,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "type": "forward",
+            "type": "pingpong",
             "start": 1.2732426303854876,
-            "end": 1.9012018140589568
+            "end": 1.9012018140589568,
+            "crossfade": 0.01
         },
         "noteCut": true
     }
@@ -4202,7 +4203,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4210,7 +4211,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "enabled": true,
             "type": "forward",
             "start": 0.08873290136789057,
-            "end": 1.5417566594672427
+            "end": 1.5417566594672427,
+            "crossfade": 0.015 
         }
     }
 },
@@ -4385,17 +4387,27 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            // FIX: Drastically shorten the release to make note cuts clean and snappy.
+            "release": 0.2 
+            // REMOVED: "sustain" is not a time value and is not needed here.
         },
-        "volume": -3,
+        "volume": -3, // This volume might be fine, but consider lowering if mix is muddy.
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
             "type": "forward",
             "start": 0.20183273402157523,
             "end": 0.2180721494026215,
-            "crossfade": 0.1 
-        }
+            // FIX: Crossfade must be very short for a micro-loop. 5ms is a good value.
+            "crossfade": 0.005
+        },
+        "panning": {
+            "enabled": true,
+            "type": "sine",
+            "frequency": 4,
+            "depth": 0.8
+        },
+        "noteCut": true
     }
 },
 

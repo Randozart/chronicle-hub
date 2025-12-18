@@ -43,6 +43,12 @@ export interface InstrumentDefinition {
             crossfade?: number; // Crossfade time in seconds (e.g., 0.01)
         };
         noteCut?: boolean; 
+        panning?: {
+            enabled: boolean;
+            type?: 'sine' | 'square' | 'triangle' | 'sawtooth'; // LFO Waveform
+            frequency?: number; // LFO speed in Hz (e.g., 2)
+            depth?: number;     // LFO amount (0 to 1)
+        };
     };
 }
 
