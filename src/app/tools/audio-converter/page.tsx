@@ -9,7 +9,7 @@ import { rescaleBPM, refactorScale, processLigature, polishLigatureSource, atomi
 import { useAudio } from '@/providers/AudioProvider';
 import { InstrumentDefinition } from '@/engine/audio/models';
 import { disposeInstruments } from '@/engine/audio/synth';
-import { AUDIO_PRESETS } from '@/engine/audio/presets'; // Import global presets for MIDI fallback
+import { AUDIO_PRESETS } from '@/engine/audio/presets';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,

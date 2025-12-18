@@ -1,14 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
+import { InstrumentDefinition } from '@/engine/audio/models';
 import { DEFAULT_INSTRUMENT_LIST } from '@/engine/audio/presets';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 
 const TrackEditor = dynamic(() => import('@/app/create/[storyId]/audio/components/TrackEditor'), {
     ssr: false,
     loading: () => <div style={{ color: '#555', padding: '2rem' }}>Loading Audio Lab...</div>
 });
+
+// FIX: Local interface to solve any potential import issues with LigatureTrack
+interface LigatureTrack {
+    id: string;
+    name: string;
+    source: string;
+    category?: string;
+}
+
 
 const PRESETS: Record<string, { name: string, description: string, source: string }> = {
     "neon": {
@@ -222,28 +232,119 @@ Trumpet_Intro + Trumpet_Main, Bass_Walk_i + Bass_Walk_iv, Pad_Dm7 + Pad_Gm7, Dru
 `
 }
 };
+const HIDDEN_PRESETS: Record<string, { name: string, description: string, source: string }> = {
+    "unatco_theme": {
+        name: "UNATCO Theme (Tech Demo)",
+        description: "A full conversion of the UNATCO theme from Deus Ex, imported from the original .umx tracker file.",
+        source: `[CONFIG]
+BPM: 83
+Grid: 4
+Time: 4/4
+Scale: A# minor
+
+[INSTRUMENTS]
+de_bass_guitar_: de_bass_guitar(v:-7)
+de_low_buzz_: de_low_buzz(v:-7)
+de_low_string_: de_low_string(v:-7)
+de_mid_string_: de_mid_string(v:-7)
+de_ominous_: de_ominous(v:-12)
+de_atmosphere_: de_atmosphere(v:-7)
+
+[PATTERN: de_low_buzz__1]
+de_low_buzz_   | 1#(v:-3)^[F70] - 1#(v:-9)^[F42] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) | 1#(v:-3)^[F70] 1#'(v:-9) 1#(v:-9)^[F42] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) | 1#(v:-3)^[F70] 1#'(v:-9) 1#(v:-9)^[F42] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) | 6#(v:-3)^[F70] 1#'(v:-9) 1#(v:-9)^[F42] 6#(v:-4)   - 6#(v:-9) 6#(v:-4) -   6#'(v:-4) - 6#(v:-4) 1b'(v:-4)   6#(v:-9) 1b(v:-4) 4#'(v:-4) 6'(v:-4) |
+de_low_string_ | 1,,(v:-2)      - -              -          - -        -        -   -         - -        -           -        -        -         -         | -              -         -              -          - -        -        -   -         - -        -           -        -        -         -         | 7,,(v:-2)      -         -              -          - -        -        -   -         - -        -           -        -        -         -         | 6,,(v:-2)      -         -              -          - -        -        -   -         - -        -           -        -        -         -        |
+
+[PATTERN: de_bass_guitar__1]
+de_bass_guitar_ | 1,(v:-1)        -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | -               -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | -               -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | 6(v:-1)         -                -                -                 -                -               4(v:-1)          -                  -               -                7(v:-1)          -                 -                -               3(v:-1)          -          |
+de_low_buzz_    | 1#(v:-3)^[F42]  -                1#(v:-9)^[F14]   1#(v:-4)          -                1#(v:-9)        1#(v:-4)         -                  1#'(v:-4)       -                1b(v:-4)         1b'(v:-4)         1b(v:-9)         1b(v:-4)        1b'(v:-4)        1#'(v:-4)        | 1#(v:-3)^[F42]  1#'(v:-9)        1#(v:-9)^[F14]   1#(v:-4)          -                1#(v:-9)        1#(v:-4)         -                  1#'(v:-4)       -                1b(v:-4)         1b'(v:-4)         1b(v:-9)         1b(v:-4)        1b'(v:-4)        1#'(v:-4)        | 1#(v:-3)^[F42]  1#'(v:-9)        1#(v:-9)^[F14]   1#(v:-4)          -                1#(v:-9)        1#(v:-4)         -                  1#'(v:-4)       -                1b(v:-4)         1b'(v:-4)         1b(v:-9)         1b(v:-4)        1b'(v:-4)        1#'(v:-4)        | 6#(v:-3)^[F42]  1#'(v:-9)        1#(v:-9)^[F14]   6#(v:-4)          -                6#(v:-9)        6#(v:-4)         -                  6#'(v:-4)       -                6#(v:-4)         1b'(v:-4)         6#(v:-9)         1b(v:-4)        4#'(v:-4)        6'(v:-4)   |
+de_low_string_  | 1,,(v:-2)       -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | -               -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | 7,,             -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | 6,,             -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -          |
+de_mid_string_  | 4(v:-21)        -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | 6,(v:-21)       -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | 3(v:-21)        -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -                | 1#,(v:-21)      -                -                -                 -                -               -                -                  -               -                -                -                 -                -               -                -          |
+de_ominous_     | 4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10)^[F14]   4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10)^[F14] | 4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10)^[F14]   4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10)^[F14] | 4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10)^[F14]   4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10)^[F14] | 4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10)^[F14]   4#(v:-10)^[F14] 1#,(v:-10)^[F14] 6#,(v:-10)^[F14] 6,(v:-10)^[F14]   6#,(v:-10)^[F14] 6,(v:-10)^[F14] 6#,(v:-10)^[F14] 1#,(v:-10) |
+
+[PATTERN: de_bass_guitar__2]
+de_bass_guitar_ | 1,(v:-1)         -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          |
+de_low_buzz_    | 1#(v:-3)^[F42]   -          1#(v:-9)^[F14] 1#(v:-4)      -          1#(v:-9)    1#(v:-4)   -            1#'(v:-4)  -          1b(v:-4)   1b'(v:-4)     1b(v:-9)   1b(v:-4)    1b'(v:-4)  1#'(v:-4)  | 1#(v:-3)^[F42] 1#'(v:-9)  1#(v:-9)^[F14] 1#(v:-4)      -          1#(v:-9)    1#(v:-4)   -            1#'(v:-4)  -          1b(v:-4)   1b'(v:-4)     1b(v:-9)   1b(v:-4)    1b'(v:-4)  1#'(v:-4)  | 1#(v:-3)^[F42] 1#'(v:-9)  1#(v:-9)^[F14] 1#(v:-4)      -          1#(v:-9)    1#(v:-4)   -            1#'(v:-4)  -          1b(v:-4)   1b'(v:-4)     1b(v:-9)   1b(v:-4)    1b'(v:-4)  1#'(v:-4)  | 6#(v:-3)^[F42] 1#'(v:-9)  1#(v:-9)^[F14] 6#(v:-4)      -          6#(v:-9)    6#(v:-4)   -            6#'(v:-4)  -          6#(v:-4)   1b'(v:-4)     6#(v:-9)   1b(v:-4)    4#'(v:-4)  6'(v:-4)   |
+de_low_string_  | 1,,(v:-2)        -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | 1,(v:-2)       -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | 6,(v:-1)       -          -              -             -          -           -          -            -          -          -          -             -          7,          3          2,         |
+de_ominous_     | 6#,(v:-13)^[F28] 4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) | 6#,(v:-13)     4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) | 6#,(v:-13)     4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) | 6#,(v:-13)     4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) |
+de_atmosphere_  | .                .          .              .             .          .           .          .            .          .          .          .             1b(v:-24)  -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          |
+de_mid_string_  | .                .          .              .             .          .           .          .            .          .          .          .             .          .           .          .          | .              .          .              .             .          .           .          .            .          .          .          .             .          .           .          .          | 4(v:-21)       -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          |
+
+[PATTERN: de_bass_guitar__3]
+de_bass_guitar_ | 1,(v:-1)         -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          |
+de_low_buzz_    | 1#(v:-3)^[F42]   -          1#(v:-9)^[F14] 1#(v:-4)      -          1#(v:-9)    1#(v:-4)   -            1#'(v:-4)  -          1b(v:-4)   1b'(v:-4)     1b(v:-9)   1b(v:-4)    1b'(v:-4)  1#'(v:-4)  | 1#(v:-3)^[F42] 1#'(v:-9)  1#(v:-9)^[F14] 1#(v:-4)      -          1#(v:-9)    1#(v:-4)   -            1#'(v:-4)  -          1b(v:-4)   1b'(v:-4)     1b(v:-9)   1b(v:-4)    1b'(v:-4)  1#'(v:-4)  | 1#(v:-3)^[F42] 1#'(v:-9)  1#(v:-9)^[F14] 1#(v:-4)      -          1#(v:-9)    1#(v:-4)   -            1#'(v:-4)  -          1b(v:-4)   1b'(v:-4)     1b(v:-9)   1b(v:-4)    1b'(v:-4)  1#'(v:-4)  | 6#(v:-3)^[F42] 1#'(v:-9)  1#(v:-9)^[F14] 6#(v:-4)      -          6#(v:-9)    6#(v:-4)   -            6#'(v:-4)  -          6#(v:-4)   1b'(v:-4)     6#(v:-9)   1b(v:-4)    4#'(v:-4)  6'(v:-4)   |
+de_low_string_  | 1,,(v:-2)        -          -              1,(v:-6)      -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | 1,(v:-2)       -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | 6,(v:-1)       -          -              -             -          -           -          -            -          -          -          -             -          7,          3          2,         |
+de_ominous_     | 6#,(v:-13)^[F28] 4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) | 6#,(v:-13)     4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) | 6#,(v:-13)     4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) | 6#,(v:-13)     4#,(v:-13) 3#,(v:-13)     1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13)   6#,(v:-13) 4#,(v:-13) 3#,(v:-13) 1#,,(v:-13)   3#,(v:-13) 1#,,(v:-13) 3#,(v:-13) 4#,(v:-13) |
+de_atmosphere_  | .                .          .              .             .          .           .          .            .          .          .          .             1b(v:-24)  -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          |
+de_mid_string_  | .                .          .              .             .          .           .          .            .          .          .          .             .          .           .          .          | .              .          .              .             .          .           .          .            .          .          .          .             .          .           .          .          | 4(v:-21)       -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          | -              -          -              -             -          -           -          -            -          -          -          -             -          -           -          -          |
+
+[PATTERN: de_bass_guitar__4]
+de_bass_guitar_ | 1,              -                -                -                 -                -               -                -                  -               -                -                 -          -        -        -        -        | -              -        -              -          - -        -        -   -         - -        -          -        -        -        -        | -              -        -              -          - -        -        -   -         - -        -           -        -        -         -         | 6(v:-1)        -         -              -          - -        4(v:-1)  -   -         - 7(v:-1)  -           -        -        3(v:-1)   -         |
+de_low_buzz_    | 1#(v:-4)^[F42]  -                1#(v:-9)^[F14]   1#(v:-4)          -                1#(v:-9)        1#(v:-4)         -                  3#'(v:-4)       -                1b(v:-4)          3'(v:-4)   1b(v:-9) 1b(v:-4) 1b(v:-4) 1#(v:-4) | 1#(v:-4)^[F42] 1#(v:-9) 1#(v:-9)^[F14] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   3#'(v:-4) - 1b(v:-4) 3'(v:-4)   1b(v:-9) 1b(v:-4) 1b(v:-4) 1#(v:-4) | 1#(v:-3)^[F42] 1#(v:-9) 1#(v:-9)^[F14] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) | 1#(v:-3)^[F42] 1#'(v:-9) 1#(v:-9)^[F14] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) |
+de_low_string_  | 1,,(v:-4)       -                -                -                 -                -               -                -                  -               -                -                 -          -        -        -        -        | -              -        -              -          - -        -        -   -         - -        -          -        -        -        -        | -              -        -              -          - -        -        -   -         - -        -           -        -        -         -         | -              -         -              -          - -        -        -   -         - -        -           -        -        -         -         |
+de_mid_string_  | 4(v:-18)        -                -                -                 -                -               -                -                  3(v:-18)        -                -                 -          -        -        -        -        | 1,(v:-18)      -        -              -          - -        -        -   -         - -        -          -        -        -        -        | -              -        -              -          - -        -        -   -         - -        -           -        -        -         -         | -              -         -              -          - -        -        -   -         - -        -           -        -        -         -         |
+de_ominous_     | 4#(v:-10)^[F14] 1#,(v:-11)^[F14] 6#,(v:-12)^[F14] 6,(v:-13)^[F14]   6#,(v:-15)^[F14] 6,(v:-16)^[F14] 6#,(v:-18)^[F14] 1#,(v:-21)^[F14]   4#(v:-24)^[F14] 1#,(v:-30)^[F14] 6#,(v:-100)^[F14] -          -        -        -        -        | -              -        -              -          - -        -        -   -         - -        -          -        -        -        -        | -              -        -              -          - -        -        -   -         - -        -           -        -        -         -         | -              -         -              -          - -        -        -   -         - -        -           -        -        -         -         |
+
+[PATTERN: de_bass_guitar__5]
+de_bass_guitar_ | 1,             - -              -          - -        -        -   -         - -        -           -        -        -         -         | -              -         -              -          - -        -        -   -         - -        -           -        -        -         -         | -              -         -              -          - -        -        -   -         - -        -           -        -        -         -         | 6(v:-1)        -         -              -          - -        4(v:-1)  -   -         - 7(v:-1)  -           -        -        3(v:-1)   -        |
+de_low_buzz_    | 1#(v:-3)^[F42] - 1#(v:-9)^[F14] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) | 1#(v:-3)^[F42] 1#'(v:-9) 1#(v:-9)^[F14] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) | 1#(v:-3)^[F42] 1#'(v:-9) 1#(v:-9)^[F14] 1#(v:-4)   - 1#(v:-9) 1#(v:-4) -   1#'(v:-4) - 1b(v:-4) 1b'(v:-4)   1b(v:-9) 1b(v:-4) 1b'(v:-4) 1#'(v:-4) | 6#(v:-3)^[F42] 1#'(v:-9) 1#(v:-9)^[F14] 6#(v:-4)   - 6#(v:-9) 6#(v:-4) -   6#'(v:-4) - 6#(v:-4) 1b'(v:-4)   6#(v:-9) 1b(v:-4) 4#'(v:-4) 6'(v:-4) |
+de_low_string_  | 1,,(v:-2)      - -              -          - -        -        -   -         - -        -           -        -        -         -         | -              -         -              -          - -        -        -   -         - -        -           -        -        -         -         | 7,,            -         -              -          - -        -        -   -         - -        -           -        -        -         -         | 6,,            -         -              -          - -        -        -   -         - -        -           -        -        -         -        |
+de_mid_string_  | 1,(v:-18)      - -              -          - -        -        -   -         - -        -           -        -        -         -         | 4(v:-18)       -         -              -          - -        -        -   -         - -        -           -        -        -         -         | 5(v:-18)       -         -              -          - -        -        -   -         - -        -           -        -        -         -         | 4(v:-18)       -         -              -          - -        -        -   -         - -        -           -        -        -         -        |
+
+[PLAYLIST]
+de_low_buzz__1
+de_low_buzz__1
+de_bass_guitar__1
+de_bass_guitar__1
+de_bass_guitar__2
+de_bass_guitar__3
+de_bass_guitar__4
+de_bass_guitar__5
+de_bass_guitar__2
+de_bass_guitar__3
+de_bass_guitar__4
+de_bass_guitar__5
+`
+    }
+};
 
 export default function LigaturePlayground() {
     const [track, setTrack] = useState<LigatureTrack | null>(null);
     const [selectedPreset, setSelectedPreset] = useState("neon");
+    const searchParams = useSearchParams();
 
     useEffect(() => {
-        // Initialize with default preset
-        loadPreset("neon");
-    }, []);
+        const demoCode = searchParams.get('demo');
+
+        if (demoCode && HIDDEN_PRESETS[demoCode]) {
+            console.log(`Loading hidden demo: ${demoCode}`);
+            const p = HIDDEN_PRESETS[demoCode as keyof typeof HIDDEN_PRESETS];
+            setTrack({
+                id: `demo_${demoCode}`,
+                name: p.name,
+                source: p.source,
+            });
+            setSelectedPreset(demoCode);
+        } else {
+            // Default behavior if no (valid) code is found
+            loadPreset("neon");
+        }
+    }, [searchParams]);
     
     const loadPreset = (key: string) => {
-        const p = PRESETS[key];
-        setTrack({
-            id: `demo_${key}`,
-            name: p.name,
-            source: p.source,
-        });
-        setSelectedPreset(key);
+        if (PRESETS[key]) {
+            const p = PRESETS[key];
+            setTrack({
+                id: `demo_${key}`,
+                name: p.name,
+                source: p.source,
+            });
+            setSelectedPreset(key);
+        }
     };
 
-    // The available instruments are our hardcoded presets
     const availableInstruments = DEFAULT_INSTRUMENT_LIST;
+
+    
 
     return (
         <div style={{ padding: '2rem', background: '#181a1f', minHeight: '100vh', color: '#ccc' }}>
@@ -255,11 +356,11 @@ export default function LigaturePlayground() {
                         Ligature Playground
                     </h1>
                     <p style={{ color: '#888', margin: 0 }}>
-                        Procedural Audio Engine for ChronicleHub
+                        A showcase of the ChronicleHub generative audio engine.
                     </p>
                 </div>
 
-                {/* Control Deck - Prominent Selection Area */}
+                {/* Control Deck */}
                 <div style={{ 
                     background: '#21252b', 
                     border: '1px solid #333', 
@@ -270,7 +371,6 @@ export default function LigaturePlayground() {
                 }}>
                     <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         
-                        {/* Left Column: Selector */}
                         <div style={{ flexShrink: 0, minWidth: '300px' }}>
                             <label style={{ 
                                 display: 'block', fontSize: '0.7rem', 
@@ -294,19 +394,19 @@ export default function LigaturePlayground() {
                                 {Object.entries(PRESETS).map(([key, data]) => (
                                     <option key={key} value={key}>{data.name}</option>
                                 ))}
+                                {/* Hidden preset is not listed here */}
                             </select>
                         </div>
 
-                        {/* Right Column: Info */}
                         <div style={{ flex: 1, borderLeft: '1px solid #333', paddingLeft: '2rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                 <span style={{ color: '#61afef', fontSize: '1.2rem' }}>ℹ️</span>
                                 <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>
-                                    About {PRESETS[selectedPreset].name}
+                                    About: {track?.name}
                                 </h3>
                             </div>
                             <p style={{ margin: 0, fontSize: '0.9rem', color: '#aaa', lineHeight: '1.6' }}>
-                                {PRESETS[selectedPreset].description}
+                                {(PRESETS[selectedPreset] || HIDDEN_PRESETS[selectedPreset as keyof typeof HIDDEN_PRESETS])?.description}
                             </p>
                         </div>
                     </div>
@@ -321,6 +421,7 @@ export default function LigaturePlayground() {
                         availableInstruments={availableInstruments}
                         enableDownload={true}
                         isPlayground={true}
+                        hideCategories={['Deus Ex']}
                     />
                 ) : (
                     <div style={{ textAlign: 'center', padding: '4rem', color: '#555' }}>

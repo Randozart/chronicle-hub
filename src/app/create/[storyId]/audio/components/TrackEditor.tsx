@@ -46,6 +46,7 @@ interface Props {
     availableInstruments: InstrumentDefinition[];
     enableDownload?: boolean;
     isPlayground?: boolean;
+    hideCategories?: string[];
 }
 
 export default function TrackEditor({ 
@@ -54,15 +55,18 @@ export default function TrackEditor({
     onDelete, 
     availableInstruments, 
     enableDownload = false,
-    isPlayground = false 
+    isPlayground = false,
+    hideCategories = [] // Default to an empty array
 }: Props) {
     const [source, setSource] = useState(data.source || "");
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const parser = new LigatureParser();
-
-    // --- LINTER STATE ---
+    const [showPianoRoll, setShowPianoRoll] = useState(false);
     const [lintErrors, setLintErrors] = useState<LintError[]>([]);
     
+    const displayInstruments = availableInstruments.filter(
+        inst => !hideCategories.includes(inst.category || '')
+    );
     // --- AUDIO CONTEXT ---
     const { 
         playTrack, stop, isPlaying, 
@@ -181,7 +185,7 @@ export default function TrackEditor({
         onSave(saveData);
     }
 
-    const groupedInsts = availableInstruments.reduce((acc, curr) => {
+    const groupedInsts = displayInstruments.reduce((acc, curr) => {
         const cat = curr.category || 'Uncategorized';
         if (!acc[cat]) acc[cat] = [];
         acc[cat].push(curr.id);
@@ -282,6 +286,19 @@ export default function TrackEditor({
                         <button onClick={handleClear} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
                             New
                         </button>
+
+                        <button 
+                            onClick={() => setShowPianoRoll(!showPianoRoll)} 
+                            style={{ 
+                                background: 'transparent', 
+                                border: `1px solid ${showPianoRoll ? '#61afef' : '#444'}`, 
+                                color: showPianoRoll ? '#61afef' : '#888',
+                                padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer'
+                            }}
+                        >
+                            {showPianoRoll ? 'Hide' : 'Show'} Piano Roll
+                        </button>
+
                         <button onClick={handleFormat} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
                             Format
                         </button>
@@ -302,17 +319,18 @@ export default function TrackEditor({
                     </div>
                 </div>
                 
-                <div style={{ marginBottom: '1rem' }}>
-                    <label className="form-label">Visual Editor</label>
-                    {isClient && (
-                        <PianoRoll 
-                            source={source} 
-                            qualities={mockQualities}
-                            onChange={handlePianoRollChange}
-                        />
-                    )}
-                </div>
-
+                 {showPianoRoll && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">Visual Editor</label>
+                        {isClient && (
+                            <PianoRoll 
+                                source={source} 
+                                qualities={mockQualities}
+                                onChange={handlePianoRollChange}
+                            />
+                        )}
+                    </div>
+                )}
                 {lintErrors.length > 0 && (
                     <div style={{ 
                         marginBottom: '0.5rem', 
