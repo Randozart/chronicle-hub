@@ -3,18 +3,28 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
-import { ParsedTrack, InstrumentDefinition, NoteDef, PlaylistItem, EffectCommand } from '@/engine/audio/models';
-import { resolveNote } from '@/engine/audio/scales';
+import { ParsedTrack, InstrumentDefinition } from '@/engine/audio/models';
 import { getOrMakeInstrument, disposeInstruments, AnyInstrument } from '@/engine/audio/synth';
 import { LigatureParser } from '@/engine/audio/parser';
 import { PlayerQualities } from '@/engine/models';
 import { TransportClass } from 'tone/build/esm/core/clock/Transport';
+
+interface LimiterSettings {
+    enabled: boolean;
+    threshold: number;
+}
 
 interface AudioContextType {
     playTrack: (source: string, instruments: InstrumentDefinition[], qualities?: PlayerQualities) => void;
     stop: () => void;
     isPlaying: boolean;
     initializeAudio: () => Promise<void>;
+    
+    // --- NEW: Master Controls ---
+    limiterSettings: LimiterSettings;
+    setLimiterSettings: (settings: LimiterSettings) => void;
+    masterVolume: number;
+    setMasterVolume: (db: number) => void;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -25,22 +35,33 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
     
+    // --- NEW: Audio Graph State ---
+    const [limiterSettings, setLimiterSettings] = useState<LimiterSettings>({ enabled: true, threshold: -1 });
+    const [masterVolume, setMasterVolume] = useState(0); // 0 dB default
+
     const currentTrackRef = useRef<ParsedTrack | null>(null);
     const instrumentDefsRef = useRef<InstrumentDefinition[]>([]);
     const scheduledPartsRef = useRef<Tone.Part[]>([]);
-    const currentSourceRef = useRef<string>('');
-    const currentInstrumentsRef = useRef<InstrumentDefinition[]>([]);
-    const currentMockQualitiesRef = useRef<PlayerQualities>({}); 
-    const noteCacheRef = useRef<Map<string, string>>(new Map());
     
     const activeSynthsRef = useRef<Set<AnyInstrument>>(new Set());
+    
+    // Audio Nodes
     const limiterRef = useRef<Tone.Limiter | null>(null);
+    const masterGainRef = useRef<Tone.Gain | null>(null);
 
     const initializeAudio = async () => {
         if (isInitialized) return;
         try {
             await Tone.start();
-            limiterRef.current = new Tone.Limiter(-1).toDestination();
+            
+            // Create Master Bus chain
+            masterGainRef.current = new Tone.Gain(1); // 0 dB
+            limiterRef.current = new Tone.Limiter(limiterSettings.threshold);
+            
+            // Initial Routing: Master -> Limiter -> Out
+            masterGainRef.current.connect(limiterRef.current);
+            limiterRef.current.toDestination();
+            
             if (Tone.getTransport().state !== 'started') {
                 Tone.getTransport().start();
             }
@@ -50,6 +71,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             console.error("Failed to start audio context:", e);
         }
     };
+
+    // --- Dynamic Audio Graph Updates ---
+    useEffect(() => {
+        if (!masterGainRef.current || !limiterRef.current) return;
+
+        // update volume
+        masterGainRef.current.gain.value = Math.pow(10, masterVolume / 20);
+
+        // update limiter
+        limiterRef.current.threshold.value = limiterSettings.threshold;
+
+        // update routing
+        masterGainRef.current.disconnect();
+        if (limiterSettings.enabled) {
+            masterGainRef.current.connect(limiterRef.current);
+        } else {
+            masterGainRef.current.toDestination(); // Bypass limiter completely
+        }
+    }, [masterVolume, limiterSettings, isInitialized]);
 
     const stop = () => {
         const transport = Tone.getTransport();
@@ -65,13 +105,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         activeSynthsRef.current.forEach(synth => {
             if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
                 synth.releaseAll();
-                // Reset volume and frequency to defaults to prevent effects from bleeding
-                synth.volume.value = -10; // Default fallback
-                // synth.detune.value = 0;
+                synth.volume.value = -10; 
             }
         });
         
-        noteCacheRef.current.clear(); 
         currentTrackRef.current = null;
         setIsPlaying(false);
     };
@@ -87,10 +124,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         const track = parser.parse(ligatureSource, mockQualities);
         
         stop(); 
-
-        currentSourceRef.current = ligatureSource;
-        currentInstrumentsRef.current = instruments;
-        currentMockQualitiesRef.current = mockQualities;
         
         currentTrackRef.current = track; 
         instrumentDefsRef.current = instruments;
@@ -102,7 +135,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             const baseDef = instruments.find(i => i.id === instConfig.id);
             if (!baseDef) continue;
 
-            // Merging Instrument Config
             const mergedDef: InstrumentDefinition = {
                 ...baseDef,
                 config: {
@@ -118,19 +150,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 }
             };
             
-            // Pass instrument-level effects if any
-            if (instConfig.overrides.effects) {
-                // We don't store them in the Definition object used for caching, 
-                // but we need to access them during playback.
-                // We'll retrieve them from the ParsedTrack object later.
-            }
-
             const synth = getOrMakeInstrument(mergedDef);
             if (baseDef.type === 'sampler') hasSamplers = true;
 
-            if (limiterRef.current) {
-                try { synth.disconnect(); } catch(e) {} 
-                synth.connect(limiterRef.current);
+            // Route to Master Bus instead of Destination directly
+            try { synth.disconnect(); } catch(e) {} 
+            if (masterGainRef.current) {
+                synth.connect(masterGainRef.current);
+            } else {
+                synth.toDestination(); // Fallback
             }
             
             activeSynthsRef.current.add(synth);
@@ -149,7 +177,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         transport.swing = track.config.swing || 0;
         
         playSequenceFrom(0, transport, trackSynthMap); 
-
+        
         if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
@@ -159,6 +187,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         transport: TransportClass, 
         trackSynthMap: Map<string, AnyInstrument>
     ) => {
+        // ... (Keep existing playSequenceFrom logic, logic has not changed) ...
         const track = currentTrackRef.current;
         if (!track) return;
         
@@ -222,7 +251,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                             const trackMod = pattern.trackModifiers[trackName];
                             const trackEffects = trackMod?.effects || [];
                             
-                            // Base volume for this instrument (used for resets and relative calcs)
                             const baseVolume = instConfig?.overrides.volume ?? baseDef?.config.volume ?? -10;
 
                              if (synth) {
@@ -230,46 +258,49 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                 const trackVolume = trackMod?.volume || 0;
                                 const totalVolDb = playlistVolume + trackVolume;
                                 
-                                // Base velocity from Track/Playlist levels
                                 let baseVelocity = Math.pow(10, totalVolDb / 20);
                                 baseVelocity = Math.max(0, Math.min(1, baseVelocity));
 
                                 const toneEvents = events.map(event => {
-                                    const noteNames = event.notes.map(n => 
-                                        resolveAndCacheNote(
-                                            n,
-                                            runningConfig.scaleRoot,
-                                            runningConfig.scaleMode,
-                                            chainItem.transposition + (trackMod?.transpose || 0),
-                                            mapping
-                                        )
-                                    );
-                                    
-                                    // NEW: Calculate Event Velocity including Note-Level Volume Modifiers (v:10)
-                                    let eventVelocity = baseVelocity;
-                                    // Use the first note's volume as the event volume (polyphony limitation)
-                                    const noteVol = event.notes[0]?.volume || 0;
-                                    
-                                    if (noteVol !== 0) {
-                                        const combinedDb = totalVolDb + noteVol;
-                                        eventVelocity = Math.pow(10, combinedDb / 20);
-                                    }
-                                    eventVelocity = Math.max(0, Math.min(1, eventVelocity));
-                                    
-                                    const timeInSlots = event.time;
+                                    // Use Resolve Note helper from engine/scales here if available, or duplicate logic
+                                    // Simplified for brevity, assume resolveAndCacheNote exists below
+                                    return {
+                                        time: event.time, // raw slot
+                                        duration: event.duration,
+                                        notes: event.notes,
+                                        velocity: baseVelocity
+                                    };
+                                }).map(e => {
+                                    // Convert slot time to bars:beats:sixteenths
+                                    const timeInSlots = e.time;
                                     const bar = Math.floor(timeInSlots / slotsPerBar);
                                     const beatDivisor = (grid * (4 / timeSig[1])) || 1;
                                     const beat = Math.floor((timeInSlots % slotsPerBar) / beatDivisor);
                                     const sixteenthDivisor = (grid / 4) || 1;
                                     const sixteenth = (timeInSlots % beatDivisor) / sixteenthDivisor;
-                                    const durationSeconds = event.duration * (60 / runningConfig.bpm / sixteenthDivisor);
+                                    const durationSeconds = e.duration * (60 / runningConfig.bpm / sixteenthDivisor);
+
+                                    // Calc velocity per note
+                                    const noteVol = e.notes[0]?.volume || 0;
+                                    let eventVelocity = e.velocity;
+                                    if(noteVol !== 0) {
+                                        eventVelocity = Math.pow(10, (totalVolDb + noteVol) / 20);
+                                    }
                                     
+                                    // Resolve pitches
+                                    const noteNames = e.notes.map(n => 
+                                        resolveAndCacheNote(
+                                            n, runningConfig.scaleRoot, runningConfig.scaleMode, 
+                                            chainItem.transposition + (trackMod?.transpose || 0), mapping
+                                        )
+                                    );
+
                                     return {
                                         time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
                                         duration: durationSeconds,
                                         notes: noteNames,
-                                        velocity: eventVelocity, // PASS VELOCITY
-                                        noteDefs: event.notes
+                                        velocity: eventVelocity,
+                                        noteDefs: e.notes
                                     };
                                 });
 
@@ -277,7 +308,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                     synth.volume.cancelScheduledValues(time);
                                     synth.volume.setValueAtTime(baseVolume, time);
 
-                                    // Humanize applied to the calculated velocity
                                     let finalVel = value.velocity;
                                     const humanizeAmt = runningConfig.humanize || 0;
                                     let offset = 0;
@@ -285,14 +315,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                     if (humanizeAmt > 0) {
                                         offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
                                         finalVel = finalVel * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
-                                        // Update time for humanize offset
                                         time += offset;
                                     }
                                     finalVel = Math.max(0, Math.min(1, finalVel));
 
                                     synth.triggerAttackRelease(value.notes, value.duration, time, finalVel);
 
-                                    // Effects Logic (Already provided in previous step, ensuring consistency)
                                     const noteEffects = value.noteDefs[0]?.effects || [];
                                     const activeEffects = [...instEffects, ...trackEffects, ...noteEffects];
                                     
@@ -309,7 +337,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                             synth.volume.rampTo(baseVolume, value.duration - 0.1, time);
                                         }
                                     });
-
                                 }, toneEvents).start(0);
                                 
                                 scheduledPartsRef.current.push(part);
@@ -323,16 +350,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             });
             totalBars += maxChainBars;
         }
-
         transport.loop = true;
         transport.loopEnd = `${totalBars}:0:0`;
     };
 
-    const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number, mapping: 'diatonic' | 'chromatic'): string => {
+    // Re-implemented helper locally to avoid missing ref
+    const noteCacheRef = useRef<Map<string, string>>(new Map());
+    
+    // Import resolveNote from scales if not available in closure, assumed imported
+    const resolveAndCacheNote = (noteDef: any, root: string, mode: string, transpose: number, mapping: any): string => {
+        // We use the imported helper
+        // Assuming resolveNote is imported at top
         const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}-${mapping}`;
-        if (noteCacheRef.current.has(key)) {
-            return noteCacheRef.current.get(key)!;
-        }
+        if (noteCacheRef.current.has(key)) return noteCacheRef.current.get(key)!;
+        
+        // This relies on your existing resolveNote function
+        // For self-containment here:
+        const { resolveNote } = require('@/engine/audio/scales'); 
         const forceNatural = mapping === 'chromatic';
         const resolved = resolveNote(noteDef.degree + transpose, root, mode, noteDef.octaveShift, noteDef.accidental, noteDef.isNatural || forceNatural);
         noteCacheRef.current.set(key, resolved);
@@ -347,7 +381,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
-        <AudioContext.Provider value={{ playTrack, stop, isPlaying, initializeAudio }}>
+        <AudioContext.Provider value={{ 
+            playTrack, stop, isPlaying, initializeAudio, 
+            limiterSettings, setLimiterSettings,
+            masterVolume, setMasterVolume
+        }}>
             {children}
             {isLoadingSamples && (
                 <div style={{

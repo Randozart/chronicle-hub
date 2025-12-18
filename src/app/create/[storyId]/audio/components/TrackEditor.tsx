@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect, useRef } from 'react'; // --- ADD useRef ---
-import { LigatureTrack, InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
+
+import { useState, useEffect, useRef } from 'react';
+import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
@@ -8,8 +9,8 @@ import { PlayerQualities } from '@/engine/models';
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
 import { mergeLigatureSnippet } from '@/engine/audio/merger';
 import { LigatureParser } from '@/engine/audio/parser';
-import PatternLibrary from '@/engine/audio/components/PatternLibrary';
-import { lintLigature, LintError } from '@/engine/audio/linter'; // Import Linter
+// import PatternLibrary from '@/engine/audio/components/PatternLibrary'; // REMOVED
+import { lintLigature, LintError } from '@/engine/audio/linter';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
@@ -25,20 +26,21 @@ Scale: C Minor
 
 [INSTRUMENTS]
 
-
-[DEFINITIONS]
-
-
 [PATTERN: Main]
 
-
 [PLAYLIST]
-
-
 `;
 
+// Local interface definition to fix import error
+interface TrackData {
+    id: string;
+    name: string;
+    source: string;
+    category?: string;
+}
+
 interface Props {
-    data: LigatureTrack;
+    data: TrackData; // Updated type
     onSave: (d: any) => void;
     onDelete: () => void;
     availableInstruments: InstrumentDefinition[];
@@ -60,12 +62,19 @@ export default function TrackEditor({
 
     // --- LINTER STATE ---
     const [lintErrors, setLintErrors] = useState<LintError[]>([]);
-    // --------------------
+    
+    // --- AUDIO CONTEXT ---
+    const { 
+        playTrack, stop, isPlaying, 
+        limiterSettings, setLimiterSettings, 
+        masterVolume, setMasterVolume 
+    } = useAudio();
 
-    const { playTrack, stop, isPlaying } = useAudio();
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
+    const [showMasterSettings, setShowMasterSettings] = useState(false);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -81,8 +90,8 @@ export default function TrackEditor({
         const errors = lintLigature(source);
         setLintErrors(errors);
     }, [source]);
+
     const handleImportClick = () => {
-        // Programmatically clicks the hidden file input element
         fileInputRef.current?.click();
     };
 
@@ -94,7 +103,6 @@ export default function TrackEditor({
         reader.onload = (e) => {
             const text = e.target?.result;
             if (typeof text === 'string') {
-                // Reuse your existing handler to update the state
                 handleSourceChange(text);
                 setStatus('File imported successfully.');
             } else {
@@ -105,10 +113,9 @@ export default function TrackEditor({
             setStatus('Error: Failed to read file.');
         };
         reader.readAsText(file);
-
-        // Reset the input value to allow re-uploading the same file
         event.target.value = '';
     };
+
     const handleSourceChange = (newSource: string) => {
         setSource(newSource);
         try {
@@ -124,8 +131,6 @@ export default function TrackEditor({
     };
 
     const handlePlay = () => {
-        // Prevent play if critical errors exist? Optional.
-        // For now, allow it, but maybe warn.
         try {
             playTrack(source, availableInstruments, mockQualities);
             setStatus("Playing...");
@@ -167,7 +172,7 @@ export default function TrackEditor({
     };
     
     const handleSaveClick = () => {
-        const saveData: LigatureTrack & { category: 'track' } = {
+        const saveData: TrackData & { category: 'track' } = {
             id: data.id,
             name: data.name,
             source: source,
@@ -192,28 +197,93 @@ export default function TrackEditor({
                 style={{ display: 'none' }} 
                 accept=".lig,.txt"
             />
+            
             {/* LEFT COLUMN: DEBUGGER */}
             <div style={{ width: '250px', flexShrink: 0 }}>
                 <ScribeDebugger onUpdate={setMockQualities} />
             </div>
 
             {/* MIDDLE (MAIN) COLUMN: EDITOR */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '800px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '0' }}>
+                
+                {/* TOOLBAR */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <h2 style={{ margin: 0 }}>Track: {data.name}</h2>
                         <span style={{ fontSize: '0.8rem', color: isPlaying ? '#98c379' : '#777' }}>{isPlaying ? "▶ PLAYING" : status}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        
+                        {/* MASTER SETTINGS DROPDOWN */}
+                        <div style={{ position: 'relative' }}>
+                            <button 
+                                onClick={() => setShowMasterSettings(!showMasterSettings)} 
+                                style={{ 
+                                    background: '#21252b', border: '1px solid #444', color: '#ccc', 
+                                    padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer',
+                                    fontSize: '0.85rem'
+                                }}
+                            >
+                                🎚️ Master {masterVolume !== 0 ? `(${masterVolume > 0 ? '+' : ''}${masterVolume}dB)` : ''}
+                            </button>
+
+                            {showMasterSettings && (
+                                <div style={{
+                                    position: 'absolute', top: '100%', right: 0, marginTop: '8px', zIndex: 100,
+                                    background: '#181a1f', border: '1px solid #61afef', borderRadius: '4px',
+                                    padding: '1rem', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                                }}>
+                                    <h4 style={{ margin: '0 0 1rem 0', color: '#61afef', fontSize: '0.9rem', textTransform: 'uppercase' }}>Master Bus Output</h4>
+                                    
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>
+                                            Master Volume: {masterVolume} dB
+                                        </label>
+                                        <input 
+                                            type="range" min="-30" max="10" step="1" 
+                                            value={masterVolume} 
+                                            onChange={e => setMasterVolume(parseInt(e.target.value))}
+                                            style={{ width: '100%', accentColor: '#61afef' }}
+                                        />
+                                    </div>
+
+                                    <div style={{ borderTop: '1px solid #333', paddingTop: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <label style={{ fontSize: '0.9rem', color: '#ccc' }}>Limiter</label>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={limiterSettings.enabled} 
+                                                onChange={e => setLimiterSettings({...limiterSettings, enabled: e.target.checked})} 
+                                            />
+                                        </div>
+                                        
+                                        {limiterSettings.enabled && (
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>
+                                                    Threshold: {limiterSettings.threshold} dB
+                                                </label>
+                                                <input 
+                                                    type="range" min="-40" max="0" step="1" 
+                                                    value={limiterSettings.threshold} 
+                                                    onChange={e => setLimiterSettings({...limiterSettings, threshold: parseInt(e.target.value)})}
+                                                    style={{ width: '100%', accentColor: '#98c379' }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <button onClick={handleImportClick} style={{ background: 'transparent', border: '1px solid #56B6C2', color: '#56B6C2', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
                            Import .lig
                         </button>
                         
                         <button onClick={handleClear} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
-                            New Template
+                            New
                         </button>
                         <button onClick={handleFormat} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
-                            Format Grid
+                            Format
                         </button>
                 
                         {isPlaying ? (
@@ -223,7 +293,7 @@ export default function TrackEditor({
                         )}
                         {enableDownload && (
                             <button onClick={handleDownload} style={{ background: '#56B6C2', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                Download .lig
+                                Download
                             </button>
                         )}
                         {!isPlayground && (
@@ -243,7 +313,6 @@ export default function TrackEditor({
                     )}
                 </div>
 
-                {/* MOVED: Linter Output is now ABOVE source code */}
                 {lintErrors.length > 0 && (
                     <div style={{ 
                         marginBottom: '0.5rem', 
@@ -271,31 +340,27 @@ export default function TrackEditor({
                     </div>
                 )}
 
-                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '800px'}}>
+                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
                     <label className="form-label">Ligature Source Code</label>
                     {isClient && (
                         <ScribeEditor 
                             value={source} 
                             onChange={handleSourceChange} 
-                            minHeight="400px"
+                            minHeight="100%"
                             placeholder="[CONFIG]..."
                             language="ligature"
-                            errors={lintErrors} // Pass errors to highlight line numbers
+                            errors={lintErrors} 
                         />
                     )}
                 </div>
 
-                <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '200px' }}>
+                <div style={{ marginTop: '1rem', padding: '1rem', background: '#111', borderRadius: '4px', fontSize: '0.8rem', color: '#666', overflowY: 'auto', maxHeight: '150px' }}>
                     <strong style={{ color: '#aaa' }}>Available Instruments:</strong>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem' }}>
                         {Object.keys(groupedInsts).sort().map(cat => (
                             <div key={cat}>
-                                <div style={{ color: '#61afef', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', fontSize: '0.7rem' }}>{cat}</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    {groupedInsts[cat].map(id => (
-                                        <div key={id} style={{ fontFamily: 'monospace' }}>{id}</div>
-                                    ))}
-                                </div>
+                                <span style={{ color: '#61afef', fontWeight: 'bold', fontSize: '0.75rem' }}>{cat}: </span>
+                                <span style={{ fontFamily: 'monospace' }}>{groupedInsts[cat].join(', ')}</span>
                             </div>
                         ))}
                     </div>
@@ -308,10 +373,7 @@ export default function TrackEditor({
                 )}
             </div>
 
-            {/* RIGHT COLUMN: PATTERN LIBRARY */}
-            <div style={{ width: '250px', flexShrink: 0 }}>
-                <PatternLibrary onInsert={handleInsertSnippet} />
-            </div>
+            {/* RIGHT COLUMN: REMOVED */}
         </div>
     );
 }
