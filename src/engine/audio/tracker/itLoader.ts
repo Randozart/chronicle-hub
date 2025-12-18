@@ -46,6 +46,13 @@ export interface ItSong {
     patterns: ItPattern[];
 }
 
+// Helper to decode null-terminated strings from a buffer slice
+function decodeCString(buffer: Uint8Array): string {
+    const nullIndex = buffer.indexOf(0);
+    const cleanBuffer = nullIndex === -1 ? buffer : buffer.slice(0, nullIndex);
+    return new TextDecoder().decode(cleanBuffer);
+}
+
 export function parseItFile(buffer: ArrayBuffer): ItSong {
     console.log("--- STARTING IT PARSE ---");
     const dv = new DataView(buffer);
@@ -53,10 +60,9 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     let p = 0;
 
     const magic = new TextDecoder().decode(u8.slice(0, 4));
-    console.log(`Magic: ${magic}`);
     if (magic !== 'IMPM') throw new Error("Not an Impulse Tracker file");
 
-    const title = new TextDecoder().decode(u8.slice(4, 30)).replace(/\0/g, '');
+    const title = decodeCString(u8.slice(4, 30));
     console.log(`Song Title: ${title}`);
     
     p = 32;
@@ -69,23 +75,23 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
 
     p += 4; // Cwt/Cmwt
     const flags = dv.getUint16(p, true); p += 2;
-    console.log(`Flags: 0x${flags.toString(16)}`);
-    
     p += 2; // Special
+    
     const globalVol = dv.getUint8(p); p += 1;
     const mixVol = dv.getUint8(p); p += 1;
     const initialSpeed = dv.getUint8(p); p += 1;
     const initialTempo = dv.getUint8(p); p += 1;
     console.log(`Globals -> Vol: ${globalVol}, Mix: ${mixVol}, Speed: ${initialSpeed}, Tempo: ${initialTempo}`);
 
-    // Offsets
     const orders: number[] = [];
+    p = 192;
     for(let i=0; i<ordNum; i++) {
-        orders.push(u8[192 + i]);
+        orders.push(u8[p + i]);
     }
     console.log(`Orders parsed: ${orders.length}`);
     
     p = 192 + ordNum;
+    
     const insOffsets: number[] = [];
     for(let i=0; i<insNum; i++) { insOffsets.push(dv.getUint32(p, true)); p+=4; }
     
@@ -95,24 +101,18 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     const patOffsets: number[] = [];
     for(let i=0; i<patNum; i++) { patOffsets.push(dv.getUint32(p, true)); p+=4; }
 
-    console.log(`Offsets read. Pat Offsets:`, patOffsets.slice(0, 5));
-
-    // Samples
     const samples: ItSample[] = [];
     for(let i=0; i<smpOffsets.length; i++) {
-        // console.log(`Parsing Sample ${i+1} at ${smpOffsets[i]}`);
         samples.push(parseSample(dv, smpOffsets[i]));
     }
     console.log(`Samples parsed: ${samples.length}`);
 
-    // Patterns
     const patterns: ItPattern[] = [];
     for(let i=0; i<patOffsets.length; i++) {
         const offset = patOffsets[i];
         if (offset === 0) {
             patterns.push({ rows: 64, data: new Uint8Array(0), decoded: [] });
         } else {
-            console.log(`Parsing Pattern ${i} at ${offset}`);
             patterns.push(parsePattern(dv, offset));
         }
     }
@@ -126,12 +126,12 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
 function parseSample(dv: DataView, offset: number): ItSample {
     let p = offset;
     p += 4; // IMPS
-    const filename = new TextDecoder().decode(new Uint8Array(dv.buffer).slice(p, p+12)).replace(/\0/g, '');
+    const filename = decodeCString(new Uint8Array(dv.buffer).slice(p, p+12));
     p += 13; // 12 + 1 null
     const globalVol = dv.getUint8(p); p+=1;
     const flags = dv.getUint8(p); p+=1;
     const defaultVol = dv.getUint8(p); p+=1;
-    const name = new TextDecoder().decode(new Uint8Array(dv.buffer).slice(p, p+26)).replace(/\0/g, '');
+    const name = decodeCString(new Uint8Array(dv.buffer).slice(p, p+26));
     p += 26;
     p += 2; // cvt, df
     const length = dv.getUint32(p, true); p+=4;
@@ -172,7 +172,6 @@ function parsePattern(dv: DataView, offset: number): ItPattern {
     const rows = dv.getUint16(p, true); p+=2;
     p += 4; 
     
-    // console.log(`  - Pattern Data Len: ${len}, Rows: ${rows}`);
     const data = new Uint8Array(dv.buffer.slice(p, p + len));
     const decoded = decodePattern(data, rows);
 
@@ -209,7 +208,6 @@ function decodePattern(data: Uint8Array, rowCount: number): ItRow[] {
             }
             const mask = lastMasks[channel];
 
-            // Note
             if (mask & 1) {
                 if (p >= data.length) break;
                 const n = data[p++];
@@ -221,7 +219,6 @@ function decodePattern(data: Uint8Array, rowCount: number): ItRow[] {
                 eventCount++;
             }
 
-            // Instrument
             if (mask & 2) {
                 if (p >= data.length) break;
                 const i = data[p++];
@@ -233,7 +230,6 @@ function decodePattern(data: Uint8Array, rowCount: number): ItRow[] {
                 eventCount++;
             }
 
-            // Volume
             if (mask & 4) {
                 if (p >= data.length) break;
                 const v = data[p++];
@@ -243,7 +239,6 @@ function decodePattern(data: Uint8Array, rowCount: number): ItRow[] {
                 cell.volpan = lastVol[channel];
             }
 
-            // Command
             if (mask & 8) {
                 if (p + 1 >= data.length) break;
                 const c = data[p++];
@@ -262,7 +257,7 @@ function decodePattern(data: Uint8Array, rowCount: number): ItRow[] {
         rows.push(row);
     }
     
-    if (eventCount === 0) console.warn("  ! Pattern decoded but 0 events found. Check masks.");
+    if (eventCount === 0) console.warn(`  ! Pattern decoded but 0 events found. Check masks.`);
     
     return rows;
 }

@@ -4155,9 +4155,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 1.1681818181818182,
+            "end": 1.503
         }
     }
 },
@@ -4181,9 +4181,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 1.2732426303854876,
+            "end": 1.9012018140589568
         }
     }
 },
@@ -4207,9 +4207,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.08873290136789057,
+            "end": 1.5417566594672427
         }
     }
 },
@@ -4233,9 +4233,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.9245101873911034,
+            "end": 1.4934750915620667
         }
     }
 },
@@ -4259,9 +4259,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.3308994072674169,
+            "end": 0.9980242247229619
         }
     }
 },
@@ -4285,9 +4285,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.6647529838344161,
+            "end": 2.3408974165281764
         }
     }
 },
@@ -4311,9 +4311,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.9066959385290889,
+            "end": 5.296782020913976
         }
     }
 },
@@ -4337,9 +4337,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.4075711209339227,
+            "end": 0.7588121953983906
         }
     }
 },
@@ -4362,10 +4362,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4389,9 +4389,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.20183273402157523,
+            "end": 0.2180721494026215
         }
     }
 },
@@ -4415,9 +4415,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.31716034271725824,
+            "end": 0.34776009791921664
         }
     }
 },
@@ -4441,9 +4441,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
-            "start": 0,
-            "end": 0,
-            "type": "forward"
+            "type": "forward",
+            "start": 0.33554794980202673,
+            "end": 2.06620361049594
         }
     }
 },
@@ -4466,10 +4466,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4492,10 +4492,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4518,10 +4518,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4544,10 +4544,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4570,10 +4570,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4596,10 +4596,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4623,9 +4623,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 5.978715771852206
         }
     }
 },
@@ -4648,10 +4648,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4674,10 +4674,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 },
@@ -4700,10 +4700,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         "volume": -9,
         "octaveOffset": 0,
         "loop": {
-            "enabled": true,
+            "enabled": false,
+            "type": "forward",
             "start": 0,
-            "end": 0,
-            "type": "forward"
+            "end": 0
         }
     }
 }

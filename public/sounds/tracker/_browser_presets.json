@@ -1,0 +1,1982 @@
+[
+    {
+        "id": "de_bass_guitar_",
+        "name": "de_bass_guitar\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_bass_guitar_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 1.1681818181818182,
+                "end": 1.503
+            }
+        }
+    },
+    {
+        "id": "de_low_string_",
+        "name": "de_low_string\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_low_string_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 1.2732426303854876,
+                "end": 1.9012018140589568
+            }
+        }
+    },
+    {
+        "id": "de_mid_string_",
+        "name": "de_mid_string\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_mid_string_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.08873290136789057,
+                "end": 1.5417566594672427
+            }
+        }
+    },
+    {
+        "id": "de_ominous_",
+        "name": "de_ominous\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_ominous_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.9245101873911034,
+                "end": 1.4934750915620667
+            }
+        }
+    },
+    {
+        "id": "de_ominous_low_",
+        "name": "de_ominous_low\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_ominous_low_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.3308994072674169,
+                "end": 0.9980242247229619
+            }
+        }
+    },
+    {
+        "id": "de_legato_string_",
+        "name": "de_legato_string\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_legato_string_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.6647529838344161,
+                "end": 2.3408974165281764
+            }
+        }
+    },
+    {
+        "id": "__",
+        "name": "-\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "__.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_atmosphere_",
+        "name": "de_atmosphere\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_atmosphere_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.9066959385290889,
+                "end": 5.296782020913976
+            }
+        }
+    },
+    {
+        "id": "de_crystal_",
+        "name": "de_crystal\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_crystal_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.4075711209339227,
+                "end": 0.7588121953983906
+            }
+        }
+    },
+    {
+        "id": "de_drum_lofi_pattern_",
+        "name": "de_drum_lofi_pattern\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_drum_lofi_pattern_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_low_buzz_",
+        "name": "de_low_buzz\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_low_buzz_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.20183273402157523,
+                "end": 0.2180721494026215
+            }
+        }
+    },
+    {
+        "id": "de_error_buzz_",
+        "name": "de_error_buzz\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_error_buzz_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.31716034271725824,
+                "end": 0.34776009791921664
+            }
+        }
+    },
+    {
+        "id": "de_atmos_rumble_",
+        "name": "de_atmos_rumble\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_atmos_rumble_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0.33554794980202673,
+                "end": 2.06620361049594
+            }
+        }
+    },
+    {
+        "id": "__",
+        "name": "-\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "__.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_perc_tap_",
+        "name": "de_perc_tap\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_perc_tap_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "__",
+        "name": "-\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "__.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_perc_thump_",
+        "name": "de_perc_thump\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_perc_thump_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_perc_hit_",
+        "name": "de_perc_hit\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_perc_hit_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_drum_break_",
+        "name": "de_drum_break\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_drum_break_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "_______",
+        "name": "-     \r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "_______.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_perc_deep_",
+        "name": "de_perc_deep\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_perc_deep_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_perc_soft_",
+        "name": "de_perc_soft\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_perc_soft_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "__",
+        "name": "-\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "__.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_23",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_23.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_swelling_",
+        "name": "de_swelling\r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_swelling_.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": true,
+                "type": "forward",
+                "start": 0,
+                "end": 5.978715771852206
+            }
+        }
+    },
+    {
+        "id": "de_long_snare_____",
+        "name": "de_long_snare    \r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_long_snare_____.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_hard_hit_______",
+        "name": "de_hard_hit      \r",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_hard_hit_______.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "de_bass_drum",
+        "name": "de_bass_drum",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "de_bass_drum.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_28",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_28.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_29",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_29.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_30",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_30.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_31",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_31.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_32",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_32.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_33",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_33.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_34",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_34.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_35",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_35.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_36",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_36.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_37",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_37.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_38",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_38.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_39",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_39.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_40",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_40.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_41",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_41.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_42",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_42.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_43",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_43.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_44",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_44.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_45",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_45.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_46",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_46.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_47",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_47.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_48",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_48.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_49",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_49.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_50",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_50.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_51",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_51.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_52",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_52.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_53",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_53.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_54",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_54.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_55",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_55.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_56",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_56.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_57",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_57.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_58",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_58.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_59",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_59.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_60",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_60.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_61",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_61.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_62",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_62.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_63",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_63.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_64",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_64.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_65",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_65.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_66",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_66.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_67",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_67.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_68",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_68.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_69",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_69.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_70",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_70.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_71",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_71.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_72",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_72.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_73",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_73.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_74",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_74.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_75",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_75.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_76",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_76.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_77",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_77.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_78",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_78.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_79",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_79.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_80",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_80.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_81",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_81.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_82",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_82.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_83",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_83.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_84",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_84.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_85",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_85.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_86",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_86.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_87",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_87.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_88",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_88.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_89",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_89.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_90",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_90.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_91",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_91.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_92",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_92.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_93",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_93.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_94",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_94.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_95",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_95.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_96",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_96.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_97",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_97.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    },
+    {
+        "id": "sample_98",
+        "name": "",
+        "type": "sampler",
+        "mapping": "diatonic",
+        "config": {
+            "baseUrl": "/sounds/tracker/",
+            "urls": {
+                "C4": "sample_98.wav"
+            },
+            "volume": -10,
+            "octaveOffset": -1,
+            "loop": {
+                "enabled": false,
+                "type": "forward",
+                "start": 0,
+                "end": 0
+            }
+        }
+    }
+]

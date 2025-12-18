@@ -8,7 +8,7 @@ export interface ConverterOptions {
     speed: number;
     scaleRoot: string;
     scaleMode: string;
-    amplify: number;
+    amplify: number; // IT Global Volume (0-128 standard)
 }
 
 // --- MINIMAL ZIP WRITER ---
@@ -38,7 +38,6 @@ class SimpleZip {
             const nameBytes = new TextEncoder().encode(f.name);
             const size = f.data.length;
             
-            // Local Header
             const lh = new Uint8Array(30 + nameBytes.length + size);
             const v = new DataView(lh.buffer);
             v.setUint32(0, 0x04034b50, true); 
@@ -54,7 +53,6 @@ class SimpleZip {
             lh.set(f.data, 30 + nameBytes.length);
             localHeaders.push(lh);
 
-            // Central Directory
             const cd = new Uint8Array(46 + nameBytes.length);
             const c = new DataView(cd.buffer);
             c.setUint32(0, 0x02014b50, true);
@@ -135,12 +133,22 @@ function resolveRelative(absNote: string, scaleRoot: string, scaleMode: string):
     return out;
 }
 
-function translateVol(volpan: number | undefined, multiplier: number): string {
+/**
+ * Calculates note-specific volume attenuation relative to max (64).
+ */
+function translateVol(volpan: number | undefined): string {
     if (volpan === undefined) return "";
-    if (volpan > 64) return ""; 
-    const lin = (volpan / 64.0) * multiplier;
-    if (lin <= 0.001) return "(v:-60)";
-    const db = 20 * Math.log10(lin);
+    if (volpan > 64) return ""; // Ignore panning/effects
+    
+    // 64 is Max Volume. If it's max, we don't need a tag (it uses the Instrument default).
+    if (volpan >= 64) return ""; 
+    
+    // Silence
+    if (volpan === 0) return "(v:-100)"; 
+
+    // Relative attenuation dB = 20 * log(val / 64)
+    // 32 -> -6dB, 16 -> -12dB
+    const db = 20 * Math.log10(volpan / 64.0);
     return `(v:${Math.round(db)})`;
 }
 
@@ -179,15 +187,18 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
     const smpMap = new Map<number, string>();
     const usedSamples = new Set<number>();
     
+    // We store the default volume (0-64) for each sample to use in the [INSTRUMENTS] section
+    const smpDefaultVols = new Map<number, number>();
+
     // 1. Process Samples & Presets
     console.log(`Processing ${song.samples.length} samples...`);
     
     song.samples.forEach((s, i) => {
-        // FIX: Always process metadata, even if data is compressed/missing
         const id = (s.name || `sample_${i}`).replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
         smpMap.set(i + 1, id); 
+        smpDefaultVols.set(i + 1, s.defaultVol);
         
-        // WAV GENERATION (Only if data exists)
+        // WAV GENERATION
         if (s.data) {
             const numChannels = 1;
             const sampleRate = s.c5Speed;
@@ -220,20 +231,67 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
         }
 
         // PRESET GENERATION
-        const startSec = s.loop.start / s.c5Speed;
-        const endSec = s.loop.end / s.c5Speed;
+        const startSec = s.c5Speed > 0 ? s.loop.start / s.c5Speed : 0;
+        const endSec = s.c5Speed > 0 ? s.loop.end / s.c5Speed : 0;
+        
+        // CLEAN PRESET: Standard -10dB. Specific volume is handled in [INSTRUMENTS]
         presets.push({
             id: id, name: s.name, type: 'sampler', mapping: 'diatonic',
             config: {
-                baseUrl: '/sounds/tracker/', urls: { "C4": `${id}.wav` }, volume: -10, octaveOffset: -1, 
+                baseUrl: '/sounds/tracker/', urls: { "C4": `${id}.wav` }, 
+                volume: -10, 
+                octaveOffset: -1, 
                 loop: { enabled: s.loop.enabled, type: s.loop.pingPong ? 'pingpong' : 'forward', start: startSec, end: endSec }
             }
         });
     });
     
-    console.log(`Generated ${presets.length} presets.`);
+    // 2. Playlist & Pattern Prep
+    const finalPlaylistOrder: string[] = [];
+    const usedPatternIds = new Set<string>();
+    const visited = new Set<string>();
+    let currentOrderIndex = 0;
+    let safetyCounter = 0;
 
-    // 2. Generate Patterns
+    console.log("Walking playlist to resolve jumps...");
+    while (currentOrderIndex < song.orders.length && safetyCounter < 1000) {
+        safetyCounter++;
+        const pIdx = song.orders[currentOrderIndex];
+        if (pIdx >= 254) break; 
+        
+        if (pIdx >= song.patterns.length) {
+            currentOrderIndex++;
+            continue;
+        }
+
+        const patId = `P${pIdx}`;
+        finalPlaylistOrder.push(patId);
+        usedPatternIds.add(patId);
+        
+        const pat = song.patterns[pIdx];
+        let jumpToOrder = -1;
+        
+        if (pat?.decoded) {
+            for (const row of pat.decoded) {
+                for (const cell of Object.values(row.channels)) {
+                    if (cell.command === 2) { 
+                        jumpToOrder = cell.commandVal ?? -1;
+                    }
+                }
+            }
+        }
+        
+        if (jumpToOrder !== -1) {
+            const loopKey = `${currentOrderIndex}->${jumpToOrder}`;
+            if (visited.has(loopKey)) break;
+            visited.add(loopKey);
+            currentOrderIndex = jumpToOrder;
+        } else {
+            currentOrderIndex++;
+        }
+    }
+    
+    // 3. Generate Source
     let ligSource = `[CONFIG]\n`;
     let bpm = song.initialTempo;
     let speed = song.initialSpeed;
@@ -241,7 +299,7 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
     if (song.patterns[0]?.decoded) {
         for (const r of song.patterns[0].decoded) {
             for (const c in r.channels) {
-                if (r.channels[c].command === 1) { // Axx
+                if (r.channels[c].command === 1) { 
                     const val = r.channels[c].commandVal || 6;
                     if (val > 0) speed = val;
                 }
@@ -253,27 +311,51 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
     
     const slotsPerRow = opts.grid / opts.speed;
     const slotsPerBar = opts.grid * 4;
-    const volMult = opts.amplify / 255.0;
 
-    // Scan used instruments
-    console.log("Scanning used instruments...");
-    song.patterns.forEach(p => { if(!p.decoded) return; p.decoded.forEach(r => { Object.values(r.channels).forEach(c => { if(c.instrument) usedSamples.add(c.instrument); }); }); });
-    console.log(`Found ${usedSamples.size} unique instruments.`);
-    
-    Array.from(usedSamples).sort().forEach(idx => { const id = smpMap.get(idx); if(id) ligSource += `${id}: ${id}\n`; });
+    // Scan used instruments in USED patterns
+    const usedSamplesInPatterns = new Set<number>();
+    song.patterns.forEach((p, pIdx) => { 
+        if (usedPatternIds.has(`P${pIdx}`) && p.decoded) {
+            p.decoded.forEach(r => Object.values(r.channels).forEach(c => { if(c.instrument) usedSamplesInPatterns.add(c.instrument) }));
+        }
+    });
 
-    song.patterns.forEach((pat, pIdx) => {
-        if (!pat.decoded) return; 
-        if (!song.orders.includes(pIdx) && pIdx >= song.patterns.length) return;
+    // GENERATE INSTRUMENTS BLOCK with Volume Modifiers
+    Array.from(usedSamplesInPatterns).sort().forEach(idx => { 
+        const id = smpMap.get(idx); 
+        const defVol = smpDefaultVols.get(idx) ?? 64;
+        
+        // Calculate Base Volume Modifier
+        // Global Amplify (0-128) + Sample Default (0-64)
+        // 128 Global & 64 Default = 0dB modifier (Standard -10dB playback)
+        
+        const globalAtten = 20 * Math.log10(opts.amplify / 128.0);
+        const sampleAtten = 20 * Math.log10(defVol / 64.0);
+        const totalMod = Math.round(globalAtten + sampleAtten);
+        
+        if (id) {
+            if (totalMod === 0 || !isFinite(totalMod)) {
+                ligSource += `${id}: ${id}\n`;
+            } else {
+                ligSource += `${id}: ${id}(v:${totalMod})\n`;
+            }
+        }
+    });
 
+    for (let pIdx = 0; pIdx < song.patterns.length; pIdx++) {
         const patId = `P${pIdx}`;
+        if (!usedPatternIds.has(patId)) continue; 
+
+        const pat = song.patterns[pIdx];
+        if (!pat.decoded) continue;
+
         ligSource += `\n[PATTERN: ${patId}]\n`;
         
         const rawSlots = Math.ceil(pat.rows * slotsPerRow);
         const remainder = rawSlots % slotsPerBar;
         const totalSlots = remainder === 0 ? rawSlots : rawSlots + (slotsPerBar - remainder);
 
-        Array.from(usedSamples).sort().forEach(smpIdx => {
+        Array.from(usedSamplesInPatterns).sort().forEach(smpIdx => {
             const instId = smpMap.get(smpIdx);
             if (!instId) return;
 
@@ -286,17 +368,13 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
                     if (row.channels[k].instrument === smpIdx) { cell = row.channels[k]; break; }
                 }
                 
-                if (cell) {
-                    // DEBUG
-                    if (cell.note && cell.note < 120 && events.length === 0) {
-                        console.log(`[P${pIdx}][${instId}] Found note: ${cell.note}`);
-                    }
-
-                    if (cell.note && cell.note < 120) {
+                if (cell && cell.note) {
+                    if (cell.note < 120) {
                         const n = itNoteToLigature(cell.note); 
                         if (n) {
                             const rel = resolveRelative(n, opts.scaleRoot, opts.scaleMode);
-                            const v = translateVol(cell.volpan, volMult);
+                            // NOTE: We only output relative attenuation here
+                            const v = translateVol(cell.volpan);
                             const eff = translateEffect(cell.command || 0, cell.commandVal || 0, speed);
                             events.push({ row: rIdx, note: rel, vol: v, eff });
                         }
@@ -321,10 +399,10 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
                 ligSource += `${instId.padEnd(20)} | ${formatBar(slots, slotsPerBar)} |\n`;
             }
         });
-    });
+    }
 
     ligSource += `\n[PLAYLIST]\n`;
-    song.orders.forEach(pIdx => { if (pIdx < 254 && pIdx < song.patterns.length) ligSource += `P${pIdx}\n`; });
+    ligSource += finalPlaylistOrder.join('\n');
 
     return { source: ligSource, presets, zipBlob: zip.generate() };
 }
