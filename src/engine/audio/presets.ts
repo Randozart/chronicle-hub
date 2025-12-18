@@ -4151,7 +4151,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4170,7 +4173,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4189,7 +4195,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4208,7 +4217,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4227,7 +4239,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4246,7 +4261,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4265,7 +4283,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4284,7 +4305,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4303,7 +4327,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4322,7 +4349,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4341,7 +4371,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4360,7 +4393,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4436,7 +4472,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4493,7 +4532,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4531,7 +4573,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 },
 
@@ -4550,7 +4595,10 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 2
         },
-        "volume": -9
+        "volume": -9,
+        "loop": {
+            "enabled": true
+        }
     }
 }
 

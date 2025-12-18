@@ -12,12 +12,10 @@ export interface EnvelopeDef {
     release?: number;
 }
 
-// --- NEW: Tracker Effect Command ---
 export interface EffectCommand {
-    code: string; // e.g. 'P', 'V', 'A'
-    value: number; // e.g. 15, 0
+    code: string; 
+    value: number;
 }
-// ----------------------------------
 
 export interface InstrumentDefinition {
     id: string;
@@ -37,16 +35,18 @@ export interface InstrumentDefinition {
         octaveOffset?: number;
         volume?: number;
         polyphony?: number;
+        
+        // --- NEW: Loop Configuration ---
+        loop?: {
+            enabled: boolean;
+            type?: 'forward' | 'pingpong'; // Default 'forward'
+            start?: number; // seconds
+            end?: number;   // seconds
+        };
     };
 }
 
-export interface LigatureTrack {
-    id: string;
-    name: string;
-    source: string; 
-    category?: string;
-}
-
+// ... (Rest of the file remains unchanged, ParsedTrack, etc.)
 export interface ParsedTrack {
     config: {
         bpm: number;
@@ -72,7 +72,6 @@ export interface InstrumentConfig {
         sustain?: number;
         release?: number;
         octaveOffset?: number;
-        // --- NEW: Instrument-level effects ---
         effects?: EffectCommand[];
     };
 }
@@ -83,7 +82,6 @@ export interface PatternModifier {
     transpose: number;
     volume: number;
     pan: number;
-    // --- NEW: Track-level effects ---
     effects?: EffectCommand[];
 }
 
@@ -126,8 +124,7 @@ export interface NoteDef {
     octaveShift: number;  
     accidental: number;   
     isNatural: boolean;   
-    
-    volume?: number; // v:+10
+    volume?: number;
     effects?: EffectCommand[];
 }
 
