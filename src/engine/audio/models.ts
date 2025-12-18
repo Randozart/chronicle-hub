@@ -35,14 +35,14 @@ export interface InstrumentDefinition {
         octaveOffset?: number;
         volume?: number;
         polyphony?: number;
-        
-        // --- NEW: Loop Configuration ---
         loop?: {
             enabled: boolean;
-            type?: 'forward' | 'pingpong'; // Default 'forward'
-            start?: number; // seconds
-            end?: number;   // seconds
+            type?: 'forward' | 'pingpong';
+            start?: number;
+            end?: number;
+            crossfade?: number; // Crossfade time in seconds (e.g., 0.01)
         };
+        noteCut?: boolean; 
     };
 }
 

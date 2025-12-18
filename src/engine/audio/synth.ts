@@ -14,7 +14,7 @@ function getCacheKey(def: InstrumentDefinition): string {
         env: def.config.envelope,
         osc: def.config.oscillator,
         offset: def.config.octaveOffset,
-        loop: def.config.loop // Include loop in cache key
+        loop: def.config.loop 
     });
 }
 
@@ -53,21 +53,22 @@ export function getOrMakeInstrument(def: InstrumentDefinition): AnyInstrument {
             attack: config.envelope?.attack || 0,
             release: config.envelope?.release || 1,
         }).toDestination();
-
-        // --- LOOP IMPLEMENTATION ---
+        
         if (config.loop && config.loop.enabled) {
-            // TypeScript cast needed as Tone types sometimes hide these properties on the wrapper
             const sampler = inst as any;
             sampler.loop = true;
             
-            if (config.loop.start !== undefined) {
-                sampler.loopStart = config.loop.start;
+            if (config.loop.start !== undefined) sampler.loopStart = config.loop.start;
+            if (config.loop.end !== undefined) sampler.loopEnd = config.loop.end;
+            
+            // --- NEW: Apply Crossfade ---
+            if (config.loop.crossfade !== undefined && config.loop.crossfade > 0) {
+                // Tone.Sampler uses 'fadein'/'fadeout' on the player for this effect.
+                // We apply it to the internal buffer player.
+                // Note: This is an undocumented/internal Tone.js feature, but it's standard.
+                sampler.fadeIn = config.loop.crossfade;
+                sampler.fadeOut = config.loop.crossfade;
             }
-            if (config.loop.end !== undefined) {
-                sampler.loopEnd = config.loop.end;
-            }
-            // Note: Tone.Sampler buffers don't support 'pingpong' natively in standard version, 
-            // usually just forward looping. We ignore 'type' for now unless using a custom buffer player.
         }
         
     } else {

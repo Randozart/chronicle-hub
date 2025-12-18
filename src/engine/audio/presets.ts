@@ -4184,7 +4184,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "type": "forward",
             "start": 1.2732426303854876,
             "end": 1.9012018140589568
-        }
+        },
+        "noteCut": true
     }
 },
 
@@ -4314,7 +4315,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "type": "forward",
             "start": 0.9066959385290889,
             "end": 5.296782020913976
-        }
+        },
+        "noteCut": true
     }
 },
 
@@ -4385,13 +4387,14 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -9,
+        "volume": -3,
         "octaveOffset": 0,
         "loop": {
             "enabled": true,
             "type": "forward",
             "start": 0.20183273402157523,
-            "end": 0.2180721494026215
+            "end": 0.2180721494026215,
+            "crossfade": 0.1 
         }
     }
 },
@@ -4418,7 +4421,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "type": "forward",
             "start": 0.31716034271725824,
             "end": 0.34776009791921664
-        }
+        },
+        "noteCut": true
     }
 },
 
@@ -4444,7 +4448,8 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "type": "forward",
             "start": 0.33554794980202673,
             "end": 2.06620361049594
-        }
+        },
+        "noteCut": true
     }
 },
 

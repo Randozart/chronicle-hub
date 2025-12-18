@@ -42,6 +42,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const currentTrackRef = useRef<ParsedTrack | null>(null);
     const instrumentDefsRef = useRef<InstrumentDefinition[]>([]);
     const scheduledPartsRef = useRef<Tone.Part[]>([]);
+
+    const activeNotesPerPartRef = useRef<Map<Tone.Part, string[]>>(new Map());
     
     const activeSynthsRef = useRef<Set<AnyInstrument>>(new Set());
     
@@ -101,7 +103,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             part.dispose();
         });
         scheduledPartsRef.current = [];
+        activeNotesPerPartRef.current.clear();
 
+        // NEW: Clear the note resolution cache
+        noteCacheRef.current.clear();
+        
         activeSynthsRef.current.forEach(synth => {
             if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
                 synth.releaseAll();
@@ -187,7 +193,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         transport: TransportClass, 
         trackSynthMap: Map<string, AnyInstrument>
     ) => {
-        // ... (Keep existing playSequenceFrom logic, logic has not changed) ...
         const track = currentTrackRef.current;
         if (!track) return;
         
@@ -305,22 +310,28 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                 });
 
                                 const part = new Tone.Part((time, value) => {
-                                    synth.volume.cancelScheduledValues(time);
-                                    synth.volume.setValueAtTime(baseVolume, time);
-
+                                    const instConfig = track.instruments[trackName];
+                                    const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
+                                    
+                                    // --- 1. Common Logic (run for every note) ---
+                                    
+                                    // Humanize velocity and time
                                     let finalVel = value.velocity;
                                     const humanizeAmt = runningConfig.humanize || 0;
-                                    let offset = 0;
-                                    
                                     if (humanizeAmt > 0) {
-                                        offset = (Math.random() - 0.5) * 0.03 * humanizeAmt; 
+                                        time += (Math.random() - 0.5) * 0.03 * humanizeAmt; 
                                         finalVel = finalVel * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
-                                        time += offset;
                                     }
                                     finalVel = Math.max(0, Math.min(1, finalVel));
 
-                                    synth.triggerAttackRelease(value.notes, value.duration, time, finalVel);
+                                    // Reset volume and apply effects for this note event
+                                    const baseVolume = instConfig?.overrides.volume ?? baseDef?.config.volume ?? -10;
+                                    synth.volume.cancelScheduledValues(time);
+                                    synth.volume.setValueAtTime(baseVolume, time);
 
+                                    const instEffects = instConfig?.overrides.effects || [];
+                                    const trackMod = pattern.trackModifiers[trackName];
+                                    const trackEffects = trackMod?.effects || [];
                                     const noteEffects = value.noteDefs[0]?.effects || [];
                                     const activeEffects = [...instEffects, ...trackEffects, ...noteEffects];
                                     
@@ -337,8 +348,38 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                             synth.volume.rampTo(baseVolume, value.duration - 0.1, time);
                                         }
                                     });
+
+                                    // --- 2. Playback Logic (Mutually Exclusive) ---
+
+                                    if (baseDef?.config.noteCut) {
+                                        // --- A) NOTE CUT LOGIC (Monophonic) ---
+                                        
+                                        // Cut off the previously playing note on this part/track
+                                        const previousNotes = activeNotesPerPartRef.current.get(part);
+                                        if (previousNotes) {
+                                            synth.triggerRelease(previousNotes, time);
+                                        }
+
+                                        // Start the new note
+                                        synth.triggerAttack(value.notes, time, finalVel);
+                                        
+                                        // Schedule its release for the future
+                                        transport.scheduleOnce((releaseTime) => {
+                                            synth.triggerRelease(value.notes, releaseTime);
+                                            activeNotesPerPartRef.current.delete(part);
+                                        }, time + value.duration);
+
+                                        // Store this new note as the "active" one
+                                        activeNotesPerPartRef.current.set(part, value.notes);
+
+                                    } else {
+                                        // --- B) STANDARD LOGIC (Polyphonic) ---
+                                        // This is the ONLY place this function should be called.
+                                        synth.triggerAttackRelease(value.notes, value.duration, time, finalVel);
+                                    }
+
                                 }, toneEvents).start(0);
-                                
+
                                 scheduledPartsRef.current.push(part);
                             }
                         }
