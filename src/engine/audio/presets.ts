@@ -4149,7 +4149,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4175,7 +4175,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4201,7 +4201,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4227,7 +4227,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4253,7 +4253,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4279,7 +4279,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4305,7 +4305,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4331,7 +4331,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4357,7 +4357,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4383,7 +4383,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4409,7 +4409,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4435,7 +4435,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4539,7 +4539,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4617,7 +4617,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4669,7 +4669,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,
@@ -4695,7 +4695,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 2
+            "release": 0.5
         },
         "volume": -9,
         "octaveOffset": 0,

@@ -8,7 +8,8 @@ export interface ConverterOptions {
     speed: number;
     scaleRoot: string;
     scaleMode: string;
-    amplify: number; // IT Global Volume (0-128 standard)
+    amplify: number;
+    detectModulation?: boolean;
 }
 
 // --- MINIMAL ZIP WRITER ---
@@ -94,6 +95,53 @@ function itNoteToLigature(note: number): string | null {
     return n;
 }
 
+function getRelativeKey(root: string, mode: string): { root: string, mode: string } {
+    const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const pc = Note.pitchClass(root);
+    let idx = roots.indexOf(pc);
+    if (idx === -1) idx = 0; 
+
+    if (mode.toLowerCase() === 'major') {
+        const newIdx = (idx - 3 + 12) % 12;
+        return { root: roots[newIdx], mode: 'Minor' };
+    } else {
+        const newIdx = (idx + 3) % 12;
+        return { root: roots[newIdx], mode: 'Major' };
+    }
+}
+
+function determinePatternScale(
+    pat: any, 
+    primary: { root: string, mode: string }, 
+    relative: { root: string, mode: string }
+): { root: string, mode: string } {
+    
+    if (!pat || !pat.decoded) return primary;
+
+    let primaryScore = 0;
+    let relativeScore = 0;
+
+    const primRootPC = Note.pitchClass(primary.root);
+    const relRootPC = Note.pitchClass(relative.root);
+    
+    pat.decoded.forEach((row: any) => {
+        Object.values(row.channels).forEach((c: any) => {
+            if (c.note && c.note < 120) {
+                const n = Note.fromMidi(c.note);
+                const pc = Note.pitchClass(n);
+                
+                if (pc === primRootPC) primaryScore++;
+                if (pc === relRootPC) relativeScore++;
+            }
+        });
+    });
+
+    if (relativeScore > (primaryScore * 1.2)) {
+        return relative;
+    }
+    return primary;
+}
+
 function resolveRelative(absNote: string, scaleRoot: string, scaleMode: string): string {
     const scale = Scale.get(`${scaleRoot} ${scaleMode}`);
     if(!scale.notes.length) return "1";
@@ -133,21 +181,11 @@ function resolveRelative(absNote: string, scaleRoot: string, scaleMode: string):
     return out;
 }
 
-/**
- * Calculates note-specific volume attenuation relative to max (64).
- */
 function translateVol(volpan: number | undefined): string {
     if (volpan === undefined) return "";
-    if (volpan > 64) return ""; // Ignore panning/effects
-    
-    // 64 is Max Volume. If it's max, we don't need a tag (it uses the Instrument default).
+    if (volpan > 64) return ""; 
     if (volpan >= 64) return ""; 
-    
-    // Silence
     if (volpan === 0) return "(v:-100)"; 
-
-    // Relative attenuation dB = 20 * log(val / 64)
-    // 32 -> -6dB, 16 -> -12dB
     const db = 20 * Math.log10(volpan / 64.0);
     return `(v:${Math.round(db)})`;
 }
@@ -187,18 +225,18 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
     const smpMap = new Map<number, string>();
     const usedSamples = new Set<number>();
     
-    // We store the default volume (0-64) for each sample to use in the [INSTRUMENTS] section
+    // Default Vols for Instrument block
     const smpDefaultVols = new Map<number, number>();
 
     // 1. Process Samples & Presets
     console.log(`Processing ${song.samples.length} samples...`);
-    
+    const baseVolume = -12; // Lowered headroom to prevent clipping
+
     song.samples.forEach((s, i) => {
         const id = (s.name || `sample_${i}`).replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
         smpMap.set(i + 1, id); 
         smpDefaultVols.set(i + 1, s.defaultVol);
         
-        // WAV GENERATION
         if (s.data) {
             const numChannels = 1;
             const sampleRate = s.c5Speed;
@@ -226,57 +264,63 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
                 for(let k=0; k<src.length; k++) { wavBytes[44+k] = src[k] + 128; }
             }
             zip.add(`${id}.wav`, wavBytes);
-        } else {
-            console.warn(`Sample ${i+1} (${id}) has no data (likely compressed). Generating preset only.`);
         }
 
-        // PRESET GENERATION
         const startSec = s.c5Speed > 0 ? s.loop.start / s.c5Speed : 0;
         const endSec = s.c5Speed > 0 ? s.loop.end / s.c5Speed : 0;
         
-        // CLEAN PRESET: Standard -10dB. Specific volume is handled in [INSTRUMENTS]
+        // Shorter release (0.5s) to prevent mud
         presets.push({
             id: id, name: s.name, type: 'sampler', mapping: 'diatonic',
             config: {
                 baseUrl: '/sounds/tracker/', urls: { "C4": `${id}.wav` }, 
-                volume: -10, 
+                volume: baseVolume, 
                 octaveOffset: -1, 
-                loop: { enabled: s.loop.enabled, type: s.loop.pingPong ? 'pingpong' : 'forward', start: startSec, end: endSec }
+                loop: { enabled: s.loop.enabled, type: s.loop.pingPong ? 'pingpong' : 'forward', start: startSec, end: endSec },
+                envelope: { attack: 0.01, release: 0.5 } 
             }
         });
     });
     
-    // 2. Playlist & Pattern Prep
+    console.log(`Generated ${presets.length} presets.`);
+
+    // --- KEY DETECTION ---
+    const primaryKey = { root: opts.scaleRoot, mode: opts.scaleMode };
+    const relativeKey = getRelativeKey(opts.scaleRoot, opts.scaleMode);
+    const patternKeys = new Map<number, { root: string, mode: string }>();
+
+    if (opts.detectModulation) {
+        console.log(`Detecting modulation...`);
+        song.patterns.forEach((pat, i) => {
+            const detected = determinePatternScale(pat, primaryKey, relativeKey);
+            patternKeys.set(i, detected);
+        });
+    }
+
+    // --- PLAYLIST WALKER ---
     const finalPlaylistOrder: string[] = [];
     const usedPatternIds = new Set<string>();
     const visited = new Set<string>();
     let currentOrderIndex = 0;
     let safetyCounter = 0;
 
-    console.log("Walking playlist to resolve jumps...");
+    console.log("Walking playlist...");
     while (currentOrderIndex < song.orders.length && safetyCounter < 1000) {
         safetyCounter++;
         const pIdx = song.orders[currentOrderIndex];
         if (pIdx >= 254) break; 
-        
-        if (pIdx >= song.patterns.length) {
-            currentOrderIndex++;
-            continue;
-        }
+        if (pIdx >= song.patterns.length) { currentOrderIndex++; continue; }
 
         const patId = `P${pIdx}`;
         finalPlaylistOrder.push(patId);
         usedPatternIds.add(patId);
         
-        const pat = song.patterns[pIdx];
         let jumpToOrder = -1;
-        
+        const pat = song.patterns[pIdx];
         if (pat?.decoded) {
             for (const row of pat.decoded) {
                 for (const cell of Object.values(row.channels)) {
-                    if (cell.command === 2) { 
-                        jumpToOrder = cell.commandVal ?? -1;
-                    }
+                    if (cell.command === 2) { jumpToOrder = cell.commandVal ?? -1; }
                 }
             }
         }
@@ -312,7 +356,6 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
     const slotsPerRow = opts.grid / opts.speed;
     const slotsPerBar = opts.grid * 4;
 
-    // Scan used instruments in USED patterns
     const usedSamplesInPatterns = new Set<number>();
     song.patterns.forEach((p, pIdx) => { 
         if (usedPatternIds.has(`P${pIdx}`) && p.decoded) {
@@ -320,14 +363,9 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
         }
     });
 
-    // GENERATE INSTRUMENTS BLOCK with Volume Modifiers
     Array.from(usedSamplesInPatterns).sort().forEach(idx => { 
         const id = smpMap.get(idx); 
         const defVol = smpDefaultVols.get(idx) ?? 64;
-        
-        // Calculate Base Volume Modifier
-        // Global Amplify (0-128) + Sample Default (0-64)
-        // 128 Global & 64 Default = 0dB modifier (Standard -10dB playback)
         
         const globalAtten = 20 * Math.log10(opts.amplify / 128.0);
         const sampleAtten = 20 * Math.log10(defVol / 64.0);
@@ -350,7 +388,7 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
         if (!pat.decoded) continue;
 
         ligSource += `\n[PATTERN: ${patId}]\n`;
-        
+        const currentScale = patternKeys.get(pIdx) || primaryKey;
         const rawSlots = Math.ceil(pat.rows * slotsPerRow);
         const remainder = rawSlots % slotsPerBar;
         const totalSlots = remainder === 0 ? rawSlots : rawSlots + (slotsPerBar - remainder);
@@ -372,8 +410,7 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
                     if (cell.note < 120) {
                         const n = itNoteToLigature(cell.note); 
                         if (n) {
-                            const rel = resolveRelative(n, opts.scaleRoot, opts.scaleMode);
-                            // NOTE: We only output relative attenuation here
+                            const rel = resolveRelative(n, currentScale.root, currentScale.mode);
                             const v = translateVol(cell.volpan);
                             const eff = translateEffect(cell.command || 0, cell.commandVal || 0, speed);
                             events.push({ row: rIdx, note: rel, vol: v, eff });
@@ -402,7 +439,16 @@ export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions)
     }
 
     ligSource += `\n[PLAYLIST]\n`;
-    ligSource += finalPlaylistOrder.join('\n');
+    let activeKey = primaryKey;
+    finalPlaylistOrder.forEach(patId => {
+        const pIdx = parseInt(patId.substring(1));
+        const patKey = patternKeys.get(pIdx) || primaryKey;
+        if (opts.detectModulation && (patKey.root !== activeKey.root || patKey.mode !== activeKey.mode)) {
+            ligSource += `Scale=${patKey.root} ${patKey.mode}\n`;
+            activeKey = patKey;
+        }
+        ligSource += `${patId}\n`;
+    });
 
     return { source: ligSource, presets, zipBlob: zip.generate() };
 }

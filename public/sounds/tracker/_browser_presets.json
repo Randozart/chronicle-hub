@@ -9,13 +9,17 @@
             "urls": {
                 "C4": "de_bass_guitar_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 1.1681818181818182,
                 "end": 1.503
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -29,13 +33,17 @@
             "urls": {
                 "C4": "de_low_string_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 1.2732426303854876,
                 "end": 1.9012018140589568
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -49,13 +57,17 @@
             "urls": {
                 "C4": "de_mid_string_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.08873290136789057,
                 "end": 1.5417566594672427
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -69,13 +81,17 @@
             "urls": {
                 "C4": "de_ominous_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.9245101873911034,
                 "end": 1.4934750915620667
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -89,13 +105,17 @@
             "urls": {
                 "C4": "de_ominous_low_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.3308994072674169,
                 "end": 0.9980242247229619
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -109,13 +129,17 @@
             "urls": {
                 "C4": "de_legato_string_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.6647529838344161,
                 "end": 2.3408974165281764
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -129,13 +153,17 @@
             "urls": {
                 "C4": "__.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -149,13 +177,17 @@
             "urls": {
                 "C4": "de_atmosphere_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.9066959385290889,
                 "end": 5.296782020913976
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -169,13 +201,17 @@
             "urls": {
                 "C4": "de_crystal_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.4075711209339227,
                 "end": 0.7588121953983906
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -189,13 +225,17 @@
             "urls": {
                 "C4": "de_drum_lofi_pattern_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -209,13 +249,17 @@
             "urls": {
                 "C4": "de_low_buzz_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.20183273402157523,
                 "end": 0.2180721494026215
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -229,13 +273,17 @@
             "urls": {
                 "C4": "de_error_buzz_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.31716034271725824,
                 "end": 0.34776009791921664
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -249,13 +297,17 @@
             "urls": {
                 "C4": "de_atmos_rumble_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0.33554794980202673,
                 "end": 2.06620361049594
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -269,13 +321,17 @@
             "urls": {
                 "C4": "__.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -289,13 +345,17 @@
             "urls": {
                 "C4": "de_perc_tap_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -309,13 +369,17 @@
             "urls": {
                 "C4": "__.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -329,13 +393,17 @@
             "urls": {
                 "C4": "de_perc_thump_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -349,13 +417,17 @@
             "urls": {
                 "C4": "de_perc_hit_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -369,13 +441,17 @@
             "urls": {
                 "C4": "de_drum_break_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -389,13 +465,17 @@
             "urls": {
                 "C4": "_______.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -409,13 +489,17 @@
             "urls": {
                 "C4": "de_perc_deep_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -429,13 +513,17 @@
             "urls": {
                 "C4": "de_perc_soft_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -449,13 +537,17 @@
             "urls": {
                 "C4": "__.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -469,13 +561,17 @@
             "urls": {
                 "C4": "sample_23.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -489,13 +585,17 @@
             "urls": {
                 "C4": "de_swelling_.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": true,
                 "type": "forward",
                 "start": 0,
                 "end": 5.978715771852206
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -509,13 +609,17 @@
             "urls": {
                 "C4": "de_long_snare_____.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -529,13 +633,17 @@
             "urls": {
                 "C4": "de_hard_hit_______.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -549,13 +657,17 @@
             "urls": {
                 "C4": "de_bass_drum.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -569,13 +681,17 @@
             "urls": {
                 "C4": "sample_28.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -589,13 +705,17 @@
             "urls": {
                 "C4": "sample_29.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -609,13 +729,17 @@
             "urls": {
                 "C4": "sample_30.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -629,13 +753,17 @@
             "urls": {
                 "C4": "sample_31.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -649,13 +777,17 @@
             "urls": {
                 "C4": "sample_32.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -669,13 +801,17 @@
             "urls": {
                 "C4": "sample_33.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -689,13 +825,17 @@
             "urls": {
                 "C4": "sample_34.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -709,13 +849,17 @@
             "urls": {
                 "C4": "sample_35.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -729,13 +873,17 @@
             "urls": {
                 "C4": "sample_36.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -749,13 +897,17 @@
             "urls": {
                 "C4": "sample_37.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -769,13 +921,17 @@
             "urls": {
                 "C4": "sample_38.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -789,13 +945,17 @@
             "urls": {
                 "C4": "sample_39.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -809,13 +969,17 @@
             "urls": {
                 "C4": "sample_40.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -829,13 +993,17 @@
             "urls": {
                 "C4": "sample_41.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -849,13 +1017,17 @@
             "urls": {
                 "C4": "sample_42.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -869,13 +1041,17 @@
             "urls": {
                 "C4": "sample_43.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -889,13 +1065,17 @@
             "urls": {
                 "C4": "sample_44.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -909,13 +1089,17 @@
             "urls": {
                 "C4": "sample_45.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -929,13 +1113,17 @@
             "urls": {
                 "C4": "sample_46.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -949,13 +1137,17 @@
             "urls": {
                 "C4": "sample_47.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -969,13 +1161,17 @@
             "urls": {
                 "C4": "sample_48.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -989,13 +1185,17 @@
             "urls": {
                 "C4": "sample_49.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1009,13 +1209,17 @@
             "urls": {
                 "C4": "sample_50.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1029,13 +1233,17 @@
             "urls": {
                 "C4": "sample_51.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1049,13 +1257,17 @@
             "urls": {
                 "C4": "sample_52.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1069,13 +1281,17 @@
             "urls": {
                 "C4": "sample_53.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1089,13 +1305,17 @@
             "urls": {
                 "C4": "sample_54.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1109,13 +1329,17 @@
             "urls": {
                 "C4": "sample_55.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1129,13 +1353,17 @@
             "urls": {
                 "C4": "sample_56.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1149,13 +1377,17 @@
             "urls": {
                 "C4": "sample_57.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1169,13 +1401,17 @@
             "urls": {
                 "C4": "sample_58.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1189,13 +1425,17 @@
             "urls": {
                 "C4": "sample_59.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1209,13 +1449,17 @@
             "urls": {
                 "C4": "sample_60.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1229,13 +1473,17 @@
             "urls": {
                 "C4": "sample_61.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1249,13 +1497,17 @@
             "urls": {
                 "C4": "sample_62.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1269,13 +1521,17 @@
             "urls": {
                 "C4": "sample_63.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1289,13 +1545,17 @@
             "urls": {
                 "C4": "sample_64.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1309,13 +1569,17 @@
             "urls": {
                 "C4": "sample_65.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1329,13 +1593,17 @@
             "urls": {
                 "C4": "sample_66.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1349,13 +1617,17 @@
             "urls": {
                 "C4": "sample_67.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1369,13 +1641,17 @@
             "urls": {
                 "C4": "sample_68.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1389,13 +1665,17 @@
             "urls": {
                 "C4": "sample_69.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1409,13 +1689,17 @@
             "urls": {
                 "C4": "sample_70.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1429,13 +1713,17 @@
             "urls": {
                 "C4": "sample_71.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1449,13 +1737,17 @@
             "urls": {
                 "C4": "sample_72.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1469,13 +1761,17 @@
             "urls": {
                 "C4": "sample_73.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1489,13 +1785,17 @@
             "urls": {
                 "C4": "sample_74.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1509,13 +1809,17 @@
             "urls": {
                 "C4": "sample_75.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1529,13 +1833,17 @@
             "urls": {
                 "C4": "sample_76.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1549,13 +1857,17 @@
             "urls": {
                 "C4": "sample_77.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1569,13 +1881,17 @@
             "urls": {
                 "C4": "sample_78.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1589,13 +1905,17 @@
             "urls": {
                 "C4": "sample_79.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1609,13 +1929,17 @@
             "urls": {
                 "C4": "sample_80.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1629,13 +1953,17 @@
             "urls": {
                 "C4": "sample_81.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1649,13 +1977,17 @@
             "urls": {
                 "C4": "sample_82.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1669,13 +2001,17 @@
             "urls": {
                 "C4": "sample_83.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1689,13 +2025,17 @@
             "urls": {
                 "C4": "sample_84.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1709,13 +2049,17 @@
             "urls": {
                 "C4": "sample_85.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1729,13 +2073,17 @@
             "urls": {
                 "C4": "sample_86.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1749,13 +2097,17 @@
             "urls": {
                 "C4": "sample_87.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1769,13 +2121,17 @@
             "urls": {
                 "C4": "sample_88.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1789,13 +2145,17 @@
             "urls": {
                 "C4": "sample_89.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1809,13 +2169,17 @@
             "urls": {
                 "C4": "sample_90.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1829,13 +2193,17 @@
             "urls": {
                 "C4": "sample_91.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1849,13 +2217,17 @@
             "urls": {
                 "C4": "sample_92.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1869,13 +2241,17 @@
             "urls": {
                 "C4": "sample_93.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1889,13 +2265,17 @@
             "urls": {
                 "C4": "sample_94.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1909,13 +2289,17 @@
             "urls": {
                 "C4": "sample_95.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1929,13 +2313,17 @@
             "urls": {
                 "C4": "sample_96.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1949,13 +2337,17 @@
             "urls": {
                 "C4": "sample_97.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     },
@@ -1969,13 +2361,17 @@
             "urls": {
                 "C4": "sample_98.wav"
             },
-            "volume": -10,
+            "volume": -12,
             "octaveOffset": -1,
             "loop": {
                 "enabled": false,
                 "type": "forward",
                 "start": 0,
                 "end": 0
+            },
+            "envelope": {
+                "attack": 0.01,
+                "release": 0.5
             }
         }
     }

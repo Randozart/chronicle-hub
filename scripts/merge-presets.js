@@ -16,22 +16,26 @@ function normalize(str) {
 }
 
 try {
-    // 1. Load Source (Browser JSON with Loops)
-    console.log(`Reading source loops from: ${sourcePath}`);
+    // 1. Load Source (Browser JSON)
+    console.log(`Reading source data from: ${sourcePath}`);
     const sourceRaw = fs.readFileSync(sourcePath, 'utf8');
     const sourceData = JSON.parse(sourceRaw); 
     
-    // Map NormalizedID -> Loop Config
-    const loopMap = new Map();
+    // Map NormalizedID -> Config (Loop + Envelope)
+    const configMap = new Map();
     const sourceArray = Array.isArray(sourceData) ? sourceData : Object.values(sourceData);
     
     sourceArray.forEach(item => {
-        if (item.id && item.config && item.config.loop) {
+        if (item.id && item.config) {
             const key = normalize(item.id);
-            loopMap.set(key, item.config.loop);
+            // Store the relevant parts we want to transfer
+            configMap.set(key, { 
+                loop: item.config.loop,
+                envelope: item.config.envelope 
+            });
         }
     });
-    console.log(`Loaded ${loopMap.size} loop definitions.`);
+    console.log(`Loaded ${configMap.size} config definitions.`);
 
     // 2. Load Target (Node Output TS)
     console.log(`Reading target presets from: ${targetPath}`);
@@ -55,9 +59,22 @@ try {
     targetArray.forEach(preset => {
         const key = normalize(preset.id);
         
-        if (loopMap.has(key)) {
-            const loopData = loopMap.get(key);
-            preset.config.loop = loopData;
+        if (configMap.has(key)) {
+            const sourceConfig = configMap.get(key);
+            
+            // 1. Merge Loop
+            if (sourceConfig.loop) {
+                preset.config.loop = sourceConfig.loop;
+            }
+
+            // 2. Merge Envelope (Attack/Release)
+            if (sourceConfig.envelope) {
+                preset.config.envelope = {
+                    ...preset.config.envelope, // Keep existing props (if any)
+                    ...sourceConfig.envelope   // Overwrite with optimized browser values
+                };
+            }
+
             updateCount++;
         } else {
             missingIds.push(preset.id);
@@ -73,7 +90,7 @@ try {
     fs.writeFileSync(outPath, finalOutput);
     
     console.log(`----------------------------------------`);
-    console.log(`✅ Merged ${updateCount} / ${targetArray.length} loops.`);
+    console.log(`✅ Merged Loops & Envelopes for ${updateCount} / ${targetArray.length} presets.`);
     if (missingIds.length > 0) {
         console.warn(`⚠️  Could not match ${missingIds.length} IDs. First 5 mismatches:`);
         missingIds.slice(0, 5).forEach(id => console.warn(`   - ${id} (Normalized: ${normalize(id)})`));
