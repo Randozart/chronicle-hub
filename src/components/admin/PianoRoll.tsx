@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { ParsedTrack, NoteDef } from '@/engine/audio/models';
-import { LigatureParser } from '@/engine/audio/parser';
+import { serializeParsedTrack } from '@/engine/audio/serializer';
 import { PlayerQualities } from '@/engine/models';
 import { resolveNote } from '@/engine/audio/scales';
 import { Note, Scale } from 'tonal';
+import { LigatureParser } from '@/engine/audio/parser';
 
 interface Props {
     source: string;
@@ -90,7 +91,7 @@ export default function PianoRoll({ source, qualities = {}, onChange }: Props) {
         pattern.tracks[trackName] = trackEvents;
         
         const parser = new LigatureParser();
-        onChange(parser.stringify(newTrack));
+        onChange(serializeParsedTrack(newTrack));
     };
 
     if (!parsedTrack || !activePattern || !config) return null;
