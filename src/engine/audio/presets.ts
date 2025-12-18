@@ -4136,12 +4136,12 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             volume: -8
         }
     },
-    'de_bass_guitar': {
+'de_bass_guitar': {
     "id": "de_bass_guitar",
     "name": "De Bass Guitar",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_bass_guitar/",
         "urls": {
@@ -4149,9 +4149,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4160,7 +4160,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Low String",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_low_string/",
         "urls": {
@@ -4168,9 +4168,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4179,7 +4179,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Mid String",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_mid_string/",
         "urls": {
@@ -4187,9 +4187,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4198,7 +4198,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Ominous",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_ominous/",
         "urls": {
@@ -4206,9 +4206,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4217,7 +4217,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Ominous Low",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_ominous_low/",
         "urls": {
@@ -4225,9 +4225,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4236,7 +4236,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Legato String",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_legato_string/",
         "urls": {
@@ -4244,9 +4244,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4255,7 +4255,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Atmosphere",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_atmosphere/",
         "urls": {
@@ -4263,9 +4263,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4274,7 +4274,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Crystal",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_crystal/",
         "urls": {
@@ -4282,9 +4282,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4293,7 +4293,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Drum Lofi Pattern",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_drum_lofi_pattern/",
         "urls": {
@@ -4301,9 +4301,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4312,7 +4312,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Low Buzz",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_low_buzz/",
         "urls": {
@@ -4320,9 +4320,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4331,7 +4331,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Error Buzz",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_error_buzz/",
         "urls": {
@@ -4339,9 +4339,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4350,7 +4350,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Atmos Rumble",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_atmos_rumble/",
         "urls": {
@@ -4358,9 +4358,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4369,7 +4369,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Perc Tap",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_tap/",
         "urls": {
@@ -4379,7 +4379,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4388,7 +4388,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Perc Thump",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_thump/",
         "urls": {
@@ -4398,7 +4398,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4407,7 +4407,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Perc Hit",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_hit/",
         "urls": {
@@ -4417,7 +4417,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4426,7 +4426,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Drum Break",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_drum_break/",
         "urls": {
@@ -4434,9 +4434,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4445,7 +4445,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Perc Deep",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_deep/",
         "urls": {
@@ -4455,7 +4455,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4464,7 +4464,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Perc Soft",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_perc_soft/",
         "urls": {
@@ -4474,7 +4474,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4483,7 +4483,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Swelling",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_swelling/",
         "urls": {
@@ -4491,9 +4491,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4502,7 +4502,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Long Snare",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_long_snare/",
         "urls": {
@@ -4512,7 +4512,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             "attack": 0.01,
             "release": 0.5
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4521,7 +4521,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Hard Hit",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_hard_hit/",
         "urls": {
@@ -4529,9 +4529,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 },
 
@@ -4540,7 +4540,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
     "name": "De Bass Drum",
     "category": "Deus Ex",
     "type": "sampler",
-    "mapping": "chromatic",
+    "mapping": "diatonic",
     "config": {
         "baseUrl": "/sounds/tracker/de_bass_drum/",
         "urls": {
@@ -4548,9 +4548,9 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         },
         "envelope": {
             "attack": 0.01,
-            "release": 0.5
+            "release": 2
         },
-        "volume": -6
+        "volume": -9
     }
 }
 
