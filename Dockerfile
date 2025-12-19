@@ -1,47 +1,52 @@
-FROM node:20-alpine AS base
-
-# 1. Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# --- Stage 1: Builder ---
+# Use the full Node.js image to build the app
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci
+# Copy package files and install dependencies
+COPY package.json yarn.lock ./
+# If you use npm instead of yarn, change this to:
+# COPY package.json package-lock.json ./
+# RUN npm ci
+RUN yarn install --frozen-lockfile
 
-# 2. Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy the rest of the application code
 COPY . .
 
-# Disable telemetry during build
+# Set build-time env vars
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Build Next.js
-RUN npm run build
+# Build the Next.js application for standalone output
+RUN yarn build
 
-# 3. Production image, copy all the files and run next
-FROM base AS runner
+# --- Stage 2: Production ---
+# Use a minimal, non-root image for the final stage
+FROM node:20-alpine
+
 WORKDIR /app
 
-ENV NODE_ENV production
+# Set environment to production
+ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Create a non-root user and group
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy public assets
-COPY --from=builder /app/public ./public
+# --- HARDENING STEP 1: Remove unnecessary tools ---
+# This prevents attackers from downloading external scripts.
+RUN apk --no-cache del wget curl bash
 
-# Automatically leverage output traces to reduce image size
+# Copy only the necessary standalone output from the builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Switch to the non-root user
 USER nextjs
 
 EXPOSE 3000
-
 ENV PORT 3000
-# Use the standalone server (lighter/faster)
+
+# Command to run the app
 CMD ["node", "server.js"]
