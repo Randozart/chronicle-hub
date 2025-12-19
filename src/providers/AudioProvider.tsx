@@ -32,12 +32,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
+    
+    // Playback State Control
+    const playbackRequestIdRef = useRef(0);
+
     const [limiterSettings, setLimiterSettings] = useState<LimiterSettings>({ enabled: true, threshold: -1 });
     const [masterVolume, setMasterVolume] = useState(0);
 
     const currentTrackRef = useRef<ParsedTrack | null>(null);
     const instrumentDefsRef = useRef<InstrumentDefinition[]>([]);
+    
     const scheduledPartsRef = useRef<Tone.Part[]>([]);
+    const scheduledEventsRef = useRef<number[]>([]); 
     const activeNotesPerPartRef = useRef<Map<Tone.Part, string[]>>(new Map());
     const activeSynthsRef = useRef<Set<AnySoundSource>>(new Set());
     
@@ -52,18 +58,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             masterGainRef.current = new Tone.Gain(0);
             limiterRef.current = new Tone.Limiter(-1);
             
-            if (limiterSettings.enabled) {
-                masterGainRef.current.connect(limiterRef.current);
-                limiterRef.current.toDestination();
-            } else {
-                masterGainRef.current.toDestination();
-            }
+            masterGainRef.current.connect(limiterRef.current);
+            limiterRef.current.toDestination();
             
-            if (Tone.getTransport().state !== 'started') {
-                Tone.getTransport().start();
-            }
             setIsInitialized(true);
-            console.log("Audio Engine Started");
+            console.log("Audio Engine Initialized");
         } catch (e) {
             console.error("Failed to start audio context:", e);
         }
@@ -74,13 +73,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         
         masterGainRef.current.gain.value = Tone.dbToGain(masterVolume);
         limiterRef.current.threshold.value = limiterSettings.threshold;
-
-        masterGainRef.current.disconnect();
-        if (limiterSettings.enabled) {
-            masterGainRef.current.connect(limiterRef.current);
-            limiterRef.current.toDestination();
-        } else {
-            masterGainRef.current.toDestination();
+        
+        if (!limiterSettings.enabled) {
+            limiterRef.current.threshold.value = 0; 
         }
     }, [masterVolume, limiterSettings, isInitialized]);
 
@@ -91,10 +86,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         
         scheduledPartsRef.current.forEach(part => part.dispose());
         scheduledPartsRef.current = [];
+        
+        scheduledEventsRef.current.forEach(id => transport.clear(id));
+        scheduledEventsRef.current = [];
+
         activeNotesPerPartRef.current.clear();
         noteCacheRef.current.clear();
         
-        activeSynthsRef.current.forEach(synth => synth.releaseAll());
+        activeSynthsRef.current.forEach(synth => {
+            synth.releaseAll();
+            if (synth._panner) synth._panner.pan.value = 0;
+        });
         
         currentTrackRef.current = null;
         setIsPlaying(false);
@@ -107,6 +109,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     ) => {
         if (!isInitialized) await initializeAudio();
         
+        const requestId = ++playbackRequestIdRef.current;
+
         const parser = new LigatureParser();
         const track = parser.parse(ligatureSource, mockQualities);
         
@@ -121,6 +125,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsLoadingSamples(true);
         
         for (const [trackName, instConfig] of Object.entries(track.instruments)) {
+            if (playbackRequestIdRef.current !== requestId) return;
+
             const baseDef = instruments.find(i => i.id === instConfig.id);
             if (!baseDef) continue;
 
@@ -141,10 +147,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             
             const synth = await getOrMakeInstrument(mergedDef);
             
+            if (playbackRequestIdRef.current !== requestId) return;
+
             if (masterGainRef.current) {
-                synth.connect(masterGainRef.current);
-            } else {
-                synth.toDestination();
+                if (synth._panner) {
+                    synth._panner.disconnect();
+                    synth._panner.connect(masterGainRef.current);
+                } else {
+                    synth.disconnect();
+                    synth.connect(masterGainRef.current);
+                }
             }
             
             activeSynthsRef.current.add(synth);
@@ -152,6 +164,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
         
         setIsLoadingSamples(false);
+
+        if (playbackRequestIdRef.current !== requestId) return;
 
         const transport = Tone.getTransport(); 
         transport.position = "0:0:0";
@@ -177,7 +191,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
         for (const item of track.playlist) {
             if (item.type === 'command') {
-                transport.scheduleOnce((time: number) => {
+                const eventId = transport.scheduleOnce((time: number) => {
                     if (item.command === 'BPM') transport.bpm.rampTo(parseFloat(item.value), 0.1, time);
                     if (item.command === 'Scale') {
                         const [root, mode] = item.value.split(' ');
@@ -185,6 +199,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                         runningConfig.scaleMode = mode || 'Major';
                     }
                 }, `${totalBars}:0:0`);
+                scheduledEventsRef.current.push(eventId);
                 continue;
             }
 
@@ -251,7 +266,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                     duration: durationSeconds,
                                     notes: noteNames,
                                     velocity,
-                                    noteDefs: event.notes
+                                    noteDefs: event.notes,
+                                    pan: (trackMod?.pan || 0) / 100 // -1 to 1
                                 };
                             });
 
@@ -259,12 +275,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                 const part = new Tone.Part((time, value) => {
                                     const baseVolume = instConfig.overrides.volume ?? baseDef?.config.volume ?? -10;
                                     let finalVel = value.velocity;
+                                    
                                     const humanizeAmt = runningConfig.humanize || 0;
                                     if (humanizeAmt > 0) {
                                         time += (Math.random() - 0.5) * 0.03 * humanizeAmt; 
                                         finalVel = finalVel * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
                                     }
                                     finalVel = Math.max(0, Math.min(1, finalVel));
+
+                                    if (synth._panner) {
+                                        let panVal = value.pan;
+                                        const noteEffects = value.noteDefs[0]?.effects || [];
+                                        const panFx = noteEffects.find(fx => fx.code === 'P');
+                                        if (panFx) {
+                                            panVal = panFx.value / 100;
+                                        }
+                                        synth._panner.pan.setValueAtTime(panVal, time);
+                                    }
 
                                     synth.volume.cancelScheduledValues(time);
                                     synth.volume.setValueAtTime(baseVolume, time);
@@ -287,11 +314,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                                      if (baseDef?.config.noteCut) {
                                         const previousNotes = activeNotesPerPartRef.current.get(part);
                                         if (previousNotes) synth.triggerRelease(previousNotes, time);
+                                        
                                         synth.triggerAttack(value.notes, time, finalVel);
+                                        
                                         transport.scheduleOnce((releaseTime) => {
                                             synth.triggerRelease(value.notes, releaseTime);
                                             activeNotesPerPartRef.current.delete(part);
                                         }, time + value.duration);
+                                        
                                         activeNotesPerPartRef.current.set(part, value.notes);
                                     } else {
                                         synth.triggerAttackRelease(value.notes, value.duration, time, finalVel);
@@ -307,13 +337,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             });
             totalBars += maxChainBars;
         }
-        transport.loop = true;
-        transport.loopEnd = `${totalBars}:0:0`;
+        
+        // DISABLE LOOPING FOR GLOBAL PLAY
+        transport.loop = false;
+        // Schedule a stop event at the end so setIsPlaying updates correctly
+        transport.scheduleOnce(() => {
+            stop();
+        }, `${totalBars}:0:0`);
     };
 
     const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number, mapping: 'diatonic' | 'chromatic'): string => {
         const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift}-${noteDef.accidental}-${noteDef.isNatural}-${mapping}`;
         if (noteCacheRef.current.has(key)) return noteCacheRef.current.get(key)!;
+        
         const resolved = resolveNote(noteDef.degree + transpose, root, mode, noteDef.octaveShift, noteDef.accidental, noteDef.isNatural || mapping === 'chromatic');
         noteCacheRef.current.set(key, resolved);
         return resolved;

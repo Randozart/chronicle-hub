@@ -136,27 +136,23 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
             audioStop();
             setIsLocalPlaying(false);
         } else {
-            if (!parsedTrack) return;
+            // STOP GLOBAL PLAY FIRST
+            audioStop();
 
+            // Loop logic matches Piano Roll
+            const startBar = playlistIndex;
+            const endBar = startBar + 1;
+            
+            // Build solo track from JUST this playlist row
             const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
-
-            // Logic: Play Context (Row) OR Pattern
-            if (viewMode === 'pattern' && selectedPatternId) {
-                // Solo Pattern
-                soloTrack.playlist = [{ 
-                    type: 'pattern', 
-                    layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] 
-                }];
-            } else {
-                // Solo Context (Current Playlist Row)
-                const currentItem = soloTrack.playlist[playlistIndex];
-                if (currentItem && currentItem.type === 'pattern') {
-                    soloTrack.playlist = [currentItem];
-                }
-            }
-
+            soloTrack.playlist = [parsedTrack.playlist[playlistIndex]];
+            
+            // Note: If you want to loop JUST the pattern regardless of placement, 
+            // you might need to extract the pattern ID like PianoRoll does.
+            // But usually Tracker view implies "Play this Row".
+            
             const soloSource = serializeParsedTrack(soloTrack);
-            playTrack(soloSource, availableInstruments);
+            playTrack(soloSource, availableInstruments, {});
             setIsLocalPlaying(true);
         }
     };

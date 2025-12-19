@@ -14,7 +14,7 @@ interface Props {
     source: string;
     qualities?: PlayerQualities;
     onChange: (newSource: string) => void;
-    availableInstruments: InstrumentDefinition[]; // <--- Add to Interface
+    availableInstruments: InstrumentDefinition[]; 
 }
 
 const SLOT_W = 24;
@@ -29,8 +29,8 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
     
     // Automation State
     const [showAutomation, setShowAutomation] = useState(false);
-    const [autoHeight, setAutoHeight] = useState(100);
-    const [autoMode, setAutoMode] = useState<'volume' | 'pan'>('volume');
+    const [autoHeight, setAutoHeight] = useState(120);
+    const [autoMode, setAutoMode] = useState<'volume' | 'pan' | 'filter'>('volume');
     const [isLocalPlaying, setIsLocalPlaying] = useState(false);
     const { playTrack, stop: audioStop } = useAudio();
 
@@ -43,7 +43,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
         originalTime?: number;
         originalDuration?: number;
         originalVal?: number; 
-        originalMidiBase?: number;
+        originalMidiBase?: number; // Used for ghost rendering
     } | null>(null);
 
     const [ghostState, setGhostState] = useState<{
@@ -53,6 +53,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
         val?: number; 
     } | null>(null);
 
+    // Parsing Logic
     useEffect(() => {
         try {
             const parser = new LigatureParser();
@@ -89,6 +90,8 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
     }, [activePattern, config]);
     const midiToRow = (midi: number) => noteRange.length - 1 - (midi - minMidi);
 
+    // --- EVENT HANDLERS ---
+
     const handleGridMouseDown = (e: React.MouseEvent, midi: number, time: number) => {
         if (!parsedTrack || !selectedPatternId || !activeLane) return;
         if (e.button !== 0) return; 
@@ -98,6 +101,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
         if (!pattern.tracks[activeLane]) pattern.tracks[activeLane] = [];
         const trackEvents = pattern.tracks[activeLane];
 
+        // Hit detection margin
         const existingEvent = trackEvents.find((ev: SequenceEvent) => Math.abs(ev.time - time) < 0.1);
         const noteDef = resolveScaleDegree(midi, config!.scaleRoot, config!.scaleMode);
 
@@ -113,6 +117,9 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
 
     const handleEventMouseDown = (e: React.MouseEvent, trackName: string, eventIndex: number, midiBase: number) => {
         e.stopPropagation();
+        if (!parsedTrack || !selectedPatternId) return;
+
+        // Right Click Delete
         if (e.button === 2) {
             e.preventDefault();
             const newTrack = JSON.parse(JSON.stringify(parsedTrack));
@@ -123,9 +130,9 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
 
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        const isResize = clickX > rect.width - 10;
+        const isResize = clickX > rect.width - 10; // Right edge resize
         
-        const pattern = parsedTrack!.patterns[selectedPatternId];
+        const pattern = parsedTrack.patterns[selectedPatternId];
         const event = pattern.tracks[trackName][eventIndex];
 
         setDragState({
@@ -137,6 +144,13 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
             originalTime: event.time,
             originalDuration: event.duration,
             originalMidiBase: midiBase
+        });
+        
+        // Initial Ghost
+        setGhostState({
+            time: event.time,
+            midiShift: 0,
+            duration: event.duration
         });
     };
 
@@ -150,8 +164,10 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
             startY: e.clientY,
             originalVal: currentVal
         });
+        setGhostState({ time: 0, midiShift: 0, duration: 0, val: currentVal });
     };
 
+    // --- DRAG LOGIC ---
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!dragState) return;
@@ -165,8 +181,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                 let clamped = newVal;
                 if (autoMode === 'volume') {
                     clamped = Math.min(6, Math.max(-60, newVal));
-                } else {
-                    // Pan
+                } else if (autoMode === 'pan') {
                     clamped = Math.min(100, Math.max(-100, newVal));
                 }
                 setGhostState({ time: 0, midiShift: 0, duration: 0, val: Math.round(clamped) });
@@ -179,7 +194,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                     const midiShift = -rowsDelta; 
                     setGhostState({ time: newTime, midiShift, duration: dragState.originalDuration || 1 });
                 } else {
-                    const newDuration = Math.max(0.25, (dragState.originalDuration || 1) + slotsDelta);
+                    const newDuration = Math.max(0.25, (dragState.originalDuration || 1) + slotsDelta * 0.25); // Finer resolution resizing
                     setGhostState({ time: dragState.originalTime || 0, midiShift: 0, duration: newDuration });
                 }
             }
@@ -197,11 +212,12 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
             const event = pattern.tracks[dragState.trackName][dragState.eventIndex];
 
             if (dragState.type === 'automation') {
-                const val = ghostState.val ?? 0; // FIX: Ensure val is number
+                const val = ghostState.val ?? 0;
                 event.notes.forEach((n: NoteDef) => {
                     if (autoMode === 'volume') {
                         n.volume = val;
                     } else if (autoMode === 'pan') {
+                        // Use 'P' code for Pan
                         if (!n.effects) n.effects = [];
                         const panFx = n.effects.find(e => e.code === 'P');
                         if (panFx) panFx.value = val;
@@ -211,15 +227,21 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
             } else if (dragState.type === 'resize') {
                 event.duration = ghostState.duration;
             } else {
+                // Moving Logic
                 event.time = ghostState.time;
-                event.notes.forEach((n: NoteDef) => {
-                    const currentMidi = Note.midi(resolveNote(n.degree, config!.scaleRoot, config!.scaleMode, n.octaveShift, n.accidental, n.isNatural)) || 60;
-                    const newMidi = currentMidi + ghostState.midiShift;
-                    const newDef = resolveScaleDegree(newMidi, config!.scaleRoot, config!.scaleMode);
-                    Object.assign(n, newDef);
-                });
+                if (ghostState.midiShift !== 0) {
+                    event.notes.forEach((n: NoteDef) => {
+                        // Calculate absolute current pitch
+                        const currentMidi = Note.midi(resolveNote(n.degree, config!.scaleRoot, config!.scaleMode, n.octaveShift, n.accidental, n.isNatural)) || 60;
+                        const newMidi = currentMidi + ghostState.midiShift;
+                        // Resolve back to degree
+                        const newDef = resolveScaleDegree(newMidi, config!.scaleRoot, config!.scaleMode);
+                        Object.assign(n, newDef);
+                    });
+                }
             }
             
+            // Re-sort track if time changed
             if (dragState.type !== 'automation') {
                 pattern.tracks[dragState.trackName].sort((a: SequenceEvent, b: SequenceEvent) => a.time - b.time);
             }
@@ -246,28 +268,26 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
         } else {
             if (!parsedTrack || !selectedPatternId) return;
 
-            // 1. Create a deep copy of the track
-            const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
+            // Stop Global first
+            audioStop();
 
-            // 2. Override playlist to loop ONLY the selected pattern
+            const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
             soloTrack.playlist = [{ 
                 type: 'pattern', 
                 layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] 
             }];
-
-            // 3. Serialize to string
+            
             const soloSource = serializeParsedTrack(soloTrack);
-
-            // 4. Play using global engine
+            
+            // Play
             playTrack(soloSource, availableInstruments, qualities);
             setIsLocalPlaying(true);
         }
     };
 
-     useEffect(() => {
+    useEffect(() => {
         if (Tone.Transport.state !== 'started') setIsLocalPlaying(false);
-    }, [source]); // Check on updates, or set up a transport listener if needed
-
+    }, [source]); 
 
     if (!parsedTrack || !activePattern || !config) return null;
 
@@ -278,6 +298,12 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
     const laneKeys = Object.keys(activePattern.tracks).sort();
 
     const ddStyle = { background: '#21252b', color: '#dcdfe4', border: '1px solid #444', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' };
+    const tabStyle = (active: boolean) => ({
+        padding: '4px 12px', cursor: 'pointer', border: 'none', fontSize: '11px',
+        background: active ? '#333' : 'transparent', color: active ? '#fff' : '#666',
+        borderBottom: active ? '2px solid #61afef' : '2px solid transparent',
+        transition: 'all 0.2s'
+    });
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', background: '#111', height: '100%', userSelect: 'none' }}>
@@ -295,7 +321,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                 </div>
                 <div style={{ borderLeft:'1px solid #444', paddingLeft:'1rem', display:'flex', gap:'8px' }}>
                     <button onClick={toggleLocalPlay} style={{ ...ddStyle, color: isLocalPlaying ? '#98c379' : '#fff', cursor:'pointer' }}>{isLocalPlaying ? '■ Stop' : '▶ Ptn'}</button>
-                    <label style={{ display:'flex', alignItems:'center', gap:'4px', color:'#ccc', fontSize:'11px', cursor:'pointer' }}>
+                    <label style={{ display:'flex', alignItems:'center', gap:'4px', color: showAutomation ? '#61afef' : '#ccc', fontSize:'11px', cursor:'pointer' }}>
                         <input type="checkbox" checked={showAutomation} onChange={e => setShowAutomation(e.target.checked)} />
                         Mods/FX
                     </label>
@@ -303,7 +329,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
             </div>
 
             {/* MAIN CONTENT SPLIT */}
-            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}> {/* Removed height: 100% here */}
+            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 
                 {/* 1. GRID SCROLL AREA */}
                 <div style={{ display: 'flex', height: `${height}px`, overflow: 'auto', position: 'relative' }}>
@@ -339,6 +365,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                         {laneKeys.map(trackName => {
                             const isActive = trackName === activeLane;
                             return activePattern.tracks[trackName].map((event, eventIdx) => {
+                                // Hide the original being dragged
                                 if (dragState && dragState.trackName === trackName && dragState.eventIndex === eventIdx && dragState.type !== 'automation') return null;
                                 
                                 const isChord = event.notes.length > 1;
@@ -347,19 +374,22 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                                     if (!midi || !noteRange.includes(midi)) return null;
                                     
                                     const topPos = midiToRow(midi) * ROW_H;
-                                    
-                                    // Visual Mods
                                     const hasMods = (note.volume !== undefined && note.volume !== 0) || (note.effects && note.effects.length > 0);
                                     let bgColor = isActive ? (isChord ? '#98c379' : '#61afef') : '#333';
                                     if (hasMods && isActive) bgColor = isChord ? '#b8e39a' : '#8ccceb'; 
 
                                     return (
-                                        <div key={`${trackName}-${eventIdx}-${noteIdx}`} style={{
-                                            position: 'absolute', left: event.time * SLOT_W + 1, top: topPos + 1, width: (event.duration * SLOT_W) - 2, height: ROW_H - 2,
-                                            background: bgColor, borderRadius: '2px', zIndex: isActive ? 10 : 2, pointerEvents: 'none',
-                                            fontSize: '9px', color: '#000', overflow: 'hidden', paddingLeft: '2px'
-                                        }}>
+                                        <div 
+                                            key={`${trackName}-${eventIdx}-${noteIdx}`} 
+                                            onMouseDown={(e) => handleEventMouseDown(e, trackName, eventIdx, midi)}
+                                            style={{
+                                                position: 'absolute', left: event.time * SLOT_W + 1, top: topPos + 1, width: (event.duration * SLOT_W) - 2, height: ROW_H - 2,
+                                                background: bgColor, borderRadius: '2px', zIndex: isActive ? 10 : 2,
+                                                fontSize: '9px', color: '#000', overflow: 'hidden', paddingLeft: '2px', cursor: 'move'
+                                            }}>
                                             {hasMods && (note.volume ? `v${note.volume}` : 'FX')}
+                                            {/* Resize Handle */}
+                                            <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, cursor: 'e-resize', zIndex: 11 }} />
                                         </div>
                                     );
                                 });
@@ -374,7 +404,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                                 top: midiToRow((dragState?.originalMidiBase || 60) + ghostState.midiShift) * ROW_H + 1,
                                 width: (ghostState.duration * SLOT_W) - 2,
                                 height: ROW_H - 2,
-                                background: 'rgba(255, 255, 255, 0.5)',
+                                background: 'rgba(255, 255, 255, 0.3)',
                                 border: '1px dashed white',
                                 zIndex: 20,
                                 pointerEvents: 'none'
@@ -386,17 +416,18 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                 {/* 2. AUTOMATION DRAWER */}
                 {showAutomation && (
                     <div style={{ height: `${autoHeight}px`, background: '#141414', borderTop: '1px solid #333', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                        <div style={{ display: 'flex', height: '20px', background: '#1c1c1c', borderBottom: '1px solid #333', fontSize: '10px' }}>
-                            <button onClick={() => setAutoMode('volume')} style={{ flex: 1, background: autoMode==='volume'?'#333':'transparent', color: autoMode==='volume'?'#fff':'#666', border:'none', cursor:'pointer' }}>Volume</button>
-                            <button onClick={() => setAutoMode('pan')} style={{ flex: 1, background: autoMode==='pan'?'#333':'transparent', color: autoMode==='pan'?'#fff':'#666', border:'none', cursor:'pointer' }}>Pan</button>
+                        <div style={{ display: 'flex', height: '24px', background: '#1c1c1c', borderBottom: '1px solid #333', alignItems: 'center', paddingLeft: '40px' }}>
+                            <button onClick={() => setAutoMode('volume')} style={tabStyle(autoMode === 'volume')}>Volume</button>
+                            <button onClick={() => setAutoMode('pan')} style={tabStyle(autoMode === 'pan')}>Pan</button>
                         </div>
                         <div style={{ flex: 1, position: 'relative', overflowX: 'auto', overflowY: 'hidden' }}>
                             <div style={{ width: totalSlots * SLOT_W, height: '100%', position: 'relative', marginLeft: '40px' }}>
+                                {/* Center Line for Pan/Vol */}
                                 <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: 1, background: '#333' }} />
+                                
                                 {activePattern && activePattern.tracks[activeLane]?.map((event, i) => {
                                     let val = 0;
                                     
-                                    // READ VALUE
                                     if (autoMode === 'volume') {
                                         val = event.notes[0].volume || 0;
                                     } else if (autoMode === 'pan') {
@@ -404,22 +435,22 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                                         val = panFx ? panFx.value : 0;
                                     }
 
-                                    // Override with Ghost if dragging this specific index
+                                    // Ghost override
                                     if (dragState?.type === 'automation' && dragState.eventIndex === i && ghostState?.val !== undefined) {
                                         val = ghostState.val;
                                     }
 
-                                    // CALCULATE HEIGHT
-                                    // Vol: -60..6 -> Map to 0..100% (approx)
-                                    // Pan: -100..100 -> Map to 0..100% (50% is center)
+                                    // Render Height Calculation
+                                    // Vol: -60..6 -> Map to 0..100% (Linear Approx)
+                                    // Pan: -100..100 -> Map to 0..100%
                                     let hPercent = 0;
                                     let color = '#61afef';
 
                                     if (autoMode === 'volume') {
-                                        hPercent = Math.max(0, Math.min(100, 50 + (val * 2))); // Scaling
+                                        hPercent = Math.max(0, Math.min(100, 50 + (val * 2))); 
                                     } else {
                                         hPercent = 50 + (val / 2); // -100=0%, 0=50%, 100=100%
-                                        color = '#98c379'; // Different color for Pan
+                                        color = '#d19a66'; 
                                     }
 
                                     return (
@@ -431,7 +462,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                                                 display: 'flex', alignItems: 'flex-start', justifyContent: 'center'
                                             }}
                                         >
-                                            <span style={{ fontSize: '8px', color: '#fff', marginTop: '-12px', background: '#000', padding: '0 2px' }}>
+                                            <span style={{ fontSize: '9px', color: '#fff', marginTop: '-14px', background: '#000', padding: '0 3px', borderRadius:'2px', pointerEvents:'none' }}>
                                                 {val}
                                             </span>
                                         </div>
@@ -443,7 +474,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                 )}
             </div>
 
-            {/* TOTAL HEIGHT RESIZE HANDLE */}
+            {/* RESIZE HANDLE */}
             <div 
                 onMouseDown={(e) => {
                     e.preventDefault();
@@ -452,9 +483,9 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                     const stopDrag = () => { window.removeEventListener('mousemove', doDrag); window.removeEventListener('mouseup', stopDrag); };
                     window.addEventListener('mousemove', doDrag); window.addEventListener('mouseup', stopDrag);
                 }} 
-                style={{ height: '10px', background: '#222', borderTop: '1px solid #444', cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
+                style={{ height: '8px', background: '#222', borderTop: '1px solid #444', cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
             >
-                <div style={{ width: '40px', height: '3px', background: '#666', borderRadius: '2px' }} />
+                <div style={{ width: '40px', height: '2px', background: '#555' }} />
             </div>
         </div>
     );
@@ -465,7 +496,12 @@ function resolveScaleDegree(midi: number, root: string, mode: string): NoteDef {
     const pc = Note.pitchClass(Note.fromMidi(midi));
     let degree = scale.notes.indexOf(pc) + 1;
     let accidental = 0;
-    if (degree === 0) { degree = 1; accidental = 1; }
+    
+    // Simple chromatic fallback if not in scale
+    if (degree === 0) { 
+        degree = 1; 
+        accidental = 1; // Simplification, ideally finds nearest neighbor
+    }
     const octave = Note.octave(Note.fromMidi(midi)) || 4;
     return { degree, octaveShift: octave - 4, accidental, isNatural: false };
 }

@@ -3,10 +3,11 @@ import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 import { Note } from 'tonal';
 
-export type AnySoundSource = Tone.PolySynth | Tone.Sampler;
+export type AnySoundSource = (Tone.PolySynth | Tone.Sampler) & { _panner?: Tone.Panner };
 
 const instrumentCache: Record<string, {
     source: AnySoundSource;
+    panner: Tone.Panner;
     effects: Tone.ToneAudioNode[];
 }> = {};
 
@@ -18,18 +19,23 @@ function getCacheKey(def: InstrumentDefinition): string {
         osc: def.config.oscillator,
         offset: def.config.octaveOffset,
         loop: def.config.loop,
-        panning: def.config.panning
+        panning: def.config.panning // LFO panning config
     });
 }
 
 export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<AnySoundSource> {
     const cacheKey = getCacheKey(def);
-
-    // If an old version with the same ID exists, dispose it to ensure we're using fresh settings.
+    
     const oldEntry = Object.entries(instrumentCache).find(([key]) => JSON.parse(key).id === def.id);
     if (oldEntry) {
         const [key, graph] = oldEntry;
+        // If the configuration matches exactly, return from cache
+        if (key === cacheKey) {
+            return graph.source;
+        }
+        // Otherwise dispose old to update
         graph.effects.forEach(e => e.dispose());
+        graph.panner.dispose();
         graph.source.dispose();
         delete instrumentCache[key];
     }
@@ -37,6 +43,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     const config = def.config;
     let sourceInst: AnySoundSource;
 
+    // --- 1. Create Source ---
     if (def.type === 'sampler' && config.urls) {
         let finalUrls = config.urls;
         const offset = config.octaveOffset || 0;
@@ -54,20 +61,26 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
                 }
             }
         }
-        
-        // --- ASYNC LOADING FIX ---
-        // Wrap sampler creation in a promise that resolves on load.
-        sourceInst = await new Promise<Tone.Sampler>((resolve, reject) => {
+
+        // FIX: Removed 'as AnySoundSource' from inside the Promise to satisfy the Promise<Tone.Sampler> type
+        const samplerPromise = new Promise<Tone.Sampler>((resolve, reject) => {
             const sampler = new Tone.Sampler({
                 urls: finalUrls,
                 baseUrl: config.baseUrl || "",
                 attack: config.envelope?.attack || 0,
                 release: config.envelope?.release || 1,
                 onload: () => resolve(sampler),
-                onerror: (err) => reject(new Error(`Could not load sample: ${err}`))
+                onerror: (err) => {
+                    console.warn(`Failed to load sample for ${def.id}`, err);
+                    // Resolve anyway to prevent blocking, but it won't play
+                    resolve(sampler); 
+                }
             });
         });
-        
+
+        // Cast the result of the promise instead
+        sourceInst = (await samplerPromise) as AnySoundSource;
+
         if (config.loop && config.loop.enabled) {
             const sampler = sourceInst as any;
             sampler.loop = true;
@@ -78,7 +91,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
                 sampler.fadeOut = config.loop.crossfade;
             }
         }
-        
+
     } else {
         const envelope = {
             attack: config.envelope?.attack ?? 0.01,
@@ -94,37 +107,46 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         sourceInst = new Tone.PolySynth(SynthClass, {
             oscillator: { type: oscType as any, ...config.oscillator },
             envelope: envelope,
-        } as any);
-
+        } as any) as AnySoundSource;
         (sourceInst as Tone.PolySynth).maxPolyphony = config.polyphony || 32;
     }
 
-    sourceInst.volume.value = config.volume || -10; 
+    sourceInst.volume.value = config.volume || -10;
 
+    // --- 2. Create Chain ---
     const effects: Tone.ToneAudioNode[] = [];
-    let finalNode: Tone.ToneAudioNode = sourceInst;
+    
+    // Automation Panner (Controlled by Piano Roll events)
+    const trackPanner = new Tone.Panner(0);
+    sourceInst._panner = trackPanner; // Attach for AudioProvider access
+
+    // LFO Auto-Panner (Instrument Config)
+    let currentNode: Tone.ToneAudioNode = sourceInst;
+    currentNode.connect(trackPanner);
+    currentNode = trackPanner;
 
     if (config.panning && config.panning.enabled) {
-        const panner = new Tone.AutoPanner({
+        const autoPanner = new Tone.AutoPanner({
             frequency: config.panning.frequency || 2,
             type: config.panning.type || 'sine',
             depth: config.panning.depth || 1,
         }).start();
         
-        finalNode.connect(panner);
-        finalNode = panner;
-        effects.push(panner);
+        currentNode.connect(autoPanner);
+        currentNode = autoPanner;
+        effects.push(autoPanner);
     }
+
+    // Note: AudioProvider handles connection to MasterGain.
     
-    finalNode.toDestination();
-    
-    instrumentCache[cacheKey] = { source: sourceInst, effects };
+    instrumentCache[cacheKey] = { source: sourceInst, panner: trackPanner, effects };
     return sourceInst;
 }
 
 export function disposeInstruments() {
     Object.values(instrumentCache).forEach(graph => {
         graph.effects.forEach(effect => effect.dispose());
+        graph.panner.dispose();
         graph.source.dispose();
     });
     for (const key in instrumentCache) delete instrumentCache[key];

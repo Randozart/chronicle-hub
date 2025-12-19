@@ -111,7 +111,19 @@ export default function TrackEditor({
         reader.readAsText(file);
         event.target.value = '';
     };
-    const handlePlay = () => { try { playTrack(source, availableInstruments, mockQualities); setStatus("Playing..."); } catch (e: any) { setStatus("Error: " + e.message); stop(); }};
+    const handlePlay = () => { 
+        try { 
+            // 1. Force stop to clear any Local Play state in AudioProvider/Tone
+            stop(); 
+            
+            // 2. Play Global
+            playTrack(source, availableInstruments, mockQualities); 
+            setStatus("Playing Global..."); 
+        } catch (e: any) { 
+            setStatus("Error: " + e.message); 
+            stop(); 
+        }
+    };    
     const handleStop = () => { stop(); setStatus("Stopped"); };
     const handleClear = () => { if (confirm("Clear track?")) setSource(EMPTY_TEMPLATE); };
     const handleFormat = () => setSource(formatLigatureSource(source));
