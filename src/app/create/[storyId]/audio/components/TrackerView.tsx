@@ -1,15 +1,17 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { ParsedTrack, NoteDef } from '@/engine/audio/models';
+import { ParsedTrack, NoteDef, InstrumentDefinition } from '@/engine/audio/models';
 import { resolveNote } from '@/engine/audio/scales';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
 import * as Tone from 'tone';
 import { usePlaybackState } from '@/hooks/usePlaybackState';
+import { useAudio } from '@/providers/AudioProvider';
 
 interface Props {
     parsedTrack: ParsedTrack | null;
     onChange: (source: string) => void;
     playlistIndex: number;
+    availableInstruments: InstrumentDefinition[]; // <--- Add to Interface
 }
 
 // QWERTY Keymap
@@ -32,12 +34,12 @@ interface TrackerColumn {
     resolver: (rowIndex: number) => { patternId: string, localTime: number, trackName: string } | null;
 }
 
-export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Props) {
+export default function TrackerView({ parsedTrack, onChange, playlistIndex, availableInstruments }: Props) {
     const [useAbsolute, setUseAbsolute] = useState(false);
     const [viewMode, setViewMode] = useState<'context' | 'pattern'>('context');
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
     const [isLocalPlaying, setIsLocalPlaying] = useState(false);
-    
+    const { playTrack, stop: audioStop } = useAudio(); // <--- Hook
     // View State
     const [rowHeight, setRowHeight] = useState(20);
     const [fontSize, setFontSize] = useState(11);
@@ -131,18 +133,43 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
 
     const toggleLocalPlay = () => {
         if (isLocalPlaying) {
-            Tone.Transport.stop();
+            audioStop();
             setIsLocalPlaying(false);
         } else {
-            Tone.Transport.stop();
-            Tone.Transport.position = "0:0:0";
-            const loopEndBar = Math.ceil(maxDuration / (parsedTrack!.config.grid * 4)) || 4;
-            Tone.Transport.setLoopPoints(0, `${loopEndBar}:0:0`); 
-            Tone.Transport.loop = true;
-            Tone.Transport.start();
+            if (!parsedTrack) return;
+
+            const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
+
+            // Logic: Play Context (Row) OR Pattern
+            if (viewMode === 'pattern' && selectedPatternId) {
+                // Solo Pattern
+                soloTrack.playlist = [{ 
+                    type: 'pattern', 
+                    layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] 
+                }];
+            } else {
+                // Solo Context (Current Playlist Row)
+                const currentItem = soloTrack.playlist[playlistIndex];
+                if (currentItem && currentItem.type === 'pattern') {
+                    soloTrack.playlist = [currentItem];
+                }
+            }
+
+            const soloSource = serializeParsedTrack(soloTrack);
+            playTrack(soloSource, availableInstruments);
             setIsLocalPlaying(true);
         }
     };
+    
+    // Sync UI state if global stop is pressed
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (Tone.Transport.state !== 'started' && isLocalPlaying) {
+                setIsLocalPlaying(false);
+            }
+        }, 500);
+        return () => clearInterval(interval);
+    }, [isLocalPlaying]);
 
     // --- EDITING ---
     const commitEdit = (key?: string) => {

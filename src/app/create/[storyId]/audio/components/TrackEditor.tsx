@@ -203,9 +203,19 @@ export default function TrackEditor({
                             </div>
                             <div style={{ background: '#0d0d0d' }}>
                                 {noteEditorMode === 'piano' ? (
-                                    <PianoRoll source={source} qualities={mockQualities} onChange={handleVisualUpdate} />
+                                    <PianoRoll 
+                                        source={source} 
+                                        qualities={mockQualities} 
+                                        onChange={handleVisualUpdate}
+                                        availableInstruments={availableInstruments} // <--- NEW PROP
+                                    />
                                 ) : (
-                                    <TrackerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} playlistIndex={activePlaylistIndex} />
+                                    <TrackerView 
+                                        parsedTrack={parsedTrack} 
+                                        onChange={handleVisualUpdate} 
+                                        playlistIndex={activePlaylistIndex}
+                                        availableInstruments={availableInstruments} // <--- NEW PROP
+                                    />
                                 )}
                             </div>
                         </div>

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
-import { ParsedTrack, SequenceEvent, NoteDef } from '@/engine/audio/models';
+import { ParsedTrack, SequenceEvent, NoteDef, InstrumentDefinition } from '@/engine/audio/models';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
 import { PlayerQualities } from '@/engine/models';
 import { resolveNote } from '@/engine/audio/scales';
@@ -8,18 +8,20 @@ import { Note, Scale } from 'tonal';
 import { LigatureParser } from '@/engine/audio/parser';
 import * as Tone from 'tone';
 import { usePlaybackState } from '@/hooks/usePlaybackState';
+import { useAudio } from '@/providers/AudioProvider';
 
 interface Props {
     source: string;
     qualities?: PlayerQualities;
     onChange: (newSource: string) => void;
+    availableInstruments: InstrumentDefinition[]; // <--- Add to Interface
 }
 
 const SLOT_W = 24;
 const ROW_H = 16; 
 const SCALE_BG = 'rgba(97, 175, 239, 0.08)'; 
 
-export default function PianoRoll({ source, qualities = {}, onChange }: Props) {
+export default function PianoRoll({ source, qualities = {}, onChange, availableInstruments }: Props) {
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
     const [activeLane, setActiveLane] = useState<string>("");
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
@@ -30,6 +32,7 @@ export default function PianoRoll({ source, qualities = {}, onChange }: Props) {
     const [autoHeight, setAutoHeight] = useState(100);
     const [autoMode, setAutoMode] = useState<'volume' | 'pan'>('volume');
     const [isLocalPlaying, setIsLocalPlaying] = useState(false);
+    const { playTrack, stop: audioStop } = useAudio();
 
     const [dragState, setDragState] = useState<{
         type: 'move' | 'resize' | 'automation';
@@ -237,18 +240,34 @@ export default function PianoRoll({ source, qualities = {}, onChange }: Props) {
     }, [dragState, ghostState, parsedTrack, selectedPatternId, config, onChange, autoMode]);
 
     const toggleLocalPlay = () => {
-        if (isLocalPlaying) { Tone.Transport.stop(); setIsLocalPlaying(false); } 
-        else {
-            Tone.Transport.stop(); Tone.Transport.position = "0:0:0";
-            if (activePattern && config) {
-                const slotsPerBeat = config.grid * (4 / config.timeSig[1]);
-                const beats = activePattern.duration / slotsPerBeat;
-                const bars = beats / config.timeSig[0];
-                Tone.Transport.setLoopPoints(0, `${bars}:0:0`); Tone.Transport.loop = true;
-            }
-            Tone.Transport.start(); setIsLocalPlaying(true);
+        if (isLocalPlaying) {
+            audioStop();
+            setIsLocalPlaying(false);
+        } else {
+            if (!parsedTrack || !selectedPatternId) return;
+
+            // 1. Create a deep copy of the track
+            const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
+
+            // 2. Override playlist to loop ONLY the selected pattern
+            soloTrack.playlist = [{ 
+                type: 'pattern', 
+                layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] 
+            }];
+
+            // 3. Serialize to string
+            const soloSource = serializeParsedTrack(soloTrack);
+
+            // 4. Play using global engine
+            playTrack(soloSource, availableInstruments, qualities);
+            setIsLocalPlaying(true);
         }
     };
+
+     useEffect(() => {
+        if (Tone.Transport.state !== 'started') setIsLocalPlaying(false);
+    }, [source]); // Check on updates, or set up a transport listener if needed
+
 
     if (!parsedTrack || !activePattern || !config) return null;
 
