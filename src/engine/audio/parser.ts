@@ -257,25 +257,61 @@ export class LigatureParser {
         return trackName;
     }
 
-    private parsePlaylistRow(line: string, track: ParsedTrack) {
-        const trimmed = line.trim();
-        if (trimmed.includes('=')) {
-            const parts = trimmed.split('=');
-            if (parts.length === 2) {
-                const key = parts[0].trim().toUpperCase();
-                const value = parts[1].trim();
-                if (key === 'BPM' || key === 'SCALE') {
-                    track.playlist.push({ type: 'command', command: key as 'BPM' | 'Scale', value: value });
-                    return;
-                }
+    // In src/engine/audio/parser.ts
+
+private parsePlaylistRow(line: string, track: ParsedTrack) {
+    const trimmed = line.trim();
+    if (trimmed.includes('=')) {
+        const parts = trimmed.split('=');
+        if (parts.length === 2) {
+            const key = parts[0].trim().toUpperCase();
+            const value = parts[1].trim();
+            if (key === 'BPM' || key === 'SCALE') {
+                track.playlist.push({ type: 'command', command: key as 'BPM' | 'Scale', value: value });
+                return;
             }
         }
+    }
 
-        const layerStrings = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    // --- FIX START: Intelligent splitting that respects parentheses ---
+    const layerStrings: string[] = [];
+        let currentLayerToken = '';
+        let layerParenDepth = 0;
+        for (const char of trimmed) {
+            if (char === '(') layerParenDepth++;
+            else if (char === ')') layerParenDepth--;
+
+            if (char === ',' && layerParenDepth === 0) {
+                if (currentLayerToken.trim()) layerStrings.push(currentLayerToken.trim());
+                currentLayerToken = '';
+            } else {
+                currentLayerToken += char;
+            }
+        }
+        if (currentLayerToken.trim()) layerStrings.push(currentLayerToken.trim());
+        // --- FIX END ---
+
         const layers: Layer[] = [];
 
         layerStrings.forEach(layerStr => {
-            const chainStrings = layerStr.split('+').map(s => s.trim()).filter(Boolean);
+            // --- FIX START: Intelligent splitting for chains ---
+            const chainStrings: string[] = [];
+            let currentChainToken = '';
+            let chainParenDepth = 0;
+            for (const char of layerStr) {
+                if (char === '(') chainParenDepth++;
+                else if (char === ')') chainParenDepth--;
+
+                if (char === '+' && chainParenDepth === 0) {
+                    if (currentChainToken.trim()) chainStrings.push(currentChainToken.trim());
+                    currentChainToken = '';
+                } else {
+                    currentChainToken += char;
+                }
+            }
+            if (currentChainToken.trim()) chainStrings.push(currentChainToken.trim());
+            // --- FIX END ---
+            
             const chain: ChainItem[] = [];
 
             chainStrings.forEach(itemStr => {

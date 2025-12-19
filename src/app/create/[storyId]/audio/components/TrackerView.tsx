@@ -12,6 +12,8 @@ interface Props {
     onChange: (source: string) => void;
     playlistIndex: number;
     availableInstruments: InstrumentDefinition[]; // <--- Add to Interface
+    playbackMode: 'global' | 'local' | 'stopped';
+    onPlaybackModeChange: (mode: 'global' | 'local' | 'stopped') => void;
 }
 
 // QWERTY Keymap
@@ -34,12 +36,12 @@ interface TrackerColumn {
     resolver: (rowIndex: number) => { patternId: string, localTime: number, trackName: string } | null;
 }
 
-export default function TrackerView({ parsedTrack, onChange, playlistIndex, availableInstruments }: Props) {
+export default function TrackerView({ parsedTrack, onChange, playlistIndex, availableInstruments, playbackMode, onPlaybackModeChange }: Props) {
     const [useAbsolute, setUseAbsolute] = useState(false);
     const [viewMode, setViewMode] = useState<'context' | 'pattern'>('context');
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
     const [isLocalPlaying, setIsLocalPlaying] = useState(false);
-    const { playTrack, stop: audioStop } = useAudio(); // <--- Hook
+    const { playTrack, stop: audioStop, isPlaying } = useAudio();
     // View State
     const [rowHeight, setRowHeight] = useState(20);
     const [fontSize, setFontSize] = useState(11);
@@ -131,29 +133,27 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
         parsedTrack.config.timeSig
     );
 
-    const toggleLocalPlay = () => {
-        if (isLocalPlaying) {
+const toggleLocalPlay = () => {
+        if (playbackMode === 'local' && isPlaying) {
             audioStop();
-            setIsLocalPlaying(false);
+            onPlaybackModeChange('stopped');
         } else {
-            // STOP GLOBAL PLAY FIRST
-            audioStop();
+            if (!parsedTrack) return;
+            audioStop(); // Stop any global play
 
-            // Loop logic matches Piano Roll
-            const startBar = playlistIndex;
-            const endBar = startBar + 1;
-            
-            // Build solo track from JUST this playlist row
             const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
-            soloTrack.playlist = [parsedTrack.playlist[playlistIndex]];
-            
-            // Note: If you want to loop JUST the pattern regardless of placement, 
-            // you might need to extract the pattern ID like PianoRoll does.
-            // But usually Tracker view implies "Play this Row".
-            
+            // In context mode, play only the current playlist row.
+            // In pattern mode, play only the selected pattern.
+            if (viewMode === 'context') {
+                soloTrack.playlist = [parsedTrack.playlist[playlistIndex]];
+            } else {
+                soloTrack.playlist = [{ type: 'pattern', layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] }];
+            }
             const soloSource = serializeParsedTrack(soloTrack);
+            
+            // Explicitly tell the audio provider to loop this playback
             playTrack(soloSource, availableInstruments, {});
-            setIsLocalPlaying(true);
+            onPlaybackModeChange('local');
         }
     };
     
@@ -357,9 +357,10 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
                 )}
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', borderLeft:'1px solid #444', paddingLeft:'8px' }}>
-                    <button onClick={toggleLocalPlay} style={{ background:'none', border:'1px solid #444', color: isLocalPlaying?'#98c379':'#ccc', fontSize:'10px', padding:'2px 6px', cursor:'pointer', marginRight:'8px' }}>
-                        {isLocalPlaying ? '■' : '▶'}
+                     <button onClick={toggleLocalPlay} style={{ background:'none', border:'1px solid #444', color: (playbackMode === 'local' && isPlaying) ? '#98c379':'#ccc', fontSize:'10px', padding:'2px 6px', cursor:'pointer', marginRight:'8px' }}>
+                        {(playbackMode === 'local' && isPlaying) ? '■' : '▶'}
                     </button>
+
                     <button onClick={() => { setRowHeight(h => Math.max(12, h-2)); setFontSize(f => Math.max(9, f-1)); }} style={{background:'#333', color:'#fff', border:'none', cursor:'pointer', width:'20px'}}>-</button>
                     <button onClick={() => { setRowHeight(h => Math.min(40, h+2)); setFontSize(f => Math.min(16, f+1)); }} style={{background:'#333', color:'#fff', border:'none', cursor:'pointer', width:'20px'}}>+</button>
                 </div>
@@ -420,11 +421,9 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
                     </thead>
                     <tbody>
                         {gridRows.map((cells, t) => (
-                            <tr key={t} style={{ height: `${rowHeight}px`, background: Math.floor(currentSlot) === t ? '#2c3e50' : (t === cursor.row ? '#2c313a' : t % 4 === 0 ? '#141414' : '#0d0d0d') }}>
-                                <td style={{ color: '#444', borderRight: '1px solid #333', textAlign: 'right', paddingRight: '4px' }}>
+                                <tr key={t} style={{ height: `${rowHeight}px`, background: (isPlaying && Math.floor(currentSlot) === t) ? '#2c3e50' : (t === cursor.row ? '#2c313a' : t % 4 === 0 ? '#141414' : '#0d0d0d') }}><td style={{ color: '#444', borderRight: '1px solid #333', textAlign: 'right', paddingRight: '4px' }}>
                                     {t.toString(16).toUpperCase().padStart(2, '0')}
-                                </td>
-                                {cells.map((cell, i) => {
+                                </td>{cells.map((cell, i) => {
                                     const hasFocus = (t === cursor.row && i === cursor.col);
                                     
                                     let borderStyle = {};

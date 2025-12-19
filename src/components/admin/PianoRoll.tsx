@@ -15,6 +15,8 @@ interface Props {
     qualities?: PlayerQualities;
     onChange: (newSource: string) => void;
     availableInstruments: InstrumentDefinition[]; 
+      playbackMode: 'global' | 'local' | 'stopped';
+    onPlaybackModeChange: (mode: 'global' | 'local' | 'stopped') => void;
 }
 
 const SLOT_W = 24;
@@ -23,7 +25,7 @@ const SCALE_BG = 'rgba(97, 175, 239, 0.08)';
 
 type AutoMode = 'volume' | 'pan' | 'fade' | 'swell';
 
-export default function PianoRoll({ source, qualities = {}, onChange, availableInstruments }: Props) {
+export default function PianoRoll({ source, qualities, onChange, availableInstruments, playbackMode, onPlaybackModeChange }: Props) {
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
     const [activeLane, setActiveLane] = useState<string>("");
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
@@ -34,7 +36,7 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
     const [autoHeight, setAutoHeight] = useState(140);
     const [autoMode, setAutoMode] = useState<AutoMode>('volume');
     const [isLocalPlaying, setIsLocalPlaying] = useState(false);
-    const { playTrack, stop: audioStop } = useAudio();
+    const { playTrack, stop: audioStop, isPlaying } = useAudio(); // <-- Make sure isPlaying is destructured here
 
     const [dragState, setDragState] = useState<{
         type: 'move' | 'resize' | 'automation';
@@ -270,26 +272,19 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
     }, [dragState, ghostState, parsedTrack, selectedPatternId, config, onChange, autoMode]);
 
     const toggleLocalPlay = () => {
-        if (isLocalPlaying) {
+        if (playbackMode === 'local') {
             audioStop();
-            setIsLocalPlaying(false);
+            onPlaybackModeChange('stopped'); // Tell parent we stopped
         } else {
             if (!parsedTrack || !selectedPatternId) return;
-
-            // Stop Global first
-            audioStop();
+            audioStop(); // Stop any global play first
 
             const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
-            soloTrack.playlist = [{ 
-                type: 'pattern', 
-                layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] 
-            }];
-            
+            soloTrack.playlist = [{ type: 'pattern', layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] }];
             const soloSource = serializeParsedTrack(soloTrack);
             
-            // Play
             playTrack(soloSource, availableInstruments, qualities);
-            setIsLocalPlaying(true);
+            onPlaybackModeChange('local'); // Tell parent we are in local mode
         }
     };
 
@@ -338,8 +333,10 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                     </select>
                 </div>
                 <div style={{ borderLeft:'1px solid #444', paddingLeft:'1rem', display:'flex', gap:'8px' }}>
-                    <button onClick={toggleLocalPlay} style={{ ...ddStyle, color: isLocalPlaying ? '#98c379' : '#fff', cursor:'pointer' }}>{isLocalPlaying ? '■ Stop' : '▶ Ptn'}</button>
-                    <label style={{ display:'flex', alignItems:'center', gap:'4px', color: showAutomation ? '#61afef' : '#ccc', fontSize:'11px', cursor:'pointer' }}>
+                <button onClick={toggleLocalPlay} style={{ ...ddStyle, color: playbackMode === 'local' ? '#98c379' : '#fff', cursor:'pointer' }}>
+                            {playbackMode === 'local' ? '■ Stop' : '▶ Ptn'}
+                        </button>                    
+                        <label style={{ display:'flex', alignItems:'center', gap:'4px', color: showAutomation ? '#61afef' : '#ccc', fontSize:'11px', cursor:'pointer' }}>
                         <input type="checkbox" checked={showAutomation} onChange={e => setShowAutomation(e.target.checked)} />
                         Mods/FX
                     </label>
@@ -377,8 +374,9 @@ export default function PianoRoll({ source, qualities = {}, onChange, availableI
                     }}>
                         
                         {/* Playhead */}
-                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: '#e06c75', left: currentSlot * SLOT_W, zIndex: 30, pointerEvents: 'none' }} />
-
+                        {playbackMode === 'local' && isPlaying && (
+                                    <div style={{ position: 'absolute', top: 0, bottom: 0, width: 2, background: '#e06c75', left: currentSlot * SLOT_W, zIndex: 30, pointerEvents: 'none' }} />
+                                )}
                         {/* Content Wrapper */}
                         <div style={{ position: 'relative', height: noteRange.length * ROW_H, zIndex: 10 }}>
                             {/* Background Rows */}

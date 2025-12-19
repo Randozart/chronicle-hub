@@ -23,6 +23,9 @@ interface AudioContextType {
     setLimiterSettings: (settings: LimiterSettings) => void;
     masterVolume: number;
     setMasterVolume: (db: number) => void;
+    playPreviewNote: (instrumentDef: InstrumentDefinition, note: string, duration?: Tone.Unit.Time) => void;
+    startPreviewNote: (instrumentDef: InstrumentDefinition, note: string) => void;
+    stopPreviewNote: (note?: string) => void;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -35,6 +38,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     
     // Playback State Control
     const playbackRequestIdRef = useRef(0);
+    const previewSynthRef = useRef<AnySoundSource | null>(null);
+    const currentPreviewIdRef = useRef<string>('');
+
 
     const [limiterSettings, setLimiterSettings] = useState<LimiterSettings>({ enabled: true, threshold: -1 });
     const [masterVolume, setMasterVolume] = useState(0);
@@ -65,6 +71,66 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             console.log("Audio Engine Initialized");
         } catch (e) {
             console.error("Failed to start audio context:", e);
+        }
+    };
+
+    const startPreviewNote = async (instrumentDef: InstrumentDefinition, note: string) => {
+        if (!isInitialized) await initializeAudio();
+
+        const newId = instrumentDef.id + JSON.stringify(instrumentDef.config);
+
+        // If synth doesn't exist or instrument has changed, create a new one
+        if (!previewSynthRef.current || currentPreviewIdRef.current !== newId) {
+            if (previewSynthRef.current) {
+                previewSynthRef.current.dispose();
+            }
+            try {
+                const newSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_${instrumentDef.id}` });
+                if (masterGainRef.current) {
+                    newSynth.connect(masterGainRef.current);
+                } else {
+                    newSynth.toDestination();
+                }
+                previewSynthRef.current = newSynth;
+                currentPreviewIdRef.current = newId;
+            } catch (e) {
+                console.error("Error creating preview synth:", e);
+                return;
+            }
+        }
+        
+        previewSynthRef.current?.triggerAttack(note, Tone.now());
+    };
+    const stopPreviewNote = (note?: string) => {
+        if (previewSynthRef.current) {
+            if (note) {
+                previewSynthRef.current.triggerRelease(note, Tone.now());
+            } else {
+                previewSynthRef.current.releaseAll();
+            }
+        }
+    };
+
+    const playPreviewNote = async (instrumentDef: InstrumentDefinition, note: string, duration: Tone.Unit.Time = '8n') => {
+        if (!isInitialized) await initializeAudio();
+        stopPreviewNote(); // Stop any held note
+
+        try {
+            const tempSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_oneshot_${Math.random()}` });
+            if (masterGainRef.current) {
+                tempSynth.connect(masterGainRef.current);
+            }
+
+            tempSynth.triggerAttackRelease(note, duration, Tone.now());
+            
+            // FIX: Get release time from the definition, not the synth instance
+            const releaseTime = instrumentDef.config.envelope?.release ?? 1.0;
+
+            setTimeout(() => {
+                tempSynth.dispose();
+            }, (Tone.Time(duration).toSeconds() + releaseTime) * 1000 + 200);
+        } catch (e) {
+            console.error("Error playing one-shot preview:", e);
         }
     };
 
@@ -338,12 +404,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             totalBars += maxChainBars;
         }
         
-        // DISABLE LOOPING FOR GLOBAL PLAY
-        transport.loop = false;
-        // Schedule a stop event at the end so setIsPlaying updates correctly
-        transport.scheduleOnce(() => {
-            stop();
-        }, `${totalBars}:0:0`);
+        transport.loop = true;
+        transport.loopEnd = `${totalBars}:0:0`;
     };
 
     const resolveAndCacheNote = (noteDef: NoteDef, root: string, mode: string, transpose: number, mapping: 'diatonic' | 'chromatic'): string => {
@@ -355,10 +417,22 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         return resolved;
     };
 
-    useEffect(() => { return () => { stop(); disposeInstruments(); } }, []);
+    useEffect(() => { 
+        return () => { 
+            stop(); 
+            if (previewSynthRef.current) {
+                previewSynthRef.current.dispose();
+            }
+            disposeInstruments(); 
+        } 
+    }, []);
 
     return (
-        <AudioContext.Provider value={{ playTrack, stop, isPlaying, initializeAudio, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume }}>
+        <AudioContext.Provider value={{ 
+            playTrack, stop, isPlaying, initializeAudio, 
+            limiterSettings, setLimiterSettings, masterVolume, setMasterVolume,
+            playPreviewNote, startPreviewNote, stopPreviewNote 
+        }}>
             {children}
             {isLoadingSamples && (
                 <div style={{

@@ -5,6 +5,8 @@ import { InstrumentDefinition } from '@/engine/audio/models';
 import { AUDIO_PRESETS } from '@/engine/audio/presets';
 import * as Tone from 'tone';
 import { getOrMakeInstrument, AnySoundSource } from '@/engine/audio/synth';
+import { useAudio } from '@/providers/AudioProvider';
+import { Note } from 'tonal';
 
 // --- Sub-Components ---
 
@@ -101,8 +103,20 @@ export default function InstrumentEditor({
     const activeSynthRef = useRef<AnySoundSource | null>(null);
     const [sampleDuration, setSampleDuration] = useState(0);
     const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
+    const { playPreviewNote, startPreviewNote, stopPreviewNote } = useAudio();
 
     useEffect(() => setForm(data), [data]);
+    useEffect(() => {
+        return () => {
+            stopPreviewNote();
+        };
+    }, [stopPreviewNote]);
+
+    const handlePlayNote = (midi: number) => {
+    // FIX: Use 'Note' from 'tonal', not 'Tone.Note'
+        const noteName = Note.fromMidi(midi); 
+        playPreviewNote(form, noteName, '8n');
+    };
 
     useEffect(() => {
         if (form.type === 'sampler' && form.config.urls && Object.values(form.config.urls)[0]) {
@@ -173,42 +187,14 @@ export default function InstrumentEditor({
         }
     };
 
-    const previewOneShot = async () => {
-        if (isPreviewing) return;
-        setIsPreviewing(true);
-        try {
-            await Tone.start();
-            const synth = await getOrMakeInstrument(form);
-            synth.triggerAttackRelease("C4", "8n");
-        } catch (error) {
-            console.error("Error previewing note:", error);
-            alert("Could not load sample for preview.");
-        } finally {
-            setTimeout(() => setIsPreviewing(false), 300);
-        }
+    const previewOneShot = () => {
+        playPreviewNote(form, "C4", "8n");
     };
-
-    const handlePreviewStart = async () => {
-        if (isPreviewing) return;
-        setIsPreviewing(true);
-        try {
-            await Tone.start();
-            const synth = await getOrMakeInstrument(form);
-            synth.triggerAttack("C4");
-            activeSynthRef.current = synth;
-        } catch (e) {
-            console.error("Error loading sample for preview:", e);
-            alert("Could not load sample.");
-        } finally {
-            setIsPreviewing(false);
-        }
+    const handlePreviewStart = () => {
+        startPreviewNote(form, 'C4');
     };
-
     const handlePreviewStop = () => {
-        if (activeSynthRef.current) {
-            activeSynthRef.current.triggerRelease("C4");
-            activeSynthRef.current = null;
-        }
+        stopPreviewNote('C4');
     };
 
     const handleSaveClick = () => {

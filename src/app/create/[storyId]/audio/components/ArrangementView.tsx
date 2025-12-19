@@ -4,6 +4,8 @@ import { ParsedTrack, PatternPlaylistItem } from '@/engine/audio/models';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
 import * as Tone from 'tone';
 import { usePlaybackState } from '@/hooks/usePlaybackState';
+import { useGlobalPlaybackState } from '@/hooks/useGlobalPlaybackState';
+import { useEffect, useMemo, useRef } from 'react';
 
 interface Props {
     parsedTrack: ParsedTrack | null;
@@ -12,19 +14,70 @@ interface Props {
     activeIndex: number;
     onConfigUpdate?: (key: string, value: any) => void;
     isPlaying: boolean; // <--- ADD THIS
+    playbackMode: 'global' | 'local' | 'stopped';
 }
 
-export default function ArrangementView({ parsedTrack, onChange, onSelectRow, activeIndex, onConfigUpdate, isPlaying }: Props) {
+export default function ArrangementView({ parsedTrack, onChange, onSelectRow, activeIndex, onConfigUpdate, isPlaying, playbackMode }: Props) {
+    const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref for the scroll container
+
     if (!parsedTrack) return <div className="p-4 text-gray-500">No track data</div>;
 
-    const SLOT_WIDTH = 2; 
-    const currentSlot = usePlaybackState(
+     const SLOT_WIDTH = 2; // This is now a scaling factor, not a fixed width
+
+    const currentSlot = useGlobalPlaybackState(
         isPlaying, 
-        10000, 
         parsedTrack.config.bpm, 
         parsedTrack.config.grid, 
         parsedTrack.config.timeSig
     );
+    
+    // --- FIX: Create a metadata map for all playlist items ---
+    // This calculates the start time (in slots) and pixel width for each block.
+    const playlistMetadata = useMemo(() => {
+        let accumulatedSlots = 0;
+        return parsedTrack.playlist.map(item => {
+            const startSlot = accumulatedSlots;
+            let durationInSlots = 0;
+            if (item.type === 'pattern') {
+                let maxDuration = 0;
+                item.layers.forEach(l => {
+                    const layerDur = l.items.reduce((sum, ci) => sum + (parsedTrack.patterns[ci.id]?.duration || 0), 0);
+                    if (layerDur > maxDuration) maxDuration = layerDur;
+                });
+                durationInSlots = maxDuration;
+            }
+            accumulatedSlots += durationInSlots;
+            const contentWidth = durationInSlots * SLOT_WIDTH;
+            const totalWidth = contentWidth + 60; // For buttons, padding etc.
+            return { startSlot, durationInSlots, contentWidth, totalWidth };
+        });
+    }, [parsedTrack]);
+    
+    // --- FIX: Calculate the playhead's pixel position based on the metadata ---
+     const playheadLeftPx = useMemo(() => {
+        let accumulatedPixelWidth = 0; // This will track the pixel start of each block
+
+        for (const meta of playlistMetadata) {
+            const itemEndSlot = meta.startSlot + meta.durationInSlots;
+
+            // Check if the playhead is inside the current block
+            if (currentSlot < itemEndSlot && currentSlot >= meta.startSlot) {
+                const slotWithinBlock = currentSlot - meta.startSlot;
+                const progress = meta.durationInSlots > 0 ? slotWithinBlock / meta.durationInSlots : 0;
+                
+                // Final position = start of this block (in pixels) + progress within its content area
+                // The `+ 4` is from the block's internal padding before the content starts
+                return accumulatedPixelWidth + 4 + (progress * meta.contentWidth);
+            }
+            
+            // If playhead is past this block, add its full visual width to the offset for the next block
+            accumulatedPixelWidth += meta.totalWidth + 2; // +2 for the flexbox gap
+        }
+        
+        // If playhead is somehow beyond all blocks, return the total width
+        return accumulatedPixelWidth;
+    }, [currentSlot, playlistMetadata]);
+    
     // --- ACTIONS ---
     const handleClone = (index: number) => {
         const newPlaylist = [...parsedTrack.playlist];
@@ -95,6 +148,19 @@ export default function ArrangementView({ parsedTrack, onChange, onSelectRow, ac
         // @ts-ignore
         onChange(serializeParsedTrack({ ...parsedTrack, playlist: newPlaylist }));
     }
+    let accumulatedSlots = 0;
+    const playlistItemStartSlots = parsedTrack.playlist.map(item => {
+        const start = accumulatedSlots;
+        if (item.type === 'pattern') {
+            let maxDuration = 0;
+            item.layers.forEach(l => {
+                const layerDur = l.items.reduce((sum, ci) => sum + (parsedTrack.patterns[ci.id]?.duration || 0), 0);
+                if (layerDur > maxDuration) maxDuration = layerDur;
+            });
+            accumulatedSlots += maxDuration;
+        }
+        return start;
+    });
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', background: '#141414' }}>
@@ -117,13 +183,14 @@ export default function ArrangementView({ parsedTrack, onChange, onSelectRow, ac
             </div>
 
             {/* TIMELINE */}
-            <div style={{ padding: '1rem', overflowX: 'auto', whiteSpace: 'nowrap', minHeight: '180px', display: 'flex', gap: '2px', alignItems: 'flex-start', position: 'relative' }}>
+            <div style={{ padding: '1rem', overflowX: 'auto', whiteSpace: 'nowrap', minHeight: '180px', display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
                 
                 {/* PLAYHEAD OVERLAY */}
-                {Tone.Transport.state === 'started' && (
+                {isPlaying && Tone.getTransport().state === 'started' && (
                     <div style={{
                         position: 'absolute',
-                        left: `${(currentSlot * SLOT_WIDTH) + 16}px`, // +16 compensates for padding: 1rem
+                        // Add the container's own padding to the calculated offset
+                        left: `${playheadLeftPx + 16}px`, 
                         top: 0, bottom: 0,
                         width: '2px',
                         background: '#e06c75',
@@ -132,94 +199,88 @@ export default function ArrangementView({ parsedTrack, onChange, onSelectRow, ac
                         pointerEvents: 'none'
                     }} />
                 )}
+                
+                <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-start' }}>
+                    {parsedTrack.playlist.map((item, index) => {
+                        const meta = playlistMetadata[index];
+                        const totalWidth = meta.totalWidth;
+                        let contentUI = null;
 
-                {parsedTrack.playlist.map((item, index) => {
-                    const isPattern = item.type === 'pattern';
-                    let maxDuration = 16;
-                    let contentUI = null;
+                        if (item.type === 'pattern') {
+                            const pItem = item as PatternPlaylistItem;
+                            contentUI = (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
+                                    {pItem.layers.map((layer, lIdx) => (
+                                        <div key={lIdx} style={{ display: 'flex', alignItems: 'center', height: '24px', background: '#21252b', borderRadius: '2px', paddingLeft: '2px' }}>
+                                            {layer.items.map((ci, cIdx) => {
+                                                const pat = parsedTrack.patterns[ci.id];
+                                                const dur = pat ? pat.duration : 16;
+                                                return (
+                                                    <div 
+                                                        key={cIdx} 
+                                                        onClick={(e) => { e.stopPropagation(); handleModifyPattern(index, lIdx, cIdx); }}
+                                                        style={{ 
+                                                            width: `${dur * SLOT_WIDTH}px`, 
+                                                            borderRight: '1px solid #444', 
+                                                            display: 'flex', alignItems: 'center', padding: '0 4px',
+                                                            fontSize: '11px', color: '#98c379', cursor: 'pointer', position:'relative',
+                                                            background: activeIndex === index ? '#2c313a' : 'transparent',
+                                                            overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
+                                                        }}
+                                                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleRemoveItem(index, lIdx, cIdx); }}
+                                                        title={ci.id}
+                                                    >
+                                                        {ci.id}
+                                                    </div>
+                                                );
+                                            })}
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleAddItem(index, lIdx); }}
+                                                style={{ border:'none', background:'transparent', color:'#555', fontSize:'14px', cursor:'pointer', padding:'0 4px', marginLeft: 'auto' }}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleAddLayer(index); }}
+                                        style={{ 
+                                            width: '100%', height: '20px', border: '1px dashed #444', 
+                                            background: 'transparent', color: '#666', fontSize: '10px', cursor: 'pointer',
+                                            marginTop: '4px'
+                                        }}
+                                    >
+                                        + Stack Layer
+                                    </button>
+                                </div>
+                            );
+                        } else {
+                            contentUI = <div style={{ padding: '0.5rem', color: '#c678dd' }}>{item.command}</div>;
+                        }
 
-                    if (isPattern) {
-                        const pItem = item as PatternPlaylistItem;
-                        pItem.layers.forEach(layer => {
-                            let layerDur = 0;
-                            layer.items.forEach(ci => {
-                                const pat = parsedTrack.patterns[ci.id];
-                                if (pat) layerDur += pat.duration;
-                            });
-                            if (layerDur > maxDuration) maxDuration = layerDur;
-                        });
-
-                        contentUI = (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
-                                {pItem.layers.map((layer, lIdx) => (
-                                    <div key={lIdx} style={{ display: 'flex', alignItems: 'center', height: '24px', background: '#21252b', borderRadius: '2px', paddingLeft: '2px' }}>
-                                        {layer.items.map((ci, cIdx) => {
-                                            const pat = parsedTrack.patterns[ci.id];
-                                            const dur = pat ? pat.duration : 16;
-                                            return (
-                                                <div 
-                                                    key={cIdx} 
-                                                    onClick={(e) => { e.stopPropagation(); handleModifyPattern(index, lIdx, cIdx); }}
-                                                    style={{ 
-                                                        width: `${dur * SLOT_WIDTH}px`, 
-                                                        borderRight: '1px solid #444', 
-                                                        display: 'flex', alignItems: 'center', padding: '0 4px',
-                                                        fontSize: '11px', color: '#98c379', cursor: 'pointer', position:'relative',
-                                                        background: activeIndex === index ? '#2c313a' : 'transparent',
-                                                        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'
-                                                    }}
-                                                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleRemoveItem(index, lIdx, cIdx); }}
-                                                    title={ci.id}
-                                                >
-                                                    {ci.id}
-                                                </div>
-                                            );
-                                        })}
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handleAddItem(index, lIdx); }}
-                                            style={{ border:'none', background:'transparent', color:'#555', fontSize:'14px', cursor:'pointer', padding:'0 4px', marginLeft: 'auto' }}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                ))}
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleAddLayer(index); }}
-                                    style={{ 
-                                        width: '100%', height: '20px', border: '1px dashed #444', 
-                                        background: 'transparent', color: '#666', fontSize: '10px', cursor: 'pointer',
-                                        marginTop: '4px'
+                        return (
+                            <div key={index} style={{ position: 'relative' }}>
+                                <div
+                                    onClick={() => onSelectRow(index)}
+                                    style={{
+                                        width: `${totalWidth}px`,
+                                        minWidth: '100px',
+                                        minHeight: '120px',
+                                        background: activeIndex === index ? '#333' : '#181a1f',
+                                        border: activeIndex === index ? '2px solid #61afef' : '1px solid #333',
+                                        borderRadius: '4px',
+                                        cursor: 'default',
+                                        padding: '4px'
                                     }}
                                 >
-                                    + Stack Layer
-                                </button>
+                                    {contentUI}
+                                </div>
+                                <button onClick={() => handleDelete(index)} style={{ position: 'absolute', top: -8, right: -8, background: '#e06c75', color: '#fff', border: 'none', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>×</button>
                             </div>
                         );
-                    } else {
-                        contentUI = <div style={{ padding: '0.5rem', color: '#c678dd' }}>{item.command}</div>;
-                    }
-
-                    return (
-                        <div key={index} style={{ position: 'relative' }}>
-                            <div
-                                onClick={() => onSelectRow(index)}
-                                style={{
-                                    width: `${maxDuration * SLOT_WIDTH + 60}px`,
-                                    minWidth: '100px', minHeight: '120px',
-                                    background: activeIndex === index ? '#333' : '#181a1f',
-                                    border: activeIndex === index ? '2px solid #61afef' : '1px solid #333',
-                                    borderRadius: '4px', cursor: 'default',
-                                    padding: '4px'
-                                }}
-                            >
-                                {contentUI}
-                            </div>
-                            <button onClick={() => handleDelete(index)} style={{ position: 'absolute', top: -8, right: -8, background: '#e06c75', color: '#fff', border: 'none', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>×</button>
-                        </div>
-                    );
-                })}
-                
-                <button onClick={handleAddSection} style={{ minWidth: '60px', height: '120px', border: '2px dashed #444', background: 'transparent', color: '#666', cursor: 'pointer', fontSize: '24px', borderRadius: '4px' }}>+</button>
+                    })}
+                    <button onClick={handleAddSection} style={{ minWidth: '60px', height: '120px', border: '2px dashed #444', background: 'transparent', color: '#666', cursor: 'pointer', fontSize: '24px', borderRadius: '4px' }}>+</button>
+                </div>
             </div>
         </div>
     );

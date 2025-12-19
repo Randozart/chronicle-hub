@@ -52,6 +52,8 @@ export default function TrackEditor({
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
     const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
+    const [playbackMode, setPlaybackMode] = useState<'global' | 'local' | 'stopped'>('stopped');
+
 
     const { playTrack, stop, isPlaying, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume } = useAudio();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,20 +113,24 @@ export default function TrackEditor({
         reader.readAsText(file);
         event.target.value = '';
     };
-    const handlePlay = () => { 
-        try { 
-            // 1. Force stop to clear any Local Play state in AudioProvider/Tone
-            stop(); 
-            
-            // 2. Play Global
-            playTrack(source, availableInstruments, mockQualities); 
-            setStatus("Playing Global..."); 
-        } catch (e: any) { 
-            setStatus("Error: " + e.message); 
-            stop(); 
+    
+    const handlePlay = () => {
+        try {
+            stop(); // Ensure any local loops are stopped
+            setPlaybackMode('global'); // SET MODE TO GLOBAL
+            playTrack(source, availableInstruments, mockQualities);
+            setStatus("Playing Global...");
+        } catch (e: any) {
+            setStatus("Error: " + e.message);
+            stop();
+            setPlaybackMode('stopped');
         }
+    };
+    const handleStop = () => {
+        stop();
+        setPlaybackMode('stopped'); // SET MODE TO STOPPED
+        setStatus("Stopped");
     };    
-    const handleStop = () => { stop(); setStatus("Stopped"); };
     const handleClear = () => { if (confirm("Clear track?")) setSource(EMPTY_TEMPLATE); };
     const handleFormat = () => setSource(formatLigatureSource(source));
     const handleSaveClick = () => onSave({ id: data.id, name: data.name, source, category: 'track' });
@@ -201,6 +207,8 @@ export default function TrackEditor({
                         activeIndex={activePlaylistIndex}
                         onConfigUpdate={handleConfigUpdate}
                         isPlaying={isPlaying} // <--- ADD THIS PROP
+                        playbackMode={playbackMode} 
+
                     />
                     </div>
                     )}
@@ -220,6 +228,10 @@ export default function TrackEditor({
                                         qualities={mockQualities} 
                                         onChange={handleVisualUpdate}
                                         availableInstruments={availableInstruments} // <--- NEW PROP
+                                                                playbackMode={playbackMode} 
+
+                                        onPlaybackModeChange={setPlaybackMode}
+
                                     />
                                 ) : (
                                     <TrackerView 
@@ -227,6 +239,10 @@ export default function TrackEditor({
                                         onChange={handleVisualUpdate} 
                                         playlistIndex={activePlaylistIndex}
                                         availableInstruments={availableInstruments} // <--- NEW PROP
+                                                                playbackMode={playbackMode} 
+
+                                        onPlaybackModeChange={setPlaybackMode}
+
                                     />
                                 )}
                             </div>
