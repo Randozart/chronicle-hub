@@ -19,7 +19,7 @@ const PianoRoll = dynamic(() => import('@/components/admin/PianoRoll'), { ssr: f
 import ArrangementView from './ArrangementView';
 import TrackerView from './TrackerView';
 
-const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\n[PATTERN: Main]\n\n[PLAYLIST]\n`;
+const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\nPiano: hq_piano\n\n[PATTERN: Main]\n\nPiano |................|\n\n[PLAYLIST]\n\nMain\n`;
 
 interface TrackData { id: string; name: string; source: string; category?: string; }
 
