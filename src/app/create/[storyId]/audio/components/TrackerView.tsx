@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ParsedTrack, NoteDef } from '@/engine/audio/models';
 import { resolveNote } from '@/engine/audio/scales';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
+import * as Tone from 'tone';
+import { usePlaybackState } from '@/hooks/usePlaybackState';
 
 interface Props {
     parsedTrack: ParsedTrack | null;
@@ -34,6 +36,7 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
     const [useAbsolute, setUseAbsolute] = useState(false);
     const [viewMode, setViewMode] = useState<'context' | 'pattern'>('context');
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
+    const [isLocalPlaying, setIsLocalPlaying] = useState(false);
     
     // View State
     const [rowHeight, setRowHeight] = useState(20);
@@ -116,6 +119,31 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
     }
     columns.forEach(c => { while(c.events.length < maxDuration) c.events.push(null); });
 
+    // --- PLAYHEAD ---
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const currentSlot = usePlaybackState(
+        Tone.Transport.state === 'started',
+        2048, 
+        parsedTrack.config.bpm, 
+        parsedTrack.config.grid, 
+        parsedTrack.config.timeSig
+    );
+
+    const toggleLocalPlay = () => {
+        if (isLocalPlaying) {
+            Tone.Transport.stop();
+            setIsLocalPlaying(false);
+        } else {
+            Tone.Transport.stop();
+            Tone.Transport.position = "0:0:0";
+            const loopEndBar = Math.ceil(maxDuration / (parsedTrack!.config.grid * 4)) || 4;
+            Tone.Transport.setLoopPoints(0, `${loopEndBar}:0:0`); 
+            Tone.Transport.loop = true;
+            Tone.Transport.start();
+            setIsLocalPlaying(true);
+        }
+    };
+
     // --- EDITING ---
     const commitEdit = (key?: string) => {
         const colDef = columns[cursor.col];
@@ -148,33 +176,77 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
         }
 
         const note = event.notes[0];
+
+        // NOTE COLUMN
         if (cursor.sub === 0) { 
-            if (inputBuffer.startsWith('@')) {
-                // In a real scenario, we'd lookup definition here.
-                // For visual simplicity, we assume the user types the alias name.
-                // Note: The model doesn't support 'alias' string in NoteDef easily without changes.
-                // We'll reset buffer for now.
-            } else if (key && KEY_MAP[key.toLowerCase()]) {
+            if (key && KEY_MAP[key.toLowerCase()]) {
                 const map = KEY_MAP[key.toLowerCase()];
                 note.degree = map.degree;
                 note.accidental = map.accidental;
             }
-        } else if (cursor.sub === 1) {
-            const val = parseInt(inputBuffer);
-            if (!isNaN(val)) note.volume = val * -1;
-        } else if (cursor.sub === 2) {
-            if (inputBuffer.length >= 2) {
+        } 
+        // MOD COLUMN (Smart Parsing)
+        else if (cursor.sub === 1) {
+            // If user typed "v-5", inputBuffer is "v-5"
+            // If user typed "5", inputBuffer is "5"
+            
+            let val = parseInt(inputBuffer);
+            let cmd = inputBuffer.charAt(0).toLowerCase();
+            
+            if (['v', 'o', 'p', 't'].includes(cmd)) {
+                // Explicit command mode
+                val = parseInt(inputBuffer.slice(1));
+                if (!isNaN(val)) {
+                    if (cmd === 'v') note.volume = val;
+                    if (cmd === 'o') note.octaveShift = val;
+                    // Add p (Pan) or t (Trans) via Effects array if needed
+                    if (cmd === 'p') {
+                        if (!note.effects) note.effects = [];
+                        note.effects.push({ code: 'P', value: val });
+                    }
+                }
+            } else if (!isNaN(val)) {
+                // Number only -> Default to Volume
+                // If they type 10, typically implies -10db in tracker context?
+                // Or just raw value. Let's use raw value.
+                note.volume = val;
+            }
+        } 
+        // FX COLUMN
+        else if (cursor.sub === 2) {
+            if (inputBuffer.length >= 1) {
                 const code = inputBuffer.charAt(0).toUpperCase();
-                const val = parseInt(inputBuffer.slice(1));
-                note.effects = [{ code, value: isNaN(val) ? 0 : val }];
+                const valStr = inputBuffer.slice(1);
+                const val = valStr ? parseInt(valStr) : 0;
+                
+                if (!note.effects) note.effects = [];
+                // Replace existing effect of same code or push new?
+                // Trackers usually allow multiple. We'll push.
+                note.effects = [{ code, value: isNaN(val) ? 0 : val }]; // Single FX column visual limit
             }
         }
+
         trackEvents.sort((a: any, b: any) => a.time - b.time);
         onChange(serializeParsedTrack(newTrack));
         setInputBuffer("");
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        // Spacebar Logic
+        if (e.key === ' ' || e.key === 'Spacebar') {
+            if (inputBuffer.length > 0) {
+                // If editing, let space be typed (or ignored) but don't toggle play
+                e.stopPropagation();
+                // Optionally add space to buffer if your syntax allows it:
+                // setInputBuffer(prev => prev + ' '); 
+                return;
+            }
+            e.preventDefault();
+            toggleLocalPlay();
+            return;
+        }
+
+        // Navigation
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
             e.preventDefault();
             if (inputBuffer) commitEdit();
@@ -184,10 +256,12 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
             if (e.key === 'ArrowRight') setCursor(p => p.sub < 2 ? { ...p, sub: p.sub + 1 } : (p.col < columns.length - 1 ? { ...p, col: p.col + 1, sub: 0 } : p));
             return;
         }
+
         if (e.key === 'Enter') { e.preventDefault(); commitEdit(); return; }
         if (e.key === 'Backspace') { setInputBuffer(prev => prev.slice(0, -1)); return; }
         if (e.key === 'Delete' || e.key === '.') { commitEdit('Delete'); return; }
         
+        // Typing
         if (e.key.length === 1) {
             if (cursor.sub === 0) {
                 if (e.key === '@' || inputBuffer.startsWith('@')) setInputBuffer(prev => prev + e.key);
@@ -198,11 +272,31 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
         }
     };
 
-    // --- HELPER TEXT ---
-    let helperText = "";
-    if (cursor.sub === 0) helperText = "NOTE: Z=1, S=1# ... | CHORD: Type '@alias' -> Enter";
-    else if (cursor.sub === 1) helperText = "MOD: Type Value (e.g. 10 for -10db) -> Enter";
-    else if (cursor.sub === 2) helperText = "FX: Code + Value (e.g. F50, S10) -> Enter";
+     let helperText = <span style={{color: '#666'}}>Select a cell to edit...</span>;
+    
+    if (cursor.sub === 0) {
+        helperText = (
+            <span style={{color: '#fff'}}>
+                <span style={{color:'#61afef', fontWeight:'bold'}}>NOTE:</span> Z=1, S=1#... 
+                <span style={{color:'#666', margin:'0 8px'}}>|</span> 
+                <span style={{color:'#d19a66', fontWeight:'bold'}}>CHORD:</span> Type <strong>@alias</strong>
+            </span>
+        );
+    } else if (cursor.sub === 1) {
+        helperText = (
+            <span style={{color: '#fff'}}>
+                <span style={{color:'#c678dd', fontWeight:'bold'}}>MODS:</span> 
+                v:-10 (Vol), o:1 (Oct), t:12 (Trans)
+            </span>
+        );
+    } else if (cursor.sub === 2) {
+        helperText = (
+            <span style={{color: '#fff'}}>
+                <span style={{color:'#e5c07b', fontWeight:'bold'}}>FX:</span> 
+                F50 (Fade), S10 (Slide), P-50 (Pan)
+            </span>
+        );
+    }
 
     const gridRows = [];
     for (let t = 0; t < maxDuration; t++) {
@@ -234,48 +328,41 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
                 </select>
                 {viewMode === 'pattern' && (
                     <select value={selectedPatternId} onChange={e => setSelectedPatternId(e.target.value)} style={{ background: '#111', color: '#fff', border: '1px solid #444', fontSize:'11px' }}>
-                        <option value="" disabled>Select Pattern</option>
+                        <option value="" disabled>Select</option>
                         {Object.keys(parsedTrack.patterns).map(k => <option key={k} value={k}>{k}</option>)}
                     </select>
                 )}
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', borderLeft:'1px solid #444', paddingLeft:'8px' }}>
+                    <button onClick={toggleLocalPlay} style={{ background:'none', border:'1px solid #444', color: isLocalPlaying?'#98c379':'#ccc', fontSize:'10px', padding:'2px 6px', cursor:'pointer', marginRight:'8px' }}>
+                        {isLocalPlaying ? '■' : '▶'}
+                    </button>
                     <button onClick={() => { setRowHeight(h => Math.max(12, h-2)); setFontSize(f => Math.max(9, f-1)); }} style={{background:'#333', color:'#fff', border:'none', cursor:'pointer', width:'20px'}}>-</button>
                     <button onClick={() => { setRowHeight(h => Math.min(40, h+2)); setFontSize(f => Math.min(16, f+1)); }} style={{background:'#333', color:'#fff', border:'none', cursor:'pointer', width:'20px'}}>+</button>
-                    
-                    <label style={{ color: '#ccc', display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', marginLeft:'8px' }}>
-                        <input type="checkbox" checked={useAbsolute} onChange={e => setUseAbsolute(e.target.checked)} />
-                        Absolute/Relative Notes
-                    </label>
                 </div>
+                
+                <label style={{ color: '#ccc', display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', marginLeft: 'auto' }}>
+                    <input type="checkbox" checked={useAbsolute} onChange={e => setUseAbsolute(e.target.checked)} />
+                    Absolute/Relative Notes
+                </label>
             </div>
 
-            {/* ROW 2: INPUT CONSOLE (Always Visible, Highlighted on Edit) */}
+            {/* ROW 2: INPUT CONSOLE */}
             <div style={{ 
                 padding: '4px 8px', 
                 background: isEditing ? '#1e222a' : '#111', 
                 borderBottom: '1px solid #333', 
                 display: 'flex', alignItems: 'center', gap: '12px',
-                fontSize: '11px',
-                color: '#aaa',
-                height: '28px',
-                transition: 'background 0.1s'
+                fontSize: '11px', color: '#aaa', height: '28px', transition: 'background 0.1s'
             }}>
                 <span style={{ color: '#98c379', minWidth: '50px' }}>Row: {cursor.row}</span>
-                
                 <div style={{ display: 'flex', gap: '4px', color: isEditing ? '#fff' : '#555', fontWeight: isEditing ? 'bold' : 'normal' }}>
                     <span>INPUT:</span>
                     <span style={{ color: isEditing ? '#e06c75' : '#555', borderBottom: isEditing ? '1px solid #e06c75' : 'none', minWidth: '40px' }}>
                         {inputBuffer || "___"}
                     </span>
                 </div>
-
-                <span style={{ 
-                    marginLeft: 'auto', 
-                    color: isEditing ? '#61afef' : '#444', 
-                    fontStyle: 'italic',
-                    fontWeight: isEditing ? 'bold' : 'normal'
-                }}>
+                <span style={{ marginLeft: 'auto', color: isEditing ? '#61afef' : '#444', fontStyle: 'italic', fontWeight: isEditing ? 'bold' : 'normal' }}>
                     {helperText}
                 </span>
             </div>
@@ -301,16 +388,16 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
                             <th style={{ background: '#21252b', borderRight:'1px solid #333' }}></th>
                             {columns.map((_, i) => (
                                 <React.Fragment key={i}>
-                                    <th style={{ width:'50px', background: '#21252b', textAlign:'center', color: (cursor.col === i && cursor.sub === 0) ? '#fff' : '#666' }}>Note</th>
-                                    <th style={{ width:'40px', background: '#21252b', textAlign:'center', color: (cursor.col === i && cursor.sub === 1) ? '#fff' : '#666' }}>Mod</th>
-                                    <th style={{ width:'40px', background: '#21252b', textAlign:'center', borderRight:'1px solid #444', color: (cursor.col === i && cursor.sub === 2) ? '#fff' : '#666' }}>FX</th>
+                                    <th style={{ width:'50px', background: '#21252b', textAlign:'center' }}>Note</th>
+                                    <th style={{ width:'40px', background: '#21252b', textAlign:'center' }}>Mod</th>
+                                    <th style={{ width:'40px', background: '#21252b', textAlign:'center', borderRight:'1px solid #444' }}>FX</th>
                                 </React.Fragment>
                             ))}
                         </tr>
                     </thead>
                     <tbody>
                         {gridRows.map((cells, t) => (
-                            <tr key={t} style={{ height: `${rowHeight}px`, background: t === cursor.row ? '#2c313a' : t % 4 === 0 ? '#141414' : '#0d0d0d' }}>
+                            <tr key={t} style={{ height: `${rowHeight}px`, background: Math.floor(currentSlot) === t ? '#2c3e50' : (t === cursor.row ? '#2c313a' : t % 4 === 0 ? '#141414' : '#0d0d0d') }}>
                                 <td style={{ color: '#444', borderRight: '1px solid #333', textAlign: 'right', paddingRight: '4px' }}>
                                     {t.toString(16).toUpperCase().padStart(2, '0')}
                                 </td>
@@ -367,10 +454,14 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
                                     const isChord = cell.notes.length > 1;
                                     const noteColor = isChord ? '#d19a66' : '#61afef';
 
+                                    // MODS: Show as Ligature props without parens (v:-10, o:1)
                                     const modifiers = [];
-                                    if (note.volume !== undefined) modifiers.push(`${Math.abs(note.volume)}`);
-                                    
-                                    const fxStr = note.effects ? note.effects.map((e: any) => `${e.code}${e.value}`).join('') : '';
+                                    if (note.volume !== undefined) modifiers.push(`v:${note.volume}`); // Removed Math.abs
+                                    if (note.octaveShift !== 0) modifiers.push(`o:${note.octaveShift}`);
+                                    const modStr = modifiers.join(', ');
+
+                                    // FX: Show as Ligature string (F50,S10)
+                                    const fxStr = note.effects ? note.effects.map((e: any) => `${e.code}${e.value}`).join(',') : '';
 
                                     return (
                                         <React.Fragment key={i}>
@@ -378,10 +469,12 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex }: Pr
                                                 {label}
                                                 {formatNote(cell.notes, parsedTrack.config, useAbsolute)}
                                             </td>
-                                            <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), color: '#c678dd' }}>
-                                                {modifiers[0] || '..'}
+                                            {/* Mod Column */}
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), color: '#c678dd', fontSize:'10px' }}>
+                                                {modStr || '..'}
                                             </td>
-                                            <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), color: '#e5c07b', borderRight:'1px solid #333' }}>
+                                            {/* FX Column */}
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), color: '#e5c07b', borderRight:'1px solid #333', fontSize:'10px' }}>
                                                 {fxStr || '..'}
                                             </td>
                                         </React.Fragment>

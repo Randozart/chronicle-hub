@@ -2,6 +2,8 @@
 'use client';
 import { ParsedTrack, PatternPlaylistItem } from '@/engine/audio/models';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
+import * as Tone from 'tone';
+import { usePlaybackState } from '@/hooks/usePlaybackState';
 
 interface Props {
     parsedTrack: ParsedTrack | null;
@@ -15,7 +17,13 @@ export default function ArrangementView({ parsedTrack, onChange, onSelectRow, ac
     if (!parsedTrack) return <div className="p-4 text-gray-500">No track data</div>;
 
     const SLOT_WIDTH = 2; 
-
+    const currentSlot = usePlaybackState(
+        Tone.Transport.state === 'started',
+        10000, 
+        parsedTrack.config.bpm, 
+        parsedTrack.config.grid, 
+        parsedTrack.config.timeSig
+    );
     // --- ACTIONS ---
     const handleClone = (index: number) => {
         const newPlaylist = [...parsedTrack.playlist];
@@ -108,7 +116,22 @@ export default function ArrangementView({ parsedTrack, onChange, onSelectRow, ac
             </div>
 
             {/* TIMELINE */}
-            <div style={{ padding: '1rem', overflowX: 'auto', whiteSpace: 'nowrap', minHeight: '180px', display: 'flex', gap: '2px', alignItems: 'flex-start' }}>
+            <div style={{ padding: '1rem', overflowX: 'auto', whiteSpace: 'nowrap', minHeight: '180px', display: 'flex', gap: '2px', alignItems: 'flex-start', position: 'relative' }}>
+                
+                {/* PLAYHEAD OVERLAY */}
+                {Tone.Transport.state === 'started' && (
+                    <div style={{
+                        position: 'absolute',
+                        left: `${(currentSlot * SLOT_WIDTH) + 16}px`, // +16 compensates for padding: 1rem
+                        top: 0, bottom: 0,
+                        width: '2px',
+                        background: '#e06c75',
+                        zIndex: 50,
+                        boxShadow: '0 0 4px #e06c75',
+                        pointerEvents: 'none'
+                    }} />
+                )}
+
                 {parsedTrack.playlist.map((item, index) => {
                     const isPattern = item.type === 'pattern';
                     let maxDuration = 16;
@@ -116,7 +139,6 @@ export default function ArrangementView({ parsedTrack, onChange, onSelectRow, ac
 
                     if (isPattern) {
                         const pItem = item as PatternPlaylistItem;
-                        // Calculate max duration for width
                         pItem.layers.forEach(layer => {
                             let layerDur = 0;
                             layer.items.forEach(ci => {
@@ -160,7 +182,6 @@ export default function ArrangementView({ parsedTrack, onChange, onSelectRow, ac
                                         </button>
                                     </div>
                                 ))}
-                                {/* ADD LAYER BUTTON */}
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleAddLayer(index); }}
                                     style={{ 
