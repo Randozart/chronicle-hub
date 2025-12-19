@@ -182,8 +182,15 @@ export default function TrackEditor({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
                     {showArrangement && isClient && (
                         <div style={{ borderBottom: '1px solid #333' }}>
-                            <ArrangementView parsedTrack={parsedTrack} onChange={handleVisualUpdate} onSelectRow={setActivePlaylistIndex} activeIndex={activePlaylistIndex} onConfigUpdate={handleConfigUpdate} />
-                        </div>
+                           <ArrangementView 
+                        parsedTrack={parsedTrack} 
+                        onChange={handleVisualUpdate} 
+                        onSelectRow={setActivePlaylistIndex}
+                        activeIndex={activePlaylistIndex}
+                        onConfigUpdate={handleConfigUpdate}
+                        isPlaying={isPlaying} // <--- ADD THIS PROP
+                    />
+                    </div>
                     )}
                     {showNoteEditor && isClient && (
                         <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column' }}>

@@ -11,14 +11,15 @@ interface Props {
     onSelectRow: (index: number) => void;
     activeIndex: number;
     onConfigUpdate?: (key: string, value: any) => void;
+    isPlaying: boolean; // <--- ADD THIS
 }
 
-export default function ArrangementView({ parsedTrack, onChange, onSelectRow, activeIndex, onConfigUpdate }: Props) {
+export default function ArrangementView({ parsedTrack, onChange, onSelectRow, activeIndex, onConfigUpdate, isPlaying }: Props) {
     if (!parsedTrack) return <div className="p-4 text-gray-500">No track data</div>;
 
     const SLOT_WIDTH = 2; 
     const currentSlot = usePlaybackState(
-        Tone.Transport.state === 'started',
+        isPlaying, 
         10000, 
         parsedTrack.config.bpm, 
         parsedTrack.config.grid, 

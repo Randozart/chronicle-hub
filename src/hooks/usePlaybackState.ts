@@ -1,3 +1,4 @@
+// src/hooks/usePlaybackState.ts
 import { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 
@@ -9,18 +10,17 @@ export function usePlaybackState(
     timeSig: [number, number]
 ) {
     const [currentSlot, setCurrentSlot] = useState(0);
-    // FIX: Provide initial value for useRef
     const requestRef = useRef<number>(0);
 
     useEffect(() => {
         const animate = () => {
-            // Check specific Tone state to ensure we don't animate when stopped/paused
-            if (isPlaying && Tone.Transport.state === 'started') {
+            // Use getTransport() to avoid deprecation warning
+            if (isPlaying && Tone.getTransport().state === 'started') {
                 const slotsPerBeat = grid * (4 / timeSig[1]);
-                const ticksPerBeat = Tone.Transport.PPQ; 
+                const ticksPerBeat = Tone.getTransport().PPQ; 
                 const ticksPerSlot = ticksPerBeat / slotsPerBeat;
                 
-                const currentTicks = Tone.Transport.ticks;
+                const currentTicks = Tone.getTransport().ticks;
                 const slot = currentTicks / ticksPerSlot;
                 
                 setCurrentSlot(slot);
