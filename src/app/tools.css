@@ -511,3 +511,27 @@
     border: 1px dashed rgba(255, 255, 255, 0.7); /* Bright dashed border */
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); /* Subtle glow */
 }
+
+/* --- Piano Roll Selection --- */
+.pianoroll-selection-marquee {
+    position: absolute;
+    background: rgba(97, 175, 239, 0.2);
+    border: 1px solid #61afef;
+    z-index: 50;
+    pointer-events: none;
+}
+
+.pianoroll-note.selected {
+    border: 1px solid #fff;
+    box-shadow: 0 0 4px #fff;
+    z-index: 20 !important;
+}
+
+/* Ghost for multi-drag */
+.pianoroll-note-ghost {
+    /* Existing style... ensure opacity is distinct */
+    opacity: 0.5;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px dashed #fff;
+    pointer-events: none;
+}
