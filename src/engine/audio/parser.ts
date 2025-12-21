@@ -1,6 +1,5 @@
-// src/engine/audio/parser.ts
 import { ParsedTrack, ParsedPattern, NoteDef, PlaylistItem, NoteGroup, PatternPlaylistItem, PatternModifier, Layer, ChainItem, EffectCommand } from './models';
-import { PlayerQualities } from '@/engine/models';
+import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { evaluateText } from '@/engine/textProcessor';
 import { MODES } from './scales'; 
 
@@ -11,12 +10,17 @@ export class LigatureParser {
     // Group 4: Rhythmic symbols
     private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|[-.|])/g;
 
-    private preParseScribeScript(source: string, mockQualities: PlayerQualities): string {
+    private preParseScribeScript(
+        source: string, 
+        mockQualities: PlayerQualities,
+        mockDefs: Record<string, QualityDefinition>
+    ): string {
         const scribeRegex = /\{((?:[^{}]|\{[^{}]*\})*?)\}/g;
         return source.replace(scribeRegex, (fullMatch, expression) => {
             if (!expression.match(/[\$@%]/)) return fullMatch; 
             try {
-                return evaluateText(fullMatch, mockQualities, {}, null, 0);
+                // Pass mockDefs to the evaluator
+                return evaluateText(fullMatch, mockQualities, mockDefs, null, 0);
             } catch (e) {
                 console.warn(`Ligature ScribeScript Pre-Pass Error:`, e);
                 return fullMatch; 
@@ -24,8 +28,12 @@ export class LigatureParser {
         });
     }
 
-    public parse(rawSource: string, mockQualities: PlayerQualities = {}): ParsedTrack {
-        const processedSource = this.preParseScribeScript(rawSource, mockQualities);
+    public parse(
+        rawSource: string, 
+        mockQualities: PlayerQualities = {},
+        mockDefs: Record<string, QualityDefinition> = {}
+    ): ParsedTrack {
+        const processedSource = this.preParseScribeScript(rawSource, mockQualities, mockDefs);
         const lines = processedSource.split('\n')
             .map(l => l.split('//')[0].trimEnd())
             .filter(l => l.trim().length > 0);
@@ -106,7 +114,6 @@ export class LigatureParser {
         const name = parts[0].trim();
         const rest = parts.slice(1).join(':').trim();
         
-        // UPDATED REGEX: Capture ID and (overrides)
         const match = rest.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?/);
         if (!match) return;
         
@@ -160,7 +167,7 @@ export class LigatureParser {
         track.definitions[alias] = noteGroup;
     }
 
-    private parsePatternRow(line: string, track: ParsedTrack, patternId: string, lastTrackName: string): string {
+   private parsePatternRow(line: string, track: ParsedTrack, patternId: string, lastTrackName: string): string {
         const pipeIndex = line.indexOf('|');
         if (pipeIndex === -1) return lastTrackName;
 
@@ -170,14 +177,12 @@ export class LigatureParser {
         let trackName = leftSide;
         let modifiers: PatternModifier | undefined;
 
-        // Handle shorthand empty names (continuation of previous track)
         if (!trackName && lastTrackName) {
             trackName = lastTrackName;
         } else if (!trackName) {
             return '';
         }
 
-        // Parse Name and Modifiers: "Instrument(v:-5)^[P-50]"
         const match = leftSide.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?(?:\^\[(.*)\])?$/);
         if (match) {
             trackName = match[1];
@@ -195,17 +200,15 @@ export class LigatureParser {
         const pattern = track.patterns[patternId];
         if (!pattern) return trackName;
 
-        // --- NEW LOGIC: Prevent Merging of Duplicate Lanes ---
+        // --- Handle Duplicate Lanes ---
         let storageKey = trackName;
         if (pattern.tracks[storageKey]) {
-            // If "Piano" exists, try "Piano_#2", "Piano_#3", etc.
             let counter = 2;
             while (pattern.tracks[`${trackName}_#${counter}`]) {
                 counter++;
             }
             storageKey = `${trackName}_#${counter}`;
         }
-        // ---------------------------------------------------
 
         if (!pattern.tracks[storageKey]) pattern.tracks[storageKey] = [];
         
@@ -226,7 +229,6 @@ export class LigatureParser {
             if (token === '-') {
                  if (sequence.length > 0) {
                     const lastEvent = sequence[sequence.length - 1];
-                    // Using tolerance for float precision
                     if (lastEvent && Math.abs((lastEvent.time + lastEvent.duration) - currentTime) < 0.01) {
                         lastEvent.duration++;
                     }
@@ -267,28 +269,24 @@ export class LigatureParser {
         const expectedDurationInSlots = barCount > 0 ? barCount * (slotsPerBeat * timeSig[0]) : currentTime;
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
 
-        // Return the visual name (without _#2) so the next line knows the context
-        return trackName; 
+        return trackName; // Return original name for next line context
     }
 
-    // In src/engine/audio/parser.ts
-
-private parsePlaylistRow(line: string, track: ParsedTrack) {
-    const trimmed = line.trim();
-    if (trimmed.includes('=')) {
-        const parts = trimmed.split('=');
-        if (parts.length === 2) {
-            const key = parts[0].trim().toUpperCase();
-            const value = parts[1].trim();
-            if (key === 'BPM' || key === 'SCALE') {
-                track.playlist.push({ type: 'command', command: key as 'BPM' | 'Scale', value: value });
-                return;
+    private parsePlaylistRow(line: string, track: ParsedTrack) {
+        const trimmed = line.trim();
+        if (trimmed.includes('=')) {
+            const parts = trimmed.split('=');
+            if (parts.length === 2) {
+                const key = parts[0].trim().toUpperCase();
+                const value = parts[1].trim();
+                if (key === 'BPM' || key === 'SCALE') {
+                    track.playlist.push({ type: 'command', command: key as 'BPM' | 'Scale', value: value });
+                    return;
+                }
             }
         }
-    }
 
-    // --- FIX START: Intelligent splitting that respects parentheses ---
-    const layerStrings: string[] = [];
+        const layerStrings: string[] = [];
         let currentLayerToken = '';
         let layerParenDepth = 0;
         for (const char of trimmed) {
@@ -303,12 +301,10 @@ private parsePlaylistRow(line: string, track: ParsedTrack) {
             }
         }
         if (currentLayerToken.trim()) layerStrings.push(currentLayerToken.trim());
-        // --- FIX END ---
 
         const layers: Layer[] = [];
 
         layerStrings.forEach(layerStr => {
-            // --- FIX START: Intelligent splitting for chains ---
             const chainStrings: string[] = [];
             let currentChainToken = '';
             let chainParenDepth = 0;
@@ -324,7 +320,6 @@ private parsePlaylistRow(line: string, track: ParsedTrack) {
                 }
             }
             if (currentChainToken.trim()) chainStrings.push(currentChainToken.trim());
-            // --- FIX END ---
             
             const chain: ChainItem[] = [];
 
@@ -404,7 +399,6 @@ private parsePlaylistRow(line: string, track: ParsedTrack) {
     }
 
     private parseNoteToken(token: string): NoteDef {
-        // Regex: Digits + Mods + Optional(Props) + Optional^[Effects]
         const match = token.match(/^(\d+)(['#b%,]*)(?:\(([^)]*)\))?(?:\^\[(.*?)\])?$/);
         
         if (!match) return { degree: 1, octaveShift: 0, accidental: 0, isNatural: false };

@@ -1,12 +1,12 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-// import '@/app/tools.css'; // Uncomment if needed
+// import '@/app/tools.css'; 
 
 import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
-import { PlayerQualities } from '@/engine/models';
+import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
 import { LigatureParser } from '@/engine/audio/parser';
 import { lintLigature, LintError } from '@/engine/audio/linter';
@@ -57,6 +57,7 @@ export default function TrackEditor({
     const [lintErrors, setLintErrors] = useState<LintError[]>([]);
     const [editingInstrument, setEditingInstrument] = useState<InstrumentDefinition | null>(null);
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
+    const [mockDefs, setMockDefs] = useState<Record<string, QualityDefinition>>({});
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
     
@@ -76,7 +77,7 @@ export default function TrackEditor({
             setLintErrors(lintLigature(debouncedSource)); 
             try {
                 const parser = new LigatureParser();
-                const track = parser.parse(debouncedSource, mockQualities);
+                const track = parser.parse(debouncedSource, mockQualities, mockDefs);
                 setParsedTrack(track);
             } catch(e) {
                 console.error("Parse error", e);
@@ -85,7 +86,7 @@ export default function TrackEditor({
             }
         }, 10);
         return () => clearTimeout(timer);
-    }, [debouncedSource, mockQualities]);
+    }, [debouncedSource, mockQualities, mockDefs]);
 
     const handleSourceChange = (newSource: string) => setSource(newSource);
     
@@ -101,7 +102,7 @@ export default function TrackEditor({
             const oldGrid = newTrack.config.grid;
             const newGrid = val;
             
-            if (oldGrid !== newGrid) {
+            if (oldGrid !== newGrid && oldGrid > 0) {
                 const ratio = newGrid / oldGrid;
                 Object.values(newTrack.patterns).forEach((pat: any) => {
                     pat.duration = Math.round(pat.duration * ratio);
@@ -124,28 +125,19 @@ export default function TrackEditor({
     const handlePatternAction = (action: string, patternId: string) => {
         if (!parsedTrack) return;
         
-        // Deep Clone
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
         const pattern = newTrack.patterns[patternId];
         if (!pattern) return;
 
         if (action === 'double_speed') {
-            // Halve all durations and times
             pattern.duration = Math.ceil(pattern.duration / 2);
             Object.values(pattern.tracks).forEach((events: any) => {
-                events.forEach((e: any) => { 
-                    e.time /= 2; 
-                    e.duration /= 2; 
-                });
+                events.forEach((e: any) => { e.time /= 2; e.duration /= 2; });
             });
         } else if (action === 'half_speed') {
-            // Double all durations and times
             pattern.duration *= 2;
             Object.values(pattern.tracks).forEach((events: any) => {
-                events.forEach((e: any) => { 
-                    e.time *= 2; 
-                    e.duration *= 2; 
-                });
+                events.forEach((e: any) => { e.time *= 2; e.duration *= 2; });
             });
         }
 
@@ -211,7 +203,14 @@ export default function TrackEditor({
                         {leftSidebarOpen ? '«' : '»'}
                     </button>
                 </div>
-                {leftSidebarOpen ? <ScribeDebugger onUpdate={setMockQualities} /> : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
+                {leftSidebarOpen ? (
+                    <ScribeDebugger 
+                        onUpdate={(qualities, defs) => {
+                            setMockQualities(qualities);
+                            setMockDefs(defs);
+                        }} 
+                    />
+                ) : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
             </div>
 
             {/* MAIN CONTENT */}
@@ -266,7 +265,7 @@ export default function TrackEditor({
                                 onSelectRow={setActivePlaylistIndex}
                                 activeIndex={activePlaylistIndex}
                                 onConfigUpdate={handleConfigUpdate}
-                                onPatternAction={handlePatternAction} // NEW PROP
+                                onPatternAction={handlePatternAction}
                                 isPlaying={isPlaying}
                                 playbackMode={playbackMode} 
                             />
