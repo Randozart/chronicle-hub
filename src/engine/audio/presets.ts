@@ -688,7 +688,7 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
         }
     },
         'jazz_kit': {
-        id: 'standard_kit',
+        id: 'jazz_kit',
         name: 'Jazz Kit',
         category: 'Standard Sampler',
         type: 'sampler',
