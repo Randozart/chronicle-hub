@@ -11,6 +11,9 @@ const instrumentCache: Record<string, {
     effects: Tone.ToneAudioNode[];
 }> = {};
 
+// Hard limit to prevent browser crashes on dense MIDI
+const MAX_POLYPHONY = 12;
+
 function getCacheKey(def: InstrumentDefinition): string {
     return JSON.stringify({
         id: def.id,
@@ -19,7 +22,7 @@ function getCacheKey(def: InstrumentDefinition): string {
         osc: def.config.oscillator,
         offset: def.config.octaveOffset,
         loop: def.config.loop,
-        panning: def.config.panning // LFO panning config
+        panning: def.config.panning
     });
 }
 
@@ -29,11 +32,9 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     const oldEntry = Object.entries(instrumentCache).find(([key]) => JSON.parse(key).id === def.id);
     if (oldEntry) {
         const [key, graph] = oldEntry;
-        // If the configuration matches exactly, return from cache
         if (key === cacheKey) {
             return graph.source;
         }
-        // Otherwise dispose old to update
         graph.effects.forEach(e => e.dispose());
         graph.panner.dispose();
         graph.source.dispose();
@@ -62,8 +63,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
             }
         }
 
-        // FIX: Removed 'as AnySoundSource' from inside the Promise to satisfy the Promise<Tone.Sampler> type
-        const samplerPromise = new Promise<Tone.Sampler>((resolve, reject) => {
+        const samplerPromise = new Promise<Tone.Sampler>((resolve) => {
             const sampler = new Tone.Sampler({
                 urls: finalUrls,
                 baseUrl: config.baseUrl || "",
@@ -72,14 +72,14 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
                 onload: () => resolve(sampler),
                 onerror: (err) => {
                     console.warn(`Failed to load sample for ${def.id}`, err);
-                    // Resolve anyway to prevent blocking, but it won't play
                     resolve(sampler); 
                 }
             });
         });
 
-        // Cast the result of the promise instead
         sourceInst = (await samplerPromise) as AnySoundSource;
+        // Sampler manages its own polyphony internally mostly, but we can't easily limit it without wrapping.
+        // Usually Samplers are less CPU intensive on voice count than Synths.
 
         if (config.loop && config.loop.enabled) {
             const sampler = sourceInst as any;
@@ -108,7 +108,9 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
             oscillator: { type: oscType as any, ...config.oscillator },
             envelope: envelope,
         } as any) as AnySoundSource;
-        (sourceInst as Tone.PolySynth).maxPolyphony = config.polyphony || 32;
+        
+        // Enforce Polyphony Limit
+        (sourceInst as Tone.PolySynth).maxPolyphony = Math.min(config.polyphony || 32, MAX_POLYPHONY);
     }
 
     sourceInst.volume.value = config.volume || -10;
@@ -116,15 +118,15 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     // --- 2. Create Chain ---
     const effects: Tone.ToneAudioNode[] = [];
     
-    // Automation Panner (Controlled by Piano Roll events)
+    // Automation Panner
     const trackPanner = new Tone.Panner(0);
-    sourceInst._panner = trackPanner; // Attach for AudioProvider access
-
-    // LFO Auto-Panner (Instrument Config)
+    sourceInst._panner = trackPanner;
+    
     let currentNode: Tone.ToneAudioNode = sourceInst;
     currentNode.connect(trackPanner);
     currentNode = trackPanner;
 
+    // LFO Auto-Panner
     if (config.panning && config.panning.enabled) {
         const autoPanner = new Tone.AutoPanner({
             frequency: config.panning.frequency || 2,
@@ -137,8 +139,6 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         effects.push(autoPanner);
     }
 
-    // Note: AudioProvider handles connection to MasterGain.
-    
     instrumentCache[cacheKey] = { source: sourceInst, panner: trackPanner, effects };
     return sourceInst;
 }

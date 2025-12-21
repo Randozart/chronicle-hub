@@ -33,10 +33,13 @@ export default function ArrangementView({
 }: Props) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // 1. Safe Config Extraction (Always run this)
-    const config = parsedTrack?.config || { bpm: 120, grid: 4, timeSig: [4, 4] as [number, number] };
+    // 1. Safe Config Extraction
+    const config = parsedTrack?.config || { 
+        bpm: 120, grid: 4, timeSig: [4, 4] as [number, number],
+        scaleRoot: 'C', scaleMode: 'Major', swing: 0, humanize: 0
+    };
     
-    // 2. Playback State Hook (Always run this)
+    // 2. Playback State Hook
     const currentSlot = useGlobalPlaybackState(
         isPlaying && playbackMode === 'global',
         config.bpm,
@@ -44,9 +47,9 @@ export default function ArrangementView({
         config.timeSig
     );
 
-    // 3. Playlist Metadata Calculation (Always run this, handle null internally)
+    // 3. Playlist Metadata Calculation
     const playlistMetadata = useMemo(() => {
-        if (!parsedTrack) return []; // Return empty array if no track
+        if (!parsedTrack) return []; 
 
         let accumulatedSlots = 0;
         return parsedTrack.playlist.map(item => {
@@ -73,7 +76,7 @@ export default function ArrangementView({
         });
     }, [parsedTrack]);
 
-    // 4. Playhead Position Calculation (Always run this)
+    // 4. Playhead Position Calculation
     const playheadLeftPx = useMemo(() => {
         if (!isPlaying && currentSlot === 0) return 0;
         
@@ -92,7 +95,7 @@ export default function ArrangementView({
         return accumulated;
     }, [currentSlot, playlistMetadata, isPlaying]);
 
-    // 5. Auto-Scroll Effect (Always run this)
+    // 5. Auto-Scroll Effect
     useEffect(() => {
         if (isPlaying && playbackMode === 'global' && scrollContainerRef.current) {
             const container = scrollContainerRef.current;
@@ -103,10 +106,13 @@ export default function ArrangementView({
         }
     }, [playheadLeftPx, isPlaying, playbackMode]);
 
-    // --- NOW WE CAN RETURN EARLY FOR UI RENDERING ---
     if (!parsedTrack) return <div className="p-4 text-gray-500">No track data</div>;
 
-    // Action handlers
+    // --- Action Handlers ---
+    const updateConfig = (key: string, value: any) => {
+        if (onConfigUpdate) onConfigUpdate(key, value);
+    };
+
     const handleMove = (index: number, dir: 'left' | 'right') => {
         const target = dir === 'left' ? index - 1 : index + 1;
         if (target < 0 || target >= parsedTrack.playlist.length) return;
@@ -160,6 +166,67 @@ export default function ArrangementView({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', background: '#141414' }}>
+            
+            {/* SETTINGS BAR (Restored Item 6) */}
+            <div className="settings-bar">
+                <div className="settings-group">
+                    <span className="settings-label">BPM</span>
+                    <input 
+                        type="number" className="settings-input" 
+                        value={config.bpm} 
+                        onChange={e => updateConfig('bpm', parseFloat(e.target.value))} 
+                    />
+                </div>
+                <div className="settings-group">
+                    <span className="settings-label">Grid</span>
+                    <select 
+                        className="settings-select"
+                        value={config.grid}
+                        onChange={e => updateConfig('grid', parseInt(e.target.value))}
+                    >
+                        {[4, 6, 8, 12, 16, 24, 32].map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                </div>
+                <div className="settings-group">
+                    <span className="settings-label">Key</span>
+                    <select 
+                        className="settings-select"
+                        value={config.scaleRoot}
+                        onChange={e => updateConfig('scaleRoot', e.target.value)}
+                    >
+                        {['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                    <select 
+                        className="settings-select"
+                        value={config.scaleMode}
+                        onChange={e => updateConfig('scaleMode', e.target.value)}
+                    >
+                        <option value="Major">Major</option>
+                        <option value="Minor">Minor</option>
+                        <option value="Dorian">Dorian</option>
+                        <option value="Phrygian">Phrygian</option>
+                        <option value="Lydian">Lydian</option>
+                        <option value="Mixolydian">Mixolydian</option>
+                    </select>
+                </div>
+                <div className="settings-group">
+                    <span className="settings-label">Swing %</span>
+                    <input 
+                        type="number" className="settings-input" min="0" max="100"
+                        value={Math.round((config.swing || 0) * 100)} 
+                        onChange={e => updateConfig('swing', parseInt(e.target.value) / 100)} // FIX: Divide by 100
+                    />
+                </div>
+                <div className="settings-group">
+                    <span className="settings-label">Humanize %</span>
+                    <input 
+                        type="number" className="settings-input" min="0" max="100"
+                        value={Math.round((config.humanize || 0) * 100)} 
+                        onChange={e => updateConfig('humanize', parseInt(e.target.value) / 100)} // FIX: Divide by 100
+                    />
+                </div>
+            </div>
+
             {/* Timeline */}
             <div
                 ref={scrollContainerRef}
@@ -171,12 +238,11 @@ export default function ArrangementView({
                     position: 'relative'
                 }}
             >
-                {/* Playhead Line */}
                 {playbackMode === 'global' && isPlaying && (
                     <div
                         style={{
                             position: 'absolute',
-                            left: `${playheadLeftPx + 16}px`, // +16 for padding
+                            left: `${playheadLeftPx + 16}px`, 
                             top: 0,
                             bottom: 0,
                             width: '2px',

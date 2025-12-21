@@ -41,7 +41,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const previewSynthRef = useRef<AnySoundSource | null>(null);
     const currentPreviewIdRef = useRef<string>('');
 
-
     const [limiterSettings, setLimiterSettings] = useState<LimiterSettings>({ enabled: true, threshold: -1 });
     const [masterVolume, setMasterVolume] = useState(0);
 
@@ -79,7 +78,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
         const newId = instrumentDef.id + JSON.stringify(instrumentDef.config);
 
-        // If synth doesn't exist or instrument has changed, create a new one
         if (!previewSynthRef.current || currentPreviewIdRef.current !== newId) {
             if (previewSynthRef.current) {
                 previewSynthRef.current.dispose();
@@ -113,7 +111,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const playPreviewNote = async (instrumentDef: InstrumentDefinition, note: string, duration: Tone.Unit.Time = '8n') => {
         if (!isInitialized) await initializeAudio();
-        stopPreviewNote(); // Stop any held note
+        stopPreviewNote(); 
 
         try {
             const tempSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_oneshot_${Math.random()}` });
@@ -123,7 +121,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
             tempSynth.triggerAttackRelease(note, duration, Tone.now());
             
-            // FIX: Get release time from the definition, not the synth instance
             const releaseTime = instrumentDef.config.envelope?.release ?? 1.0;
 
             setTimeout(() => {
@@ -147,10 +144,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const stop = () => {
         const transport = Tone.getTransport();
-        transport.stop();
-        transport.cancel(); 
         
-        scheduledPartsRef.current.forEach(part => part.dispose());
+        // 1. Mute master immediately to prevent release tails or "stuck" notes from ringing
+        if(masterGainRef.current) {
+            // Instant ramp to 0
+            masterGainRef.current.gain.cancelScheduledValues(0);
+            masterGainRef.current.gain.value = 0; 
+            
+            // Restore volume after a short delay
+            setTimeout(() => { 
+                if(masterGainRef.current) {
+                    masterGainRef.current.gain.rampTo(Tone.dbToGain(masterVolume), 0.1); 
+                }
+            }, 50);
+        }
+
+        transport.stop();
+        transport.cancel(); // Clears timeline
+        
+        // 2. Dispose Parts explicitly
+        scheduledPartsRef.current.forEach(part => {
+            // part.callback = undefined;
+            part.dispose();
+        });
         scheduledPartsRef.current = [];
         
         scheduledEventsRef.current.forEach(id => transport.clear(id));
@@ -159,9 +175,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         activeNotesPerPartRef.current.clear();
         noteCacheRef.current.clear();
         
+        // 3. Reset Synth State
         activeSynthsRef.current.forEach(synth => {
             synth.releaseAll();
-            if (synth._panner) synth._panner.pan.value = 0;
+            
+            // Reset Panning / Volume automation that might be stuck mid-ramp
+            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                synth.volume.cancelScheduledValues(0);
+                // We don't know the "default" vol here easily, but -10 is safe-ish.
+                // Ideally, we'd reset to the instrument definition's volume.
+                // For now, stopping the ramp is enough.
+            }
+            if (synth._panner) {
+                synth._panner.pan.cancelScheduledValues(0);
+                synth._panner.pan.value = 0;
+            }
         });
         
         currentTrackRef.current = null;

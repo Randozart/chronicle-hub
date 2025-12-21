@@ -447,3 +447,52 @@
 .automation-point:hover {
     opacity: 1;
 }
+
+/* --- Settings Bar --- */
+.settings-bar {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: #141414;
+    border-bottom: 1px solid #333;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.settings-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-right: 1px solid #333;
+    padding-right: 1rem;
+}
+
+.settings-group:last-child {
+    border-right: none;
+}
+
+.settings-label {
+    color: #888;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.settings-input {
+    background: #21252b;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 2px 4px;
+    border-radius: 2px;
+    width: 50px;
+    font-size: 0.8rem;
+}
+
+.settings-select {
+    background: #21252b;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 0.8rem;
+}
