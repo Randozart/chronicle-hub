@@ -17,7 +17,7 @@ export function serializeParsedTrack(track: ParsedTrack): string {
   lines.push(`Time: ${track.config.timeSig[0]}/${track.config.timeSig[1]}`);
   lines.push(`Scale: ${track.config.scaleRoot} ${track.config.scaleMode}`);
   
-  // --- FIX: Persist Swing and Humanize ---
+  // --- NEW: Persist Swing and Humanize ---
   if (track.config.swing > 0) {
       lines.push(`Swing: ${Math.round(track.config.swing * 100)}`);
   }
@@ -64,17 +64,21 @@ export function serializeParsedTrack(track: ParsedTrack): string {
   for (const pattern of Object.values(track.patterns)) {
     lines.push(`[PATTERN: ${pattern.id}]`);
     
-    // Sort tracks to keep order stable if possible, or just keys
-    const trackNames = Object.keys(pattern.tracks).sort();
-    const maxTrackNameLength = Math.max(...trackNames.map(name => name.length), 0);
+    // Sort keys to keep stable order
+    const trackKeys = Object.keys(pattern.tracks).sort();
     
-    for (const trackName of trackNames) {
-      const events = pattern.tracks[trackName];
-      const modifiers = pattern.trackModifiers[trackName];
+    // --- NEW: Calculate padding based on VISUAL name (stripping _#2) ---
+    const maxTrackNameLength = Math.max(...trackKeys.map(k => k.split('_#')[0].length), 0);
+    
+    for (const trackKey of trackKeys) {
+      const events = pattern.tracks[trackKey];
+      const modifiers = pattern.trackModifiers[trackKey];
       
-      let header = trackName;
+      // --- NEW: Strip internal suffix for display ---
+      const displayName = trackKey.split('_#')[0];
+      let header = displayName;
       
-      // Serialize Track Modifiers (e.g. Piano(v:-5)^[P-50])
+      // Serialize Track Modifiers
       if (modifiers) {
           const modProps = [];
           if (modifiers.volume !== 0) modProps.push(`v:${modifiers.volume}`);
@@ -107,7 +111,6 @@ export function serializeParsedTrack(track: ParsedTrack): string {
               return mods ? `${p.id}(${mods})` : p.id;
           }).join(' + ');
       });
-      // Join layers with comma
       lines.push(layerStrings.join(', '));
     }
   }

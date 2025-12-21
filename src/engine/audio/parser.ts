@@ -160,7 +160,7 @@ export class LigatureParser {
         track.definitions[alias] = noteGroup;
     }
 
-   private parsePatternRow(line: string, track: ParsedTrack, patternId: string, lastTrackName: string): string {
+    private parsePatternRow(line: string, track: ParsedTrack, patternId: string, lastTrackName: string): string {
         const pipeIndex = line.indexOf('|');
         if (pipeIndex === -1) return lastTrackName;
 
@@ -170,12 +170,14 @@ export class LigatureParser {
         let trackName = leftSide;
         let modifiers: PatternModifier | undefined;
 
+        // Handle shorthand empty names (continuation of previous track)
         if (!trackName && lastTrackName) {
             trackName = lastTrackName;
         } else if (!trackName) {
             return '';
         }
 
+        // Parse Name and Modifiers: "Instrument(v:-5)^[P-50]"
         const match = leftSide.match(/^([a-zA-Z0-9_]+)\s*(?:\((.*)\))?(?:\^\[(.*)\])?$/);
         if (match) {
             trackName = match[1];
@@ -193,19 +195,31 @@ export class LigatureParser {
         const pattern = track.patterns[patternId];
         if (!pattern) return trackName;
 
-        if (!pattern.tracks[trackName]) pattern.tracks[trackName] = [];
+        // --- NEW LOGIC: Prevent Merging of Duplicate Lanes ---
+        let storageKey = trackName;
+        if (pattern.tracks[storageKey]) {
+            // If "Piano" exists, try "Piano_#2", "Piano_#3", etc.
+            let counter = 2;
+            while (pattern.tracks[`${trackName}_#${counter}`]) {
+                counter++;
+            }
+            storageKey = `${trackName}_#${counter}`;
+        }
+        // ---------------------------------------------------
+
+        if (!pattern.tracks[storageKey]) pattern.tracks[storageKey] = [];
         
         if (modifiers) {
             if (!pattern.trackModifiers) pattern.trackModifiers = {};
-            pattern.trackModifiers[trackName] = modifiers;
+            pattern.trackModifiers[storageKey] = modifiers;
         }
 
-        const sequence = pattern.tracks[trackName];
+        const sequence = pattern.tracks[storageKey];
         const { grid, timeSig } = track.config;
         
         const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
         let currentTime = 0; 
-
+        
         for (const token of tokens) {
             if (token === '|') continue;
             if (token === '.') { currentTime++; continue; }
@@ -220,7 +234,6 @@ export class LigatureParser {
                 currentTime++;
                 continue;
             }
-
             if (token.startsWith('(')) {
                 const inner = token.substring(1, token.length - 1);
                 const subMatches = inner.split(/\s+/).filter(Boolean);
@@ -241,20 +254,21 @@ export class LigatureParser {
                 currentTime++; 
                 continue;
             }
-
+            
             const notes = this.resolveNotes(token, track.definitions);
             if (notes.length > 0) {
                 sequence.push({ time: currentTime, duration: 1, notes });
             }
             currentTime++;
         }
-        
+
         const slotsPerBeat = grid * (4 / timeSig[1]);
         const barCount = (content.match(/\|/g) || []).length - 1;
         const expectedDurationInSlots = barCount > 0 ? barCount * (slotsPerBeat * timeSig[0]) : currentTime;
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
 
-        return trackName;
+        // Return the visual name (without _#2) so the next line knows the context
+        return trackName; 
     }
 
     // In src/engine/audio/parser.ts
