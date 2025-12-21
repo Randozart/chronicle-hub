@@ -22,6 +22,13 @@ interface Props {
     dragDeltaRows: number;
 }
 
+const DESCRIPTIONS: Record<AutoMode, string> = {
+    volume: "Note Velocity (-60 to +6 dB)",
+    pan: "Stereo Panning (-100 L to +100 R)",
+    fade: "Fade Out: Reduces volume by X dB over duration",
+    swell: "Swell In: Starts X dB quieter, ramps up to full"
+};
+
 export default function AutomationDrawer({ 
     height, width, mode, onSetMode, scrollRef, 
     pattern, lane, slotW, 
@@ -38,23 +45,38 @@ export default function AutomationDrawer({
     return (
         <div className="automation-drawer" style={{ height: `${height}px` }}>
             <div className="automation-header">
-                {['volume', 'pan', 'fade', 'swell'].map(m => (
-                    <button 
-                        key={m} 
-                        onClick={() => onSetMode(m as AutoMode)} 
-                        className={`automation-tab ${mode === m ? 'active' : ''}`}
-                    >
-                        {m.charAt(0).toUpperCase() + m.slice(1)}
-                    </button>
-                ))}
+                <div style={{ display: 'flex' }}>
+                    {['volume', 'pan', 'fade', 'swell'].map(m => (
+                        <button 
+                            key={m} 
+                            onClick={() => onSetMode(m as AutoMode)} 
+                            className={`automation-tab ${mode === m ? 'active' : ''}`}
+                        >
+                            {m.charAt(0).toUpperCase() + m.slice(1)}
+                        </button>
+                    ))}
+                </div>
+                <div className="automation-help-text">
+                    {DESCRIPTIONS[mode]}
+                </div>
             </div>
             <div className="automation-lane" ref={scrollRef}>
                 <div style={{ width: width, height: '100%', position: 'relative', marginLeft: '40px' }}>
-                    <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: 1, background: '#333' }} />
+                    
+                    {/* Visual Reference Lines */}
+                    {['volume', 'pan'].includes(mode) ? (
+                        // Center line for bipolar controls
+                        <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: 1, background: '#333' }} />
+                    ) : (
+                        // Top line for unipolar attenuation controls (Fade/Swell)
+                        <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: '#444' }} />
+                    )}
                     
                     {getTracks().map(trackName => (
                         pattern?.tracks[trackName]?.map((event, i) => {
                             const leftPos = event.time * slotW;
+                            
+                            // Horizontal Virtualization
                             if (leftPos < scrollLeft - 100 || leftPos > scrollLeft + viewWidth + 100) return null;
 
                             let val = 0;
@@ -71,19 +93,53 @@ export default function AutomationDrawer({
 
                             let hPercent = 0;
                             let color = '#61afef';
-                            if (mode === 'volume') hPercent = Math.max(0, Math.min(100, 50 + (val * 2))); 
-                            else if (mode === 'pan') { hPercent = 50 + (val / 2); color = '#d19a66'; } 
-                            else { hPercent = Math.min(100, Math.max(0, val)); color = mode === 'fade' ? '#e06c75' : '#c678dd'; }
+                            let displayVal = Math.round(val);
+                            
+                            // Visual Style Logic
+                            // Default to bottom anchor (Vol/Pan)
+                            let anchorStyle: React.CSSProperties = { bottom: 0 }; 
+
+                            if (mode === 'volume') {
+                                hPercent = Math.max(0, Math.min(100, 50 + (val * 1.5))); 
+                            } 
+                            else if (mode === 'pan') {
+                                hPercent = 50 + (val / 2); 
+                                color = '#d19a66'; 
+                            } 
+                            else {
+                                // Fade/Swell: 0 to 100
+                                hPercent = Math.min(100, Math.max(0, val)); 
+                                color = mode === 'fade' ? '#e06c75' : '#c678dd';
+                                // FIX: Anchor to TOP
+                                anchorStyle = { top: 0 }; 
+                            }
+
+                            // Dynamic margin to keep label outside the bar
+                            const labelMarginTop = (mode === 'fade' || mode === 'swell') ? '0' : '-12px';
+                            const labelMarginBottom = (mode === 'fade' || mode === 'swell') ? '-12px' : '0';
 
                             return (
-                                <div key={`${trackName}-${i}`} onMouseDown={(e) => onMouseDown(e, trackName, i, val)}
+                                <div 
+                                    key={`${trackName}-${i}`} 
+                                    onMouseDown={(e) => onMouseDown(e, trackName, i, val)}
                                     className="automation-point"
-                                    style={{ left: leftPos, width: Math.max(4, slotW - 4), height: `${hPercent}%`, background: color }}>
-                                    {dragState?.type === 'automation' && dragState.eventIndex === i && dragState.trackName === trackName && (
-                                        <span style={{ fontSize: '9px', color: '#fff', position: 'absolute', top: '-15px', background: '#000', padding: '2px 4px', borderRadius:'2px', pointerEvents:'none', zIndex: 100, whiteSpace:'nowrap' }}>
-                                            {mode}: {Math.round(val)}
-                                        </span>
-                                    )}
+                                    style={{ 
+                                        left: leftPos, 
+                                        width: Math.max(4, slotW - 4), 
+                                        height: `${hPercent}%`, 
+                                        background: color,
+                                        flexDirection: 'column', 
+                                        justifyContent: mode === 'volume' || mode === 'pan' ? 'flex-start' : 'flex-end', // Align text away from anchor
+                                        overflow: 'visible',
+                                        ...anchorStyle 
+                                    }}
+                                >
+                                    <span className="automation-value-label" style={{ 
+                                        marginTop: labelMarginTop,
+                                        marginBottom: labelMarginBottom
+                                    }}>
+                                        {displayVal}
+                                    </span>
                                 </div>
                             )
                         })

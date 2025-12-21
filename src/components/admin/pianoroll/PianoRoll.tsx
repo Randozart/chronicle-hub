@@ -10,7 +10,6 @@ import * as Tone from 'tone';
 import { usePlaybackState } from '@/hooks/usePlaybackState';
 import { useAudio } from '@/providers/AudioProvider';
 
-// Import Subcomponents
 import PianoRollToolbar from './PianoRollToolbar';
 import PianoRollKeys from './PianoRollKeys';
 import PianoRollGrid from './PianoRollGrid';
@@ -27,17 +26,26 @@ interface Props {
 
 const SLOT_W = 24;
 const ROW_H = 16; 
+const SCALE_BG = 'rgba(97, 175, 239, 0.08)'; 
+
+type AutoMode = 'volume' | 'pan' | 'fade' | 'swell';
+
+function pseudoRandom(seed: number) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
 
 const getNoteId = (track: string, evtIdx: number, noteIdx: number) => `${track}:${evtIdx}:${noteIdx}`;
 
-export default function PianoRoll({ source, qualities, onChange, availableInstruments, playbackMode, onPlaybackModeChange }: Props) {
-    // --- STATE ---
+export default function PianoRoll({ 
+    source, qualities, onChange, availableInstruments, 
+    playbackMode, onPlaybackModeChange 
+}: Props) {
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
     const [activeLane, setActiveLane] = useState<string>("");
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const [height, setHeight] = useState(400); 
     
-    // Virtualization State
     const [scrollLeft, setScrollLeft] = useState(0);
     const [scrollTop, setScrollTop] = useState(0);
     const [viewWidth, setViewWidth] = useState(800);
@@ -46,11 +54,9 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
     const keysRef = useRef<HTMLDivElement>(null);
     const autoRef = useRef<HTMLDivElement>(null);
 
-    // Selection
     const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
     const [selectionRect, setSelectionRect] = useState<{ startX: number, startY: number, currentX: number, currentY: number } | null>(null);
     
-    // Drag
     const [dragState, setDragState] = useState<{
         type: 'move' | 'resize' | 'automation';
         startX: number;
@@ -61,14 +67,12 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
     } | null>(null);
     const [dragDelta, setDragDelta] = useState<{ slots: number, rows: number }>({ slots: 0, rows: 0 });
 
-    // Automation
     const [showAutomation, setShowAutomation] = useState(false);
     const [autoHeight, setAutoHeight] = useState(140);
     const [autoMode, setAutoMode] = useState<'volume' | 'pan' | 'fade' | 'swell'>('volume');
     
     const { playTrack, stop: audioStop, isPlaying } = useAudio();
 
-    // --- PARSING ---
     useEffect(() => {
         try {
             const parser = new LigatureParser();
@@ -87,7 +91,6 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
         } catch (e) { }
     }, [source, qualities]);
 
-    // --- CALCULATIONS ---
     const activePattern = parsedTrack?.patterns[selectedPatternId];
     const config = parsedTrack?.config;
     const currentSlot = usePlaybackState(isPlaying, activePattern?.duration || 0, config?.bpm || 120, config?.grid || 4, config?.timeSig || [4,4]);
@@ -99,11 +102,7 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
         const range = Array.from({ length: max - min + 1 }, (_, i) => min + i);
         return { noteRange: range, minMidi: min };
     }, [activePattern, config]);
-
-    // Define this BEFORE useEffect so it's captured in scope
     const midiToRow = (midi: number) => noteRange.length - 1 - (midi - minMidi);
-
-    // --- HANDLERS ---
 
     const toggleLocalPlay = () => {
         if (playbackMode === 'local') {
@@ -128,16 +127,56 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
         if (autoRef.current) autoRef.current.scrollLeft = target.scrollLeft;
     };
 
-    // Initial width measurement
     useEffect(() => {
         if (gridRef.current) setViewWidth(gridRef.current.clientWidth);
     }, []);
+
+    useEffect(() => {
+        try {
+            const parser = new LigatureParser();
+            const track = parser.parse(source, qualities);
+            setParsedTrack(track);
+        } catch (e) { }
+    }, [source, qualities]);
+
+    // --- 2. SYNC SELECTION & LANE ---
+    useEffect(() => {
+        if (!parsedTrack) return;
+        
+        const patternKeys = Object.keys(parsedTrack.patterns);
+        if (patternKeys.length === 0) return;
+
+        // Ensure valid Pattern ID
+        let currentPatternId = selectedPatternId;
+        if (!currentPatternId || !parsedTrack.patterns[currentPatternId]) {
+            currentPatternId = patternKeys[0];
+            setSelectedPatternId(currentPatternId);
+        }
+
+        // Ensure valid Lane
+        const pattern = parsedTrack.patterns[currentPatternId];
+        if (pattern) {
+            const lanes = Object.keys(pattern.tracks);
+            if (lanes.length > 0) {
+                // Check if current activeLane is valid for this pattern (checking base names)
+                const currentBase = activeLane;
+                const hasCurrent = lanes.some(l => l.split('_#')[0] === currentBase);
+                
+                if (!currentBase || !hasCurrent) {
+                    // Force select first available base lane
+                    setActiveLane(lanes[0].split('_#')[0]);
+                }
+            } else {
+                setActiveLane("");
+            }
+        }
+    }, [parsedTrack, selectedPatternId]); // Re-run when data updates or user switches pattern
 
     const isTrackInActiveGroup = (trackName: string) => {
         return trackName === activeLane || trackName.startsWith(`${activeLane}_#`);
     };
 
-    const handleGridMouseDown = (e: React.MouseEvent) => {
+    const handleGridMouseDown = (e: React.MouseEvent, midiVal: number) => { // Renamed param to midiVal
         if (e.button !== 0) return;
         if (!parsedTrack || !selectedPatternId || !activeLane) return;
 
@@ -146,7 +185,6 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
         const absX = localX + scrollLeft; 
         const clickedSlot = Math.floor(absX / SLOT_W);
 
-        // Control/Meta -> Box Selection
         if (e.ctrlKey || e.metaKey) {
             setSelectedNotes(new Set());
             setSelectionRect({ 
@@ -158,11 +196,9 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
             return;
         }
 
-        // Standard Click -> Add Note
         const newTrack = JSON.parse(JSON.stringify(parsedTrack)) as ParsedTrack;
         const pattern = newTrack.patterns[selectedPatternId];
         
-        // Smart Lane Logic
         let targetLane = activeLane;
         const groupLanes = Object.keys(pattern.tracks).filter(isTrackInActiveGroup);
         let found = false;
@@ -183,12 +219,7 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
             }
         }
 
-        const rectY = e.clientY - rect.top;
-        const row = Math.floor(rectY / ROW_H);
-        if(row < 0 || row >= noteRange.length) return;
-        const midi = noteRange[noteRange.length - 1 - row];
-
-        const noteDef = resolveScaleDegree(midi, config!.scaleRoot, config!.scaleMode);
+        const noteDef = resolveScaleDegree(midiVal, config!.scaleRoot, config!.scaleMode);
         pattern.tracks[targetLane].push({ time: clickedSlot, duration: 1, notes: [noteDef] });
         pattern.tracks[targetLane].sort((a: SequenceEvent, b: SequenceEvent) => a.time - b.time);
         
@@ -244,7 +275,6 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
         setDragDelta({ slots: 0, rows: 0 }); 
     };
 
-    // --- GLOBAL MOUSE LISTENERS ---
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (selectionRect) {
@@ -261,7 +291,9 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
             const deltaY = e.clientY - dragState.startY;
 
             if (dragState.type === 'automation') {
-                setDragDelta({ slots: 0, rows: -deltaY * 0.5 }); 
+                const isAttenuation = autoMode === 'fade' || autoMode === 'swell';
+                const direction = isAttenuation ? 1 : -1;
+                setDragDelta({ slots: 0, rows: deltaY * 0.5 * direction }); 
             } else {
                 const dSlots = Math.round(deltaX / SLOT_W);
                 const dRows = Math.round(deltaY / ROW_H);
@@ -278,14 +310,12 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
 
                 const newSet = new Set<string>();
                 const pattern = parsedTrack.patterns[selectedPatternId];
-                
                 const laneKeys = Object.keys(pattern.tracks).filter(isTrackInActiveGroup);
 
                 laneKeys.forEach(trackName => {
                     pattern.tracks[trackName].forEach((ev, eIdx) => {
                         const noteLeft = ev.time * SLOT_W;
                         const noteWidth = ev.duration * SLOT_W;
-                        
                         if (noteLeft < x2 && (noteLeft + noteWidth) > x1) {
                             ev.notes.forEach((n, nIdx) => {
                                 const midi = Note.midi(resolveNote(n.degree, config!.scaleRoot, config!.scaleMode, n.octaveShift, n.accidental, n.isNatural)) || 0;
@@ -312,12 +342,10 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
                     
                     if (autoMode === 'volume') event.notes[0].volume = Math.min(6, rounded);
                     else {
-                        event.notes.forEach((n: NoteDef) => {
-                            if (!n.effects) n.effects = [];
-                            let code = autoMode === 'pan' ? 'P' : (autoMode === 'fade' ? 'F' : 'S');
-                            n.effects = n.effects.filter(e => e.code !== code);
-                            if (rounded !== 0) n.effects.push({ code, value: rounded });
-                        });
+                        if (!event.notes[0].effects) event.notes[0].effects = [];
+                        let code = autoMode === 'pan' ? 'P' : (autoMode === 'fade' ? 'F' : 'S');
+                        event.notes[0].effects = event.notes[0].effects.filter(e => e.code !== code);
+                        if (rounded !== 0) event.notes[0].effects.push({ code, value: rounded });
                     }
                     onChange(serializeParsedTrack(newTrack));
 
@@ -365,7 +393,7 @@ export default function PianoRoll({ source, qualities, onChange, availableInstru
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [dragState, selectionRect, parsedTrack, selectedNotes, dragDelta, config, autoMode, activeLane, midiToRow]); // Added midiToRow dependency
+    }, [dragState, selectionRect, parsedTrack, selectedNotes, dragDelta, config, autoMode, activeLane, midiToRow]);
 
     if (!parsedTrack || !activePattern || !config) return null;
 

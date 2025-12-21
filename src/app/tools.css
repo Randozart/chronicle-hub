@@ -535,3 +535,23 @@
     border: 1px dashed #fff;
     pointer-events: none;
 }
+
+/* Add to src/app/tools.css */
+
+.automation-value-label {
+    font-size: 8px;
+    color: #fff;
+    text-shadow: 0 1px 2px #000;
+    pointer-events: none;
+    z-index: 10;
+    margin-top: -12px; /* Position above the bar */
+    white-space: nowrap;
+}
+
+.automation-help-text {
+    margin-left: auto;
+    padding-right: 1rem;
+    font-size: 0.75rem;
+    color: #777;
+    font-style: italic;
+}
