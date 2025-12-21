@@ -1,4 +1,3 @@
-// src/engine/audio/serializer.ts
 import { ParsedTrack, SequenceEvent, NoteDef, ParsedPattern } from './models';
 
 function getNoteSignature(notes: NoteDef[]): string {
@@ -17,7 +16,7 @@ export function serializeParsedTrack(track: ParsedTrack): string {
   lines.push(`Time: ${track.config.timeSig[0]}/${track.config.timeSig[1]}`);
   lines.push(`Scale: ${track.config.scaleRoot} ${track.config.scaleMode}`);
   
-  // --- NEW: Persist Swing and Humanize ---
+  // Persist Swing and Humanize
   if (track.config.swing > 0) {
       lines.push(`Swing: ${Math.round(track.config.swing * 100)}`);
   }
@@ -40,7 +39,6 @@ export function serializeParsedTrack(track: ParsedTrack): string {
     
     if (props.length > 0) extra += `(${props.join(',')})`;
     
-    // Serialize Instrument Effects
     if (inst.overrides.effects && inst.overrides.effects.length > 0) {
         const effectStr = inst.overrides.effects.map(e => `${e.code}${e.value}`).join(',');
         extra += `^[${effectStr}]`;
@@ -64,32 +62,43 @@ export function serializeParsedTrack(track: ParsedTrack): string {
   for (const pattern of Object.values(track.patterns)) {
     lines.push(`[PATTERN: ${pattern.id}]`);
     
-    // Sort keys to keep stable order
     const trackKeys = Object.keys(pattern.tracks).sort();
     
-    // --- NEW: Calculate padding based on VISUAL name (stripping _#2) ---
+    // Calculate padding based on visual names
     const maxTrackNameLength = Math.max(...trackKeys.map(k => k.split('_#')[0].length), 0);
     
+    let previousDisplayName = "";
+
     for (const trackKey of trackKeys) {
       const events = pattern.tracks[trackKey];
       const modifiers = pattern.trackModifiers[trackKey];
       
-      // --- NEW: Strip internal suffix for display ---
       const displayName = trackKey.split('_#')[0];
-      let header = displayName;
       
-      // Serialize Track Modifiers
+      let header = displayName;
+      let modStr = "";
+
+      // Check for modifiers
       if (modifiers) {
           const modProps = [];
           if (modifiers.volume !== 0) modProps.push(`v:${modifiers.volume}`);
           if (modifiers.pan !== 0) modProps.push(`p:${modifiers.pan}`);
           if (modifiers.transpose !== 0) modProps.push(`t:${modifiers.transpose}`);
           
-          if (modProps.length > 0) header += `(${modProps.join(',')})`;
+          if (modProps.length > 0) modStr += `(${modProps.join(',')})`;
           
           if (modifiers.effects && modifiers.effects.length > 0) {
-              header += `^[${modifiers.effects.map(e => `${e.code}${e.value}`).join(',')}]`;
+              modStr += `^[${modifiers.effects.map(e => `${e.code}${e.value}`).join(',')}]`;
           }
+      }
+
+      // Logic: If name matches previous AND no modifiers, output blank space (indentation).
+      // If there are modifiers, we must output the name+modifiers so they attach correctly.
+      if (displayName === previousDisplayName && !modStr) {
+          header = ""; 
+      } else {
+          header = displayName + modStr;
+          previousDisplayName = displayName; // Only update previous if we actually printed a header
       }
 
       const serializedLine = serializeEvents(events, pattern, track.config, aliasMap);
@@ -128,7 +137,6 @@ function serializeEvents(
     const slotsPerBeat = grid * (4 / timeSig[1]);
     const slotsPerBar = slotsPerBeat * timeSig[0];
     
-    // Ensure total slots covers the pattern duration
     const totalSlots = Math.max(pattern.duration, Math.ceil(Math.max(0, ...events.map(e => e.time + e.duration))));
     
     const slotEvents: Record<number, SequenceEvent[]> = {};
@@ -145,13 +153,11 @@ function serializeEvents(
         if (evs && evs.length > 0) {
             evs.sort((a, b) => a.time - b.time);
             
-            // Check if it's a tuplet (sub-slot timing)
             const isTuplet = evs.some(e => Math.abs(e.time - Math.floor(e.time)) > 0.001) || evs.length > 1;
             
             if (!isTuplet && evs.length === 1) {
                 slots[s] = serializeNoteOrAlias(evs[0].notes, aliasMap);
             } else {
-                // It's a tuplet or multi-hit in one slot
                 const notes = evs.map(e => serializeNoteOrAlias(e.notes, aliasMap));
                 slots[s] = `(${notes.join(' ')})`;
             }
@@ -159,8 +165,6 @@ function serializeEvents(
             const isSustaining = events.some(e => {
                 const start = e.time;
                 const end = e.time + e.duration;
-                // It is sustaining if current slot S is > Start AND S < End
-                // But we subtract small epsilon to allow abutted notes
                 return s > start && s < end - 0.01;
             });
             slots[s] = isSustaining ? '-' : '.';
@@ -175,16 +179,13 @@ function serializeEvents(
         for (let s = 0; s < slotsPerBar; s++) {
             const absIndex = (b * slotsPerBar) + s;
             if (absIndex >= slots.length) {
-                 // Fill remainder of bar if pattern ends mid-bar
                  if (s > 0 && s % slotsPerBeat === 0) barStr += '  ';
                  else if (s > 0) barStr += ' ';
                  barStr += '.';
                  continue;
             }
-            
             if (s > 0 && s % slotsPerBeat === 0) barStr += '  ';
             else if (s > 0) barStr += ' ';
-            
             barStr += slots[absIndex] || '.';
         }
         bars.push(barStr);
@@ -206,16 +207,12 @@ function serializeNote(n: NoteDef): string {
   if (n.accidental < 0) out += 'b'.repeat(-n.accidental);
   if (n.octaveShift > 0) out += `'`.repeat(n.octaveShift);
   if (n.octaveShift < 0) out += ','.repeat(-n.octaveShift);
-  if (n.isNatural) out += '%'; // FIX: Persist Natural sign
+  if (n.isNatural) out += '%';
 
   const props: string[] = [];
-  if (n.volume !== undefined && !isNaN(n.volume)) {
-    props.push(`v:${n.volume}`);
-  }
+  if (n.volume !== undefined && !isNaN(n.volume)) props.push(`v:${n.volume}`);
   
-  if (props.length > 0) {
-    out += `(${props.join(',')})`;
-  }
+  if (props.length > 0) out += `(${props.join(',')})`;
 
   if (n.effects && n.effects.length > 0) {
     const effectStr = n.effects.map(e => `${e.code}${e.value}`).join(',');

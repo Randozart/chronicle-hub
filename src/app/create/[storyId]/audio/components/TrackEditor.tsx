@@ -17,7 +17,7 @@ import { serializeParsedTrack } from '@/engine/audio/serializer';
 import { useDebounce } from '@/hooks/useDebounce';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
-const PianoRoll = dynamic(() => import('@/components/admin/PianoRoll'), { ssr: false });
+const PianoRoll = dynamic(() => import('@/components/admin/pianoroll/PianoRoll'), { ssr: false });
 import ArrangementView from './ArrangementView';
 import TrackerView from './TrackerView';
 
