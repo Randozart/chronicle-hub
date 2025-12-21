@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { fontVariables } from './fonts'; // Adjust path if needed
 import "./globals.css";
+import "./tools.css";
 import { Providers } from "./providers";
 import { AudioProvider } from "@/providers/AudioProvider";
 

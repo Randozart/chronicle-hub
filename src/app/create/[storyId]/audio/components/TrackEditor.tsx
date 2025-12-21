@@ -1,6 +1,8 @@
-// src/app/create/[storyId]/audio/components/TrackEditor.tsx
 'use client';
 import { useState, useEffect, useRef } from 'react';
+// Import your CSS here if your Next.js config allows component-level global imports
+// import '@/app/tools.css'; 
+
 import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
@@ -13,6 +15,7 @@ import InstrumentEditor from './InstrumentEditor';
 import InstrumentLibrary from './InstrumentLibrary';
 import { mergeLigatureSnippet } from '@/engine/audio/merger';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
 const PianoRoll = dynamic(() => import('@/components/admin/PianoRoll'), { ssr: false });
@@ -38,8 +41,14 @@ export default function TrackEditor({
     data, onSave, onDelete, availableInstruments, onUpdateInstrument,
     enableDownload = false, isPlayground = false, hideCategories = []
 }: Props) {
+    // --- State ---
     const [source, setSource] = useState(data.source || "");
+    const debouncedSource = useDebounce(source, 600);
+    
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
+    const [isParsing, setIsParsing] = useState(false);
+
+    // --- UI State ---
     const [showArrangement, setShowArrangement] = useState(true);
     const [showNoteEditor, setShowNoteEditor] = useState(false);
     const [noteEditorMode, setNoteEditorMode] = useState<'piano' | 'tracker'>('piano');
@@ -51,28 +60,40 @@ export default function TrackEditor({
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
+    
+    // --- Audio State ---
     const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
     const [playbackMode, setPlaybackMode] = useState<'global' | 'local' | 'stopped'>('stopped');
-
-
     const { playTrack, stop, isPlaying, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume } = useAudio();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Initial Load
     useEffect(() => { setIsClient(true); setSource(data.source); }, [data]);
     
+    // --- Parsing Logic (Debounced) ---
     useEffect(() => {
-        setLintErrors(lintLigature(source)); 
-        try {
-            const parser = new LigatureParser();
-            const track = parser.parse(source, mockQualities);
-            setParsedTrack(track);
-        } catch(e) {}
-    }, [source, mockQualities]);
+        setIsParsing(true);
+        const timer = setTimeout(() => {
+            setLintErrors(lintLigature(debouncedSource)); 
+            try {
+                const parser = new LigatureParser();
+                const track = parser.parse(debouncedSource, mockQualities);
+                setParsedTrack(track);
+            } catch(e) {
+                console.error("Parse error", e);
+            } finally {
+                setIsParsing(false);
+            }
+        }, 10);
+        return () => clearTimeout(timer);
+    }, [debouncedSource, mockQualities]);
 
     const handleSourceChange = (newSource: string) => setSource(newSource);
-    const handleVisualUpdate = (newSource: string) => setSource(newSource);
     
-    // --- GRID REFACTORING LOGIC ---
+    const handleVisualUpdate = (newSource: string) => {
+        setSource(newSource);
+    };
+    
     const handleConfigUpdate = (key: string, val: any) => {
         if (!parsedTrack) return;
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
@@ -83,12 +104,8 @@ export default function TrackEditor({
             
             if (oldGrid !== newGrid) {
                 const ratio = newGrid / oldGrid;
-                
-                // Scale every event in every pattern
                 Object.values(newTrack.patterns).forEach((pat: any) => {
-                    // Scale Pattern Duration
                     pat.duration = Math.round(pat.duration * ratio);
-                    
                     Object.values(pat.tracks).forEach((events: any) => {
                         events.forEach((ev: any) => {
                             ev.time = ev.time * ratio;
@@ -116,8 +133,8 @@ export default function TrackEditor({
     
     const handlePlay = () => {
         try {
-            stop(); // Ensure any local loops are stopped
-            setPlaybackMode('global'); // SET MODE TO GLOBAL
+            stop(); 
+            setPlaybackMode('global'); 
             playTrack(source, availableInstruments, mockQualities);
             setStatus("Playing Global...");
         } catch (e: any) {
@@ -126,11 +143,13 @@ export default function TrackEditor({
             setPlaybackMode('stopped');
         }
     };
+    
     const handleStop = () => {
         stop();
-        setPlaybackMode('stopped'); // SET MODE TO STOPPED
+        setPlaybackMode('stopped');
         setStatus("Stopped");
     };    
+    
     const handleClear = () => { if (confirm("Clear track?")) setSource(EMPTY_TEMPLATE); };
     const handleFormat = () => setSource(formatLigatureSource(source));
     const handleSaveClick = () => onSave({ id: data.id, name: data.name, source, category: 'track' });
@@ -148,76 +167,86 @@ export default function TrackEditor({
     };
 
     return (
-        <div style={{ height: '100%', display: 'flex', gap: '0px', overflow: 'hidden' }}>
+        <div className="editor-layout">
             <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".lig,.txt" />
             
+            {/* LEFT SIDEBAR */}
             <div 
-                style={{ 
-                    width: leftSidebarOpen ? '250px' : '40px', flexShrink: 0, display: 'flex', flexDirection: 'column', 
-                    borderRight: '1px solid #333', transition: 'width 0.2s', background: '#181a1f', cursor: leftSidebarOpen ? 'default' : 'pointer'
-                }}
+                className="editor-sidebar"
+                style={{ width: leftSidebarOpen ? '250px' : '40px' }}
                 onClick={() => !leftSidebarOpen && setLeftSidebarOpen(true)}
             >
-                <div style={{ padding: '4px', borderBottom: '1px solid #333', display: 'flex', justifyContent: leftSidebarOpen ? 'flex-end' : 'center' }}>
-                    <button onClick={(e) => { e.stopPropagation(); setLeftSidebarOpen(!leftSidebarOpen); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize:'1.2rem', fontWeight:'bold' }}>{leftSidebarOpen ? '«' : '»'}</button>
+                <div className="editor-sidebar-header">
+                    <button onClick={(e) => { e.stopPropagation(); setLeftSidebarOpen(!leftSidebarOpen); }} className="tool-icon-btn">
+                        {leftSidebarOpen ? '«' : '»'}
+                    </button>
                 </div>
-                {leftSidebarOpen ? <ScribeDebugger onUpdate={setMockQualities} /> : <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', color: '#666', fontSize:'0.9rem', letterSpacing:'2px' }}>DEBUGGER</div>}
+                {leftSidebarOpen ? <ScribeDebugger onUpdate={setMockQualities} /> : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
             </div>
 
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#141414' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #333', padding: '0.5rem 1rem', alignItems: 'center', background: '#21252b' }}>
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{data.name}</h2>
-                        <span style={{ fontSize: '0.8rem', color: isPlaying ? '#98c379' : '#777', width: '80px' }}>{isPlaying ? "▶ PLAYING" : status}</span>
+            {/* MAIN CONTENT */}
+            <div className="editor-main">
+                {/* TOOLBAR */}
+                <div className="editor-toolbar">
+                     <div className="editor-toolbar-group">
+                        <h2 className="editor-title">{data.name}</h2>
+                        <span className="editor-status">
+                            {isParsing ? "⏳ PARSING..." : (isPlaying ? "▶ PLAYING" : status)}
+                        </span>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div className="editor-toolbar-group">
                         <div style={{ position: 'relative' }}>
-                            <button onClick={() => setShowMasterSettings(!showMasterSettings)} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize:'0.8rem' }}>🎚️ Master</button>
+                            <button onClick={() => setShowMasterSettings(!showMasterSettings)} className="tool-btn">🎚️ Master</button>
                             {showMasterSettings && (
-                                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', zIndex: 100, background: '#181a1f', border: '1px solid #61afef', borderRadius: '4px', padding: '1rem', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', color: '#61afef', fontSize: '0.9rem' }}>Master Bus</h4>
-                                    <div><label style={{display: 'block', fontSize: '0.8rem', color: '#888'}}>Volume: {masterVolume} dB</label><input type="range" min="-30" max="10" step="1" value={masterVolume} onChange={e => setMasterVolume(parseInt(e.target.value))} style={{ width: '100%' }}/></div>
+                                <div className="tool-popup">
+                                    <h4>Master Bus</h4>
+                                    <div><label>Volume: {masterVolume} dB</label><input type="range" min="-30" max="10" step="1" value={masterVolume} onChange={e => setMasterVolume(parseInt(e.target.value))} style={{ width: '100%' }}/></div>
                                     <div style={{ borderTop: '1px solid #333', paddingTop: '1rem', marginTop: '1rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><label style={{ fontSize: '0.9rem' }}>Limiter</label><input type="checkbox" checked={limiterSettings.enabled} onChange={e => setLimiterSettings({...limiterSettings, enabled: e.target.checked})} /></div>
-                                        {limiterSettings.enabled && (<div style={{marginTop: '0.5rem'}}><label style={{display: 'block', fontSize: '0.8rem', color: '#888'}}>Threshold: {limiterSettings.threshold} dB</label><input type="range" min="-40" max="0" step="1" value={limiterSettings.threshold} onChange={e => setLimiterSettings({...limiterSettings, threshold: parseInt(e.target.value)})}/></div>)}
+                                        {limiterSettings.enabled && (<div style={{marginTop: '0.5rem'}}><label>Threshold: {limiterSettings.threshold} dB</label><input type="range" min="-40" max="0" step="1" value={limiterSettings.threshold} onChange={e => setLimiterSettings({...limiterSettings, threshold: parseInt(e.target.value)})}/></div>)}
                                     </div>
                                 </div>
                             )}
                         </div>
-                        <button onClick={handleImportClick} style={{ background: 'transparent', border: '1px solid #56B6C2', color: '#56B6C2', padding: '4px 8px', borderRadius: '4px', fontSize:'0.8rem' }}>Import</button>
-                        <button onClick={handleClear} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '4px 8px', borderRadius: '4px', fontSize:'0.8rem' }}>New</button>
-                        <div style={{ display: 'flex', gap: '1px', background: '#333', padding: '1px', borderRadius: '4px' }}>
-                            <button onClick={() => setShowArrangement(!showArrangement)} style={{ background: showArrangement ? '#61afef' : '#111', color: showArrangement ? '#000' : '#ccc', padding: '4px 8px', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>Arranger</button>
-                            <button onClick={() => setShowNoteEditor(!showNoteEditor)} style={{ background: showNoteEditor ? '#61afef' : '#111', color: showNoteEditor ? '#000' : '#ccc', padding: '4px 8px', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>Notes</button>
+                        <button onClick={handleImportClick} className="tool-btn">Import</button>
+                        <button onClick={handleClear} className="tool-btn">New</button>
+                        
+                        <div className="toggle-group">
+                            <button onClick={() => setShowArrangement(!showArrangement)} className={showArrangement ? 'active' : ''}>Arranger</button>
+                            <button onClick={() => setShowNoteEditor(!showNoteEditor)} className={showNoteEditor ? 'active' : ''}>Notes</button>
                         </div>
-                        <button onClick={handleFormat} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '4px 8px', borderRadius: '4px', fontSize:'0.8rem' }}>Format</button>
-                        {isPlaying ? <button onClick={handleStop} className="unequip-btn" style={{width: 'auto', padding: '4px 12px'}}>■ Stop</button> : <button onClick={handlePlay} className="save-btn" style={{ background: '#98c379', color: '#000', padding:'4px 12px' }}>▶ Play</button>}
-                        {enableDownload && <button onClick={handleDownload} style={{ background: '#56B6C2', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize:'0.8rem' }}>.lig</button>}
-                        {!isPlayground && <button onClick={handleSaveClick} className="save-btn" style={{ padding: '4px 12px' }}>Save</button>}
+                        
+                        <button onClick={handleFormat} className="tool-btn">Format</button>
+                        {isPlaying 
+                            ? <button onClick={handleStop} className="tool-btn tool-btn-stop">■ Stop</button> 
+                            : <button onClick={handlePlay} className="tool-btn tool-btn-play">▶ Play</button>
+                        }
+                        {enableDownload && <button onClick={handleDownload} className="tool-btn tool-btn-action">.lig</button>}
+                        {!isPlayground && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+                {/* VISUAL EDITORS */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {showArrangement && isClient && (
                         <div style={{ borderBottom: '1px solid #333' }}>
                            <ArrangementView 
-                        parsedTrack={parsedTrack} 
-                        onChange={handleVisualUpdate} 
-                        onSelectRow={setActivePlaylistIndex}
-                        activeIndex={activePlaylistIndex}
-                        onConfigUpdate={handleConfigUpdate}
-                        isPlaying={isPlaying} // <--- ADD THIS PROP
-                        playbackMode={playbackMode} 
-
-                    />
-                    </div>
+                                parsedTrack={parsedTrack} 
+                                onChange={handleVisualUpdate} 
+                                onSelectRow={setActivePlaylistIndex}
+                                activeIndex={activePlaylistIndex}
+                                onConfigUpdate={handleConfigUpdate}
+                                isPlaying={isPlaying}
+                                playbackMode={playbackMode} 
+                            />
+                        </div>
                     )}
                     {showNoteEditor && isClient && (
                         <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ background: '#111', padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom:'1px solid #222' }}>
+                            <div className="note-editor-header">
                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button onClick={() => setNoteEditorMode('piano')} style={{ background: 'none', border: 'none', color: noteEditorMode === 'piano' ? '#61afef' : '#555', cursor: 'pointer', fontWeight: 'bold' }}>Piano Roll</button>
-                                    <button onClick={() => setNoteEditorMode('tracker')} style={{ background: 'none', border: 'none', color: noteEditorMode === 'tracker' ? '#61afef' : '#555', cursor: 'pointer', fontWeight: 'bold' }}>Tracker</button>
+                                    <button onClick={() => setNoteEditorMode('piano')} className={`note-editor-tab ${noteEditorMode === 'piano' ? 'active' : ''}`}>Piano Roll</button>
+                                    <button onClick={() => setNoteEditorMode('tracker')} className={`note-editor-tab ${noteEditorMode === 'tracker' ? 'active' : ''}`}>Tracker</button>
                                 </div>
                                 <span style={{fontSize: '0.75rem', color: '#555'}}>Context: Playlist Row {activePlaylistIndex}</span>
                             </div>
@@ -227,22 +256,18 @@ export default function TrackEditor({
                                         source={source} 
                                         qualities={mockQualities} 
                                         onChange={handleVisualUpdate}
-                                        availableInstruments={availableInstruments} // <--- NEW PROP
-                                                                playbackMode={playbackMode} 
-
+                                        availableInstruments={availableInstruments} 
+                                        playbackMode={playbackMode} 
                                         onPlaybackModeChange={setPlaybackMode}
-
                                     />
                                 ) : (
                                     <TrackerView 
                                         parsedTrack={parsedTrack} 
                                         onChange={handleVisualUpdate} 
                                         playlistIndex={activePlaylistIndex}
-                                        availableInstruments={availableInstruments} // <--- NEW PROP
-                                                                playbackMode={playbackMode} 
-
+                                        availableInstruments={availableInstruments} 
+                                        playbackMode={playbackMode} 
                                         onPlaybackModeChange={setPlaybackMode}
-
                                     />
                                 )}
                             </div>
@@ -250,32 +275,45 @@ export default function TrackEditor({
                     )}
                 </div>
 
+                {/* LINTER ERRORS */}
                 {lintErrors.length > 0 && (
-                    <div style={{ padding: '0.5rem', background: '#2c2525', borderBottom: '1px solid #e06c75', maxHeight: '100px', overflowY: 'auto' }}>
-                        <div style={{ color: '#e06c75', fontWeight: 'bold', fontSize: '0.75rem' }}>{lintErrors.length} Issues</div>
-                        {lintErrors.map((err, i) => <div key={i} style={{fontSize: '0.8rem'}}>Ln {err.line}: {err.message}</div>)}
+                    <div className="editor-error-panel">
+                        <div className="editor-error-header">{lintErrors.length} Issues</div>
+                        {lintErrors.map((err, i) => <div key={i} className="editor-error-item">Ln {err.line}: {err.message}</div>)}
                     </div>
                 )}
+                
+                {/* TEXT EDITOR */}
                 <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '0', padding: '0' }}>
                     {isClient && <ScribeEditor value={source} onChange={handleSourceChange} minHeight="100%" language="ligature" errors={lintErrors} />}
                 </div>
             </div>
 
+            {/* RIGHT SIDEBAR */}
             <div 
-                style={{ 
-                    width: rightSidebarOpen ? '250px' : '40px', flexShrink: 0, display: 'flex', flexDirection: 'column',
-                    borderLeft: '1px solid #333', transition: 'width 0.2s', background: '#181a1f', cursor: rightSidebarOpen ? 'default' : 'pointer'
-                }}
+                className="editor-sidebar right"
+                style={{ width: rightSidebarOpen ? '250px' : '40px' }}
                 onClick={() => !rightSidebarOpen && setRightSidebarOpen(true)}
             >
-                <div style={{ padding: '4px', borderBottom: '1px solid #333', display: 'flex', justifyContent: rightSidebarOpen ? 'flex-start' : 'center' }}>
-                    <button onClick={(e) => { e.stopPropagation(); setRightSidebarOpen(!rightSidebarOpen); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize:'1.2rem', fontWeight:'bold' }}>{rightSidebarOpen ? '»' : '«'}</button>
+                <div className="editor-sidebar-header">
+                    <button onClick={(e) => { e.stopPropagation(); setRightSidebarOpen(!rightSidebarOpen); }} className="tool-icon-btn">
+                        {rightSidebarOpen ? '»' : '«'}
+                    </button>
                 </div>
-                {rightSidebarOpen ? <InstrumentLibrary instruments={availableInstruments.filter(inst => !hideCategories.includes(inst.category || ''))} onSelect={handleEditInstrument} /> : <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', color: '#666', fontSize:'0.9rem', letterSpacing:'2px' }}>LIBRARY</div>}
+                {rightSidebarOpen 
+                    ? <InstrumentLibrary instruments={availableInstruments.filter(inst => !hideCategories.includes(inst.category || ''))} onSelect={handleEditInstrument} /> 
+                    : <div className="editor-sidebar-collapsed-text">LIBRARY</div>
+                }
             </div>
 
+            {/* POPUPS */}
             {editingInstrument && (
-                <InstrumentEditor data={editingInstrument} onSave={(updated) => { onUpdateInstrument(updated); setEditingInstrument(null); }} onClose={() => setEditingInstrument(null)} onInsertIntoTrack={handleInsertInstrumentToTrack} />
+                <InstrumentEditor 
+                    data={editingInstrument} 
+                    onSave={(updated) => { onUpdateInstrument(updated); setEditingInstrument(null); }} 
+                    onClose={() => setEditingInstrument(null)} 
+                    onInsertIntoTrack={handleInsertInstrumentToTrack} 
+                />
             )}
         </div>
     );

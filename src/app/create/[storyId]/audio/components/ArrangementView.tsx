@@ -33,17 +33,21 @@ export default function ArrangementView({
 }: Props) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    if (!parsedTrack) return <div className="p-4 text-gray-500">No track data</div>;
-
+    // 1. Safe Config Extraction (Always run this)
+    const config = parsedTrack?.config || { bpm: 120, grid: 4, timeSig: [4, 4] as [number, number] };
+    
+    // 2. Playback State Hook (Always run this)
     const currentSlot = useGlobalPlaybackState(
         isPlaying && playbackMode === 'global',
-        parsedTrack.config.bpm,
-        parsedTrack.config.grid,
-        parsedTrack.config.timeSig
+        config.bpm,
+        config.grid,
+        config.timeSig
     );
 
-    // Calculate block metadata and cumulative positions
+    // 3. Playlist Metadata Calculation (Always run this, handle null internally)
     const playlistMetadata = useMemo(() => {
+        if (!parsedTrack) return []; // Return empty array if no track
+
         let accumulatedSlots = 0;
         return parsedTrack.playlist.map(item => {
             let durationInSlots = 0;
@@ -69,8 +73,10 @@ export default function ArrangementView({
         });
     }, [parsedTrack]);
 
-    // Compute playhead pixel position accurately
+    // 4. Playhead Position Calculation (Always run this)
     const playheadLeftPx = useMemo(() => {
+        if (!isPlaying && currentSlot === 0) return 0;
+        
         let accumulated = 0;
         let slotsSoFar = 0;
 
@@ -84,17 +90,21 @@ export default function ArrangementView({
             slotsSoFar += meta.durationInSlots;
         }
         return accumulated;
-    }, [currentSlot, playlistMetadata]);
+    }, [currentSlot, playlistMetadata, isPlaying]);
 
-    // Auto-scroll playhead
+    // 5. Auto-Scroll Effect (Always run this)
     useEffect(() => {
         if (isPlaying && playbackMode === 'global' && scrollContainerRef.current) {
             const container = scrollContainerRef.current;
             const containerWidth = container.clientWidth;
-
-            container.scrollLeft = playheadLeftPx - containerWidth / 2;
+            if (playheadLeftPx > containerWidth / 2) {
+                container.scrollLeft = playheadLeftPx - containerWidth / 2;
+            }
         }
     }, [playheadLeftPx, isPlaying, playbackMode]);
+
+    // --- NOW WE CAN RETURN EARLY FOR UI RENDERING ---
+    if (!parsedTrack) return <div className="p-4 text-gray-500">No track data</div>;
 
     // Action handlers
     const handleMove = (index: number, dir: 'left' | 'right') => {
@@ -161,16 +171,18 @@ export default function ArrangementView({
                     position: 'relative'
                 }}
             >
-                {playbackMode === 'global' && isPlaying && Tone.getTransport().state === 'started' && (
+                {/* Playhead Line */}
+                {playbackMode === 'global' && isPlaying && (
                     <div
                         style={{
                             position: 'absolute',
-                            left: `${playheadLeftPx + 16}px`,
+                            left: `${playheadLeftPx + 16}px`, // +16 for padding
                             top: 0,
                             bottom: 0,
                             width: '2px',
                             background: '#e06c75',
-                            zIndex: 50
+                            zIndex: 50,
+                            pointerEvents: 'none'
                         }}
                     />
                 )}
@@ -226,7 +238,6 @@ export default function ArrangementView({
                                                     );
                                                 })}
                                             </div>
-
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleAddItem(index, lIdx); }}
                                                 style={{
