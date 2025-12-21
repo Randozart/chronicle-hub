@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-// Import your CSS here if your Next.js config allows component-level global imports
-// import '@/app/tools.css'; 
+// import '@/app/tools.css'; // Uncomment if needed
 
 import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
@@ -120,7 +119,38 @@ export default function TrackEditor({
             newTrack.config[key] = val;
         }
         setSource(serializeParsedTrack(newTrack));
-    }
+    };
+
+    const handlePatternAction = (action: string, patternId: string) => {
+        if (!parsedTrack) return;
+        
+        // Deep Clone
+        const newTrack = JSON.parse(JSON.stringify(parsedTrack));
+        const pattern = newTrack.patterns[patternId];
+        if (!pattern) return;
+
+        if (action === 'double_speed') {
+            // Halve all durations and times
+            pattern.duration = Math.ceil(pattern.duration / 2);
+            Object.values(pattern.tracks).forEach((events: any) => {
+                events.forEach((e: any) => { 
+                    e.time /= 2; 
+                    e.duration /= 2; 
+                });
+            });
+        } else if (action === 'half_speed') {
+            // Double all durations and times
+            pattern.duration *= 2;
+            Object.values(pattern.tracks).forEach((events: any) => {
+                events.forEach((e: any) => { 
+                    e.time *= 2; 
+                    e.duration *= 2; 
+                });
+            });
+        }
+
+        setSource(serializeParsedTrack(newTrack));
+    };
 
     const handleImportClick = () => fileInputRef.current?.click();
     const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,6 +266,7 @@ export default function TrackEditor({
                                 onSelectRow={setActivePlaylistIndex}
                                 activeIndex={activePlaylistIndex}
                                 onConfigUpdate={handleConfigUpdate}
+                                onPatternAction={handlePatternAction} // NEW PROP
                                 isPlaying={isPlaying}
                                 playbackMode={playbackMode} 
                             />

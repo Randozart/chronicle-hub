@@ -496,3 +496,18 @@
     border-radius: 2px;
     font-size: 0.8rem;
 }
+
+.pianoroll-note-performance-shadow {
+    position: absolute;
+    border-radius: 2px;
+    font-size: 9px;
+    overflow: hidden;
+    pointer-events: none; /* Click-through */
+    z-index: 1; /* Below the main note */
+    
+    /* Visuals: Ghost Style */
+    opacity: 0.8;
+    background: transparent !important; /* Force transparent fill */
+    border: 1px dashed rgba(255, 255, 255, 0.7); /* Bright dashed border */
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); /* Subtle glow */
+}

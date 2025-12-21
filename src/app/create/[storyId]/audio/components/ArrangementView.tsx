@@ -2,10 +2,10 @@
 
 import { ParsedTrack, PatternPlaylistItem } from '@/engine/audio/models';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
-import * as Tone from 'tone';
 import { useGlobalPlaybackState } from '@/hooks/useGlobalPlaybackState';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react'; // Added useState
 import ArrangementClip from './ArrangementClip';
+import AudioContextMenu from '@/components/admin/AudioContextMenu'; // Added Import
 
 interface Props {
     parsedTrack: ParsedTrack | null;
@@ -13,6 +13,7 @@ interface Props {
     onSelectRow: (index: number) => void;
     activeIndex: number;
     onConfigUpdate?: (key: string, value: any) => void;
+    onPatternAction?: (action: string, patternId: string) => void; // Added Prop
     isPlaying: boolean;
     playbackMode: 'global' | 'local' | 'stopped';
 }
@@ -28,16 +29,15 @@ export default function ArrangementView({
     onSelectRow,
     activeIndex,
     onConfigUpdate,
+    onPatternAction,
     isPlaying,
     playbackMode
 }: Props) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, patternId: string } | null>(null);
 
     // 1. Safe Config Extraction
-    const config = parsedTrack?.config || { 
-        bpm: 120, grid: 4, timeSig: [4, 4] as [number, number],
-        scaleRoot: 'C', scaleMode: 'Major', swing: 0, humanize: 0
-    };
+    const config = parsedTrack?.config || { bpm: 120, grid: 4, timeSig: [4, 4] as [number, number], scaleRoot: 'C', scaleMode: 'Major', swing: 0, humanize: 0 };
     
     // 2. Playback State Hook
     const currentSlot = useGlobalPlaybackState(
@@ -161,13 +161,19 @@ export default function ArrangementView({
         onChange(serializeParsedTrack({ ...parsedTrack, playlist: newPlaylist }));
     };
 
+    const handlePatternRightClick = (e: React.MouseEvent, patternId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY, patternId });
+    };
+
     const maxLayersInSong = Math.max(1, ...playlistMetadata.map(m => m.maxLayers));
     const totalTimelineHeight = (maxLayersInSong * (LAYER_HEIGHT + 2)) + 60;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', background: '#141414' }}>
             
-            {/* SETTINGS BAR (Restored Item 6) */}
+            {/* SETTINGS BAR */}
             <div className="settings-bar">
                 <div className="settings-group">
                     <span className="settings-label">BPM</span>
@@ -214,7 +220,7 @@ export default function ArrangementView({
                     <input 
                         type="number" className="settings-input" min="0" max="100"
                         value={Math.round((config.swing || 0) * 100)} 
-                        onChange={e => updateConfig('swing', parseInt(e.target.value) / 100)} // FIX: Divide by 100
+                        onChange={e => updateConfig('swing', parseInt(e.target.value) / 100)} 
                     />
                 </div>
                 <div className="settings-group">
@@ -222,7 +228,7 @@ export default function ArrangementView({
                     <input 
                         type="number" className="settings-input" min="0" max="100"
                         value={Math.round((config.humanize || 0) * 100)} 
-                        onChange={e => updateConfig('humanize', parseInt(e.target.value) / 100)} // FIX: Divide by 100
+                        onChange={e => updateConfig('humanize', parseInt(e.target.value) / 100)} 
                     />
                 </div>
             </div>
@@ -291,7 +297,11 @@ export default function ArrangementView({
                                                     if (!pat) return null;
 
                                                     return (
-                                                        <div key={cIdx} style={{ width: pat.duration * SLOT_WIDTH, height: '100%' }}>
+                                                        <div 
+                                                            key={cIdx} 
+                                                            style={{ width: pat.duration * SLOT_WIDTH, height: '100%' }}
+                                                            onContextMenu={(e) => handlePatternRightClick(e, pat.id)}
+                                                        >
                                                             <ArrangementClip
                                                                 pattern={pat}
                                                                 totalDuration={pat.duration}
@@ -307,21 +317,11 @@ export default function ArrangementView({
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleAddItem(index, lIdx); }}
                                                 style={{
-                                                    position: 'absolute',
-                                                    right: 4,
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                    border: 'none',
-                                                    background: 'rgba(0,0,0,0.3)',
-                                                    color: '#888',
-                                                    borderRadius: '50%',
-                                                    width: 18,
-                                                    height: 18,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    cursor: 'pointer',
-                                                    zIndex: 10
+                                                    position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
+                                                    border: 'none', background: 'rgba(0,0,0,0.3)', color: '#888',
+                                                    borderRadius: '50%', width: 18, height: 18,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    cursor: 'pointer', zIndex: 10
                                                 }}
                                             >
                                                 +
@@ -332,14 +332,9 @@ export default function ArrangementView({
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleAddLayer(index); }}
                                         style={{
-                                            width: '100%',
-                                            height: 20,
-                                            border: '1px dashed #444',
-                                            background: 'transparent',
-                                            color: '#666',
-                                            fontSize: 10,
-                                            cursor: 'pointer',
-                                            marginTop: 4
+                                            width: '100%', height: 20, border: '1px dashed #444',
+                                            background: 'transparent', color: '#666', fontSize: 10,
+                                            cursor: 'pointer', marginTop: 4
                                         }}
                                     >
                                         + Stack Layer
@@ -356,20 +351,10 @@ export default function ArrangementView({
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleDelete(index); }}
                                     style={{
-                                        position: 'absolute',
-                                        top: -8,
-                                        right: -8,
-                                        background: '#e06c75',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '50%',
-                                        width: 16,
-                                        height: 16,
-                                        fontSize: 10,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
+                                        position: 'absolute', top: -8, right: -8,
+                                        background: '#e06c75', color: '#fff', border: 'none',
+                                        borderRadius: '50%', width: 16, height: 16, fontSize: 10,
+                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         zIndex: 20
                                     }}
                                 >
@@ -382,21 +367,29 @@ export default function ArrangementView({
                     <button
                         onClick={handleAddSection}
                         style={{
-                            width: 60,
-                            height: 120,
-                            border: '2px dashed #444',
-                            background: 'transparent',
-                            color: '#666',
-                            cursor: 'pointer',
-                            fontSize: 24,
-                            borderRadius: 4,
-                            flexShrink: 0
+                            width: 60, height: 120, border: '2px dashed #444',
+                            background: 'transparent', color: '#666', cursor: 'pointer',
+                            fontSize: 24, borderRadius: 4, flexShrink: 0
                         }}
                     >
                         +
                     </button>
                 </div>
             </div>
+
+            {/* CONTEXT MENU */}
+            {contextMenu && (
+                <AudioContextMenu 
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    onClose={() => setContextMenu(null)}
+                    options={[
+                        { label: `Operations for: ${contextMenu.patternId}`, action: () => {} }, // Header (No-op)
+                        { label: 'x2 Speed (Double Tempo)', action: () => onPatternAction?.('double_speed', contextMenu.patternId) },
+                        { label: '/2 Speed (Half Tempo)', action: () => onPatternAction?.('half_speed', contextMenu.patternId) },
+                    ]}
+                />
+            )}
         </div>
     );
 }
