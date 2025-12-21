@@ -687,6 +687,46 @@ export const AUDIO_PRESETS: Record<string, InstrumentDefinition> = {
             volume: -4
         }
     },
+        'jazz_kit': {
+        id: 'standard_kit',
+        name: 'Jazz Kit',
+        category: 'Standard Sampler',
+        type: 'sampler',
+        mapping: 'chromatic', // <--- DECLARE MAPPING BEHAVIOR
+        config: {
+            baseUrl: '/sounds/custom/jazz_kit/',
+            // MAPPING: Ligature Note -> Audio File
+            // We map these to the "C4" octave range because that's usually the default center
+            // 1 (C4) -> Kick
+            // 2 (D4) -> Snare
+            // 3 (E4) -> Low Tom
+            // 4 (F4) -> Closed Hi-Hat
+            // 5 (G4) -> High Tom
+            // 6 (A4) -> Open Hi-Hat
+            // 7 (B4) -> Crash
+            urls: {
+                'C4': 'JK_BD_02.wav',
+                'D4': 'JK_BD_06.wav',
+                'E4': 'JK_BRSH_01.wav',
+                'F4': 'JK_BRSH_02.wav',
+                'G4': 'JK_HH_01.wav',
+                'A4': 'JK_HH_02.wav',
+                'B4': 'JK_PRC_03.wav',
+                'C5': 'JK_PRC_04.wav',
+                'D5': 'JK_PRC_05.wav',
+                'E5': 'JK_PRC_06.wav',
+                'F5': 'JK_PRC_09.wav',
+                'G5': 'JK_PRC_10.wav',
+                'A5': 'JK_SNR_03.wav',
+                'B5': 'JK_SNR_04.wav',
+            },
+            envelope: {
+                attack: 0.001, // Instant percussive attack
+                release: 1.0   // Let cymbals ring out
+            },
+            volume: -4
+        }
+    },
     // // --- ELECTRIC GUITAR (METAL/HARD ROCK) ---
     // 'electric_guitar_distorted': {
     //     id: 'electric_guitar_distorted',
