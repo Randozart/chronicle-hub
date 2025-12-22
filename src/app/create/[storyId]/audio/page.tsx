@@ -178,15 +178,17 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 </div>
             </div>
 
-            {/* 2. MAIN EDITOR AREA - Fixed Layout for Full Height */}
+            {/* 2. MAIN EDITOR AREA */}
+            {/* FIX: Use flex column and overflow hidden to force children to manage scroll */}
             <div style={{ 
                 height: '100%', 
-                overflow: 'hidden', /* Prevent window scroll */
+                overflow: 'hidden', 
                 display: 'flex', 
                 flexDirection: 'column', 
                 background:'#141414' 
             }}>
                 {selectedItem?.category === 'instrument' && (
+                    /* Instrument Editor needs its own scrollbar */
                     <div style={{padding:'2rem', overflowY: 'auto', flex: 1}}>
                         <InstrumentEditor 
                             key={selectedItem.id}
@@ -200,7 +202,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     </div>
                 )}
                 {selectedItem?.category === 'track' && (
-                    // TrackEditor manages its own scrolling and layout
+                    /* Track Editor manages its own layout (toolbar fixed, body scrollable) */
                     <TrackEditor 
                         key={selectedItem.id}
                         data={selectedItem as LigatureTrack} 

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react'; // Added useCallback
+import { useState, useEffect, useRef, useCallback } from 'react';
 // import '@/app/tools.css'; 
 
 import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
@@ -41,12 +41,14 @@ export default function TrackEditor({
     data, onSave, onDelete, availableInstruments, onUpdateInstrument,
     enableDownload = false, isPlayground = false, hideCategories = []
 }: Props) {
+    // --- State ---
     const [source, setSource] = useState(data.source || "");
     const debouncedSource = useDebounce(source, 600);
     
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const [isParsing, setIsParsing] = useState(false);
 
+    // --- UI State ---
     const [showArrangement, setShowArrangement] = useState(true);
     const [showNoteEditor, setShowNoteEditor] = useState(false);
     const [showMixer, setShowMixer] = useState(false); 
@@ -64,13 +66,16 @@ export default function TrackEditor({
     const [isClient, setIsClient] = useState(false);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
 
+    // --- Audio State ---
     const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
     const [playbackMode, setPlaybackMode] = useState<'global' | 'local' | 'stopped'>('stopped');
     const { playTrack, stop, isPlaying, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume } = useAudio();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Initial Load
     useEffect(() => { setIsClient(true); setSource(data.source); }, [data]);
     
+    // --- Parsing Logic (Debounced) ---
     useEffect(() => {
         setIsParsing(true);
         const timer = setTimeout(() => {
@@ -88,15 +93,17 @@ export default function TrackEditor({
         return () => clearTimeout(timer);
     }, [debouncedSource, mockQualities, mockDefs]);
 
-    // --- FIX: MEMOIZE CALLBACK TO PREVENT INFINITE LOOP ---
+    // Debugger Callback Memoization (Fixes Infinite Parsing Loop)
     const handleDebuggerUpdate = useCallback((qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => {
-        // Use functional state update to prevent dependency cycle if we were depending on state
         setMockQualities(q => JSON.stringify(q) === JSON.stringify(qualities) ? q : qualities);
         setMockDefs(d => JSON.stringify(d) === JSON.stringify(defs) ? d : defs);
     }, []);
 
     const handleSourceChange = (newSource: string) => setSource(newSource);
-    const handleVisualUpdate = (newSource: string) => setSource(newSource);
+    
+    const handleVisualUpdate = (newSource: string) => {
+        setSource(newSource);
+    };
     
     const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
         setToast({ msg, type });
@@ -221,6 +228,7 @@ export default function TrackEditor({
                 </div>
             )}
 
+            {/* LEFT SIDEBAR */}
             <div 
                 className="editor-sidebar"
                 style={{ width: leftSidebarOpen ? '250px' : '40px' }}
@@ -236,7 +244,9 @@ export default function TrackEditor({
                 ) : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
             </div>
 
+            {/* MAIN CONTENT */}
             <div className="editor-main">
+                {/* TOOLBAR */}
                 <div className="editor-toolbar">
                      <div className="editor-toolbar-group">
                         <h2 className="editor-title">{data.name}</h2>
@@ -277,74 +287,80 @@ export default function TrackEditor({
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {showArrangement && isClient && (
-                        <div style={{ borderBottom: '1px solid #333' }}>
-                           <ArrangementView 
-                                parsedTrack={parsedTrack} 
-                                onChange={handleVisualUpdate} 
-                                onSelectRow={setActivePlaylistIndex}
-                                activeIndex={activePlaylistIndex}
-                                onConfigUpdate={handleConfigUpdate}
-                                onPatternAction={handlePatternAction}
-                                isPlaying={isPlaying}
-                                playbackMode={playbackMode} 
-                            />
+                {/* SCROLLABLE CONTENT WRAPPER */}
+                <div className="editor-scrollable-content">
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {showArrangement && isClient && (
+                            <div style={{ borderBottom: '1px solid #333' }}>
+                            <ArrangementView 
+                                    parsedTrack={parsedTrack} 
+                                    onChange={handleVisualUpdate} 
+                                    onSelectRow={setActivePlaylistIndex}
+                                    activeIndex={activePlaylistIndex}
+                                    onConfigUpdate={handleConfigUpdate}
+                                    onPatternAction={handlePatternAction}
+                                    isPlaying={isPlaying}
+                                    playbackMode={playbackMode} 
+                                />
+                            </div>
+                        )}
+                        
+                        {showMixer && isClient && (
+                            <div style={{ borderBottom: '1px solid #333', height: '220px', resize: 'vertical', overflow: 'hidden' }}>
+                                <MixerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} />
+                            </div>
+                        )}
+
+                        {showNoteEditor && isClient && (
+                            <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
+                                <div className="note-editor-header">
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button onClick={() => setNoteEditorMode('piano')} className={`note-editor-tab ${noteEditorMode === 'piano' ? 'active' : ''}`}>Piano Roll</button>
+                                        <button onClick={() => setNoteEditorMode('tracker')} className={`note-editor-tab ${noteEditorMode === 'tracker' ? 'active' : ''}`}>Tracker</button>
+                                    </div>
+                                    <span style={{fontSize: '0.75rem', color: '#555'}}>Context: Playlist Row {activePlaylistIndex}</span>
+                                </div>
+                                <div style={{ background: '#0d0d0d' }}>
+                                    {noteEditorMode === 'piano' ? (
+                                        <PianoRoll 
+                                            source={source} 
+                                            qualities={mockQualities} 
+                                            onChange={handleVisualUpdate}
+                                            availableInstruments={availableInstruments} 
+                                            playbackMode={playbackMode} 
+                                            onPlaybackModeChange={setPlaybackMode}
+                                        />
+                                    ) : (
+                                        <TrackerView 
+                                            parsedTrack={parsedTrack} 
+                                            onChange={handleVisualUpdate} 
+                                            playlistIndex={activePlaylistIndex}
+                                            availableInstruments={availableInstruments} 
+                                            playbackMode={playbackMode} 
+                                            onPlaybackModeChange={setPlaybackMode}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {lintErrors.length > 0 && (
+                        <div className="editor-error-panel">
+                            <div className="editor-error-header">{lintErrors.length} Issues</div>
+                            {lintErrors.map((err, i) => <div key={i} className="editor-error-item">Ln {err.line}: {err.message}</div>)}
                         </div>
                     )}
                     
-                    {showMixer && isClient && (
-                        <div style={{ borderBottom: '1px solid #333', height: '220px', resize: 'vertical', overflow: 'hidden' }}>
-                            <MixerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} />
-                        </div>
-                    )}
-
-                    {showNoteEditor && isClient && (
-                        <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
-                            <div className="note-editor-header">
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button onClick={() => setNoteEditorMode('piano')} className={`note-editor-tab ${noteEditorMode === 'piano' ? 'active' : ''}`}>Piano Roll</button>
-                                    <button onClick={() => setNoteEditorMode('tracker')} className={`note-editor-tab ${noteEditorMode === 'tracker' ? 'active' : ''}`}>Tracker</button>
-                                </div>
-                                <span style={{fontSize: '0.75rem', color: '#555'}}>Context: Playlist Row {activePlaylistIndex}</span>
-                            </div>
-                            <div style={{ background: '#0d0d0d' }}>
-                                {noteEditorMode === 'piano' ? (
-                                    <PianoRoll 
-                                        source={source} 
-                                        qualities={mockQualities} 
-                                        onChange={handleVisualUpdate}
-                                        availableInstruments={availableInstruments} 
-                                        playbackMode={playbackMode} 
-                                        onPlaybackModeChange={setPlaybackMode}
-                                    />
-                                ) : (
-                                    <TrackerView 
-                                        parsedTrack={parsedTrack} 
-                                        onChange={handleVisualUpdate} 
-                                        playlistIndex={activePlaylistIndex}
-                                        availableInstruments={availableInstruments} 
-                                        playbackMode={playbackMode} 
-                                        onPlaybackModeChange={setPlaybackMode}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {lintErrors.length > 0 && (
-                    <div className="editor-error-panel">
-                        <div className="editor-error-header">{lintErrors.length} Issues</div>
-                        {lintErrors.map((err, i) => <div key={i} className="editor-error-item">Ln {err.line}: {err.message}</div>)}
+                    {/* TEXT EDITOR - EXPANDED HEIGHT */}
+                    {/* FIX: Removed overflow:hidden so the editor can grow */}
+                    <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '500px', padding: '0' }}>
+                        {isClient && <ScribeEditor value={source} onChange={handleSourceChange} minHeight="100%" language="ligature" errors={lintErrors} />}
                     </div>
-                )}
-                
-                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '0', padding: '0', overflow:'hidden' }}>
-                    {isClient && <ScribeEditor value={source} onChange={handleSourceChange} minHeight="100%" language="ligature" errors={lintErrors} />}
                 </div>
             </div>
 
+            {/* RIGHT SIDEBAR */}
             <div 
                 className="editor-sidebar right"
                 style={{ width: rightSidebarOpen ? '250px' : '40px' }}

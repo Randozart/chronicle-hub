@@ -555,3 +555,12 @@
     color: #777;
     font-style: italic;
 }
+
+.editor-scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Critical for nested flex scrolling */
+    position: relative;
+}

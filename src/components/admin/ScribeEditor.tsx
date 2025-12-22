@@ -1,4 +1,3 @@
-// src/components/admin/ScribeEditor.tsx
 'use client';
 
 import Editor from 'react-simple-code-editor';
@@ -17,7 +16,7 @@ interface Props {
     placeholder?: string;
     minHeight?: string;
     language?: 'scribescript' | 'ligature';
-    errors?: EditorError[]; // New Prop
+    errors?: EditorError[]; 
 }
 
 export default function ScribeEditor({ 
@@ -54,7 +53,7 @@ export default function ScribeEditor({
                 lineHeight: '1.5',
                 position: 'relative',
                 display: 'flex', // Flex layout for Gutter + Editor
-                overflow: 'hidden' // Container clips content
+                // FIX: Removed overflow: hidden so it can grow
             }}
         >
             {/* LINE NUMBER GUTTER (Only for Ligature) */}
@@ -87,9 +86,8 @@ export default function ScribeEditor({
             {/* EDITOR AREA */}
             <div style={{ 
                 flex: 1, 
-                // Scroll Logic moves here
+                // Allow X scroll if needed, but let Y grow naturally
                 overflowX: isLigature ? 'auto' : 'hidden', 
-                overflowY: 'hidden',
                 position: 'relative'
             }}>
                 <Editor
@@ -112,7 +110,6 @@ export default function ScribeEditor({
             </div>
             
             <style jsx global>{`
-                /* ... (Keep existing token styles) ... */
                 .token.comment { color: #5c6370; }
                 .token.punctuation { color: #abb2bf; }
                 .token.operator { color: #e06c75; }
@@ -133,30 +130,28 @@ export default function ScribeEditor({
                 .token.sustain { color: #eaeaeb; font-weight: bold; }
 
                 .token.effect-block { color: #7949ffff; }
-
                              
                 .scribe-editor-wrapper:focus-within {
                     border-color: #61afef;
                     box-shadow: 0 0 0 1px #61afef;
                 }
 
-                .scribe-editor-wrapper::-webkit-scrollbar {
+                /* Styles for the editor's internal scrollbar (horizontal) */
+                .scribe-editor-wrapper div::-webkit-scrollbar {
                     height: 8px;
                     width: 8px;
                 }
-                .scribe-editor-wrapper::-webkit-scrollbar-track {
+                .scribe-editor-wrapper div::-webkit-scrollbar-track {
                     background: #111;
                     border-radius: 4px;
                 }
-                .scribe-editor-wrapper::-webkit-scrollbar-thumb {
+                .scribe-editor-wrapper div::-webkit-scrollbar-thumb {
                     background: #333;
                     border-radius: 4px;
                 }
-                .scribe-editor-wrapper::-webkit-scrollbar-thumb:hover {
+                .scribe-editor-wrapper div::-webkit-scrollbar-thumb:hover {
                     background: #61afef;
-            }
-
-
+                }
             `}</style>
         </div>
     );
