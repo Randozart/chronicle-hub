@@ -7,14 +7,13 @@ import InstrumentEditor from './components/InstrumentEditor';
 import TrackEditor from './components/TrackEditor';
 import { AUDIO_PRESETS } from '@/engine/audio/presets';
 
-// Define unified type for UI
 type AudioItem = (InstrumentDefinition | LigatureTrack) & { 
     category: 'instrument' | 'track';
     scope: 'local' | 'global';
     folder?: string;
 };
 
-const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\n[PATTERN: Main]\n\n[PLAYLIST]\n`;
+const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\n[PATTERN: Main]\n\nPiano |................|\n\n[PLAYLIST]\n\nMain\n`;
 
 export default function AudioAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -28,8 +27,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             .then(res => res.json())
             .then(data => {
                 const combined: AudioItem[] = [];
-                
-                // 1. Local Assets
                 if (data.instruments) {
                     Object.values(data.instruments).forEach((i: any) => 
                         combined.push({ ...i, category: 'instrument', scope: 'local', folder: 'Project Instruments' })
@@ -40,20 +37,17 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                         combined.push({ ...t, category: 'track', scope: 'local', folder: 'Project Tracks' })
                     );
                 }
-
-                // 2. Global Assets
                 if (data.global && Array.isArray(data.global)) {
                     data.global.forEach((g: any) => {
                         combined.push({
                             ...g.data,
-                            id: g.id, // Ensure top-level ID matches
+                            id: g.id, 
                             category: g.type,
                             scope: 'global',
                             folder: g.folder || (g.type === 'track' ? `Global Tracks` : `Global Instruments`)
                         });
                     });
                 }
-                
                 setItems(combined);
             })
             .finally(() => setIsLoading(false));
@@ -70,7 +64,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         
         if (items.find(i => i.id === id)) return alert("ID exists");
         
-        // Ask for scope
         const isGlobal = confirm("Save to Global Account? (Cancel for Local Project)");
         const scope = isGlobal ? 'global' : 'local';
         const folder = isGlobal ? (type === 'track' ? `Tracks/${storyId}` : 'Instruments') : (type === 'track' ? 'Project Tracks' : 'Project Instruments');
@@ -89,8 +82,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         
         setItems(prev => [...prev, newItem]);
         setSelectedId(id);
-        
-        // Auto-save the empty shell
         handleSave(newItem);
     };
 
@@ -104,7 +95,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     body: JSON.stringify({ storyId, category: endpointCat, itemId: updated.id, data: updated })
                 });
             } else {
-                // Save Global
                 await fetch('/api/assets/audio', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -116,9 +106,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     })
                 });
             }
-            
             setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-            // Optional: alert("Saved"); // Removed for smoother flow
         } catch(e) {
             alert("Save failed");
             console.error(e);
@@ -136,13 +124,11 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         } else {
             await fetch(`/api/assets/audio?id=${id}`, { method: 'DELETE' });
         }
-        
         setItems(prev => prev.filter(i => i.id !== id));
         setSelectedId(null);
     };
 
     const handleUpdateInstrument = (updatedInstrument: InstrumentDefinition) => {
-        // We need to preserve the extra AudioItem properties (scope, folder, category)
         const existing = items.find(i => i.id === updatedInstrument.id);
         if (!existing) return;
         
@@ -157,7 +143,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
 
     const selectedItem = items.find(i => i.id === selectedId);
     
-    // Build instrument list for TrackEditor (Presets + All Project Insts + All Global Insts)
     const allInstrumentsMap = new Map<string, InstrumentDefinition>();
     Object.values(AUDIO_PRESETS).forEach(preset => allInstrumentsMap.set(preset.id, preset));
     items.filter(i => i.category === 'instrument').forEach(inst => allInstrumentsMap.set(inst.id, inst as InstrumentDefinition));
@@ -166,7 +151,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     return (
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', height: 'calc(100vh - 50px)' }}>
             
-            {/* 1. SIDEBAR (Unified List) */}
+            {/* 1. SIDEBAR */}
             <div style={{ borderRight: '1px solid #333', height: 'calc(100vh - 50px)', position: 'sticky', top: '50px', width: '300px', display: 'flex', flexDirection: 'column' }}>
                  <div className="list-header" style={{display:'flex', gap:'10px', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom:'1px solid #333', background:'#21252b'}}>
                     <span style={{fontWeight:'bold', color:'#fff'}}>Audio Assets</span>
@@ -176,14 +161,13 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     </div>
                 </div>
                 
-                {/* AdminListSidebar handles filtering and grouping */}
                 <div style={{flex:1, overflow:'hidden'}}>
                     <AdminListSidebar 
-                        title="" // Header handled above
+                        title="" 
                         items={items}
                         selectedId={selectedId}
                         onSelect={setSelectedId}
-                        onCreate={() => {}} // Handled by buttons above
+                        onCreate={() => {}}
                         groupOptions={[
                             { label: "By Folder", key: "folder" },
                             { label: "By Type", key: "category" },
@@ -194,10 +178,16 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 </div>
             </div>
 
-            {/* 2. MAIN EDITOR AREA */}
-            <div style={{ overflowY: 'auto', padding: '0', background:'#141414' }}>
+            {/* 2. MAIN EDITOR AREA - Fixed Layout for Full Height */}
+            <div style={{ 
+                height: '100%', 
+                overflow: 'hidden', /* Prevent window scroll */
+                display: 'flex', 
+                flexDirection: 'column', 
+                background:'#141414' 
+            }}>
                 {selectedItem?.category === 'instrument' && (
-                    <div style={{padding:'2rem'}}>
+                    <div style={{padding:'2rem', overflowY: 'auto', flex: 1}}>
                         <InstrumentEditor 
                             key={selectedItem.id}
                             data={selectedItem as InstrumentDefinition} 
@@ -210,6 +200,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     </div>
                 )}
                 {selectedItem?.category === 'track' && (
+                    // TrackEditor manages its own scrolling and layout
                     <TrackEditor 
                         key={selectedItem.id}
                         data={selectedItem as LigatureTrack} 
@@ -227,7 +218,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     </div>
                 )}
             </div>
-            {/* Note: Third column removed as requested */}
         </div>
     );
 }

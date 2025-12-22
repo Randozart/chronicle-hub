@@ -127,15 +127,21 @@ export default function PianoRoll({
         if (autoRef.current) autoRef.current.scrollLeft = target.scrollLeft;
     };
 
-    useEffect(() => {
+     useEffect(() => {
         if (!gridRef.current) return;
-        const resizeObserver = new ResizeObserver((entries) => {
+        
+        // Initial
+        setViewWidth(gridRef.current.clientWidth);
+        
+        // Observer
+        const observer = new ResizeObserver(entries => {
             for (const entry of entries) {
                 setViewWidth(entry.contentRect.width);
             }
         });
-        resizeObserver.observe(gridRef.current);
-        return () => resizeObserver.disconnect();
+        observer.observe(gridRef.current);
+        
+        return () => observer.disconnect();
     }, []);
 
     useEffect(() => {

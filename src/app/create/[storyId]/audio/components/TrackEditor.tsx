@@ -1,12 +1,12 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react'; // Added useCallback
 // import '@/app/tools.css'; 
 
 import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
-import { PlayerQualities, QualityDefinition } from '@/engine/models'; // Added QualityDefinition
+import { PlayerQualities, QualityDefinition } from '@/engine/models'; 
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
 import { LigatureParser } from '@/engine/audio/parser';
 import { lintLigature, LintError } from '@/engine/audio/linter';
@@ -41,41 +41,36 @@ export default function TrackEditor({
     data, onSave, onDelete, availableInstruments, onUpdateInstrument,
     enableDownload = false, isPlayground = false, hideCategories = []
 }: Props) {
-    // --- State ---
     const [source, setSource] = useState(data.source || "");
     const debouncedSource = useDebounce(source, 600);
     
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const [isParsing, setIsParsing] = useState(false);
 
-    // --- UI State ---
     const [showArrangement, setShowArrangement] = useState(true);
     const [showNoteEditor, setShowNoteEditor] = useState(false);
-    const [showMixer, setShowMixer] = useState(false); // New Mixer State
+    const [showMixer, setShowMixer] = useState(false); 
     const [noteEditorMode, setNoteEditorMode] = useState<'piano' | 'tracker'>('piano');
     const [showMasterSettings, setShowMasterSettings] = useState(false);
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
     const [lintErrors, setLintErrors] = useState<LintError[]>([]);
     const [editingInstrument, setEditingInstrument] = useState<InstrumentDefinition | null>(null);
+    
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
     const [mockDefs, setMockDefs] = useState<Record<string, QualityDefinition>>({});
+    
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
-    
-    // Toast State
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
 
-    // --- Audio State ---
     const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
     const [playbackMode, setPlaybackMode] = useState<'global' | 'local' | 'stopped'>('stopped');
     const { playTrack, stop, isPlaying, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume } = useAudio();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Initial Load
     useEffect(() => { setIsClient(true); setSource(data.source); }, [data]);
     
-    // --- Parsing Logic (Debounced) ---
     useEffect(() => {
         setIsParsing(true);
         const timer = setTimeout(() => {
@@ -89,15 +84,19 @@ export default function TrackEditor({
             } finally {
                 setIsParsing(false);
             }
-        }, 10);
+        }, 0);
         return () => clearTimeout(timer);
     }, [debouncedSource, mockQualities, mockDefs]);
 
+    // --- FIX: MEMOIZE CALLBACK TO PREVENT INFINITE LOOP ---
+    const handleDebuggerUpdate = useCallback((qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => {
+        // Use functional state update to prevent dependency cycle if we were depending on state
+        setMockQualities(q => JSON.stringify(q) === JSON.stringify(qualities) ? q : qualities);
+        setMockDefs(d => JSON.stringify(d) === JSON.stringify(defs) ? d : defs);
+    }, []);
+
     const handleSourceChange = (newSource: string) => setSource(newSource);
-    
-    const handleVisualUpdate = (newSource: string) => {
-        setSource(newSource);
-    };
+    const handleVisualUpdate = (newSource: string) => setSource(newSource);
     
     const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
         setToast({ msg, type });
@@ -211,7 +210,6 @@ export default function TrackEditor({
         <div className="editor-layout">
             <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".lig,.txt" />
             
-            {/* TOAST NOTIFICATION */}
             {toast && (
                 <div style={{
                     position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)',
@@ -223,7 +221,6 @@ export default function TrackEditor({
                 </div>
             )}
 
-            {/* LEFT SIDEBAR */}
             <div 
                 className="editor-sidebar"
                 style={{ width: leftSidebarOpen ? '250px' : '40px' }}
@@ -235,19 +232,11 @@ export default function TrackEditor({
                     </button>
                 </div>
                 {leftSidebarOpen ? (
-                    <ScribeDebugger 
-                        onUpdate={(qualities) => {
-                            // ScribeDebugger usually only outputs qualities, not defs.
-                            // If your debugger supports defs, use them. Otherwise assume empty.
-                            setMockQualities(qualities);
-                        }} 
-                    />
+                    <ScribeDebugger onUpdate={handleDebuggerUpdate} />
                 ) : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
             </div>
 
-            {/* MAIN CONTENT */}
             <div className="editor-main">
-                {/* TOOLBAR */}
                 <div className="editor-toolbar">
                      <div className="editor-toolbar-group">
                         <h2 className="editor-title">{data.name}</h2>
@@ -274,7 +263,6 @@ export default function TrackEditor({
                         
                         <div className="toggle-group">
                             <button onClick={() => setShowArrangement(!showArrangement)} className={showArrangement ? 'active' : ''}>Timeline</button>
-                            {/* Toggle Mixer */}
                             <button onClick={() => setShowMixer(!showMixer)} className={showMixer ? 'active' : ''}>Mixer</button>
                             <button onClick={() => setShowNoteEditor(!showNoteEditor)} className={showNoteEditor ? 'active' : ''}>Notes</button>
                         </div>
@@ -289,7 +277,6 @@ export default function TrackEditor({
                     </div>
                 </div>
 
-                {/* VISUAL EDITORS */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {showArrangement && isClient && (
                         <div style={{ borderBottom: '1px solid #333' }}>
@@ -306,7 +293,6 @@ export default function TrackEditor({
                         </div>
                     )}
                     
-                    {/* MIXER VIEW */}
                     {showMixer && isClient && (
                         <div style={{ borderBottom: '1px solid #333', height: '220px', resize: 'vertical', overflow: 'hidden' }}>
                             <MixerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} />
@@ -347,7 +333,6 @@ export default function TrackEditor({
                     )}
                 </div>
 
-                {/* LINTER ERRORS */}
                 {lintErrors.length > 0 && (
                     <div className="editor-error-panel">
                         <div className="editor-error-header">{lintErrors.length} Issues</div>
@@ -355,13 +340,11 @@ export default function TrackEditor({
                     </div>
                 )}
                 
-                {/* TEXT EDITOR */}
                 <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '0', padding: '0', overflow:'hidden' }}>
                     {isClient && <ScribeEditor value={source} onChange={handleSourceChange} minHeight="100%" language="ligature" errors={lintErrors} />}
                 </div>
             </div>
 
-            {/* RIGHT SIDEBAR */}
             <div 
                 className="editor-sidebar right"
                 style={{ width: rightSidebarOpen ? '250px' : '40px' }}
@@ -378,7 +361,6 @@ export default function TrackEditor({
                 }
             </div>
 
-            {/* POPUPS */}
             {editingInstrument && (
                 <InstrumentEditor 
                     data={editingInstrument} 
