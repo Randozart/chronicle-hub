@@ -64,8 +64,7 @@ export default function TrackEditor({
     
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
-    const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
-
+    
     // --- Audio State ---
     const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
     const [playbackMode, setPlaybackMode] = useState<'global' | 'local' | 'stopped'>('stopped');
@@ -93,7 +92,6 @@ export default function TrackEditor({
         return () => clearTimeout(timer);
     }, [debouncedSource, mockQualities, mockDefs]);
 
-    // Debugger Callback Memoization (Fixes Infinite Parsing Loop)
     const handleDebuggerUpdate = useCallback((qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => {
         setMockQualities(q => JSON.stringify(q) === JSON.stringify(qualities) ? q : qualities);
         setMockDefs(d => JSON.stringify(d) === JSON.stringify(defs) ? d : defs);
@@ -103,11 +101,6 @@ export default function TrackEditor({
     
     const handleVisualUpdate = (newSource: string) => {
         setSource(newSource);
-    };
-    
-    const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
-        setToast({ msg, type });
-        setTimeout(() => setToast(null), 3000);
     };
 
     const handleConfigUpdate = (key: string, val: any) => {
@@ -191,12 +184,8 @@ export default function TrackEditor({
     const handleFormat = () => setSource(formatLigatureSource(source));
     
     const handleSaveClick = async () => {
-        try {
-            await onSave({ id: data.id, name: data.name, source, category: 'track' });
-            showToast("Track Saved Successfully");
-        } catch(e) {
-            showToast("Failed to save track", 'error');
-        }
+        // Just call parent save, parent handles toast
+        onSave({ id: data.id, name: data.name, source, category: 'track' });
     };
 
     const handleDownload = () => {
@@ -206,7 +195,6 @@ export default function TrackEditor({
         a.href = url; a.download = `${data.id || 'track'}.lig`; a.click(); URL.revokeObjectURL(url);
     };
     const handleEditInstrument = (id: string) => setEditingInstrument(availableInstruments.find(i => i.id === id) || null);
-    
     const handleInsertInstrumentToTrack = (instrumentId: string, presetId: string) => {
         const snippet = `[INSTRUMENTS]\n${instrumentId}: ${presetId}`;
         const newSource = mergeLigatureSnippet(source, snippet);
@@ -217,17 +205,6 @@ export default function TrackEditor({
         <div className="editor-layout">
             <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".lig,.txt" />
             
-            {toast && (
-                <div style={{
-                    position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)',
-                    background: toast.type === 'success' ? '#2ecc71' : '#e74c3c',
-                    color: '#fff', padding: '10px 20px', borderRadius: '4px', zIndex: 10000,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)', fontWeight: 'bold', fontSize: '0.9rem'
-                }}>
-                    {toast.msg}
-                </div>
-            )}
-
             {/* LEFT SIDEBAR */}
             <div 
                 className="editor-sidebar"
@@ -352,8 +329,7 @@ export default function TrackEditor({
                         </div>
                     )}
                     
-                    {/* TEXT EDITOR - EXPANDED HEIGHT */}
-                    {/* FIX: Removed overflow:hidden so the editor can grow */}
+                    {/* TEXT EDITOR */}
                     <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '500px', padding: '0' }}>
                         {isClient && <ScribeEditor value={source} onChange={handleSourceChange} minHeight="100%" language="ligature" errors={lintErrors} />}
                     </div>

@@ -6,7 +6,9 @@ import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import InstrumentEditor from './components/InstrumentEditor';
 import TrackEditor from './components/TrackEditor';
 import { AUDIO_PRESETS } from '@/engine/audio/presets';
+import { useToast } from '@/providers/ToastProvider'; // Import hook
 
+// ... (AudioItem type and EMPTY_TEMPLATE remain same) ...
 type AudioItem = (InstrumentDefinition | LigatureTrack) & { 
     category: 'instrument' | 'track';
     scope: 'local' | 'global';
@@ -17,6 +19,7 @@ const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUME
 
 export default function AudioAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast(); // Use global toast
     const [items, setItems] = useState<AudioItem[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +30,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             .then(res => res.json())
             .then(data => {
                 const combined: AudioItem[] = [];
+                // ... (data mapping logic remains same) ...
                 if (data.instruments) {
                     Object.values(data.instruments).forEach((i: any) => 
                         combined.push({ ...i, category: 'instrument', scope: 'local', folder: 'Project Instruments' })
@@ -58,6 +62,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     }, [storyId]);
 
     const handleCreate = (type: 'instrument' | 'track') => {
+        // ... (creation logic same) ...
         const name = prompt(`New ${type} name:`);
         if (!name) return;
         const id = name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -107,13 +112,15 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 });
             }
             setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+            showToast(`${updated.category === 'instrument' ? 'Instrument' : 'Track'} saved!`);
         } catch(e) {
-            alert("Save failed");
             console.error(e);
+            showToast("Save failed", 'error');
         }
     };
 
     const handleDelete = async (id: string, category: string) => {
+        // ... (delete logic) ...
         const item = items.find(i => i.id === id);
         if (!item) return;
         if (!confirm(`Delete ${item.scope} item: ${item.name}?`)) return;
@@ -126,6 +133,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         }
         setItems(prev => prev.filter(i => i.id !== id));
         setSelectedId(null);
+        showToast("Deleted successfully.");
     };
 
     const handleUpdateInstrument = (updatedInstrument: InstrumentDefinition) => {
@@ -179,7 +187,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             </div>
 
             {/* 2. MAIN EDITOR AREA */}
-            {/* FIX: Use flex column and overflow hidden to force children to manage scroll */}
             <div style={{ 
                 height: '100%', 
                 overflow: 'hidden', 
@@ -188,7 +195,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 background:'#141414' 
             }}>
                 {selectedItem?.category === 'instrument' && (
-                    /* Instrument Editor needs its own scrollbar */
                     <div style={{padding:'2rem', overflowY: 'auto', flex: 1}}>
                         <InstrumentEditor 
                             key={selectedItem.id}
@@ -202,7 +208,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     </div>
                 )}
                 {selectedItem?.category === 'track' && (
-                    /* Track Editor manages its own layout (toolbar fixed, body scrollable) */
                     <TrackEditor 
                         key={selectedItem.id}
                         data={selectedItem as LigatureTrack} 
