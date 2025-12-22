@@ -128,7 +128,14 @@ export default function PianoRoll({
     };
 
     useEffect(() => {
-        if (gridRef.current) setViewWidth(gridRef.current.clientWidth);
+        if (!gridRef.current) return;
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                setViewWidth(entry.contentRect.width);
+            }
+        });
+        resizeObserver.observe(gridRef.current);
+        return () => resizeObserver.disconnect();
     }, []);
 
     useEffect(() => {

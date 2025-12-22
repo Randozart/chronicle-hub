@@ -1,15 +1,11 @@
-import { ParsedTrack, ParsedPattern, NoteDef, PlaylistItem, NoteGroup, PatternPlaylistItem, PatternModifier, Layer, ChainItem, EffectCommand } from './models';
+import { ParsedTrack, PatternModifier, NoteDef, Layer, ChainItem, NoteGroup, EffectCommand } from './models';
 import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { evaluateText } from '@/engine/textProcessor';
 import { MODES } from './scales'; 
+import { LIGATURE_TOKEN_REGEX } from './constants'; 
 
 export class LigatureParser {
-    // Group 1: (tuplet)
-    // Group 2: @alias
-    // Group 3: Note with optional (props) and ^[effects]
-    // Group 4: Rhythmic symbols
-    private static TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|[-.|])/g;
-
+    
     private preParseScribeScript(
         source: string, 
         mockQualities: PlayerQualities,
@@ -200,7 +196,7 @@ export class LigatureParser {
         const pattern = track.patterns[patternId];
         if (!pattern) return trackName;
 
-        // --- Handle Duplicate Lanes ---
+        // --- Handle Duplicate Lanes (Audio Fix) ---
         let storageKey = trackName;
         if (pattern.tracks[storageKey]) {
             let counter = 2;
@@ -220,7 +216,8 @@ export class LigatureParser {
         const sequence = pattern.tracks[storageKey];
         const { grid, timeSig } = track.config;
         
-        const tokens = content.match(LigatureParser.TOKEN_REGEX) || [];
+        // Use Centralized Regex
+        const tokens = content.match(LIGATURE_TOKEN_REGEX) || [];
         let currentTime = 0; 
         
         for (const token of tokens) {
@@ -237,6 +234,7 @@ export class LigatureParser {
                 continue;
             }
             if (token.startsWith('(')) {
+                // Remove outer parens
                 const inner = token.substring(1, token.length - 1);
                 const subMatches = inner.split(/\s+/).filter(Boolean);
                 if (subMatches.length > 0) {
@@ -399,6 +397,8 @@ export class LigatureParser {
     }
 
     private parseNoteToken(token: string): NoteDef {
+        // Updated regex handling to match constant if needed, but manual breakdown here is fine
+        // as long as it parses the token extracted by TOKEN_REGEX
         const match = token.match(/^(\d+)(['#b%,]*)(?:\(([^)]*)\))?(?:\^\[(.*?)\])?$/);
         
         if (!match) return { degree: 1, octaveShift: 0, accidental: 0, isNatural: false };

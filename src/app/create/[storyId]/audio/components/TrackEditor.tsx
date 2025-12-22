@@ -6,7 +6,7 @@ import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
-import { PlayerQualities, QualityDefinition } from '@/engine/models';
+import { PlayerQualities, QualityDefinition } from '@/engine/models'; // Added QualityDefinition
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
 import { LigatureParser } from '@/engine/audio/parser';
 import { lintLigature, LintError } from '@/engine/audio/linter';
@@ -20,6 +20,7 @@ const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
 const PianoRoll = dynamic(() => import('@/components/admin/pianoroll/PianoRoll'), { ssr: false });
 import ArrangementView from './ArrangementView';
 import TrackerView from './TrackerView';
+import MixerView from '@/engine/audio/components/MixerView';
 
 const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\nPiano: hq_piano\n\n[PATTERN: Main]\n\nPiano |................|\n\n[PLAYLIST]\n\nMain\n`;
 
@@ -50,6 +51,7 @@ export default function TrackEditor({
     // --- UI State ---
     const [showArrangement, setShowArrangement] = useState(true);
     const [showNoteEditor, setShowNoteEditor] = useState(false);
+    const [showMixer, setShowMixer] = useState(false); // New Mixer State
     const [noteEditorMode, setNoteEditorMode] = useState<'piano' | 'tracker'>('piano');
     const [showMasterSettings, setShowMasterSettings] = useState(false);
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
@@ -61,6 +63,9 @@ export default function TrackEditor({
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
     
+    // Toast State
+    const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
+
     // --- Audio State ---
     const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
     const [playbackMode, setPlaybackMode] = useState<'global' | 'local' | 'stopped'>('stopped');
@@ -94,6 +99,11 @@ export default function TrackEditor({
         setSource(newSource);
     };
     
+    const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
     const handleConfigUpdate = (key: string, val: any) => {
         if (!parsedTrack) return;
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
@@ -124,7 +134,6 @@ export default function TrackEditor({
 
     const handlePatternAction = (action: string, patternId: string) => {
         if (!parsedTrack) return;
-        
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
         const pattern = newTrack.patterns[patternId];
         if (!pattern) return;
@@ -174,7 +183,16 @@ export default function TrackEditor({
     
     const handleClear = () => { if (confirm("Clear track?")) setSource(EMPTY_TEMPLATE); };
     const handleFormat = () => setSource(formatLigatureSource(source));
-    const handleSaveClick = () => onSave({ id: data.id, name: data.name, source, category: 'track' });
+    
+    const handleSaveClick = async () => {
+        try {
+            await onSave({ id: data.id, name: data.name, source, category: 'track' });
+            showToast("Track Saved Successfully");
+        } catch(e) {
+            showToast("Failed to save track", 'error');
+        }
+    };
+
     const handleDownload = () => {
         const blob = new Blob([source], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -182,6 +200,7 @@ export default function TrackEditor({
         a.href = url; a.download = `${data.id || 'track'}.lig`; a.click(); URL.revokeObjectURL(url);
     };
     const handleEditInstrument = (id: string) => setEditingInstrument(availableInstruments.find(i => i.id === id) || null);
+    
     const handleInsertInstrumentToTrack = (instrumentId: string, presetId: string) => {
         const snippet = `[INSTRUMENTS]\n${instrumentId}: ${presetId}`;
         const newSource = mergeLigatureSnippet(source, snippet);
@@ -192,6 +211,18 @@ export default function TrackEditor({
         <div className="editor-layout">
             <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".lig,.txt" />
             
+            {/* TOAST NOTIFICATION */}
+            {toast && (
+                <div style={{
+                    position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)',
+                    background: toast.type === 'success' ? '#2ecc71' : '#e74c3c',
+                    color: '#fff', padding: '10px 20px', borderRadius: '4px', zIndex: 10000,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)', fontWeight: 'bold', fontSize: '0.9rem'
+                }}>
+                    {toast.msg}
+                </div>
+            )}
+
             {/* LEFT SIDEBAR */}
             <div 
                 className="editor-sidebar"
@@ -205,9 +236,10 @@ export default function TrackEditor({
                 </div>
                 {leftSidebarOpen ? (
                     <ScribeDebugger 
-                        onUpdate={(qualities, defs) => {
+                        onUpdate={(qualities) => {
+                            // ScribeDebugger usually only outputs qualities, not defs.
+                            // If your debugger supports defs, use them. Otherwise assume empty.
                             setMockQualities(qualities);
-                            setMockDefs(defs);
                         }} 
                     />
                 ) : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
@@ -219,8 +251,8 @@ export default function TrackEditor({
                 <div className="editor-toolbar">
                      <div className="editor-toolbar-group">
                         <h2 className="editor-title">{data.name}</h2>
-                        <span className="editor-status">
-                            {isParsing ? "⏳ PARSING..." : (isPlaying ? "▶ PLAYING" : status)}
+                        <span className="editor-status" style={{color: isParsing ? '#e5c07b' : '#777'}}>
+                            {isParsing ? "⚡ PARSING..." : (isPlaying ? "▶ PLAYING" : status)}
                         </span>
                     </div>
                     <div className="editor-toolbar-group">
@@ -241,7 +273,9 @@ export default function TrackEditor({
                         <button onClick={handleClear} className="tool-btn">New</button>
                         
                         <div className="toggle-group">
-                            <button onClick={() => setShowArrangement(!showArrangement)} className={showArrangement ? 'active' : ''}>Arranger</button>
+                            <button onClick={() => setShowArrangement(!showArrangement)} className={showArrangement ? 'active' : ''}>Timeline</button>
+                            {/* Toggle Mixer */}
+                            <button onClick={() => setShowMixer(!showMixer)} className={showMixer ? 'active' : ''}>Mixer</button>
                             <button onClick={() => setShowNoteEditor(!showNoteEditor)} className={showNoteEditor ? 'active' : ''}>Notes</button>
                         </div>
                         
@@ -271,6 +305,14 @@ export default function TrackEditor({
                             />
                         </div>
                     )}
+                    
+                    {/* MIXER VIEW */}
+                    {showMixer && isClient && (
+                        <div style={{ borderBottom: '1px solid #333', height: '220px', resize: 'vertical', overflow: 'hidden' }}>
+                            <MixerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} />
+                        </div>
+                    )}
+
                     {showNoteEditor && isClient && (
                         <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
                             <div className="note-editor-header">
@@ -314,7 +356,7 @@ export default function TrackEditor({
                 )}
                 
                 {/* TEXT EDITOR */}
-                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '0', padding: '0' }}>
+                <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '0', padding: '0', overflow:'hidden' }}>
                     {isClient && <ScribeEditor value={source} onChange={handleSourceChange} minHeight="100%" language="ligature" errors={lintErrors} />}
                 </div>
             </div>
