@@ -11,12 +11,11 @@ interface Props {
     parsedTrack: ParsedTrack | null;
     onChange: (source: string) => void;
     playlistIndex: number;
-    availableInstruments: InstrumentDefinition[]; // <--- Add to Interface
+    availableInstruments: InstrumentDefinition[]; 
     playbackMode: 'global' | 'local' | 'stopped';
     onPlaybackModeChange: (mode: 'global' | 'local' | 'stopped') => void;
 }
 
-// QWERTY Keymap
 const KEY_MAP: Record<string, { degree: number, accidental: number }> = {
     'z': { degree: 1, accidental: 0 }, 's': { degree: 1, accidental: 1 },
     'x': { degree: 2, accidental: 0 }, 'd': { degree: 2, accidental: 1 },
@@ -40,16 +39,14 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
     const [useAbsolute, setUseAbsolute] = useState(false);
     const [viewMode, setViewMode] = useState<'context' | 'pattern'>('context');
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
-    const [isLocalPlaying, setIsLocalPlaying] = useState(false);
     const { playTrack, stop: audioStop, isPlaying } = useAudio();
-    // View State
+    
     const [rowHeight, setRowHeight] = useState(20);
     const [fontSize, setFontSize] = useState(11);
-    const [cursor, setCursor] = useState({ row: 0, col: 0, sub: 0 }); // 0:Note, 1:Mod, 2:FX
+    const [cursor, setCursor] = useState({ row: 0, col: 0, sub: 0 }); 
     const [inputBuffer, setInputBuffer] = useState("");
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Auto-select
     useEffect(() => {
         if (!parsedTrack) return;
         if (viewMode === 'pattern' && !selectedPatternId) {
@@ -58,18 +55,18 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
         }
     }, [viewMode, parsedTrack, selectedPatternId]);
 
-    // Clear buffer on nav
     useEffect(() => { setInputBuffer(""); }, [cursor]);
 
     if (!parsedTrack) return null;
 
-    // --- DATA GENERATION ---
     const columns: TrackerColumn[] = [];
     let maxDuration = 0;
 
     const processSegment = (patId: string, globalStartTime: number, trans: number, prefix: string, isRepeat: boolean, cols: TrackerColumn[]) => {
         const pat = parsedTrack.patterns[patId];
         if (!pat) return 0;
+        
+        // Sort keys to ensure stable column order and consistent display
         Object.keys(pat.tracks).sort().forEach(trackName => {
             const headerName = `${prefix}${trackName}`;
             let col = cols.find(c => c.header === headerName);
@@ -123,57 +120,39 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
     }
     columns.forEach(c => { while(c.events.length < maxDuration) c.events.push(null); });
 
-    // --- PLAYHEAD ---
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const currentSlot = usePlaybackState(
-        Tone.Transport.state === 'started',
+        isPlaying,
         2048, 
         parsedTrack.config.bpm, 
         parsedTrack.config.grid, 
         parsedTrack.config.timeSig
     );
 
-const toggleLocalPlay = () => {
+    const toggleLocalPlay = () => {
         if (playbackMode === 'local' && isPlaying) {
             audioStop();
             onPlaybackModeChange('stopped');
         } else {
             if (!parsedTrack) return;
-            audioStop(); // Stop any global play
-
+            audioStop(); 
             const soloTrack = JSON.parse(JSON.stringify(parsedTrack));
-            // In context mode, play only the current playlist row.
-            // In pattern mode, play only the selected pattern.
             if (viewMode === 'context') {
                 soloTrack.playlist = [parsedTrack.playlist[playlistIndex]];
             } else {
                 soloTrack.playlist = [{ type: 'pattern', layers: [{ items: [{ id: selectedPatternId, transposition: 0 }] }] }];
             }
             const soloSource = serializeParsedTrack(soloTrack);
-            
-            // Explicitly tell the audio provider to loop this playback
             playTrack(soloSource, availableInstruments, {});
             onPlaybackModeChange('local');
         }
     };
-    
-    // Sync UI state if global stop is pressed
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (Tone.Transport.state !== 'started' && isLocalPlaying) {
-                setIsLocalPlaying(false);
-            }
-        }, 500);
-        return () => clearInterval(interval);
-    }, [isLocalPlaying]);
 
-    // --- EDITING ---
     const commitEdit = (key?: string) => {
         const colDef = columns[cursor.col];
         if (!colDef) return;
         const sourceInfo = colDef.resolver(cursor.row);
         if (!sourceInfo) return; 
-
+        
         const { patternId, localTime, trackName } = sourceInfo;
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
         const pattern = newTrack.patterns[patternId];
@@ -199,8 +178,7 @@ const toggleLocalPlay = () => {
         }
 
         const note = event.notes[0];
-
-        // NOTE COLUMN
+        
         if (cursor.sub === 0) { 
             if (key && KEY_MAP[key.toLowerCase()]) {
                 const map = KEY_MAP[key.toLowerCase()];
@@ -208,34 +186,24 @@ const toggleLocalPlay = () => {
                 note.accidental = map.accidental;
             }
         } 
-        // MOD COLUMN (Smart Parsing)
         else if (cursor.sub === 1) {
-            // If user typed "v-5", inputBuffer is "v-5"
-            // If user typed "5", inputBuffer is "5"
-            
             let val = parseInt(inputBuffer);
             let cmd = inputBuffer.charAt(0).toLowerCase();
             
             if (['v', 'o', 'p', 't'].includes(cmd)) {
-                // Explicit command mode
                 val = parseInt(inputBuffer.slice(1));
                 if (!isNaN(val)) {
                     if (cmd === 'v') note.volume = val;
                     if (cmd === 'o') note.octaveShift = val;
-                    // Add p (Pan) or t (Trans) via Effects array if needed
                     if (cmd === 'p') {
                         if (!note.effects) note.effects = [];
                         note.effects.push({ code: 'P', value: val });
                     }
                 }
             } else if (!isNaN(val)) {
-                // Number only -> Default to Volume
-                // If they type 10, typically implies -10db in tracker context?
-                // Or just raw value. Let's use raw value.
                 note.volume = val;
             }
         } 
-        // FX COLUMN
         else if (cursor.sub === 2) {
             if (inputBuffer.length >= 1) {
                 const code = inputBuffer.charAt(0).toUpperCase();
@@ -243,9 +211,7 @@ const toggleLocalPlay = () => {
                 const val = valStr ? parseInt(valStr) : 0;
                 
                 if (!note.effects) note.effects = [];
-                // Replace existing effect of same code or push new?
-                // Trackers usually allow multiple. We'll push.
-                note.effects = [{ code, value: isNaN(val) ? 0 : val }]; // Single FX column visual limit
+                note.effects = [{ code, value: isNaN(val) ? 0 : val }]; 
             }
         }
 
@@ -255,21 +221,12 @@ const toggleLocalPlay = () => {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        // Spacebar Logic
         if (e.key === ' ' || e.key === 'Spacebar') {
-            if (inputBuffer.length > 0) {
-                // If editing, let space be typed (or ignored) but don't toggle play
-                e.stopPropagation();
-                // Optionally add space to buffer if your syntax allows it:
-                // setInputBuffer(prev => prev + ' '); 
-                return;
-            }
+            if (inputBuffer.length > 0) { e.stopPropagation(); return; }
             e.preventDefault();
             toggleLocalPlay();
             return;
         }
-
-        // Navigation
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
             e.preventDefault();
             if (inputBuffer) commitEdit();
@@ -279,12 +236,10 @@ const toggleLocalPlay = () => {
             if (e.key === 'ArrowRight') setCursor(p => p.sub < 2 ? { ...p, sub: p.sub + 1 } : (p.col < columns.length - 1 ? { ...p, col: p.col + 1, sub: 0 } : p));
             return;
         }
-
         if (e.key === 'Enter') { e.preventDefault(); commitEdit(); return; }
         if (e.key === 'Backspace') { setInputBuffer(prev => prev.slice(0, -1)); return; }
         if (e.key === 'Delete' || e.key === '.') { commitEdit('Delete'); return; }
         
-        // Typing
         if (e.key.length === 1) {
             if (cursor.sub === 0) {
                 if (e.key === '@' || inputBuffer.startsWith('@')) setInputBuffer(prev => prev + e.key);
@@ -295,32 +250,11 @@ const toggleLocalPlay = () => {
         }
     };
 
-     let helperText = <span style={{color: '#666'}}>Select a cell to edit...</span>;
+    let helperText = <span style={{color: '#666'}}>Select a cell to edit...</span>;
+    if (cursor.sub === 0) helperText = <span style={{color: '#fff'}}>NOTE: Z=1, S=1#... | CHORD: @alias</span>;
+    else if (cursor.sub === 1) helperText = <span style={{color: '#fff'}}>MODS: v:-10 (Vol), o:1 (Oct), t:12 (Trans)</span>;
+    else if (cursor.sub === 2) helperText = <span style={{color: '#fff'}}>FX: F50 (Fade), S10 (Slide), P-50 (Pan)</span>;
     
-    if (cursor.sub === 0) {
-        helperText = (
-            <span style={{color: '#fff'}}>
-                <span style={{color:'#61afef', fontWeight:'bold'}}>NOTE:</span> Z=1, S=1#... 
-                <span style={{color:'#666', margin:'0 8px'}}>|</span> 
-                <span style={{color:'#d19a66', fontWeight:'bold'}}>CHORD:</span> Type <strong>@alias</strong>
-            </span>
-        );
-    } else if (cursor.sub === 1) {
-        helperText = (
-            <span style={{color: '#fff'}}>
-                <span style={{color:'#c678dd', fontWeight:'bold'}}>MODS:</span> 
-                v:-10 (Vol), o:1 (Oct), t:12 (Trans)
-            </span>
-        );
-    } else if (cursor.sub === 2) {
-        helperText = (
-            <span style={{color: '#fff'}}>
-                <span style={{color:'#e5c07b', fontWeight:'bold'}}>FX:</span> 
-                F50 (Fade), S10 (Slide), P-50 (Pan)
-            </span>
-        );
-    }
-
     const gridRows = [];
     for (let t = 0; t < maxDuration; t++) {
         const rowData = columns.map(col => {
@@ -333,7 +267,6 @@ const toggleLocalPlay = () => {
         });
         gridRows.push(rowData);
     }
-
     const isEditing = inputBuffer.length > 0;
 
     return (
@@ -343,7 +276,6 @@ const toggleLocalPlay = () => {
             onKeyDown={handleKeyDown}
             ref={containerRef}
         >
-            {/* ROW 1: CONTROLS */}
             <div style={{ padding: '4px', background: '#21252b', borderBottom: '1px solid #333', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <select value={viewMode} onChange={e => setViewMode(e.target.value as any)} style={{ background: '#111', color: '#fff', border: '1px solid #444', fontSize:'11px' }}>
                     <option value="context">Playlist Row</option>
@@ -360,25 +292,17 @@ const toggleLocalPlay = () => {
                      <button onClick={toggleLocalPlay} style={{ background:'none', border:'1px solid #444', color: (playbackMode === 'local' && isPlaying) ? '#98c379':'#ccc', fontSize:'10px', padding:'2px 6px', cursor:'pointer', marginRight:'8px' }}>
                         {(playbackMode === 'local' && isPlaying) ? '■' : '▶'}
                     </button>
-
                     <button onClick={() => { setRowHeight(h => Math.max(12, h-2)); setFontSize(f => Math.max(9, f-1)); }} style={{background:'#333', color:'#fff', border:'none', cursor:'pointer', width:'20px'}}>-</button>
                     <button onClick={() => { setRowHeight(h => Math.min(40, h+2)); setFontSize(f => Math.min(16, f+1)); }} style={{background:'#333', color:'#fff', border:'none', cursor:'pointer', width:'20px'}}>+</button>
                 </div>
                 
                 <label style={{ color: '#ccc', display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', marginLeft: 'auto' }}>
                     <input type="checkbox" checked={useAbsolute} onChange={e => setUseAbsolute(e.target.checked)} />
-                    Absolute/Relative Notes
+                    Abs/Rel
                 </label>
             </div>
 
-            {/* ROW 2: INPUT CONSOLE */}
-            <div style={{ 
-                padding: '4px 8px', 
-                background: isEditing ? '#1e222a' : '#111', 
-                borderBottom: '1px solid #333', 
-                display: 'flex', alignItems: 'center', gap: '12px',
-                fontSize: '11px', color: '#aaa', height: '28px', transition: 'background 0.1s'
-            }}>
+            <div style={{ padding: '4px 8px', background: isEditing ? '#1e222a' : '#111', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', color: '#aaa', height: '28px' }}>
                 <span style={{ color: '#98c379', minWidth: '50px' }}>Row: {cursor.row}</span>
                 <div style={{ display: 'flex', gap: '4px', color: isEditing ? '#fff' : '#555', fontWeight: isEditing ? 'bold' : 'normal' }}>
                     <span>INPUT:</span>
@@ -386,27 +310,27 @@ const toggleLocalPlay = () => {
                         {inputBuffer || "___"}
                     </span>
                 </div>
-                <span style={{ marginLeft: 'auto', color: isEditing ? '#61afef' : '#444', fontStyle: 'italic', fontWeight: isEditing ? 'bold' : 'normal' }}>
-                    {helperText}
-                </span>
+                <span style={{ marginLeft: 'auto' }}>{helperText}</span>
             </div>
             
-            {/* GRID */}
             <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
                 <table style={{ borderCollapse: 'collapse', width: 'auto' }}>
                     <thead style={{ position: 'sticky', top: 0, background: '#181a1f', zIndex: 20 }}>
                         <tr>
-                            <th style={{ width: '40px', borderRight: '1px solid #333', color: '#555', background: '#181a1f', zIndex: 21 }}>#</th>
-                            {columns.map((col, i) => (
-                                <th key={i} colSpan={3} style={{ 
-                                    width: '130px', maxWidth:'130px', borderRight: '1px solid #444', 
-                                    color: i === cursor.col ? '#fff' : '#98c379', 
-                                    background: i === cursor.col ? '#2c313a' : '#181a1f',
-                                    textAlign: 'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'
-                                }}>
-                                    {col.header}
-                                </th>
-                            ))}
+                            <th style={{ width: '40px', borderRight: '1px solid #333', color: '#555', background: '#181a1f' }}>#</th>
+                            {columns.map((col, i) => {
+                                // --- NEW: Format Header Name to show "(2)" for sub-lanes ---
+                                let label = col.trackName;
+                                if (label.includes('_#')) {
+                                    const parts = label.split('_#');
+                                    label = `${parts[0]} (${parts[1]})`;
+                                }
+                                return (
+                                    <th key={i} colSpan={3} style={{ width: '130px', maxWidth:'130px', borderRight: '1px solid #444', color: i === cursor.col ? '#fff' : '#98c379', background: i === cursor.col ? '#2c313a' : '#181a1f', textAlign: 'center' }}>
+                                        {label}
+                                    </th>
+                                );
+                            })}
                         </tr>
                         <tr style={{ color: '#666', fontSize: `${Math.max(9, fontSize-2)}px` }}>
                             <th style={{ background: '#21252b', borderRight:'1px solid #333' }}></th>
@@ -421,84 +345,50 @@ const toggleLocalPlay = () => {
                     </thead>
                     <tbody>
                         {gridRows.map((cells, t) => (
-                                <tr key={t} style={{ height: `${rowHeight}px`, background: (isPlaying && Math.floor(currentSlot) === t) ? '#2c3e50' : (t === cursor.row ? '#2c313a' : t % 4 === 0 ? '#141414' : '#0d0d0d') }}><td style={{ color: '#444', borderRight: '1px solid #333', textAlign: 'right', paddingRight: '4px' }}>
+                            <tr key={t} style={{ height: `${rowHeight}px`, background: (isPlaying && Math.floor(currentSlot) === t) ? '#2c3e50' : (t === cursor.row ? '#2c313a' : t % 4 === 0 ? '#141414' : '#0d0d0d') }}>
+                                <td style={{ color: '#444', borderRight: '1px solid #333', textAlign: 'right', paddingRight: '4px' }}>
                                     {t.toString(16).toUpperCase().padStart(2, '0')}
-                                </td>{cells.map((cell, i) => {
+                                </td>
+                                {cells.map((cell, i) => {
                                     const hasFocus = (t === cursor.row && i === cursor.col);
+                                    let borderStyle = cell.boundary ? (cell.boundary.type === 'change' ? { borderTop: '2px solid #666' } : { borderTop: '1px dashed #444' }) : {};
                                     
-                                    let borderStyle = {};
-                                    let label = null;
-                                    if (cell.boundary) {
-                                        if (cell.boundary.type === 'change') {
-                                            borderStyle = { borderTop: '2px solid #666' };
-                                            label = <div style={{ position:'absolute', top:0, left:0, background:'#333', color:'#fff', fontSize:'9px', padding:'0 2px', zIndex:5, opacity:0.8, pointerEvents:'none' }}>{cell.boundary.id}</div>;
-                                        } else {
-                                            borderStyle = { borderTop: '1px dashed #444' };
-                                        }
-                                    }
-
                                     const getCellStyle = (sub: number) => ({
                                         ...borderStyle,
                                         position: 'relative' as const,
                                         textAlign: 'center' as const,
                                         outline: (hasFocus && cursor.sub === sub) ? '2px solid white' : 'none',
-                                        outlineOffset: '-2px',
                                         background: (hasFocus && cursor.sub === sub) ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                        zIndex: (hasFocus && cursor.sub === sub) ? 15 : 'auto',
                                         cursor: 'cell'
                                     });
 
-                                    if (cell.type === 'sustain') {
-                                        return (
-                                            <React.Fragment key={i}>
-                                                <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: '#fff', fontWeight:'bold', letterSpacing:'3px' }}>
-                                                    {label} — 
-                                                </td>
-                                                <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), color: '#fff', opacity: 0.2 }}> | </td>
-                                                <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), color: '#fff', borderRight: '1px solid #333', opacity: 0.2 }}> | </td>
-                                            </React.Fragment>
-                                        );
-                                    }
+                                    if (cell.type === 'sustain') return (
+                                        <React.Fragment key={i}>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: '#fff', fontWeight:'bold', letterSpacing:'3px' }}> — </td>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), opacity: 0.2 }}> | </td>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), borderRight: '1px solid #333', opacity: 0.2 }}> | </td>
+                                        </React.Fragment>
+                                    );
                                     
-                                    if (cell.type === 'empty') {
-                                        return (
-                                            <React.Fragment key={i}>
-                                                <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: '#222' }}>
-                                                    {label} . 
-                                                </td>
-                                                <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), color: '#222' }}> . </td>
-                                                <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), color: '#222', borderRight: '1px solid #333' }}> . </td>
-                                            </React.Fragment>
-                                        );
-                                    }
+                                    if (cell.type === 'empty') return (
+                                        <React.Fragment key={i}>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: '#222' }}> . </td>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), color: '#222' }}> . </td>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), borderRight: '1px solid #333' }}> . </td>
+                                        </React.Fragment>
+                                    );
 
                                     const note = cell.notes[0];
-                                    const isChord = cell.notes.length > 1;
-                                    const noteColor = isChord ? '#d19a66' : '#61afef';
-
-                                    // MODS: Show as Ligature props without parens (v:-10, o:1)
-                                    const modifiers = [];
-                                    if (note.volume !== undefined) modifiers.push(`v:${note.volume}`); // Removed Math.abs
-                                    if (note.octaveShift !== 0) modifiers.push(`o:${note.octaveShift}`);
-                                    const modStr = modifiers.join(', ');
-
-                                    // FX: Show as Ligature string (F50,S10)
+                                    const modStr = [note.volume !== undefined ? `v:${note.volume}` : null, note.octaveShift ? `o:${note.octaveShift}` : null].filter(Boolean).join(',');
                                     const fxStr = note.effects ? note.effects.map((e: any) => `${e.code}${e.value}`).join(',') : '';
 
                                     return (
                                         <React.Fragment key={i}>
-                                            <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: noteColor, fontWeight:'bold' }}>
-                                                {label}
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: cell.notes.length > 1 ? '#d19a66' : '#61afef', fontWeight:'bold' }}>
                                                 {formatNote(cell.notes, parsedTrack.config, useAbsolute)}
                                             </td>
-                                            {/* Mod Column */}
-                                            <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), color: '#c678dd', fontSize:'10px' }}>
-                                                {modStr || '..'}
-                                            </td>
-                                            {/* FX Column */}
-                                            <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), color: '#e5c07b', borderRight:'1px solid #333', fontSize:'10px' }}>
-                                                {fxStr || '..'}
-                                            </td>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), color: '#c678dd', fontSize:'10px' }}>{modStr || '..'}</td>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), color: '#e5c07b', borderRight:'1px solid #333', fontSize:'10px' }}>{fxStr || '..'}</td>
                                         </React.Fragment>
                                     );
                                 })}
