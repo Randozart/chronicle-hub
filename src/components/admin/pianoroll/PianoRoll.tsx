@@ -26,14 +26,6 @@ interface Props {
 
 const SLOT_W = 24;
 const ROW_H = 16; 
-const SCALE_BG = 'rgba(97, 175, 239, 0.08)'; 
-
-type AutoMode = 'volume' | 'pan' | 'fade' | 'swell';
-
-function pseudoRandom(seed: number) {
-    const x = Math.sin(seed) * 10000;
-    return x - Math.floor(x);
-}
 
 const getNoteId = (track: string, evtIdx: number, noteIdx: number) => `${track}:${evtIdx}:${noteIdx}`;
 
@@ -41,11 +33,13 @@ export default function PianoRoll({
     source, qualities, onChange, availableInstruments, 
     playbackMode, onPlaybackModeChange 
 }: Props) {
+    // --- STATE ---
     const [selectedPatternId, setSelectedPatternId] = useState<string>("");
     const [activeLane, setActiveLane] = useState<string>("");
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const [height, setHeight] = useState(400); 
     
+    // Virtualization State
     const [scrollLeft, setScrollLeft] = useState(0);
     const [scrollTop, setScrollTop] = useState(0);
     const [viewWidth, setViewWidth] = useState(800);
@@ -54,9 +48,11 @@ export default function PianoRoll({
     const keysRef = useRef<HTMLDivElement>(null);
     const autoRef = useRef<HTMLDivElement>(null);
 
+    // Selection
     const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
     const [selectionRect, setSelectionRect] = useState<{ startX: number, startY: number, currentX: number, currentY: number } | null>(null);
     
+    // Drag
     const [dragState, setDragState] = useState<{
         type: 'move' | 'resize' | 'automation';
         startX: number;
@@ -67,30 +63,50 @@ export default function PianoRoll({
     } | null>(null);
     const [dragDelta, setDragDelta] = useState<{ slots: number, rows: number }>({ slots: 0, rows: 0 });
 
+    // Automation
     const [showAutomation, setShowAutomation] = useState(false);
     const [autoHeight, setAutoHeight] = useState(140);
     const [autoMode, setAutoMode] = useState<'volume' | 'pan' | 'fade' | 'swell'>('volume');
     
     const { playTrack, stop: audioStop, isPlaying } = useAudio();
 
+    // --- PARSING ---
     useEffect(() => {
         try {
             const parser = new LigatureParser();
             const track = parser.parse(source, qualities);
             setParsedTrack(track);
-            
-            const patternKeys = Object.keys(track.patterns);
-            if (patternKeys.length > 0) {
-                if (!selectedPatternId || !track.patterns[selectedPatternId]) {
-                    const firstPat = patternKeys[0];
-                    setSelectedPatternId(firstPat);
-                    const lanes = Object.keys(track.patterns[firstPat].tracks);
-                    if (lanes.length > 0) setActiveLane(lanes[0].split('_#')[0]);
-                }
-            }
         } catch (e) { }
     }, [source, qualities]);
 
+    // --- SYNC SELECTION ---
+    useEffect(() => {
+        if (!parsedTrack) return;
+        const patternKeys = Object.keys(parsedTrack.patterns);
+        if (patternKeys.length === 0) return;
+
+        let currentPatternId = selectedPatternId;
+        if (!currentPatternId || !parsedTrack.patterns[currentPatternId]) {
+            currentPatternId = patternKeys[0];
+            setSelectedPatternId(currentPatternId);
+        }
+
+        const pattern = parsedTrack.patterns[currentPatternId];
+        if (pattern) {
+            const lanes = Object.keys(pattern.tracks);
+            if (lanes.length > 0) {
+                const currentBase = activeLane;
+                const hasCurrent = lanes.some(l => l.split('_#')[0] === currentBase);
+                if (!currentBase || !hasCurrent) {
+                    setActiveLane(lanes[0].split('_#')[0]);
+                }
+            } else {
+                setActiveLane("");
+            }
+        }
+    }, [parsedTrack, selectedPatternId]);
+
+    // --- COMPUTED ---
     const activePattern = parsedTrack?.patterns[selectedPatternId];
     const config = parsedTrack?.config;
     const currentSlot = usePlaybackState(isPlaying, activePattern?.duration || 0, config?.bpm || 120, config?.grid || 4, config?.timeSig || [4,4]);
@@ -102,8 +118,10 @@ export default function PianoRoll({
         const range = Array.from({ length: max - min + 1 }, (_, i) => min + i);
         return { noteRange: range, minMidi: min };
     }, [activePattern, config]);
+
     const midiToRow = (midi: number) => noteRange.length - 1 - (midi - minMidi);
 
+    // --- HANDLERS ---
     const toggleLocalPlay = () => {
         if (playbackMode === 'local') {
             audioStop();
@@ -127,84 +145,46 @@ export default function PianoRoll({
         if (autoRef.current) autoRef.current.scrollLeft = target.scrollLeft;
     };
 
-     useEffect(() => {
+    useEffect(() => {
         if (!gridRef.current) return;
-        
-        // Initial
         setViewWidth(gridRef.current.clientWidth);
-        
-        // Observer
         const observer = new ResizeObserver(entries => {
-            for (const entry of entries) {
-                setViewWidth(entry.contentRect.width);
-            }
+            for (const entry of entries) setViewWidth(entry.contentRect.width);
         });
         observer.observe(gridRef.current);
-        
         return () => observer.disconnect();
     }, []);
-
-    useEffect(() => {
-        try {
-            const parser = new LigatureParser();
-            const track = parser.parse(source, qualities);
-            setParsedTrack(track);
-        } catch (e) { }
-    }, [source, qualities]);
-
-    // --- 2. SYNC SELECTION & LANE ---
-    useEffect(() => {
-        if (!parsedTrack) return;
-        
-        const patternKeys = Object.keys(parsedTrack.patterns);
-        if (patternKeys.length === 0) return;
-
-        // Ensure valid Pattern ID
-        let currentPatternId = selectedPatternId;
-        if (!currentPatternId || !parsedTrack.patterns[currentPatternId]) {
-            currentPatternId = patternKeys[0];
-            setSelectedPatternId(currentPatternId);
-        }
-
-        // Ensure valid Lane
-        const pattern = parsedTrack.patterns[currentPatternId];
-        if (pattern) {
-            const lanes = Object.keys(pattern.tracks);
-            if (lanes.length > 0) {
-                // Check if current activeLane is valid for this pattern (checking base names)
-                const currentBase = activeLane;
-                const hasCurrent = lanes.some(l => l.split('_#')[0] === currentBase);
-                
-                if (!currentBase || !hasCurrent) {
-                    // Force select first available base lane
-                    setActiveLane(lanes[0].split('_#')[0]);
-                }
-            } else {
-                setActiveLane("");
-            }
-        }
-    }, [parsedTrack, selectedPatternId]); // Re-run when data updates or user switches pattern
 
     const isTrackInActiveGroup = (trackName: string) => {
         return trackName === activeLane || trackName.startsWith(`${activeLane}_#`);
     };
 
-    const handleGridMouseDown = (e: React.MouseEvent, midiVal: number) => { // Renamed param to midiVal
+    const handleGridMouseDown = (e: React.MouseEvent, midiVal: number) => {
         if (e.button !== 0) return;
         if (!parsedTrack || !selectedPatternId || !activeLane) return;
 
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const localX = e.clientX - rect.left; 
-        const absX = localX + scrollLeft; 
+        
+        // FIX: Remove scrollLeft addition. 
+        // rect.left is relative to viewport. e.clientX is relative to viewport.
+        // localX is relative to the element (which scrolls).
+        // Since we are clicking ON the scrolled element content, this coordinate IS the absolute song position.
+        const absX = localX; 
         const clickedSlot = Math.floor(absX / SLOT_W);
 
         if (e.ctrlKey || e.metaKey) {
             setSelectedNotes(new Set());
+            // Marquee needs screen-relative or scroll-adjusted relative coordinates depending on where overlay is
+            // Overlay is absolute inside scroll viewport. 
+            // So we need X relative to scroll viewport origin (top-left of container).
+            // Mouse (Client) - Container (Rect) + Scroll
+            // Actually, for the Marquee div inside the content, we use the same absX logic.
             setSelectionRect({ 
-                startX: localX + scrollLeft, 
-                startY: e.clientY - rect.top + scrollTop, 
-                currentX: localX + scrollLeft, 
-                currentY: e.clientY - rect.top + scrollTop 
+                startX: absX, 
+                startY: e.clientY - rect.top, // Y is also relative to content
+                currentX: absX, 
+                currentY: e.clientY - rect.top 
             });
             return;
         }
@@ -236,6 +216,8 @@ export default function PianoRoll({
         pattern.tracks[targetLane].push({ time: clickedSlot, duration: 1, notes: [noteDef] });
         pattern.tracks[targetLane].sort((a: SequenceEvent, b: SequenceEvent) => a.time - b.time);
         
+        // Optimistic Update
+        setParsedTrack(newTrack);
         onChange(serializeParsedTrack(newTrack));
     };
 
@@ -248,6 +230,9 @@ export default function PianoRoll({
             const ev = newTrack.patterns[selectedPatternId].tracks[trackName][evtIdx];
             if (ev.notes.length > 1) ev.notes.splice(noteIdx, 1);
             else newTrack.patterns[selectedPatternId].tracks[trackName].splice(evtIdx, 1);
+            
+            // Optimistic Update
+            setParsedTrack(newTrack);
             onChange(serializeParsedTrack(newTrack));
             return;
         }
@@ -293,9 +278,12 @@ export default function PianoRoll({
             if (selectionRect) {
                 if (!gridRef.current) return;
                 const rect = gridRef.current.getBoundingClientRect();
-                const scrollX = gridRef.current.scrollLeft;
-                const scrollY = gridRef.current.scrollTop;
-                setSelectionRect(prev => prev ? { ...prev, currentX: (e.clientX - rect.left) + scrollX, currentY: (e.clientY - rect.top) + scrollY } : null);
+                // Mouse relative to viewport -> relative to content
+                // Since content scrolls, we just need mouse relative to content rect (which moves)
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                setSelectionRect(prev => prev ? { ...prev, currentX: x, currentY: y } : null);
                 return;
             }
 
@@ -316,6 +304,7 @@ export default function PianoRoll({
 
         const handleMouseUp = () => {
             if (selectionRect && parsedTrack && selectedPatternId) {
+                // Determine Bounds
                 const x1 = Math.min(selectionRect.startX, selectionRect.currentX);
                 const x2 = Math.max(selectionRect.startX, selectionRect.currentX);
                 const y1 = Math.min(selectionRect.startY, selectionRect.currentY);
@@ -329,6 +318,8 @@ export default function PianoRoll({
                     pattern.tracks[trackName].forEach((ev, eIdx) => {
                         const noteLeft = ev.time * SLOT_W;
                         const noteWidth = ev.duration * SLOT_W;
+                        
+                        // Intersection Check
                         if (noteLeft < x2 && (noteLeft + noteWidth) > x1) {
                             ev.notes.forEach((n, nIdx) => {
                                 const midi = Note.midi(resolveNote(n.degree, config!.scaleRoot, config!.scaleMode, n.octaveShift, n.accidental, n.isNatural)) || 0;
@@ -360,6 +351,8 @@ export default function PianoRoll({
                         event.notes[0].effects = event.notes[0].effects.filter(e => e.code !== code);
                         if (rounded !== 0) event.notes[0].effects.push({ code, value: rounded });
                     }
+                    
+                    setParsedTrack(newTrack);
                     onChange(serializeParsedTrack(newTrack));
 
                 } else if (dragDelta.slots !== 0 || dragDelta.rows !== 0) {
@@ -391,6 +384,8 @@ export default function PianoRoll({
                         });
                         pattern.tracks[trackName].sort((a,b) => a.time - b.time);
                     });
+                    
+                    setParsedTrack(newTrack);
                     onChange(serializeParsedTrack(newTrack));
                 }
                 setDragState(null);
@@ -434,6 +429,7 @@ export default function PianoRoll({
             <div className="pianoroll-main">
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
                     <div style={{ display: 'flex', height: `${height}px`, position: 'relative' }}>
+                        
                         <PianoRollKeys 
                             scrollRef={keysRef} 
                             noteRange={noteRange} 
@@ -471,8 +467,7 @@ export default function PianoRoll({
                             viewHeight={height}
                         />
                     </div>
-
-                    {/* Resize Handle */}
+                    {/* ... (Resizer and Automation logic unchanged) ... */}
                     <div 
                         onMouseDown={(e) => {
                             e.preventDefault();
@@ -496,10 +491,8 @@ export default function PianoRoll({
                             pattern={activePattern}
                             lane={activeLane}
                             slotW={SLOT_W}
-                            
                             scrollLeft={scrollLeft}
                             viewWidth={viewWidth}
-                            
                             onMouseDown={handleAutomationMouseDown}
                             dragState={dragState}
                             dragDeltaRows={dragDelta.rows}

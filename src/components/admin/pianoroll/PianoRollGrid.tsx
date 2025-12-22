@@ -6,10 +6,7 @@ import { resolveNote } from '@/engine/audio/scales';
 interface Props {
     gridRef: React.RefObject<HTMLDivElement | null>;
     onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
-    
-    // Explicitly define two arguments
     onMouseDown: (e: React.MouseEvent, midi: number) => void;
-    
     onNoteMouseDown: (e: React.MouseEvent, trackName: string, evtIdx: number, noteIdx: number) => void;
     
     pattern: ParsedPattern | undefined;
@@ -75,15 +72,9 @@ export default function PianoRollGrid({
 
     if (!pattern || !config) return null;
 
-    const totalSlots = Math.max(32, pattern.duration + 4);
-    const contentWidth = totalSlots * slotW;
-    const contentHeight = noteRange.length * rowH;
-    
-    const allTrackKeys = Object.keys(pattern.tracks).sort();
-    
+    // Background Grid
     const beatW = slotW * (config.grid * (4 / config.timeSig[1]));
-    const barW = beatW * config.timeSig[0];
-    
+
     return (
         <div 
             ref={gridRef}
@@ -93,21 +84,21 @@ export default function PianoRollGrid({
             <div 
                 className="pianoroll-grid-content"
                 style={{ 
-                    width: contentWidth, 
-                    height: contentHeight,
-                    backgroundSize: `${slotW}px ${rowH}px, ${barW}px ${rowH}px`
+                    width: width, 
+                    height: height,
+                    backgroundSize: `${slotW}px ${rowH}px, ${beatW}px ${rowH}px`
                 }}
                 onMouseDown={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const y = e.clientY - rect.top;
                     const row = Math.floor(y / rowH);
                     if(row >= 0 && row < noteRange.length) {
-                        const targetMidi = noteRange[noteRange.length - 1 - row];
-                        onMouseDown(e, targetMidi);
+                        onMouseDown(e, noteRange[noteRange.length - 1 - row]);
                     }
                 }}
                 onContextMenu={(e) => e.preventDefault()}
             >
+                {/* Selection Marquee */}
                 {selectionRect && (
                     <div className="pianoroll-selection-marquee" style={{
                         left: Math.min(selectionRect.startX, selectionRect.currentX),
@@ -117,21 +108,21 @@ export default function PianoRollGrid({
                     }} />
                 )}
 
+                {/* Playhead */}
                 {isPlaying && (
                     <div className="pianoroll-playhead" style={{ left: currentSlot * slotW }} />
                 )}
 
+                {/* Background Scale Highlight */}
                 {noteRange.slice().reverse().map((midi, rowIdx) => {
                     const rowTop = rowIdx * rowH;
                     if (rowTop < scrollTop - rowH || rowTop > scrollTop + viewHeight) return null;
-                    
-                    // FIX: Use Note.pitchClass(...)
                     return scalePCs.includes(Note.pitchClass(Note.fromMidi(midi))) ? (
                         <div key={midi} style={{ position: 'absolute', top: rowTop, left: 0, right: 0, height: rowH, background: SCALE_BG, pointerEvents: 'none' }} />
                     ) : null;
                 })}
 
-                {/* EVENTS RENDER */}
+                {/* EVENTS */}
                 {Object.keys(pattern.tracks).sort().map(trackName => {
                     const isInActiveGroup = isTrackInActiveGroup(trackName);
                     
@@ -139,7 +130,6 @@ export default function PianoRollGrid({
                         const leftPos = event.time * slotW;
                         const widthPx = event.duration * slotW;
                         
-                        // Virtualization
                         if (leftPos + widthPx < scrollLeft - 100 || leftPos > scrollLeft + viewWidth + 100) return null;
 
                         const isChord = event.notes.length > 1;
@@ -152,7 +142,7 @@ export default function PianoRollGrid({
                             if (!midi || !noteRange.includes(midi)) return null;
                             
                             const topPos = midiToRow(midi) * rowH;
-                            if (topPos < scrollTop - rowH || topPos > scrollTop + height) return null;
+                            if (topPos < scrollTop - rowH || topPos > scrollTop + viewHeight) return null;
 
                             const id = getNoteId(trackName, eventIdx, noteIdx);
                             const isSelected = selectedNotes.has(id);
@@ -172,6 +162,7 @@ export default function PianoRollGrid({
                                 if (isSelected) { bgColor = '#fff'; zIndex = 20; }
                             }
 
+                            // Shadow (Performance) Logic
                             let shadowLeft = 0, showShadow = false;
                             if (hasPerf) {
                                 const seed = event.time + midi + (noteIdx * 50);
@@ -180,13 +171,29 @@ export default function PianoRollGrid({
                                 if (Math.abs(shadowLeft - leftPos) > 1) showShadow = true;
                             }
 
+                            // Ghost (Drag) Logic
+                            let ghostLeft = 0, ghostTop = 0, ghostWidth = 0;
+                            if (showGhost) {
+                                // FIX: Resize Anchoring
+                                // If Moving: Add delta to Left.
+                                // If Resizing: Left stays constant.
+                                ghostLeft = (dragState.type === 'resize' ? event.time : event.time + dragDelta.slots) * slotW + 1;
+                                ghostTop = (midiToRow(midi + dragDelta.rows)) * rowH + 1;
+                                
+                                // FIX: Width calculation
+                                ghostWidth = (dragState.type === 'resize' 
+                                    ? Math.max(0.25, event.duration + dragDelta.slots) 
+                                    : event.duration
+                                ) * slotW - 2;
+                            }
+
                             return (
                                 <div key={id}>
                                     {showGhost && (
                                         <div className="pianoroll-note-ghost" style={{
-                                            left: (event.time + dragDelta.slots) * slotW + 1,
-                                            top: (midiToRow(midi + dragDelta.rows)) * rowH + 1,
-                                            width: (dragState.type === 'resize' ? Math.max(0.25, event.duration + dragDelta.slots) : event.duration) * slotW - 2,
+                                            left: ghostLeft,
+                                            top: ghostTop,
+                                            width: ghostWidth,
                                             height: rowH - 2
                                         }} />
                                     )}
