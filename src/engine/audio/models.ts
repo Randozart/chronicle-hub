@@ -17,6 +17,39 @@ export interface EffectCommand {
     value: number;
 }
 
+export interface FilterDef {
+    type: 'lowpass' | 'highpass' | 'bandpass' | 'notch' | 'allpass' | 'peaking' | 'lowshelf' | 'highshelf';
+    frequency: number; // Hz
+    rolloff?: -12 | -24 | -48 | -96;
+    Q?: number;
+    gain?: number; // Used for shelving/peaking
+    velocitySens?: number; // 0 to 1 (Depth of velocity modulation)
+}
+
+export interface EQDef {
+    low: number;  // Gain in dB
+    mid: number;
+    high: number;
+    lowFrequency?: number;
+    highFrequency?: number;
+}
+
+export interface LFODef {
+    target: 'pan' | 'filter' | 'volume';
+    type: 'sine' | 'square' | 'triangle' | 'sawtooth';
+    frequency: number; 
+    depth: number;     
+    min?: number;
+    max?: number;
+}
+
+export interface EmbellishmentDef {
+    url: string;
+    probability: number; 
+    volume?: number;     
+    pitchOffset?: number; 
+}
+
 export interface InstrumentDefinition {
     id: string;
     name: string;
@@ -43,8 +76,9 @@ export interface InstrumentDefinition {
             crossfade?: number;
         };
         noteCut?: boolean; 
-        
-        // --- TONE SHAPING ---
+        portamento?: number; // Glide time in seconds (0 = off)
+
+        // --- NEW MODULES ---
         filter?: FilterDef;
         eq?: EQDef;
         lfos?: LFODef[];
@@ -57,8 +91,8 @@ export interface InstrumentDefinition {
         };
         
         embellishments?: EmbellishmentDef[];
-
-        // Deprecated
+        
+        // Deprecated but kept for compatibility
         panning?: {
             enabled: boolean;
             type?: 'sine' | 'square' | 'triangle' | 'sawtooth';
@@ -95,12 +129,16 @@ export interface InstrumentConfig {
         sustain?: number;
         release?: number;
         octaveOffset?: number;
-        reverb?: number;      // 0-100 (Mix)
-        delay?: number;       // 0-100 (Mix/Feedback)
-        distortion?: number;  // 0-100 (Amount)
-        bitcrush?: number;    // 0-100 (Mix/Depth)
         
-        effects?: EffectCommand[]; // Keep existing generic slot for future use
+        reverb?: number;      
+        delay?: number;       
+        distortion?: number;  
+        bitcrush?: number;    
+        
+        filter?: FilterDef;
+        eq?: EQDef;
+        
+        effects?: EffectCommand[];
     };
 }
 
@@ -164,37 +202,3 @@ export interface LigatureTrack {
 }
 
 export type NoteGroup = NoteDef[];
-
-export interface FilterDef {
-    type: 'lowpass' | 'highpass' | 'bandpass' | 'notch' | 'allpass' | 'peaking' | 'lowshelf' | 'highshelf';
-    frequency: number; // Hz
-    rolloff?: -12 | -24 | -48 | -96;
-    Q?: number;
-    gain?: number; // Used for shelving/peaking
-}
-
-// NEW: EQ Configuration
-export interface EQDef {
-    low: number;  // Gain in dB
-    mid: number;
-    high: number;
-    lowFrequency?: number;
-    highFrequency?: number;
-}
-
-// NEW: LFO Configuration
-export interface LFODef {
-    target: 'pan' | 'filter' | 'volume';
-    type: 'sine' | 'square' | 'triangle' | 'sawtooth';
-    frequency: number; // Hz or "4n"
-    depth: number;     // 0 to 1
-    min?: number;      // Mapping range min (e.g. 500Hz for filter)
-    max?: number;      // Mapping range max (e.g. 2000Hz for filter)
-}
-
-export interface EmbellishmentDef {
-    url: string;
-    probability: number; // 0 to 1
-    volume?: number;     // dB offset
-    pitchOffset?: number; // Semitones
-}

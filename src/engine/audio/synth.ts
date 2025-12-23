@@ -1,12 +1,11 @@
-// src/engine/audio/synth.ts
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 import { Note } from 'tonal';
 
-// Extend the type to hold accessory players
-export type AnySoundSource = (Tone.PolySynth | Tone.Sampler) & { 
+export type AnySoundSource = (Tone.PolySynth | Tone.Sampler | Tone.MonoSynth) & { 
     _panner?: Tone.Panner; 
     _outputNode?: Tone.ToneAudioNode;
+    _filterNode?: Tone.Filter; 
     _embellishments?: { player: Tone.Player, probability: number, volumeOffset: number }[];
 };
 
@@ -15,7 +14,7 @@ const instrumentCache: Record<string, {
     panner: Tone.Panner;
     effects: Tone.ToneAudioNode[];
     lfos: Tone.LFO[];
-    embellishments: Tone.Player[]; // Track to dispose
+    embellishments: Tone.Player[];
 }> = {};
 
 function getCacheKey(def: InstrumentDefinition): string {
@@ -46,6 +45,9 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     const config = def.config;
     let sourceInst: AnySoundSource;
 
+    // --- Determine Polyphony ---
+    const targetPolyphony = (config.noteCut || (config.portamento && config.portamento > 0)) ? 1 : (config.polyphony || 32);
+
     // --- 1. Create Source ---
     if (def.type === 'sampler' && config.urls) {
         let finalUrls = config.urls;
@@ -64,6 +66,10 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         });
 
         sourceInst = (await samplerPromise) as AnySoundSource;
+        
+        if ('maxPolyphony' in sourceInst) {
+            (sourceInst as any).maxPolyphony = targetPolyphony;
+        }
 
         if (config.loop && config.loop.enabled) {
             const sampler = sourceInst as any;
@@ -87,12 +93,22 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         if (oscType.startsWith('fm')) SynthClass = Tone.FMSynth;
         if (oscType.startsWith('am')) SynthClass = Tone.AMSynth;
 
-        sourceInst = new Tone.PolySynth(SynthClass, {
-            oscillator: { type: oscType as any, ...config.oscillator },
-            envelope: envelope,
-        } as any) as AnySoundSource;
-        
-        (sourceInst as Tone.PolySynth).maxPolyphony = Math.min(config.polyphony || 32, 12);
+        if (config.portamento && config.portamento > 0) {
+            const monoSynth = new SynthClass({
+                oscillator: { type: oscType as any, ...config.oscillator },
+                envelope: envelope,
+                portamento: config.portamento
+            }) as Tone.MonoSynth;
+            sourceInst = monoSynth;
+        } else {
+            const polySynth = new Tone.PolySynth(SynthClass, {
+                oscillator: { type: oscType as any, ...config.oscillator },
+                envelope: envelope,
+            } as any) as Tone.PolySynth;
+            
+            polySynth.maxPolyphony = Math.min(targetPolyphony, 24);
+            sourceInst = polySynth;
+        }
     }
 
     sourceInst.volume.value = config.volume || -10;
@@ -174,7 +190,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     effects.push(trackPanner);
     chain.push(trackPanner);
 
-    if (chain.length > 1) {
+    if (chain.length > 0) {
         sourceInst.chain(...chain);
     } else {
         sourceInst.connect(trackPanner);
@@ -193,6 +209,8 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     } else {
         (sourceInst as any)._outputNode = trackPanner;
     }
+    
+    (sourceInst as any)._filterNode = filterNode;
 
     // --- 3. LFOs ---
     const activeLFOs: Tone.LFO[] = [];
@@ -216,8 +234,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         activeLFOs.push(lfo);
     });
 
-    // --- 4. Embellishments (Noise/Fret/Breath) ---
-    // We create separate Player instances for these. They route to the SAME output chain.
+    // --- 4. Embellishments ---
     const embellishmentPlayers: Tone.Player[] = [];
     const embellishmentConfigs: { player: Tone.Player, probability: number, volumeOffset: number }[] = [];
 
@@ -225,14 +242,11 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         await Promise.all(config.embellishments.map(async (emb) => {
             const player = new Tone.Player({
                 url: (config.baseUrl || "") + emb.url,
-                autostart: false
-            }).toDestination(); // Connects to Master eventually via chain?
-            
-            // Route Embellishment -> Same FX Chain as Main Instrument?
-            // Yes, so they sit in the same space.
-            // Connect to first node in chain, OR trackPanner if no chain.
+                autostart: false,
+                volume: emb.volume || 0 
+            });
             const chainStart = chain.length > 0 ? chain[0] : trackPanner;
-            player.disconnect();
+            player.disconnect(); 
             player.connect(chainStart);
 
             await player.loaded;
@@ -244,8 +258,6 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
             });
         }));
     }
-    
-    // Attach to source so AudioProvider can use them
     sourceInst._embellishments = embellishmentConfigs;
 
     instrumentCache[cacheKey] = { 
@@ -262,7 +274,7 @@ export function disposeInstruments() {
     Object.values(instrumentCache).forEach(graph => {
         graph.lfos.forEach(l => l.dispose());
         graph.effects.forEach(effect => effect.dispose());
-        graph.embellishments.forEach(p => p.dispose()); // Dispose players
+        graph.embellishments.forEach(p => p.dispose()); 
         graph.panner.dispose();
         graph.source.dispose();
     });
