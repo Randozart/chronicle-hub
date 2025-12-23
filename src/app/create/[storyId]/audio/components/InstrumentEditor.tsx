@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { InstrumentDefinition } from '@/engine/audio/models';
+import { InstrumentDefinition, EmbellishmentDef } from '@/engine/audio/models';
 import { AUDIO_PRESETS } from '@/engine/audio/presets';
 import * as Tone from 'tone';
 import { getOrMakeInstrument, AnySoundSource } from '@/engine/audio/synth';
@@ -9,6 +9,7 @@ import { Note } from 'tonal';
 
 // --- Sub-Components ---
 
+// Waveform Visualizer
 function WaveformDisplay({ 
     peaks, loopStart, loopEnd, duration 
 }: { 
@@ -64,6 +65,7 @@ function WaveformDisplay({
     return <canvas ref={canvasRef} width="600" height="150" style={{ width: '100%', height: '150px', background: '#000', borderRadius: '4px' }} />;
 }
 
+// Slider Component
 interface SliderProps {
     label: string; val?: number; onChange: (val: number) => void;
     min?: number; max?: number; step?: number; disabled?: boolean;
@@ -85,6 +87,7 @@ function Slider({ label, val, onChange, min = 0, max = 1, step = 0.01, disabled 
     );
 }
 
+// Main Editor Component
 export default function InstrumentEditor({ 
     data, onSave, onClose, onInsertIntoTrack, onDelete
 }: { 
@@ -156,6 +159,30 @@ export default function InstrumentEditor({
         curr[keys[keys.length - 1]] = val;
         setForm(next);
     };
+    
+    // --- EMBELLISHMENT HANDLERS ---
+    const addEmbellishment = () => {
+        const next = JSON.parse(JSON.stringify(form));
+        if (!next.config.embellishments) next.config.embellishments = [];
+        next.config.embellishments.push({ url: '', probability: 0.1, volume: 0 });
+        setForm(next);
+    };
+
+    const updateEmbellishment = (index: number, field: keyof EmbellishmentDef, val: any) => {
+        const next = JSON.parse(JSON.stringify(form));
+        if (next.config.embellishments) {
+            next.config.embellishments[index][field] = val;
+            setForm(next);
+        }
+    };
+
+    const removeEmbellishment = (index: number) => {
+        const next = JSON.parse(JSON.stringify(form));
+        if (next.config.embellishments) {
+            next.config.embellishments.splice(index, 1);
+            setForm(next);
+        }
+    };
 
     const groupedPresets = Object.values(AUDIO_PRESETS).reduce((acc, curr) => {
         const cat = curr.category || 'Uncategorized';
@@ -192,6 +219,11 @@ export default function InstrumentEditor({
     const c = form.config as any; 
     const handleFilterChange = (key: string, v: any) => handleChange(`config.filter.${key}`, v);
     const handleEqChange = (key: string, v: any) => handleChange(`config.eq.${key}`, v);
+    
+    const handleHumanizeChange = (key: string, v: any) => {
+        if (!c.humanize) handleChange('config.humanize', { enabled: true, [key]: v });
+        else handleChange(`config.humanize.${key}`, v);
+    };
     
     const editorContent = (
         <div>
@@ -256,7 +288,7 @@ export default function InstrumentEditor({
                         <Slider label="Octave Offset" val={form.config.octaveOffset} onChange={(v: number) => handleChange('config.octaveOffset', v)} min={-3} max={3} step={1} />
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                             <input type="checkbox" checked={form.config.noteCut || false} onChange={e => handleChange('config.noteCut', e.target.checked)} />
-                            Enable Note Cut (Monophonic)
+                            Enable Note Cut
                         </label>
                     </div>
                     
@@ -269,7 +301,7 @@ export default function InstrumentEditor({
                     </div>
                 </div>
 
-                {/* COLUMN 2: LOOP & PAN */}
+                {/* COLUMN 2: LOOP & HUMANIZATION */}
                 <div>
                     <h3 style={{ marginTop: 0, color: '#fff' }}>Loop & Pan</h3>
                     <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -296,19 +328,19 @@ export default function InstrumentEditor({
                         </div>
                     </div>
                     
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', marginTop: '1rem' }}>
-                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={form.config.panning?.enabled || false} onChange={e => handleChange('config.panning.enabled', e.target.checked)} />
-                            LFO Auto-Pan
+                    <h3 style={{ marginTop: '1.5rem', color: '#98c379' }}>Humanization</h3>
+                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={c.humanize?.enabled || false} onChange={e => handleHumanizeChange('enabled', e.target.checked)} />
+                            Enable Jitter
                         </label>
-                        <div style={{ opacity: form.config.panning?.enabled ? 1 : 0.5, marginTop: '1rem', display: 'grid', gap: '1rem' }}>
-                            <Slider label="Freq (Hz)" val={form.config.panning?.frequency} onChange={(v: number) => handleChange('config.panning.frequency', v)} min={0.1} max={10} />
-                            <Slider label="Depth" val={form.config.panning?.depth} onChange={(v: number) => handleChange('config.panning.depth', v)} max={1} />
+                        <div style={{ opacity: c.humanize?.enabled ? 1 : 0.5 }}>
+                            <Slider label="Velocity Var" val={c.humanize?.velocity ?? 0.1} onChange={(v: number) => handleHumanizeChange('velocity', v)} max={1} />
                         </div>
                     </div>
                 </div>
 
-                {/* COLUMN 3: TONE SHAPING (NEW) */}
+                {/* COLUMN 3: TONE SHAPING (Filter/EQ) */}
                 <div>
                     <h3 style={{ marginTop: 0, color: '#98c379' }}>Tone Shaping</h3>
                     
@@ -339,12 +371,11 @@ export default function InstrumentEditor({
                     </div>
                 </div>
 
-                {/* COLUMN 4: EFFECTS RACK */}
+                {/* COLUMN 4: FX & EMBELLISHMENTS */}
                 <div>
                     <h3 style={{ marginTop: 0, color: '#61afef' }}>Effects Rack</h3>
                     <div style={{ background: '#1c1e24', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1.5rem', border: '1px solid #333' }}>
                         
-                        {/* Reverb */}
                         <div>
                             <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
                                 <span style={{color: '#61afef', fontSize:'0.9rem', fontWeight:'bold'}}>Reverb</span>
@@ -353,7 +384,6 @@ export default function InstrumentEditor({
                             <Slider label="Mix" val={c.reverb} onChange={(v: number) => handleChange('config.reverb', v)} max={100} step={1} />
                         </div>
 
-                        {/* Delay */}
                         <div>
                             <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
                                 <span style={{color: '#61afef', fontSize:'0.9rem', fontWeight:'bold'}}>Delay</span>
@@ -362,7 +392,6 @@ export default function InstrumentEditor({
                             <Slider label="Mix" val={c.delay} onChange={(v: number) => handleChange('config.delay', v)} max={100} step={1} />
                         </div>
 
-                        {/* Distortion */}
                         <div>
                             <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
                                 <span style={{color: '#e06c75', fontSize:'0.9rem', fontWeight:'bold'}}>Distortion</span>
@@ -371,7 +400,6 @@ export default function InstrumentEditor({
                             <Slider label="Amount" val={c.distortion} onChange={(v: number) => handleChange('config.distortion', v)} max={100} step={1} />
                         </div>
 
-                        {/* BitCrush */}
                         <div>
                             <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
                                 <span style={{color: '#e06c75', fontSize:'0.9rem', fontWeight:'bold'}}>BitCrusher</span>
@@ -379,7 +407,29 @@ export default function InstrumentEditor({
                             </div>
                             <Slider label="Mix" val={c.bitcrush} onChange={(v: number) => handleChange('config.bitcrush', v)} max={100} step={1} />
                         </div>
+                    </div>
 
+                    <h3 style={{ marginTop: '1.5rem', color: '#e5c07b' }}>Embellishments</h3>
+                    <div style={{ background: '#1c1e24', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
+                        {c.embellishments?.map((emb: EmbellishmentDef, i: number) => (
+                            <div key={i} style={{ marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '0.7rem', color: '#aaa' }}>Sample URL</label>
+                                    <button onClick={() => removeEmbellishment(i)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
+                                </div>
+                                <input 
+                                    value={emb.url} 
+                                    onChange={e => updateEmbellishment(i, 'url', e.target.value)}
+                                    style={{ width: '100%', background: '#111', border: '1px solid #444', color: '#ccc', fontSize: '0.8rem', marginBottom: '8px' }}
+                                    placeholder="fret_noise.mp3"
+                                />
+                                <Slider label="Prob." val={emb.probability} onChange={(v: number) => updateEmbellishment(i, 'probability', v)} max={1} />
+                                <Slider label="Vol (dB)" val={emb.volume} onChange={(v: number) => updateEmbellishment(i, 'volume', v)} min={-40} max={0} step={1} />
+                            </div>
+                        ))}
+                        <button onClick={addEmbellishment} style={{ width: '100%', background: '#333', border: '1px dashed #555', color: '#ccc', padding: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                            + Add Layer
+                        </button>
                     </div>
                 </div>
 

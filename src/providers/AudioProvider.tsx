@@ -36,6 +36,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
     
+    // Playback State Control
     const playbackRequestIdRef = useRef(0);
     const previewSynthRef = useRef<AnySoundSource | null>(null);
     const currentPreviewIdRef = useRef<string>('');
@@ -61,9 +62,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             await Tone.start();
             masterGainRef.current = new Tone.Gain(0);
             limiterRef.current = new Tone.Limiter(-1);
+            
             masterGainRef.current.connect(limiterRef.current);
             limiterRef.current.toDestination();
+            
             setIsInitialized(true);
+            console.log("Audio Engine Initialized");
         } catch (e) {
             console.error("Failed to start audio context:", e);
         }
@@ -79,17 +83,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 previewSynthRef.current.dispose();
             }
             try {
-                // IMPORTANT: Pass overrides merged into config if editing?
-                // Actually, InstrumentEditor passes the FULL mutated definition including config, 
-                // so getOrMakeInstrument receives the effects config directly.
                 const newSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_${instrumentDef.id}` });
                 
-                // --- FIX: Connect Output Node instead of Synth ---
+                // Connect Output Node
                 const output = (newSynth as any)._outputNode || newSynth;
                 
-                // Disconnect first to be safe (Tone.js sometimes auto-connects to destination on creation?)
-                // PolySynth usually doesn't, but let's be sure.
-                
+                // Disconnect first to be safe
+                output.disconnect();
                 if (masterGainRef.current) {
                     output.connect(masterGainRef.current);
                 } else {
@@ -107,11 +107,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         previewSynthRef.current?.triggerAttack(note, Tone.now());
     };
 
-    
     const stopPreviewNote = (note?: string) => {
         if (previewSynthRef.current) {
-            if (note) previewSynthRef.current.triggerRelease(note, Tone.now());
-            else previewSynthRef.current.releaseAll();
+            if (note) {
+                previewSynthRef.current.triggerRelease(note, Tone.now());
+            } else {
+                previewSynthRef.current.releaseAll();
+            }
         }
     };
 
@@ -121,10 +123,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
         try {
             const tempSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_oneshot_${Math.random()}` });
-            
-            // --- FIX: Connect Output Node ---
             const output = (tempSynth as any)._outputNode || tempSynth;
             
+            output.disconnect();
             if (masterGainRef.current) {
                 output.connect(masterGainRef.current);
             }
@@ -143,46 +144,65 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!masterGainRef.current || !limiterRef.current) return;
+        
         masterGainRef.current.gain.value = Tone.dbToGain(masterVolume);
         limiterRef.current.threshold.value = limiterSettings.enabled ? limiterSettings.threshold : 0;
     }, [masterVolume, limiterSettings, isInitialized]);
 
     const stop = () => {
         const transport = Tone.getTransport();
+        
+        // 1. Mute master immediately
         if(masterGainRef.current) {
             masterGainRef.current.gain.cancelScheduledValues(0);
             masterGainRef.current.gain.value = 0; 
+            
             setTimeout(() => { 
-                if(masterGainRef.current) masterGainRef.current.gain.rampTo(Tone.dbToGain(masterVolume), 0.1); 
+                if(masterGainRef.current) {
+                    masterGainRef.current.gain.rampTo(Tone.dbToGain(masterVolume), 0.1); 
+                }
             }, 50);
         }
+
         transport.stop();
         transport.cancel(); 
+        
+        // 2. Dispose Parts
         scheduledPartsRef.current.forEach(part => part.dispose());
         scheduledPartsRef.current = [];
+        
         scheduledEventsRef.current.forEach(id => transport.clear(id));
         scheduledEventsRef.current = [];
+
         activeNotesPerPartRef.current.clear();
         noteCacheRef.current.clear();
+        
+        // 3. Reset Synth State
         activeSynthsRef.current.forEach(synth => {
             synth.releaseAll();
-            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) synth.volume.cancelScheduledValues(0);
+            
+            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                synth.volume.cancelScheduledValues(0);
+            }
             if (synth._panner) {
                 synth._panner.pan.cancelScheduledValues(0);
                 synth._panner.pan.value = 0;
             }
         });
+        
         currentTrackRef.current = null;
         setIsPlaying(false);
     };
 
-const playTrack = async (
+    const playTrack = async (
         ligatureSource: string, 
         instruments: InstrumentDefinition[],
         mockQualities: PlayerQualities = {}
     ) => {
         if (!isInitialized) await initializeAudio();
+        
         const requestId = ++playbackRequestIdRef.current;
+
         const parser = new LigatureParser();
         const track = parser.parse(ligatureSource, mockQualities);
         
@@ -193,10 +213,12 @@ const playTrack = async (
         instrumentDefsRef.current = instruments;
         
         const trackSynthMap = new Map<string, AnySoundSource>();
+        
         setIsLoadingSamples(true);
         
         for (const [trackName, instConfig] of Object.entries(track.instruments)) {
             if (playbackRequestIdRef.current !== requestId) return;
+
             const baseDef = instruments.find(i => i.id === instConfig.id);
             if (!baseDef) continue;
 
@@ -220,16 +242,26 @@ const playTrack = async (
                     // @ts-ignore
                     distortion: instConfig.overrides.distortion,
                     // @ts-ignore
-                    bitcrush: instConfig.overrides.bitcrush
+                    bitcrush: instConfig.overrides.bitcrush,
+                    
+                    // --- PASS TONE SHAPING ---
+                    // @ts-ignore
+                    filter: instConfig.overrides.filter ? instConfig.overrides.filter : baseDef.config.filter,
+                    // @ts-ignore
+                    eq: instConfig.overrides.eq ? instConfig.overrides.eq : baseDef.config.eq,
+                    
+                    // --- PASS EMBELLISHMENTS ---
+                    // @ts-ignore
+                    embellishments: baseDef.config.embellishments
                 }
             };
-
+            
             const synth = await getOrMakeInstrument(mergedDef);
+            
             if (playbackRequestIdRef.current !== requestId) return;
 
+            // Connect Output Node
             const output = (synth as any)._outputNode || synth;
-            
-            // Clean disconnect first
             output.disconnect(); 
             
             if (masterGainRef.current) {
@@ -241,6 +273,7 @@ const playTrack = async (
         }
         
         setIsLoadingSamples(false);
+
         if (playbackRequestIdRef.current !== requestId) return;
 
         const transport = Tone.getTransport(); 
@@ -249,6 +282,7 @@ const playTrack = async (
         transport.swing = track.config.swing || 0;
         
         playSequenceFrom(0, transport, trackSynthMap); 
+        
         if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
@@ -296,8 +330,10 @@ const playTrack = async (
             item.layers.forEach(layer => {
                 let currentBarOffset = 0;
                 let loopGuard = 0;
+                
                 while (currentBarOffset < maxChainBars && loopGuard++ < 1000) {
                     const startOffset = currentBarOffset;
+
                     for (const chainItem of layer.items) {
                         if (currentBarOffset >= maxChainBars) break;
                         const pattern = track.patterns[chainItem.id];
@@ -317,15 +353,26 @@ const playTrack = async (
                             const trackMod = pattern.trackModifiers[trackName];
                             const trackEffects = trackMod?.effects || [];
                             
-                            // FIX: Get global octave offset from instrument config
                             const instOctaveOffset = instConfig.overrides.octaveOffset ?? baseDef?.config.octaveOffset ?? 0;
+
+                            // Humanization Settings
+                            const humanizeGlobal = runningConfig.humanize || 0;
+                            const humanizeInst = baseDef?.config.humanize?.enabled ? (baseDef.config.humanize.velocity || 0.1) : 0;
+                            const totalHumanize = Math.max(humanizeGlobal, humanizeInst);
 
                             const toneEvents = events.map(event => {
                                 const totalVolDb = (chainItem.volume || 0) + (trackMod?.volume || 0);
                                 let velocity = Math.pow(10, totalVolDb / 20);
+                                
                                 const noteVol = event.notes[0]?.volume || 0;
                                 if (noteVol !== 0) velocity = Math.pow(10, (totalVolDb + noteVol) / 20);
                                 
+                                // Algorithmic Velocity Jitter
+                                if (totalHumanize > 0) {
+                                    const jitter = (Math.random() - 0.5) * 0.4 * totalHumanize;
+                                    velocity = Math.max(0, Math.min(1, velocity + jitter));
+                                }
+
                                 const timeInSlots = event.time;
                                 const bar = Math.floor(timeInSlots / slotsPerBar);
                                 const beatDivisor = (grid * (4 / timeSig[1]));
@@ -341,7 +388,7 @@ const playTrack = async (
                                         runningConfig.scaleMode, 
                                         (chainItem.transposition || 0) + (trackMod?.transpose || 0), 
                                         mapping,
-                                        instOctaveOffset // Pass octave offset
+                                        instOctaveOffset
                                     )
                                 );
 
@@ -357,53 +404,65 @@ const playTrack = async (
 
                              if (synth) {
                                 const part = new Tone.Part((time, value) => {
-                                    const baseVolume = instConfig.overrides.volume ?? baseDef?.config.volume ?? -10;
-                                    let finalVel = value.velocity;
-                                    
-                                    const humanizeAmt = runningConfig.humanize || 0;
-                                    if (humanizeAmt > 0) {
-                                        time += (Math.random() - 0.5) * 0.03 * humanizeAmt; 
-                                        finalVel = finalVel * (1 + (Math.random() - 0.5) * 0.2 * humanizeAmt);
+                                    // Algorithmic Timing Jitter
+                                    let playTime = time;
+                                    if (totalHumanize > 0) {
+                                        playTime += (Math.random() - 0.5) * 0.06 * totalHumanize; 
                                     }
-                                    finalVel = Math.max(0, Math.min(1, finalVel));
 
+                                    const baseVolume = instConfig.overrides.volume ?? baseDef?.config.volume ?? -10;
+                                    
                                     if (synth._panner) {
                                         let panVal = value.pan;
                                         const noteEffects = value.noteDefs[0]?.effects || [];
                                         const panFx = noteEffects.find(fx => fx.code === 'P');
                                         if (panFx) panVal = panFx.value / 100;
-                                        synth._panner.pan.setValueAtTime(panVal, time);
+                                        synth._panner.pan.setValueAtTime(panVal, playTime);
                                     }
 
-                                    synth.volume.cancelScheduledValues(time);
-                                    synth.volume.setValueAtTime(baseVolume, time);
+                                    synth.volume.cancelScheduledValues(playTime);
+                                    synth.volume.setValueAtTime(baseVolume, playTime);
 
                                     const noteEffects = value.noteDefs[0]?.effects || [];
                                     [...instEffects, ...trackEffects, ...noteEffects].forEach(fx => {
                                         if (fx.code === 'F') {
                                             const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
                                             const targetVol = baseVolume - range;
-                                            synth.volume.setValueAtTime(baseVolume, time);
-                                            synth.volume.rampTo(targetVol, value.duration - 0.1, time);
+                                            synth.volume.setValueAtTime(baseVolume, playTime);
+                                            synth.volume.rampTo(targetVol, value.duration - 0.1, playTime);
                                         } else if (fx.code === 'S') {
                                             const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
                                             const startVol = baseVolume - range;
-                                            synth.volume.setValueAtTime(startVol, time);
-                                            synth.volume.rampTo(baseVolume, value.duration - 0.1, time);
+                                            synth.volume.setValueAtTime(startVol, playTime);
+                                            synth.volume.rampTo(baseVolume, value.duration - 0.1, playTime);
                                         }
                                     });
 
+                                    // Embellishments
+                                    if (synth._embellishments) {
+                                        synth._embellishments.forEach(emb => {
+                                            if (Math.random() < emb.probability) {
+                                                // Trigger embellishment player
+                                                // Note: Does not currently support pitch offset, but supports probability trigger
+                                                emb.player.start(playTime);
+                                            }
+                                        });
+                                    }
+
                                      if (baseDef?.config.noteCut) {
                                         const previousNotes = activeNotesPerPartRef.current.get(part);
-                                        if (previousNotes) synth.triggerRelease(previousNotes, time);
-                                        synth.triggerAttack(value.notes, time, finalVel);
+                                        if (previousNotes) synth.triggerRelease(previousNotes, playTime);
+                                        
+                                        synth.triggerAttack(value.notes, playTime, value.velocity);
+                                        
                                         transport.scheduleOnce((releaseTime) => {
                                             synth.triggerRelease(value.notes, releaseTime);
                                             activeNotesPerPartRef.current.delete(part);
-                                        }, time + value.duration);
+                                        }, playTime + value.duration);
+                                        
                                         activeNotesPerPartRef.current.set(part, value.notes);
                                     } else {
-                                        synth.triggerAttackRelease(value.notes, value.duration, time, finalVel);
+                                        synth.triggerAttackRelease(value.notes, value.duration, playTime, value.velocity);
                                     }
                                 }, toneEvents).start(0);
                                 scheduledPartsRef.current.push(part);
@@ -416,6 +475,7 @@ const playTrack = async (
             });
             totalBars += maxChainBars;
         }
+        
         transport.loop = true;
         transport.loopEnd = `${totalBars}:0:0`;
     };
@@ -459,7 +519,12 @@ const playTrack = async (
         }}>
             {children}
             {isLoadingSamples && (
-                <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999, background: '#111', color: '#61afef', padding: '10px 20px', borderRadius: '4px', border: '1px solid #61afef', fontSize: '0.8rem', boxShadow: '0 0 10px rgba(97, 175, 239, 0.2)' }}>
+                <div style={{
+                    position: 'fixed', bottom: 20, right: 20, zIndex: 9999,
+                    background: '#111', color: '#61afef', padding: '10px 20px',
+                    borderRadius: '4px', border: '1px solid #61afef', fontSize: '0.8rem',
+                    boxShadow: '0 0 10px rgba(97, 175, 239, 0.2)'
+                }}>
                     Loading Instruments...
                 </div>
             )}

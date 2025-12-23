@@ -44,12 +44,21 @@ export interface InstrumentDefinition {
         };
         noteCut?: boolean; 
         
-        // --- NEW MODULES ---
+        // --- TONE SHAPING ---
         filter?: FilterDef;
         eq?: EQDef;
         lfos?: LFODef[];
         
-        // Deprecated but kept for compatibility
+        // --- HUMANIZATION & ARTICULATION ---
+        humanize?: {
+            enabled: boolean;
+            velocity?: number; // Variance (0-1)
+            timing?: number;   // Variance (0-1)
+        };
+        
+        embellishments?: EmbellishmentDef[];
+
+        // Deprecated
         panning?: {
             enabled: boolean;
             type?: 'sine' | 'square' | 'triangle' | 'sawtooth';
@@ -57,7 +66,6 @@ export interface InstrumentDefinition {
             depth?: number;     
         };
         
-        // Overrides now support these new props
         overrides?: any; 
     };
 }
@@ -182,4 +190,11 @@ export interface LFODef {
     depth: number;     // 0 to 1
     min?: number;      // Mapping range min (e.g. 500Hz for filter)
     max?: number;      // Mapping range max (e.g. 2000Hz for filter)
+}
+
+export interface EmbellishmentDef {
+    url: string;
+    probability: number; // 0 to 1
+    volume?: number;     // dB offset
+    pitchOffset?: number; // Semitones
 }

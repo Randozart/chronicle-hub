@@ -3,19 +3,25 @@ import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 import { Note } from 'tonal';
 
-export type AnySoundSource = (Tone.PolySynth | Tone.Sampler) & { _panner?: Tone.Panner; _outputNode?: Tone.ToneAudioNode };
+// Extend the type to hold accessory players
+export type AnySoundSource = (Tone.PolySynth | Tone.Sampler) & { 
+    _panner?: Tone.Panner; 
+    _outputNode?: Tone.ToneAudioNode;
+    _embellishments?: { player: Tone.Player, probability: number, volumeOffset: number }[];
+};
 
 const instrumentCache: Record<string, {
     source: AnySoundSource;
     panner: Tone.Panner;
     effects: Tone.ToneAudioNode[];
-    lfos: Tone.LFO[]; // Track LFOs to dispose them later
+    lfos: Tone.LFO[];
+    embellishments: Tone.Player[]; // Track to dispose
 }> = {};
 
 function getCacheKey(def: InstrumentDefinition): string {
     return JSON.stringify({
         id: def.id,
-        config: def.config, // Deep compare full config
+        config: def.config, 
         overrides: def.config.overrides,
     });
 }
@@ -31,6 +37,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         }
         graph.lfos.forEach(l => l.dispose());
         graph.effects.forEach(e => e.dispose());
+        graph.embellishments.forEach(e => e.dispose());
         graph.panner.dispose();
         graph.source.dispose();
         delete instrumentCache[key];
@@ -57,6 +64,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         });
 
         sourceInst = (await samplerPromise) as AnySoundSource;
+
         if (config.loop && config.loop.enabled) {
             const sampler = sourceInst as any;
             sampler.loop = true;
@@ -88,15 +96,14 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     }
 
     sourceInst.volume.value = config.volume || -10;
-    sourceInst.disconnect(); // We will chain manually
+    sourceInst.disconnect(); 
 
-    // --- 2. Build Signal Chain ---
+    // --- 2. Build Effects Chain ---
     const effects: Tone.ToneAudioNode[] = [];
-    const activeLFOs: Tone.LFO[] = [];
     const chain: Tone.ToneAudioNode[] = [];
     const c = config as any; 
 
-    // A. Distortion / BitCrush (Tone Coloring)
+    // A. Distortion / BitCrush
     if (c.bitcrush && c.bitcrush > 0) {
         const crusher = new Tone.BitCrusher(4);
         crusher.wet.value = c.bitcrush / 100;
@@ -112,7 +119,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         chain.push(dist);
     }
 
-    // B. Filter (Subtractive)
+    // B. Filter
     let filterNode: Tone.Filter | null = null;
     if (config.filter) {
         filterNode = new Tone.Filter({
@@ -126,7 +133,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         chain.push(filterNode);
     }
 
-    // C. EQ (Mixing)
+    // C. EQ
     if (config.eq) {
         const eq = new Tone.EQ3({
             low: config.eq.low,
@@ -139,7 +146,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         chain.push(eq);
     }
 
-    // D. Time-Based Effects (Delay -> Reverb)
+    // D. Delay & Reverb
     if (c.delay && c.delay > 0) {
         const delay = new Tone.PingPongDelay({
             delayTime: "8n",
@@ -161,81 +168,93 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         chain.push(reverb);
     }
 
-    // E. Output Stage & Modulation Targets
-    // We need a Volume Node for LFO Tremolo
-    const volumeNode = new Tone.Volume(0);
-    effects.push(volumeNode);
-    chain.push(volumeNode);
-
-    // We need a Panner Node
+    // E. Output
     const trackPanner = new Tone.Panner(0);
     sourceInst._panner = trackPanner;
     effects.push(trackPanner);
     chain.push(trackPanner);
 
-    // Connect the Chain: Source -> FX... -> Volume -> Panner
-    if (chain.length > 0) {
+    if (chain.length > 1) {
         sourceInst.chain(...chain);
     } else {
         sourceInst.connect(trackPanner);
     }
 
-    // --- 3. LFO Modulation ---
-    const lfosToApply = config.lfos || [];
-    
-    // Legacy support for 'panning' prop
-    if (config.panning && config.panning.enabled && !lfosToApply.find(l => l.target === 'pan')) {
-        lfosToApply.push({
-            target: 'pan',
-            type: config.panning.type || 'sine',
+    // F. Auto-Panner
+    if (config.panning && config.panning.enabled) {
+        const autoPanner = new Tone.AutoPanner({
             frequency: config.panning.frequency || 2,
+            type: config.panning.type || 'sine',
             depth: config.panning.depth || 1,
-            min: -1, max: 1
-        });
+        }).start();
+        trackPanner.connect(autoPanner);
+        (sourceInst as any)._outputNode = autoPanner;
+        effects.push(autoPanner);
+    } else {
+        (sourceInst as any)._outputNode = trackPanner;
     }
 
+    // --- 3. LFOs ---
+    const activeLFOs: Tone.LFO[] = [];
+    const lfosToApply = config.lfos || [];
+    
     lfosToApply.forEach(def => {
         const lfo = new Tone.LFO({
             type: def.type,
             frequency: def.frequency,
-            min: def.min ?? (def.target === 'filter' ? 200 : -1), // Default ranges
+            min: def.min ?? (def.target === 'filter' ? 200 : -1),
             max: def.max ?? (def.target === 'filter' ? 2000 : 1),
-            amplitude: def.depth // Use amplitude for depth
+            amplitude: def.depth
         }).start();
 
         if (def.target === 'pan') {
-            // LFO -> Panner.pan
             lfo.connect(trackPanner.pan);
-        } else if (def.target === 'volume') {
-            // LFO -> Volume.volume (gain is logarithmic, volume node handles db?)
-            // Tone.LFO outputs signal. Connecting to .volume (Signal) works but requires range.
-            // Better to connect to a Gain node's gain property, but we used Volume node.
-            // Volume.volume is in dB. LFO usually 0-1.
-            // Let's use a specialized scaling for Tremolo:
-            // Map 0..1 to -Infinity..0 ?
-            // Simpler: Connect LFO to a Gain Node.
-            // Re-architect: Add a specific Gain Node for Tremolo if requested.
-            const tremoloGain = new Tone.Gain(1);
-            volumeNode.connect(tremoloGain); // Insert after volume
-            // Actually, we must insert INTO the chain.
-            // It's easier to modulate the Filter Frequency.
         } else if (def.target === 'filter' && filterNode) {
             lfo.connect(filterNode.frequency);
         }
         
         activeLFOs.push(lfo);
     });
-    
-    // --- 4. Final Output ---
-    // Note: AudioProvider connects _outputNode to Master.
-    // If we have no LFOs, trackPanner is the end.
-    // If we have LFOs, they modulate params, but don't break the audio path (LFOs are control signals).
-    // EXCEPT if we added extra nodes (like for Tremolo).
-    
-    // For now, trackPanner is always the audio exit.
-    (sourceInst as any)._outputNode = trackPanner;
 
-    instrumentCache[cacheKey] = { source: sourceInst, panner: trackPanner, effects, lfos: activeLFOs };
+    // --- 4. Embellishments (Noise/Fret/Breath) ---
+    // We create separate Player instances for these. They route to the SAME output chain.
+    const embellishmentPlayers: Tone.Player[] = [];
+    const embellishmentConfigs: { player: Tone.Player, probability: number, volumeOffset: number }[] = [];
+
+    if (config.embellishments) {
+        await Promise.all(config.embellishments.map(async (emb) => {
+            const player = new Tone.Player({
+                url: (config.baseUrl || "") + emb.url,
+                autostart: false
+            }).toDestination(); // Connects to Master eventually via chain?
+            
+            // Route Embellishment -> Same FX Chain as Main Instrument?
+            // Yes, so they sit in the same space.
+            // Connect to first node in chain, OR trackPanner if no chain.
+            const chainStart = chain.length > 0 ? chain[0] : trackPanner;
+            player.disconnect();
+            player.connect(chainStart);
+
+            await player.loaded;
+            embellishmentPlayers.push(player);
+            embellishmentConfigs.push({ 
+                player, 
+                probability: emb.probability, 
+                volumeOffset: emb.volume || 0 
+            });
+        }));
+    }
+    
+    // Attach to source so AudioProvider can use them
+    sourceInst._embellishments = embellishmentConfigs;
+
+    instrumentCache[cacheKey] = { 
+        source: sourceInst, 
+        panner: trackPanner, 
+        effects, 
+        lfos: activeLFOs,
+        embellishments: embellishmentPlayers 
+    };
     return sourceInst;
 }
 
@@ -243,6 +262,7 @@ export function disposeInstruments() {
     Object.values(instrumentCache).forEach(graph => {
         graph.lfos.forEach(l => l.dispose());
         graph.effects.forEach(effect => effect.dispose());
+        graph.embellishments.forEach(p => p.dispose()); // Dispose players
         graph.panner.dispose();
         graph.source.dispose();
     });
