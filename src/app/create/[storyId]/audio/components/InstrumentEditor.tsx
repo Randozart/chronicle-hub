@@ -9,7 +9,6 @@ import { Note } from 'tonal';
 
 // --- Sub-Components ---
 
-// Waveform Visualizer
 function WaveformDisplay({ 
     peaks, loopStart, loopEnd, duration 
 }: { 
@@ -86,7 +85,6 @@ function Slider({ label, val, onChange, min = 0, max = 1, step = 0.01, disabled 
     );
 }
 
-// Main Editor Component
 export default function InstrumentEditor({ 
     data, onSave, onClose, onInsertIntoTrack, onDelete
 }: { 
@@ -98,7 +96,6 @@ export default function InstrumentEditor({
 }) {
     const [form, setForm] = useState(data);
     const [isPreviewing, setIsPreviewing] = useState(false);
-    const activeSynthRef = useRef<AnySoundSource | null>(null);
     const [sampleDuration, setSampleDuration] = useState(0);
     const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
     const { playPreviewNote, startPreviewNote, stopPreviewNote } = useAudio();
@@ -106,9 +103,7 @@ export default function InstrumentEditor({
     useEffect(() => setForm(data), [data]);
     
     useEffect(() => {
-        return () => {
-            stopPreviewNote();
-        };
+        return () => stopPreviewNote();
     }, [stopPreviewNote]);
 
     useEffect(() => {
@@ -180,21 +175,11 @@ export default function InstrumentEditor({
         }
     };
 
-    const previewOneShot = () => {
-        playPreviewNote(form, "C4", "8n");
-    };
-    const handlePreviewStart = () => {
-        startPreviewNote(form, 'C4');
-    };
-    const handlePreviewStop = () => {
-        stopPreviewNote('C4');
-    };
+    const previewOneShot = () => playPreviewNote(form, "C4", "8n");
+    const handlePreviewStart = () => startPreviewNote(form, 'C4');
+    const handlePreviewStop = () => stopPreviewNote('C4');
 
-    const handleSaveClick = () => {
-        onSave(form);
-        if (onClose) onClose();
-    };
-
+    const handleSaveClick = () => { onSave(form); if (onClose) onClose(); };
     const handleInsertClick = () => {
         if (onInsertIntoTrack) {
             const originalPreset = Object.values(AUDIO_PRESETS).find(p => JSON.stringify(p.config) === JSON.stringify(form.config));
@@ -203,8 +188,10 @@ export default function InstrumentEditor({
         }
     };
     
-    // Allow dynamic access for effect props
+    // Dynamic config access
     const c = form.config as any; 
+    const handleFilterChange = (key: string, v: any) => handleChange(`config.filter.${key}`, v);
+    const handleEqChange = (key: string, v: any) => handleChange(`config.eq.${key}`, v);
     
     const editorContent = (
         <div>
@@ -259,7 +246,7 @@ export default function InstrumentEditor({
                 </div>
             )}
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem' }}>
                 
                 {/* COLUMN 1: CORE */}
                 <div>
@@ -321,9 +308,40 @@ export default function InstrumentEditor({
                     </div>
                 </div>
 
-                {/* COLUMN 3: EFFECTS RACK (NEW) */}
+                {/* COLUMN 3: TONE SHAPING (NEW) */}
                 <div>
-                    <h3 style={{ marginTop: 0, color: '#fff' }}>Effects Rack</h3>
+                    <h3 style={{ marginTop: 0, color: '#98c379' }}>Tone Shaping</h3>
+                    
+                    {/* Filter */}
+                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
+                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
+                            <label style={{fontWeight:'bold', color: '#ccc'}}>Filter</label>
+                            <select 
+                                value={c.filter?.type || 'lowpass'} 
+                                onChange={e => handleFilterChange('type', e.target.value)}
+                                style={{background:'#111', color:'#ccc', border:'none', fontSize:'0.8rem', padding:'2px', borderRadius:'2px'}}
+                            >
+                                <option value="lowpass">Low Pass</option>
+                                <option value="highpass">High Pass</option>
+                                <option value="bandpass">Band Pass</option>
+                            </select>
+                        </div>
+                        <Slider label="Freq (Hz)" val={c.filter?.frequency ?? 20000} onChange={(v: number) => handleFilterChange('frequency', v)} min={20} max={20000} step={10} />
+                        <Slider label="Resonance (Q)" val={c.filter?.Q ?? 1} onChange={(v: number) => handleFilterChange('Q', v)} min={0.1} max={10} />
+                    </div>
+
+                    {/* EQ */}
+                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px' }}>
+                        <div style={{fontWeight:'bold', marginBottom:'0.5rem', color: '#ccc'}}>3-Band EQ</div>
+                        <Slider label="Low (dB)" val={c.eq?.low ?? 0} onChange={(v: number) => handleEqChange('low', v)} min={-20} max={10} step={1} />
+                        <Slider label="Mid (dB)" val={c.eq?.mid ?? 0} onChange={(v: number) => handleEqChange('mid', v)} min={-20} max={10} step={1} />
+                        <Slider label="High (dB)" val={c.eq?.high ?? 0} onChange={(v: number) => handleEqChange('high', v)} min={-20} max={10} step={1} />
+                    </div>
+                </div>
+
+                {/* COLUMN 4: EFFECTS RACK */}
+                <div>
+                    <h3 style={{ marginTop: 0, color: '#61afef' }}>Effects Rack</h3>
                     <div style={{ background: '#1c1e24', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1.5rem', border: '1px solid #333' }}>
                         
                         {/* Reverb */}
@@ -373,7 +391,7 @@ export default function InstrumentEditor({
     if (onClose) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-                <div style={{ background: '#181a1f', padding: '2rem', borderRadius: '8px', width: '90%', maxWidth: '1100px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 5px 15px rgba(0,0,0,0.5)', border: '1px solid #444' }} onClick={e => e.stopPropagation()}>
+                <div style={{ background: '#181a1f', padding: '2rem', borderRadius: '8px', width: '90%', maxWidth: '1400px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 5px 15px rgba(0,0,0,0.5)', border: '1px solid #444' }} onClick={e => e.stopPropagation()}>
                     {editorContent}
                 </div>
             </div>

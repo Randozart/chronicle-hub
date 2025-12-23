@@ -71,21 +71,43 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const startPreviewNote = async (instrumentDef: InstrumentDefinition, note: string) => {
         if (!isInitialized) await initializeAudio();
+
         const newId = instrumentDef.id + JSON.stringify(instrumentDef.config);
+
         if (!previewSynthRef.current || currentPreviewIdRef.current !== newId) {
-            if (previewSynthRef.current) previewSynthRef.current.dispose();
+            if (previewSynthRef.current) {
+                previewSynthRef.current.dispose();
+            }
             try {
+                // IMPORTANT: Pass overrides merged into config if editing?
+                // Actually, InstrumentEditor passes the FULL mutated definition including config, 
+                // so getOrMakeInstrument receives the effects config directly.
                 const newSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_${instrumentDef.id}` });
-                if (masterGainRef.current) newSynth.connect(masterGainRef.current);
-                else newSynth.toDestination();
+                
+                // --- FIX: Connect Output Node instead of Synth ---
+                const output = (newSynth as any)._outputNode || newSynth;
+                
+                // Disconnect first to be safe (Tone.js sometimes auto-connects to destination on creation?)
+                // PolySynth usually doesn't, but let's be sure.
+                
+                if (masterGainRef.current) {
+                    output.connect(masterGainRef.current);
+                } else {
+                    output.toDestination();
+                }
+                
                 previewSynthRef.current = newSynth;
                 currentPreviewIdRef.current = newId;
             } catch (e) {
+                console.error("Error creating preview synth:", e);
                 return;
             }
         }
+        
         previewSynthRef.current?.triggerAttack(note, Tone.now());
     };
+
+    
     const stopPreviewNote = (note?: string) => {
         if (previewSynthRef.current) {
             if (note) previewSynthRef.current.triggerRelease(note, Tone.now());
@@ -96,12 +118,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const playPreviewNote = async (instrumentDef: InstrumentDefinition, note: string, duration: Tone.Unit.Time = '8n') => {
         if (!isInitialized) await initializeAudio();
         stopPreviewNote(); 
+
         try {
             const tempSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_oneshot_${Math.random()}` });
-            if (masterGainRef.current) tempSynth.connect(masterGainRef.current);
+            
+            // --- FIX: Connect Output Node ---
+            const output = (tempSynth as any)._outputNode || tempSynth;
+            
+            if (masterGainRef.current) {
+                output.connect(masterGainRef.current);
+            }
+
             tempSynth.triggerAttackRelease(note, duration, Tone.now());
+            
             const releaseTime = instrumentDef.config.envelope?.release ?? 1.0;
-            setTimeout(() => { tempSynth.dispose(); }, (Tone.Time(duration).toSeconds() + releaseTime) * 1000 + 200);
+
+            setTimeout(() => {
+                tempSynth.dispose();
+            }, (Tone.Time(duration).toSeconds() + releaseTime) * 1000 + 200);
         } catch (e) {
             console.error("Error playing one-shot preview:", e);
         }

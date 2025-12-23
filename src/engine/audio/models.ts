@@ -40,19 +40,28 @@ export interface InstrumentDefinition {
             type?: 'forward' | 'pingpong';
             start?: number;
             end?: number;
-            crossfade?: number; // Crossfade time in seconds (e.g., 0.01)
+            crossfade?: number;
         };
         noteCut?: boolean; 
+        
+        // --- NEW MODULES ---
+        filter?: FilterDef;
+        eq?: EQDef;
+        lfos?: LFODef[];
+        
+        // Deprecated but kept for compatibility
         panning?: {
             enabled: boolean;
-            type?: 'sine' | 'square' | 'triangle' | 'sawtooth'; // LFO Waveform
-            frequency?: number; // LFO speed in Hz (e.g., 2)
-            depth?: number;     // LFO amount (0 to 1)
+            type?: 'sine' | 'square' | 'triangle' | 'sawtooth';
+            frequency?: number; 
+            depth?: number;     
         };
+        
+        // Overrides now support these new props
+        overrides?: any; 
     };
 }
 
-// ... (Rest of the file remains unchanged, ParsedTrack, etc.)
 export interface ParsedTrack {
     config: {
         bpm: number;
@@ -147,3 +156,30 @@ export interface LigatureTrack {
 }
 
 export type NoteGroup = NoteDef[];
+
+export interface FilterDef {
+    type: 'lowpass' | 'highpass' | 'bandpass' | 'notch' | 'allpass' | 'peaking' | 'lowshelf' | 'highshelf';
+    frequency: number; // Hz
+    rolloff?: -12 | -24 | -48 | -96;
+    Q?: number;
+    gain?: number; // Used for shelving/peaking
+}
+
+// NEW: EQ Configuration
+export interface EQDef {
+    low: number;  // Gain in dB
+    mid: number;
+    high: number;
+    lowFrequency?: number;
+    highFrequency?: number;
+}
+
+// NEW: LFO Configuration
+export interface LFODef {
+    target: 'pan' | 'filter' | 'volume';
+    type: 'sine' | 'square' | 'triangle' | 'sawtooth';
+    frequency: number; // Hz or "4n"
+    depth: number;     // 0 to 1
+    min?: number;      // Mapping range min (e.g. 500Hz for filter)
+    max?: number;      // Mapping range max (e.g. 2000Hz for filter)
+}
