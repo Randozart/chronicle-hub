@@ -132,6 +132,10 @@ export class LigatureParser {
                         if (['s', 'sus', 'sustain'].includes(k)) overrides.sustain = v;
                         if (['r', 'rel', 'release'].includes(k)) overrides.release = v;
                         if (['o', 'oct', 'octave'].includes(k)) overrides.octaveOffset = v;
+                        if (['rev', 'reverb'].includes(k)) overrides.reverb = v;
+                        if (['del', 'delay'].includes(k)) overrides.delay = v;
+                        if (['dist', 'distortion'].includes(k)) overrides.distortion = v;
+                        if (['bit', 'crush', 'bitcrush'].includes(k)) overrides.bitcrush = v;
                     }
                 }
             });

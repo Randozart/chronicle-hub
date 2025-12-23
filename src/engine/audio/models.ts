@@ -78,7 +78,12 @@ export interface InstrumentConfig {
         sustain?: number;
         release?: number;
         octaveOffset?: number;
-        effects?: EffectCommand[];
+        reverb?: number;      // 0-100 (Mix)
+        delay?: number;       // 0-100 (Mix/Feedback)
+        distortion?: number;  // 0-100 (Amount)
+        bitcrush?: number;    // 0-100 (Mix/Depth)
+        
+        effects?: EffectCommand[]; // Keep existing generic slot for future use
     };
 }
 

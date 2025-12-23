@@ -142,7 +142,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(false);
     };
 
-    const playTrack = async (
+const playTrack = async (
         ligatureSource: string, 
         instruments: InstrumentDefinition[],
         mockQualities: PlayerQualities = {}
@@ -165,6 +165,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             if (playbackRequestIdRef.current !== requestId) return;
             const baseDef = instruments.find(i => i.id === instConfig.id);
             if (!baseDef) continue;
+
             const mergedDef: InstrumentDefinition = {
                 ...baseDef,
                 config: {
@@ -176,24 +177,35 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                         decay: instConfig.overrides.decay ?? baseDef.config.envelope?.decay,
                         sustain: instConfig.overrides.sustain ?? baseDef.config.envelope?.sustain,
                         release: instConfig.overrides.release ?? baseDef.config.envelope?.release
-                    }
+                    },
+                    // --- PASS EFFECTS ---
+                    // @ts-ignore
+                    reverb: instConfig.overrides.reverb,
+                    // @ts-ignore
+                    delay: instConfig.overrides.delay,
+                    // @ts-ignore
+                    distortion: instConfig.overrides.distortion,
+                    // @ts-ignore
+                    bitcrush: instConfig.overrides.bitcrush
                 }
             };
+
             const synth = await getOrMakeInstrument(mergedDef);
             if (playbackRequestIdRef.current !== requestId) return;
 
+            const output = (synth as any)._outputNode || synth;
+            
+            // Clean disconnect first
+            output.disconnect(); 
+            
             if (masterGainRef.current) {
-                if (synth._panner) {
-                    synth._panner.disconnect();
-                    synth._panner.connect(masterGainRef.current);
-                } else {
-                    synth.disconnect();
-                    synth.connect(masterGainRef.current);
-                }
+                output.connect(masterGainRef.current);
             }
+            
             activeSynthsRef.current.add(synth);
             trackSynthMap.set(trackName, synth);
         }
+        
         setIsLoadingSamples(false);
         if (playbackRequestIdRef.current !== requestId) return;
 

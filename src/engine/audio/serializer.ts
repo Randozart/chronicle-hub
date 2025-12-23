@@ -36,6 +36,10 @@ export function serializeParsedTrack(track: ParsedTrack): string {
     if (inst.overrides.sustain !== undefined) props.push(`s:${inst.overrides.sustain}`);
     if (inst.overrides.release !== undefined) props.push(`r:${inst.overrides.release}`);
     if (inst.overrides.octaveOffset !== undefined) props.push(`o:${inst.overrides.octaveOffset}`);
+    if (inst.overrides.reverb !== undefined) props.push(`rev:${inst.overrides.reverb}`);
+    if (inst.overrides.delay !== undefined) props.push(`del:${inst.overrides.delay}`);
+    if (inst.overrides.distortion !== undefined) props.push(`dist:${inst.overrides.distortion}`);
+    if (inst.overrides.bitcrush !== undefined) props.push(`bit:${inst.overrides.bitcrush}`);
     
     if (props.length > 0) extra += `(${props.join(',')})`;
     

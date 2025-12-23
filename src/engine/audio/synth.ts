@@ -47,22 +47,6 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     // --- 1. Create Source ---
     if (def.type === 'sampler' && config.urls) {
         let finalUrls = config.urls;
-        const offset = config.octaveOffset || 0;
-
-        if (offset !== 0) {
-            finalUrls = {};
-            for (const noteName in config.urls) {
-                const midi = Note.midi(noteName);
-                if (midi !== null) {
-                    const newMidi = midi + (offset * 12);
-                    const newNoteName = Note.fromMidi(newMidi);
-                    finalUrls[newNoteName] = config.urls[noteName];
-                } else {
-                    finalUrls[noteName] = config.urls[noteName];
-                }
-            }
-        }
-
         const samplerPromise = new Promise<Tone.Sampler>((resolve) => {
             const sampler = new Tone.Sampler({
                 urls: finalUrls,
@@ -78,8 +62,6 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         });
 
         sourceInst = (await samplerPromise) as AnySoundSource;
-        // Sampler manages its own polyphony internally mostly, but we can't easily limit it without wrapping.
-        // Usually Samplers are less CPU intensive on voice count than Synths.
 
         if (config.loop && config.loop.enabled) {
             const sampler = sourceInst as any;
@@ -91,7 +73,6 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
                 sampler.fadeOut = config.loop.crossfade;
             }
         }
-
     } else {
         const envelope = {
             attack: config.envelope?.attack ?? 0.01,
@@ -109,24 +90,75 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
             envelope: envelope,
         } as any) as AnySoundSource;
         
-        // Enforce Polyphony Limit
-        (sourceInst as Tone.PolySynth).maxPolyphony = Math.min(config.polyphony || 32, MAX_POLYPHONY);
+        (sourceInst as Tone.PolySynth).maxPolyphony = Math.min(config.polyphony || 32, 12);
     }
 
     sourceInst.volume.value = config.volume || -10;
 
-    // --- 2. Create Chain ---
+    // --- 2. Build Effects Chain ---
     const effects: Tone.ToneAudioNode[] = [];
-    
-    // Automation Panner
+    const c = config as any; 
+
+    sourceInst.disconnect();
+
+    const chain: Tone.ToneAudioNode[] = [];
+
+    // 3a. BitCrusher
+    if (c.bitcrush && c.bitcrush > 0) {
+        // FIX: Constructor only accepts bits, set wet afterwards
+        const crusher = new Tone.BitCrusher(4);
+        crusher.wet.value = c.bitcrush / 100;
+        effects.push(crusher);
+        chain.push(crusher);
+    }
+
+    // 3b. Distortion
+    if (c.distortion && c.distortion > 0) {
+        const dist = new Tone.Distortion({
+            distortion: c.distortion / 100,
+            wet: 0.5 
+        });
+        effects.push(dist);
+        chain.push(dist);
+    }
+
+    // 3c. Delay
+    if (c.delay && c.delay > 0) {
+        const delay = new Tone.PingPongDelay({
+            delayTime: "8n",
+            feedback: 0.2,
+            wet: c.delay / 100
+        });
+        effects.push(delay);
+        chain.push(delay);
+    }
+
+    // 3d. Reverb
+    if (c.reverb && c.reverb > 0) {
+        const reverb = new Tone.Reverb({
+            decay: 2.5,
+            preDelay: 0.01,
+            wet: c.reverb / 100
+        });
+        await reverb.generate();
+        effects.push(reverb);
+        chain.push(reverb);
+    }
+
+    // 4. Output Stage (Panner)
     const trackPanner = new Tone.Panner(0);
     sourceInst._panner = trackPanner;
-    
-    let currentNode: Tone.ToneAudioNode = sourceInst;
-    currentNode.connect(trackPanner);
-    currentNode = trackPanner;
+    effects.push(trackPanner);
+    chain.push(trackPanner);
 
-    // LFO Auto-Panner
+    // 5. Connect the Chain
+    if (chain.length > 1) {
+        sourceInst.chain(...chain);
+    } else {
+        sourceInst.connect(trackPanner);
+    }
+
+    // 6. LFO Auto-Panner
     if (config.panning && config.panning.enabled) {
         const autoPanner = new Tone.AutoPanner({
             frequency: config.panning.frequency || 2,
@@ -134,9 +166,11 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
             depth: config.panning.depth || 1,
         }).start();
         
-        currentNode.connect(autoPanner);
-        currentNode = autoPanner;
+        trackPanner.connect(autoPanner);
+        (sourceInst as any)._outputNode = autoPanner;
         effects.push(autoPanner);
+    } else {
+        (sourceInst as any)._outputNode = trackPanner;
     }
 
     instrumentCache[cacheKey] = { source: sourceInst, panner: trackPanner, effects };
