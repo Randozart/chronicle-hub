@@ -1,8 +1,9 @@
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 import { Note } from 'tonal';
+import { PolySampler } from './polySampler';
 
-export type AnySoundSource = (Tone.PolySynth | Tone.Sampler | Tone.MonoSynth) & { 
+export type AnySoundSource = (Tone.PolySynth | PolySampler | Tone.MonoSynth) & { 
     _panner?: Tone.Panner; 
     _outputNode?: Tone.ToneAudioNode;
     _filterNode?: Tone.Filter; 
@@ -45,43 +46,24 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     const config = def.config;
     let sourceInst: AnySoundSource;
 
-    // --- Determine Polyphony ---
     const targetPolyphony = (config.noteCut || (config.portamento && config.portamento > 0)) ? 1 : (config.polyphony || 32);
 
     // --- 1. Create Source ---
     if (def.type === 'sampler' && config.urls) {
-        let finalUrls = config.urls;
-        const samplerPromise = new Promise<Tone.Sampler>((resolve) => {
-            const sampler = new Tone.Sampler({
-                urls: finalUrls,
-                baseUrl: config.baseUrl || "",
-                attack: config.envelope?.attack || 0,
-                release: config.envelope?.release || 1,
-                onload: () => resolve(sampler),
-                onerror: (err) => {
-                    console.warn(`Failed to load sample for ${def.id}`, err);
-                    resolve(sampler); 
-                }
-            });
+        // --- USE POLYSAMPLER ---
+        sourceInst = new PolySampler({
+            urls: config.urls,
+            baseUrl: config.baseUrl || "",
+            // FIX: Pass envelope object
+            envelope: config.envelope,
+            volume: config.volume,
+            polyphony: targetPolyphony,
+            loop: config.loop?.enabled,
+            loopStart: config.loop?.start,
+            loopEnd: config.loop?.end,
         });
-
-        sourceInst = (await samplerPromise) as AnySoundSource;
         
-        if ('maxPolyphony' in sourceInst) {
-            (sourceInst as any).maxPolyphony = targetPolyphony;
-        }
-
-        if (config.loop && config.loop.enabled) {
-            const sampler = sourceInst as any;
-            sampler.loop = true;
-            if (config.loop.start !== undefined) sampler.loopStart = config.loop.start;
-            if (config.loop.end !== undefined) sampler.loopEnd = config.loop.end;
-            if (config.loop.crossfade !== undefined && config.loop.crossfade > 0) {
-                sampler.fadeIn = config.loop.crossfade;
-                sampler.fadeOut = config.loop.crossfade;
-            }
-        }
-    } else {
+    } else { // Synth
         const envelope = {
             attack: config.envelope?.attack ?? 0.01,
             decay: config.envelope?.decay ?? 0.1,
@@ -111,7 +93,6 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         }
     }
 
-    sourceInst.volume.value = config.volume || -10;
     sourceInst.disconnect(); 
 
     // --- 2. Build Effects Chain ---
