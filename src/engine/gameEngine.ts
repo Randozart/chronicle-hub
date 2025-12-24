@@ -166,13 +166,9 @@ export class GameEngine {
             // It's an object (and not null). Iterate keys.
             for (const key in obj) {
                 // SAFETY: Skip structural IDs and Keys that must remain static
-                // 'id': Breaking this breaks the database link
-                // 'deck': Breaking this breaks deck logic
-                // 'ordering': Used for sorting, usually numeric
                 if (['id', 'deck', 'ordering', 'worldId', 'ownerId', '_id'].includes(key)) {
                     continue;
                 }
-
                 obj[key] = this.deepEvaluate(obj[key]);
             }
             return obj;
@@ -185,9 +181,6 @@ export class GameEngine {
 
     public applyEffects(effectsString: string): void {
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
-        
-        // FIX: DO NOT evaluate the entire string here. That was causing "10 = 20" bugs.
-        // We resolve values only after identifying the variable on the left.
         
         // Split by comma (respecting brackets)
         const effects = effectsString.split(/,(?![^\[]*\])/g); 
@@ -228,10 +221,6 @@ export class GameEngine {
                 
                 const metadata: { desc?: string; source?: string } = {};
                 if (metaStr) {
-                    // Evaluate metadata strings in case they contain variables like {$.name}
-                    // But we split them carefully first.
-                    // Note: This simple split might break if desc contains a comma. 
-                    // For v6 robustness we assume no commas in meta values for now, or careful quoting.
                     const metaParts = metaStr.split(',');
                     for (const part of metaParts) {
                         const [k, ...v] = part.split(':');
@@ -242,7 +231,6 @@ export class GameEngine {
                 }
 
                 // Resolve Value
-                // NOW we evaluate the right-hand side.
                 let val: string | number = 0;
                 
                 if (op !== '++' && op !== '--') {
@@ -276,10 +264,8 @@ export class GameEngine {
             const timeStr = mainArgs.substring(lastColon + 1).trim();
 
             // Parse Time - Now supports Logic like {5+5}m
-            // Regex matches either a {block} or raw digits, followed by unit
             const tMatch = timeStr.match(/((?:\{.*\}|\d+))\s*([mhd])/);
             if (tMatch) {
-                // Evaluate the time amount part
                 const amountRaw = tMatch[1];
                 const unit = tMatch[2];
                 const amountVal = parseInt(this.evaluateText(amountRaw.startsWith('{') ? amountRaw : `{${amountRaw}}`));
@@ -311,11 +297,22 @@ export class GameEngine {
         this.scheduledUpdates.push(instruction);
     }
 
-    public batchChangeQuality(category: string, op: string, value: number | string, meta: any) {
+    public batchChangeQuality(categoryExpr: string, op: string, value: number | string, meta: any) {
+        // 1. Evaluate Category Name (allows dynamic assignment)
+        const targetCat = this.evaluateText(
+            categoryExpr.startsWith('{') ? categoryExpr : `{${categoryExpr}}`
+        ).trim().toLowerCase();
+        
         const qids = Object.values(this.worldContent.qualities)
-            .filter(q => q.category?.split(',').map(c => c.trim()).includes(category))
+            .filter(q => {
+                if (!q.category) return false;
+                // 2. Split definition categories by comma
+                const cats = q.category.split(',').map(c => c.trim().toLowerCase());
+                return cats.includes(targetCat);
+            })
             .map(q => q.id);
             
+        console.log(`[Batch] Applying '${op} ${value}' to category '${targetCat}'. Hits: ${qids.length}`);
         qids.forEach(qid => this.changeQuality(qid, op, value, meta));
     }
 

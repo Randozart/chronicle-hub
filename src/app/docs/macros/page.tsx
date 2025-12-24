@@ -125,9 +125,124 @@ export default function MacrosPage() {
         </div>
     </div>
 </section>
+{/* 5. COLLECTIONS & LISTS */}
+            <section id="collections">
+                <h2 className="docs-h2">5. Collection Macros</h2>
+                <p className="docs-p">
+                    These macros allow you to treat your Quality Categories as databases. You can randomly select items for loot tables, pick random events, or list inventory items dynamically.
+                </p>
+
+                <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%pick</code> (Random Selection)</h3>
+                <p className="docs-p">
+                    Selects one or more random Quality IDs from a specific category. Returns the <strong>ID</strong> (e.g., "iron_sword"), making it useful for variable assignment or logic checks.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`{%pick[ CATEGORY ; COUNT , FILTER ]}`}</code>
+                </div>
+                <ul className="docs-props-list">
+                    <li>
+                        <code>CATEGORY</code>
+                        <span>The name of the category to search (e.g., "Weapons"). This can be a dynamic variable.</span>
+                    </li>
+                    <li>
+                        <code>COUNT</code>
+                        <span><strong>(Optional)</strong> How many items to pick. Defaults to 1.</span>
+                    </li>
+                    <li>
+                        <code>FILTER</code>
+                        <span><strong>(Optional)</strong> A condition to narrow down the pool. See "Advanced Filtering" below.</span>
+                    </li>
+                </ul>
+                
+                <div className="docs-card" style={{marginTop:'1rem'}}>
+                    <h4 className="docs-h4">Use Case: Random Loot</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        Grant 3 random items from the "Gemstones" category.
+                    </p>
+                    <div className="docs-pre">
+                        <code className="docs-code">
+                            {`$ { %pick[Gemstones; 3] } += 1`}
+                        </code>
+                    </div>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <em>Note: If the macro returns multiple IDs (e.g., "ruby, sapphire"), the engine's batch assignment logic handles increasing all of them.</em>
+                    </p>
+                </div>
+
+                <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%roll</code> (Weighted Selection)</h3>
+                <p className="docs-p">
+                    Performs a <strong>Weighted Random Selection</strong> based on the player's level in that quality. A quality with Level 10 is ten times more likely to be picked than a quality with Level 1.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`{%roll[ CATEGORY ; FILTER ]}`}</code>
+                </div>
+                <p className="docs-p">
+                    Implicitly filters for qualities the player owns (Level &gt; 0).
+                </p>
+                <div className="docs-pre">
+                    <span style={{color:'#777'}}>// Which friend comes to your aid? (Based on relationship level)</span>
+                    <br/>
+                    <code className="docs-code">
+                        You call for help! {`{ %roll[Companions] }`} answers the call.
+                    </code>
+                </div>
+
+                <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%list</code> (Text Generation)</h3>
+                <p className="docs-p">
+                    Returns a formatted string of <strong>Quality Names</strong>. This is primarily used in text fields to show the player what they have.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`{%list[ CATEGORY ; SEPARATOR , FILTER ]}`}</code>
+                </div>
+                <ul className="docs-props-list">
+                    <li>
+                        <code>SEPARATOR</code>
+                        <span><strong>(Optional)</strong> How to join the names. Options: <code>comma</code> (default), <code>pipe</code>, <code>newline</code>, <code>and</code>, or a custom string like <code>" + "</code>.</span>
+                    </li>
+                </ul>
+                <div className="docs-pre">
+                    <span style={{color:'#777'}}>// Show inventory</span>
+                    <br/>
+                    <code className="docs-code">
+                        You are carrying: {`{%list[Inventory; comma]}`}.
+                    </code>
+                </div>
+
+                <div className="docs-card" style={{marginTop: '1.5rem', borderColor: '#98c379'}}>
+                    <h4 className="docs-h4" style={{color:'#98c379'}}>Advanced Filtering</h4>
+                    <p className="docs-p" style={{fontSize:'0.9rem'}}>
+                        The <code>FILTER</code> argument allows you to run a ScribeScript condition against every candidate quality. 
+                        Inside the filter, the special sigil <code>$.</code> refers to the <strong>candidate quality being checked</strong>.
+                    </p>
+                    <table className="docs-table" style={{fontSize: '0.85rem'}}>
+                        <thead><tr><th>Filter Syntax</th><th>Meaning</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td><code>&gt;0</code>, <code>has</code>, or <code>owned</code></td>
+                                <td>Only include qualities the player currently possesses (Level &gt; 0).</td>
+                            </tr>
+                            <tr>
+                                <td><code>$.level &gt; 5</code></td>
+                                <td>Only include qualities where the player's level is greater than 5.</td>
+                            </tr>
+                            <tr>
+                                <td><code>$.cost &lt; 50</code></td>
+                                <td>Only include qualities where a custom property 'cost' is less than 50.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div className="docs-pre" style={{marginTop:'1rem'}}>
+                        <span style={{color:'#777'}}>// Pick a random 'Spell' that the player owns AND costs less than 10 mana</span>
+                        <br/>
+                        <code className="docs-code">
+                            {`{%pick[Spells; 1; owned && $.mana_cost < 10]}`}
+                        </code>
+                    </div>
+                </div>
+            </section>
 
             <section id="timers">
-    <h2 className="docs-h2">5. Living Stories (Timers)</h2>
+    <h2 className="docs-h2">6. Living Stories (Timers)</h2>
     <p className="docs-p">
         These macros allow you to schedule an effect to happen in the future, even if the player logs off. This is the foundation of idle mechanics, cooldowns, and time-based events.
     </p>

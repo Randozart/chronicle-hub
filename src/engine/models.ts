@@ -26,14 +26,14 @@ export interface ResolveOption extends LogicGates {
     meta?: string;
     
     // Logic
-    challenge?: string; // NOW EXPECTS 0-100: "{%chance[$stat >= 50 [10]]}"
+    challenge?: string; // Expects 0-100: "{%chance[$stat >= 50 [10]]}"
     action_cost?: string; // Logic: "1" or "$stress++"
     
-    // NEW: Hybrid Tag System
-    tags?: string[]; // Static tags from checkboxes
+    // Hybrid Tag System
+    tags?: string[]; // Static tags
     dynamic_tags?: string; // ScribeScript for conditional tags
 
-    // NEW: Manual Ordering
+    // Manual Ordering
     ordering?: number;
 
     // Outcomes
@@ -46,8 +46,6 @@ export interface ResolveOption extends LogicGates {
     fail_quality_change?: string;
     fail_redirect?: string;
     fail_move_to?: string;
-
-    // DEPRECATED: All rare_* fields are removed
     
     // Runtime computed (do not store in DB)
     computed_action_cost?: number | string;
@@ -70,7 +68,7 @@ interface ContentCommon {
     status?: PublishStatus;
     folder?: string;
     return?: string;
-    ordering?: number; // NEW
+    ordering?: number;
     urgency?: 'Must' | 'High' | 'Normal'; 
 }
 
@@ -94,21 +92,27 @@ export interface QualityDefinition {
     name?: string;
     description?: string;
     type: QualityType;
-    category?: string;
+    
+    // LOGIC: Used for %pick, %list, and batch operations. Can be comma-separated: "Weapons, Swords, Iron"
+    category?: string; 
+    
+    // UI: Used ONLY for grouping in the sidebar/editor. Does not affect game logic.
+    folder?: string; 
+    
     image?: string;
-    ordering?: number; // NEW
+    ordering?: number;
 
-    // NEW: Advanced Caps
+    // Advanced Caps
     max?: string;              // Hard Cap
     grind_cap?: string;        // Soft (Grindable) Cap
     cp_cap?: string;           // CP Requirement Cap
 
-    // NEW: QoL Text Features
+    // QoL Text Features
     singular_name?: string;
     plural_name?: string;
     increase_description?: string;
     decrease_description?: string;
-    text_variants?: Record<string, string>; // For pronouns, titles, etc.
+    text_variants?: Record<string, string>; 
     
     // Tags and Item-specific fields
     tags?: string[];
@@ -117,15 +121,14 @@ export interface QualityDefinition {
 }
 
 export interface CharCreateRule {
-    type: 'string' | 'static' | 'label_select' | 'image_select' | 'labeled_image_select' | 'header'; // Added 'header'
+    type: 'string' | 'static' | 'label_select' | 'image_select' | 'labeled_image_select' | 'header';
     rule: string;
     visible: boolean;
     readOnly: boolean;
     visible_if?: string;
     
-    // NEW:
     input_transform?: 'none' | 'lowercase' | 'uppercase' | 'capitalize';
-    displayMode?: 'inline' | 'modal'; // For selection types
+    displayMode?: 'inline' | 'modal';
     ordering?: number;
     isModal?: boolean;
     showOnCard?: boolean;
@@ -176,13 +179,11 @@ export interface WorldSettings {
         maxCap?: number;
     };
 
-    // NEW
     systemMessage?: SystemMessage;
     allowScribeScriptInInputs?: boolean;
     storynexusMode?: boolean; 
 }
 
-// All other config definitions remain largely the same, just with 'ordering' added
 export interface DeckDefinition { id: string; saved: string; timer?: string; draw_cost?: string; hand_size: string; deck_size?: string; ordering?: number; }
 export interface MapRegion { id: string; name: string; image?: string; marketId?: string; }
 export interface LocationDefinition { id: string; name: string; image: string; deck: string; regionId?: string; tags?: string[]; coordinates: { x: number, y: number }; unlockCondition?: string; visibleCondition?: string; marketId?: string; }
@@ -199,7 +200,7 @@ export interface WorldConfig {
     locations: Record<string, LocationDefinition>;
     decks: Record<string, DeckDefinition>;
     settings: WorldSettings;
-    char_create: Record<string, CharCreateRule>; // UPDATED
+    char_create: Record<string, CharCreateRule>;
     images: Record<string, ImageDefinition>;
     categories?: Record<string, CategoryDefinition>;
     regions: Record<string, MapRegion>;
@@ -214,9 +215,9 @@ export interface WorldConfig {
 export interface BaseQualityState {
     qualityId: string;
     type: QualityType;
-    customProperties?: Record<string, string | number | boolean>; // NEW
+    customProperties?: Record<string, string | number | boolean>;
 }
-// Other QualityState interfaces (Counter, Pyramidal, etc.) extend BaseQualityState
+
 export interface CounterQualityState extends BaseQualityState { type: QualityType.Counter | QualityType.Tracker; level: number; }
 export interface PyramidalQualityState extends BaseQualityState { type: QualityType.Pyramidal; level: number; changePoints: number; }
 export interface ItemQualityState extends BaseQualityState { type: QualityType.Item | QualityType.Equipable; level: number; sources: string[]; spentTowardsPrune: number; }
@@ -232,10 +233,7 @@ export interface PendingEvent {
     op: '=' | '+=' | '-=';
     value: number;
     triggerTime: Date;
-    
-    // CHANGED: Split 'behavior' into specific flags
     recurring: boolean; 
-    
     intervalMs?: number;
     description?: string;
 }
@@ -255,7 +253,7 @@ export interface CharacterDocument {
     lastActionTimestamp?: Date;
     equipment: Record<string, string | null>;
     pendingEvents?: PendingEvent[];
-    acknowledgedMessages?: string[]; // NEW
+    acknowledgedMessages?: string[];
 }
 
 export interface QualityChangeInfo {
@@ -268,8 +266,8 @@ export interface QualityChangeInfo {
     levelAfter: number;
     cpAfter: number;
     stringValue?: string;
-    changeText: string; // The default or definition-based description
-    overrideDescription?: string; // The dynamic override from [desc:...]
+    changeText: string; 
+    overrideDescription?: string; 
     scope?: 'character' | 'world';
 }
 

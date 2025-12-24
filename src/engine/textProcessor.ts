@@ -88,6 +88,202 @@ function evaluateExpression(
     return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
 }
 
+// --- HELPER: ADVANCED FILTERING FOR MACROS ---
+function getCandidateIds(
+    rawCategoryArg: string,
+    rawFilterArg: string | undefined,
+    qualities: PlayerQualities,
+    defs: Record<string, QualityDefinition>,
+    resolutionRoll: number
+): string[] {
+    // 1. Resolve Dynamic Category Name first (e.g. "{ $is_night ? 'DarkCreatures' : 'LightCreatures' }")
+    const targetCat = evaluateText(
+        rawCategoryArg.startsWith('{') ? rawCategoryArg : `{${rawCategoryArg}}`, 
+        qualities, 
+        defs, 
+        null, 
+        resolutionRoll
+    ).trim().toLowerCase();
+
+    // 2. Initial Filter by Category
+    let candidates = Object.values(defs)
+        .filter(def => {
+            if (!def.category) return false;
+            // Support comma-separated categories in definition
+            const cats = def.category.split(',').map(c => c.trim().toLowerCase());
+            return cats.includes(targetCat);
+        })
+        .map(def => def.id);
+
+    // 3. Apply Custom Filter Logic if provided
+    if (rawFilterArg && rawFilterArg.trim() !== "") {
+        const filterStr = rawFilterArg.trim();
+        
+        candidates = candidates.filter(qid => {
+            // Mock state if quality is missing from player
+            const state = qualities[qid] || { 
+                qualityId: qid, 
+                type: defs[qid].type, 
+                level: 0, 
+                stringValue: "", 
+                changePoints: 0 
+            } as QualityState;
+
+            // Shortcut for "has quality"
+            if (filterStr === '>0' || filterStr === 'has' || filterStr === 'owned') {
+                return 'level' in state ? state.level > 0 : false;
+            }
+
+            // Advanced Condition Evaluation
+            // We set 'self' to this candidate, so '$.level' refers to the candidate's level
+            // Example: "$.level > 5" or "$.customProp == 'active'"
+            return evaluateCondition(filterStr, qualities, defs, {}, { qid, state }, resolutionRoll);
+        });
+    }
+
+    return candidates;
+}
+
+const SEPARATORS: Record<string, string> = {
+    'comma': ', ',
+    'pipe': ' | ',
+    'newline': '\n',
+    'break': '<br/>',
+    'and': ' and ',
+    'space': ' '
+};
+
+function evaluateMacro(
+    macroString: string,
+    qualities: PlayerQualities,
+    defs: Record<string, QualityDefinition>,
+    aliases: Record<string, string>,
+    self: { qid: string, state: QualityState } | null,
+    resolutionRoll: number
+): string | number | boolean {
+    const macroRegex = /^%([a-zA-Z_]+)\[(.*?)\]$/;
+    const match = macroString.match(macroRegex);
+    if (!match) return `[Invalid Macro: ${macroString}]`;
+
+    const [, command, fullArgs] = match;
+
+    // --- PARSE ARGUMENTS ---
+    // Rule: Split by the first semicolon (;). 
+    // Left side = Required Argument. 
+    // Right side = Optional Arguments (comma separated).
+    
+    let mainArg = fullArgs.trim();
+    let optArgs: string[] = [];
+    let rawOptStr = ""; // Keep raw string for chance/schedule macros that use their own parsing
+
+    const semiIndex = fullArgs.indexOf(';');
+    if (semiIndex !== -1) {
+        mainArg = fullArgs.substring(0, semiIndex).trim();
+        rawOptStr = fullArgs.substring(semiIndex + 1).trim();
+        if (rawOptStr) {
+            optArgs = rawOptStr.split(',').map(s => s.trim());
+        }
+    }
+
+    switch (command.toLowerCase()) {
+        case "random": {
+            const chanceExpr = mainArg;
+            const chance = Number(evaluateExpression(chanceExpr, qualities, defs, aliases, self, resolutionRoll));
+            const isInverted = optArgs.includes('invert');
+            if (isNaN(chance)) return false;
+            const success = resolutionRoll < chance;
+            return isInverted ? !success : success;
+        }
+        case "choice": {
+            // Choice is unique: It treats semicolons as separators for options, so we use fullArgs
+            const choices = fullArgs.split(';').map(s => s.trim()).filter(Boolean); 
+            if (choices.length === 0) return "";
+            const randomIndex = Math.floor(Math.random() * choices.length);
+            return evaluateExpression(choices[randomIndex], qualities, defs, aliases, self, resolutionRoll);
+        }
+        case "chance": {
+            return calculateChance(mainArg, rawOptStr, qualities, defs, aliases, self, resolutionRoll);
+        }
+        
+        // --- COLLECTION MACROS ---
+
+        // %pick[Category; Count, Filter]
+        case "pick": {
+            const categoryExpr = mainArg;
+            const countExpr = optArgs[0] || "1";
+            const filterExpr = optArgs[1]; // Optional filter condition
+
+            // Resolve Count
+            const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, self, resolutionRoll));
+            const count = isNaN(countVal) ? 1 : Math.max(1, countVal);
+
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll);
+            
+            if (candidates.length === 0) return "nothing";
+
+            // Shuffle and slice
+            const shuffled = candidates.sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, count);
+            
+            return selected.join(', ');
+        }
+
+        // %roll[Category; Filter]
+        // Weighted random pick based on Level.
+        case "roll": {
+            const categoryExpr = mainArg;
+            const filterExpr = optArgs[0];
+
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll);
+            const pool: string[] = [];
+            
+            candidates.forEach(qid => {
+                const q = qualities[qid];
+                // Only weight if player has it. If they don't, level is 0, so 0 tickets.
+                if (q && 'level' in q && q.level > 0) {
+                    const tickets = Math.min(q.level, 100); // Cap tickets
+                    for(let i=0; i<tickets; i++) pool.push(qid);
+                }
+            });
+            
+            if (pool.length === 0) return "nothing";
+            const rand = Math.floor(Math.random() * pool.length);
+            return pool[rand];
+        }
+
+        // %list[Category; Separator, Filter]
+        case "list": {
+            const categoryExpr = mainArg;
+            const sepArg = optArgs[0]?.toLowerCase() || 'comma';
+            const filterExpr = optArgs[1] || '>0'; // Default to owned items
+
+            const separator = SEPARATORS[sepArg] || optArgs[0] || ', ';
+
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll);
+            
+            const names = candidates.map(qid => {
+                const def = defs[qid];
+                // Evaluate name for logic (e.g. adaptive names)
+                return evaluateText(def.name || qid, qualities, defs, { qid, state: qualities[qid] }, resolutionRoll);
+            });
+
+            if (names.length === 0) return "nothing";
+            return names.join(separator);
+        }
+
+        case "schedule":
+        case "reset":
+        case "update":
+        case "cancel":
+        case "all":
+            return macroString; 
+        default:
+            return `[Unknown Macro: ${command}]`;
+    }
+}
+
+// ... Rest of the file (evaluateConditional, evaluateCondition, etc) remains the same ...
+
 function evaluateConditional(
     expr: string, 
     qualities: PlayerQualities, 
@@ -184,7 +380,7 @@ function resolveComplexExpression(
 
 function resolveVariable(
     fullMatch: string, 
-    qualities: PlayerQualities,
+    qualities: PlayerQualities, 
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
@@ -287,50 +483,6 @@ function preprocessAliases(text: string): [string, Record<string, string>] {
         return '';
     });
     return [cleanText, aliasMap];
-}
-
-function evaluateMacro(
-    macroString: string,
-    qualities: PlayerQualities,
-    defs: Record<string, QualityDefinition>,
-    aliases: Record<string, string>,
-    self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
-): string | number | boolean {
-    const macroRegex = /^%([a-zA-Z_]+)\[(.*?)\]$/;
-    const match = macroString.match(macroRegex);
-    if (!match) return `[Invalid Macro: ${macroString}]`;
-
-    const [, command, fullArgs] = match;
-    const [requiredArgsStr, optionalArgsStr] = fullArgs.split(';').map(s => s ? s.trim() : '');
-    const requiredArgs = requiredArgsStr.split(',').map(s => s.trim());
-
-    switch (command) {
-        case "random": {
-            const chanceExpr = requiredArgs[0];
-            const chance = Number(evaluateExpression(chanceExpr, qualities, defs, aliases, self, resolutionRoll));
-            const isInverted = optionalArgsStr?.includes('invert') || false;
-            if (isNaN(chance)) return false;
-            const success = resolutionRoll < chance;
-            return isInverted ? !success : success;
-        }
-        case "choice": {
-            if (requiredArgs.length === 0) return "";
-            const randomIndex = Math.floor(Math.random() * requiredArgs.length);
-            return evaluateExpression(requiredArgs[randomIndex], qualities, defs, aliases, self, resolutionRoll);
-        }
-        case "chance": {
-            return calculateChance(requiredArgsStr, optionalArgsStr, qualities, defs, aliases, self, resolutionRoll);
-        }
-        case "schedule":
-        case "reset":
-        case "update":
-        case "cancel":
-        case "all":
-            return macroString; 
-        default:
-            return `[Unknown Macro: ${command}]`;
-    }
 }
 
 export function calculateChance(
