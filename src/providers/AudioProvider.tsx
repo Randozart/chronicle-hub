@@ -62,37 +62,54 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsInitialized(true);
     };
 
+    // --- SHARED PREVIEW LOGIC ---
+    const getPreviewSynth = async (def: InstrumentDefinition) => {
+        // Use a stable ID for the preview instrument based on the Editor context
+        const previewId = `__preview_editor_${def.id}`;
+        const configStr = JSON.stringify(def.config);
+        
+        // If we already have this synth loaded and config hasn't changed, reuse it immediately
+        if (previewSynthRef.current && currentPreviewIdRef.current === (def.id + configStr)) {
+            return previewSynthRef.current;
+        }
+
+        // Create or Update the instrument
+        const synth = await getOrMakeInstrument({ ...def, id: previewId });
+        
+        // Route to Master
+        const output = (synth as any)._outputNode || synth;
+        output.disconnect();
+        if (AudioGraph.masterGain) {
+            output.connect(AudioGraph.masterGain);
+        } else {
+            output.toDestination();
+        }
+
+        previewSynthRef.current = synth;
+        currentPreviewIdRef.current = def.id + configStr;
+        return synth;
+    };
+
     const startPreviewNote = async (instrumentDef: InstrumentDefinition, note: string) => {
+        if (Tone.context.state !== 'running') await Tone.context.resume();
         if (!isInitialized) await initializeAudio();
 
         activePreviewNoteRef.current = note;
-        const newId = instrumentDef.id + JSON.stringify(instrumentDef.config);
 
-        if (!previewSynthRef.current || currentPreviewIdRef.current !== newId) {
-            if (previewSynthRef.current) previewSynthRef.current.dispose();
-            try {
-                const newSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_${instrumentDef.id}` });
-                const output = (newSynth as any)._outputNode || newSynth;
-                output.disconnect();
-                if (AudioGraph.masterGain) output.connect(AudioGraph.masterGain);
-                else output.toDestination();
-                
-                previewSynthRef.current = newSynth;
-                currentPreviewIdRef.current = newId;
-            } catch (e) {
-                return;
+        try {
+            const synth = await getPreviewSynth(instrumentDef);
+            
+            // Safety check: is user still holding the button?
+            if (activePreviewNoteRef.current === note) {
+                // Pass undefined for time to default to "now"
+                if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
+                    synth.triggerAttack(note);
+                } else if ('triggerAttack' in synth) {
+                    (synth as any).triggerAttack(note);
+                }
             }
-        }
-        
-        // Safety check: is user still holding?
-        if (activePreviewNoteRef.current === note && previewSynthRef.current) {
-            const synth = previewSynthRef.current;
-            // All supported synths (PolySynth, Sampler, PolySampler, MonoSynth) support triggerAttack(note, time)
-            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
-                synth.triggerAttack(note, Tone.now());
-            } else if ('triggerAttack' in synth) {
-                (synth as any).triggerAttack(note, Tone.now());
-            }
+        } catch (e) {
+            console.error("Preview error:", e);
         }
     };
 
@@ -103,48 +120,41 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             const synth = previewSynthRef.current;
             
             if (note) {
-                // FIX: PolySampler MUST be included here to receive the 'note' argument
                 if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
-                    synth.triggerRelease(note, Tone.now());
+                    synth.triggerRelease(note);
                 } else if ('triggerRelease' in synth) {
-                    // MonoSynth takes time only (releases current note)
-                    (synth as any).triggerRelease(Tone.now()); 
+                    (synth as any).triggerRelease(); 
                 }
             } else {
-                // Release All
+                // Hard stop / Release All
                 if ('stopAll' in synth) {
-                     // PolySampler Hard Stop (Optional: use releaseAll for fade)
-                     // Let's use stopAll for immediate silence on "Stop"
-                    (synth as any).stopAll(Tone.now());
+                    (synth as any).stopAll();
                 } else if ('releaseAll' in synth) {
                     (synth as any).releaseAll();
                 } else if ('triggerRelease' in synth) {
-                    (synth as any).triggerRelease(Tone.now());
+                    (synth as any).triggerRelease();
                 }
             }
         }
     };
 
     const playPreviewNote = async (instrumentDef: InstrumentDefinition, note: string, duration: Tone.Unit.Time = '8n') => {
+        if (Tone.context.state !== 'running') await Tone.context.resume();
         if (!isInitialized) await initializeAudio();
-        stopPreviewNote(); 
+        
+        stopPreviewNote(); // Stop any currently holding notes
 
         try {
-            const tempSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_oneshot_${Math.random()}` });
-            const output = (tempSynth as any)._outputNode || tempSynth;
-            output.disconnect();
+            const synth = await getPreviewSynth(instrumentDef);
             
-            if (AudioGraph.masterGain) output.connect(AudioGraph.masterGain);
-
-            if (tempSynth instanceof Tone.PolySynth || tempSynth instanceof Tone.Sampler || tempSynth instanceof PolySampler) {
-                tempSynth.triggerAttackRelease(note, duration, Tone.now());
-            } else if ('triggerAttackRelease' in tempSynth) {
-                 (tempSynth as any).triggerAttackRelease(note, duration, Tone.now());
+            // Pass undefined for time to default to "now"
+            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
+                synth.triggerAttackRelease(note, duration);
+            } else if ('triggerAttackRelease' in synth) {
+                 (synth as any).triggerAttackRelease(note, duration);
             }
-            const releaseTime = instrumentDef.config.envelope?.release ?? 1.0;
-            setTimeout(() => { tempSynth.dispose(); }, (Tone.Time(duration).toSeconds() + releaseTime) * 1000 + 200);
         } catch (e) {
-            console.error("Error playing one-shot preview:", e);
+            console.error("One-shot error:", e);
         }
     };
 
@@ -171,11 +181,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         
         activeSynthsRef.current.forEach(synth => {
             if ('stopAll' in synth) {
-                (synth as any).stopAll(Tone.now());
+                (synth as any).stopAll();
             } else if ('releaseAll' in synth) {
                 (synth as any).releaseAll();
             } else {
-                synth.triggerRelease(Tone.now());
+                synth.triggerRelease();
             }
             
             if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {

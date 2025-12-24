@@ -1,7 +1,7 @@
 import * as Tone from 'tone';
 import { Note } from 'tonal';
 import { Instrument, InstrumentOptions } from 'tone/build/esm/instrument/Instrument';
-import { VibratoDef } from './models'; // Ensure this path is correct relative to file
+import { VibratoDef } from './models';
 
 export interface PolySamplerOptions extends InstrumentOptions {
     urls?: Record<string, string>;
@@ -27,8 +27,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
     private _buffers: Map<number, Tone.ToneAudioBuffer> = new Map();
     private _activeVoices: Map<number, { source: Tone.ToneBufferSource, env: Tone.AmplitudeEnvelope, lfo?: Tone.LFO }> = new Map();
     
-    // NOTE: this.output and this.volume are inherited from Tone.Instrument
-
     public loop: boolean;
     public loopStart: number;
     public loopEnd: number;
@@ -46,10 +44,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
     constructor(options?: Partial<PolySamplerOptions>) {
         super(options);
         
-        // FIX: Removed manual this.output / this.volume setup. 
-        // Tone.Instrument creates a Tone.Volume node at this.output automatically.
-
-        // 2. Options
         const env = options?.envelope || {};
         this.attack = env.attack ?? 0.01;
         this.decay = env.decay ?? 0.1;
@@ -95,7 +89,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         const midi = Tone.Frequency(note).toMidi();
         let startRateRatio = 1.0;
 
-        // 1. Voice Stealing (Polyphony Limit)
         if (this._activeVoices.size >= this.polyphony) {
             const oldestMidi = this._activeVoices.keys().next().value;
             if (oldestMidi !== undefined) {
@@ -109,7 +102,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
             }
         }
 
-        // 2. Self-Stealing (Retrigger) & Portamento Calc
         const previousVoice = this._activeVoices.get(midi);
         if (previousVoice) {
             previousVoice.env.triggerRelease(now);
@@ -128,7 +120,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         const buffer = this._buffers.get(baseMidi);
         if (!buffer) return;
 
-        // 3. Create Voice Components
         const source = new Tone.ToneBufferSource(buffer, () => {
             const voice = this._activeVoices.get(midi);
             if (voice && voice.source === source) {
@@ -141,7 +132,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         const interval = midi - baseMidi;
         const basePlaybackRate = Math.pow(2, interval / 12);
         
-        // Apply Portamento
         if (this.portamento > 0 && startRateRatio !== 1.0) {
             source.playbackRate.value = basePlaybackRate * startRateRatio;
             source.playbackRate.exponentialRampToValueAtTime(basePlaybackRate, now + this.portamento);
@@ -165,7 +155,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
 
         source.connect(env);
         
-        // 4. Vibrato LFO
         let lfo: Tone.LFO | undefined;
         if (this.vibrato && this.vibrato.depth > 0) {
             lfo = new Tone.LFO({
@@ -178,7 +167,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
             
             if ((source as any).detune) {
                 lfo.connect((source as any).detune);
-                
                 const vibStart = now + (this.vibrato.delay || 0);
                 lfo.start(vibStart);
                 
@@ -193,6 +181,45 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         env.triggerAttack(now, velocity);
 
         this._activeVoices.set(midi, { source, env, lfo });
+    }
+
+    public triggerGlide(note: Tone.Unit.Frequency, time: Tone.Unit.Time, velocity: number): void {
+        const now = this.toSeconds(time);
+        const midi = Tone.Frequency(note).toMidi();
+        
+        let activeMidi: number | undefined;
+        if (this._lastMidi !== null && this._activeVoices.has(this._lastMidi)) {
+            activeMidi = this._lastMidi;
+        } else if (this._activeVoices.size > 0) {
+            activeMidi = Array.from(this._activeVoices.keys()).pop();
+        }
+
+        if (activeMidi === undefined) {
+            this._triggerAttack(note, time, velocity);
+            return;
+        }
+
+        const voice = this._activeVoices.get(activeMidi);
+        if (!voice) return;
+
+        this._activeVoices.delete(activeMidi);
+        this._activeVoices.set(midi, voice);
+        this._lastMidi = midi;
+
+        const previousRate = voice.source.playbackRate.value;
+        const semitoneDiff = midi - activeMidi;
+        const targetRate = previousRate * Math.pow(2, semitoneDiff / 12);
+
+        // Cancel pending envelope events to prevent unwanted release
+        voice.env.cancel(now);
+        
+        // Note: AmplitudeEnvelope does not support rampTo. 
+        // We maintain the current state (Sustain) which is correct for Legato.
+        
+        const glideTime = this.portamento > 0 ? this.portamento : 0.1;
+        
+        voice.source.playbackRate.setValueAtTime(previousRate, now);
+        voice.source.playbackRate.exponentialRampToValueAtTime(targetRate, now + glideTime);
     }
 
     protected _triggerRelease(note: Tone.Unit.Frequency, time: Tone.Unit.Time): void {

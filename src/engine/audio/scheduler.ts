@@ -79,7 +79,6 @@ export function scheduleSequence(
                         const totalHumanize = Math.max(humanizeGlobal, humanizeInst);
 
                         const toneEvents = events.map(event => {
-                            // --- NEW: Handle Cut Event ---
                             if (event.isCut) {
                                 const timeInSlots = event.time;
                                 const bar = Math.floor(timeInSlots / slotsPerBar);
@@ -140,13 +139,14 @@ export function scheduleSequence(
                                 notes: noteNames,
                                 velocity,
                                 noteDefs: event.notes,
-                                pan: (trackMod?.pan || 0) / 100 
+                                pan: (trackMod?.pan || 0) / 100,
+                                isGlide: event.isGlide // <--- PASS GLIDE PROP
                             };
                         });
 
                         if (synth) {
                             const part = new Tone.Part((time, value) => {
-                                // --- NEW: Handle Cut Event Logic ---
+                                // Handle Cut
                                 if (value.isCut) {
                                     const previousNotes = activeNotesPerPart.get(part);
                                     if (previousNotes) {
@@ -216,34 +216,55 @@ export function scheduleSequence(
                                     });
                                 }
 
-                                if (baseDef?.config.noteCut) {
-                                    const previousNotes = activeNotesPerPart.get(part);
-                                    if (previousNotes) {
-                                        if ('releaseAll' in synth) (synth as any).releaseAll(playTime);
-                                        else synth.triggerRelease(playTime);
+                                // --- HANDLE NOTE TRIGGERING ---
+                                if (value.isGlide && 'triggerGlide' in synth) {
+                                    // 1. Legato Glide (PolySampler)
+                                    // Trigger glide on the first note of the chord
+                                    if (value.notes.length > 0) {
+                                        (synth as any).triggerGlide(value.notes[0], playTime, value.velocity);
                                     }
                                     
-                                    if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                        synth.triggerAttack(value.notes, playTime, value.velocity);
-                                    } else if ('triggerAttack' in synth) {
-                                        if(value.notes.length > 0) (synth as any).triggerAttack(value.notes[0], playTime, value.velocity);
-                                    }
-                                    
+                                    // Schedule release normally
                                     transport.scheduleOnce((releaseTime) => {
-                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                                        if (synth instanceof PolySampler) {
                                             synth.triggerRelease(value.notes, releaseTime);
-                                        } else if ('triggerRelease' in synth) {
-                                            (synth as any).triggerRelease(releaseTime);
                                         }
                                         activeNotesPerPart.delete(part);
                                     }, playTime + value.duration);
                                     
                                     activeNotesPerPart.set(part, value.notes);
+
                                 } else {
-                                    if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                        synth.triggerAttackRelease(value.notes, value.duration, playTime, value.velocity);
-                                    } else if ('triggerAttackRelease' in synth) {
-                                        if(value.notes.length > 0) (synth as any).triggerAttackRelease(value.notes[0], value.duration, playTime, value.velocity);
+                                    // 2. Standard Attack (Existing Logic)
+                                    if (baseDef?.config.noteCut) {
+                                        const previousNotes = activeNotesPerPart.get(part);
+                                        if (previousNotes) {
+                                            if ('releaseAll' in synth) (synth as any).releaseAll(playTime);
+                                            else synth.triggerRelease(playTime);
+                                        }
+                                        
+                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                                            synth.triggerAttack(value.notes, playTime, value.velocity);
+                                        } else if ('triggerAttack' in synth) {
+                                            if(value.notes.length > 0) (synth as any).triggerAttack(value.notes[0], playTime, value.velocity);
+                                        }
+                                        
+                                        transport.scheduleOnce((releaseTime) => {
+                                            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                                                synth.triggerRelease(value.notes, releaseTime);
+                                            } else if ('triggerRelease' in synth) {
+                                                (synth as any).triggerRelease(releaseTime);
+                                            }
+                                            activeNotesPerPart.delete(part);
+                                        }, playTime + value.duration);
+                                        
+                                        activeNotesPerPart.set(part, value.notes);
+                                    } else {
+                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                                            synth.triggerAttackRelease(value.notes, value.duration, playTime, value.velocity);
+                                        } else if ('triggerAttackRelease' in synth) {
+                                            if(value.notes.length > 0) (synth as any).triggerAttackRelease(value.notes[0], value.duration, playTime, value.velocity);
+                                        }
                                     }
                                 }
                             }, toneEvents).start(0);

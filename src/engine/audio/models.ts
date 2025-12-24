@@ -190,6 +190,7 @@ export interface SequenceEvent {
     duration: number;   
     notes: NoteDef[];
     isCut?: boolean;
+    isGlide?: boolean; // <--- NEW PROPERTY
 }
 
 export interface NoteDef {

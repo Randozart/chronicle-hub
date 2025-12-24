@@ -221,12 +221,13 @@ export class LigatureParser {
         
         const tokens = content.match(LIGATURE_TOKEN_REGEX) || [];
         let currentTime = 0; 
+        let pendingGlide = false; // <--- NEW: Glide State
         
         for (const token of tokens) {
             if (token === '|') continue;
             if (token === '.') { currentTime++; continue; }
             
-            // --- NEW: Note Cut Support ---
+            // --- Note Cut Support ---
             if (token === '!') {
                 sequence.push({ 
                     time: currentTime, 
@@ -248,9 +249,20 @@ export class LigatureParser {
                 currentTime++;
                 continue;
             }
+
+            // --- NEW: Glide Token ---
+            if (token === '~') {
+                pendingGlide = true;
+                continue; // Consumes 0 time on grid, affects next note
+            }
+
             if (token.startsWith('(')) {
                 const inner = token.substring(1, token.length - 1);
                 const subMatches = inner.split(/\s+/).filter(Boolean);
+                
+                // Reset glide to avoid sticky state in tuplets for now
+                pendingGlide = false;
+
                 if (subMatches.length > 0) {
                     const count = subMatches.length;
                     const durationPerNote = 1.0 / count; 
@@ -271,7 +283,13 @@ export class LigatureParser {
             
             const notes = this.resolveNotes(token, track.definitions);
             if (notes.length > 0) {
-                sequence.push({ time: currentTime, duration: 1, notes });
+                sequence.push({ 
+                    time: currentTime, 
+                    duration: 1, 
+                    notes,
+                    isGlide: pendingGlide // <--- APPLY GLIDE
+                });
+                pendingGlide = false; // Reset
             }
             currentTime++;
         }
