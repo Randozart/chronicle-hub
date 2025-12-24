@@ -2,12 +2,12 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
-import { ParsedTrack, InstrumentDefinition, NoteDef } from '@/engine/audio/models';
-import { resolveNote } from '@/engine/audio/scales';
+import { ParsedTrack, InstrumentDefinition } from '@/engine/audio/models';
 import { getOrMakeInstrument, disposeInstruments, AnySoundSource } from '@/engine/audio/synth';
 import { LigatureParser } from '@/engine/audio/parser';
 import { PlayerQualities } from '@/engine/models';
-import { TransportClass } from 'tone/build/esm/core/clock/Transport';
+import { AudioGraph, initializeAudioGraph, stopAllSound, setMasterVolume } from '@/engine/audio/graph';
+import { scheduleSequence } from '@/engine/audio/scheduler'; 
 
 interface LimiterSettings {
     enabled: boolean;
@@ -36,13 +36,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
     
-    // Playback State Control
     const playbackRequestIdRef = useRef(0);
     const previewSynthRef = useRef<AnySoundSource | null>(null);
     const currentPreviewIdRef = useRef<string>('');
 
     const [limiterSettings, setLimiterSettings] = useState<LimiterSettings>({ enabled: true, threshold: -1 });
-    const [masterVolume, setMasterVolume] = useState(0);
+    const [masterVolume, setMasterVolumeState] = useState(0);
 
     const currentTrackRef = useRef<ParsedTrack | null>(null);
     const instrumentDefsRef = useRef<InstrumentDefinition[]>([]);
@@ -51,26 +50,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const scheduledEventsRef = useRef<number[]>([]); 
     const activeNotesPerPartRef = useRef<Map<Tone.Part, string[]>>(new Map());
     const activeSynthsRef = useRef<Set<AnySoundSource>>(new Set());
-    
-    const limiterRef = useRef<Tone.Limiter | null>(null);
-    const masterGainRef = useRef<Tone.Gain | null>(null);
-    const noteCacheRef = useRef<Map<string, string>>(new Map());
 
     const initializeAudio = async () => {
         if (isInitialized) return;
-        try {
-            await Tone.start();
-            masterGainRef.current = new Tone.Gain(0);
-            limiterRef.current = new Tone.Limiter(-1);
-            
-            masterGainRef.current.connect(limiterRef.current);
-            limiterRef.current.toDestination();
-            
-            setIsInitialized(true);
-            console.log("Audio Engine Initialized");
-        } catch (e) {
-            console.error("Failed to start audio context:", e);
-        }
+        await initializeAudioGraph(); 
+        setIsInitialized(true);
     };
 
     const startPreviewNote = async (instrumentDef: InstrumentDefinition, note: string) => {
@@ -79,31 +63,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         const newId = instrumentDef.id + JSON.stringify(instrumentDef.config);
 
         if (!previewSynthRef.current || currentPreviewIdRef.current !== newId) {
-            if (previewSynthRef.current) {
-                previewSynthRef.current.dispose();
-            }
+            if (previewSynthRef.current) previewSynthRef.current.dispose();
             try {
                 const newSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_${instrumentDef.id}` });
-                
                 const output = (newSynth as any)._outputNode || newSynth;
-                
-                // Disconnect first to be safe
                 output.disconnect();
-                if (masterGainRef.current) {
-                    output.connect(masterGainRef.current);
-                } else {
-                    output.toDestination();
-                }
+                if (AudioGraph.masterGain) output.connect(AudioGraph.masterGain);
+                else output.toDestination();
                 
                 previewSynthRef.current = newSynth;
                 currentPreviewIdRef.current = newId;
             } catch (e) {
-                console.error("Error creating preview synth:", e);
                 return;
             }
         }
         
-        // Handle Mono/Poly difference
         if (previewSynthRef.current instanceof Tone.PolySynth || previewSynthRef.current instanceof Tone.Sampler) {
             previewSynthRef.current.triggerAttack(note, Tone.now());
         } else {
@@ -121,11 +95,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                     synth.triggerRelease(Tone.now()); 
                 }
             } else {
-                if ('releaseAll' in synth) {
-                    (synth as any).releaseAll();
-                } else {
-                    synth.triggerRelease(Tone.now());
-                }
+                if ('releaseAll' in synth) (synth as any).releaseAll();
+                else synth.triggerRelease(Tone.now());
             }
         }
     };
@@ -137,63 +108,45 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         try {
             const tempSynth = await getOrMakeInstrument({ ...instrumentDef, id: `__preview_oneshot_${Math.random()}` });
             const output = (tempSynth as any)._outputNode || tempSynth;
-            
             output.disconnect();
-            if (masterGainRef.current) {
-                output.connect(masterGainRef.current);
-            }
+            
+            if (AudioGraph.masterGain) output.connect(AudioGraph.masterGain);
 
-            // Handle Mono/Poly
             if (tempSynth instanceof Tone.PolySynth || tempSynth instanceof Tone.Sampler) {
                 tempSynth.triggerAttackRelease(note, duration, Tone.now());
             } else {
                  tempSynth.triggerAttackRelease(note, duration, Tone.now());
             }
-            
             const releaseTime = instrumentDef.config.envelope?.release ?? 1.0;
-
-            setTimeout(() => {
-                tempSynth.dispose();
-            }, (Tone.Time(duration).toSeconds() + releaseTime) * 1000 + 200);
+            setTimeout(() => { tempSynth.dispose(); }, (Tone.Time(duration).toSeconds() + releaseTime) * 1000 + 200);
         } catch (e) {
             console.error("Error playing one-shot preview:", e);
         }
     };
 
     useEffect(() => {
-        if (!masterGainRef.current || !limiterRef.current) return;
+        if (!AudioGraph.masterGain || !AudioGraph.limiter) return;
         
-        masterGainRef.current.gain.value = Tone.dbToGain(masterVolume);
-        limiterRef.current.threshold.value = limiterSettings.enabled ? limiterSettings.threshold : 0;
+        setMasterVolume(masterVolume); // Updates graph
+        
+        if (AudioGraph.limiter) {
+             AudioGraph.limiter.threshold.value = limiterSettings.enabled ? limiterSettings.threshold : 0;
+        }
     }, [masterVolume, limiterSettings, isInitialized]);
 
     const stop = () => {
-        const transport = Tone.getTransport();
-        
-        // 1. Mute master
-        if(masterGainRef.current) {
-            masterGainRef.current.gain.cancelScheduledValues(0);
-            masterGainRef.current.gain.value = 0; 
-            setTimeout(() => { 
-                if(masterGainRef.current) masterGainRef.current.gain.rampTo(Tone.dbToGain(masterVolume), 0.1); 
-            }, 50);
-        }
+        stopAllSound(); // Mutes master
 
-        transport.stop();
-        transport.cancel(); 
-        
         scheduledPartsRef.current.forEach(part => part.dispose());
         scheduledPartsRef.current = [];
         
+        const transport = Tone.getTransport();
         scheduledEventsRef.current.forEach(id => transport.clear(id));
         scheduledEventsRef.current = [];
 
         activeNotesPerPartRef.current.clear();
-        noteCacheRef.current.clear();
         
-        // 3. Reset Synth State
         activeSynthsRef.current.forEach(synth => {
-            // FIX: Call stopAll if available (PolySampler)
             if ('stopAll' in synth) {
                 (synth as any).stopAll(Tone.now());
             } else if ('releaseAll' in synth) {
@@ -202,6 +155,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 synth.triggerRelease(Tone.now());
             }
             
+            // Cancel internal volume automation
             if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
                 synth.volume.cancelScheduledValues(0);
             } else {
@@ -224,9 +178,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         mockQualities: PlayerQualities = {}
     ) => {
         if (!isInitialized) await initializeAudio();
-        
         const requestId = ++playbackRequestIdRef.current;
-
         const parser = new LigatureParser();
         const track = parser.parse(ligatureSource, mockQualities);
         
@@ -237,12 +189,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         instrumentDefsRef.current = instruments;
         
         const trackSynthMap = new Map<string, AnySoundSource>();
-        
         setIsLoadingSamples(true);
         
         for (const [trackName, instConfig] of Object.entries(track.instruments)) {
             if (playbackRequestIdRef.current !== requestId) return;
-
             const baseDef = instruments.find(i => i.id === instConfig.id);
             if (!baseDef) continue;
 
@@ -266,36 +216,34 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                     distortion: instConfig.overrides.distortion,
                     // @ts-ignore
                     bitcrush: instConfig.overrides.bitcrush,
-                    
                     // @ts-ignore
                     filter: instConfig.overrides.filter ? instConfig.overrides.filter : baseDef.config.filter,
                     // @ts-ignore
                     eq: instConfig.overrides.eq ? instConfig.overrides.eq : baseDef.config.eq,
-                    
                     // @ts-ignore
                     embellishments: baseDef.config.embellishments,
                     // @ts-ignore
-                    portamento: baseDef.config.portamento
+                    portamento: baseDef.config.portamento,
+                    // @ts-ignore
+                    noteCut: baseDef.config.noteCut, // Ensure noteCut is passed
+                    // @ts-ignore
+                    noteCutBleed: baseDef.config.noteCutBleed,
+                    // @ts-ignore
+                    vibrato: baseDef.config.vibrato
                 }
             };
             
             const synth = await getOrMakeInstrument(mergedDef);
-            
             if (playbackRequestIdRef.current !== requestId) return;
 
             const output = (synth as any)._outputNode || synth;
             output.disconnect(); 
-            
-            if (masterGainRef.current) {
-                output.connect(masterGainRef.current);
-            }
+            if (AudioGraph.masterGain) output.connect(AudioGraph.masterGain);
             
             activeSynthsRef.current.add(synth);
             trackSynthMap.set(trackName, synth);
         }
-        
         setIsLoadingSamples(false);
-
         if (playbackRequestIdRef.current !== requestId) return;
 
         const transport = Tone.getTransport(); 
@@ -303,276 +251,28 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         transport.bpm.value = track.config.bpm;
         transport.swing = track.config.swing || 0;
         
-        playSequenceFrom(0, transport, trackSynthMap); 
+        scheduleSequence(
+            track,
+            trackSynthMap,
+            instruments,
+            activeNotesPerPartRef.current,
+            scheduledPartsRef.current,
+            scheduledEventsRef.current
+        );
         
+        // --- FIX: Restore Master Volume after Stop mute ---
+        setMasterVolume(masterVolume);
+
         if (transport.state !== 'started') transport.start();
         setIsPlaying(true);
     };
-    
-    const playSequenceFrom = (
-        playlistStartIndex: number, 
-        transport: TransportClass, 
-        trackSynthMap: Map<string, AnySoundSource>
-    ) => {
-        const track = currentTrackRef.current;
-        if (!track) return;
-        
-        let totalBars = 0;
-        let runningConfig = { ...track.config };
-
-        for (const item of track.playlist) {
-            if (item.type === 'command') {
-                const eventId = transport.scheduleOnce((time: number) => {
-                    if (item.command === 'BPM') transport.bpm.rampTo(parseFloat(item.value), 0.1, time);
-                    if (item.command === 'Scale') {
-                        const [root, mode] = item.value.split(' ');
-                        runningConfig.scaleRoot = root;
-                        runningConfig.scaleMode = mode || 'Major';
-                    }
-                }, `${totalBars}:0:0`);
-                scheduledEventsRef.current.push(eventId);
-                continue;
-            }
-
-            const { grid, timeSig } = runningConfig;
-            const slotsPerBar = grid * (4 / timeSig[1]) * timeSig[0];
-            let maxChainBars = 0;
-
-            item.layers.forEach(layer => {
-                let chainSlots = 0;
-                layer.items.forEach(chainItem => {
-                    const pattern = track.patterns[chainItem.id];
-                    if (pattern) chainSlots += pattern.duration;
-                });
-                maxChainBars = Math.max(maxChainBars, Math.ceil(chainSlots / (slotsPerBar || 16)));
-            });
-
-            if (maxChainBars === 0) continue;
-
-            item.layers.forEach(layer => {
-                let currentBarOffset = 0;
-                let loopGuard = 0;
-                
-                while (currentBarOffset < maxChainBars && loopGuard++ < 1000) {
-                    const startOffset = currentBarOffset;
-
-                    for (const chainItem of layer.items) {
-                        if (currentBarOffset >= maxChainBars) break;
-                        const pattern = track.patterns[chainItem.id];
-                        if (!pattern) continue;
-
-                        const patternBars = Math.ceil(pattern.duration / slotsPerBar);
-                        if (patternBars === 0) continue; 
-
-                        for (const [trackName, events] of Object.entries(pattern.tracks)) {
-                            // --- FIX F1: Strip suffix to find base instrument ---
-                            const baseName = trackName.split('_#')[0]; 
-                            const synth = trackSynthMap.get(baseName);
-                            const instConfig = track.instruments[baseName];
-                            
-                            if (!instConfig) continue;
-
-                            const baseDef = instrumentDefsRef.current.find(d => d.id === instConfig.id);
-                            const mapping = baseDef?.mapping || 'diatonic';
-                            const instEffects = instConfig.overrides.effects || [];
-                            const trackMod = pattern.trackModifiers[trackName];
-                            const trackEffects = trackMod?.effects || [];
-                            
-                            const instOctaveOffset = instConfig.overrides.octaveOffset ?? baseDef?.config.octaveOffset ?? 0;
-
-                            const humanizeGlobal = runningConfig.humanize || 0;
-                            const humanizeInst = baseDef?.config.humanize?.enabled ? (baseDef.config.humanize.velocity || 0.1) : 0;
-                            const totalHumanize = Math.max(humanizeGlobal, humanizeInst);
-
-                            const toneEvents = events.map(event => {
-                                const totalVolDb = (chainItem.volume || 0) + (trackMod?.volume || 0);
-                                let velocity = Math.pow(10, totalVolDb / 20);
-                                
-                                const noteVol = event.notes[0]?.volume || 0;
-                                if (noteVol !== 0) velocity = Math.pow(10, (totalVolDb + noteVol) / 20);
-                                
-                                if (totalHumanize > 0) {
-                                    const jitter = (Math.random() - 0.5) * 0.4 * totalHumanize;
-                                    velocity = Math.max(0, Math.min(1, velocity + jitter));
-                                }
-
-                                const timeInSlots = event.time;
-                                const bar = Math.floor(timeInSlots / slotsPerBar);
-                                const beatDivisor = (grid * (4 / timeSig[1]));
-                                const beat = Math.floor((timeInSlots % slotsPerBar) / beatDivisor);
-                                const sixteenthDivisor = grid / 4;
-                                const sixteenth = (timeInSlots % beatDivisor) / sixteenthDivisor;
-                                const durationSeconds = event.duration * (60 / runningConfig.bpm / sixteenthDivisor);
-
-                                const noteNames = event.notes.map(n => 
-                                    resolveAndCacheNote(
-                                        n, 
-                                        runningConfig.scaleRoot, 
-                                        runningConfig.scaleMode, 
-                                        (chainItem.transposition || 0) + (trackMod?.transpose || 0), 
-                                        mapping,
-                                        instOctaveOffset
-                                    )
-                                );
-
-                                return {
-                                    time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
-                                    duration: durationSeconds,
-                                    notes: noteNames,
-                                    velocity,
-                                    noteDefs: event.notes,
-                                    pan: (trackMod?.pan || 0) / 100 
-                                };
-                            });
-
-                             if (synth) {
-                                const part = new Tone.Part((time, value) => {
-                                    let playTime = time;
-                                    if (totalHumanize > 0) {
-                                        playTime += (Math.random() - 0.5) * 0.06 * totalHumanize; 
-                                    }
-
-                                    const baseVolume = instConfig.overrides.volume ?? baseDef?.config.volume ?? -10;
-                                    
-                                    if (synth._panner) {
-                                        let panVal = value.pan;
-                                        const noteEffects = value.noteDefs[0]?.effects || [];
-                                        const panFx = noteEffects.find(fx => fx.code === 'P');
-                                        if (panFx) panVal = panFx.value / 100;
-                                        synth._panner.pan.setValueAtTime(panVal, playTime);
-                                    }
-
-                                    // Filter Modulation
-                                    const filterSens = baseDef?.config.filter?.velocitySens ?? 0;
-                                    if (synth._filterNode && filterSens > 0) {
-                                        const baseFreq = baseDef?.config.filter?.frequency ?? 2000;
-                                        const mod = 1 - (filterSens * (1 - value.velocity)); 
-                                        const targetFreq = Math.max(20, baseFreq * mod);
-                                        
-                                        synth._filterNode.frequency.cancelScheduledValues(playTime);
-                                        synth._filterNode.frequency.setValueAtTime(targetFreq, playTime);
-                                    }
-
-                                    // Dynamic Volume (Only if effects present)
-                                    const noteEffects = value.noteDefs[0]?.effects || [];
-                                    const hasDynamicVol = [...instEffects, ...trackEffects, ...noteEffects].some(fx => fx.code === 'F' || fx.code === 'S');
-
-                                    if (hasDynamicVol) {
-                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                            synth.volume.cancelScheduledValues(playTime);
-                                            synth.volume.setValueAtTime(baseVolume, playTime);
-                                        } else {
-                                            synth.volume.cancelScheduledValues(playTime);
-                                            synth.volume.setValueAtTime(baseVolume, playTime);
-                                        }
-
-                                        [...instEffects, ...trackEffects, ...noteEffects].forEach(fx => {
-                                            if (fx.code === 'F') {
-                                                const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
-                                                const targetVol = baseVolume - range;
-                                                synth.volume.setValueAtTime(baseVolume, playTime);
-                                                synth.volume.rampTo(targetVol, value.duration - 0.1, playTime);
-                                            } else if (fx.code === 'S') {
-                                                const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
-                                                const startVol = baseVolume - range;
-                                                synth.volume.setValueAtTime(startVol, playTime);
-                                                synth.volume.rampTo(baseVolume, value.duration - 0.1, playTime);
-                                            }
-                                        });
-                                    }
-
-                                    if (synth._embellishments) {
-                                        synth._embellishments.forEach(emb => {
-                                            if (Math.random() < emb.probability) {
-                                                emb.player.start(playTime);
-                                            }
-                                        });
-                                    }
-
-                                     if (baseDef?.config.noteCut) {
-                                        const previousNotes = activeNotesPerPartRef.current.get(part);
-                                        if (previousNotes) {
-                                            if ('releaseAll' in synth) {
-                                                (synth as any).releaseAll(playTime);
-                                            } else {
-                                                synth.triggerRelease(playTime);
-                                            }
-                                        }
-                                        
-                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                            synth.triggerAttack(value.notes, playTime, value.velocity);
-                                        } else {
-                                            if(value.notes.length > 0) synth.triggerAttack(value.notes[0], playTime, value.velocity);
-                                        }
-                                        
-                                        transport.scheduleOnce((releaseTime) => {
-                                            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                                synth.triggerRelease(value.notes, releaseTime);
-                                            } else {
-                                                synth.triggerRelease(releaseTime);
-                                            }
-                                            activeNotesPerPartRef.current.delete(part);
-                                        }, playTime + value.duration);
-                                        
-                                        activeNotesPerPartRef.current.set(part, value.notes);
-                                    } else {
-                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                            synth.triggerAttackRelease(value.notes, value.duration, playTime, value.velocity);
-                                        } else {
-                                            if(value.notes.length > 0) synth.triggerAttackRelease(value.notes[0], value.duration, playTime, value.velocity);
-                                        }
-                                    }
-                                }, toneEvents).start(0);
-                                scheduledPartsRef.current.push(part);
-                            }
-                        }
-                        currentBarOffset += patternBars;
-                    }
-                    if (currentBarOffset === startOffset) break; 
-                }
-            });
-            totalBars += maxChainBars;
-        }
-        
-        transport.loop = true;
-        transport.loopEnd = `${totalBars}:0:0`;
-    };
-
-    const resolveAndCacheNote = (
-        noteDef: NoteDef, 
-        root: string, 
-        mode: string, 
-        transpose: number, 
-        mapping: 'diatonic' | 'chromatic',
-        extraOctave: number = 0
-    ): string => {
-        const key = `${noteDef.degree + transpose}-${root}-${mode}-${noteDef.octaveShift + extraOctave}-${noteDef.accidental}-${noteDef.isNatural}-${mapping}`;
-        if (noteCacheRef.current.has(key)) return noteCacheRef.current.get(key)!;
-        
-        const resolved = resolveNote(
-            noteDef.degree + transpose, 
-            root, 
-            mode, 
-            noteDef.octaveShift + extraOctave, 
-            noteDef.accidental, 
-            noteDef.isNatural || mapping === 'chromatic'
-        );
-        noteCacheRef.current.set(key, resolved);
-        return resolved;
-    };
-
-    useEffect(() => { 
-        return () => { 
-            stop(); 
-            if (previewSynthRef.current) previewSynthRef.current.dispose();
-            disposeInstruments(); 
-        } 
-    }, []);
 
     return (
         <AudioContext.Provider value={{ 
             playTrack, stop, isPlaying, initializeAudio, 
-            limiterSettings, setLimiterSettings, masterVolume, setMasterVolume,
+            limiterSettings, setLimiterSettings, 
+            masterVolume: masterVolume, 
+            setMasterVolume: (db) => { setMasterVolumeState(db); setMasterVolume(db); },
             playPreviewNote, startPreviewNote, stopPreviewNote 
         }}>
             {children}
