@@ -1,5 +1,3 @@
-// src/engine/audio/models.ts
-
 export type SynthType = 
     | 'triangle' | 'sine' | 'square' | 'sawtooth' 
     | 'fmsine' | 'fmsquare' | 'fmsawtooth' | 'fmtriangle'
@@ -19,15 +17,15 @@ export interface EffectCommand {
 
 export interface FilterDef {
     type: 'lowpass' | 'highpass' | 'bandpass' | 'notch' | 'allpass' | 'peaking' | 'lowshelf' | 'highshelf';
-    frequency: number; // Hz
+    frequency: number; 
     rolloff?: -12 | -24 | -48 | -96;
     Q?: number;
-    gain?: number; // Used for shelving/peaking
-    velocitySens?: number; // 0 to 1 (Depth of velocity modulation)
+    gain?: number;
+    velocitySens?: number;
 }
 
 export interface EQDef {
-    low: number;  // Gain in dB
+    low: number;
     mid: number;
     high: number;
     lowFrequency?: number;
@@ -48,6 +46,15 @@ export interface EmbellishmentDef {
     probability: number; 
     volume?: number;     
     pitchOffset?: number; 
+}
+
+// --- NEW VIBRATO DEFINITION ---
+export interface VibratoDef {
+    rate: number;       // Hz (e.g. 5)
+    depth: number;      // Cents (e.g. 50)
+    delay: number;      // Seconds before starting
+    rise: number;       // Seconds to fade in amplitude
+    shape?: 'sine' | 'triangle' | 'square' | 'sawtooth';
 }
 
 export interface InstrumentDefinition {
@@ -76,23 +83,26 @@ export interface InstrumentDefinition {
             crossfade?: number;
         };
         noteCut?: boolean; 
-        portamento?: number; // Glide time in seconds (0 = off)
+        portamento?: number; 
+        
+        // --- NEW: Configurable Bleed ---
+        noteCutBleed?: number; // Seconds (default 0.05)
+        
+        // --- NEW: Vibrato ---
+        vibrato?: VibratoDef;
 
-        // --- NEW MODULES ---
         filter?: FilterDef;
         eq?: EQDef;
         lfos?: LFODef[];
         
-        // --- HUMANIZATION & ARTICULATION ---
         humanize?: {
             enabled: boolean;
-            velocity?: number; // Variance (0-1)
-            timing?: number;   // Variance (0-1)
+            velocity?: number; 
+            timing?: number;   
         };
         
         embellishments?: EmbellishmentDef[];
         
-        // Deprecated but kept for compatibility
         panning?: {
             enabled: boolean;
             type?: 'sine' | 'square' | 'triangle' | 'sawtooth';

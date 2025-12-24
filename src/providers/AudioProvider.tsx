@@ -170,22 +170,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const stop = () => {
         const transport = Tone.getTransport();
         
-        // 1. Mute master immediately
+        // 1. Mute master
         if(masterGainRef.current) {
             masterGainRef.current.gain.cancelScheduledValues(0);
             masterGainRef.current.gain.value = 0; 
-            
             setTimeout(() => { 
-                if(masterGainRef.current) {
-                    masterGainRef.current.gain.rampTo(Tone.dbToGain(masterVolume), 0.1); 
-                }
+                if(masterGainRef.current) masterGainRef.current.gain.rampTo(Tone.dbToGain(masterVolume), 0.1); 
             }, 50);
         }
 
         transport.stop();
         transport.cancel(); 
         
-        // 2. Dispose Parts
         scheduledPartsRef.current.forEach(part => part.dispose());
         scheduledPartsRef.current = [];
         
@@ -197,7 +193,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         
         // 3. Reset Synth State
         activeSynthsRef.current.forEach(synth => {
-            if ('releaseAll' in synth) {
+            // FIX: Call stopAll if available (PolySampler)
+            if ('stopAll' in synth) {
+                (synth as any).stopAll(Tone.now());
+            } else if ('releaseAll' in synth) {
                 (synth as any).releaseAll();
             } else {
                 synth.triggerRelease(Tone.now());

@@ -7,9 +7,7 @@ import { getOrMakeInstrument, AnySoundSource } from '@/engine/audio/synth';
 import { useAudio } from '@/providers/AudioProvider';
 import { Note } from 'tonal';
 
-// ... (WaveformDisplay and Slider remain the same) ...
-// ... (I'm skipping pasting them to save space, keep them as is) ...
-
+// --- Sub-Components ---
 function WaveformDisplay({ 
     peaks, loopStart, loopEnd, duration 
 }: { 
@@ -158,10 +156,10 @@ export default function InstrumentEditor({
         setForm(next);
     };
     
-    // --- FIX: ATOMIC TOGGLE ---
     const togglePolyMode = (mode: string) => {
         const next = JSON.parse(JSON.stringify(form));
-        
+        if (!next.config) next.config = {};
+
         if (mode === 'poly') {
             next.config.noteCut = false;
             next.config.portamento = 0;
@@ -172,7 +170,6 @@ export default function InstrumentEditor({
             next.config.noteCut = false;
             next.config.portamento = 0.1; 
         }
-        
         setForm(next);
     };
 
@@ -236,6 +233,7 @@ export default function InstrumentEditor({
         if (!c.humanize) handleChange('config.humanize', { enabled: true, [key]: v });
         else handleChange(`config.humanize.${key}`, v);
     };
+    const handleVibratoChange = (key: string, v: any) => handleChange(`config.vibrato.${key}`, v);
 
     const isSampler = form.type === 'sampler';
     
@@ -245,6 +243,7 @@ export default function InstrumentEditor({
     let currentMode = 'poly';
     if (noteCutVal) currentMode = 'mono_cut';
     else if (portamentoVal > 0 && !isSampler) currentMode = 'mono_glide';
+    else if (portamentoVal > 0 && isSampler) currentMode = 'mono_glide'; // Now supported!
     
     const editorContent = (
         <div>
@@ -335,27 +334,32 @@ export default function InstrumentEditor({
                                 >
                                     Mono (Cut)
                                 </button>
-                                {!isSampler && (
-                                    <button 
-                                        onClick={() => togglePolyMode('mono_glide')}
-                                        style={{
-                                            flex: 1, border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '2px',
-                                            background: currentMode === 'mono_glide' ? '#98c379' : 'transparent',
-                                            color: currentMode === 'mono_glide' ? '#000' : '#888',
-                                            fontWeight: 'bold', fontSize: '0.7rem'
-                                        }}
-                                    >
-                                        Glide
-                                    </button>
-                                )}
+                                <button 
+                                    onClick={() => togglePolyMode('mono_glide')}
+                                    style={{
+                                        flex: 1, border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '2px',
+                                        background: currentMode === 'mono_glide' ? '#98c379' : 'transparent',
+                                        color: currentMode === 'mono_glide' ? '#000' : '#888',
+                                        fontWeight: 'bold', fontSize: '0.7rem'
+                                    }}
+                                >
+                                    Glide
+                                </button>
                             </div>
                             
                             <p style={{fontSize: '0.65rem', color: '#666', margin: 0, marginTop: '4px'}}>
                                 {currentMode === 'poly' && "Chords allowed. Overlapping notes ring out (Natural)."}
                                 {currentMode === 'mono_cut' && "One note at a time. New notes abruptly cut off old ones."}
-                                {currentMode === 'mono_glide' && "Slides pitch between overlapping notes (Synths only)."}
+                                {currentMode === 'mono_glide' && "Slides pitch between overlapping notes. (Now supports Samplers!)"}
                             </p>
                         </div>
+
+                        {currentMode === 'mono_cut' && (
+                            <div style={{ marginTop: '0.5rem', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
+                                <Slider label="Cut Bleed (s)" val={c.noteCutBleed ?? 0.05} onChange={(v: number) => handleChange('config.noteCutBleed', v)} max={0.5} step={0.01} />
+                                <p style={{fontSize:'0.65rem', color:'#777', margin:0}}>Fade time for hard cuts.</p>
+                            </div>
+                        )}
 
                         {currentMode === 'mono_glide' && (
                             <div style={{ marginTop: '0.5rem', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
@@ -400,17 +404,6 @@ export default function InstrumentEditor({
                         </div>
                     </div>
                     
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', marginTop: '1rem' }}>
-                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={form.config.panning?.enabled || false} onChange={e => handleChange('config.panning.enabled', e.target.checked)} />
-                            LFO Auto-Pan
-                        </label>
-                        <div style={{ opacity: form.config.panning?.enabled ? 1 : 0.5, marginTop: '1rem', display: 'grid', gap: '1rem' }}>
-                            <Slider label="Freq (Hz)" val={form.config.panning?.frequency} onChange={(v: number) => handleChange('config.panning.frequency', v)} min={0.1} max={10} />
-                            <Slider label="Depth" val={form.config.panning?.depth} onChange={(v: number) => handleChange('config.panning.depth', v)} max={1} />
-                        </div>
-                    </div>
-
                     <h3 style={{ marginTop: '1.5rem', color: '#98c379' }}>Humanization</h3>
                     <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -419,6 +412,19 @@ export default function InstrumentEditor({
                         </label>
                         <div style={{ opacity: c.humanize?.enabled ? 1 : 0.5 }}>
                             <Slider label="Velocity Var" val={c.humanize?.velocity ?? 0.1} onChange={(v: number) => handleHumanizeChange('velocity', v)} max={1} />
+                        </div>
+                        
+                        {/* VIBRATO (New) */}
+                        <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
+                            <label style={{ fontSize: '0.75rem', color: '#aaa', fontWeight: 'bold', marginBottom: '4px', display: 'block' }}>VIBRATO</label>
+                            <Slider label="Depth (Cents)" val={c.vibrato?.depth ?? 0} onChange={v => handleVibratoChange('depth', v)} max={100} step={1} />
+                            {c.vibrato?.depth > 0 && (
+                                <>
+                                    <Slider label="Rate (Hz)" val={c.vibrato?.rate ?? 5} onChange={v => handleVibratoChange('rate', v)} min={0.1} max={10} />
+                                    <Slider label="Delay (s)" val={c.vibrato?.delay ?? 0} onChange={v => handleVibratoChange('delay', v)} max={2} />
+                                    <Slider label="Rise (s)" val={c.vibrato?.rise ?? 0} onChange={v => handleVibratoChange('rise', v)} max={2} />
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

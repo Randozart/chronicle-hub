@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import { Note } from 'tonal';
 import { Instrument, InstrumentOptions } from 'tone/build/esm/instrument/Instrument';
+import { VibratoDef } from './models'; // Ensure this path is correct relative to file
 
 export interface PolySamplerOptions extends InstrumentOptions {
     urls?: Record<string, string>;
@@ -9,6 +10,9 @@ export interface PolySamplerOptions extends InstrumentOptions {
     loopStart?: number;
     loopEnd?: number;
     polyphony?: number;
+    portamento?: number;
+    noteCutBleed?: number;
+    vibrato?: VibratoDef;
     envelope?: {
         attack?: number;
         decay?: number;
@@ -21,8 +25,10 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
     readonly name = "PolySampler";
 
     private _buffers: Map<number, Tone.ToneAudioBuffer> = new Map();
-    private _activeVoices: Map<number, { source: Tone.ToneBufferSource, env: Tone.AmplitudeEnvelope }> = new Map();
+    private _activeVoices: Map<number, { source: Tone.ToneBufferSource, env: Tone.AmplitudeEnvelope, lfo?: Tone.LFO }> = new Map();
     
+    // NOTE: this.output and this.volume are inherited from Tone.Instrument
+
     public loop: boolean;
     public loopStart: number;
     public loopEnd: number;
@@ -31,10 +37,19 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
     public sustain: number;
     public release: number;
     public polyphony: number;
+    public portamento: number;
+    public noteCutBleed: number;
+    public vibrato: VibratoDef | undefined;
+    
+    private _lastMidi: number | null = null; 
 
     constructor(options?: Partial<PolySamplerOptions>) {
         super(options);
         
+        // FIX: Removed manual this.output / this.volume setup. 
+        // Tone.Instrument creates a Tone.Volume node at this.output automatically.
+
+        // 2. Options
         const env = options?.envelope || {};
         this.attack = env.attack ?? 0.01;
         this.decay = env.decay ?? 0.1;
@@ -46,6 +61,9 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         this.loopEnd = options?.loopEnd || 0;
         
         this.polyphony = options?.polyphony || 32;
+        this.portamento = options?.portamento || 0;
+        this.noteCutBleed = options?.noteCutBleed || 0.05;
+        this.vibrato = options?.vibrato;
 
         if (options?.urls) {
             this.load(options.urls, options.baseUrl || "");
@@ -75,46 +93,61 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
     protected _triggerAttack(note: Tone.Unit.Frequency, time: Tone.Unit.Time, velocity: number): void {
         const now = this.toSeconds(time);
         const midi = Tone.Frequency(note).toMidi();
+        let startRateRatio = 1.0;
 
-        // 1. Handle Re-triggering Same Note (Self-Stealing)
-        const previousVoice = this._activeVoices.get(midi);
-        if (previousVoice) {
-            // Hard cut: Fast fade (50ms) then stop
-            previousVoice.env.triggerRelease(now);
-            previousVoice.source.stop(now + 0.05);
-            this._activeVoices.delete(midi);
-        }
-
-        // 2. Handle Polyphony Limit (Voice Stealing)
+        // 1. Voice Stealing (Polyphony Limit)
         if (this._activeVoices.size >= this.polyphony) {
             const oldestMidi = this._activeVoices.keys().next().value;
             if (oldestMidi !== undefined) {
                 const voiceToSteal = this._activeVoices.get(oldestMidi);
                 if (voiceToSteal) {
-                    // Hard cut: Fast fade (50ms) then stop
                     voiceToSteal.env.triggerRelease(now);
-                    voiceToSteal.source.stop(now + 0.05);
+                    voiceToSteal.source.stop(now + this.noteCutBleed);
+                    if (voiceToSteal.lfo) voiceToSteal.lfo.dispose();
                     this._activeVoices.delete(oldestMidi);
                 }
             }
         }
+
+        // 2. Self-Stealing (Retrigger) & Portamento Calc
+        const previousVoice = this._activeVoices.get(midi);
+        if (previousVoice) {
+            previousVoice.env.triggerRelease(now);
+            previousVoice.source.stop(now + this.noteCutBleed);
+            if (previousVoice.lfo) previousVoice.lfo.dispose();
+        }
+
+        if (this.portamento > 0 && this._lastMidi !== null && this._lastMidi !== midi) {
+            const semitones = this._lastMidi - midi;
+            startRateRatio = Math.pow(2, semitones / 12);
+        }
+        this._lastMidi = midi;
 
         const baseMidi = this.getClosestMidi(midi);
         if (baseMidi === -1) return;
         const buffer = this._buffers.get(baseMidi);
         if (!buffer) return;
 
+        // 3. Create Voice Components
         const source = new Tone.ToneBufferSource(buffer, () => {
-            // onended callback
             const voice = this._activeVoices.get(midi);
             if (voice && voice.source === source) {
                 this._activeVoices.delete(midi);
                 voice.env.dispose();
+                if (voice.lfo) voice.lfo.dispose();
             }
         }).set({ context: this.context });
         
         const interval = midi - baseMidi;
-        source.playbackRate.value = Math.pow(2, interval / 12);
+        const basePlaybackRate = Math.pow(2, interval / 12);
+        
+        // Apply Portamento
+        if (this.portamento > 0 && startRateRatio !== 1.0) {
+            source.playbackRate.value = basePlaybackRate * startRateRatio;
+            source.playbackRate.exponentialRampToValueAtTime(basePlaybackRate, now + this.portamento);
+        } else {
+            source.playbackRate.value = basePlaybackRate;
+        }
         
         if (this.loop) {
             source.loop = true;
@@ -131,10 +164,35 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         }).connect(this.output);
 
         source.connect(env);
+        
+        // 4. Vibrato LFO
+        let lfo: Tone.LFO | undefined;
+        if (this.vibrato && this.vibrato.depth > 0) {
+            lfo = new Tone.LFO({
+                frequency: this.vibrato.rate,
+                min: -this.vibrato.depth,
+                max: this.vibrato.depth,
+                type: this.vibrato.shape || 'sine',
+                context: this.context
+            });
+            
+            if ((source as any).detune) {
+                lfo.connect((source as any).detune);
+                
+                const vibStart = now + (this.vibrato.delay || 0);
+                lfo.start(vibStart);
+                
+                if (this.vibrato.rise > 0) {
+                    lfo.amplitude.value = 0;
+                    lfo.amplitude.linearRampTo(1, this.vibrato.rise, vibStart);
+                }
+            }
+        }
+
         source.start(now);
         env.triggerAttack(now, velocity);
 
-        this._activeVoices.set(midi, { source, env });
+        this._activeVoices.set(midi, { source, env, lfo });
     }
 
     protected _triggerRelease(note: Tone.Unit.Frequency, time: Tone.Unit.Time): void {
@@ -143,11 +201,9 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         const voice = this._activeVoices.get(midi);
 
         if (voice) {
-            // Soft release: use full ADSR release time
             voice.env.triggerRelease(now);
             const releaseTime = this.toSeconds(this.release);
             voice.source.stop(now + releaseTime + 0.1); 
-            // Do NOT delete from map yet; allow onended or stealing to handle it.
         }
     }
 
@@ -176,6 +232,26 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
     public releaseAll(time?: Tone.Unit.Time): this {
         const now = this.toSeconds(time || this.now());
         this._activeVoices.forEach((_, midi) => this._triggerRelease(midi, now));
+        return this;
+    }
+    
+    public stopAll(time?: Tone.Unit.Time): this {
+        const now = this.toSeconds(time || this.now());
+        this._activeVoices.forEach((voice) => {
+            voice.env.cancel(now);
+            voice.source.stop(now);
+            if (voice.lfo) voice.lfo.dispose();
+            voice.env.dispose();
+        });
+        this._activeVoices.clear();
+        return this;
+    }
+
+    dispose() {
+        super.dispose();
+        this.stopAll();
+        this._buffers.forEach(b => b.dispose());
+        this._buffers.clear();
         return this;
     }
 }

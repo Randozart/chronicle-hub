@@ -1,7 +1,7 @@
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 import { Note } from 'tonal';
-import { PolySampler } from './polySampler';
+import { PolySampler } from './polySampler'; 
 
 export type AnySoundSource = (Tone.PolySynth | PolySampler | Tone.MonoSynth) & { 
     _panner?: Tone.Panner; 
@@ -50,17 +50,19 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
 
     // --- 1. Create Source ---
     if (def.type === 'sampler' && config.urls) {
-        // --- USE POLYSAMPLER ---
         sourceInst = new PolySampler({
             urls: config.urls,
             baseUrl: config.baseUrl || "",
-            // FIX: Pass envelope object
             envelope: config.envelope,
             volume: config.volume,
             polyphony: targetPolyphony,
             loop: config.loop?.enabled,
             loopStart: config.loop?.start,
             loopEnd: config.loop?.end,
+            // --- NEW OPTIONS ---
+            portamento: config.portamento,
+            noteCutBleed: config.noteCutBleed,
+            vibrato: config.vibrato
         });
         
     } else { // Synth
