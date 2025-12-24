@@ -1,16 +1,15 @@
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
 import { Note } from 'tonal';
-import { PolySampler } from './polySampler';
-import { AudioGraph } from './graph'; // Import the graph
-import { createInsertEffects, createFilter, createEQ } from './effects'; // Import helpers
+import { PolySampler } from './polySampler'; 
+import { AudioGraph } from './graph'; 
+import { createInsertEffects, createFilter, createEQ } from './effects'; 
 
 export type AnySoundSource = (Tone.PolySynth | PolySampler | Tone.MonoSynth) & { 
     _panner?: Tone.Panner; 
     _outputNode?: Tone.ToneAudioNode;
     _filterNode?: Tone.Filter; 
     _embellishments?: { player: Tone.Player, probability: number, volumeOffset: number }[];
-    // Track Sends so we can dispose them
     _sends?: Tone.Gain[]; 
 };
 
@@ -34,7 +33,6 @@ function getCacheKey(def: InstrumentDefinition): string {
 export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<AnySoundSource> {
     const cacheKey = getCacheKey(def);
     
-    // ... (Cache check logic remains same, but dispose of sends too) ...
     const oldEntry = Object.entries(instrumentCache).find(([key]) => JSON.parse(key).id === def.id);
     if (oldEntry) {
         const [key, graph] = oldEntry;
@@ -43,7 +41,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         graph.lfos.forEach(l => l.dispose());
         graph.effects.forEach(e => e.dispose());
         graph.embellishments.forEach(e => e.dispose());
-        graph.sends.forEach(s => s.dispose()); // Dispose sends
+        graph.sends.forEach(s => s.dispose());
         graph.panner.dispose();
         graph.source.dispose();
         delete instrumentCache[key];
@@ -53,7 +51,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     let sourceInst: AnySoundSource;
     const targetPolyphony = (config.noteCut || (config.portamento && config.portamento > 0)) ? 1 : (config.polyphony || 32);
 
-    // --- 1. Create Source (Same as before) ---
+    // --- 1. Create Source ---
     if (def.type === 'sampler' && config.urls) {
         sourceInst = new PolySampler({
             urls: config.urls,
@@ -68,9 +66,11 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
             noteCutBleed: config.noteCutBleed,
             vibrato: config.vibrato
         });
+
+        // FIX: Wait for samples to load before returning!
+        await Tone.loaded();
+
     } else {
-        // ... (Synth creation logic same as before, omitted for brevity) ...
-        // (Just ensure to copy the Synth creation block from previous version)
         const envelope = {
             attack: config.envelope?.attack ?? 0.01,
             decay: config.envelope?.decay ?? 0.1,
@@ -102,13 +102,13 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     sourceInst.disconnect(); 
     sourceInst.volume.value = config.volume || -10;
 
-    // --- 2. Build Effects Chain (Refactored) ---
+    // --- 2. Build Effects Chain ---
     const activeEffects: Tone.ToneAudioNode[] = [];
     const chain: Tone.ToneAudioNode[] = [];
     const sends: Tone.Gain[] = [];
     const c = config as any; 
 
-    // A. Inserts (Distortion, Bitcrush)
+    // A. Inserts
     const inserts = createInsertEffects(config);
     inserts.forEach(eff => {
         activeEffects.push(eff);
@@ -120,7 +120,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     if (filter) {
         activeEffects.push(filter);
         chain.push(filter);
-        (sourceInst as any)._filterNode = filter; // Expose for modulation
+        (sourceInst as any)._filterNode = filter; 
     }
 
     const eq = createEQ(config.eq);
@@ -129,33 +129,19 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         chain.push(eq);
     }
 
-    // C. Global Sends (Reverb / Delay)
-    // Instead of creating Reverb, we create a Gain Node and connect to AudioGraph
-    
-    // Send 1: Delay
+    // C. Global Sends
     if (c.delay && c.delay > 0) {
-        const sendAmt = c.delay / 100; // 0-1
+        const sendAmt = c.delay / 100;
         const sendGain = new Tone.Gain(sendAmt);
         sends.push(sendGain);
-        
-        // Signal flows from END of chain (so far) into this Send
-        // But we handle connection logic below.
-        // Actually, we usually tap off the signal before the Panner.
-        
-        if (AudioGraph.busses.delay) {
-            sendGain.connect(AudioGraph.busses.delay);
-        }
+        if (AudioGraph.busses.delay) sendGain.connect(AudioGraph.busses.delay);
     }
 
-    // Send 2: Reverb
     if (c.reverb && c.reverb > 0) {
         const sendAmt = c.reverb / 100;
         const sendGain = new Tone.Gain(sendAmt);
         sends.push(sendGain);
-        
-        if (AudioGraph.busses.reverb) {
-            sendGain.connect(AudioGraph.busses.reverb);
-        }
+        if (AudioGraph.busses.reverb) sendGain.connect(AudioGraph.busses.reverb);
     }
 
     // D. Output Panner
@@ -164,28 +150,19 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
     activeEffects.push(trackPanner);
     chain.push(trackPanner);
 
-    // --- Wiring ---
+    // Wiring
     if (chain.length > 1) {
         sourceInst.chain(...chain);
     } else {
         sourceInst.connect(trackPanner);
     }
 
-    // Connect Sends
-    // We want the sends to receive the signal *after* inserts/EQ, but *before* Pan?
-    // Usually sends are Post-Fader (after Vol/Pan) or Pre-Fader.
-    // Let's do Pre-Pan for spatial clarity, but Post-EQ.
-    // The node *before* trackPanner is the last element of 'chain' before 'trackPanner'.
-    // If chain has [Filter, EQ, Panner], we tap EQ.
-    // If chain has [Panner], we tap Source.
-    
+    // Connect Sends (Pre-Pan, Post-EQ)
     const sendSourceNode = chain.length > 1 ? chain[chain.length - 2] : sourceInst;
     sends.forEach(s => sendSourceNode.connect(s));
-
-    // Store sends on instrument for disposal
     (sourceInst as any)._sends = sends;
 
-    // E. Auto-Panner (LFO)
+    // E. Auto-Panner
     if (config.panning && config.panning.enabled) {
         const autoPanner = new Tone.AutoPanner({
             frequency: config.panning.frequency || 2,
@@ -199,11 +176,10 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         (sourceInst as any)._outputNode = trackPanner;
     }
 
-    // --- 3. LFOs (Same as before) ---
+    // --- 3. LFOs ---
     const activeLFOs: Tone.LFO[] = [];
     const lfosToApply = config.lfos || [];
     
-    // ... (LFO Logic unchanged) ...
     lfosToApply.forEach(def => {
         const lfo = new Tone.LFO({
             type: def.type,
@@ -215,7 +191,7 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
 
         if (def.target === 'pan') {
             lfo.connect(trackPanner.pan);
-        } else if (def.target === 'filter' && filter) { // check filter var
+        } else if (def.target === 'filter' && filter) { 
             lfo.connect(filter.frequency);
         }
         activeLFOs.push(lfo);
@@ -223,12 +199,29 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
 
     // --- 4. Embellishments ---
     const embellishmentPlayers: Tone.Player[] = [];
-    // ... (Embellishment logic unchanged) ...
-    // Connect embellishments to the START of the chain
+    const embellishmentConfigs: { player: Tone.Player, probability: number, volumeOffset: number }[] = [];
+
     if (config.embellishments) {
-        // ... (copy existing logic) ...
-        // player.connect(chain.length > 0 ? chain[0] : trackPanner);
+        await Promise.all(config.embellishments.map(async (emb) => {
+            const player = new Tone.Player({
+                url: (config.baseUrl || "") + emb.url,
+                autostart: false,
+                volume: emb.volume || 0 
+            });
+            const chainStart = chain.length > 0 ? chain[0] : trackPanner;
+            player.disconnect(); 
+            player.connect(chainStart);
+
+            await player.loaded;
+            embellishmentPlayers.push(player);
+            embellishmentConfigs.push({ 
+                player, 
+                probability: emb.probability, 
+                volumeOffset: emb.volume || 0 
+            });
+        }));
     }
+    sourceInst._embellishments = embellishmentConfigs;
 
     instrumentCache[cacheKey] = { 
         source: sourceInst, 
@@ -246,7 +239,7 @@ export function disposeInstruments() {
         graph.lfos.forEach(l => l.dispose());
         graph.effects.forEach(e => e.dispose());
         graph.embellishments.forEach(p => p.dispose()); 
-        graph.sends.forEach(s => s.dispose()); // NEW
+        graph.sends.forEach(s => s.dispose());
         graph.panner.dispose();
         graph.source.dispose();
     });

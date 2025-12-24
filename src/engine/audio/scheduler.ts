@@ -3,7 +3,6 @@ import { ParsedTrack, InstrumentDefinition, NoteDef, SequenceEvent, PatternModif
 import { AnySoundSource } from './synth';
 import { resolveNote } from './scales';
 
-// Helper types
 type ActiveNoteMap = Map<Tone.Part, string[]>;
 
 export function scheduleSequence(
@@ -12,12 +11,11 @@ export function scheduleSequence(
     instrumentDefs: InstrumentDefinition[],
     activeNotesPerPart: ActiveNoteMap,
     scheduledParts: Tone.Part[],
-    scheduledEvents: number[]
+    scheduledEvents: number[],
+    noteCache: Map<string, string> // NEW ARG
 ) {
     const transport = Tone.getTransport();
     let totalBars = 0;
-    
-    // Running config can change over time (BPM commands)
     let runningConfig = { ...track.config };
 
     for (const item of track.playlist) {
@@ -38,7 +36,6 @@ export function scheduleSequence(
         const slotsPerBar = grid * (4 / timeSig[1]) * timeSig[0];
         let maxChainBars = 0;
 
-        // Calculate max duration for this row (Elastic Looping)
         item.layers.forEach(layer => {
             let chainSlots = 0;
             layer.items.forEach(chainItem => {
@@ -50,14 +47,11 @@ export function scheduleSequence(
 
         if (maxChainBars === 0) continue;
 
-        // Schedule Layers
         item.layers.forEach(layer => {
             let currentBarOffset = 0;
             let loopGuard = 0;
-            
             while (currentBarOffset < maxChainBars && loopGuard++ < 1000) {
                 const startOffset = currentBarOffset;
-
                 for (const chainItem of layer.items) {
                     if (currentBarOffset >= maxChainBars) break;
                     const pattern = track.patterns[chainItem.id];
@@ -67,7 +61,6 @@ export function scheduleSequence(
                     if (patternBars === 0) continue; 
 
                     for (const [trackName, events] of Object.entries(pattern.tracks)) {
-                        // Strip suffix for polyphonic lanes (Piano_#2 -> Piano)
                         const baseName = trackName.split('_#')[0];
                         const synth = trackSynthMap.get(baseName);
                         const instConfig = track.instruments[baseName];
@@ -80,16 +73,13 @@ export function scheduleSequence(
                         const trackEffects = trackMod?.effects || [];
                         const instOctaveOffset = instConfig.overrides.octaveOffset ?? baseDef?.config.octaveOffset ?? 0;
 
-                        // Humanization Config
                         const humanizeGlobal = runningConfig.humanize || 0;
                         const humanizeInst = baseDef?.config.humanize?.enabled ? (baseDef.config.humanize.velocity || 0.1) : 0;
                         const totalHumanize = Math.max(humanizeGlobal, humanizeInst);
 
-                        // Map Events to Tone.js friendly structure
                         const toneEvents = events.map(event => {
                             const totalVolDb = (chainItem.volume || 0) + (trackMod?.volume || 0);
                             let velocity = Math.pow(10, totalVolDb / 20);
-                            
                             const noteVol = event.notes[0]?.volume || 0;
                             if (noteVol !== 0) velocity = Math.pow(10, (totalVolDb + noteVol) / 20);
                             
@@ -98,7 +88,6 @@ export function scheduleSequence(
                                 velocity = Math.max(0, Math.min(1, velocity + jitter));
                             }
 
-                            // Timing
                             const timeInSlots = event.time;
                             const bar = Math.floor(timeInSlots / slotsPerBar);
                             const beatDivisor = (grid * (4 / timeSig[1]));
@@ -107,16 +96,24 @@ export function scheduleSequence(
                             const sixteenth = (timeInSlots % beatDivisor) / sixteenthDivisor;
                             const durationSeconds = event.duration * (60 / runningConfig.bpm / sixteenthDivisor);
 
-                            const noteNames = event.notes.map(n => 
-                                resolveNote(
-                                    n.degree + (chainItem.transposition || 0) + (trackMod?.transpose || 0), 
+                            const noteNames = event.notes.map(n => {
+                                // Inline Resolve and Cache logic
+                                const transpose = (chainItem.transposition || 0) + (trackMod?.transpose || 0);
+                                const key = `${n.degree + transpose}-${runningConfig.scaleRoot}-${runningConfig.scaleMode}-${n.octaveShift + instOctaveOffset}-${n.accidental}-${n.isNatural}-${mapping}`;
+                                
+                                if (noteCache.has(key)) return noteCache.get(key)!;
+                                
+                                const resolved = resolveNote(
+                                    n.degree + transpose, 
                                     runningConfig.scaleRoot, 
                                     runningConfig.scaleMode, 
                                     n.octaveShift + instOctaveOffset, 
                                     n.accidental, 
                                     n.isNatural || mapping === 'chromatic'
-                                )
-                            );
+                                );
+                                noteCache.set(key, resolved);
+                                return resolved;
+                            });
 
                             return {
                                 time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
@@ -128,111 +125,105 @@ export function scheduleSequence(
                             };
                         });
 
-                        // Schedule Part
-                        const part = new Tone.Part((time, value) => {
-                            let playTime = time;
-                            if (totalHumanize > 0) {
-                                playTime += (Math.random() - 0.5) * 0.06 * totalHumanize; 
-                            }
+                        if (synth) {
+                            const part = new Tone.Part((time, value) => {
+                                let playTime = time;
+                                if (totalHumanize > 0) {
+                                    playTime += (Math.random() - 0.5) * 0.06 * totalHumanize; 
+                                }
 
-                            const baseVolume = instConfig.overrides.volume ?? baseDef?.config.volume ?? -10;
-                            
-                            // Panning
-                            if (synth._panner) {
-                                let panVal = value.pan;
+                                const baseVolume = instConfig.overrides.volume ?? baseDef?.config.volume ?? -10;
+                                
+                                if (synth._panner) {
+                                    let panVal = value.pan;
+                                    const noteEffects = value.noteDefs[0]?.effects || [];
+                                    const panFx = noteEffects.find(fx => fx.code === 'P');
+                                    if (panFx) panVal = panFx.value / 100;
+                                    synth._panner.pan.setValueAtTime(panVal, playTime);
+                                }
+
+                                // Filter Modulation
+                                const filterSens = baseDef?.config.filter?.velocitySens ?? 0;
+                                if (synth._filterNode && filterSens > 0) {
+                                    const baseFreq = baseDef?.config.filter?.frequency ?? 2000;
+                                    const mod = 1 - (filterSens * (1 - value.velocity)); 
+                                    const targetFreq = Math.max(20, baseFreq * mod);
+                                    synth._filterNode.frequency.cancelScheduledValues(playTime);
+                                    synth._filterNode.frequency.setValueAtTime(targetFreq, playTime);
+                                }
+
+                                // Dynamic Volume
                                 const noteEffects = value.noteDefs[0]?.effects || [];
-                                const panFx = noteEffects.find(fx => fx.code === 'P');
-                                if (panFx) panVal = panFx.value / 100;
-                                synth._panner.pan.setValueAtTime(panVal, playTime);
-                            }
+                                const hasDynamicVol = [...instEffects, ...trackEffects, ...noteEffects].some(fx => fx.code === 'F' || fx.code === 'S');
 
-                            // Velocity -> Filter
-                            const filterSens = baseDef?.config.filter?.velocitySens ?? 0;
-                            if (synth._filterNode && filterSens > 0) {
-                                const baseFreq = baseDef?.config.filter?.frequency ?? 2000;
-                                const mod = 1 - (filterSens * (1 - value.velocity)); 
-                                const targetFreq = Math.max(20, baseFreq * mod);
-                                synth._filterNode.frequency.cancelScheduledValues(playTime);
-                                synth._filterNode.frequency.setValueAtTime(targetFreq, playTime);
-                            }
-
-                            // Vol Automation (Fade/Swell)
-                            const noteEffects = value.noteDefs[0]?.effects || [];
-                            const hasDynamicVol = [...instEffects, ...trackEffects, ...noteEffects].some(fx => fx.code === 'F' || fx.code === 'S');
-
-                            if (hasDynamicVol) {
-                                // For PolySynth/Sampler/MonoSynth, we check for volume property
-                                if ('volume' in synth) {
+                                if (hasDynamicVol) {
                                     const s = synth as any;
-                                    s.volume.cancelScheduledValues(playTime);
-                                    s.volume.setValueAtTime(baseVolume, playTime);
-                                    
-                                    [...instEffects, ...trackEffects, ...noteEffects].forEach(fx => {
-                                        if (fx.code === 'F') {
-                                            const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
-                                            s.volume.rampTo(baseVolume - range, value.duration - 0.1, playTime);
-                                        } else if (fx.code === 'S') {
-                                            const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
-                                            s.volume.setValueAtTime(baseVolume - range, playTime);
-                                            s.volume.rampTo(baseVolume, value.duration - 0.1, playTime);
+                                    if(s.volume) {
+                                        s.volume.cancelScheduledValues(playTime);
+                                        s.volume.setValueAtTime(baseVolume, playTime);
+                                        
+                                        [...instEffects, ...trackEffects, ...noteEffects].forEach(fx => {
+                                            if (fx.code === 'F') {
+                                                const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
+                                                s.volume.rampTo(baseVolume - range, value.duration - 0.1, playTime);
+                                            } else if (fx.code === 'S') {
+                                                const range = (fx.value === 0) ? 100 : Math.abs(fx.value);
+                                                s.volume.setValueAtTime(baseVolume - range, playTime);
+                                                s.volume.rampTo(baseVolume, value.duration - 0.1, playTime);
+                                            }
+                                        });
+                                    }
+                                }
+
+                                if (synth._embellishments) {
+                                    synth._embellishments.forEach(emb => {
+                                        if (Math.random() < emb.probability) {
+                                            emb.player.start(playTime);
                                         }
                                     });
                                 }
-                            }
 
-                            // Trigger Embellishments
-                            if (synth._embellishments) {
-                                synth._embellishments.forEach(emb => {
-                                    if (Math.random() < emb.probability) {
-                                        emb.player.start(playTime);
+                                if (baseDef?.config.noteCut) {
+                                    const previousNotes = activeNotesPerPart.get(part);
+                                    if (previousNotes) {
+                                        if ('releaseAll' in synth) (synth as any).releaseAll(playTime);
+                                        else synth.triggerRelease(playTime);
                                     }
-                                });
-                            }
-
-                            // Trigger Note
-                            if (baseDef?.config.noteCut) {
-                                const previousNotes = activeNotesPerPart.get(part);
-                                if (previousNotes) {
-                                    if ('releaseAll' in synth) (synth as any).releaseAll(playTime);
-                                    else synth.triggerRelease(playTime);
-                                }
-                                
-                                if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                    synth.triggerAttack(value.notes, playTime, value.velocity);
-                                } else {
-                                    if(value.notes.length > 0) synth.triggerAttack(value.notes[0], playTime, value.velocity);
-                                }
-                                
-                                transport.scheduleOnce((releaseTime) => {
+                                    
                                     if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                        synth.triggerRelease(value.notes, releaseTime);
-                                    } else {
-                                        synth.triggerRelease(releaseTime);
+                                        synth.triggerAttack(value.notes, playTime, value.velocity);
+                                    } else if ('triggerAttack' in synth) {
+                                        if(value.notes.length > 0) (synth as any).triggerAttack(value.notes[0], playTime, value.velocity);
                                     }
-                                    activeNotesPerPart.delete(part);
-                                }, playTime + value.duration);
-                                
-                                activeNotesPerPart.set(part, value.notes);
-                            } else {
-                                if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                                    synth.triggerAttackRelease(value.notes, value.duration, playTime, value.velocity);
+                                    
+                                    transport.scheduleOnce((releaseTime) => {
+                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                                            synth.triggerRelease(value.notes, releaseTime);
+                                        } else if ('triggerRelease' in synth) {
+                                            (synth as any).triggerRelease(releaseTime);
+                                        }
+                                        activeNotesPerPart.delete(part);
+                                    }, playTime + value.duration);
+                                    
+                                    activeNotesPerPart.set(part, value.notes);
                                 } else {
-                                    if(value.notes.length > 0) synth.triggerAttackRelease(value.notes[0], value.duration, playTime, value.velocity);
+                                    if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                                        synth.triggerAttackRelease(value.notes, value.duration, playTime, value.velocity);
+                                    } else if ('triggerAttackRelease' in synth) {
+                                        if(value.notes.length > 0) (synth as any).triggerAttackRelease(value.notes[0], value.duration, playTime, value.velocity);
+                                    }
                                 }
-                            }
-                        }, toneEvents).start(0);
-                        scheduledParts.push(part);
-                    } // End Track Loop
-                    
+                            }, toneEvents).start(0);
+                            scheduledParts.push(part);
+                        }
+                    }
                     currentBarOffset += patternBars;
-                } // End Chain Loop
-                
-                if (currentBarOffset === startOffset) break;
-            } // End While
-        }); // End Layers
-
+                }
+                if (currentBarOffset === startOffset) break; 
+            }
+        });
         totalBars += maxChainBars;
-    } // End Playlist Item
+    }
     
     transport.loop = true;
     transport.loopEnd = `${totalBars}:0:0`;

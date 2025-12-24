@@ -8,6 +8,7 @@ import { LigatureParser } from '@/engine/audio/parser';
 import { PlayerQualities } from '@/engine/models';
 import { AudioGraph, initializeAudioGraph, stopAllSound, setMasterVolume } from '@/engine/audio/graph';
 import { scheduleSequence } from '@/engine/audio/scheduler'; 
+import { PolySampler } from '@/engine/audio/polySampler';
 
 interface LimiterSettings {
     enabled: boolean;
@@ -40,6 +41,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const previewSynthRef = useRef<AnySoundSource | null>(null);
     const currentPreviewIdRef = useRef<string>('');
 
+    const activePreviewNoteRef = useRef<string | null>(null);
+
     const [limiterSettings, setLimiterSettings] = useState<LimiterSettings>({ enabled: true, threshold: -1 });
     const [masterVolume, setMasterVolumeState] = useState(0);
 
@@ -50,6 +53,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const scheduledEventsRef = useRef<number[]>([]); 
     const activeNotesPerPartRef = useRef<Map<Tone.Part, string[]>>(new Map());
     const activeSynthsRef = useRef<Set<AnySoundSource>>(new Set());
+    
+    const noteCacheRef = useRef<Map<string, string>>(new Map());
 
     const initializeAudio = async () => {
         if (isInitialized) return;
@@ -60,6 +65,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const startPreviewNote = async (instrumentDef: InstrumentDefinition, note: string) => {
         if (!isInitialized) await initializeAudio();
 
+        activePreviewNoteRef.current = note;
         const newId = instrumentDef.id + JSON.stringify(instrumentDef.config);
 
         if (!previewSynthRef.current || currentPreviewIdRef.current !== newId) {
@@ -78,25 +84,43 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             }
         }
         
-        if (previewSynthRef.current instanceof Tone.PolySynth || previewSynthRef.current instanceof Tone.Sampler) {
-            previewSynthRef.current.triggerAttack(note, Tone.now());
-        } else {
-            previewSynthRef.current.triggerAttack(note, Tone.now());
+        // Safety check: is user still holding?
+        if (activePreviewNoteRef.current === note && previewSynthRef.current) {
+            const synth = previewSynthRef.current;
+            // All supported synths (PolySynth, Sampler, PolySampler, MonoSynth) support triggerAttack(note, time)
+            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
+                synth.triggerAttack(note, Tone.now());
+            } else if ('triggerAttack' in synth) {
+                (synth as any).triggerAttack(note, Tone.now());
+            }
         }
     };
 
     const stopPreviewNote = (note?: string) => {
+        activePreviewNoteRef.current = null;
+
         if (previewSynthRef.current) {
             const synth = previewSynthRef.current;
+            
             if (note) {
-                if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
+                // FIX: PolySampler MUST be included here to receive the 'note' argument
+                if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
                     synth.triggerRelease(note, Tone.now());
-                } else {
-                    synth.triggerRelease(Tone.now()); 
+                } else if ('triggerRelease' in synth) {
+                    // MonoSynth takes time only (releases current note)
+                    (synth as any).triggerRelease(Tone.now()); 
                 }
             } else {
-                if ('releaseAll' in synth) (synth as any).releaseAll();
-                else synth.triggerRelease(Tone.now());
+                // Release All
+                if ('stopAll' in synth) {
+                     // PolySampler Hard Stop (Optional: use releaseAll for fade)
+                     // Let's use stopAll for immediate silence on "Stop"
+                    (synth as any).stopAll(Tone.now());
+                } else if ('releaseAll' in synth) {
+                    (synth as any).releaseAll();
+                } else if ('triggerRelease' in synth) {
+                    (synth as any).triggerRelease(Tone.now());
+                }
             }
         }
     };
@@ -112,10 +136,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             
             if (AudioGraph.masterGain) output.connect(AudioGraph.masterGain);
 
-            if (tempSynth instanceof Tone.PolySynth || tempSynth instanceof Tone.Sampler) {
+            if (tempSynth instanceof Tone.PolySynth || tempSynth instanceof Tone.Sampler || tempSynth instanceof PolySampler) {
                 tempSynth.triggerAttackRelease(note, duration, Tone.now());
-            } else {
-                 tempSynth.triggerAttackRelease(note, duration, Tone.now());
+            } else if ('triggerAttackRelease' in tempSynth) {
+                 (tempSynth as any).triggerAttackRelease(note, duration, Tone.now());
             }
             const releaseTime = instrumentDef.config.envelope?.release ?? 1.0;
             setTimeout(() => { tempSynth.dispose(); }, (Tone.Time(duration).toSeconds() + releaseTime) * 1000 + 200);
@@ -126,16 +150,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!AudioGraph.masterGain || !AudioGraph.limiter) return;
-        
-        setMasterVolume(masterVolume); // Updates graph
-        
+        setMasterVolume(masterVolume);
         if (AudioGraph.limiter) {
              AudioGraph.limiter.threshold.value = limiterSettings.enabled ? limiterSettings.threshold : 0;
         }
     }, [masterVolume, limiterSettings, isInitialized]);
 
     const stop = () => {
-        stopAllSound(); // Mutes master
+        stopAllSound(); 
 
         scheduledPartsRef.current.forEach(part => part.dispose());
         scheduledPartsRef.current = [];
@@ -145,6 +167,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         scheduledEventsRef.current = [];
 
         activeNotesPerPartRef.current.clear();
+        noteCacheRef.current.clear();
         
         activeSynthsRef.current.forEach(synth => {
             if ('stopAll' in synth) {
@@ -155,11 +178,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 synth.triggerRelease(Tone.now());
             }
             
-            // Cancel internal volume automation
-            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler) {
-                synth.volume.cancelScheduledValues(0);
+            if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
+                if(synth.volume) synth.volume.cancelScheduledValues(0);
             } else {
-                synth.volume.cancelScheduledValues(0);
+                if((synth as any).volume) (synth as any).volume.cancelScheduledValues(0);
             }
 
             if (synth._panner) {
@@ -225,7 +247,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                     // @ts-ignore
                     portamento: baseDef.config.portamento,
                     // @ts-ignore
-                    noteCut: baseDef.config.noteCut, // Ensure noteCut is passed
+                    noteCut: baseDef.config.noteCut, 
                     // @ts-ignore
                     noteCutBleed: baseDef.config.noteCutBleed,
                     // @ts-ignore
@@ -257,10 +279,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             instruments,
             activeNotesPerPartRef.current,
             scheduledPartsRef.current,
-            scheduledEventsRef.current
+            scheduledEventsRef.current,
+            noteCacheRef.current
         );
         
-        // --- FIX: Restore Master Volume after Stop mute ---
         setMasterVolume(masterVolume);
 
         if (transport.state !== 'started') transport.start();
