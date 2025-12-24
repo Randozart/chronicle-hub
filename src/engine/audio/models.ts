@@ -48,7 +48,6 @@ export interface EmbellishmentDef {
     pitchOffset?: number; 
 }
 
-// --- NEW VIBRATO DEFINITION ---
 export interface VibratoDef {
     rate: number;       // Hz (e.g. 5)
     depth: number;      // Cents (e.g. 50)
@@ -85,10 +84,7 @@ export interface InstrumentDefinition {
         noteCut?: boolean; 
         portamento?: number; 
         
-        // --- NEW: Configurable Bleed ---
-        noteCutBleed?: number; // Seconds (default 0.05)
-        
-        // --- NEW: Vibrato ---
+        noteCutBleed?: number; 
         vibrato?: VibratoDef;
 
         filter?: FilterDef;
@@ -192,7 +188,8 @@ export interface ParsedPattern {
 export interface SequenceEvent {
     time: number;       
     duration: number;   
-    notes: NoteDef[];   
+    notes: NoteDef[];
+    isCut?: boolean;
 }
 
 export interface NoteDef {

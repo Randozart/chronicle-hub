@@ -1,6 +1,5 @@
 import * as Tone from 'tone';
 import { InstrumentDefinition } from './models';
-import { Note } from 'tonal';
 import { PolySampler } from './polySampler'; 
 import { AudioGraph } from './graph'; 
 import { createInsertEffects, createFilter, createEQ } from './effects'; 
@@ -67,7 +66,6 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
             vibrato: config.vibrato
         });
 
-        // FIX: Wait for samples to load before returning!
         await Tone.loaded();
 
     } else {
@@ -196,6 +194,22 @@ export async function getOrMakeInstrument(def: InstrumentDefinition): Promise<An
         }
         activeLFOs.push(lfo);
     });
+
+    // Fix: Add Vibrato LFO for Synths
+    if (def.type === 'synth' && config.vibrato && config.vibrato.depth > 0) {
+        const v = config.vibrato;
+        const vibratoLfo = new Tone.LFO({
+            frequency: v.rate,
+            min: -v.depth,
+            max: v.depth,
+            type: v.shape || 'sine'
+        }).start();
+
+        if ((sourceInst as any).detune) {
+            vibratoLfo.connect((sourceInst as any).detune);
+            activeLFOs.push(vibratoLfo);
+        }
+    }
 
     // --- 4. Embellishments ---
     const embellishmentPlayers: Tone.Player[] = [];

@@ -15,7 +15,6 @@ export class LigatureParser {
         return source.replace(scribeRegex, (fullMatch, expression) => {
             if (!expression.match(/[\$@%]/)) return fullMatch; 
             try {
-                // Pass mockDefs to the evaluator
                 return evaluateText(fullMatch, mockQualities, mockDefs, null, 0);
             } catch (e) {
                 console.warn(`Ligature ScribeScript Pre-Pass Error:`, e);
@@ -200,7 +199,7 @@ export class LigatureParser {
         const pattern = track.patterns[patternId];
         if (!pattern) return trackName;
 
-        // --- Handle Duplicate Lanes (Audio Fix) ---
+        // Handle duplicate lanes
         let storageKey = trackName;
         if (pattern.tracks[storageKey]) {
             let counter = 2;
@@ -220,13 +219,25 @@ export class LigatureParser {
         const sequence = pattern.tracks[storageKey];
         const { grid, timeSig } = track.config;
         
-        // Use Centralized Regex
         const tokens = content.match(LIGATURE_TOKEN_REGEX) || [];
         let currentTime = 0; 
         
         for (const token of tokens) {
             if (token === '|') continue;
             if (token === '.') { currentTime++; continue; }
+            
+            // --- NEW: Note Cut Support ---
+            if (token === '!') {
+                sequence.push({ 
+                    time: currentTime, 
+                    duration: 0.1, 
+                    notes: [], 
+                    isCut: true 
+                });
+                currentTime++;
+                continue;
+            }
+
             if (token === '-') {
                  if (sequence.length > 0) {
                     const lastEvent = sequence[sequence.length - 1];
@@ -238,7 +249,6 @@ export class LigatureParser {
                 continue;
             }
             if (token.startsWith('(')) {
-                // Remove outer parens
                 const inner = token.substring(1, token.length - 1);
                 const subMatches = inner.split(/\s+/).filter(Boolean);
                 if (subMatches.length > 0) {
@@ -271,7 +281,7 @@ export class LigatureParser {
         const expectedDurationInSlots = barCount > 0 ? barCount * (slotsPerBeat * timeSig[0]) : currentTime;
         pattern.duration = Math.max(pattern.duration, expectedDurationInSlots);
 
-        return trackName; // Return original name for next line context
+        return trackName; 
     }
 
     private parsePlaylistRow(line: string, track: ParsedTrack) {
@@ -401,8 +411,6 @@ export class LigatureParser {
     }
 
     private parseNoteToken(token: string): NoteDef {
-        // Updated regex handling to match constant if needed, but manual breakdown here is fine
-        // as long as it parses the token extracted by TOKEN_REGEX
         const match = token.match(/^(\d+)(['#b%,]*)(?:\(([^)]*)\))?(?:\^\[(.*?)\])?$/);
         
         if (!match) return { degree: 1, octaveShift: 0, accidental: 0, isNatural: false };

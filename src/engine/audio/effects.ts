@@ -3,7 +3,7 @@ import { InstrumentConfig, FilterDef, EQDef } from './models';
 
 export function createInsertEffects(config: InstrumentConfig['overrides']): Tone.ToneAudioNode[] {
     const chain: Tone.ToneAudioNode[] = [];
-    const c = config as any; // Dynamic access for effects
+    const c = config as any; 
 
     // 1. BitCrusher
     if (c.bitcrush && c.bitcrush > 0) {
@@ -27,8 +27,8 @@ export function createInsertEffects(config: InstrumentConfig['overrides']): Tone
 export function createFilter(def?: FilterDef): Tone.Filter | null {
     if (!def) return null;
     return new Tone.Filter({
-        type: def.type,
-        frequency: def.frequency,
+        type: def.type || 'lowpass', 
+        frequency: def.frequency || 20000, 
         rolloff: def.rolloff || -12,
         Q: def.Q || 1,
         gain: def.gain || 0

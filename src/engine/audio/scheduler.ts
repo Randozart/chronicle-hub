@@ -2,6 +2,7 @@ import * as Tone from 'tone';
 import { ParsedTrack, InstrumentDefinition, NoteDef, SequenceEvent, PatternModifier, ChainItem } from './models';
 import { AnySoundSource } from './synth';
 import { resolveNote } from './scales';
+import { PolySampler } from './polySampler';
 
 type ActiveNoteMap = Map<Tone.Part, string[]>;
 
@@ -12,7 +13,7 @@ export function scheduleSequence(
     activeNotesPerPart: ActiveNoteMap,
     scheduledParts: Tone.Part[],
     scheduledEvents: number[],
-    noteCache: Map<string, string> // NEW ARG
+    noteCache: Map<string, string> 
 ) {
     const transport = Tone.getTransport();
     let totalBars = 0;
@@ -78,6 +79,25 @@ export function scheduleSequence(
                         const totalHumanize = Math.max(humanizeGlobal, humanizeInst);
 
                         const toneEvents = events.map(event => {
+                            // --- NEW: Handle Cut Event ---
+                            if (event.isCut) {
+                                const timeInSlots = event.time;
+                                const bar = Math.floor(timeInSlots / slotsPerBar);
+                                const beatDivisor = (grid * (4 / timeSig[1]));
+                                const beat = Math.floor((timeInSlots % slotsPerBar) / beatDivisor);
+                                const sixteenthDivisor = grid / 4;
+                                const sixteenth = (timeInSlots % beatDivisor) / sixteenthDivisor;
+                                return {
+                                    time: `${totalBars + currentBarOffset + bar}:${beat}:${sixteenth}`,
+                                    isCut: true,
+                                    duration: 0.1,
+                                    notes: [],
+                                    velocity: 0,
+                                    noteDefs: [],
+                                    pan: 0
+                                };
+                            }
+
                             const totalVolDb = (chainItem.volume || 0) + (trackMod?.volume || 0);
                             let velocity = Math.pow(10, totalVolDb / 20);
                             const noteVol = event.notes[0]?.volume || 0;
@@ -97,7 +117,6 @@ export function scheduleSequence(
                             const durationSeconds = event.duration * (60 / runningConfig.bpm / sixteenthDivisor);
 
                             const noteNames = event.notes.map(n => {
-                                // Inline Resolve and Cache logic
                                 const transpose = (chainItem.transposition || 0) + (trackMod?.transpose || 0);
                                 const key = `${n.degree + transpose}-${runningConfig.scaleRoot}-${runningConfig.scaleMode}-${n.octaveShift + instOctaveOffset}-${n.accidental}-${n.isNatural}-${mapping}`;
                                 
@@ -127,6 +146,20 @@ export function scheduleSequence(
 
                         if (synth) {
                             const part = new Tone.Part((time, value) => {
+                                // --- NEW: Handle Cut Event Logic ---
+                                if (value.isCut) {
+                                    const previousNotes = activeNotesPerPart.get(part);
+                                    if (previousNotes) {
+                                        if (synth instanceof Tone.PolySynth || synth instanceof Tone.Sampler || synth instanceof PolySampler) {
+                                            synth.triggerRelease(previousNotes, time);
+                                        } else if ('triggerRelease' in synth) {
+                                            (synth as any).triggerRelease(time);
+                                        }
+                                        activeNotesPerPart.delete(part);
+                                    }
+                                    return;
+                                }
+
                                 let playTime = time;
                                 if (totalHumanize > 0) {
                                     playTime += (Math.random() - 0.5) * 0.06 * totalHumanize; 
