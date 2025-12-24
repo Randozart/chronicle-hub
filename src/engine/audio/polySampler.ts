@@ -76,25 +76,28 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         const now = this.toSeconds(time);
         const midi = Tone.Frequency(note).toMidi();
 
-        // --- VOICE STEALING LOGIC (FIXED) ---
+        // 1. Handle Re-triggering Same Note (Self-Stealing)
+        const previousVoice = this._activeVoices.get(midi);
+        if (previousVoice) {
+            // Hard cut: Fast fade (50ms) then stop
+            previousVoice.env.triggerRelease(now);
+            previousVoice.source.stop(now + 0.05);
+            this._activeVoices.delete(midi);
+        }
+
+        // 2. Handle Polyphony Limit (Voice Stealing)
         if (this._activeVoices.size >= this.polyphony) {
             const oldestMidi = this._activeVoices.keys().next().value;
             if (oldestMidi !== undefined) {
                 const voiceToSteal = this._activeVoices.get(oldestMidi);
                 if (voiceToSteal) {
-                    // FIX: Use triggerRelease to gracefully but quickly stop the old voice.
-                    // A very short release time could be used here if needed, but triggerRelease is usually sufficient.
-                    // This is cleaner than trying to manipulate internal gain.
+                    // Hard cut: Fast fade (50ms) then stop
                     voiceToSteal.env.triggerRelease(now);
-                    
-                    // We can still schedule the source to stop to be safe, but the envelope handles the sound.
-                    voiceToSteal.source.stop(now + this.toSeconds(voiceToSteal.env.release));
-
+                    voiceToSteal.source.stop(now + 0.05);
                     this._activeVoices.delete(oldestMidi);
                 }
             }
         }
-        // --- END FIX ---
 
         const baseMidi = this.getClosestMidi(midi);
         if (baseMidi === -1) return;
@@ -140,14 +143,14 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         const voice = this._activeVoices.get(midi);
 
         if (voice) {
+            // Soft release: use full ADSR release time
             voice.env.triggerRelease(now);
             const releaseTime = this.toSeconds(this.release);
-            voice.source.stop(now + releaseTime + 0.1);
-            // Don't delete from active voices here, let onended handle it
+            voice.source.stop(now + releaseTime + 0.1); 
+            // Do NOT delete from map yet; allow onended or stealing to handle it.
         }
     }
-    
-    // --- FIX: Add public-facing methods back in ---
+
     public triggerAttack(notes: Tone.Unit.Frequency | Tone.Unit.Frequency[], time?: Tone.Unit.Time, velocity?: number): this {
         const now = this.now();
         const t = time ?? now;
@@ -169,8 +172,7 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         }
         return this;
     }
-    // ---------------------------------------------
-
+    
     public releaseAll(time?: Tone.Unit.Time): this {
         const now = this.toSeconds(time || this.now());
         this._activeVoices.forEach((_, midi) => this._triggerRelease(midi, now));
