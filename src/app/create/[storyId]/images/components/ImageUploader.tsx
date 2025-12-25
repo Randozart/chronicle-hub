@@ -29,14 +29,6 @@ const ASPECT_RATIOS: Record<string, number> = {
 };
 
 export default function ImageUploader({ storyId, onUploadComplete }: Props) {
-    // ---------------------------------------------------------
-    // TEMPORARY: Component disabled pending storage configuration
-    return null; 
-    // ---------------------------------------------------------
-
-    /* 
-    // UNCOMMENT THE BLOCK BELOW TO RESTORE FUNCTIONALITY
-    
     const [isUploading, setIsUploading] = useState(false);
     const [category, setCategory] = useState<ImageCategory>('uncategorized');
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -183,35 +175,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         setError('');
 
         try {
-            // 1. Generate full-res crop on a hidden canvas
-            // (Simplification: We are uploading the CANVAS content which is 400x400 preview for now.
-            // Ideally you'd re-draw on a full-size canvas based on OUTPUT_WIDTHS[category])
-            
-            const outputW = OUTPUT_WIDTHS[category] || 1024;
-            const outputH = outputW / (ASPECT_RATIOS[category] || 1);
-            
-            // Create High-Res Canvas
-            const hrCanvas = document.createElement('canvas');
-            hrCanvas.width = outputW;
-            hrCanvas.height = outputH;
-            const hrCtx = hrCanvas.getContext('2d');
-            
-            if (!hrCtx) throw new Error("Context lost");
-
-            // Calculate ratios from the preview canvas to the output canvas
-            // Preview Mask Width was calculated in drawing loop. We need to reverse-engineer relative scale.
-            // Simplified approach: Just upload the raw file and let server process, OR upload canvas blob.
-            // For now, let's upload the original file + crop data, OR just the canvas blob.
-            // Let's stick to uploading the file directly for Task 3 (Sharp will handle resizing).
-            
-            // ... Wait, the requirement was MinIO + Sharp. 
-            // So we should send the FILE to the API, not the canvas blob, 
-            // unless we want to apply the crop client-side.
-            // For this version, let's assume we just upload the raw file and handle crop later 
-            // OR just upload the current canvas blob for WYSIWYG.
-            
-            // Let's go with WYSIWYG Canvas Upload for now as it's easier.
-            
+            // WYSIWYG Canvas Upload (Simple, effective, applies the user's crop)
             canvasRef.current.toBlob(async (blob) => {
                 if (!blob) throw new Error("Canvas empty");
                 
@@ -271,7 +235,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
             ) : (
                 <div style={{ display: 'flex', gap: '2rem' }}>
                     
-                    { // LEFT: CONTROLS // }
+                    {/* LEFT: CONTROLS */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                          <div className="form-group">
                             <label className="form-label">Asset Key (ID)</label>
@@ -317,7 +281,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
                         {error && <p style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</p>}
                     </div>
 
-                    { // RIGHT: CANVAS // }
+                    {/* RIGHT: CANVAS */}
                     <div>
                          <canvas 
                             ref={canvasRef}
@@ -338,5 +302,4 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
             )}
         </div>
     );
-    */
 }

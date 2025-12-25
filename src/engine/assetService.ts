@@ -1,18 +1,11 @@
 import clientPromise from '@/engine/database';
 import { InstrumentDefinition, LigatureTrack } from './audio/models';
 import { ObjectId } from 'mongodb';
+import { AssetType, GlobalAsset } from './models';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
-export type AssetType = 'instrument' | 'track';
 
-export interface GlobalAsset {
-    id: string;
-    type: AssetType;
-    folder: string; 
-    data: InstrumentDefinition | LigatureTrack;
-    lastModified: Date;
-}
 
 export async function getUserAssets(userId: string): Promise<GlobalAsset[]> {
     const client = await clientPromise;

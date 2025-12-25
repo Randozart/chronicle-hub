@@ -1,31 +1,51 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { ImageDefinition, ImageCategory } from '@/engine/models';
+import { ImageDefinition } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import ImageUploader from './components/ImageUploader';
-
 
 export default function ImagesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const [images, setImages] = useState<ImageDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    
+    // NEW: Storage Stats
+    const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 20 * 1024 * 1024 }); // Default 20MB limit for display
 
     useEffect(() => {
-        fetch(`/api/admin/images?storyId=${storyId}`) // Dynamic!
+        // Fetch Images
+        fetch(`/api/admin/images?storyId=${storyId}`) 
             .then(res => res.json())
             .then(data => {
-                const arr = Object.keys(data).map(key => ({ ...data[key], id: key }));
+                // Ensure data is array or object map
+                const arr = Array.isArray(data) ? data : Object.keys(data).map(key => ({ ...data[key], id: key }));
                 setImages(arr);
             })
             .finally(() => setIsLoading(false));
-    }, []);
+
+        // Fetch User Storage Stats
+        fetch('/api/admin/usage') // You'll need to create this simple route or piggyback on another
+            .then(res => res.json())
+            .then(data => {
+                if(data.usage !== undefined) {
+                    setStorageUsage({ used: data.usage, limit: data.limit || (20 * 1024 * 1024) });
+                }
+            })
+            .catch(() => console.log("Failed to fetch storage usage"));
+            
+    }, [storyId]);
     
+    // When an upload succeeds, the API returns the new usage
     const handleUploadSuccess = (newImage: ImageDefinition) => {
         setImages(prev => [...prev, newImage]);
         setSelectedId(newImage.id);
+        // Optimistic update: Add ~500kb or fetch again. 
+        // Better: Make ImageUploader pass the new usage back if the API sends it.
+        // For now, let's just trigger a re-fetch of usage
+        fetch('/api/admin/usage').then(res => res.json()).then(d => d.usage && setStorageUsage(prev => ({...prev, used: d.usage})));
     };
 
     const handleCreate = () => {
@@ -54,56 +74,81 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
-    return (
-        <div className="admin-split-view">
-            {/* Sidebar with Grouping by Category */}
-            <AdminListSidebar 
-                title="Assets"
-                items={images}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                onCreate={handleCreate}
-                groupOptions={[{ label: "Category", key: "category" }]}
-                defaultGroupByKey="category"
-                renderItem={(img) => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '24px', height: '24px', flexShrink: 0, overflow: 'hidden', borderRadius: '3px' }}>
-                            <GameImage 
-                                code={img.id} 
-                                imageLibrary={{ [img.id]: img }} 
-                                alt="" 
-                                type="icon"
-                                className="option-image" // Just to fill container
-                            />
-                        </div>
-                        <span className="item-title" style={{ fontSize: '0.85rem' }}>{img.id}</span>
-                    </div>
-                )}
-            />
+    // Formatting Bytes
+    const usedMB = (storageUsage.used / (1024 * 1024)).toFixed(2);
+    const limitMB = (storageUsage.limit / (1024 * 1024)).toFixed(0);
+    const percent = Math.min(100, (storageUsage.used / storageUsage.limit) * 100);
+    const isCritical = percent > 90;
 
-            <div className="admin-editor-col">
-                <ImageUploader storyId={storyId} onUploadComplete={handleUploadSuccess} />
-                <hr style={{ borderColor: '#333', margin: '1.5rem 0' }} />
-                {selectedId ? (
-                    <ImageEditor 
-                        initialData={images.find(q => q.id === selectedId)!} 
-                        onSave={handleSaveSuccess} 
-                        onDelete={handleDeleteSuccess}
-                        storyId={storyId}
-                    />
-                ) : (
-                    <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select an asset</div>
-                )}
+    return (
+        <div className="admin-split-view" style={{ flexDirection: 'column' }}>
+            
+            {/* STORAGE BAR */}
+            <div style={{ padding: '0.5rem 1rem', background: '#111', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#888' }}>Storage Usage:</span>
+                <div style={{ flex: 1, height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ 
+                        width: `${percent}%`, 
+                        height: '100%', 
+                        background: isCritical ? '#e74c3c' : '#61afef',
+                        transition: 'width 0.3s ease' 
+                    }} />
+                </div>
+                <span style={{ fontSize: '0.8rem', color: isCritical ? '#e74c3c' : '#ccc' }}>
+                    {usedMB} / {limitMB} MB
+                </span>
+            </div>
+
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                {/* Sidebar with Grouping by Category */}
+                <AdminListSidebar 
+                    title="Assets"
+                    items={images}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onCreate={handleCreate}
+                    groupOptions={[{ label: "Category", key: "category" }]}
+                    defaultGroupByKey="category"
+                    renderItem={(img) => (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '24px', height: '24px', flexShrink: 0, overflow: 'hidden', borderRadius: '3px' }}>
+                                <GameImage 
+                                    code={img.id} 
+                                    imageLibrary={{ [img.id]: img }} 
+                                    alt="" 
+                                    type="icon"
+                                    className="option-image" 
+                                />
+                            </div>
+                            <span className="item-title" style={{ fontSize: '0.85rem' }}>{img.id}</span>
+                        </div>
+                    )}
+                />
+
+                <div className="admin-editor-col">
+                    <ImageUploader storyId={storyId} onUploadComplete={handleUploadSuccess} />
+                    <hr style={{ borderColor: '#333', margin: '1.5rem 0' }} />
+                    {selectedId ? (
+                        <ImageEditor 
+                            initialData={images.find(q => q.id === selectedId)!} 
+                            onSave={handleSaveSuccess} 
+                            onDelete={handleDeleteSuccess}
+                            storyId={storyId}
+                        />
+                    ) : (
+                        <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select an asset</div>
+                    )}
+                </div>
             </div>
         </div>
     );
 }
 
+// ... ImageEditor component (same as previous) ...
 function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: ImageDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
     
-    // Coordinate Tracker State (For Maps)
     const [coords, setCoords] = useState<{x:number, y:number} | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -118,8 +163,8 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width; // 0 to 1
-        const y = (e.clientY - rect.top) / rect.height; // 0 to 1
+        const x = (e.clientX - rect.left) / rect.width; 
+        const y = (e.clientY - rect.top) / rect.height;
         setMousePos({ x, y });
     };
 
@@ -202,7 +247,7 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                 
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                     
-                    {/* MAP VIEW (Special) */}
+                    {/* MAP VIEW */}
                     {form.category === 'map' ? (
                         <div style={{ position: 'relative', border: '2px solid #444', cursor: 'crosshair' }}>
                             <img 
@@ -226,7 +271,7 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                             )}
                         </div>
                     ) : 
-                    /* BACKGROUND VIEW (Parallax) */
+                    /* BACKGROUND VIEW */
                     form.category === 'background' ? (
                         <div 
                             onMouseMove={handleMouseMove}
@@ -236,7 +281,6 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                                 border: '1px solid #444', cursor: 'default' 
                             }}
                         >
-                            {/* Scaled up slightly to allow movement without showing edges */}
                             <img 
                                 src={form.url} 
                                 alt="Parallax Preview"
@@ -254,7 +298,6 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                     /* BANNER VIEW */
                     form.category === 'banner' ? (
                         <div style={{ width: '100%', height: '200px', position: 'relative', border: '1px solid #444', overflow: 'hidden', background: '#000' }}>
-                            {/* We use a standard img tag for the preview to ensure we see exactly what URL is doing */}
                             <img 
                                 src={form.url} 
                                 alt="Preview"
@@ -268,7 +311,6 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                             <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="icon" className="option-image" />
                         </div>
                     ) :
-
                     /* DEFAULT STORYLET VIEW */
                     (
                         <div style={{ width: '200px', border: '1px solid #444' }}>

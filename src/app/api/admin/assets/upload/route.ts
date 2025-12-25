@@ -1,57 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyWorldAccess } from '@/engine/accessControl';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from "@/lib/auth";
 import { uploadAsset } from '@/engine/storageService';
 import { updateWorldConfigItem } from '@/engine/worldService';
 import { ImageDefinition } from '@/engine/models';
+import clientPromise from '@/engine/database';
+import { ObjectId } from 'mongodb';
+
+const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
+const FREE_LIMIT_BYTES = 20 * 1024 * 1024; // 20 MB
 
 export async function POST(request: NextRequest) {
     try {
-        // 1. Parse Form Data
+        const session = await getServerSession(authOptions);
+        if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = (session.user as any).id;
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const storyId = formData.get('storyId') as string;
         const category = formData.get('category') as string || 'uncategorized';
         const altText = formData.get('alt') as string || '';
 
-        // 2. Validation
-        if (!file || !storyId) {
-            return NextResponse.json({ error: 'Missing file or storyId' }, { status: 400 });
-        }
+        if (!file || !storyId) return NextResponse.json({ error: 'Missing Data' }, { status: 400 });
 
-        // 3. Security Check
-        if (!await verifyWorldAccess(storyId, 'writer')) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-
-        // 4. Validate File Type (Basic security)
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
-        if (!validTypes.includes(file.type)) {
-            return NextResponse.json({ error: 'Invalid file type. Only images allowed.' }, { status: 400 });
-        }
-
-        // 5. Upload (This uses your storageService to save locally for now)
-        const publicUrl = await uploadAsset(file, 'images');
-
-        // 6. Generate a clean ID (e.g. "my_cool_map")
-        // We strip extensions and special chars to make it a valid object key
-        const rawName = file.name.split('.')[0];
-        const imageId = rawName.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+        const client = await clientPromise;
+        const db = client.db(DB_NAME);
+        const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
         
-        // 7. Construct the Metadata
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        const isPremium = (user.roles || []).includes('admin') || (user.roles || []).includes('premium');
+        const currentUsage = user.storageUsage || 0;
+
+        if (!isPremium && currentUsage + file.size > FREE_LIMIT_BYTES) {
+            return NextResponse.json({ error: 'Storage limit exceeded. Upgrade to Premium for more space.' }, { status: 402 });
+        }
+
+        const { url, size } = await uploadAsset(file, 'images', { 
+            optimize: true, 
+            maxWidth: 1920 
+        });
+
+        const assetEntry = {
+            id: uuidId(file.name),
+            url,
+            category,
+            uploadedAt: new Date(),
+            size
+        };
+
+        await db.collection('users').updateOne(
+            { _id: new ObjectId(userId) },
+            { 
+                $inc: { storageUsage: size },
+                $push: { assets: assetEntry } as any
+            }
+        );
+
+        const imageId = assetEntry.id;
         const imageData: ImageDefinition = {
             id: imageId,
-            url: publicUrl,
-            alt: altText || rawName,
+            url: url,
+            alt: altText || file.name,
             category: category as any
         };
 
-        // 8. Save Metadata to World Config (MongoDB)
         await updateWorldConfigItem(storyId, 'images', imageId, imageData);
 
-        return NextResponse.json({ success: true, image: imageData });
+        return NextResponse.json({ success: true, image: imageData, usage: currentUsage + size });
 
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
+}
+
+function uuidId(filename: string) {
+    const raw = filename.split('.')[0];
+    return raw.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
 }

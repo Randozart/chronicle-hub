@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.958.0",
     "@tonaljs/core": "^5.0.2",
     "@tonaljs/key": "^4.11.2",
     "@tonaljs/note": "^4.12.1",

@@ -20,6 +20,9 @@ export class GameEngine {
     private changes: QualityChangeInfo[] = [];
     private scheduledUpdates: ScheduleInstruction[] = [];
     private resolutionRoll: number;
+    
+    // NEW: Ephemeral Alias Map for the current resolution cycle
+    private tempAliases: Record<string, string> = {}; 
 
     constructor(
         initialQualities: PlayerQualities,
@@ -76,7 +79,7 @@ export class GameEngine {
             expression, 
             this.qualities, 
             this.worldContent.qualities, 
-            {}, 
+            this.tempAliases, // Pass aliases
             null, 
             this.resolutionRoll
         );
@@ -87,6 +90,7 @@ export class GameEngine {
             rawText, 
             this.qualities, 
             this.worldContent.qualities, 
+            this.tempAliases, // Pass aliases (mutable)
             null, 
             this.resolutionRoll
         );
@@ -95,22 +99,27 @@ export class GameEngine {
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
         this.changes = [];
         this.scheduledUpdates = [];
+        this.tempAliases = {}; // Reset aliases for new resolution
         
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
         
+        // 1. Evaluate Body Text (This populates tempAliases if any assignments exist)
         const body = isSuccess ? option.pass_long : option.fail_long || "";
+        const evaluatedBody = this.evaluateText(body); 
+
         const changeString = isSuccess ? option.pass_quality_change : option.fail_quality_change;
         const redirectId = isSuccess ? option.pass_redirect : option.fail_redirect;
         const moveToId = isSuccess ? option.pass_move_to : option.fail_move_to;
         
+        // 2. Apply Effects (This can now use the populated tempAliases)
         if (changeString) {
             this.applyEffects(changeString);
         }
         
         return { 
             wasSuccess: isSuccess, 
-            body: this.evaluateText(body), 
+            body: evaluatedBody, 
             redirectId, 
             moveToId, 
             qualityChanges: this.changes, 
@@ -124,12 +133,8 @@ export class GameEngine {
         return this.deepEvaluate(copy);
     }
 
-    // 2. UPDATED: Storylet Renderer (Wraps generic render + specific post-processing)
     public renderStorylet(storylet: Storylet | Opportunity): Storylet | Opportunity {
-        // Use the generic deep evaluator first
         const rendered = this.render(storylet);
-
-        // Post-Processing for specific logic fields that need to be numbers, not strings
         if (rendered.options) {
             rendered.options.forEach((opt: ResolveOption) => {
                 if (opt.action_cost) {
@@ -140,32 +145,22 @@ export class GameEngine {
                 }
             });
         }
-
         return rendered;
     }
 
-    /**
-     * Recursively walks an object. If it finds a string with ScribeScript syntax,
-     * it evaluates it.
-     */
     private deepEvaluate(obj: any): any {
         if (typeof obj === 'string') {
-            // Optimization: Only run parser if it looks dynamic
-            // We check for { (logic block), $ (variable), # (world), or @ (alias)
             if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@')) {
-                return this.evaluateText(obj);
+                // For static rendering, use a temporary alias map to avoid side effects
+                return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, {}, null, this.resolutionRoll);
             }
             return obj;
         }
-
         if (Array.isArray(obj)) {
             return obj.map(item => this.deepEvaluate(item));
         }
-
         if (obj && typeof obj === 'object') {
-            // It's an object (and not null). Iterate keys.
             for (const key in obj) {
-                // SAFETY: Skip structural IDs and Keys that must remain static
                 if (['id', 'deck', 'ordering', 'worldId', 'ownerId', '_id'].includes(key)) {
                     continue;
                 }
@@ -173,16 +168,12 @@ export class GameEngine {
             }
             return obj;
         }
-
         return obj;
     }
-
-    // --- EFFECT API ---
 
     public applyEffects(effectsString: string): void {
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
         
-        // Split by comma (respecting brackets)
         const effects = effectsString.split(/,(?![^\[]*\])/g); 
 
         for (const effect of effects) {
@@ -191,7 +182,6 @@ export class GameEngine {
 
             console.log(`[ENGINE DEBUG] Processing effect: "${cleanEffect}"`);
 
-            // A. Check for Macros: {%command[args]}
             const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
             if (macroMatch) {
                 const [, command, args] = macroMatch;
@@ -201,24 +191,35 @@ export class GameEngine {
                 continue;
             }
 
-            // B. Check for Batch Assignment: {%all[cat]} = 0
             const batchMatch = cleanEffect.match(/^%all\[(.*?)\]\s*(=|\+=|-=)\s*(.*)$/);
             if (batchMatch) {
                 const [, cat, op, val] = batchMatch;
-                // Safe to evaluate the Value side now
                 const resolvedVal = this.evaluateText(`{${val}}`);
                 const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
                 this.batchChangeQuality(cat, op, numVal, {});
                 continue;
             }
 
-            // C. Check for Standard Assignment: $quality[meta] += value
-            // We use the strict regex to capture ID and Metadata separately from the Op and Value
-            const assignMatch = cleanEffect.match(/^\$([a-zA-Z0-9_]+)(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
+            // Updated Regex to support @alias on left side
+            const assignMatch = cleanEffect.match(/^([$@][a-zA-Z0-9_]+)(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
             
             if (assignMatch) {
-                const [, qid, metaStr, op, valStr] = assignMatch;
+                const [, rawId, metaStr, op, valStr] = assignMatch;
                 
+                // Resolve @alias to real ID
+                let qid = rawId;
+                if (rawId.startsWith('@')) {
+                    const aliasKey = rawId.substring(1);
+                    if (this.tempAliases[aliasKey]) {
+                        qid = this.tempAliases[aliasKey]; // e.g. "iron_sword"
+                    } else {
+                        console.warn(`[GameEngine] Alias '${rawId}' not found in current context.`);
+                        continue;
+                    }
+                } else {
+                    qid = rawId.substring(1); // Remove $
+                }
+
                 const metadata: { desc?: string; source?: string } = {};
                 if (metaStr) {
                     const metaParts = metaStr.split(',');
@@ -230,14 +231,11 @@ export class GameEngine {
                     }
                 }
 
-                // Resolve Value
                 let val: string | number = 0;
                 
                 if (op !== '++' && op !== '--') {
-                     // We wrap in braces to trigger ScribeScript evaluation for the value
                      const resolvedValueStr = this.evaluateText(`{${valStr}}`);
                      val = resolvedValueStr;
-                     // Convert to number if possible
                      if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
                          val = Number(resolvedValueStr);
                      }
@@ -249,21 +247,18 @@ export class GameEngine {
     }
 
     private parseAndQueueTimerInstruction(command: string, argsStr: string) {
-        // argsStr example: "$q+=1 : 1h; recur, desc:..."
         const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
         const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
 
         if (command === 'cancel') {
             instruction.targetId = mainArgs;
         } else {
-            // Split "Effect : Time"
             const lastColon = mainArgs.lastIndexOf(':');
             if (lastColon === -1) return;
 
             const effectStr = mainArgs.substring(0, lastColon).trim();
             const timeStr = mainArgs.substring(lastColon + 1).trim();
 
-            // Parse Time - Now supports Logic like {5+5}m
             const tMatch = timeStr.match(/((?:\{.*\}|\d+))\s*([mhd])/);
             if (tMatch) {
                 const amountRaw = tMatch[1];
@@ -275,12 +270,10 @@ export class GameEngine {
                 }
             }
 
-            // Parse Effect string for the DB (e.g. $q+=1)
             const effMatch = effectStr.match(/\$([a-zA-Z0-9_]+)\s*(=|\+=|-=)\s*(.*)/);
             if (effMatch) {
                 instruction.targetId = effMatch[1];
                 instruction.op = effMatch[2];
-                // Resolve the value immediately for the schedule
                 const valStr = effMatch[3];
                 const resolvedVal = this.evaluateText(`{${valStr}}`);
                 instruction.value = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
@@ -298,7 +291,6 @@ export class GameEngine {
     }
 
     public batchChangeQuality(categoryExpr: string, op: string, value: number | string, meta: any) {
-        // 1. Evaluate Category Name (allows dynamic assignment)
         const targetCat = this.evaluateText(
             categoryExpr.startsWith('{') ? categoryExpr : `{${categoryExpr}}`
         ).trim().toLowerCase();
@@ -306,7 +298,6 @@ export class GameEngine {
         const qids = Object.values(this.worldContent.qualities)
             .filter(q => {
                 if (!q.category) return false;
-                // 2. Split definition categories by comma
                 const cats = q.category.split(',').map(c => c.trim().toLowerCase());
                 return cats.includes(targetCat);
             })
@@ -401,7 +392,6 @@ export class GameEngine {
         const displayName = this.evaluateText(def.name || effectiveQid);
         let changeText = "";
         
-        // Evaluate dynamic descriptions in case they use {$.level}
         const increaseDesc = this.evaluateText(def.increase_description);
         const decreaseDesc = this.evaluateText(def.decrease_description);
 

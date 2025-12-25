@@ -1,22 +1,12 @@
-// ... existing imports ...
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from 'bcrypt';
 import clientPromise from '@/engine/database';
-import { ObjectId } from 'mongodb';
+// Import the shared model
+import { UserDocument } from '@/engine/models';
 import { isEmailWhitelisted } from '@/engine/whitelistService';
 
-interface UserDocument {
-    _id: ObjectId;
-    username: string;
-    email: string;
-    password?: string;
-    acknowledgedPlatformMessages?: string[];
-    emailVerified?: Date | null; // Add type definition
-}
-
 export const authOptions: NextAuthOptions = {
-    // ... secret, strategy ...
     secret: process.env.NEXTAUTH_SECRET,
     session: { strategy: "jwt" },
     providers: [
@@ -35,14 +25,11 @@ export const authOptions: NextAuthOptions = {
             
             if (!user || !user.password) return null;
 
-            // --- UPDATED: VERIFICATION & WHITELIST CHECK ---
             const isWhitelisted = await isEmailWhitelisted(user.email);
 
             if (!user.emailVerified && !isWhitelisted) {
-                // If they aren't verified AND they aren't on the special list, block them.
                 throw new Error("Email not verified. Please check your inbox.");
             }
-            // -----------------------------------------------
 
             const isValid = await bcrypt.compare(credentials.password, user.password);
             if (!isValid) return null;
@@ -51,30 +38,31 @@ export const authOptions: NextAuthOptions = {
                 id: user._id.toString(),
                 name: user.username,
                 email: user.email,
+                // We can pass roles here to the token if we want fewer DB lookups later
+                roles: user.roles || [] 
             };
         },
       }),
     ],
-    // ... pages ...
     pages: {
       signIn: "/login",
       error: "/login", 
     },
     callbacks: {
-        // ...
         async signIn({ user }) {
-            // whitelist check is still good to keep as a double layer
             return true;
-            // if (!user.email) return false;
-            // return await isEmailWhitelisted(user.email);
         },
-        async jwt({ token, user }) {
-            if (user) token.id = user.id;
+        async jwt({ token, user }: any) {
+            if (user) {
+                token.id = user.id;
+                token.roles = user.roles; // Persist roles to token
+            }
             return token;
         },
-        async session({ session, token }) {
+        async session({ session, token }: any) {
             if (session.user && token.id) {
                 (session.user as any).id = token.id;
+                (session.user as any).roles = token.roles; // Make available in client session
             }
             return session;
         },

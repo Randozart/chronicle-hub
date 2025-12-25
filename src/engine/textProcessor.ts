@@ -10,12 +10,14 @@ export function evaluateText(
     rawText: string | undefined,
     qualities: PlayerQualities,
     qualityDefs: Record<string, QualityDefinition>,
+    aliases: Record<string, string> | null, // aliases is now mutable/optional
     selfContext: { qid: string, state: QualityState } | null,
     resolutionRoll: number
 ): string {
     if (!rawText) return '';
-    const [cleanText, aliasMap] = preprocessAliases(rawText);
-    return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, aliasMap, selfContext, resolutionRoll);
+    // We use the provided alias map or create a temporary one for this render pass
+    const effectiveAliases = aliases || {}; 
+    return evaluateRecursive(rawText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll);
 }
 
 function evaluateRecursive(
@@ -30,6 +32,7 @@ function evaluateRecursive(
     let currentText = text;
 
     for (let i = 0; i < 50; i++) {
+        // Find the innermost brace pair that contains no other braces
         const innermostBlockMatch = currentText.match(/\{([^{}]*?)\}/);
         if (!innermostBlockMatch) break;
 
@@ -57,6 +60,23 @@ function evaluateExpression(
 ): string | number | boolean {
     const trimmedExpr = expr.trim();
     
+    // 1. Handle Assignment: @alias = value
+    // This allows {@companion = %roll[...]} to persist the result into the alias map
+    const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
+    if (assignmentMatch) {
+        const aliasKey = assignmentMatch[1];
+        // recursively evaluate the right side to ensure we store the *result* (e.g. "iron_sword"), not the formula
+        const rawValue = assignmentMatch[2];
+        const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll);
+        
+        // Remove $ sigil if present in the result, so we store clean IDs
+        let storedValue = resolvedValue.toString().trim();
+        if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
+        
+        aliases[aliasKey] = storedValue;
+        return ""; // Return empty string so the definition doesn't appear in the text
+    }
+
     if (trimmedExpr.includes(':')) {
         return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
     }
@@ -96,11 +116,12 @@ function getCandidateIds(
     defs: Record<string, QualityDefinition>,
     resolutionRoll: number
 ): string[] {
-    // 1. Resolve Dynamic Category Name first (e.g. "{ $is_night ? 'DarkCreatures' : 'LightCreatures' }")
+    // 1. Resolve Dynamic Category Name first
     const targetCat = evaluateText(
         rawCategoryArg.startsWith('{') ? rawCategoryArg : `{${rawCategoryArg}}`, 
         qualities, 
         defs, 
+        null, 
         null, 
         resolutionRoll
     ).trim().toLowerCase();
@@ -135,8 +156,6 @@ function getCandidateIds(
             }
 
             // Advanced Condition Evaluation
-            // We set 'self' to this candidate, so '$.level' refers to the candidate's level
-            // Example: "$.level > 5" or "$.customProp == 'active'"
             return evaluateCondition(filterStr, qualities, defs, {}, { qid, state }, resolutionRoll);
         });
     }
@@ -195,7 +214,6 @@ function evaluateMacro(
             return isInverted ? !success : success;
         }
         case "choice": {
-            // Choice is unique: It treats semicolons as separators for options, so we use fullArgs
             const choices = fullArgs.split(';').map(s => s.trim()).filter(Boolean); 
             if (choices.length === 0) return "";
             const randomIndex = Math.floor(Math.random() * choices.length);
@@ -214,7 +232,7 @@ function evaluateMacro(
             const filterExpr = optArgs[1]; // Optional filter condition
 
             // Resolve Count
-            const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, self, resolutionRoll));
+            const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, aliases, self, resolutionRoll));
             const count = isNaN(countVal) ? 1 : Math.max(1, countVal);
 
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll);
@@ -229,7 +247,6 @@ function evaluateMacro(
         }
 
         // %roll[Category; Filter]
-        // Weighted random pick based on Level.
         case "roll": {
             const categoryExpr = mainArg;
             const filterExpr = optArgs[0];
@@ -239,9 +256,8 @@ function evaluateMacro(
             
             candidates.forEach(qid => {
                 const q = qualities[qid];
-                // Only weight if player has it. If they don't, level is 0, so 0 tickets.
                 if (q && 'level' in q && q.level > 0) {
-                    const tickets = Math.min(q.level, 100); // Cap tickets
+                    const tickets = Math.min(q.level, 100); 
                     for(let i=0; i<tickets; i++) pool.push(qid);
                 }
             });
@@ -255,7 +271,7 @@ function evaluateMacro(
         case "list": {
             const categoryExpr = mainArg;
             const sepArg = optArgs[0]?.toLowerCase() || 'comma';
-            const filterExpr = optArgs[1] || '>0'; // Default to owned items
+            const filterExpr = optArgs[1] || '>0'; 
 
             const separator = SEPARATORS[sepArg] || optArgs[0] || ', ';
 
@@ -264,7 +280,7 @@ function evaluateMacro(
             const names = candidates.map(qid => {
                 const def = defs[qid];
                 // Evaluate name for logic (e.g. adaptive names)
-                return evaluateText(def.name || qid, qualities, defs, { qid, state: qualities[qid] }, resolutionRoll);
+                return evaluateText(def.name || qid, qualities, defs, aliases, { qid, state: qualities[qid] }, resolutionRoll);
             });
 
             if (names.length === 0) return "nothing";
@@ -282,7 +298,7 @@ function evaluateMacro(
     }
 }
 
-// ... Rest of the file (evaluateConditional, evaluateCondition, etc) remains the same ...
+// ... evaluateConditional, evaluateCondition (unchanged from previous) ...
 
 function evaluateConditional(
     expr: string, 
@@ -406,7 +422,7 @@ function resolveVariable(
     let contextQualities = qualities;
 
     if (sigil === '$.') qualityId = self?.qid;
-    else if (sigil === '@') qualityId = aliases[identifier];
+    else if (sigil === '@') qualityId = aliases[identifier]; // Lookup in alias map
     else if (sigil === '$') qualityId = identifier;
     else if (sigil === '#') qualityId = identifier;
 
@@ -458,12 +474,12 @@ function resolveVariable(
         }
 
         if (definition.text_variants && definition.text_variants[prop]) {
-            currentValue = evaluateText(definition.text_variants[prop], qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll);
+            currentValue = evaluateText(definition.text_variants[prop], qualities, defs, aliases, { qid: qualityId!, state: state! }, resolutionRoll);
             continue;
         }
         
-        if (prop === 'name') currentValue = evaluateText(definition.name, qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll);
-        else if (prop === 'description') currentValue = evaluateText(definition.description, qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll);
+        if (prop === 'name') currentValue = evaluateText(definition.name, qualities, defs, aliases, { qid: qualityId!, state: state! }, resolutionRoll);
+        else if (prop === 'description') currentValue = evaluateText(definition.description, qualities, defs, aliases, { qid: qualityId!, state: state! }, resolutionRoll);
         else if (state!.customProperties && state!.customProperties![prop] !== undefined) currentValue = state!.customProperties![prop];
         else currentValue = undefined;
     }
@@ -473,16 +489,6 @@ function resolveVariable(
         if ('level' in currentValue) return (currentValue as any).level;
     }
     return currentValue?.toString() || "";
-}
-
-function preprocessAliases(text: string): [string, Record<string, string>] {
-    const aliasMap: Record<string, string> = {};
-    const aliasRegex = /\{@([a-zA-Z0-9_]+)\s*=\s*\$([a-zA-Z0-9_]+)\}/g;
-    const cleanText = text.replace(aliasRegex, (_, alias, qid) => {
-        aliasMap[alias] = qid;
-        return '';
-    });
-    return [cleanText, aliasMap];
 }
 
 export function calculateChance(
@@ -563,7 +569,8 @@ export function getChallengeDetails(
     defs: Record<string, QualityDefinition>
 ): { chance: number | null, text: string } {
     if (!challengeString) return { chance: null, text: '' };
-    const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, null, 0);
+    // Pass empty alias map here since challenge calculation is stateless
+    const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, {}, null, 0);
     const chance = parseInt(chanceStr, 10);
     if (isNaN(chance)) return { chance: null, text: '' };
 
@@ -573,7 +580,7 @@ export function getChallengeDetails(
         const qid = match[1];
         text = defs[qid]?.name || qid;
         if (text.includes('{') || text.includes('$')) {
-             text = evaluateText(text, qualities, defs, null, 0);
+             text = evaluateText(text, qualities, defs, {}, null, 0);
         }
     }
     return { chance: Math.max(0, Math.min(100, chance)), text: `Test: ${text}` };

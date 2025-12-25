@@ -1,5 +1,6 @@
 // src/engine/models.ts
 
+import { ObjectId } from 'mongodb';
 import { InstrumentDefinition, LigatureTrack } from './audio/models';
 
 export enum QualityType {
@@ -255,6 +256,39 @@ export interface CharacterDocument {
     pendingEvents?: PendingEvent[];
     acknowledgedMessages?: string[];
 }
+
+export interface UserDocument {
+    // FIX: Allow both ObjectId (DB) and string (Client) to prevent type errors
+    _id: ObjectId | string; 
+    username: string;
+    email: string;
+    password?: string;
+    image?: string;
+    
+    // Auth & Permissions
+    emailVerified?: Date | null;
+    roles?: ('admin' | 'premium' | 'writer')[];
+    
+    // Storage Features
+    storageUsage?: number; // Bytes used
+    storageLimit?: number; // Byte limit override
+    assets?: GlobalAsset[];
+    
+    // System
+    acknowledgedPlatformMessages?: string[];
+}
+
+export interface GlobalAsset {
+    id: string;
+    type: AssetType;
+    folder: string; 
+    data: InstrumentDefinition | LigatureTrack;
+    lastModified: Date;
+}
+
+export type AssetType = 'instrument' | 'track';
+
+
 
 export interface QualityChangeInfo {
     qid: string;
