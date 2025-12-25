@@ -63,13 +63,18 @@ export async function POST(request: NextRequest) {
             id: imageId,
             url: url,
             alt: altText || file.name,
-            category: category as any
+            category: category as any,
+            size: size // <--- ADD THIS
         };
 
         await updateWorldConfigItem(storyId, 'images', imageId, imageData);
 
-        return NextResponse.json({ success: true, image: imageData, usage: currentUsage + size });
-
+        return NextResponse.json({ 
+            success: true, 
+            image: imageData, 
+            usage: currentUsage + size 
+        });
+        
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json({ error: 'Upload failed' }, { status: 500 });

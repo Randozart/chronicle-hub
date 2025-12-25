@@ -5,8 +5,9 @@ import { ImageCategory } from '@/engine/models';
 
 interface Props {
     storyId: string;
-    onUploadComplete: (newImage: any) => void;
+    onUploadComplete: (data: { image: any, usage: number }) => void; // <--- UPDATE TYPE
 }
+
 
 const OUTPUT_WIDTHS: Record<string, number> = {
     'icon': 512,
@@ -169,21 +170,20 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
     };
 
     // 4. Upload Logic
-    const handleUpload = async () => {
+        const handleUpload = async () => {
         if (!originalImage || !canvasRef.current) return;
         setIsUploading(true);
         setError('');
 
         try {
-            // WYSIWYG Canvas Upload (Simple, effective, applies the user's crop)
             canvasRef.current.toBlob(async (blob) => {
                 if (!blob) throw new Error("Canvas empty");
                 
                 const formData = new FormData();
-                formData.append('file', blob, `${imageKey}.png`); // Use manual key name
+                formData.append('file', blob, `${imageKey}.png`);
                 formData.append('storyId', storyId);
                 formData.append('category', category);
-                formData.append('alt', imageKey); // Default alt to key
+                formData.append('alt', imageKey);
 
                 const res = await fetch('/api/admin/assets/upload', {
                     method: 'POST',
@@ -192,7 +192,8 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
 
                 const data = await res.json();
                 if (res.ok) {
-                    onUploadComplete(data.image);
+                    // Pass the whole data object (contains image AND usage)
+                    onUploadComplete(data); 
                     setPreviewUrl(null);
                     setOriginalImage(null);
                     setImageKey("");
@@ -208,6 +209,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
             setIsUploading(false);
         }
     };
+
 
     return (
         <div style={{ padding: '1rem', background: '#21252b', borderRadius: '4px', border: '1px solid #333' }}>

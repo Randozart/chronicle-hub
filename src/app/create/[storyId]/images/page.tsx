@@ -12,22 +12,21 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     
-    // NEW: Storage Stats
-    const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 20 * 1024 * 1024 }); // Default 20MB limit for display
+    // Storage Stats State
+    const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 20 * 1024 * 1024 });
 
     useEffect(() => {
-        // Fetch Images
+        // 1. Fetch Images List
         fetch(`/api/admin/images?storyId=${storyId}`) 
             .then(res => res.json())
             .then(data => {
-                // Ensure data is array or object map
                 const arr = Array.isArray(data) ? data : Object.keys(data).map(key => ({ ...data[key], id: key }));
                 setImages(arr);
             })
             .finally(() => setIsLoading(false));
 
-        // Fetch User Storage Stats
-        fetch('/api/admin/usage') // You'll need to create this simple route or piggyback on another
+        // 2. Fetch User Storage Usage
+        fetch('/api/admin/usage')
             .then(res => res.json())
             .then(data => {
                 if(data.usage !== undefined) {
@@ -38,16 +37,18 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             
     }, [storyId]);
     
-    // When an upload succeeds, the API returns the new usage
-    const handleUploadSuccess = (newImage: ImageDefinition) => {
-        setImages(prev => [...prev, newImage]);
-        setSelectedId(newImage.id);
-        // Optimistic update: Add ~500kb or fetch again. 
-        // Better: Make ImageUploader pass the new usage back if the API sends it.
-        // For now, let's just trigger a re-fetch of usage
-        fetch('/api/admin/usage').then(res => res.json()).then(d => d.usage && setStorageUsage(prev => ({...prev, used: d.usage})));
+    // Callback when ImageUploader finishes
+    const handleUploadSuccess = (data: { image: ImageDefinition, usage: number }) => {
+        setImages(prev => [...prev, data.image]);
+        setSelectedId(data.image.id);
+        
+        // Update storage bar immediately
+        if (data.usage !== undefined) {
+            setStorageUsage(prev => ({ ...prev, used: data.usage }));
+        }
     };
 
+    // Manual creation (Legacy/External URL)
     const handleCreate = () => {
         const newId = prompt("Enter unique Image Key:");
         if (!newId) return;
@@ -72,9 +73,9 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
         setSelectedId(null);
     };
 
-    if (isLoading) return <div className="loading-container">Loading...</div>;
+    if (isLoading) return <div className="loading-container">Loading Assets...</div>;
 
-    // Formatting Bytes
+    // Calc Storage Bar
     const usedMB = (storageUsage.used / (1024 * 1024)).toFixed(2);
     const limitMB = (storageUsage.limit / (1024 * 1024)).toFixed(0);
     const percent = Math.min(100, (storageUsage.used / storageUsage.limit) * 100);
@@ -100,7 +101,7 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             </div>
 
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                {/* Sidebar with Grouping by Category */}
+                {/* LEFT: SIDEBAR */}
                 <AdminListSidebar 
                     title="Assets"
                     items={images}
@@ -120,14 +121,20 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
                                     className="option-image" 
                                 />
                             </div>
-                            <span className="item-title" style={{ fontSize: '0.85rem' }}>{img.id}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span className="item-title" style={{ fontSize: '0.85rem' }}>{img.id}</span>
+                                {img.size && <span style={{ fontSize: '0.65rem', color: '#666' }}>{(img.size / 1024).toFixed(0)} KB</span>}
+                            </div>
                         </div>
                     )}
                 />
 
+                {/* RIGHT: EDITOR CONTENT */}
                 <div className="admin-editor-col">
                     <ImageUploader storyId={storyId} onUploadComplete={handleUploadSuccess} />
+                    
                     <hr style={{ borderColor: '#333', margin: '1.5rem 0' }} />
+                    
                     {selectedId ? (
                         <ImageEditor 
                             initialData={images.find(q => q.id === selectedId)!} 
@@ -136,7 +143,9 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
                             storyId={storyId}
                         />
                     ) : (
-                        <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select an asset</div>
+                        <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>
+                            Select an asset from the list to edit details.
+                        </div>
                     )}
                 </div>
             </div>
@@ -144,11 +153,13 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
     );
 }
 
-// ... ImageEditor component (same as previous) ...
+// --- SUB-COMPONENT: EDITOR ---
+
 function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: ImageDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
     
+    // Map & Preview State
     const [coords, setCoords] = useState<{x:number, y:number} | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -161,15 +172,22 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
+    // Parallax Preview Logic
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width; 
-        const y = (e.clientY - rect.top) / rect.height;
-        setMousePos({ x, y });
+        setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height });
     };
-
     const moveX = (mousePos.x - 0.5) * 20; 
     const moveY = (mousePos.y - 0.5) * 20;
+
+    // Map Coordinate Logic
+    const handleMapClick = (e: React.MouseEvent<HTMLImageElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = Math.round(e.clientX - rect.left);
+        const y = Math.round(e.clientY - rect.top);
+        setCoords({ x, y });
+        navigator.clipboard.writeText(`{ x: ${x}, y: ${y} }`);
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -179,12 +197,12 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, category: 'images', itemId: form.id, data: form })
             });
-            if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed."); }
+            if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed to save."); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Delete "${form.id}"?`)) return;
+        if (!confirm(`Delete "${form.id}"? This cannot be undone.`)) return;
         setIsSaving(true);
         try {
             const res = await fetch(`/api/admin/config?storyId=${storyId}&category=images&itemId=${form.id}`, { method: 'DELETE' });
@@ -192,19 +210,16 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
-    const handleMapClick = (e: React.MouseEvent<HTMLImageElement>) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = Math.round(e.clientX - rect.left);
-        const y = Math.round(e.clientY - rect.top);
-        setCoords({ x, y });
-        navigator.clipboard.writeText(`{ x: ${x}, y: ${y} }`);
-    };
-
     return (
         <div>
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
-                Edit Asset: {form.id}
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
+                <h2 style={{ margin: 0 }}>Edit Asset: {form.id}</h2>
+                {form.size && (
+                    <span style={{ fontSize: '0.8rem', background: '#222', padding: '2px 8px', borderRadius: '4px', color: '#98c379' }}>
+                        {(form.size / 1024).toFixed(1)} KB
+                    </span>
+                )}
+            </div>
             
             <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
@@ -236,7 +251,12 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
 
             <div className="form-group">
                 <label className="form-label">Alt Text</label>
-                <input value={form.alt || ''} onChange={e => handleChange('alt', e.target.value)} className="form-input" />
+                <input 
+                    value={form.alt || ''} 
+                    onChange={e => handleChange('alt', e.target.value)} 
+                    className="form-input" 
+                    placeholder="Description for accessibility"
+                />
             </div>
 
             {/* --- CONTEXTUAL PREVIEW --- */}
@@ -247,31 +267,33 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                 
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                     
-                    {/* MAP VIEW */}
+                    {/* 1. MAP VIEW */}
                     {form.category === 'map' ? (
-                        <div style={{ position: 'relative', border: '2px solid #444', cursor: 'crosshair' }}>
+                        <div style={{ position: 'relative', border: '2px solid #444', cursor: 'crosshair', maxWidth: '100%' }}>
                             <img 
                                 src={form.url} 
                                 alt="Map Preview"
-                                style={{ maxWidth: '100%', display: 'block' }}
+                                style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
                                 onClick={handleMapClick}
                             />
                             {coords && (
                                 <div style={{ 
                                     position: 'absolute', left: coords.x, top: coords.y, 
                                     width: '10px', height: '10px', background: 'red', borderRadius: '50%', 
-                                    transform: 'translate(-50%, -50%)', pointerEvents: 'none' 
+                                    transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+                                    boxShadow: '0 0 5px rgba(0,0,0,0.8)'
                                 }} />
                             )}
                             {coords && (
                                 <div style={{ marginTop: '10px', textAlign: 'center', color: '#98c379' }}>
                                     Selected: X: {coords.x}, Y: {coords.y} <br/>
-                                    <span style={{ fontSize: '0.8rem', color: '#777' }}>(Copy these to Location Editor)</span>
+                                    <span style={{ fontSize: '0.8rem', color: '#777' }}>(Coordinates copied to clipboard)</span>
                                 </div>
                             )}
                         </div>
                     ) : 
-                    /* BACKGROUND VIEW */
+                    
+                    /* 2. PARALLAX BACKGROUND VIEW */
                     form.category === 'background' ? (
                         <div 
                             onMouseMove={handleMouseMove}
@@ -287,17 +309,19 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                                 style={{ 
                                     width: '110%', height: '110%', 
                                     objectFit: 'cover',
+                                    // Simulated mouse movement effect
                                     transform: `translate(calc(-5% + ${-moveX}px), calc(-5% + ${-moveY}px))`
                                 }}
                             />
-                            <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>
+                            <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
                                 Move mouse to test parallax
                             </div>
                         </div>
                     ) :
-                    /* BANNER VIEW */
+                    
+                    /* 3. BANNER VIEW */
                     form.category === 'banner' ? (
-                        <div style={{ width: '100%', height: '200px', position: 'relative', border: '1px solid #444', overflow: 'hidden', background: '#000' }}>
+                        <div style={{ width: '100%', height: '150px', position: 'relative', border: '1px solid #444', overflow: 'hidden', background: '#000' }}>
                             <img 
                                 src={form.url} 
                                 alt="Preview"
@@ -305,15 +329,17 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                             />
                         </div>
                     ) :
-                    /* ICON VIEW */
+                    
+                    /* 4. ICON VIEW */
                     form.category === 'icon' ? (
                         <div style={{ width: '64px', height: '64px', border: '1px solid #444' }}>
                             <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="icon" className="option-image" />
                         </div>
                     ) :
-                    /* DEFAULT STORYLET VIEW */
+
+                    /* 5. DEFAULT STORYLET VIEW */
                     (
-                        <div style={{ width: '200px', border: '1px solid #444' }}>
+                        <div style={{ width: '240px', border: '1px solid #444' }}>
                             <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="storylet" className="storylet-image" />
                         </div>
                     )}
