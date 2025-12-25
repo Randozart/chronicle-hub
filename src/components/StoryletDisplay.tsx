@@ -116,8 +116,8 @@ export default function StoryletDisplay({
             const target = storyletDefs[explicitReturn];
             if (target) {
                 // FIXED: Passing correct arguments to evaluateCondition
-                const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, {}, null, 0);
-                const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, {}, null, 0);
+                const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, null, 0);
+                const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, null, 0);
                 if (!isVisible || !isUnlocked) return undefined; 
                 return explicitReturn;
             }
@@ -181,10 +181,10 @@ export default function StoryletDisplay({
 
     const optionsToDisplay: DisplayOption[] = storylet.options
         // FIXED: Passing correct arguments to evaluateCondition
-        .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, {}, null, 0))
+        .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, null, 0))
         .map(option => {
             // FIXED: Passing correct arguments to evaluateCondition
-            const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, {}, null, 0);
+            const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, null, 0);
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
             
             const { chance, text } = getChallengeDetails(

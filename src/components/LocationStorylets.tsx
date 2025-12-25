@@ -16,9 +16,8 @@ interface LocationStoryletsProps {
 export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs, imageLibrary }: LocationStoryletsProps) {
     // Filter storylets based on visibility condition
     const visibleStorylets = storylets.filter(s => {
-        // If no condition, it's visible. If condition exists, evaluate it against current qualities.
-        // We pass empty objects for aliases/self as they aren't used in top-level visibility.
-        return evaluateCondition(s.visible_if, qualities, qualityDefs, {}, null, 0);
+        // FIX: Pass null instead of {}
+        return evaluateCondition(s.visible_if, qualities, qualityDefs, null, 0);
     });
 
     if (visibleStorylets.length === 0) return null;

@@ -95,7 +95,7 @@ export default function OpportunityHand({
                     hand.map(card => {
                         // CHECK TRANSIENCE
                         // If card is transient (keep_if_invalid is false/undefined) AND logic fails, hide/disable it
-                        const isValid = evaluateCondition(card.draw_condition, qualities, qualityDefs, {}, null, 0);
+                        const isValid = evaluateCondition(card.draw_condition, qualities, qualityDefs, null, 0);
                         const isTransient = !card.keep_if_invalid;
                         
                         // If it's transient and invalid, we shouldn't show it (or show it as dissolving)

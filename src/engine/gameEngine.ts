@@ -21,7 +21,7 @@ export class GameEngine {
     private scheduledUpdates: ScheduleInstruction[] = [];
     private resolutionRoll: number;
     
-    // NEW: Ephemeral Alias Map for the current resolution cycle
+    // Ephemeral Alias Map for the current resolution cycle
     private tempAliases: Record<string, string> = {}; 
 
     constructor(
@@ -79,9 +79,9 @@ export class GameEngine {
             expression, 
             this.qualities, 
             this.worldContent.qualities, 
-            this.tempAliases, // Pass aliases
-            null, 
-            this.resolutionRoll
+            null, // selfContext
+            this.resolutionRoll,
+            this.tempAliases // aliases (LAST)
         );
     }
 
@@ -90,21 +90,21 @@ export class GameEngine {
             rawText, 
             this.qualities, 
             this.worldContent.qualities, 
-            this.tempAliases, // Pass aliases (mutable)
-            null, 
-            this.resolutionRoll
+            null, // selfContext
+            this.resolutionRoll,
+            this.tempAliases // aliases (LAST)
         );
     }
 
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
         this.changes = [];
         this.scheduledUpdates = [];
-        this.tempAliases = {}; // Reset aliases for new resolution
+        this.tempAliases = {}; // Reset aliases
         
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
         
-        // 1. Evaluate Body Text (This populates tempAliases if any assignments exist)
+        // 1. Evaluate Body Text (Populates tempAliases)
         const body = isSuccess ? option.pass_long : option.fail_long || "";
         const evaluatedBody = this.evaluateText(body); 
 
@@ -112,7 +112,7 @@ export class GameEngine {
         const redirectId = isSuccess ? option.pass_redirect : option.fail_redirect;
         const moveToId = isSuccess ? option.pass_move_to : option.fail_move_to;
         
-        // 2. Apply Effects (This can now use the populated tempAliases)
+        // 2. Apply Effects (Uses populated tempAliases)
         if (changeString) {
             this.applyEffects(changeString);
         }
@@ -151,8 +151,8 @@ export class GameEngine {
     private deepEvaluate(obj: any): any {
         if (typeof obj === 'string') {
             if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@')) {
-                // For static rendering, use a temporary alias map to avoid side effects
-                return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, {}, null, this.resolutionRoll);
+                // Static rendering: Use new signature (text, qual, defs, self, roll, aliases)
+                return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, {});
             }
             return obj;
         }
@@ -200,18 +200,17 @@ export class GameEngine {
                 continue;
             }
 
-            // Updated Regex to support @alias on left side
             const assignMatch = cleanEffect.match(/^([$@][a-zA-Z0-9_]+)(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
             
             if (assignMatch) {
                 const [, rawId, metaStr, op, valStr] = assignMatch;
                 
-                // Resolve @alias to real ID
+                // Resolve @alias
                 let qid = rawId;
                 if (rawId.startsWith('@')) {
                     const aliasKey = rawId.substring(1);
                     if (this.tempAliases[aliasKey]) {
-                        qid = this.tempAliases[aliasKey]; // e.g. "iron_sword"
+                        qid = this.tempAliases[aliasKey]; 
                     } else {
                         console.warn(`[GameEngine] Alias '${rawId}' not found in current context.`);
                         continue;

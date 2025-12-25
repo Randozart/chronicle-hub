@@ -10,12 +10,14 @@ export function evaluateText(
     rawText: string | undefined,
     qualities: PlayerQualities,
     qualityDefs: Record<string, QualityDefinition>,
-    aliases: Record<string, string> | null, // aliases is now mutable/optional
-    selfContext: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
+    // RESTORED ORDER: Self Context first
+    selfContext: { qid: string, state: QualityState } | null = null,
+    // RESTORED ORDER: Resolution Roll second
+    resolutionRoll: number = 0,
+    // NEW: Aliases last (Optional)
+    aliases: Record<string, string> | null = {}
 ): string {
     if (!rawText) return '';
-    // We use the provided alias map or create a temporary one for this render pass
     const effectiveAliases = aliases || {}; 
     return evaluateRecursive(rawText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll);
 }
@@ -32,7 +34,6 @@ function evaluateRecursive(
     let currentText = text;
 
     for (let i = 0; i < 50; i++) {
-        // Find the innermost brace pair that contains no other braces
         const innermostBlockMatch = currentText.match(/\{([^{}]*?)\}/);
         if (!innermostBlockMatch) break;
 
@@ -61,20 +62,17 @@ function evaluateExpression(
     const trimmedExpr = expr.trim();
     
     // 1. Handle Assignment: @alias = value
-    // This allows {@companion = %roll[...]} to persist the result into the alias map
     const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
     if (assignmentMatch) {
         const aliasKey = assignmentMatch[1];
-        // recursively evaluate the right side to ensure we store the *result* (e.g. "iron_sword"), not the formula
         const rawValue = assignmentMatch[2];
         const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll);
         
-        // Remove $ sigil if present in the result, so we store clean IDs
         let storedValue = resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
         
         aliases[aliasKey] = storedValue;
-        return ""; // Return empty string so the definition doesn't appear in the text
+        return ""; 
     }
 
     if (trimmedExpr.includes(':')) {
@@ -116,32 +114,27 @@ function getCandidateIds(
     defs: Record<string, QualityDefinition>,
     resolutionRoll: number
 ): string[] {
-    // 1. Resolve Dynamic Category Name first
     const targetCat = evaluateText(
         rawCategoryArg.startsWith('{') ? rawCategoryArg : `{${rawCategoryArg}}`, 
         qualities, 
         defs, 
         null, 
-        null, 
-        resolutionRoll
+        resolutionRoll,
+        {} // aliases
     ).trim().toLowerCase();
 
-    // 2. Initial Filter by Category
     let candidates = Object.values(defs)
         .filter(def => {
             if (!def.category) return false;
-            // Support comma-separated categories in definition
             const cats = def.category.split(',').map(c => c.trim().toLowerCase());
             return cats.includes(targetCat);
         })
         .map(def => def.id);
 
-    // 3. Apply Custom Filter Logic if provided
     if (rawFilterArg && rawFilterArg.trim() !== "") {
         const filterStr = rawFilterArg.trim();
         
         candidates = candidates.filter(qid => {
-            // Mock state if quality is missing from player
             const state = qualities[qid] || { 
                 qualityId: qid, 
                 type: defs[qid].type, 
@@ -150,13 +143,11 @@ function getCandidateIds(
                 changePoints: 0 
             } as QualityState;
 
-            // Shortcut for "has quality"
             if (filterStr === '>0' || filterStr === 'has' || filterStr === 'owned') {
                 return 'level' in state ? state.level > 0 : false;
             }
 
-            // Advanced Condition Evaluation
-            return evaluateCondition(filterStr, qualities, defs, {}, { qid, state }, resolutionRoll);
+            return evaluateCondition(filterStr, qualities, defs, { qid, state }, resolutionRoll, {});
         });
     }
 
@@ -186,14 +177,9 @@ function evaluateMacro(
 
     const [, command, fullArgs] = match;
 
-    // --- PARSE ARGUMENTS ---
-    // Rule: Split by the first semicolon (;). 
-    // Left side = Required Argument. 
-    // Right side = Optional Arguments (comma separated).
-    
     let mainArg = fullArgs.trim();
     let optArgs: string[] = [];
-    let rawOptStr = ""; // Keep raw string for chance/schedule macros that use their own parsing
+    let rawOptStr = ""; 
 
     const semiIndex = fullArgs.indexOf(';');
     if (semiIndex !== -1) {
@@ -223,30 +209,24 @@ function evaluateMacro(
             return calculateChance(mainArg, rawOptStr, qualities, defs, aliases, self, resolutionRoll);
         }
         
-        // --- COLLECTION MACROS ---
-
-        // %pick[Category; Count, Filter]
         case "pick": {
             const categoryExpr = mainArg;
             const countExpr = optArgs[0] || "1";
-            const filterExpr = optArgs[1]; // Optional filter condition
+            const filterExpr = optArgs[1];
 
-            // Resolve Count
-            const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, aliases, self, resolutionRoll));
+            const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, self, resolutionRoll, aliases));
             const count = isNaN(countVal) ? 1 : Math.max(1, countVal);
 
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll);
             
             if (candidates.length === 0) return "nothing";
 
-            // Shuffle and slice
             const shuffled = candidates.sort(() => 0.5 - Math.random());
             const selected = shuffled.slice(0, count);
             
             return selected.join(', ');
         }
 
-        // %roll[Category; Filter]
         case "roll": {
             const categoryExpr = mainArg;
             const filterExpr = optArgs[0];
@@ -267,7 +247,6 @@ function evaluateMacro(
             return pool[rand];
         }
 
-        // %list[Category; Separator, Filter]
         case "list": {
             const categoryExpr = mainArg;
             const sepArg = optArgs[0]?.toLowerCase() || 'comma';
@@ -279,8 +258,7 @@ function evaluateMacro(
             
             const names = candidates.map(qid => {
                 const def = defs[qid];
-                // Evaluate name for logic (e.g. adaptive names)
-                return evaluateText(def.name || qid, qualities, defs, aliases, { qid, state: qualities[qid] }, resolutionRoll);
+                return evaluateText(def.name || qid, qualities, defs, { qid, state: qualities[qid] }, resolutionRoll, aliases);
             });
 
             if (names.length === 0) return "nothing";
@@ -298,8 +276,6 @@ function evaluateMacro(
     }
 }
 
-// ... evaluateConditional, evaluateCondition (unchanged from previous) ...
-
 function evaluateConditional(
     expr: string, 
     qualities: PlayerQualities, 
@@ -314,7 +290,7 @@ function evaluateConditional(
         if (colonIndex > -1) {
             const condition = branch.substring(0, colonIndex).trim();
             const resultText = branch.substring(colonIndex + 1).trim();
-            if (evaluateCondition(condition, qualities, defs, aliases, self, resolutionRoll)) {
+            if (evaluateCondition(condition, qualities, defs, self, resolutionRoll, aliases)) {
                 return resultText.replace(/^['"]|['"]$/g, '');
             }
         } else {
@@ -324,21 +300,24 @@ function evaluateConditional(
     return "";
 }
 
+// RESTORED ORDER HERE TOO
 export function evaluateCondition(
     expression: string | undefined, 
     qualities: PlayerQualities, 
     defs: Record<string, QualityDefinition> = {}, 
-    aliases: Record<string, string> = {},
+    // RESTORED ORDER
     self: { qid: string, state: QualityState } | null = null,
-    resolutionRoll: number = 0
+    resolutionRoll: number = 0,
+    // NEW: Aliases last
+    aliases: Record<string, string> = {}
 ): boolean {
     if (!expression) return true;
     const trimExpr = expression.trim();
 
-    if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, aliases, self, resolutionRoll);
-    if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, aliases, self, resolutionRoll));
-    if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, aliases, self, resolutionRoll));
-    if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, aliases, self, resolutionRoll);
+    if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases);
+    if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases));
+    if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases));
+    if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases);
 
     const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
     if (!operatorMatch) {
@@ -474,12 +453,12 @@ function resolveVariable(
         }
 
         if (definition.text_variants && definition.text_variants[prop]) {
-            currentValue = evaluateText(definition.text_variants[prop], qualities, defs, aliases, { qid: qualityId!, state: state! }, resolutionRoll);
+            currentValue = evaluateText(definition.text_variants[prop], qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll, aliases);
             continue;
         }
         
-        if (prop === 'name') currentValue = evaluateText(definition.name, qualities, defs, aliases, { qid: qualityId!, state: state! }, resolutionRoll);
-        else if (prop === 'description') currentValue = evaluateText(definition.description, qualities, defs, aliases, { qid: qualityId!, state: state! }, resolutionRoll);
+        if (prop === 'name') currentValue = evaluateText(definition.name, qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll, aliases);
+        else if (prop === 'description') currentValue = evaluateText(definition.description, qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll, aliases);
         else if (state!.customProperties && state!.customProperties![prop] !== undefined) currentValue = state!.customProperties![prop];
         else currentValue = undefined;
     }
@@ -489,6 +468,16 @@ function resolveVariable(
         if ('level' in currentValue) return (currentValue as any).level;
     }
     return currentValue?.toString() || "";
+}
+
+function preprocessAliases(text: string): [string, Record<string, string>] {
+    const aliasMap: Record<string, string> = {};
+    const aliasRegex = /\{@([a-zA-Z0-9_]+)\s*=\s*\$([a-zA-Z0-9_]+)\}/g;
+    const cleanText = text.replace(aliasRegex, (_, alias, qid) => {
+        aliasMap[alias] = qid;
+        return '';
+    });
+    return [cleanText, aliasMap];
 }
 
 export function calculateChance(
@@ -569,8 +558,8 @@ export function getChallengeDetails(
     defs: Record<string, QualityDefinition>
 ): { chance: number | null, text: string } {
     if (!challengeString) return { chance: null, text: '' };
-    // Pass empty alias map here since challenge calculation is stateless
-    const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, {}, null, 0);
+    // MATCH NEW SIGNATURE: (text, qualities, defs, self, roll, aliases)
+    const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, null, 0, {});
     const chance = parseInt(chanceStr, 10);
     if (isNaN(chance)) return { chance: null, text: '' };
 
@@ -580,7 +569,7 @@ export function getChallengeDetails(
         const qid = match[1];
         text = defs[qid]?.name || qid;
         if (text.includes('{') || text.includes('$')) {
-             text = evaluateText(text, qualities, defs, {}, null, 0);
+             text = evaluateText(text, qualities, defs, null, 0, {});
         }
     }
     return { chance: Math.max(0, Math.min(100, chance)), text: `Test: ${text}` };

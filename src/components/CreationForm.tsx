@@ -188,10 +188,9 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
         if (!rule.visible) return false;
         if (!rule.visible_if) return true;
         
-        // Use the memoized state which is guaranteed to be in sync with the current render
-        return evaluateCondition(rule.visible_if, calculatedState.mockQualities, allDefinitions, {}, null, 0);
+        // FIX: Pass null instead of {} for selfContext
+        return evaluateCondition(rule.visible_if, calculatedState.mockQualities, allDefinitions, null, 0);
     };
-
 
     // --- RENDERERS ---
 
