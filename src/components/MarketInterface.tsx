@@ -111,8 +111,8 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
             {currentStall && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                     {currentStall.listings.map(listing => {
-                        if (listing.visible_if && !evaluateCondition(listing.visible_if, qualities, qualityDefs, {}, null, 0)) return null;
-                        const isLocked = listing.unlock_if && !evaluateCondition(listing.unlock_if, qualities, qualityDefs, {}, null, 0);
+                        if (listing.visible_if && !evaluateCondition(listing.visible_if, qualities, qualityDefs, null, 0)) return null;
+                        const isLocked = listing.unlock_if && !evaluateCondition(listing.unlock_if, qualities, qualityDefs, null, 0);
 
                         const itemDef = qualityDefs[listing.qualityId];
                         const currencyId = listing.currencyId || market.defaultCurrencyId;
