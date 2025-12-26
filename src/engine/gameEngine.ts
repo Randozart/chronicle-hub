@@ -75,36 +75,37 @@ export class GameEngine {
     }
 
     public evaluateCondition(expression?: string): boolean {
+        // FIXED ORDER: (expr, quals, defs, self, roll, aliases)
         return evaluateScribeCondition(
             expression, 
             this.qualities, 
             this.worldContent.qualities, 
             null, // selfContext
-            this.resolutionRoll,
-            this.tempAliases // aliases (LAST)
+            this.resolutionRoll, // roll
+            this.tempAliases // aliases
         );
     }
 
     public evaluateText(rawText: string | undefined): string {
+        // FIXED ORDER: (text, quals, defs, self, roll, aliases)
         return evaluateScribeText(
             rawText, 
             this.qualities, 
             this.worldContent.qualities, 
             null, // selfContext
-            this.resolutionRoll,
-            this.tempAliases // aliases (LAST)
+            this.resolutionRoll, // roll
+            this.tempAliases // aliases
         );
     }
 
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
         this.changes = [];
         this.scheduledUpdates = [];
-        this.tempAliases = {}; // Reset aliases
+        this.tempAliases = {}; 
         
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
         
-        // 1. Evaluate Body Text (Populates tempAliases)
         const body = isSuccess ? option.pass_long : option.fail_long || "";
         const evaluatedBody = this.evaluateText(body); 
 
@@ -112,7 +113,6 @@ export class GameEngine {
         const redirectId = isSuccess ? option.pass_redirect : option.fail_redirect;
         const moveToId = isSuccess ? option.pass_move_to : option.fail_move_to;
         
-        // 2. Apply Effects (Uses populated tempAliases)
         if (changeString) {
             this.applyEffects(changeString);
         }
@@ -151,7 +151,8 @@ export class GameEngine {
     private deepEvaluate(obj: any): any {
         if (typeof obj === 'string') {
             if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@')) {
-                // Static rendering: Use new signature (text, qual, defs, self, roll, aliases)
+                // FIXED ORDER: (text, quals, defs, self, roll, aliases)
+                // Use null for self, roll, and empty for aliases
                 return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, {});
             }
             return obj;
@@ -200,33 +201,42 @@ export class GameEngine {
                 continue;
             }
 
-            const assignMatch = cleanEffect.match(/^([$@][a-zA-Z0-9_]+)(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
+            const assignMatch = cleanEffect.match(/^((?:[$@][a-zA-Z0-9_]+)|(?:\{.*?\}))(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
             
             if (assignMatch) {
-                const [, rawId, metaStr, op, valStr] = assignMatch;
+                const [, rawLhs, metaStr, op, valStr] = assignMatch;
                 
-                // Resolve @alias
-                let qid = rawId;
-                if (rawId.startsWith('@')) {
-                    const aliasKey = rawId.substring(1);
+                let qid = "";
+
+                if (rawLhs.startsWith('{')) {
+                    qid = this.evaluateText(rawLhs).trim();
+                    if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) {
+                        qid = qid.substring(1);
+                    }
+                } else if (rawLhs.startsWith('@')) {
+                    const aliasKey = rawLhs.substring(1);
                     if (this.tempAliases[aliasKey]) {
                         qid = this.tempAliases[aliasKey]; 
                     } else {
-                        console.warn(`[GameEngine] Alias '${rawId}' not found in current context.`);
+                        console.warn(`[GameEngine] Alias '${rawLhs}' not found in current context.`);
                         continue;
                     }
                 } else {
-                    qid = rawId.substring(1); // Remove $
+                    qid = rawLhs.substring(1); 
                 }
 
-                const metadata: { desc?: string; source?: string } = {};
+                if (!qid || qid === "nothing" || qid === "undefined") continue;
+
+                const metadata: { desc?: string; source?: string; hidden?: boolean } = {};
                 if (metaStr) {
                     const metaParts = metaStr.split(',');
                     for (const part of metaParts) {
                         const [k, ...v] = part.split(':');
+                        const key = k.trim();
                         const val = v.join(':').trim();
-                        if (k.trim() === 'desc') metadata.desc = val;
-                        if (k.trim() === 'source') metadata.source = val;
+                        if (key === 'desc') metadata.desc = val;
+                        if (key === 'source') metadata.source = val;
+                        if (key === 'hidden') metadata.hidden = true;
                     }
                 }
 
@@ -306,7 +316,7 @@ export class GameEngine {
         qids.forEach(qid => this.changeQuality(qid, op, value, meta));
     }
 
-    public changeQuality(qid: string, op: string, value: number | string, metadata: { desc?: string; source?: string }): void {
+    public changeQuality(qid: string, op: string, value: number | string, metadata: { desc?: string; source?: string; hidden?: boolean }): void {
         const def = this.worldContent.qualities[qid];
         if (!def) {
             console.warn(`[GameEngine] Unknown quality '${qid}'. Skipping.`);
@@ -388,24 +398,33 @@ export class GameEngine {
             if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
         }
 
+        const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
+        if (isHidden) return;
+
+        const context = { qid: effectiveQid, state: qState };
         const displayName = this.evaluateText(def.name || effectiveQid);
+        
         let changeText = "";
         
-        const increaseDesc = this.evaluateText(def.increase_description);
-        const decreaseDesc = this.evaluateText(def.decrease_description);
+        // FIXED ORDER: (text, quals, defs, self, roll, aliases)
+        const increaseDesc = evaluateScribeText(def.increase_description, this.qualities, this.worldContent.qualities, context, this.resolutionRoll, this.tempAliases);
+        const decreaseDesc = evaluateScribeText(def.decrease_description, this.qualities, this.worldContent.qualities, context, this.resolutionRoll, this.tempAliases);
 
         if (qState.level > levelBefore) changeText = increaseDesc || `${displayName} increased.`;
         else if (qState.level < levelBefore) changeText = decreaseDesc || `${displayName} decreased.`;
         else if (qState.type === 'S') changeText = `${displayName} is now ${qState.stringValue}`;
 
-        if (metadata.desc) changeText = this.evaluateText(metadata.desc);
+        if (metadata.desc) {
+            // FIXED ORDER: (text, quals, defs, self, roll, aliases)
+            changeText = evaluateScribeText(metadata.desc, this.qualities, this.worldContent.qualities, context, this.resolutionRoll, this.tempAliases);
+        }
 
         if (changeText) {
             this.changes.push({
                 qid: effectiveQid, qualityName: displayName, type: def.type, category: def.category,
                 levelBefore, cpBefore, levelAfter: qState.level, cpAfter: qState.changePoints,
                 stringValue: qState.stringValue, changeText, scope: qid.startsWith('world.') ? 'world' : 'character',
-                overrideDescription: metadata.desc ? this.evaluateText(metadata.desc) : undefined
+                overrideDescription: metadata.desc ? changeText : undefined
             });
         }
     }

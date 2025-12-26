@@ -121,7 +121,7 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
                         const trimmed = ruleObj.rule.trim();
                         const expr = (trimmed.startsWith('{') && trimmed.endsWith('}')) ? trimmed : `{${trimmed}}`;
                         // Using current mockQualities state which accumulates changes
-                        result = evaluateText(expr, mockQualities, allDefinitions, null, 0);
+                        result = evaluateText(expr, mockQualities, allDefinitions, null, 0, {});
                     } catch (e) { }
                 }
                 
