@@ -5,7 +5,7 @@ interface GameImageProps {
     code: string;
     imageLibrary: Record<string, ImageDefinition>;
     alt?: string;
-    type?: 'icon' | 'storylet' | 'banner' | 'background'; // Context hint
+    type?: string; // Context hint
     className?: string;
     priority?: boolean;
 }
