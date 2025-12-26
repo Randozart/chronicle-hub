@@ -23,11 +23,10 @@ const s3Client = (S3_ENDPOINT && S3_ACCESS_KEY && S3_SECRET_KEY)
             accessKeyId: S3_ACCESS_KEY,
             secretAccessKey: S3_SECRET_KEY,
         },
-        forcePathStyle: true // Required for MinIO (uses /bucket/key instead of bucket.domain)
+        forcePathStyle: true // Required for MinIO
     }) 
     : null;
 
-// Quality Presets
 export type QualityPreset = 'high' | 'balanced' | 'icon';
 
 export const uploadAsset = async (
@@ -41,73 +40,66 @@ export const uploadAsset = async (
     } = {}
 ): Promise<{ url: string; size: number }> => {
     
-    // Explicitly cast to Buffer to satisfy strict TS types
     let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
     
-    // 1. Optimize Image (Sharp)
+    // Default file info (will be overwritten if optimized)
+    let ext = file.name.split('.').pop() || 'bin';
+    let contentType = file.type;
+
+    // 1. Optimize & Convert Image
     if (options.optimize !== false && file.type.startsWith('image/')) {
         try {
             let pipeline = sharp(buffer);
-            
             const meta = await pipeline.metadata();
             
-            // Determine settings based on preset or override
+            // Settings
             const preset = options.preset || 'balanced';
-            
             let maxWidth = options.maxWidth || 1920;
             let quality = 80;
-            let lossless = false;
 
             // Preset Defaults
-            if (preset === 'high') { // Maps, Backgrounds
-                maxWidth = 4096; // Allow 4k
+            if (preset === 'high') { 
+                maxWidth = 4096;
                 quality = 90;
-                lossless = true; 
-            } else if (preset === 'icon') { // Icons
+            } else if (preset === 'icon') {
                 maxWidth = 512;
                 quality = 80;
             }
 
-            // USER OVERRIDE (Takes precedence)
+            // User Override
             if (options.qualityOverride) {
                 quality = options.qualityOverride;
-                // If user manually sets quality, assume they want compression, disable lossless default
-                lossless = false; 
             }
 
-            // Resize if too large
+            // Resize
             if (meta.width && meta.width > maxWidth) {
                 pipeline = pipeline.resize(maxWidth, null, { withoutEnlargement: true });
             }
 
-            // Format-specific Logic
-            if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
-                pipeline = pipeline.jpeg({ quality, mozjpeg: true });
-            } else if (file.type === 'image/png') {
-                // If user requested specific lower quality (<90), enable palette to actually reduce size
-                if (options.qualityOverride && options.qualityOverride < 90) {
-                     pipeline = pipeline.png({ quality: quality, palette: true, compressionLevel: 9 });
-                } else {
-                     // Otherwise keep it crisp
-                     pipeline = pipeline.png({ compressionLevel: 9, quality: 100, palette: false });
-                }
-            } else if (file.type === 'image/webp') {
-                pipeline = pipeline.webp({ quality, lossless: lossless && !options.qualityOverride });
-            }
+            // --- FORCE WEBP CONVERSION ---
+            // WebP handles both lossy and lossless transparency.
+            // We use 'effort: 4' for a balance of speed vs compression size.
+            pipeline = pipeline.webp({ 
+                quality: quality,
+                effort: 4, // 0 (fastest) to 6 (smallest)
+                smartSubsample: true // Reduces color blockiness in high compression
+            });
 
-            // Cast result back to Buffer
+            // Update Buffer & File Info
             buffer = await pipeline.toBuffer() as Buffer;
+            ext = 'webp';
+            contentType = 'image/webp';
+
         } catch (e) {
             console.error("Image optimization failed, using original:", e);
         }
     }
 
     const size = buffer.byteLength;
-    const ext = file.name.split('.').pop() || 'bin';
     const filename = `${uuidv4()}.${ext}`; 
     const provider = process.env.STORAGE_PROVIDER || 'local';
 
-    // 2. Upload to MinIO
+    // 2. Upload to MinIO / S3
     if (provider === 's3' && s3Client) {
         const key = `${folder}/${filename}`;
         
@@ -115,11 +107,10 @@ export const uploadAsset = async (
             Bucket: S3_BUCKET,
             Key: key,
             Body: buffer,
-            ContentType: file.type,
-            ACL: 'public-read' // Standard MinIO public access
+            ContentType: contentType, // Ensure correct MIME type for browser
+            ACL: 'public-read'
         }));
         
-        // Construct Public URL
         const url = `${S3_PUBLIC_URL}/${S3_BUCKET}/${key}`;
         return { url, size };
     } 
@@ -139,14 +130,12 @@ export const deleteAsset = async (url: string): Promise<boolean> => {
 
     try {
         if (provider === 's3' && s3Client) {
-            // Extract Key from URL
             let key = url;
             const baseUrlWithBucket = `${S3_PUBLIC_URL}/${S3_BUCKET}/`;
             
             if (url.startsWith(baseUrlWithBucket)) {
                 key = url.replace(baseUrlWithBucket, '');
             } else if (url.startsWith(`${S3_ENDPOINT}/${S3_BUCKET}/`)) {
-                // Fallback if public url wasn't used in this specific string
                 key = url.replace(`${S3_ENDPOINT}/${S3_BUCKET}/`, '');
             }
 
@@ -156,7 +145,6 @@ export const deleteAsset = async (url: string): Promise<boolean> => {
             }));
             return true;
         } else {
-            // Local Delete
             const relativePath = url.startsWith('/') ? url.slice(1) : url;
             const fullPath = path.join(process.cwd(), 'public', relativePath);
             await fs.unlink(fullPath);
