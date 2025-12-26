@@ -59,6 +59,7 @@ function evaluateExpression(
 ): string | number | boolean {
     const trimmedExpr = expr.trim();
     
+    // 1. Handle Assignment: @alias = value
     const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
     if (assignmentMatch) {
         const aliasKey = assignmentMatch[1];
@@ -118,7 +119,7 @@ function getCandidateIds(
         defs, 
         null, 
         resolutionRoll,
-        aliases // Pass aliases
+        aliases
     ).trim().toLowerCase();
 
     let candidates = Object.values(defs)
@@ -212,7 +213,6 @@ function evaluateMacro(
             const countExpr = optArgs[0] || "1";
             const filterExpr = optArgs[1];
 
-            // FIX: Correct order is (text, quals, defs, self, roll, aliases)
             const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, self, resolutionRoll, aliases));
             const count = isNaN(countVal) ? 1 : Math.max(1, countVal);
 
@@ -299,12 +299,10 @@ function evaluateConditional(
     return "";
 }
 
-// RESTORED ORDER
 export function evaluateCondition(
     expression: string | undefined, 
     qualities: PlayerQualities, 
     defs: Record<string, QualityDefinition> = {}, 
-    // RESTORED ORDER: self, roll, aliases
     self: { qid: string, state: QualityState } | null = null,
     resolutionRoll: number = 0,
     aliases: Record<string, string> = {}
@@ -352,6 +350,7 @@ function resolveComplexExpression(
     resolutionRoll: number
 ): string | number | boolean {
     
+    // Updated Regex to reliably capture properties
     const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
         (match) => { 
             const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll);
@@ -404,10 +403,11 @@ function resolveVariable(
     else if (sigil === '#') qualityId = identifier;
 
     if (!qualityId) return `[Unknown: ${fullMatch}]`;
-
-    const definition = defs[qualityId];
-    if (!definition) return `[Missing Def: ${qualityId}]`;
     
+    // NOTE: We don't return here if definition is missing, we try to degrade gracefully
+    // But for properties we need the definition.
+    let definition = defs[qualityId];
+
     let state: QualityState | undefined;
 
     if (sigil === '$.' && self) {
@@ -417,7 +417,18 @@ function resolveVariable(
         if (!state && self?.qid === qualityId) state = self.state;
     }
     
-    if (!state) state = { qualityId, type: definition.type, level: 0, stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 } as any;
+    if (!state) {
+        // Fallback state if quality not found on player
+        state = { 
+            qualityId, 
+            type: definition?.type || QualityType.Pyramidal, 
+            level: 0, 
+            stringValue: "", 
+            changePoints: 0, 
+            sources: [], 
+            spentTowardsPrune: 0 
+        } as any;
+    }
 
     if (levelSpoof) {
         const spoofedVal = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll);
@@ -443,29 +454,22 @@ function resolveVariable(
             continue;
         }
 
-        const currentDef = defs[currentValue.qualityId || qualityId];
+        // FIX: Use the definition of the CURRENT quality in the chain, not the initial one
+        const currentQid = currentValue.qualityId || qualityId;
+        const currentDef = defs[currentQid];
+        
         if (!currentDef) break;
 
-        // FIXED: Correct argument order (self, roll, aliases)
-        if (prop === 'name') {
-            currentValue = evaluateText(definition.name, qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll, aliases);
-        }
-        else if (prop === 'description') {
-            currentValue = evaluateText(definition.description, qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll, aliases);
-        }
-        else if (prop === 'category') {
-            currentValue = definition.category || "";
-        }
+        if (prop === 'name') currentValue = currentDef.name || currentQid;
+        else if (prop === 'description') currentValue = currentDef.description || "";
+        else if (prop === 'category') currentValue = currentDef.category || "";
         else if (prop === 'plural') {
              const lvl = ('level' in state!) ? state!.level : 0;
-             currentValue = (lvl !== 1) ? (definition.plural_name || definition.name || qualityId) : (definition.singular_name || definition.name || qualityId);
+             currentValue = (lvl !== 1) ? (currentDef.plural_name || currentDef.name || currentQid) : (currentDef.singular_name || currentDef.name || currentQid);
         }
-        else if (prop === 'singular') {
-            currentValue = definition.singular_name || definition.name || qualityId;
-        }
-        else if (definition.text_variants && definition.text_variants[prop]) {
-            // FIXED: Correct argument order
-            currentValue = evaluateText(definition.text_variants[prop], qualities, defs, { qid: qualityId!, state: state! }, resolutionRoll, aliases);
+        else if (prop === 'singular') currentValue = currentDef.singular_name || currentDef.name || currentQid;
+        else if (currentDef.text_variants && currentDef.text_variants[prop]) {
+            currentValue = currentDef.text_variants[prop];
         }
         else if (state!.customProperties && state!.customProperties![prop] !== undefined) {
             currentValue = state!.customProperties![prop];
@@ -473,13 +477,13 @@ function resolveVariable(
             currentValue = undefined;
         }
 
+        // Recursive Evaluation with Correct Context
         if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
-            // FIXED: Correct argument order
             currentValue = evaluateText(
                 currentValue, 
                 qualities, 
                 defs, 
-                { qid: qualityId!, state: state! }, 
+                { qid: currentQid, state: state! }, // Use currentQid
                 resolutionRoll,
                 aliases
             );
