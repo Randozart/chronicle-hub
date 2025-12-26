@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/qualities/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -8,13 +7,16 @@ import GameImage from '@/components/GameImage';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers'; 
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
-import ScribeEditor from '@/components/admin/ScribeEditor'; // Reuse editor for variants
+import ScribeEditor from '@/components/admin/ScribeEditor';
+import { useToast } from '@/providers/ToastProvider'; // Toast Hook
 
 // ENGINE RESERVED WORDS
 const ENGINE_RESERVED = ['luck', 'target', 'schedule', 'cancel', 'all', 'world', 'source', 'desc'];
 
 export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast(); // Hook into Toast Context
+
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [settings, setSettings] = useState<WorldSettings | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -22,41 +24,84 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
 
     useEffect(() => {
         const load = async () => {
-            const [qRes, sRes] = await Promise.all([
-                fetch(`/api/admin/qualities?storyId=${storyId}`),
-                fetch(`/api/admin/settings?storyId=${storyId}`)
-            ]);
-            
-            if (qRes.ok) {
-                const data = await qRes.json();
-                // Sort by ordering field by default
-                const sorted = Object.values(data).sort((a: any, b: any) => (a.ordering || 0) - (b.ordering || 0));
-                setQualities(sorted as QualityDefinition[]);
+            try {
+                const [qRes, sRes] = await Promise.all([
+                    fetch(`/api/admin/qualities?storyId=${storyId}`),
+                    fetch(`/api/admin/settings?storyId=${storyId}`)
+                ]);
+                
+                if (qRes.ok) {
+                    const data = await qRes.json();
+                    // Sort by ordering field by default
+                    const sorted = Object.values(data).sort((a: any, b: any) => (a.ordering || 0) - (b.ordering || 0));
+                    setQualities(sorted as QualityDefinition[]);
+                }
+                if (sRes.ok) setSettings(await sRes.json());
+            } catch (e) {
+                console.error("Failed to load qualities", e);
+                showToast("Failed to load data.", "error");
+            } finally {
+                setIsLoading(false);
             }
-            if (sRes.ok) setSettings(await sRes.json());
-            
-            setIsLoading(false);
         };
         load();
-    }, [storyId]);
+    }, [storyId, showToast]);
 
     const handleCreate = () => {
         const newId = prompt("Unique ID (e.g. 'strength'):");
         if (!newId) return;
-        if (qualities.find(q => q.id === newId)) return alert("ID Exists");
         
-        const newQ: QualityDefinition = { id: newId, name: "New Quality", type: QualityType.Pyramidal, tags: [] };
+        // Basic validation
+        const cleanId = newId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (qualities.find(q => q.id === cleanId)) {
+            showToast("Quality ID already exists.", "error");
+            return;
+        }
+        
+        const newQ: QualityDefinition = { 
+            id: cleanId, 
+            name: "New Quality", 
+            type: QualityType.Pyramidal, 
+            tags: [],
+            folder: "New" 
+        };
+        
         setQualities(prev => [...prev, newQ]);
-        setSelectedId(newId);
+        setSelectedId(cleanId);
+        showToast("Quality created.", "success");
+    };
+
+    const handleDuplicate = (source: QualityDefinition) => {
+        const newId = prompt("Enter new ID for the duplicate:", `${source.id}_copy`);
+        if (!newId) return;
+        
+        const cleanId = newId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (qualities.find(q => q.id === cleanId)) {
+            showToast("Quality ID already exists.", "error");
+            return;
+        }
+
+        // Create deep copy
+        const newQ: QualityDefinition = {
+            ...JSON.parse(JSON.stringify(source)),
+            id: cleanId,
+            name: `${source.name} (Copy)`
+        };
+
+        setQualities(prev => [...prev, newQ]);
+        setSelectedId(cleanId);
+        showToast("Quality duplicated.", "success");
     };
 
     const handleSaveSuccess = (updated: QualityDefinition) => {
         setQualities(prev => prev.map(q => q.id === updated.id ? updated : q));
+        showToast("Quality saved successfully.", "success");
     };
 
     const handleDeleteSuccess = (id: string) => {
         setQualities(prev => prev.filter(q => q.id !== id));
         setSelectedId(null);
+        showToast("Quality deleted.", "info");
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
@@ -64,16 +109,28 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
     return (
         <div className="admin-split-view">
             <AdminListSidebar 
-                title="Qualities" items={qualities} selectedId={selectedId} onSelect={setSelectedId} onCreate={handleCreate}
-                groupOptions={[{ label: "Category", key: "category" }, { label: "Type", key: "type" }]}
-                defaultGroupByKey="category"
+                title="Qualities" 
+                items={qualities} 
+                selectedId={selectedId} 
+                onSelect={setSelectedId} 
+                onCreate={handleCreate}
+                // Updated Grouping Options: Folder is now primary
+                groupOptions={[
+                    { label: "Folder", key: "folder" },
+                    { label: "Category", key: "category" }, 
+                    { label: "Type", key: "type" }
+                ]}
+                defaultGroupByKey="folder"
             />
             <div className="admin-editor-col">
                 {selectedId && settings ? (
                     <QualityEditor 
                         initialData={qualities.find(q => q.id === selectedId)!} 
                         settings={settings} 
-                        onSave={handleSaveSuccess} onDelete={handleDeleteSuccess} storyId={storyId} 
+                        onSave={handleSaveSuccess} 
+                        onDelete={handleDeleteSuccess} 
+                        onDuplicate={handleDuplicate}
+                        storyId={storyId} 
                     />
                 ) : <div style={{color:'#777', textAlign:'center', marginTop:'20%'}}>Select a quality</div>}
             </div>
@@ -81,9 +138,17 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
     );
 }
 
-function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { initialData: QualityDefinition, settings: WorldSettings, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
+function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, storyId }: { 
+    initialData: QualityDefinition, 
+    settings: WorldSettings, 
+    onSave: (d: any) => void, 
+    onDelete: (id: string) => void, 
+    onDuplicate: (q: QualityDefinition) => void,
+    storyId: string 
+}) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
+    const { showToast } = useToast(); // Hook into Toast Context
     
     // Variant Editor State
     const [newVariantKey, setNewVariantKey] = useState("");
@@ -119,19 +184,33 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await fetch('/api/admin/config', {
+            const res = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId, category: 'qualities', itemId: form.id, data: form })
             });
+
+            if (!res.ok) throw new Error("Save failed");
+            
             onSave(form);
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
+        } catch (e) { 
+            console.error(e);
+            showToast("Failed to save quality.", "error");
+        } finally { 
+            setIsSaving(false); 
+        }
     };
 
     const handleDelete = async () => {
         if (!confirm(`Delete ${form.id}?`)) return;
-        await fetch(`/api/admin/config?storyId=${storyId}&category=qualities&itemId=${form.id}`, { method: 'DELETE' });
-        onDelete(form.id);
+        try {
+            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=qualities&itemId=${form.id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error("Delete failed");
+            onDelete(form.id);
+        } catch (e) {
+            console.error(e);
+            showToast("Failed to delete quality.", "error");
+        }
     };
 
     // Variant Handlers
@@ -218,17 +297,36 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
                 </div>
             </div>
 
+            {/* ORGANIZATION: FOLDER vs CATEGORY */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Category</label>
-                    <input value={form.category || ''} onChange={e => handleChange('category', e.target.value)} className="form-input" placeholder="character, menace" />
+                    <label className="form-label">Folder (UI)</label>
+                    <input 
+                        value={form.folder || ''} 
+                        onChange={e => handleChange('folder', e.target.value)} 
+                        className="form-input" 
+                        placeholder="Items.Weapons" 
+                        title="Use dots for nesting: Folder.Subfolder"
+                    />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Image Code</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" />
-                        {form.image && <div style={{width: 32, height: 32}}><GameImage code={form.image} imageLibrary={{}} type="icon" className="option-image"/></div>}
-                    </div>
+                    <SmartArea
+                        label="Category (Logic)"
+                        value={form.category || ''}
+                        onChange={v => handleChange('category', v)}
+                        storyId={storyId}
+                        minHeight="38px"
+                        placeholder="For Scripts (e.g. 'Weapons')"
+                        subLabel="Comma-seperated or Conditional"
+                    />
+                </div>
+            </div>
+
+            <div className="form-group">
+                <label className="form-label">Image Code</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" />
+                    {form.image && <div style={{width: 32, height: 32}}><GameImage code={form.image} imageLibrary={{}} type="icon" className="option-image"/></div>}
                 </div>
             </div>
             
@@ -323,10 +421,6 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handleTagToggle('hidden')} label="Hidden" desc="Do not show on profile." />
                     
-                    {/* {form.type === 'S' && (
-                         <BehaviorCard checked={hasProperty(form.tags, 'is_pronoun_set')} onChange={() => handleTagToggle('is_pronoun_set')} label="Is Pronoun Set" desc="Enables {%pronoun} macros." />
-                    )} */}
-
                     {(form.type === 'E' || form.type === 'I') && (
                         <>
                             <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />
@@ -352,7 +446,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
                                 value={form.bonus || ''} 
                                 onChange={v => handleChange('bonus', v)} 
                                 storyId={storyId} 
-                                minHeight="38px"
+                                minHeight="38px" 
                                 placeholder="$strength + 1"
                             />
                         </div>
@@ -367,6 +461,10 @@ function QualityEditor({ initialData, settings, onSave, onDelete, storyId }: { i
 
             <div className="admin-form-footer">
                 <button onClick={handleDelete} className="unequip-btn" style={{width: 'auto', padding: '0.5rem 1rem'}}>Delete</button>
+                
+                {/* DUPLICATE BUTTON */}
+                <button onClick={() => onDuplicate(form)} className="option-button" style={{width: 'auto', padding: '0.5rem 1rem', borderColor: '#e5c07b', color: '#e5c07b'}}>Duplicate</button>
+
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>
         </div>
