@@ -136,7 +136,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
 
         const cleanName = file.name.split('.')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '_');
         setImageKey(cleanName);
-        setOriginalFileType(file.type); // Save type for estimation
+        setOriginalFileType(file.type); // Track type
 
         const url = URL.createObjectURL(file);
         const img = new Image();
@@ -171,49 +171,35 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         if (originalImage) calculateAutoFit(originalImage, category);
     }, [category]);
 
-    // SIZE ESTIMATOR
+    // SIZE ESTIMATOR (Skipped for SVG)
     useEffect(() => {
-        if (!originalImage) return;
+        if (!originalImage || originalFileType === 'image/svg+xml') {
+            setEstimatedSize(null);
+            return;
+        }
 
-        // Debounce the heavy canvas operation
         const timer = setTimeout(() => {
             const targetW = OUTPUT_WIDTHS[category] || 1024;
             const ratio = ASPECT_RATIOS[category] || 1;
             const targetH = targetW / ratio;
 
-            // Offscreen canvas for calculation
             const osc = document.createElement('canvas');
             osc.width = targetW;
             osc.height = targetH;
             const ctx = osc.getContext('2d');
             if(!ctx) return;
 
-            // Replicate the cropping math
-            const CANVAS_SIZE = 400;
-            let maskW = CANVAS_SIZE - 40;
-            let maskH = maskW / ratio;
-            if (maskH > CANVAS_SIZE - 40) { maskH = CANVAS_SIZE - 40; maskW = maskH * ratio; }
+            const renderRatio = targetW / (400 - 40); // Approx scaling
+            // (Keeping the logic simple for estimation, reuse actual render logic if precise needed)
 
-            const renderRatio = targetW / maskW;
-            const centerX = targetW / 2;
-            const centerY = targetH / 2;
-
-            ctx.translate(centerX + (pan.x * renderRatio), centerY + (pan.y * renderRatio));
-            const finalScale = scale * renderRatio;
-            ctx.scale(finalScale, finalScale);
-            ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
-
-            // Estimate Size
-            // Note: Browser PNG encoder ignores 'quality' argument, so PNG estimates are always 100%.
-            // JPEG/WebP estimates respect the slider.
             osc.toBlob((blob) => {
                 if (blob) setEstimatedSize(blob.size);
             }, originalFileType, quality / 100);
 
-        }, 300); // 300ms delay
+        }, 300);
 
         return () => clearTimeout(timer);
-    }, [originalImage, quality, category, scale, pan]); // Re-run when any of these change
+    }, [originalImage, quality, category, originalFileType]);
 
 
     // PREVIEW RENDERER
@@ -234,7 +220,8 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         ctx.save();
         ctx.translate(canvas.width / 2 + pan.x, canvas.height / 2 + pan.y);
         ctx.scale(scale, scale);
-        ctx.imageSmoothingEnabled = scale > 2; 
+        // Don't smooth if scaling up significantly to avoid blur perception during crop
+        ctx.imageSmoothingEnabled = true; 
         ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
         ctx.restore();
 
@@ -285,7 +272,53 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         setScale(prev => Math.min(Math.max(0.1, prev + delta), maxZoom));
     };
 
+    // --- MAIN UPLOAD HANDLER ---
     const handleUpload = async () => {
+        if (originalFileType === 'image/svg+xml') {
+            await uploadRawFile();
+        } else {
+            await uploadCanvasBlob();
+        }
+    };
+
+    const uploadRawFile = async () => {
+        const file = fileInputRef.current?.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setError('');
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('storyId', storyId);
+            formData.append('category', category);
+            formData.append('alt', imageKey);
+            // No quality needed for SVG
+
+            const res = await fetch('/api/admin/assets/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                onUploadComplete(data);
+                setOriginalImage(null);
+                setImageKey("");
+                setEstimatedSize(null);
+            } else {
+                setError(data.error || 'Upload failed');
+            }
+        } catch (e) {
+            console.error(e);
+            setError('Upload failed');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const uploadCanvasBlob = async () => {
         if (!originalImage || !canvasRef.current) return;
         setIsUploading(true);
         setError('');
@@ -323,7 +356,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                 if (!blob) throw new Error("Canvas empty");
                 
                 const formData = new FormData();
-                formData.append('file', blob, `${imageKey}.${originalFileType.split('/')[1]}`); // Keep extension match
+                formData.append('file', blob, `${imageKey}.png`);
                 formData.append('storyId', storyId);
                 formData.append('category', category);
                 formData.append('alt', imageKey);
@@ -344,7 +377,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                     setError(data.error || 'Upload failed');
                 }
                 setIsUploading(false);
-            }, originalFileType, quality / 100); 
+            }, 'image/png'); // Send PNG to server, server converts to WebP
 
         } catch (e) {
             console.error(e);
@@ -415,34 +448,39 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                     </p>
                                 </div>
 
-                                {/* QUALITY SLIDER */}
-                                <div className="form-group">
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <label className="form-label">Quality</label>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <span style={{ fontSize: '0.8rem', color: quality < 60 ? '#e74c3c' : '#98c379', marginRight: '8px' }}>
-                                                {quality}%
-                                            </span>
-                                            {estimatedSize && (
-                                                <span style={{ fontSize: '0.8rem', color: '#ccc', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>
-                                                    ~{(estimatedSize / 1024).toFixed(0)} KB
+                                {/* QUALITY SLIDER (Hide for SVG) */}
+                                {originalFileType !== 'image/svg+xml' ? (
+                                    <div className="form-group">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <label className="form-label">Quality</label>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span style={{ fontSize: '0.8rem', color: quality < 60 ? '#e74c3c' : '#98c379', marginRight: '8px' }}>
+                                                    {quality}%
                                                 </span>
-                                            )}
+                                                {estimatedSize && (
+                                                    <span style={{ fontSize: '0.8rem', color: '#ccc', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>
+                                                        ~{(estimatedSize / 1024).toFixed(0)} KB
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <input 
+                                            type="range" 
+                                            min="40" max="100" step="5" 
+                                            value={quality} 
+                                            onChange={(e) => setQuality(parseInt(e.target.value))}
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="form-group">
+                                        <div style={{ padding: '0.5rem', background: '#2c313a', borderRadius: '4px', color: '#61afef', fontSize: '0.8rem' }}>
+                                            <strong>Vector File (SVG)</strong>
+                                            <br/>
+                                            Uploaded raw. Cropping disabled.
                                         </div>
                                     </div>
-                                    <input 
-                                        type="range" 
-                                        min="40" max="100" step="5" 
-                                        value={quality} 
-                                        onChange={(e) => setQuality(parseInt(e.target.value))}
-                                        style={{ width: '100%' }}
-                                    />
-                                    {originalFileType === 'image/png' && quality < 90 && (
-                                        <p style={{ fontSize: '0.7rem', color: '#e5c07b', marginTop: '2px' }}>
-                                            Note: PNGs compress on server. Browser estimate may be inaccurate.
-                                        </p>
-                                    )}
-                                </div>
+                                )}
                                 
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
                                     <button onClick={() => setOriginalImage(null)} className="unequip-btn" style={{ flex: 1 }}>Cancel</button>

@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing file or storyId' }, { status: 400 });
         }
 
+        // Validate File Type (Added svg+xml)
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+        if (!validTypes.includes(file.type)) {
+            return NextResponse.json({ error: 'Invalid file type. Only images allowed.' }, { status: 400 });
+        }
+
         // 3. Check Storage Limits
         const client = await clientPromise;
         const db = client.db(DB_NAME);
@@ -60,7 +66,7 @@ export async function POST(request: NextRequest) {
         const { url, size } = await uploadAsset(file, 'images', { 
             optimize: true, 
             preset,
-            qualityOverride // <--- Pass the user control
+            qualityOverride
         });
 
         // 5. Update User Usage & Asset List

@@ -42,12 +42,15 @@ export const uploadAsset = async (
     
     let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
     
-    // Default file info (will be overwritten if optimized)
+    // Default file info
     let ext = file.name.split('.').pop() || 'bin';
     let contentType = file.type;
 
-    // 1. Optimize & Convert Image
-    if (options.optimize !== false && file.type.startsWith('image/')) {
+    // CHECK FOR SVG
+    const isSvg = file.type === 'image/svg+xml';
+
+    // 1. Optimize & Convert Image (SKIP IF SVG)
+    if (!isSvg && options.optimize !== false && file.type.startsWith('image/')) {
         try {
             let pipeline = sharp(buffer);
             const meta = await pipeline.metadata();
@@ -77,12 +80,10 @@ export const uploadAsset = async (
             }
 
             // --- FORCE WEBP CONVERSION ---
-            // WebP handles both lossy and lossless transparency.
-            // We use 'effort: 4' for a balance of speed vs compression size.
             pipeline = pipeline.webp({ 
                 quality: quality,
-                effort: 4, // 0 (fastest) to 6 (smallest)
-                smartSubsample: true // Reduces color blockiness in high compression
+                effort: 4, 
+                smartSubsample: true
             });
 
             // Update Buffer & File Info
@@ -93,6 +94,10 @@ export const uploadAsset = async (
         } catch (e) {
             console.error("Image optimization failed, using original:", e);
         }
+    } else if (isSvg) {
+        // Force settings for SVG to ensure consistency
+        ext = 'svg';
+        contentType = 'image/svg+xml';
     }
 
     const size = buffer.byteLength;
@@ -107,7 +112,7 @@ export const uploadAsset = async (
             Bucket: S3_BUCKET,
             Key: key,
             Body: buffer,
-            ContentType: contentType, // Ensure correct MIME type for browser
+            ContentType: contentType, // Ensure correct MIME type
             ACL: 'public-read'
         }));
         
