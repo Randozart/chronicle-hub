@@ -37,9 +37,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Storage limit exceeded. Upgrade to Premium for more space.' }, { status: 402 });
         }
 
+          // 3. Upload (with Context-Aware Optimization)
+        let preset: 'high' | 'balanced' | 'icon' = 'balanced';
+        
+        // Map UI category to Compression Preset
+        if (['map', 'background', 'banner'].includes(category)) {
+            preset = 'high'; // Minimal compression, allow 4k
+        } else if (['icon'].includes(category)) {
+            preset = 'icon'; // Aggressive resize (512px)
+        }
+        
         const { url, size } = await uploadAsset(file, 'images', { 
             optimize: true, 
-            maxWidth: 1920 
+            preset 
         });
 
         const assetEntry = {
