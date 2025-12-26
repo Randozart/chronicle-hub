@@ -40,7 +40,9 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
     // Upload State
     const [imageKey, setImageKey] = useState("");
     const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
-    const [quality, setQuality] = useState(90); // Default Quality
+    const [originalFileType, setOriginalFileType] = useState("image/jpeg");
+    const [quality, setQuality] = useState(90); 
+    const [estimatedSize, setEstimatedSize] = useState<number | null>(null);
 
     // Library State
     const [userAssets, setUserAssets] = useState<any[]>([]);
@@ -95,7 +97,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
             })
         }).then(res => {
             if(res.ok) {
-                onUploadComplete({ image: imageData, usage: 0 }); // Linking doesn't increase usage
+                onUploadComplete({ image: imageData, usage: 0 }); 
                 alert("Asset linked from library!");
             }
         });
@@ -134,6 +136,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
 
         const cleanName = file.name.split('.')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '_');
         setImageKey(cleanName);
+        setOriginalFileType(file.type); // Save type for estimation
 
         const url = URL.createObjectURL(file);
         const img = new Image();
@@ -168,6 +171,52 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         if (originalImage) calculateAutoFit(originalImage, category);
     }, [category]);
 
+    // SIZE ESTIMATOR
+    useEffect(() => {
+        if (!originalImage) return;
+
+        // Debounce the heavy canvas operation
+        const timer = setTimeout(() => {
+            const targetW = OUTPUT_WIDTHS[category] || 1024;
+            const ratio = ASPECT_RATIOS[category] || 1;
+            const targetH = targetW / ratio;
+
+            // Offscreen canvas for calculation
+            const osc = document.createElement('canvas');
+            osc.width = targetW;
+            osc.height = targetH;
+            const ctx = osc.getContext('2d');
+            if(!ctx) return;
+
+            // Replicate the cropping math
+            const CANVAS_SIZE = 400;
+            let maskW = CANVAS_SIZE - 40;
+            let maskH = maskW / ratio;
+            if (maskH > CANVAS_SIZE - 40) { maskH = CANVAS_SIZE - 40; maskW = maskH * ratio; }
+
+            const renderRatio = targetW / maskW;
+            const centerX = targetW / 2;
+            const centerY = targetH / 2;
+
+            ctx.translate(centerX + (pan.x * renderRatio), centerY + (pan.y * renderRatio));
+            const finalScale = scale * renderRatio;
+            ctx.scale(finalScale, finalScale);
+            ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+
+            // Estimate Size
+            // Note: Browser PNG encoder ignores 'quality' argument, so PNG estimates are always 100%.
+            // JPEG/WebP estimates respect the slider.
+            osc.toBlob((blob) => {
+                if (blob) setEstimatedSize(blob.size);
+            }, originalFileType, quality / 100);
+
+        }, 300); // 300ms delay
+
+        return () => clearTimeout(timer);
+    }, [originalImage, quality, category, scale, pan]); // Re-run when any of these change
+
+
+    // PREVIEW RENDERER
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas || !originalImage) return;
@@ -203,10 +252,10 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.beginPath();
         ctx.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        
         ctx.rect(maskX, maskY, maskW, maskH); 
         ctx.fill('evenodd');
 
-        // Draw Guides (Blue Lines) - ONLY on Preview
         ctx.strokeStyle = '#61afef';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -237,12 +286,11 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
     };
 
     const handleUpload = async () => {
-        if (!originalImage) return;
+        if (!originalImage || !canvasRef.current) return;
         setIsUploading(true);
         setError('');
 
         try {
-            // Render Clean Pass (No Blue Lines)
             const targetW = OUTPUT_WIDTHS[category] || 1024;
             const ratio = ASPECT_RATIOS[category] || 1;
             const targetH = targetW / ratio;
@@ -275,12 +323,10 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                 if (!blob) throw new Error("Canvas empty");
                 
                 const formData = new FormData();
-                formData.append('file', blob, `${imageKey}.png`);
+                formData.append('file', blob, `${imageKey}.${originalFileType.split('/')[1]}`); // Keep extension match
                 formData.append('storyId', storyId);
                 formData.append('category', category);
                 formData.append('alt', imageKey);
-                
-                // Append Quality Control
                 formData.append('quality', quality.toString());
 
                 const res = await fetch('/api/admin/assets/upload', {
@@ -293,11 +339,12 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                     onUploadComplete(data);
                     setOriginalImage(null);
                     setImageKey("");
+                    setEstimatedSize(null);
                 } else {
                     setError(data.error || 'Upload failed');
                 }
                 setIsUploading(false);
-            }, 'image/png');
+            }, originalFileType, quality / 100); 
 
         } catch (e) {
             console.error(e);
@@ -372,7 +419,16 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                 <div className="form-group">
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <label className="form-label">Quality</label>
-                                        <span style={{ fontSize: '0.8rem', color: quality < 60 ? '#e74c3c' : '#98c379' }}>{quality}%</span>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <span style={{ fontSize: '0.8rem', color: quality < 60 ? '#e74c3c' : '#98c379', marginRight: '8px' }}>
+                                                {quality}%
+                                            </span>
+                                            {estimatedSize && (
+                                                <span style={{ fontSize: '0.8rem', color: '#ccc', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>
+                                                    ~{(estimatedSize / 1024).toFixed(0)} KB
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <input 
                                         type="range" 
@@ -381,6 +437,11 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                         onChange={(e) => setQuality(parseInt(e.target.value))}
                                         style={{ width: '100%' }}
                                     />
+                                    {originalFileType === 'image/png' && quality < 90 && (
+                                        <p style={{ fontSize: '0.7rem', color: '#e5c07b', marginTop: '2px' }}>
+                                            Note: PNGs compress on server. Browser estimate may be inaccurate.
+                                        </p>
+                                    )}
                                 </div>
                                 
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
