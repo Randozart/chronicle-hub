@@ -136,7 +136,7 @@ export interface CharCreateRule {
 }
 
 export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";
-export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'location' | 'uncategorized';
+export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'cover' | 'location' | 'uncategorized';
 
 export interface SystemMessage {
     id: string;

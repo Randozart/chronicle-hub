@@ -1,18 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ImageCategory } from '@/engine/models';
+import { ImageCategory, ImageDefinition } from '@/engine/models';
 
 interface Props {
     storyId: string;
-    onUploadComplete: (data: { image: any, usage: number }) => void; // <--- UPDATE TYPE
+    onUploadComplete: (data: { image: ImageDefinition, usage: number }) => void;
 }
-
 
 const OUTPUT_WIDTHS: Record<string, number> = {
     'icon': 512,
     'location': 1024,
     'banner': 1920,
+    'cover': 1920, // High res for covers
     'background': 1920,
     'map': 2048,
     'storylet': 800,
@@ -25,18 +25,24 @@ const ASPECT_RATIOS: Record<string, number> = {
     'location': 1,
     'storylet': 3/4,
     'banner': 3/1,
+    'cover': 16/9, // Standard cover ratio
     'background': 16/9,
     'map': 4/3
 };
 
 export default function ImageUploader({ storyId, onUploadComplete }: Props) {
+    const [activeTab, setActiveTab] = useState<'upload' | 'library'>('upload');
     const [isUploading, setIsUploading] = useState(false);
     const [category, setCategory] = useState<ImageCategory>('uncategorized');
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [error, setError] = useState('');
     
-    // NEW: Image Key State
+    // Upload State
     const [imageKey, setImageKey] = useState("");
+    const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
+    
+    // Library State
+    const [userAssets, setUserAssets] = useState<any[]>([]);
+    const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
 
     // Crop State
     const [scale, setScale] = useState(1);
@@ -47,23 +53,70 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
 
-    // 1. Handle File Selection
+    // --- LIBRARY FETCH ---
+    useEffect(() => {
+        if (activeTab === 'library') {
+            setIsLoadingLibrary(true);
+            fetch('/api/admin/assets/mine')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.assets) setUserAssets(data.assets);
+                })
+                .finally(() => setIsLoadingLibrary(false));
+        }
+    }, [activeTab]);
+
+    const handleSelectFromLibrary = (asset: any) => {
+        if (!confirm(`Import "${asset.id}" into this world?`)) return;
+        
+        // We simulate an upload complete event, but we don't upload a file.
+        // We just add the existing URL to the current World Config.
+        
+        // To do this properly, we should hit the config API to "link" it.
+        // But for now, let's just use the onUploadComplete callback 
+        // and let the parent save logic handle the assignment if needed, 
+        // OR we can hit the save endpoint manually here.
+        
+        // Actually, we need to register it in the World Config as if it were new.
+        const imageData: ImageDefinition = {
+            id: asset.id, // Reuse ID or generate new one? Reuse is safer for storage.
+            url: asset.url,
+            alt: asset.id,
+            category: asset.category as ImageCategory,
+            size: asset.size
+        };
+
+        // We call the config endpoint to save this link to the world
+        fetch('/api/admin/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                storyId, 
+                category: 'images', 
+                itemId: asset.id, 
+                data: imageData 
+            })
+        }).then(res => {
+            if(res.ok) {
+                onUploadComplete({ image: imageData, usage: 0 }); // Usage doesn't increase
+                alert("Asset linked from library!");
+            }
+        });
+    };
+
+    // --- UPLOAD LOGIC ---
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Generate default key from filename
         const cleanName = file.name.split('.')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '_');
         setImageKey(cleanName);
 
         const url = URL.createObjectURL(file);
         const img = new Image();
-        
         img.onload = () => {
             setOriginalImage(img);
-            setPreviewUrl(url);
             calculateAutoFit(img, category);
         };
         img.src = url;
@@ -93,7 +146,6 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         if (originalImage) calculateAutoFit(originalImage, category);
     }, [category]);
 
-    // 2. Drawing Loop
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas || !originalImage) return;
@@ -105,11 +157,9 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         canvas.width = CANVAS_SIZE;
         canvas.height = CANVAS_SIZE;
 
-        // Background
         ctx.fillStyle = '#111';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Image
         ctx.save();
         ctx.translate(canvas.width / 2 + pan.x, canvas.height / 2 + pan.y);
         ctx.scale(scale, scale);
@@ -117,7 +167,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
         ctx.restore();
 
-        // Draw Mask
+        // Draw Mask Overlay
         const ratio = ASPECT_RATIOS[category] || 1;
         let maskW = CANVAS_SIZE - 40;
         let maskH = maskW / ratio;
@@ -129,29 +179,36 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         const maskX = (CANVAS_SIZE - maskW) / 2;
         const maskY = (CANVAS_SIZE - maskH) / 2;
 
+        // Darken outside area
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.beginPath();
         ctx.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        if (category === 'location') {
-            ctx.arc(CANVAS_SIZE/2, CANVAS_SIZE/2, maskW/2, 0, Math.PI * 2, true);
+        
+        // Cut out the view window
+        if (category === 'location' || category === 'icon') {
+             // For icons/locations we might want circles or squares
+             // Let's stick to rects for general consistency, maybe circle for 'token' later
+             ctx.rect(maskX, maskY, maskW, maskH); 
         } else {
-            ctx.rect(maskX, maskY, maskW, maskH); 
+             ctx.rect(maskX, maskY, maskW, maskH); 
         }
         ctx.fill('evenodd');
 
+        // Draw Blue Lines (The "Cropping Lines")
+        // We only draw them if we are actively editing
         ctx.strokeStyle = '#61afef';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        if (category === 'location') {
-            ctx.arc(CANVAS_SIZE/2, CANVAS_SIZE/2, maskW/2, 0, Math.PI * 2);
-        } else {
-            ctx.rect(maskX, maskY, maskW, maskH);
-        }
+        ctx.rect(maskX, maskY, maskW, maskH);
         ctx.stroke();
+
+        // Add dimensions text
+        ctx.fillStyle = '#61afef';
+        ctx.font = '10px monospace';
+        ctx.fillText(`${OUTPUT_WIDTHS[category]}px width`, maskX, maskY - 8);
 
     }, [originalImage, scale, pan, category]);
 
-    // 3. Pan/Zoom Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -169,8 +226,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         setScale(prev => Math.min(Math.max(0.1, prev + delta), maxZoom));
     };
 
-    // 4. Upload Logic
-        const handleUpload = async () => {
+    const handleUpload = async () => {
         if (!originalImage || !canvasRef.current) return;
         setIsUploading(true);
         setError('');
@@ -192,9 +248,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
 
                 const data = await res.json();
                 if (res.ok) {
-                    // Pass the whole data object (contains image AND usage)
-                    onUploadComplete(data); 
-                    setPreviewUrl(null);
+                    onUploadComplete(data); // Includes usage
                     setOriginalImage(null);
                     setImageKey("");
                 } else {
@@ -210,96 +264,127 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         }
     };
 
-
     return (
         <div style={{ padding: '1rem', background: '#21252b', borderRadius: '4px', border: '1px solid #333' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#fff' }}>Upload New Asset</h3>
-            
-            {!originalImage ? (
-                <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{ 
-                        border: '2px dashed #444', borderRadius: '8px', padding: '2rem',
-                        textAlign: 'center', cursor: 'pointer', color: '#888',
-                        transition: 'all 0.2s'
-                    }}
-                    className="hover:border-[#61afef] hover:text-[#61afef]"
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+                <button 
+                    onClick={() => setActiveTab('upload')}
+                    style={{ background: 'none', border: 'none', color: activeTab === 'upload' ? '#61afef' : '#777', fontWeight: 'bold', cursor: 'pointer' }}
                 >
-                    <p style={{ margin: 0 }}>Click to Select Image</p>
-                    <input 
-                        ref={fileInputRef} 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleFileSelect} 
-                        style={{ display: 'none' }} 
-                    />
-                </div>
-            ) : (
-                <div style={{ display: 'flex', gap: '2rem' }}>
-                    
-                    {/* LEFT: CONTROLS */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                         <div className="form-group">
-                            <label className="form-label">Asset Key (ID)</label>
-                            <input 
-                                value={imageKey} 
-                                onChange={e => setImageKey(e.target.value)} 
-                                className="form-input"
-                                placeholder="my_image_name"
-                            />
-                            <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-                                Used in code: <code>image: "{imageKey}"</code>
-                            </p>
-                        </div>
+                    Upload New
+                </button>
+                <button 
+                    onClick={() => setActiveTab('library')}
+                    style={{ background: 'none', border: 'none', color: activeTab === 'library' ? '#61afef' : '#777', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                    My Library
+                </button>
+            </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Category</label>
-                            <select 
-                                value={category} 
-                                onChange={e => setCategory(e.target.value as ImageCategory)} 
-                                className="form-select"
-                            >
-                                {Object.keys(OUTPUT_WIDTHS).map(c => (
-                                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                                ))}
-                            </select>
+            {activeTab === 'upload' && (
+                <>
+                    {!originalImage ? (
+                        <div 
+                            onClick={() => fileInputRef.current?.click()}
+                            style={{ 
+                                border: '2px dashed #444', borderRadius: '8px', padding: '2rem',
+                                textAlign: 'center', cursor: 'pointer', color: '#888',
+                                transition: 'all 0.2s'
+                            }}
+                            className="hover:border-[#61afef] hover:text-[#61afef]"
+                        >
+                            <p style={{ margin: 0 }}>Click to Select Image</p>
+                            <input 
+                                ref={fileInputRef} 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleFileSelect} 
+                                style={{ display: 'none' }} 
+                            />
                         </div>
-                        
-                        <div style={{ padding: '1rem', background: '#111', borderRadius: '4px' }}>
-                            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#aaa' }}>Controls</p>
-                            <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#666' }}>
-                                <span>Scroll to Zoom</span>
-                                <span>•</span>
-                                <span>Drag to Pan</span>
+                    ) : (
+                        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: '250px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                 <div className="form-group">
+                                    <label className="form-label">Asset Key (ID)</label>
+                                    <input value={imageKey} onChange={e => setImageKey(e.target.value)} className="form-input" placeholder="my_image_name" />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Category</label>
+                                    <select 
+                                        value={category} 
+                                        onChange={e => setCategory(e.target.value as ImageCategory)} 
+                                        className="form-select"
+                                    >
+                                        {Object.keys(OUTPUT_WIDTHS).map(c => (
+                                            <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                                        ))}
+                                    </select>
+                                    <p style={{ fontSize: '0.75rem', color: '#777', marginTop: '4px' }}>
+                                        Preset: {OUTPUT_WIDTHS[category]}px width
+                                    </p>
+                                </div>
+                                
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
+                                    <button onClick={() => setOriginalImage(null)} className="unequip-btn" style={{ flex: 1 }}>Cancel</button>
+                                    <button onClick={handleUpload} disabled={isUploading || !imageKey} className="save-btn" style={{ flex: 1 }}>
+                                        {isUploading ? 'Uploading...' : 'Save Asset'}
+                                    </button>
+                                </div>
+                                {error && <p style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</p>}
+                            </div>
+
+                            <div style={{ flex: 1, minWidth: '300px' }}>
+                                 <canvas 
+                                    ref={canvasRef}
+                                    onMouseDown={handleMouseDown}
+                                    onMouseMove={handleMouseMove}
+                                    onMouseUp={handleMouseUp}
+                                    onMouseLeave={handleMouseUp}
+                                    onWheel={handleWheel}
+                                    style={{ 
+                                        cursor: isDragging ? 'grabbing' : 'grab', 
+                                        border: '1px solid #444',
+                                        borderRadius: '4px',
+                                        width: '100%',
+                                        boxShadow: '0 0 20px rgba(0,0,0,0.5)'
+                                    }}
+                                />
                             </div>
                         </div>
+                    )}
+                </>
+            )}
 
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
-                            <button onClick={() => setOriginalImage(null)} className="unequip-btn" style={{ flex: 1 }}>Cancel</button>
-                            <button onClick={handleUpload} disabled={isUploading || !imageKey} className="save-btn" style={{ flex: 1 }}>
-                                {isUploading ? 'Uploading...' : 'Save Asset'}
-                            </button>
+            {activeTab === 'library' && (
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    {isLoadingLibrary ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Loading your library...</div>
+                    ) : userAssets.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>No uploads found.</div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px' }}>
+                            {userAssets.map(asset => (
+                                <div 
+                                    key={asset.id} 
+                                    onClick={() => handleSelectFromLibrary(asset)}
+                                    style={{ 
+                                        border: '1px solid #333', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer',
+                                        background: '#111', transition: 'border-color 0.2s'
+                                    }}
+                                    className="hover:border-[#61afef]"
+                                >
+                                    <div style={{ width: '100%', aspectRatio: '1/1' }}>
+                                        <img src={asset.url} alt={asset.id} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
+                                    <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#ccc' }}>
+                                        {asset.id}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        {error && <p style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</p>}
-                    </div>
-
-                    {/* RIGHT: CANVAS */}
-                    <div>
-                         <canvas 
-                            ref={canvasRef}
-                            onMouseDown={handleMouseDown}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
-                            onMouseLeave={handleMouseUp}
-                            onWheel={handleWheel}
-                            style={{ 
-                                cursor: isDragging ? 'grabbing' : 'grab', 
-                                border: '1px solid #444',
-                                borderRadius: '4px',
-                                boxShadow: '0 0 20px rgba(0,0,0,0.5)'
-                            }}
-                        />
-                    </div>
+                    )}
                 </div>
             )}
         </div>
