@@ -1,4 +1,3 @@
-// src/components/StoryletDisplay.tsx
 'use client';
 
 import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition } from '@/engine/models';
@@ -53,8 +52,8 @@ export default function StoryletDisplay({
     
     const storylet = eventData; 
     
-    // Helper to call evaluateText with standard display context (no engine, no roll)
     const evalText = (text: string | undefined) => {
+        // FIX: Pass null for selfContext (argument 4)
         return evaluateText(text, qualities, qualityDefs, null, 0);
     };
 
@@ -68,16 +67,13 @@ export default function StoryletDisplay({
                 body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId, characterId })
             });
 
-            // --- NEW ERROR HANDLING ---
             if (response.status === 409) {
                 const data = await response.json();
                 if (data.redirectId) {
-                    // Automatically redirect to the locking event
                     onFinish(qualities, data.redirectId);
                     return;
                 }
             }
-            // --------------------------
 
             if (!response.ok) throw new Error(await response.text());
             
@@ -115,7 +111,7 @@ export default function StoryletDisplay({
         if (explicitReturn) {
             const target = storyletDefs[explicitReturn];
             if (target) {
-                // FIXED: Passing correct arguments to evaluateCondition
+                // FIX: Pass null for selfContext
                 const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, null, 0);
                 const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, null, 0);
                 if (!isVisible || !isUnlocked) return undefined; 
@@ -133,10 +129,11 @@ export default function StoryletDisplay({
         return (
             <div className="storylet-container">
                 <div className="storylet-main-content">
-                    {resolution.image_code && (
+                    {/* FIX: Ensure code is string */}
+                    {(resolution.image_code || storylet.image_code) && (
                         <div className="storylet-image-frame storylet-image-container"> 
                             <GameImage 
-                                code={resolution?.image_code || storylet.image_code} 
+                                code={resolution.image_code || storylet.image_code || ""} 
                                 imageLibrary={imageLibrary} 
                                 type="storylet"
                                 alt={storylet.name}
@@ -180,10 +177,10 @@ export default function StoryletDisplay({
     };
 
     const optionsToDisplay: DisplayOption[] = storylet.options
-        // FIXED: Passing correct arguments to evaluateCondition
+        // FIX: Pass null for selfContext
         .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, null, 0))
         .map(option => {
-            // FIXED: Passing correct arguments to evaluateCondition
+            // FIX: Pass null for selfContext
             const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, null, 0);
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
             
@@ -203,7 +200,7 @@ export default function StoryletDisplay({
                 {storylet.image_code && (
                     <div className="storylet-image-frame storylet-image-container"> 
                         <GameImage 
-                            code={storylet.image_code} 
+                            code={storylet.image_code || ""} // FIX: Ensure string
                             imageLibrary={imageLibrary} 
                             type="storylet"
                             alt={storylet.name}
@@ -230,7 +227,6 @@ export default function StoryletDisplay({
                     
                     let costDisplay = null;
                     if (showCost) {
-                        // ... (costDisplay logic remains the same)
                         const rawCost = option.computed_action_cost;
                         
                         if (typeof rawCost === 'number') {
@@ -257,7 +253,7 @@ export default function StoryletDisplay({
                                 {option.image_code && (
                                     <div className="option-image-container">
                                         <GameImage 
-                                            code={option.image_code} 
+                                            code={option.image_code || ""} // FIX
                                             imageLibrary={imageLibrary} 
                                             type="icon" 
                                             alt={option.name}
@@ -267,19 +263,13 @@ export default function StoryletDisplay({
                                 )}
                                 <div className="option-text-wrapper">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                        {/* --- FIX START --- */}
                                         <h3 style={{ margin: 0, padding: 0 }}>
-                                            {/* We don't need a full <p> inside <h3>, so we can use the parser directly */}
-                                            {/* Or just wrap it. Let's wrap it for consistency. */}
                                             <FormattedText text={option.name} />
                                         </h3>
-                                        {/* --- FIX END --- */}
                                         {costDisplay}
                                     </div>
-                                    {/* --- FIX START --- */}
                                     {option.short && <div className="option-short-desc"><FormattedText text={option.short} /></div>}
                                     {option.meta && <div className="option-meta-text"><FormattedText text={option.meta} /></div>}
-                                    {/* --- FIX END --- */}
                                     {option.skillCheckText && (
                                         <p className="option-skill-check" style={{ color: option.chance !== null ? (option.chance > 80 ? '#2ecc71' : option.chance < 40 ? '#e74c3c' : '#f1c40f') : 'inherit' }}>
                                             {option.skillCheckText}

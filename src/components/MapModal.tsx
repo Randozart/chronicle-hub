@@ -72,7 +72,7 @@ export default function MapModal({
                         /* VISUAL MAP */
                         <div style={{ position: 'relative', width: '100%', minHeight: '500px' }}>
                             <GameImage 
-                                code={region.image} 
+                                code={region.image || ""} 
                                 imageLibrary={imageLibrary} 
                                 type="map"
                                 alt="Map"
