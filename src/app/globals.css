@@ -3660,6 +3660,418 @@ html[data-theme='revolutionary']::before {
     padding: 0.5rem;
 }
 
+/* =========================================
+   NEW THEME: DETECTIVE NOIR (The Dossier)
+   A merge of the 'detective' palette and
+   the 'black-crown' dossier/file aesthetic.
+   ========================================= */
+[data-theme='detective-noir'] {
+    /* PALETTE from 'detective' theme */
+    --bg-main: #141414; 
+    --bg-panel: #e6e2d8; /* Warm paper */
+    --bg-item: #f0ede6; /* Lighter cardstock */
+    --bg-item-hover: #ffffff;
+    
+    --border-color: #1a1a1a;
+    --border-light: #8c857b;
+    
+    --text-primary: #1a1a1a;
+    --text-secondary: #4a4a4a;
+    --text-muted: #6e6e6e;
+    
+    --accent-primary: #2c241b; 
+    --accent-hover: #000000;
+    --accent-highlight: #8a0303; /* Deep Crimson */
+    
+    --font-main: "Special Elite", "Courier New", monospace;
+    --border-radius: 2px;
+    
+    /* UTILS from 'black-crown'/'detective' */
+    --shadow-paper: 0 2px 4px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.1);
+    --shadow-float: 0 10px 20px rgba(0,0,0,0.4);
+}
+
+
+/* 1. Boost the Spotlight Brightness */
+[data-theme='detective-noir'].theme-wrapper {
+    background-color: #050505; /* Deep black fallback */
+    background-image: 
+        /* Layer 1: Grain Texture (Fixed to screen) */
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.07'/%3E%3C/svg%3E"),
+        
+        /* Layer 2: The Spotlight (Brighter center, fixed to screen) */
+        radial-gradient(circle at 50% 50%, #3a3a3a 0%, #050505 85%);
+    
+    background-attachment: fixed; /* KEEPS THE SPOTLIGHT CENTERED */
+    background-repeat: repeat, no-repeat;
+    background-size: auto, cover;
+}
+
+/* 2. Force Layout Grids to be Transparent 
+   (This fixes the "Right Sidebar is black" issue) */
+
+
+/* 3. SIDEBAR: The "Manifest" Folder */
+/* 3. SIDEBAR: Clean, Dark, No Bubbles */
+[data-theme='detective-noir'] .sidebar-panel {
+    /* Ensure the background is the paper color, OR transparent if you prefer the dark look */
+    background: var(--bg-panel); 
+    
+    /* border: 1px solid var(--border-light); */
+    padding: 0; 
+    box-shadow: var(--shadow-paper);
+    transform: rotate(-0.5deg); 
+    display: flex;
+    flex-direction: column;
+
+    /* REMOVE THIS LINE to get rid of the bubbles: */
+    /* background-image: url("data:image/svg+xml... etc ..."); */
+    
+    /* If you want a subtle noise instead of bubbles, use this (Optional): */
+    /* background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E"); */
+
+    position: sticky;
+    top: 2rem;
+    max-height: 90vh;
+}
+/* Sidebar Tab Bar */
+[data-theme='detective-noir'] .tab-bar {
+    background: #d6d3cd; /* A good contrast for the manila folder look */
+    border-bottom: 1px solid var(--border-light);
+    padding: 0.5rem;
+    gap: 0.25rem;
+}
+
+[data-theme='detective-noir'] .tab-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+    border-radius: 2px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+[data-theme='detective-noir'] .tab-btn.active {
+    background: var(--bg-item-hover);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* 4. THE LOCATION HEADER (Stamped Document) */
+[data-theme='detective-noir'] .location-header {
+    background-color: var(--bg-panel);
+    background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+    border: 4px solid var(--text-primary); 
+    padding: 2.5rem;
+    margin-bottom: 3rem;
+    position: relative;
+    text-align: center;
+    box-shadow: var(--shadow-float);
+    transform: rotate(0.3deg);
+}
+
+[data-theme='detective-noir'] .location-header::after {
+    content: '';
+    position: absolute;
+    top: 6px; left: 6px; right: 6px; bottom: 6px;
+    border: 1px solid var(--text-primary);
+    pointer-events: none;
+}
+
+[data-theme='detective-noir'] .location-header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.25rem;
+    margin: 0;
+    border: none;
+    padding: 0;
+    color: var(--text-primary);
+}
+
+[data-theme='detective-noir'] .location-header h2 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    border: none;
+    margin-top: 0.75rem;
+    font-family: serif; 
+}
+
+/* 5. MAIN STORYLET CONTAINER (The Case File) */
+[data-theme='detective-noir'] .storylet-container {
+    background: var(--bg-item);
+    padding: 3rem 4rem;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-float);
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto 3rem auto;
+}
+
+/* Paper clip visual at the top right */
+[data-theme='detective-noir'] .storylet-container::before {
+    content: '';
+    position: absolute;
+    top: -15px; right: 40px;
+    width: 20px; height: 60px;
+    border: 4px solid var(--text-secondary);
+    border-radius: 20px;
+    background: transparent;
+    z-index: 10;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
+
+/* 6. OPTIONS (Index Cards) */
+[data-theme='detective-noir'] .option-button {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    box-shadow: var(--shadow-paper);
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-family: var(--font-main);
+}
+
+[data-theme='detective-noir'] .option-button:hover {
+    transform: translateY(-3px) rotate(-0.5deg);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+    background-color: var(--bg-item-hover);
+    border-color: var(--text-secondary);
+}
+
+[data-theme='detective-noir'] .option-button h3 {
+    font-weight: bold;
+    text-decoration: underline;
+    text-decoration-color: var(--border-light);
+    margin-bottom: 0.5rem;
+}
+
+[data-theme='detective-noir'] .option-button:hover h3 {
+    color: var(--accent-highlight);
+    text-decoration-color: var(--accent-highlight);
+}
+
+/* 7. IMAGES (Polaroids) */
+[data-theme='detective-noir'] .storylet-image-container {
+    background: #fff;
+    padding: 0.5rem 0.5rem 2.5rem 0.5rem;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    border: 1px solid #ddd;
+    transform: rotate(-1deg);
+    width: 220px;
+}
+
+/* 8. BUTTONS (Chunky & Official) */
+[data-theme='detective-noir'] .deck-button, 
+[data-theme='detective-noir'] .return-button {
+    background: var(--text-primary);
+    color: #fff;
+    border: 2px solid var(--text-primary);
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 1rem 2rem;
+    border-radius: 0;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+    transition: all 0.1s;
+    cursor: pointer;
+}
+
+[data-theme='detective-noir'] .deck-button:hover,
+[data-theme='detective-noir'] .return-button:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+    background: var(--accent-highlight);
+    border-color: var(--accent-highlight);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 900px) {
+    [data-theme='detective-noir'] .layout-grid-nexus {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin: 1rem auto;
+        padding: 0.5rem;
+    }
+    
+    [data-theme='detective-noir'] .sidebar-panel {
+        max-height: none;
+        position: relative;
+        top: 0;
+        transform: none;
+    }
+    
+    [data-theme='detective-noir'] .storylet-container {
+        padding: 1.5rem;
+    }
+}
+
+/* =========================================================
+   COMPATIBILITY FIX: CARDS & PREVIEWS
+   Prevents themes from stretching dashboard cards to 100vh
+   ========================================================= */
+
+/* 1. Target both World Cards and the Preview Component */
+.card.theme-wrapper,
+.preview-card.theme-wrapper {
+    min-height: 0 !important;
+    height: 100% !important; /* Fill the grid cell, don't exceed it */
+    overflow: hidden !important; /* Keep content inside the rounded corners */
+    
+    /* Reset Page-Level Backgrounds */
+    background-attachment: scroll !important; /* Don't fix gradient to viewport */
+    background-size: cover !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    
+    /* Remove global page margins/padding if theme sets them */
+    margin: 0 !important; 
+    
+    /* Ensure borders from the component stick, not the theme's page border */
+    border: 1px solid var(--border-color) !important;
+}
+
+/* 2. Specific fix for "Detective Noir" & "Black Crown" inside cards */
+[data-theme='detective-noir'].card,
+[data-theme='detective-noir'].preview-card,
+[data-theme='black-crown'].card,
+[data-theme='black-crown'].preview-card {
+    /* Remove the complex radial gradient if it looks bad in small scale, 
+       or just let it scroll with the card */
+    background-image: none !important; 
+    background-color: var(--bg-main) !important;
+    
+    /* If you want the texture but NOT the spotlight effect in cards: */
+    /* background-image: url("...noise...") !important; */
+    
+    /* Reset grid layouts that might be on the body/wrapper */
+    display: flex !important;
+}
+
+/* 3. Fix the "Paper Clip" and "Folder Tabs" trying to appear in the dashboard */
+.card.theme-wrapper .sidebar-panel,
+.card.theme-wrapper .location-header,
+.preview-card.theme-wrapper .sidebar-panel {
+    /* If these elements somehow exist in preview, simplify them */
+    position: static !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+/* 4. Fix World Card specifically for Detective Noir to ensure cover image fits */
+[data-theme='detective-noir'].card > div:first-child,
+[data-theme='black-crown'].card > div:first-child {
+    /* This targets the cover image container in WorldCard.tsx */
+    border-bottom: 1px solid var(--border-color);
+    background: #000;
+}
+
+/* =========================================================
+   DETECTIVE NOIR: ATMOSPHERE PACK
+   Adds: Film Grain, Blinds, Stamps, and Typewriters
+   ========================================================= */
+
+/* 2. THE CASE FILE: Stamps & Paper Clips */
+/* Only apply this to the actual game view, not dashboard cards */
+[data-theme='detective-noir'] .storylet-container:not(.preview-card) {
+    /* Create a "Folder" tab at the top */
+    border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+/* The "CONFIDENTIAL" Stamp Background */
+[data-theme='detective-noir'] .storylet-container::after {
+    content: 'EVIDENCE';
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    font-size: 3rem;
+    font-weight: 900;
+    color: rgba(138, 3, 3, 0.08); /* Faint red watermark */
+    border: 4px solid rgba(138, 3, 3, 0.08);
+    padding: 0.2rem 1rem;
+    transform: rotate(-25deg);
+    pointer-events: none;
+    font-family: sans-serif; /* Stencil look */
+    letter-spacing: 10px;
+    z-index: 0;
+    mask-image: url("data:image/svg+xml,%3Csvg width='200' height='100' viewBox='0 0 200 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+/* 3. ACTIVE TABS: The "Red Marker" Circle */
+[data-theme='detective-noir'] .tab-btn.active {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    position: relative;
+    color: var(--text-primary);
+}
+
+/* The red circle drawn around the text */
+[data-theme='detective-noir'] .tab-btn.active::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-2deg);
+    width: 90%;
+    height: 80%;
+    border: 2px solid rgba(180, 20, 20, 0.7); /* Red pen color */
+    border-radius: 50% 60% 50% 40% / 60% 50% 60% 50%; /* Irregular circle */
+    z-index: -1;
+    /* Simulate ink variation */
+    box-shadow: inset 0 0 2px rgba(180, 20, 20, 0.3);
+}
+
+/* 5. INTERACTIVE EVIDENCE: Pick up the cards */
+[data-theme='detective-noir'] .option-button {
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy spring */
+}
+
+[data-theme='detective-noir'] .option-button:hover {
+    transform: rotate(1deg) scale(1.02) translateY(-5px) !important;
+    box-shadow: 0 15px 25px rgba(0,0,0,0.3) !important;
+    z-index: 10;
+    border-color: #333;
+}
+
+/* Add a "Paper Texture" overlay to buttons */
+[data-theme='detective-noir'] .option-button::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none;
+    mix-blend-mode: multiply;
+}
+
+/* 6. MUGSHOTS (Images) */
+[data-theme='detective-noir'] .storylet-image-container {
+    /* Glossy photo finish */
+    position: relative;
+}
+
+/* The Glossy Reflection */
+[data-theme='detective-noir'] .storylet-image-container::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%);
+    pointer-events: none;
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+[data-theme='detective-noir'] .layout-grid-tabletop,
+[data-theme='detective-noir'] .layout-grid-nexus,
+[data-theme='detective-noir'] .layout-screen {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+
 /*The part which renders just HTML */
 html {
     scroll-behavior: smooth;

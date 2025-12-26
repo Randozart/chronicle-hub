@@ -472,6 +472,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <option value="terminal">Terminal</option>
                                 <option value="parchment">Parchment</option>
                                 <option value="noir">Noir</option>
+                                <option value="detective-noir">Detective Noir</option>
                                 <option value="cyberpunk">Cyberpunk</option>
                                 <option value="dark-fantasy">Dark Fantasy</option>
                                 <option value="pirate">Pirate</option>

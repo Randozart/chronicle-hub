@@ -8,7 +8,7 @@ export default function ThemePreview({ theme }: Props) {
     return (
         <div 
             data-theme={theme} 
-            className="theme-wrapper"
+            className="theme-wrapper preview-card"
             style={{ 
                 padding: '1.5rem', 
                 border: '1px solid var(--border-color)', 
@@ -18,7 +18,9 @@ export default function ThemePreview({ theme }: Props) {
                 fontFamily: 'var(--font-main)',
                 maxWidth: '400px',
                 margin: '0 auto',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                position: 'relative',
+                minHeight: 'auto'
             }}
         >
             <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
