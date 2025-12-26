@@ -20,8 +20,6 @@ interface Props<T extends ListItem> {
     onSelect: (id: string) => void;
     onCreate: () => void;
     renderItem?: (item: T) => React.ReactNode;
-    
-    // NEW: Grouping Options
     groupOptions?: GroupOption[]; 
     defaultGroupByKey?: string;
 }
@@ -35,6 +33,31 @@ export default function AdminListSidebar<T extends ListItem>({
     const [groupByKey, setGroupByKey] = useState<string>(defaultGroupByKey || (groupOptions[0]?.key) || "");
     const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
 
+    // --- HELPER: Resolve Category Path ---
+    const getSafePath = (item: any, key: string): string => {
+        // 1. Explicit 'folder' field always wins (Organization Override)
+        if (item.folder) {
+            return String(item.folder);
+        }
+
+        // 2. Get the target value
+        const val = item[key];
+        if (!val) return "Uncategorized";
+        const strVal = String(val).trim();
+
+        // 3. Smart ScribeScript Detection
+        // If it starts with {, it's likely logic: { $. == 1 : A | B }
+        if (strVal.startsWith('{')) {
+            // Logic: Split by pipe, take the last part (the 'else'), clean braces
+            const parts = strVal.split('|');
+            const defaultBranch = parts[parts.length - 1]; // " unrelated } "
+            const cleanName = defaultBranch.replace(/}/g, '').trim();
+            return cleanName || "Dynamic";
+        }
+
+        return strVal;
+    };
+
     // 1. Build Tree
     const tree = useMemo(() => {
         const root: Record<string, any> = { _files: [] };
@@ -45,30 +68,30 @@ export default function AdminListSidebar<T extends ListItem>({
         );
 
         for (const item of filtered) {
-            // Determine path based on selected Group Key
-            let rawPath = "";
-            if (groupByKey && item[groupByKey]) {
-                rawPath = String(item[groupByKey]);
-            } else if (groupByKey) {
-                rawPath = "Uncategorized";
+            // Determine path using smart logic
+            let rawPath = "Uncategorized";
+            
+            if (groupByKey) {
+                rawPath = getSafePath(item, groupByKey);
             }
 
-            // Split by dot if it's a category, otherwise just use the value as a folder
-            const normalizedPath = rawPath.replace(/\./g, '/'); 
-            const path = normalizedPath.split('/').filter(Boolean); 
+            // Split by dot for nesting, but only if it's a valid path
+            // (The regex replacement ensures standard separators)
+            const normalizedPath = rawPath.replace(/\\/g, '/'); 
+            const path = normalizedPath.split('.').filter(Boolean); 
                        
             let current = root;
             for (const folder of path) {
-                if (!current[folder]) current[folder] = { _files: [] };
-                current = current[folder];
+                // If folder name got messed up (e.g. contains $), sanitize it for display
+                const cleanFolder = folder.trim(); 
+                if (!current[cleanFolder]) current[cleanFolder] = { _files: [] };
+                current = current[cleanFolder];
             }
             current._files.push(item);
         }
         return root;
     }, [items, search, groupByKey]);
 
-    // ... toggleFolder and renderTree logic remains the same ...
-    // (Copy renderTree from previous version)
     const toggleFolder = (path: string) => {
         const next = new Set(collapsedFolders);
         if (next.has(path)) next.delete(path);
@@ -90,13 +113,14 @@ export default function AdminListSidebar<T extends ListItem>({
                             <div 
                                 onClick={() => toggleFolder(fullPath)}
                                 style={{ 
-                                    padding: '0.5rem', paddingLeft: `${depth * 1 + 0.5}rem`, 
+                                    padding: '0.5rem', paddingLeft: `${depth * 0.8 + 0.5}rem`, 
                                     cursor: 'pointer', color: '#e5c07b', fontWeight: 'bold', fontSize: '0.85rem',
                                     display: 'flex', alignItems: 'center', gap: '5px',
-                                    backgroundColor: '#282c34', borderBottom: '1px solid #333'
+                                    backgroundColor: '#282c34', borderBottom: '1px solid #333',
+                                    userSelect: 'none'
                                 }}
                             >
-                                <span>{isCollapsed ? '📁' : '📂'}</span> {folder}
+                                <span style={{ fontSize: '0.7rem' }}>{isCollapsed ? '📁' : '📂'}</span> {folder}
                             </div>
                             {!isCollapsed && renderTree(node[folder], fullPath, depth + 1)}
                         </div>
@@ -107,7 +131,7 @@ export default function AdminListSidebar<T extends ListItem>({
                         key={item.id} 
                         onClick={() => onSelect(item.id)}
                         className={`list-item ${selectedId === item.id ? 'active' : ''}`}
-                        style={{ paddingLeft: `${depth * 1 + 1}rem` }}
+                        style={{ paddingLeft: `${depth * 0.8 + 1}rem` }}
                     >
                         {renderItem ? renderItem(item) : (
                             <>
