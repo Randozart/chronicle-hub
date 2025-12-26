@@ -5,7 +5,8 @@ interface GameImageProps {
     code: string;
     imageLibrary: Record<string, ImageDefinition>;
     alt?: string;
-    type?: 'icon' | 'storylet' | 'banner' | 'background' | 'location' | 'map'; // Context hint
+    type?:  'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'cover' | 'location' | 'uncategorized';
+
     className?: string;
     priority?: boolean;
     style?: React.CSSProperties; // <--- ADDED THIS
