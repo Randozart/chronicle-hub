@@ -1,73 +1,48 @@
-'use client';
-
-import { ImageDefinition } from "@/engine/models";
-import { CSSProperties } from "react";
+import { ImageDefinition } from '@/engine/models';
+import Image from 'next/image';
 
 interface GameImageProps {
-    code?: string; 
-    alt?: string;
-    className?: string;
+    code: string;
     imageLibrary: Record<string, ImageDefinition>;
-    style?: CSSProperties;
-    // The 'type' prop is no longer needed for pathing, but we keep it for potential future styling hooks.
-    type?: string; 
+    alt?: string;
+    type?: 'icon' | 'storylet' | 'banner' | 'background'; // Context hint
+    className?: string;
+    priority?: boolean;
 }
 
-export default function GameImage({ code, alt, className, imageLibrary, style }: GameImageProps) {
-    if (!code) return null;
-
-    let src = '';
-    let finalAlt = alt || '';
-
-    // --- 1. PRIMARY PATH: Look in the Image Library ---
+export default function GameImage({ code, imageLibrary, alt, type, className, priority }: GameImageProps) {
     const def = imageLibrary[code];
-    if (def && def.url) {
-        // The converter now provides the full, correct path.
-        src = def.url; 
-        if (!finalAlt) finalAlt = def.alt || code;
-    } 
-    // --- 2. SECONDARY PATH: Handle external URLs ---
-    else if (code.toLowerCase().startsWith('http')) {
-        src = code;
-    } 
-    // --- 3. SIMPLIFIED FALLBACK: If not in library, build a path to the single /uploads/ folder ---
-    else {
-        // We assume the 'code' is the filename without extension.
-        // We start with .png and let onError find the correct extension.
-        src = `/images/uploads/${code}.png`;
+    
+    // Fallback for missing images
+    if (!def || !def.url) {
+        return (
+            <div className={`game-image-placeholder ${className || ''}`} style={{ background: '#222', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '2rem', color: '#333' }}>?</span>
+            </div>
+        );
     }
 
-    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-        const currentSrc = e.currentTarget.src;
-        // Prevent infinite loops if no image is ever found
-        if (e.currentTarget.dataset.tried) return;
-
-        let nextSrc = '';
-
-        // Chain-load common extensions
-        if (currentSrc.endsWith('.png')) {
-            nextSrc = currentSrc.replace('.png', '.jpg');
-        } else if (currentSrc.endsWith('.jpg')) {
-            nextSrc = currentSrc.replace('.jpg', '.jpeg');
-        } else if (currentSrc.endsWith('.jpeg')) {
-            nextSrc = currentSrc.replace('.jpeg', '.gif');
-        }
-
-        if (nextSrc) {
-            e.currentTarget.src = nextSrc;
-        } else {
-            // If we've tried all extensions, hide the element.
-            e.currentTarget.style.display = 'none'; 
-        }
-    };
+    // Calculate Object Position based on Focus
+    // Default is 'center' (50% 50%)
+    const objectPosition = def.focus 
+        ? `${def.focus.x}% ${def.focus.y}%` 
+        : 'center';
 
     return (
-        <img 
-            src={src} 
-            alt={finalAlt} 
-            className={className}
-            style={style}
-            onError={handleImageError}
-        />
+        <div className={`game-image-wrapper ${className || ''}`} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+            <img
+                src={def.url}
+                alt={alt || def.alt || code}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover', // Required for filling container
+                    objectPosition: objectPosition, // <--- THE MAGIC
+                }}
+                // We use standard <img> for now because Next/Image requires whitelist configuration 
+                // for every external domain, which might be tricky with user uploads.
+                // If using Next/Image, add: style={{ objectFit: 'cover', objectPosition }}
+            />
+        </div>
     );
 }

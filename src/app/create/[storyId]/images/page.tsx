@@ -42,13 +42,15 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
         setImages(prev => [...prev, data.image]);
         setSelectedId(data.image.id);
         
-        // Update storage bar immediately
         if (data.usage !== undefined) {
             setStorageUsage(prev => ({ ...prev, used: data.usage }));
         }
     };
 
-    // Manual creation (Legacy/External URL)
+    const handleStorageUpdate = (newUsage: number) => {
+        setStorageUsage(prev => ({ ...prev, used: newUsage }));
+    };
+
     const handleCreate = () => {
         const newId = prompt("Enter unique Image Key:");
         if (!newId) return;
@@ -75,7 +77,6 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
 
     if (isLoading) return <div className="loading-container">Loading Assets...</div>;
 
-    // Calc Storage Bar
     const usedMB = (storageUsage.used / (1024 * 1024)).toFixed(2);
     const limitMB = (storageUsage.limit / (1024 * 1024)).toFixed(0);
     const percent = Math.min(100, (storageUsage.used / storageUsage.limit) * 100);
@@ -131,7 +132,11 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
 
                 {/* RIGHT: EDITOR CONTENT */}
                 <div className="admin-editor-col">
-                    <ImageUploader storyId={storyId} onUploadComplete={handleUploadSuccess} />
+                    <ImageUploader 
+                        storyId={storyId} 
+                        onUploadComplete={handleUploadSuccess} 
+                        onStorageUpdate={handleStorageUpdate}
+                    />
                     
                     <hr style={{ borderColor: '#333', margin: '1.5rem 0' }} />
                     
@@ -159,7 +164,7 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
     
-    // Map & Preview State
+    // Interaction State
     const [coords, setCoords] = useState<{x:number, y:number} | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -180,13 +185,32 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
     const moveX = (mousePos.x - 0.5) * 20; 
     const moveY = (mousePos.y - 0.5) * 20;
 
-    // Map Coordinate Logic
-    const handleMapClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    // FOCAL POINT & Map Logic
+    // We treat every click on the preview as setting focus
+    const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = Math.round(e.clientX - rect.left);
-        const y = Math.round(e.clientY - rect.top);
-        setCoords({ x, y });
-        navigator.clipboard.writeText(`{ x: ${x}, y: ${y} }`);
+        
+        // Percentages for Focus
+        const xPct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+        const yPct = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+        
+        // Pixel Coords for Map clipboard
+        const xPx = Math.round(e.clientX - rect.left);
+        const yPx = Math.round(e.clientY - rect.top);
+        
+        // Save to form
+        setForm(prev => ({ 
+            ...prev, 
+            focus: { x: xPct, y: yPct } 
+        }));
+        
+        // Save local coord state for dot rendering
+        setCoords({ x: xPx, y: yPx }); 
+        
+        // Copy map coords if in map mode
+        if (form.category === 'map') {
+            navigator.clipboard.writeText(`{ x: ${xPx}, y: ${yPx} }`);
+        }
     };
 
     const handleSave = async () => {
@@ -242,6 +266,7 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                         <option value="storylet">Storylet (3:4)</option>
                         <option value="icon">Icon (Square)</option>
                         <option value="banner">Banner (Wide)</option>
+                        <option value="cover">Cover (16:9)</option>
                         <option value="background">Elysium Background (Parallax)</option>
                         <option value="portrait">Portrait</option>
                         <option value="map">Map (Full)</option>
@@ -261,88 +286,70 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
 
             {/* --- CONTEXTUAL PREVIEW --- */}
             <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#181a1f', borderRadius: '8px', border: '1px solid #333' }}>
-                <label className="form-label" style={{ marginBottom: '1rem', textAlign: 'center', display: 'block', color: '#61afef' }}>
-                    Context Preview: {form.category?.toUpperCase() || 'RAW'}
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                    <label className="form-label" style={{ color: '#61afef' }}>
+                        Visual Context Preview: {form.category?.toUpperCase() || 'RAW'}
+                    </label>
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>
+                        Click image to set Focal Point
+                    </span>
+                </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                     
-                    {/* 1. MAP VIEW */}
-                    {form.category === 'map' ? (
-                        <div style={{ position: 'relative', border: '2px solid #444', cursor: 'crosshair', maxWidth: '100%' }}>
-                            <img 
-                                src={form.url} 
-                                alt="Map Preview"
-                                style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
-                                onClick={handleMapClick}
-                            />
-                            {coords && (
-                                <div style={{ 
-                                    position: 'absolute', left: coords.x, top: coords.y, 
-                                    width: '10px', height: '10px', background: 'red', borderRadius: '50%', 
-                                    transform: 'translate(-50%, -50%)', pointerEvents: 'none',
-                                    boxShadow: '0 0 5px rgba(0,0,0,0.8)'
-                                }} />
-                            )}
-                            {coords && (
-                                <div style={{ marginTop: '10px', textAlign: 'center', color: '#98c379' }}>
-                                    Selected: X: {coords.x}, Y: {coords.y} <br/>
-                                    <span style={{ fontSize: '0.8rem', color: '#777' }}>(Coordinates copied to clipboard)</span>
+                    {/* UNIVERSAL CLICK HANDLER WRAPPER */}
+                    <div 
+                        style={{ position: 'relative', border: '2px solid #444', cursor: 'crosshair', display: 'inline-block', maxWidth: '100%' }}
+                        onClick={(e: any) => handleImageClick(e)}
+                    >
+                        {/* 1. PARALLAX VIEW */}
+                        {form.category === 'background' ? (
+                             <div onMouseMove={handleMouseMove} style={{ width: '500px', height: '300px', position: 'relative', overflow: 'hidden' }}>
+                                <img 
+                                    src={form.url} 
+                                    alt="Preview"
+                                    style={{ 
+                                        width: '110%', height: '110%', objectFit: 'cover',
+                                        transform: `translate(calc(-5% + ${-moveX}px), calc(-5% + ${-moveY}px))`
+                                    }} 
+                                />
+                                <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
+                                    Move mouse to test parallax
                                 </div>
-                            )}
-                        </div>
-                    ) : 
-                    
-                    /* 2. PARALLAX BACKGROUND VIEW */
-                    form.category === 'background' ? (
-                        <div 
-                            onMouseMove={handleMouseMove}
-                            style={{ 
-                                width: '100%', height: '300px', 
-                                position: 'relative', overflow: 'hidden', 
-                                border: '1px solid #444', cursor: 'default' 
-                            }}
-                        >
-                            <img 
-                                src={form.url} 
-                                alt="Parallax Preview"
-                                style={{ 
-                                    width: '110%', height: '110%', 
-                                    objectFit: 'cover',
-                                    // Simulated mouse movement effect
-                                    transform: `translate(calc(-5% + ${-moveX}px), calc(-5% + ${-moveY}px))`
-                                }}
-                            />
-                            <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
-                                Move mouse to test parallax
-                            </div>
-                        </div>
-                    ) :
-                    
-                    /* 3. BANNER VIEW */
-                    form.category === 'banner' ? (
-                        <div style={{ width: '100%', height: '150px', position: 'relative', border: '1px solid #444', overflow: 'hidden', background: '#000' }}>
-                            <img 
+                             </div>
+                        ) : (
+                            // 2. STANDARD IMAGE VIEW (Uncropped for setting focus)
+                             <img 
                                 src={form.url} 
                                 alt="Preview"
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+                                style={{ 
+                                    maxWidth: '100%', maxHeight: '500px', display: 'block',
+                                    objectFit: 'contain' 
+                                }} 
                             />
-                        </div>
-                    ) :
-                    
-                    /* 4. ICON VIEW */
-                    form.category === 'icon' ? (
-                        <div style={{ width: '64px', height: '64px', border: '1px solid #444' }}>
-                            <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="icon" className="option-image" />
-                        </div>
-                    ) :
+                        )}
 
-                    /* 5. DEFAULT STORYLET VIEW */
-                    (
-                        <div style={{ width: '240px', border: '1px solid #444' }}>
-                            <GameImage code={form.id} imageLibrary={{ [form.id]: form }} alt="Preview" type="storylet" className="storylet-image" />
-                        </div>
-                    )}
+                        {/* FOCAL POINT INDICATOR */}
+                        {form.focus && (
+                            <div style={{ 
+                                position: 'absolute', 
+                                left: `${form.focus.x}%`, 
+                                top: `${form.focus.y}%`, 
+                                width: '12px', height: '12px', 
+                                background: 'rgba(255, 0, 0, 0.8)', 
+                                border: '2px solid white',
+                                borderRadius: '50%', 
+                                transform: 'translate(-50%, -50%)', 
+                                pointerEvents: 'none',
+                                boxShadow: '0 0 4px rgba(0,0,0,0.5)'
+                            }} />
+                        )}
+                    </div>
+                </div>
+                
+                <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: '#ccc' }}>
+                    Focal Point: {form.focus ? `X: ${form.focus.x}%, Y: ${form.focus.y}%` : 'Center (50%, 50%)'}
+                    {form.category === 'map' && coords && <div style={{ color: '#98c379', marginTop: '4px' }}>Pixel Coords Copied: {coords.x}, {coords.y}</div>}
                 </div>
             </div>
 

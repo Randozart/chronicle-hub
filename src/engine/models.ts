@@ -193,7 +193,8 @@ export interface ImageDefinition {
     url: string; 
     alt?: string; 
     category?: ImageCategory;
-    size?: number; // <--- ADD THIS (Bytes)
+    size?: number;
+    focus?: { x: number; y: number }; 
 }
 export interface CategoryDefinition { id: string; name?: string; color?: string; description?: string; }
 export interface ShopListing { id: string; qualityId: string; price: string; currencyId?: string; description?: string; visible_if?: string; unlock_if?: string; }
@@ -283,16 +284,23 @@ export interface UserDocument {
     // System
     acknowledgedPlatformMessages?: string[];
 }
+export type AssetType = 'instrument' | 'track' | 'image';
 
 export interface GlobalAsset {
     id: string;
-    type: AssetType;
-    folder: string; 
-    data: InstrumentDefinition | LigatureTrack;
-    lastModified: Date;
-}
+    type?: AssetType; // Make optional as legacy images might not have it yet
+    
+    // --- IMAGE FIELDS ---
+    url?: string;
+    size?: number;
+    category?: string;
+    uploadedAt?: Date;
 
-export type AssetType = 'instrument' | 'track';
+    // --- AUDIO/LEGACY FIELDS ---
+    folder?: string; 
+    data?: InstrumentDefinition | LigatureTrack; // Old audio wrapper
+    lastModified?: Date; // Old timestamp field
+}
 
 
 

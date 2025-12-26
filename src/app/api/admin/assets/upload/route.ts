@@ -16,14 +16,20 @@ export async function POST(request: NextRequest) {
         if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const userId = (session.user as any).id;
 
+        // 1. Parse Form Data
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const storyId = formData.get('storyId') as string;
         const category = formData.get('category') as string || 'uncategorized';
         const altText = formData.get('alt') as string || '';
+        const qualityRaw = formData.get('quality'); // Get quality string
 
-        if (!file || !storyId) return NextResponse.json({ error: 'Missing Data' }, { status: 400 });
+        // 2. Validation
+        if (!file || !storyId) {
+            return NextResponse.json({ error: 'Missing file or storyId' }, { status: 400 });
+        }
 
+        // 3. Check Storage Limits
         const client = await clientPromise;
         const db = client.db(DB_NAME);
         const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
@@ -32,26 +38,32 @@ export async function POST(request: NextRequest) {
 
         const isPremium = (user.roles || []).includes('admin') || (user.roles || []).includes('premium');
         const currentUsage = user.storageUsage || 0;
+        const storageLimit = user.storageLimit || (isPremium ? 1024 * 1024 * 1024 : FREE_LIMIT_BYTES);
 
-        if (!isPremium && currentUsage + file.size > FREE_LIMIT_BYTES) {
-            return NextResponse.json({ error: 'Storage limit exceeded. Upgrade to Premium for more space.' }, { status: 402 });
+        if (currentUsage + file.size > storageLimit) {
+            return NextResponse.json({ error: 'Storage limit exceeded.' }, { status: 402 });
         }
 
-          // 3. Upload (with Context-Aware Optimization)
+        // 4. Upload (with Context-Aware Optimization)
         let preset: 'high' | 'balanced' | 'icon' = 'balanced';
         
         // Map UI category to Compression Preset
-        if (['map', 'background', 'banner'].includes(category)) {
+        if (['map', 'background', 'banner', 'cover'].includes(category)) {
             preset = 'high'; // Minimal compression, allow 4k
         } else if (['icon'].includes(category)) {
             preset = 'icon'; // Aggressive resize (512px)
         }
+
+        // Parse quality override if present
+        const qualityOverride = qualityRaw ? parseInt(qualityRaw as string) : undefined;
         
         const { url, size } = await uploadAsset(file, 'images', { 
             optimize: true, 
-            preset 
+            preset,
+            qualityOverride // <--- Pass the user control
         });
 
+        // 5. Update User Usage & Asset List
         const assetEntry = {
             id: uuidId(file.name),
             url,
@@ -68,23 +80,20 @@ export async function POST(request: NextRequest) {
             }
         );
 
+        // 6. Save Metadata to World Config (MongoDB)
         const imageId = assetEntry.id;
         const imageData: ImageDefinition = {
             id: imageId,
             url: url,
             alt: altText || file.name,
             category: category as any,
-            size: size // <--- ADD THIS
+            size: size
         };
 
         await updateWorldConfigItem(storyId, 'images', imageId, imageData);
 
-        return NextResponse.json({ 
-            success: true, 
-            image: imageData, 
-            usage: currentUsage + size 
-        });
-        
+        return NextResponse.json({ success: true, image: imageData, usage: currentUsage + size });
+
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json({ error: 'Upload failed' }, { status: 500 });

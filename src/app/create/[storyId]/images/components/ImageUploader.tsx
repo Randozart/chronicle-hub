@@ -6,13 +6,14 @@ import { ImageCategory, ImageDefinition } from '@/engine/models';
 interface Props {
     storyId: string;
     onUploadComplete: (data: { image: ImageDefinition, usage: number }) => void;
+    onStorageUpdate?: (newUsage: number) => void;
 }
 
 const OUTPUT_WIDTHS: Record<string, number> = {
     'icon': 512,
     'location': 1024,
     'banner': 1920,
-    'cover': 1920, // High res for covers
+    'cover': 1920,
     'background': 1920,
     'map': 2048,
     'storylet': 800,
@@ -25,12 +26,12 @@ const ASPECT_RATIOS: Record<string, number> = {
     'location': 1,
     'storylet': 3/4,
     'banner': 3/1,
-    'cover': 16/9, // Standard cover ratio
+    'cover': 16/9,
     'background': 16/9,
     'map': 4/3
 };
 
-export default function ImageUploader({ storyId, onUploadComplete }: Props) {
+export default function ImageUploader({ storyId, onUploadComplete, onStorageUpdate }: Props) {
     const [activeTab, setActiveTab] = useState<'upload' | 'library'>('upload');
     const [isUploading, setIsUploading] = useState(false);
     const [category, setCategory] = useState<ImageCategory>('uncategorized');
@@ -39,7 +40,8 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
     // Upload State
     const [imageKey, setImageKey] = useState("");
     const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
-    
+    const [quality, setQuality] = useState(90); // Default Quality
+
     // Library State
     const [userAssets, setUserAssets] = useState<any[]>([]);
     const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
@@ -57,37 +59,31 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
     // --- LIBRARY FETCH ---
     useEffect(() => {
         if (activeTab === 'library') {
-            setIsLoadingLibrary(true);
-            fetch('/api/admin/assets/mine')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.assets) setUserAssets(data.assets);
-                })
-                .finally(() => setIsLoadingLibrary(false));
+            refreshLibrary();
         }
     }, [activeTab]);
+
+    const refreshLibrary = () => {
+        setIsLoadingLibrary(true);
+        fetch('/api/admin/assets/mine')
+            .then(res => res.json())
+            .then(data => {
+                if (data.assets) setUserAssets(data.assets);
+            })
+            .finally(() => setIsLoadingLibrary(false));
+    };
 
     const handleSelectFromLibrary = (asset: any) => {
         if (!confirm(`Import "${asset.id}" into this world?`)) return;
         
-        // We simulate an upload complete event, but we don't upload a file.
-        // We just add the existing URL to the current World Config.
-        
-        // To do this properly, we should hit the config API to "link" it.
-        // But for now, let's just use the onUploadComplete callback 
-        // and let the parent save logic handle the assignment if needed, 
-        // OR we can hit the save endpoint manually here.
-        
-        // Actually, we need to register it in the World Config as if it were new.
         const imageData: ImageDefinition = {
-            id: asset.id, // Reuse ID or generate new one? Reuse is safer for storage.
+            id: asset.id, 
             url: asset.url,
             alt: asset.id,
             category: asset.category as ImageCategory,
             size: asset.size
         };
 
-        // We call the config endpoint to save this link to the world
         fetch('/api/admin/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -99,10 +95,36 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
             })
         }).then(res => {
             if(res.ok) {
-                onUploadComplete({ image: imageData, usage: 0 }); // Usage doesn't increase
+                onUploadComplete({ image: imageData, usage: 0 }); // Linking doesn't increase usage
                 alert("Asset linked from library!");
             }
         });
+    };
+
+    const handleDeleteFromLibrary = async (asset: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm(`Permanently delete "${asset.id}" from your storage?\n\nThis will break images in any world using this file.`)) return;
+
+        try {
+            const res = await fetch('/api/admin/assets/delete', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: asset.url })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setUserAssets(prev => prev.filter(a => a.url !== asset.url));
+                if (onStorageUpdate && data.usage !== undefined) {
+                    onStorageUpdate(data.usage);
+                }
+            } else {
+                alert("Failed to delete asset.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error deleting asset.");
+        }
     };
 
     // --- UPLOAD LOGIC ---
@@ -167,7 +189,6 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
         ctx.restore();
 
-        // Draw Mask Overlay
         const ratio = ASPECT_RATIOS[category] || 1;
         let maskW = CANVAS_SIZE - 40;
         let maskH = maskW / ratio;
@@ -179,30 +200,19 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
         const maskX = (CANVAS_SIZE - maskW) / 2;
         const maskY = (CANVAS_SIZE - maskH) / 2;
 
-        // Darken outside area
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.beginPath();
         ctx.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        
-        // Cut out the view window
-        if (category === 'location' || category === 'icon') {
-             // For icons/locations we might want circles or squares
-             // Let's stick to rects for general consistency, maybe circle for 'token' later
-             ctx.rect(maskX, maskY, maskW, maskH); 
-        } else {
-             ctx.rect(maskX, maskY, maskW, maskH); 
-        }
+        ctx.rect(maskX, maskY, maskW, maskH); 
         ctx.fill('evenodd');
 
-        // Draw Blue Lines (The "Cropping Lines")
-        // We only draw them if we are actively editing
+        // Draw Guides (Blue Lines) - ONLY on Preview
         ctx.strokeStyle = '#61afef';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.rect(maskX, maskY, maskW, maskH);
         ctx.stroke();
 
-        // Add dimensions text
         ctx.fillStyle = '#61afef';
         ctx.font = '10px monospace';
         ctx.fillText(`${OUTPUT_WIDTHS[category]}px width`, maskX, maskY - 8);
@@ -227,12 +237,41 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
     };
 
     const handleUpload = async () => {
-        if (!originalImage || !canvasRef.current) return;
+        if (!originalImage) return;
         setIsUploading(true);
         setError('');
 
         try {
-            canvasRef.current.toBlob(async (blob) => {
+            // Render Clean Pass (No Blue Lines)
+            const targetW = OUTPUT_WIDTHS[category] || 1024;
+            const ratio = ASPECT_RATIOS[category] || 1;
+            const targetH = targetW / ratio;
+
+            const CANVAS_SIZE = 400;
+            let maskW = CANVAS_SIZE - 40;
+            let maskH = maskW / ratio;
+            if (maskH > CANVAS_SIZE - 40) {
+                maskH = CANVAS_SIZE - 40;
+                maskW = maskH * ratio;
+            }
+
+            const renderRatio = targetW / maskW;
+            const outputCanvas = document.createElement('canvas');
+            outputCanvas.width = targetW;
+            outputCanvas.height = targetH;
+            const ctx = outputCanvas.getContext('2d');
+            if (!ctx) throw new Error("Could not create context");
+
+            const centerX = targetW / 2;
+            const centerY = targetH / 2;
+
+            ctx.translate(centerX + (pan.x * renderRatio), centerY + (pan.y * renderRatio));
+            const finalScale = scale * renderRatio;
+            ctx.scale(finalScale, finalScale);
+            
+            ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
+
+            outputCanvas.toBlob(async (blob) => {
                 if (!blob) throw new Error("Canvas empty");
                 
                 const formData = new FormData();
@@ -240,6 +279,9 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
                 formData.append('storyId', storyId);
                 formData.append('category', category);
                 formData.append('alt', imageKey);
+                
+                // Append Quality Control
+                formData.append('quality', quality.toString());
 
                 const res = await fetch('/api/admin/assets/upload', {
                     method: 'POST',
@@ -248,7 +290,7 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
 
                 const data = await res.json();
                 if (res.ok) {
-                    onUploadComplete(data); // Includes usage
+                    onUploadComplete(data);
                     setOriginalImage(null);
                     setImageKey("");
                 } else {
@@ -325,6 +367,21 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
                                         Preset: {OUTPUT_WIDTHS[category]}px width
                                     </p>
                                 </div>
+
+                                {/* QUALITY SLIDER */}
+                                <div className="form-group">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <label className="form-label">Quality</label>
+                                        <span style={{ fontSize: '0.8rem', color: quality < 60 ? '#e74c3c' : '#98c379' }}>{quality}%</span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="40" max="100" step="5" 
+                                        value={quality} 
+                                        onChange={(e) => setQuality(parseInt(e.target.value))}
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
                                 
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
                                     <button onClick={() => setOriginalImage(null)} className="unequip-btn" style={{ flex: 1 }}>Cancel</button>
@@ -371,16 +428,38 @@ export default function ImageUploader({ storyId, onUploadComplete }: Props) {
                                     onClick={() => handleSelectFromLibrary(asset)}
                                     style={{ 
                                         border: '1px solid #333', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer',
-                                        background: '#111', transition: 'border-color 0.2s'
+                                        background: '#111', transition: 'border-color 0.2s', position: 'relative'
                                     }}
                                     className="hover:border-[#61afef]"
                                 >
                                     <div style={{ width: '100%', aspectRatio: '1/1' }}>
-                                        <img src={asset.url} alt={asset.id} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <img 
+                                            src={asset.url} 
+                                            alt={asset.id} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: -1, background: '#222' }}>
+                                            <span style={{ fontSize: '2rem', color: '#444' }}>?</span>
+                                        </div>
                                     </div>
                                     <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#ccc' }}>
                                         {asset.id}
                                     </div>
+                                    
+                                    <button
+                                        onClick={(e) => handleDeleteFromLibrary(asset, e)}
+                                        style={{
+                                            position: 'absolute', top: 2, right: 2,
+                                            background: 'rgba(0,0,0,0.7)', border: 'none', color: '#e74c3c',
+                                            width: '20px', height: '20px', borderRadius: '3px',
+                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '12px'
+                                        }}
+                                        title="Delete Permanently"
+                                    >
+                                        ×
+                                    </button>
                                 </div>
                             ))}
                         </div>
