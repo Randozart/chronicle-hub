@@ -29,13 +29,10 @@ export async function POST(request: NextRequest) {
 
     const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
 
-     const storyletDef = await getEvent(storyId, storyletId);
+    const storyletDef = await getEvent(storyId, storyletId);
     if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
     // --- MODIFIED LOCATION CHECK ---
-    // If it's a Must event, we ignore location constraints.
-    // This allows global interruptions (dreams, arrests, messages) to work.
-    
     const isAutofire = storyletDef.urgency === 'Must' || !!storyletDef.autofire_if;
 
     if ('location' in storyletDef && storyletDef.location) {
@@ -94,18 +91,8 @@ export async function POST(request: NextRequest) {
         }
     }
 
+    // Resolve Option (Engine handles effects application internally now)
     const engineResult = engine.resolveOption(storyletDef, option);
-    if (engineResult.wasSuccess && option.pass_quality_change) {
-        const resolved = engine.evaluateText(option.pass_quality_change);
-        if (resolved.trim()) {
-            engine.applyEffects(resolved);
-        }
-    } else if (!engineResult.wasSuccess && option.fail_quality_change) {
-        const resolved = engine.evaluateText(option.fail_quality_change);
-        if (resolved.trim()) {
-            engine.applyEffects(resolved);
-        }
-    }
 
     // Update character qualities after applying effects
     character.qualities = engine.getQualities();

@@ -183,6 +183,13 @@ export class GameEngine {
 
             console.log(`[ENGINE DEBUG] Processing effect: "${cleanEffect}"`);
 
+            // --- STANDALONE LOGIC BLOCK SUPPORT ---
+            // Detects blocks like "{@myAlias = 10}" or "{ $val++ }" appearing alone in effect strings
+            if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
+                this.evaluateText(cleanEffect);
+                continue;
+            }
+
             const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
             if (macroMatch) {
                 const [, command, args] = macroMatch;

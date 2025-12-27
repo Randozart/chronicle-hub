@@ -323,11 +323,19 @@ export function evaluateCondition(
     
     const operator = operatorMatch[0];
     const index = operatorMatch.index!;
-    const leftVal = resolveComplexExpression(trimExpr.substring(0, index).trim(), qualities, defs, aliases, self, resolutionRoll);
+
+    // --- IMPLICIT SELF HANDLING ---
+    let leftRaw = trimExpr.substring(0, index).trim();
+    if (leftRaw === '' && self) {
+        leftRaw = '$.'; // Default to "Self" if LHS is missing but context exists
+    }
+
+    const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll);
     const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll);
 
     if (operator === '==' || operator === '=') return leftVal == rightVal;
     if (operator === '!=') return leftVal != rightVal;
+    
     const lNum = Number(leftVal);
     const rNum = Number(rightVal);
     if (isNaN(lNum) || isNaN(rNum)) return false;
