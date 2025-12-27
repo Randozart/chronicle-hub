@@ -175,6 +175,7 @@ export class GameEngine {
     public applyEffects(effectsString: string): void {
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
         
+        // Split by comma, ignoring commas inside brackets []
         const effects = effectsString.split(/,(?![^\[]*\])/g); 
 
         for (const effect of effects) {
@@ -183,12 +184,20 @@ export class GameEngine {
 
             console.log(`[ENGINE DEBUG] Processing effect: "${cleanEffect}"`);
 
-            // --- STANDALONE LOGIC BLOCK SUPPORT ---
-            // Detects blocks like "{@myAlias = 10}" or "{ $val++ }" appearing alone in effect strings
+            // --- FIX START: DYNAMIC INSTRUCTION SUPPORT ---
+            // If we find a standalone block like "{$enforcer.ability}", we evaluate it.
+            // If the RESULT contains an assignment (=) or a macro (%), we recursively apply it.
             if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
-                this.evaluateText(cleanEffect);
+                const resolvedCommand = this.evaluateText(cleanEffect);
+                
+                // If the resolved text looks like code (has = or %), run it!
+                if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%'))) {
+                    console.log(`[ENGINE DEBUG] Executing injected command: "${resolvedCommand}"`);
+                    this.applyEffects(resolvedCommand);
+                }
                 continue;
             }
+            // --- FIX END ---
 
             const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
             if (macroMatch) {
@@ -216,6 +225,8 @@ export class GameEngine {
                 let qid = "";
 
                 if (rawLhs.startsWith('{')) {
+                    // Logic Block on LHS: Evaluate it to get the Target ID
+                    // e.g. {%pick[...]} -> "secret_role_01"
                     qid = this.evaluateText(rawLhs).trim();
                     if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) {
                         qid = qid.substring(1);
@@ -261,7 +272,7 @@ export class GameEngine {
             }
         }
     }
-
+    
     private parseAndQueueTimerInstruction(command: string, argsStr: string) {
         const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
         const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
