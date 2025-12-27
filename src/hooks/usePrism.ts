@@ -1,4 +1,3 @@
-// src/hooks/usePrism.ts
 'use client';
 
 import { useMemo } from 'react';
@@ -14,51 +13,39 @@ export function usePrism(language: 'scribescript' | 'ligature') {
 
         const grammar = Prism.languages[language];
 
-        // --- START DEBUGGING BLOCK ---
-        console.log(`[usePrism] Initializing highlighter for: ${language}`);
-        console.log(`[usePrism] Grammar object received:`, JSON.parse(JSON.stringify(grammar || {}))); // Use a deep copy for safe logging
-
-        // Deep check for invalid patterns
-        if (grammar) {
-            // We cast the grammar to 'any' to bypass strict TypeScript indexing rules for this debug-only block.
-            const grammarAsAny = grammar as any; 
-            
-            for (const token in grammarAsAny) {
-                // Ensure the property is directly on the object
-                if (Object.prototype.hasOwnProperty.call(grammarAsAny, token)) {
-                    const patternDefinition = grammarAsAny[token];
-                    // A token can be a RegExp directly or an object with a 'pattern' property.
-                    let pattern: unknown = null;
-
-                    if (patternDefinition instanceof RegExp) {
-                        pattern = patternDefinition;
-                    } else if (
-                        typeof patternDefinition === 'object' &&
-                        patternDefinition !== null &&
-                        'pattern' in patternDefinition
-                    ) {
-                        pattern = patternDefinition.pattern;
-                    } else {
-                        // This is likely an `inside` object — ignore it
-                        continue;
-                    }
-
-                    if (!(pattern instanceof RegExp)) {
-                        console.error(`[usePrism] INVALID PATTERN DETECTED!`);
-                        console.error(`Language: ${language}, Token: "${token}"`);
-                        console.error(`Value is NOT a RegExp:`, pattern);
-                    }
-                }
-            }
-        } else {
-            console.warn(`[usePrism] Grammar for "${language}" is undefined!`);
-        }
-        // --- END DEBUGGING BLOCK ---
-
         const highlighter = (code: string): string => {
             if (grammar && typeof code === 'string') {
                 try {
-                    return Prism.highlight(code, grammar, language);
+                    // 1. Get Base Highlight
+                    let html = Prism.highlight(code, grammar, language);
+
+                    // 2. Post-Process for ScribeScript Rainbow Braces
+                    if (language === 'scribescript') {
+                        let depth = 0;
+                        
+                        // FIX: Updated Regex to be class-agnostic.
+                        // It looks for 'logic-brace' anywhere inside the class attribute.
+                        html = html.replace(
+                            /(<span class="[^"]*logic-brace[^"]*">)([{}]|_)(<\/span>)/g, 
+                            (match, prefix, char, suffix) => {
+                                if (char === '{') {
+                                    const cls = `ss-brace-${depth % 3}`;
+                                    depth++;
+                                    // We append our depth class to the existing prefix tag
+                                    const newPrefix = prefix.replace('class="', `class="${cls} `);
+                                    return `${newPrefix}{${suffix}`;
+                                } else if (char === '}') {
+                                    depth = Math.max(0, depth - 1);
+                                    const cls = `ss-brace-${depth % 3}`;
+                                    const newPrefix = prefix.replace('class="', `class="${cls} `);
+                                    return `${newPrefix}}${suffix}`;
+                                }
+                                return match;
+                            }
+                        );
+                    }
+
+                    return html;
                 } catch (e) {
                     console.error("Prism highlighting error:", e);
                     return code;

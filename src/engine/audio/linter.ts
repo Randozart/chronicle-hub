@@ -159,3 +159,93 @@ export function lintLigature(source: string): LintError[] {
 
     return errors;
 }
+
+type ScribeContext = 'effect' | 'text' | 'condition';
+
+interface ScopeState {
+    type: 'brace';
+    hasSeenColon: boolean;
+}
+
+export function lintScribeScript(source: string, mode: ScribeContext): LintError[] {
+    const errors: LintError[] = [];
+    const lines = source.split('\n');
+
+    let braceDepth = 0;
+    let bracketDepth = 0;
+    const scopeStack: ScopeState[] = []; // Track state of current brace scope
+
+    lines.forEach((line, index) => {
+        const lineNumber = index + 1;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1] || '';
+            const prevChar = line[i - 1] || '';
+
+            // 1. Bracket Tracking
+            if (char === '{') {
+                braceDepth++;
+                scopeStack.push({ type: 'brace', hasSeenColon: false });
+            } else if (char === '}') {
+                braceDepth--;
+                scopeStack.pop();
+                if (braceDepth < 0) {
+                    errors.push({ line: lineNumber, message: "Unexpected closing brace '}'.", severity: 'error' });
+                    braceDepth = 0;
+                }
+            } else if (char === '[') {
+                bracketDepth++;
+            } else if (char === ']') {
+                bracketDepth--;
+                if (bracketDepth < 0) {
+                    errors.push({ line: lineNumber, message: "Unexpected closing bracket ']'.", severity: 'error' });
+                    bracketDepth = 0;
+                }
+            }
+
+            // 2. Colon Tracking (for Conditional Effects)
+            if (char === ':' && braceDepth > 0 && bracketDepth === 0) {
+                if (scopeStack.length > 0) {
+                    scopeStack[scopeStack.length - 1].hasSeenColon = true;
+                }
+            }
+
+            // 3. Logic Checks
+            if (char === '=' && nextChar !== '=' && prevChar !== '!' && prevChar !== '>' && prevChar !== '<' && prevChar !== '=') {
+                // INSIDE LOGIC BLOCK
+                if (braceDepth > 0 && bracketDepth === 0) {
+                    const currentScope = scopeStack[scopeStack.length - 1];
+                    
+                    // If we are in the "Result" part of a conditional (after :), assignment is allowed.
+                    // If we haven't seen a colon, it's ambiguous (could be a condition).
+                    // Exception: Alias definitions {@x = 1} are always allowed.
+                    const isAliasDef = prevChar === '@' || line.substring(Math.max(0, i-5), i).trim().endsWith('@');
+                    const isAllowed = currentScope?.hasSeenColon || isAliasDef;
+
+                    if (!isAllowed) {
+                         errors.push({ 
+                            line: lineNumber, 
+                            message: "Ambiguous assignment '=' inside logic. Did you mean '=='?", 
+                            severity: 'warning' 
+                        });
+                    }
+                }
+                
+                // OUTSIDE LOGIC BLOCK (Condition Field)
+                if (braceDepth === 0 && mode === 'condition') {
+                     errors.push({ 
+                        line: lineNumber, 
+                        message: "Assignments '=' are not allowed in Condition fields. Use '==' for comparison.", 
+                        severity: 'error' 
+                    });
+                }
+            }
+        }
+    });
+
+    if (braceDepth > 0) errors.push({ line: lines.length, message: "Unclosed logic block '{'.", severity: 'error' });
+    if (bracketDepth > 0) errors.push({ line: lines.length, message: "Unclosed macro bracket '['.", severity: 'error' });
+
+    return errors;
+}
