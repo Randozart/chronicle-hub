@@ -157,23 +157,21 @@ export default function ScribeScriptSyntaxPage() {
                 <div className="docs-card">
                     <h4 className="docs-h4">D. Effect Fields (Quality Changes)</h4>
                     <p className="docs-p">
-                        These fields expect a list of <strong>Instructions</strong> separated by commas.
+                        These fields expect a list of <strong>Instructions</strong> separated by commas. An instruction can be a mathematical assignment OR a standalone Logic Block.
                     </p>
                     <div className="docs-pre">
-                        <span style={{color:'#777'}}>// Comma-Separated Commands</span>
+                        <span style={{color:'#777'}}>// Calculating a variable once, then using it twice:</span>
                         <br/>
                         <code className="docs-code">
-                            $gold -= 5, $xp += {`{ $intelligence * 2 }`}
+                            {`{@roll = { 1 ~ 6 } }`}, $gold += @roll, $xp += @roll
                         </code>
                     </div>
                     <p className="docs-p">
                         <strong>Pipeline:</strong>
-                        <br/>1. <strong>ScribeScript</strong> runs first. It calculates <code>$intelligence * 2</code> (e.g., 6).
-                        <br/>&nbsp;&nbsp;&nbsp;<em>Intermediate String:</em> <code>"$gold -= 5, $xp += 12"</code>
-                        <br/>2. <strong>The Engine</strong> splits the string by commas.
-                        <br/>3. <strong>Execution</strong> happens Left-to-Right:
-                        <br/>&nbsp;&nbsp;&nbsp;a. Subtract 5 Gold.
-                        <br/>&nbsp;&nbsp;&nbsp;b. Add 12 XP.
+                        <br/>1. <strong>Execution</strong> happens strict Left-to-Right.
+                        <br/>2. <strong>First Item:</strong> The engine sees a Logic Block <code>{`{...}`}</code>. It executes it, creating the alias <code>@roll</code>.
+                        <br/>3. <strong>Second Item:</strong> It adds that alias value to Gold.
+                        <br/>4. <strong>Third Item:</strong> It adds that <em>same</em> alias value to XP.
                     </p>
                     <div className="docs-callout" style={{marginTop:'1rem', borderColor: '#e06c75'}}>
                         <strong style={{color: '#e06c75'}}>Warning:</strong> Because the Engine splits by comma <em>after</em> ScribeScript runs, 
@@ -487,6 +485,20 @@ export default function ScribeScriptSyntaxPage() {
          <p className="docs-p" style={{fontSize:'0.9rem'}}>
             The engine finds all <code>{`{@alias = ...}`}</code> definitions first. The definition block itself resolves to an empty string, so it doesn't appear in the final text, but the alias <code>@rep</code> becomes available everywhere else in that field.
          </p>
+    </div>
+    <div className="docs-callout" style={{marginTop:'1rem', borderColor: '#f1c40f'}}>
+        <strong style={{color: '#f1c40f'}}>Aliases in Effect Fields:</strong>
+        <p className="docs-p" style={{fontSize:'0.9rem', margin: '0.5rem 0 0 0'}}>
+            In <strong>Text Fields</strong> (like Body or Title), aliases are "hoisted"—you can define them anywhere and use them anywhere.
+            <br/><br/>
+            In <strong>Effect Fields</strong>, execution is strictly <strong>Left-to-Right</strong>. You must define the alias in an instruction <em>before</em> the instruction where you try to use it.
+        </p>
+        <div className="docs-code" style={{marginTop:'0.5rem', fontSize:'0.8rem', color: '#e06c75'}}>
+            Wrong: $gold += @val, {`{@val = 5}`}
+        </div>
+        <div className="docs-code" style={{marginTop:'0.25rem', fontSize:'0.8rem', color: '#98c379'}}>
+            Right: {`{@val = 5}`}, $gold += @val
+        </div>
     </div>
 </section>
             <section id="structures">
