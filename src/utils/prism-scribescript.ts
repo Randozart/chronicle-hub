@@ -19,7 +19,7 @@ const standardTokens = {
     'conditional-op': { pattern: /[:|]/, alias: 'important' },
     'range-op': { pattern: /~/, alias: 'important' },
 
-    // Operators - Explicitly matching all assignment and math ops
+    // Operators
     'operator': {
         pattern: /==|!=|>=|<=|\+=|-=|\+\+|--|[><=+\-*\/%^&]/,
         alias: 'operator'
@@ -27,33 +27,31 @@ const standardTokens = {
 
     // Values
     'number': { pattern: /\b\d+\b/, alias: 'number' },
-    'string': { pattern: /"[^"]*"/, alias: 'string' }, // Double quotes only
-    'keyword': /\b(true|false|null)\b/,
+    'keyword': /\b(true|false)\b/,
     
-    // Punctuation
-    'punctuation': /[(),;]/
+    // Punctuation (Fallback)
+    'punctuation': /[(),]/
 };
 
 // 2. Define Complex tokens (Macros, Metadata)
 const macroToken = {
-    pattern: /(%[a-zA-Z0-9_]+)(\[\s*[\s\S]*?\])/,
+    // FIX: Simplified pattern (Match whole macro string)
+    pattern: /%[a-zA-Z0-9_]+\[[\s\S]*?\]/,
     inside: {
         'macro-name': { pattern: /^%[a-zA-Z0-9_]+/, alias: 'function' },
         'macro-bracket': { pattern: /[\[\]]/, alias: 'punctuation' },
-        'macro-args': {
-            pattern: /[\s\S]+?(?=\])/, 
-            inside: {
-                ...standardTokens, // INJECT STANDARD TOKENS HERE
-                'separator': { pattern: /;/, alias: 'keyword' }
-            }
-        }
+        'separator': { pattern: /;/, alias: 'keyword' }, // ; is special in macros
+        ...standardTokens // Inject standard tokens directly (Flattened)
     }
 };
 
 const metadataToken = {
     pattern: /\[\s*(?:desc|source|hidden)\s*:[\s\S]*?\]/,
     inside: {
-        'meta-key': { pattern: /^\s*(?:desc|source|hidden)\b/, alias: 'keyword' },
+        'meta-key': { 
+            pattern: /\b(?:desc|source|hidden)(?=\s*:)/, 
+            alias: 'keyword' 
+        },
         'punctuation': /[:\[\]]/,
         'logic-block': null as any 
     }
