@@ -160,63 +160,85 @@ export default function ScribeEditor({
             </div>
             
             <style jsx global>{`
-                /* === SCRIBESCRIPT THEME === */
-                
-                /* 1. Base Text: Keep your current grey, it's perfect for reading */
+                /* 1. Base Text */
                 .ss-text-raw { color: #d9dce1ff; } 
 
+                /* 2. Braces */
                 .ss-brace { font-weight: bold; }
                 .ss-brace-odd { color: #e5c07b; } /* Gold */
-                .ss-brace-even { color: #df8749ff; }
+                .ss-brace-even { color: #df8749ff; } /* Copper */
 
-                .ss-var-local { color: #68a5ffff; }
+                /* 3. Variables */
+                .ss-var-local { color: #68a5ffff; } /* Sky Blue */
                 .ss-var-alias { color: #98c379; } 
                 .ss-var-world { color: #ff3b90ff; } 
                 
                 .ss-dynamic-marker { color: #abb2bf; } 
 
-                .ss-macro { color: #6361ffff;  } 
-                .ss-bracket { color: #5646ffff; } 
+                /* 4. Macros */
+                .ss-macro { color: #6361ffff; } /* Royal Blue */
+                .ss-bracket { color: #5646ffff; } /* Deep Blue */
 
-                .ss-number { color: #7cee7aff; } 
-                .ss-operator { color: #abb2bf; }     
+                /* 5. Values & Math (The New Group) */
+                .ss-number { color: #7cee7aff; } /* Light Lime (Values) */
+                .ss-math { color: #56b6c2; font-weight: bold; }
+
+                /* 6. Standard Operators (Comparison/Assignment) */
+                .ss-operator { color: #abb2bf; } /* Grey */    
                 
-                .ss-flow-op { color: #f76e6eff; font-weight: bold; } /* : | ~ */
+                /* 7. Flow Control */
+                .ss-flow-op { color: #f76e6eff; font-weight: bold; } /* Soft Pink */
 
+                /* 8. Metadata */
                 .ss-metadata { color: #7f848e; font-size: 0.85em; font-style: italic; }
 
+                /* Matched Brace */
                 .ss-brace-match {
-                    background-color: rgba(229, 192, 123, 0.15); /* Gold Tint */
+                    background-color: rgba(229, 192, 123, 0.15);
                     border-radius: 2px;
                     outline: 1px solid rgba(229, 192, 123, 0.4);
                     box-shadow: 0 0 4px rgba(229, 192, 123, 0.2);
                 }
-                /* === LIGATURE THEME (Prism .token.*) === */
+                /* === LIGATURE THEME (Restored One Dark) === */
                 
-                /* Comments & Punctuation */
+                /* 1. Comments & Punctuation */
                 .lang-ligature .token.comment { color: #5c6370; font-style: italic; }
-                .lang-ligature .token.punctuation { color: #abb2bf; }
+                .lang-ligature .token.punctuation { color: #abb2bf; } /* Grey brackets/commas */
                 
-                /* Structure */
-                .lang-ligature .token.keyword { color: #de53d9ff; }  /* [HEADER] */
-                .lang-ligature .token.important { color: #c67d8d; font-weight: bold; } /* {Logic} */
-                .lang-ligature .token.operator { color: #e06c75; } /* | Bar lines */
+                /* 2. Headers: [CONFIG] -> Purple */
+                .lang-ligature .token.keyword { color: #ee3feeff; }  
 
-                /* Variables & Values */
-                .lang-ligature .token.variable { color: #00ff6aff; } /* @Alias */
-                .lang-ligature .token.class-name { color: #e5c07b; } /* [Chord] */
-                .lang-ligature .token.function { color: #61afef; }  /* TrackName */
+                /* 3. Keys: BPM:, Trumpet: -> Orange */
+                .lang-ligature .token.attr-name { color: #dd9b5dff; }  
+
+                /* 4. Values/Instruments: noir_trumpet -> Cyan */
                 .lang-ligature .token.string { color: #98c379; }  /* (Tuplet) */
-                .lang-ligature .token.number { color: #d19a66; } 
+                .lang-ligature .token.attr-value { color: #63c9d6ff; }
 
-                /* Effects & Modifiers */
-                .lang-ligature .token.effect-block { color: #c678dd; } /* ^[Effect] */
-                .lang-ligature .token.attr-name { color: #d19a66; }  /* key: */
-                .lang-ligature .token.attr-value { color: #4dcec8ff; } /* (value) */
-                .lang-ligature .token.builtin { color: #e5c07b; font-weight: bold; } /* Octave ' */
+                /* 5. Track Names (Functions): Trumpet -> Blue */
+                .lang-ligature .token.function { color: #61afef; }  
 
-                .lang-ligature .token.sustain { color: #eaeaeb; font-weight: bold; }
-                .lang-ligature .token.effect-block { color: #7949ffff; }
+                /* 6. Bar Lines: | -> Red */
+                .lang-ligature .token.operator { color: #ca4e59ff; font-weight: bold; } 
+
+                /* 7. Numbers/Notes: 64, 5, 7 -> Orange */
+                .lang-ligature .token.number { color: #e7a263ff; } 
+
+                /* 8. Logic/Important: { } -> Cyan/Teal */
+                .lang-ligature .token.important { color: #56b6c2; font-weight: bold; } 
+
+                /* 9. Builtins: Octave modifiers -> Yellow/Gold */
+                .lang-ligature .token.builtin { color: #ead363ff; } 
+
+                /* 10. Sustain/Silence: - . -> Muted Grey */
+                .lang-ligature .token.sustain { color: #e2e6eeff; font-weight: bold;}
+                
+                /* 11. Effect Blocks: ^[...] -> Purple */
+                .lang-ligature .token.effect-block { color: #a678ddff; } 
+
+                /* 12. Variables: @Alias -> Red/Coral */
+                .lang-ligature .token.variable { color: #95df61ff; } /* @Alias */
+                .lang-ligature .token.class-name { color: #e4d233ff; } /* [Chord] */
 
                 /* SCROLLBARS */
                 .scribe-editor-wrapper div::-webkit-scrollbar { height: 8px; width: 8px; }

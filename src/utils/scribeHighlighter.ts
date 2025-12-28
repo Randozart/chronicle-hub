@@ -161,7 +161,6 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
             html += `<span class="ss-bracket">${escapeHtml(char)}</span>`;
         }
 
-        // --- 6. OPERATORS & NUMBERS ---
         else if (depth > 0) {
             // Numbers
             if (/[0-9]/.test(char) && !/[a-zA-Z]/.test(buffer)) {
@@ -171,18 +170,37 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
                     num += code[++i];
                 }
                 html += `<span class="ss-number">${num}</span>`;
-            } 
-            // Operators
-            else if (['=', ':', '|', '~', '>', '<', '!', '+', '-', '*', '/'].includes(char)) {
-                flush();
-                const isFlow = (char === '~' || char === ':' || char === '|');
-                const opClass = isFlow ? 'ss-flow-op' : 'ss-operator';
-                html += `<span class="${opClass}">${escapeHtml(char)}</span>`;
             }
-            // Standard Comma (Effect separator)
-            else if (char === ',') {
+            
+            // PEEK AHEAD: Check for double-char operators (&&, ||, ==, !=, >=, <=)
+            // We want these to be TEAL (Logic/Math)
+            else if (i + 1 < code.length && 
+                ['||', '&&', '==', '!=', '>=', '<=', '>>', '<<', '><', '<>'].includes(code.substring(i, i + 2))) {
                 flush();
-                html += `<span class="ss-operator">,</span>`;
+                const op = code.substring(i, i + 2);
+                html += `<span class="ss-math">${escapeHtml(op)}</span>`;
+                i++; // Skip the next character
+            }
+
+            // Single Char: Math & Grouping (Teal)
+            // Added '&' and '!' here for bitwise/boolean ops
+            else if (['+', '-', '*', '/', '%', '(', ')', '<', '>', '!', '&'].includes(char)) {
+                flush();
+                html += `<span class="ss-math">${escapeHtml(char)}</span>`;
+            }
+
+            // Single Char: Flow Control (Pink)
+            // Keeps '|' (Else/Random), ':' (Condition), '~' (Range) distinct
+            else if ([':', '|', '~'].includes(char)) {
+                flush();
+                html += `<span class="ss-flow-op">${escapeHtml(char)}</span>`;
+            }
+
+            // Single Char: Standard Operators (Grey)
+            // Keeps '=' (Assignment) and ',' (Separator) neutral
+            else if (['=', ','].includes(char)) {
+                flush();
+                html += `<span class="ss-operator">${escapeHtml(char)}</span>`;
             }
             else {
                 buffer += char;
