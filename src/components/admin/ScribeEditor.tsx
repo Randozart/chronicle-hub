@@ -161,43 +161,48 @@ export default function ScribeEditor({
             
             <style jsx global>{`
                 /* 1. Base Text */
-                .ss-text-raw { color: #d9dce1ff; } 
-
+                .ss-text-raw { color: #bec0c5ff; } 
+                .ss-md-bold { 
+                    font-weight: bold; 
+                }
+                .ss-md-italic { 
+                    font-style: italic; 
+                }
                 /* 2. Braces */
                 .ss-brace { font-weight: bold; }
                 .ss-brace-odd { color: #e5c07b; } /* Gold */
                 .ss-brace-even { color: #df8749ff; } /* Copper */
 
                 /* 3. Variables */
-                .ss-var-local { color: #68a5ffff; } /* Sky Blue */
-                .ss-var-alias { color: #98c379; } 
-                .ss-var-world { color: #ff3b90ff; } 
+                .ss-var-local { color: #61afef; font-weight: bold; } 
+                .ss-var-alias { color: #98c379;  font-weight: bold;} 
+                .ss-var-world { color: #ff3b90ff;  font-weight: bold;} 
                 
-                .ss-dynamic-marker { color: #abb2bf; } 
+                .ss-dynamic-marker { color: #9ba1adff; } 
 
                 /* 4. Macros */
-                .ss-macro { color: #6361ffff; } /* Royal Blue */
+                .ss-macro { color: #6361ffff;  font-weight: bold;} /* Royal Blue */
                 .ss-bracket { color: #5646ffff; } /* Deep Blue */
 
                 /* 5. Values & Math (The New Group) */
                 .ss-number { color: #7cee7aff; } /* Light Lime (Values) */
-                .ss-math { color: #56b6c2; font-weight: bold; }
+                .ss-math { color: #bec0c5ff; font-weight: bold; }
 
                 /* 6. Standard Operators (Comparison/Assignment) */
-                .ss-operator { color: #abb2bf; } /* Grey */    
+                .ss-operator { color: #9ba1adff; } /* Grey */    
                 
                 /* 7. Flow Control */
-                .ss-flow-op { color: #f76e6eff; font-weight: bold; } /* Soft Pink */
+                .ss-flow-op { color: #f77e6eff; font-weight: bold; } /* Soft Pink */
 
                 /* 8. Metadata */
                 .ss-metadata { color: #7f848e; font-size: 0.85em; font-style: italic; }
 
                 /* Matched Brace */
                 .ss-brace-match {
-                    background-color: rgba(229, 192, 123, 0.15);
+                    background-color: rgba(228, 222, 211, 0.15);
                     border-radius: 2px;
-                    outline: 1px solid rgba(229, 192, 123, 0.4);
-                    box-shadow: 0 0 4px rgba(229, 192, 123, 0.2);
+                    outline: 1px solid rgba(230, 225, 217, 0.4);
+                    box-shadow: 0 0 4px rgba(224, 221, 215, 0.2);
                 }
                 /* === LIGATURE THEME (Restored One Dark) === */
                 
@@ -250,7 +255,62 @@ export default function ScribeEditor({
 }
 
                 
+       
+            // /* === SCRIBESCRIPT THEME (Final Mix) === */
                 
+            //     /* 1. Base Text */
+            //     .ss-text-raw { color: #d9dce1ff; } 
+
+            //     /* 2. Braces: Mauve & Red (Distinct Structure) */
+            //     .ss-brace { font-weight: bold; }
+            //     .ss-brace-odd { color: #c67d8d; } /* Mauve */
+            //     .ss-brace-even { color: #e06c75; } /* Red */
+
+            //     /* 3. Variables: Electric Blue (Data) */
+            //     .ss-var-local { color: #61afef; font-weight: bold; } 
+            //     .ss-var-alias { color: #98c379; } 
+            //     .ss-var-world { color: #ff3b90ff; } 
+                
+            //     /* Dynamic Marker matches logic punctuation */
+            //     .ss-dynamic-marker { color: #abb2bf; } 
+
+            //     /* 4. Macros: Royal Blue (Action) */
+            //     .ss-macro { color: #6361ffff; } 
+            //     /* Brackets: Deep Blue (Separates args) */
+            //     .ss-bracket { color: #5646ffff; } 
+
+            //     /* 5. Values: Light Lime */
+            //     .ss-number { color: #7cee7aff; } 
+                
+            //     /* 6. Math: Pale Yellow (Distinct from Operators) */
+            //     .ss-math { color:  #abb2bf; font-weight: bold;}
+
+            //     /* 7. Standard Operators: Grey (Assignments, Separators) */
+            //     .ss-operator { color: #abb2bf; }    
+                
+            //     /* 8. Flow Control: Purple (Logic Gates) */
+            //     .ss-flow-op { color: #c67d8d; font-weight: bold; } 
+
+            //     /* 9. Metadata */
+            //     .ss-metadata { color: #7f848e; font-size: 0.85em; font-style: italic; }
+
+            //     /* Matched Brace Highlight: Gold Tint */
+            //     .ss-brace-match {
+            //         background-color: rgba(229, 192, 123, 0.15);
+            //         border-radius: 2px;
+            //         outline: 1px solid rgba(229, 192, 123, 0.4);
+            //         box-shadow: 0 0 4px rgba(229, 192, 123, 0.2);
+            //     }
+                
+                
+                
+
+                
+                
+                
+
+                
+         
                 
                 
 

@@ -49,14 +49,12 @@ function getActiveBrackets(code: string, cursorIndex: number | null): Set<number
  */
 export function highlightScribeScript(code: string, cursorOffset: number | null = null): string {
     let html = '';
-    let depth = 0;        // Tracks Curly Braces { ... }
-    let bracketDepth = 0; // Tracks Square Brackets [ ... ]
+    let depth = 0;        
+    let bracketDepth = 0; 
     let buffer = '';
 
-    // Calculate matched brackets based on cursor
     const matchedIndices = getActiveBrackets(code, cursorOffset);
 
-    // Helper to escape HTML characters
     const escapeHtml = (unsafe: string) => {
         return unsafe
             .replace(/&/g, "&amp;")
@@ -66,25 +64,59 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
             .replace(/'/g, "&#039;");
     };
 
-    // Helper to flush plain text buffer
     const flush = () => {
         if (!buffer) return;
         
-        // Depth 0 = Raw Text. Depth > 0 = Logic Mode.
-        const className = depth === 0 ? 'ss-text-raw' : 'ss-operator';
+        // 1. Escape the raw text first (Security)
+        let content = escapeHtml(buffer);
+        let className = 'ss-operator'; // Default for Logic Mode
+
+        // --- MARKDOWN LOGIC (Only in Depth 0 / Text Mode) ---
+        if (depth === 0) {
+            className = 'ss-text-raw';
+            
+            // Regex Breakdown:
+            // 1. (**...**)  : Bold
+            // 2. (*...*)    : Italic (Star) - Standard rules
+            // 3. (_..._)    : Italic (Underscore) - STRICTER RULE
+            //    (?:^|[^a-zA-Z0-9])  -> Must start at line start OR after non-alphanumeric (space, punctuation)
+            //    _[^_]+_             -> The italic content
+            //    (?![a-zA-Z0-9])     -> Must not be followed by alphanumeric
+            
+            content = content.replace(/(\*\*[^*]+\*\*)|(\*[^*]+\*)|((?:^|[^a-zA-Z0-9])_[^_]+_(?![a-zA-Z0-9]))/g, (match, p1, p2, p3) => {
+                // Bold (**bold**)
+                if (p1) return `<span class="ss-md-bold">${p1}</span>`;
+                
+                // Italic (*italic*)
+                if (p2) return `<span class="ss-md-italic">${p2}</span>`;
+                
+                // Italic (_italic_) with Guard Handling
+                if (p3) {
+                    // p3 captures the boundary character (like a space) + the underscore text
+                    // Example: " _word_"
+                    // We must find the first underscore to separate the prefix from the content
+                    const firstUnderscore = p3.indexOf('_');
+                    const prefix = p3.substring(0, firstUnderscore); // The space or punctuation
+                    const core = p3.substring(firstUnderscore);      // The "_word_" part
+                    
+                    // Return prefix unstyled, core styled
+                    // Note: 'prefix' and 'core' are already escaped via escapeHtml above
+                    return `${prefix}<span class="ss-md-italic">${core}</span>`;
+                }
+                return match;
+            });
+        }
         
-        html += `<span class="${className}">${escapeHtml(buffer)}</span>`;
+        html += `<span class="${className}">${content}</span>`;
         buffer = '';
     };
 
     for (let i = 0; i < code.length; i++) {
+        // ... (The loop logic remains exactly the same as before) ...
         const char = code[i];
-        
-        // Check match status for this character
         const isMatch = matchedIndices.has(i);
         const matchClass = isMatch ? ' ss-brace-match' : '';
 
-        // --- 1. BRACES (Depth Logic) ---
         if (char === '{') {
             flush();
             depth++;
@@ -97,53 +129,16 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
             html += `<span class="ss-brace ${depthClass}${matchClass}">}</span>`;
             depth = Math.max(0, depth - 1);
         }
-
-        // --- 2. VARIABLES ($, @, #) ---
-        else if (depth > 0 && (char === '$' || char === '@' || char === '#')) {
-            flush();
-            
-            // Special Case: ${...} Dynamic ID Marker
-            if (char === '$' && code[i+1] === '{') {
-                html += `<span class="ss-dynamic-marker">$</span>`;
-                continue;
-            }
-
-            let varName = char;
-            while(i+1 < code.length && /[a-zA-Z0-9_.]/.test(code[i+1])) {
-                varName += code[++i];
-            }
-            
-            let typeClass = 'ss-var-local';
-            if (char === '@') typeClass = 'ss-var-alias';
-            if (char === '#') typeClass = 'ss-var-world';
-            
-            html += `<span class="${typeClass}">${varName}</span>`;
-        }
-
-        // --- 3. MACROS (%) ---
-        else if (depth > 0 && char === '%') {
-            flush();
-            let macroName = char;
-            while(i+1 < code.length && /[a-zA-Z0-9_]/.test(code[i+1])) {
-                macroName += code[++i];
-            }
-            html += `<span class="ss-macro">${macroName}</span>`;
-        }
-
-        // --- 4. METADATA & BRACKETS ([...]) ---
         else if (depth > 0 && char === '[') {
             flush();
-            
             const ahead = code.substring(i, i + 10); 
             if (/\[\s*(desc|source|hidden)\s*:/.test(ahead)) {
-                // Metadata: Consume completely
                 let metaContent = '[';
                 while(i+1 < code.length && code[i] !== ']') {
                     metaContent += code[++i];
                 }
                 html += `<span class="ss-metadata">${escapeHtml(metaContent)}</span>`;
             } else {
-                // Standard Brackets
                 html += `<span class="ss-bracket${matchClass}">[</span>`;
                 bracketDepth++; 
             }
@@ -153,16 +148,34 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
             html += `<span class="ss-bracket${matchClass}">]</span>`;
             bracketDepth = Math.max(0, bracketDepth - 1);
         }
-
-        // --- 5. MACRO DELIMITERS (; and ,) ---
-        // If we are inside [ ... ], style comma/semicolon as brackets
+        else if (depth > 0 && (char === '$' || char === '@' || char === '#')) {
+            flush();
+            if (char === '$' && code[i+1] === '{') {
+                html += `<span class="ss-dynamic-marker">$</span>`;
+                continue;
+            }
+            let varName = char;
+            while(i+1 < code.length && /[a-zA-Z0-9_.]/.test(code[i+1])) {
+                varName += code[++i];
+            }
+            let typeClass = 'ss-var-local';
+            if (char === '@') typeClass = 'ss-var-alias';
+            if (char === '#') typeClass = 'ss-var-world';
+            html += `<span class="${typeClass}">${varName}</span>`;
+        }
+        else if (depth > 0 && char === '%') {
+            flush();
+            let macroName = char;
+            while(i+1 < code.length && /[a-zA-Z0-9_]/.test(code[i+1])) {
+                macroName += code[++i];
+            }
+            html += `<span class="ss-macro">${macroName}</span>`;
+        }
         else if (depth > 0 && bracketDepth > 0 && (char === ';' || char === ',')) {
             flush();
             html += `<span class="ss-bracket">${escapeHtml(char)}</span>`;
         }
-
         else if (depth > 0) {
-            // Numbers
             if (/[0-9]/.test(char) && !/[a-zA-Z]/.test(buffer)) {
                 flush();
                 let num = char;
@@ -171,33 +184,20 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
                 }
                 html += `<span class="ss-number">${num}</span>`;
             }
-            
-            // PEEK AHEAD: Check for double-char operators (&&, ||, ==, !=, >=, <=)
-            // We want these to be TEAL (Logic/Math)
-            else if (i + 1 < code.length && 
-                ['||', '&&', '==', '!=', '>=', '<=', '>>', '<<', '><', '<>'].includes(code.substring(i, i + 2))) {
+            else if (i + 1 < code.length && ['||', '&&', '==', '!=', '>=', '<=', '>>', '<<', '><', '<>'].includes(code.substring(i, i + 2))) {
                 flush();
                 const op = code.substring(i, i + 2);
                 html += `<span class="ss-math">${escapeHtml(op)}</span>`;
-                i++; // Skip the next character
+                i++; 
             }
-
-            // Single Char: Math & Grouping (Teal)
-            // Added '&' and '!' here for bitwise/boolean ops
             else if (['+', '-', '*', '/', '%', '(', ')', '<', '>', '!', '&'].includes(char)) {
                 flush();
                 html += `<span class="ss-math">${escapeHtml(char)}</span>`;
             }
-
-            // Single Char: Flow Control (Pink)
-            // Keeps '|' (Else/Random), ':' (Condition), '~' (Range) distinct
             else if ([':', '|', '~'].includes(char)) {
                 flush();
                 html += `<span class="ss-flow-op">${escapeHtml(char)}</span>`;
             }
-
-            // Single Char: Standard Operators (Grey)
-            // Keeps '=' (Assignment) and ',' (Separator) neutral
             else if (['=', ','].includes(char)) {
                 flush();
                 html += `<span class="ss-operator">${escapeHtml(char)}</span>`;
@@ -206,8 +206,6 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
                 buffer += char;
             }
         }
-        
-        // --- 7. DEFAULT BUFFER ---
         else {
             buffer += char;
         }

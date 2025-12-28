@@ -17,7 +17,7 @@ export function lintLigature(source: string): LintError[] {
     const errors: LintError[] = [];
     const lines = source.split('\n');
 
-    // Pass 1: Gather Definitions (Unchanged)
+    // Pass 1: Gather Definitions
     const definedInstruments = new Set<string>(Object.keys(AUDIO_PRESETS));
     const definedPatterns = new Set<string>();
     const definedChords = new Set<string>();
@@ -91,11 +91,9 @@ export function lintLigature(source: string): LintError[] {
                 const namePart = trimmed.substring(0, pipeIndex).trim();
                 const contentPart = trimmed.substring(pipeIndex);
 
-                // --- FIX: Robust Track Name Extraction ---
                 // Matches the initial word, ignoring any subsequent (props) or ^[effects]
                 const nameMatch = namePart.match(/^([a-zA-Z0-9_]+)/);
                 const trackName = nameMatch ? nameMatch[1] : '';
-                // --- END FIX ---
 
                 if (trackName && !definedInstruments.has(trackName)) {
                     errors.push({ 
@@ -213,15 +211,29 @@ export function lintScribeScript(source: string, mode: ScribeContext): LintError
 
             // 3. Logic Checks
             if (char === '=' && nextChar !== '=' && prevChar !== '!' && prevChar !== '>' && prevChar !== '<' && prevChar !== '=') {
+                
                 // INSIDE LOGIC BLOCK
                 if (braceDepth > 0 && bracketDepth === 0) {
                     const currentScope = scopeStack[scopeStack.length - 1];
                     
-                    // If we are in the "Result" part of a conditional (after :), assignment is allowed.
-                    // If we haven't seen a colon, it's ambiguous (could be a condition).
-                    // Exception: Alias definitions {@x = 1} are always allowed.
-                    const isAliasDef = prevChar === '@' || line.substring(Math.max(0, i-5), i).trim().endsWith('@');
-                    const isAllowed = currentScope?.hasSeenColon || isAliasDef;
+                    // --- FIX: Robust Alias/Definition Detection ---
+                    // Look backwards from the '=' to find what variable we are assigning to.
+                    // We grab the text before the '=', trim it, and get the last "word".
+                    const textBefore = line.substring(0, i).trimEnd();
+                    
+                    // Split by characters that break a variable name (space, braces, parens, operators)
+                    // We only care about the last token immediately preceding the '='
+                    const lastToken = textBefore.split(/[^a-zA-Z0-9_$@#.]/).pop() || "";
+                    
+                    const isAliasDef = lastToken.startsWith('@');
+                    const isWorldDef = lastToken.startsWith('#');
+                    const isEffectInBranch = currentScope?.hasSeenColon;
+
+                    // It is a valid assignment if:
+                    // 1. It is an Alias definition (@var = ...)
+                    // 2. It is a World definition (#var = ...)
+                    // 3. We are in the "Result" branch of a conditional ( { cond : $var = 1 } )
+                    const isAllowed = isEffectInBranch || isAliasDef || isWorldDef;
 
                     if (!isAllowed) {
                          errors.push({ 
