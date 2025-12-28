@@ -1,3 +1,4 @@
+import { safeEval } from '@/utils/safeEval';
 import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
 
 type EvaluationContext = 'LOGIC' | 'TEXT';
@@ -264,6 +265,15 @@ function evaluateMacro(
             return names.join(separator);
         }
 
+        case "count": {
+            const categoryExpr = mainArg;
+            const filterExpr = optArgs[0]; 
+            
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases);
+            
+            return candidates.length;
+        }
+
         case "schedule":
         case "reset":
         case "update":
@@ -372,7 +382,7 @@ function resolveComplexExpression(
     }
 
     try {
-        return new Function(`return ${varReplacedExpr}`)();
+        return safeEval(varReplacedExpr);
     } catch (e) {
         return varReplacedExpr;
     }

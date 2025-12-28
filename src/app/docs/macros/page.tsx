@@ -208,6 +208,29 @@ export default function MacrosPage() {
                     </code>
                 </div>
 
+                <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%count</code> (Count Matches)</h3>
+                <p className="docs-p">
+                    Returns the <strong>number</strong> of qualities in a category that match a filter. This is useful for checking inventory size or creating requirements.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`{%count[ CATEGORY ; FILTER ]}`}</code>
+                </div>
+                <div className="docs-card" style={{marginTop:'1rem'}}>
+                    <h4 className="docs-h4">Use Case: Evidence Gathering</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        Check if the player has collected enough clues to proceed.
+                    </p>
+                    <div className="docs-pre">
+                        <span style={{color:'#777'}}>// Check if the player has at least 3 owned 'Clue' items</span>
+                        <br/>
+                        <code className="docs-code">
+                            {`{@clues_found = {%count[Clues; owned]}}
+
+                { @clues_found >= 3 : You piece the evidence together. | You need more information. }`}
+                        </code>
+                    </div>
+                </div>
+
                 <div className="docs-card" style={{marginTop: '1.5rem', borderColor: '#98c379'}}>
                     <h4 className="docs-h4" style={{color:'#98c379'}}>Advanced Filtering</h4>
                     <p className="docs-p" style={{fontSize:'0.9rem'}}>

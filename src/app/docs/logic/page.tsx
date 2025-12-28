@@ -132,7 +132,7 @@ export default function LogicMathPage() {
             
 
             <section id="syntax-rules">
-    <h2 className="docs-h2">3. Brackets: The Three Meanings</h2>
+    <h2 className="docs-h2">2. Brackets: The Three Meanings</h2>
     <p className="docs-p">
         ScribeScript uses three types of brackets, each with a very specific job. Understanding the difference is the key to writing powerful and bug-free logic.
     </p>
@@ -226,6 +226,221 @@ export default function LogicMathPage() {
         <p className="docs-p" style={{fontSize:'0.9rem'}}>
             The second version makes it clear: the "barred door" check applies to both the key and the lockpicking skill. Using parentheses prevents subtle logic bugs that are very hard to track down.
         </p>
+    </div>
+</section>
+<section id="advanced-math">
+    <h2 className="docs-h2">3. Advanced Math & Functions</h2>
+    <p className="docs-p">
+        While ScribeScript has its own operators for simple logic, its logic blocks <code>{`{...}`}</code> are processed by a sandboxed JavaScript engine. This gives you access to powerful built-in functions for complex game mechanics without compromising security.
+    </p>
+
+    <div className="docs-callout">
+        <strong style={{color: '#fff'}}>How to tell the difference:</strong>
+        <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
+            If it starts with <code>Math.</code>, it's a JavaScript function. If it doesn't, it's a standard ScribeScript operation.
+        </p>
+        <div className="docs-grid" style={{margin:'1rem 0 0 0'}}>
+            <div className="docs-card" style={{padding:'1rem'}}>
+                <h4 className="docs-h4" style={{color:'#61afef'}}>ScribeScript</h4>
+                <code className="docs-code">{`{ 1 ~ 10 }`}</code>
+                <code className="docs-code" style={{marginLeft:'1rem'}}>{`{ A | B }`}</code>
+            </div>
+            <div className="docs-card" style={{padding:'1rem'}}>
+                <h4 className="docs-h4" style={{color:'#98c379'}}>JavaScript `Math`</h4>
+                <code className="docs-code">{`{ Math.floor(...) }`}</code>
+                <code className="docs-code" style={{marginLeft:'1rem'}}>{`{ Math.pow(...) }`}</code>
+            </div>
+        </div>
+    </div>
+
+    <h3 className="docs-h3">Useful <code>Math</code> Functions</h3>
+    <p className="docs-p">
+        You can call standard JavaScript <code>Math</code> functions directly inside a logic block. Here are some of the most useful ones for game development.
+    </p>
+    <table className="docs-table">
+        <thead><tr><th>Function</th><th>Description</th><th>Example</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><code>Math.floor(n)</code></td>
+                <td><strong>Rounds Down.</strong> Chops off the decimal of any number. Essential for getting a clean integer from division.</td>
+                <td><code>{`{ Math.floor($xp / 10) }`}</code></td>
+            </tr>
+            <tr>
+                <td><code>Math.ceil(n)</code></td>
+                <td><strong>Rounds Up.</strong> Always rounds to the next highest integer. Useful for calculating costs (e.g., "you need at least 2 boats for 3 people").</td>
+                <td><code>{`{ Math.ceil($party_size / 2) }`}</code></td>
+            </tr>
+            <tr>
+                <td><code>Math.round(n)</code></td>
+                <td><strong>Standard Rounding.</strong> Rounds to the nearest integer (0.5 and up goes up).</td>
+                <td><code>{`{ Math.round($value * 1.15) }`}</code></td>
+            </tr>
+            <tr>
+                <td><code>Math.pow(base, exp)</code></td>
+                <td><strong>Power Of.</strong> Calculates <code>base</code> to the power of <code>exp</code>. The foundation of exponential growth or decay.</td>
+                <td><code>{`{ Math.pow(10, $level - 1) }`}</code></td>
+            </tr>
+             <tr>
+                <td><code>Math.min(a, b, ...)</code></td>
+                <td><strong>Minimum.</strong> Returns the smallest of two or more numbers. Perfect for finding the weakest stat.</td>
+                <td><code>{`{ Math.min($stat1, $stat2) }`}</code></td>
+            </tr>
+             <tr>
+                <td><code>Math.max(a, b, ...)</code></td>
+                <td><strong>Maximum.</strong> Returns the largest of two or more numbers. Perfect for finding the strongest stat or applying a cap.</td>
+                <td><code>$hp = {`{ Math.max(0, $hp - @damage) }`}</code></td>
+            </tr>
+        </tbody>
+    </table>
+        <div className="docs-card">
+            <h4 className="docs-h4">Example: Using math to store multiple character states as one number</h4>
+            <p className="docs-p" style={{fontSize:'0.9rem'}}>
+                To track the status of multiple different quality levels between 0 and 9, you can use math operations to encode this in a single number or quality level. Each decimal place acts as a "slot" for one of these levels, and the digit in that slot is their status code (e.g., 0=Available, 2=Wounded, 4=Dead).
+            </p>
+            <div className="docs-pre">
+                <span style={{color:'#777'}}>// Check the history of Suspect #3 for the Coroner role.</span>
+                <br/>
+                <code className="docs-code">
+                    {`{@suspect_id = 3}`}
+                </code>
+                <br/><br/>
+                <span style={{color:'#777'}}>// 1. Isolate the digit for Suspect #3 from the ledger number.</span>
+                <br/>
+                <code className="docs-code" style={{ whiteSpace: 'pre-wrap' }}>
+                    {`{@power_of_10 = { Math.pow(10, @suspect_id - 1) }}
+            {@status = { Math.floor( ($ledger_coroner / @power_of_10) ) % 10 }}`}
+                </code>
+                <br/><br/>
+                <span style={{color:'#777'}}>// 2. Use the status to change the narrative.</span>
+                <br/>
+                <code className="docs-code" style={{ whiteSpace: 'pre-wrap' }}>
+            {`{ @status == 2 : 
+                "You recognize this one. You booked them last summer... turned out they were innocent. Seeing them again sends a chill down your spine." 
+            | 
+                "A new face. You've never seen this coroner before." 
+            }`}
+                </code>
+                <br/><br/>
+                <span style={{color:'#777'}}>// 3. (In another effect) Update the ledger after a case.</span>
+                <br/>
+                <span style={{color:'#777'}}>// Mark Suspect #3 as 'Booked (Innocent)' (Code 2)</span>
+                <br/>
+                <code className="docs-code">
+                    {`$ledger_coroner += { 2 * @power_of_10 }`}
+                </code>
+            </div>
+        <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'#e5c07b'}}>How The Math Works</h5>
+        <p className="docs-p" style={{fontSize:'0.9rem'}}>
+            Let's say <code>$ledger_coroner</code> is <strong>43210</strong> and we want the status for Suspect #3.
+        </p>
+        <ol className="docs-list" style={{fontSize:'0.9rem'}}>
+            <li>
+                <strong><code>Math.pow(10, @suspect_id - 1)</code></strong>
+                <br/>This creates our "shifter." It calculates 10 to the power of (3-1), which is 100. This number targets the 100s place, the slot for Suspect #3.
+            </li>
+            <li>
+                <strong><code>$ledger_coroner / @power_of_10</code></strong>
+                <br/>Dividing by the shifter moves the decimal point. <code>43210 / 100</code> becomes <code>432.10</code>. The digit we want (2) is now in the ones place, just before the decimal.
+            </li>
+            <li>
+                <strong><code>Math.floor(...)</code></strong>
+                <br/>This function rounds down, chopping off the decimal part. <code>Math.floor(432.10)</code> becomes <code>432</code>.
+            </li>
+            <li>
+                <strong><code>... % 10</code> (Modulo)</strong>
+                <br/>The modulo operator gives you the <strong>remainder</strong> of a division. Any integer divided by 10 has its last digit as the remainder. <code>432 % 10</code> gives a remainder of <strong>2</strong>.
+            </li>
+        </ol>
+        <p className="docs-p" style={{fontSize:'0.9rem'}}>
+            We have successfully extracted the status code <strong>2</strong> for Suspect #3, all with a single line of ScribeScript math.
+        </p>
+    </div>
+    <h3 className="docs-h3">Bitwise Operators (Flag Management)</h3>
+    <p className="docs-p">
+        Bitwise operators are powerful tools for managing multiple true/false states (flags) within a single number. This is perfect for systems like RMO (Relation=4, Motive=2, Opportunity=1).
+    </p>
+    <table className="docs-table">
+        <thead><tr><th>Operator</th><th>Name</th><th>Use Case</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><code>&</code></td>
+                <td>AND</td>
+                <td><strong>Check a Flag:</strong> Is a specific bit "on"?</td>
+            </tr>
+            <tr>
+                <td><code>|</code></td>
+                <td>OR</td>
+                <td><strong>Set a Flag:</strong> Turn a specific bit "on" without affecting others.</td>
+            </tr>
+            <tr>
+                <td><code>^</code></td>
+                <td>XOR</td>
+                <td><strong>Compare Flags:</strong> Get a number representing the difference between two flag sets.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div className="docs-callout" style={{padding:'1rem', margin:'1rem 0', borderColor:'#56b6c2'}}>
+    <strong style={{color:'#fff'}}>Explaining flag setting with RMO from <em>Concrete Requiem</em></strong>
+    <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
+        In <em>Concrete Requiem</em> Every character profile is defined by three factors, stored as "flags" in a single number:
+    </p>
+    <ul className="docs-list" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
+        <li><strong>Relation (Value 4):</strong> Did they have a personal connection to the victim?</li>
+        <li><strong>Motive (Value 2):</strong> Did they have a reason (greed, revenge, passion)?</li>
+        <li><strong>Opportunity (Value 1):</strong> Were they physically able to commit the crime?</li>
+    </ul>
+    <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
+        By adding these values, you get a number from 0 to 7 that represents their entire profile. For example, a suspect with Motive (2) and Opportunity (1) has an RMO of 3. Bitwise operators let you query these flags.
+    </p>
+</div>
+
+    <div className="docs-card" style={{marginTop:'1rem'}}>
+        <h4 className="docs-h4">Example 1: Checking a Flag with AND `&`</h4>
+        <p className="docs-p" style={{fontSize:'0.9rem'}}>
+            The <code>&</code> operator checks which bits are active in *both* numbers. We use it to see if a specific flag is part of a character's RMO.
+        </p>
+        <div className="docs-pre">
+            <span style={{color:'#777'}}>// Check if $rmo has the "Relation" (4) flag turned on</span>
+            <br/>
+            <code className="docs-code">
+                ($rmo & 4) == 4
+            </code>
+            <br/><br/>
+            <span style={{color:'#777'}}>// Logic: If $rmo is 5 (101), then (101 & 100) results in 100 (which is 4).</span>
+        </div>
+    </div>
+    
+    <div className="docs-card">
+        <h4 className="docs-h4">Example 2: Setting a Flag with OR `|`</h4>
+        <p className="docs-p" style={{fontSize:'0.9rem'}}>
+            The <code>|</code> operator combines the active bits from both numbers. Use this to grant a character a new flag without erasing their existing ones.
+        </p>
+        <div className="docs-pre">
+            <span style={{color:'#777'}}>// The character gains Opportunity (1) at the crime scene.</span>
+            <br/>
+            <code className="docs-code">
+                $rmo = {`{ $rmo | 1 }`}
+            </code>
+            <br/><br/>
+            <span style={{color:'#777'}}>// Logic: If $rmo was 4 (100), it becomes (100 | 001), resulting in 101 (which is 5).</span>
+        </div>
+    </div>
+    
+    <div className="docs-card">
+        <h4 className="docs-h4">Example 3: Comparing Flags with XOR `^`</h4>
+        <p className="docs-p" style={{fontSize:'0.9rem'}}>
+            The <code>^</code> operator returns a number representing only the bits that are different. This is perfect for checking "Degrees of Separation."
+        </p>
+        <div className="docs-pre">
+            <span style={{color:'#777'}}>// Check if two RMOs are identical (result 0) OR have only 1 difference (result 1, 2, or 4).</span>
+            <br/>
+            <code className="docs-code">
+                ($rmo_A ^ $rmo_B) {'<'} 5 && ($rmo_A ^ $rmo_B) != 3
+            </code>
+            <br/><br/>
+            <span style={{color:'#777'}}>// Logic: If A is 7 (111) and B is 5 (101), (A ^ B) results in 010 (which is 2).</span>
+        </div>
     </div>
 </section>
         </div>
