@@ -52,6 +52,8 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
     let depth = 0;        
     let bracketDepth = 0; 
     let buffer = '';
+    
+    const braceStyleStack: boolean[] = []; 
 
     const matchedIndices = getActiveBrackets(code, cursorOffset);
 
@@ -112,7 +114,6 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
     };
 
     for (let i = 0; i < code.length; i++) {
-        // ... (The loop logic remains exactly the same as before) ...
         const char = code[i];
         const isMatch = matchedIndices.has(i);
         const matchClass = isMatch ? ' ss-brace-match' : '';
@@ -120,13 +121,32 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
         if (char === '{') {
             flush();
             depth++;
-            const depthClass = depth % 2 !== 0 ? 'ss-brace-odd' : 'ss-brace-even';
-            html += `<span class="ss-brace ${depthClass}${matchClass}">{</span>`;
+            
+            // PEEK AHEAD: Is this a comment block? (Starts with //)
+            // Look at next 20 chars to skip whitespace
+            const lookahead = code.substring(i + 1, i + 20);
+            const isCommentBlock = /^\s*\/\//.test(lookahead);
+            
+            braceStyleStack.push(isCommentBlock);
+
+            if (isCommentBlock) {
+                html += `<span class="ss-brace-comment${matchClass}">{</span>`;
+            } else {
+                const depthClass = depth % 2 !== 0 ? 'ss-brace-odd' : 'ss-brace-even';
+                html += `<span class="ss-brace ${depthClass}${matchClass}">{</span>`;
+            }
         } 
         else if (char === '}') {
             flush();
-            const depthClass = depth % 2 !== 0 ? 'ss-brace-odd' : 'ss-brace-even';
-            html += `<span class="ss-brace ${depthClass}${matchClass}">}</span>`;
+            const isCommentBlock = braceStyleStack.pop();
+            
+            if (isCommentBlock) {
+                html += `<span class="ss-brace-comment${matchClass}">}</span>`;
+            } else {
+                const depthClass = depth % 2 !== 0 ? 'ss-brace-odd' : 'ss-brace-even';
+                html += `<span class="ss-brace ${depthClass}${matchClass}">}</span>`;
+            }
+            
             depth = Math.max(0, depth - 1);
         }
         else if (depth > 0 && char === '[') {
@@ -171,6 +191,36 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
             }
             html += `<span class="ss-macro">${macroName}</span>`;
         }
+
+        // else if (depth > 0 && /[a-zA-Z]/.test(char)) {
+        //     flush();
+        //     let word = char;
+        //     while(i+1 < code.length && /[a-zA-Z0-9_.]/.test(code[i+1])) {
+        //         word += code[++i];
+        //     }
+
+        //     if (word.startsWith('Math.') || ['true', 'false', 'null', 'undefined', 'NaN', 'Infinity'].includes(word)) {
+        //         html += `<span class="ss-js-keyword">${word}</span>`;
+        //     } else {
+        //         html += `<span class="ss-js-keyword">${word}</span>`;
+        //     }
+        // }
+
+        else if (depth > 0 && char === '/' && code[i+1] === '/') {
+            flush(); // Flush any previous operators/vars
+            
+            let comment = '//';
+            i++; // Skip the second /
+            
+            // Consume until Newline OR Closing Brace
+            // We STOP at '}' so the main loop can handle the logic closure correctly
+            while (i + 1 < code.length && code[i+1] !== '\n' && code[i+1] !== '}') {
+                comment += code[++i];
+            }
+            
+            html += `<span class="ss-comment">${escapeHtml(comment)}</span>`;
+        }
+
         else if (depth > 0 && bracketDepth > 0 && (char === ';' || char === ',')) {
             flush();
             html += `<span class="ss-bracket">${escapeHtml(char)}</span>`;
@@ -184,16 +234,17 @@ export function highlightScribeScript(code: string, cursorOffset: number | null 
                 }
                 html += `<span class="ss-number">${num}</span>`;
             }
-            else if (i + 1 < code.length && ['||', '&&', '==', '!=', '>=', '<=', '>>', '<<', '><', '<>'].includes(code.substring(i, i + 2))) {
+            else if (i + 1 < code.length && 
+                ['||', '&&', '==', '!=', '>=', '<=', '>>', '<<', '><', '<>', '++', '--'].includes(code.substring(i, i + 2))) {
                 flush();
                 const op = code.substring(i, i + 2);
                 html += `<span class="ss-math">${escapeHtml(op)}</span>`;
                 i++; 
             }
-            else if (['+', '-', '*', '/', '%', '(', ')', '<', '>', '!', '&'].includes(char)) {
+            else if (['+', '-', '*', '/', '%', '(', ')', '<', '>', '!', '&', '^'].includes(char)) {
                 flush();
                 html += `<span class="ss-math">${escapeHtml(char)}</span>`;
-            }
+            }            
             else if ([':', '|', '~'].includes(char)) {
                 flush();
                 html += `<span class="ss-flow-op">${escapeHtml(char)}</span>`;

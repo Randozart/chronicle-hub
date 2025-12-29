@@ -196,6 +196,23 @@ export default function ScribeEditor({
 
                 /* 8. Metadata */
                 .ss-metadata { color: #7f848e; font-size: 0.85em; font-style: italic; }
+                
+                .ss-js-keyword { 
+                    color: #ff79c6; /* Vibrant Pink/Magenta (Dracula Theme inspired) */
+                    font-style: italic; 
+                    font-weight: bold;
+                    text-shadow: 0 0 2px rgba(255, 121, 198, 0.2); /* Subtle glow */
+                }
+
+                .ss-comment { 
+                    color: #6A9955; 
+                    font-style: italic;
+                    font-family: "Fira Code", monospace; /* Enforce mono to look "code-like" */
+                }
+                 .ss-brace-comment { 
+                    color: #6A9955; 
+                    font-style: italic;
+                }
 
                 /* Matched Brace */
                 .ss-brace-match {

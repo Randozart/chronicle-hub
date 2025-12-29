@@ -58,7 +58,10 @@ function evaluateExpression(
     self: { qid: string, state: QualityState } | null,
     resolutionRoll: number
 ): string | number | boolean {
-    const trimmedExpr = expr.trim();
+    //Filter out comments
+    const cleanExpr = expr.replace(/\/\/.*$/gm, '').trim();
+    if (!cleanExpr) return "";
+    const trimmedExpr = cleanExpr; 
     
     // 1. Handle Assignment: @alias = value
     const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
