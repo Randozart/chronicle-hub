@@ -7,15 +7,14 @@ import GameImage from '@/components/GameImage';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers'; 
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
-import ScribeEditor from '@/components/admin/ScribeEditor';
-import { useToast } from '@/providers/ToastProvider'; // Toast Hook
+import { useToast } from '@/providers/ToastProvider';
 
 // ENGINE RESERVED WORDS
 const ENGINE_RESERVED = ['luck', 'target', 'schedule', 'cancel', 'all', 'world', 'source', 'desc'];
 
 export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
-    const { showToast } = useToast(); // Hook into Toast Context
+    const { showToast } = useToast();
 
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [settings, setSettings] = useState<WorldSettings | null>(null);
@@ -32,7 +31,6 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
                 
                 if (qRes.ok) {
                     const data = await qRes.json();
-                    // Sort by ordering field by default
                     const sorted = Object.values(data).sort((a: any, b: any) => (a.ordering || 0) - (b.ordering || 0));
                     setQualities(sorted as QualityDefinition[]);
                 }
@@ -51,7 +49,6 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
         const newId = prompt("Unique ID (e.g. 'strength'):");
         if (!newId) return;
         
-        // Basic validation
         const cleanId = newId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         if (qualities.find(q => q.id === cleanId)) {
             showToast("Quality ID already exists.", "error");
@@ -81,7 +78,6 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
             return;
         }
 
-        // Create deep copy
         const newQ: QualityDefinition = {
             ...JSON.parse(JSON.stringify(source)),
             id: cleanId,
@@ -114,7 +110,6 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
                 selectedId={selectedId} 
                 onSelect={setSelectedId} 
                 onCreate={handleCreate}
-                // Updated Grouping Options: Folder is now primary
                 groupOptions={[
                     { label: "Folder", key: "folder" },
                     { label: "Category", key: "category" }, 
@@ -148,9 +143,8 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
 }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
-    const { showToast } = useToast(); // Hook into Toast Context
+    const { showToast } = useToast();
     
-    // Variant Editor State
     const [newVariantKey, setNewVariantKey] = useState("");
 
     useEffect(() => setForm(initialData), [initialData]);
@@ -169,7 +163,6 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
         handleChange('tags', arr);
     };
 
-    // CTRL+S Handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -262,6 +255,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             )}
 
+            {/* ID & SORT ORDER */}
             <div className="form-row">
                 <div className="form-group" style={{flex: 1}}>
                     <label className="form-label">ID</label>
@@ -273,6 +267,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             </div>
 
+            {/* NAME & TYPE */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
                     <SmartArea 
@@ -282,6 +277,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         storyId={storyId} 
                         minHeight="38px" 
                         placeholder="Display Name (ScribeScript allowed)"
+                        contextQualityId={form.id}
                     />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
@@ -297,7 +293,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             </div>
 
-            {/* ORGANIZATION: FOLDER vs CATEGORY */}
+            {/* FOLDER & CATEGORY */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Folder (UI)</label>
@@ -318,25 +314,51 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         minHeight="38px"
                         placeholder="For Scripts (e.g. 'Weapons')"
                         subLabel="Comma-seperated or Conditional"
+                        contextQualityId={form.id}
                     />
                 </div>
             </div>
 
+            {/* IMAGE CODE (Now SmartArea) */}
             <div className="form-group">
                 <label className="form-label">Image Code</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" />
+                    <div style={{ flex: 1 }}>
+                        <SmartArea 
+                            value={form.image || ''} 
+                            onChange={v => handleChange('image', v)} 
+                            storyId={storyId}
+                            minHeight="38px"
+                            contextQualityId={form.id}
+                        />
+                    </div>
                     {form.image && <div style={{width: 32, height: 32}}><GameImage code={form.image} imageLibrary={{}} type="icon" className="option-image"/></div>}
                 </div>
             </div>
             
-            {/* QoL Names */}
+            {/* SINGULAR & PLURAL NAMES (Now SmartArea) */}
             <div className="form-row">
                  <div className="form-group" style={{ flex: 1 }}>
-                    <input value={form.singular_name || ''} onChange={e => handleChange('singular_name', e.target.value)} className="form-input" placeholder="Singular (e.g. Coin)" />
+                    <SmartArea 
+                        label="Singular Name"
+                        value={form.singular_name || ''} 
+                        onChange={v => handleChange('singular_name', v)} 
+                        storyId={storyId}
+                        minHeight="38px"
+                        placeholder="e.g. Coin" 
+                        contextQualityId={form.id}
+                    />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <input value={form.plural_name || ''} onChange={e => handleChange('plural_name', e.target.value)} className="form-input" placeholder="Plural (e.g. Coins)" />
+                    <SmartArea 
+                        label="Plural Name"
+                        value={form.plural_name || ''} 
+                        onChange={v => handleChange('plural_name', v)} 
+                        storyId={storyId}
+                        minHeight="38px"
+                        placeholder="e.g. Coins" 
+                        contextQualityId={form.id}
+                    />
                 </div>
             </div>
 
@@ -348,25 +370,50 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     storyId={storyId} 
                     minHeight="80px"
                     placeholder="Visible in tooltip. Use {$.level} for current level."
+                    contextQualityId={form.id}
                 />
             </div>
             
-            {/* ADVANCED CAPS SECTION */}
+            {/* PROGRESSION CAPS */}
             {(form.type === 'P' || form.type === 'C' || form.type === 'T') && (
                 <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
                     <label className="special-label" style={{ color: '#e5c07b' }}>Progression Limits</label>
                     <div className="form-row">
                         <div className="form-group" style={{flex:1}}>
-                            <SmartArea label="Hard Cap (Max)" value={form.max || ''} onChange={v => handleChange('max', v)} storyId={storyId} minHeight="38px" placeholder="Infinity" />
+                            <SmartArea 
+                                label="Hard Cap (Max)" 
+                                value={form.max || ''} 
+                                onChange={v => handleChange('max', v)} 
+                                storyId={storyId} 
+                                minHeight="38px" 
+                                placeholder="Infinity" 
+                                contextQualityId={form.id}
+                            />
                             <p className="special-desc">Absolute maximum effective level.</p>
                         </div>
                         <div className="form-group" style={{flex:1}}>
-                            <SmartArea label="Soft Cap (Grind)" value={form.grind_cap || ''} onChange={v => handleChange('grind_cap', v)} storyId={storyId} minHeight="38px" placeholder="None" />
+                            <SmartArea 
+                                label="Soft Cap (Grind)" 
+                                value={form.grind_cap || ''} 
+                                onChange={v => handleChange('grind_cap', v)} 
+                                storyId={storyId} 
+                                minHeight="38px" 
+                                placeholder="None" 
+                                contextQualityId={form.id}
+                            />
                             <p className="special-desc">Limit for repeatable actions.</p>
                         </div>
                         {form.type === 'P' && (
                             <div className="form-group" style={{flex:1}}>
-                                <SmartArea label="CP Requirement Cap" value={form.cp_cap || ''} onChange={v => handleChange('cp_cap', v)} storyId={storyId} minHeight="38px" placeholder="None" />
+                                <SmartArea 
+                                    label="CP Requirement Cap" 
+                                    value={form.cp_cap || ''} 
+                                    onChange={v => handleChange('cp_cap', v)} 
+                                    storyId={storyId} 
+                                    minHeight="38px" 
+                                    placeholder="None" 
+                                    contextQualityId={form.id}
+                                />
                                 <p className="special-desc">Max CP needed per level.</p>
                             </div>
                         )}
@@ -374,18 +421,34 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             )}
 
-            {/* FEEDBACK SECTION */}
+            {/* FEEDBACK */}
             <div className="special-field-group" style={{ borderColor: '#61afef' }}>
                 <label className="special-label" style={{ color: '#61afef' }}>Change Feedback</label>
                 <div className="form-group">
-                     <SmartArea label="On Increase" value={form.increase_description || ''} onChange={v => handleChange('increase_description', v)} storyId={storyId} minHeight="38px" placeholder="Your {$.name} has increased!" />
+                     <SmartArea 
+                        label="On Increase" 
+                        value={form.increase_description || ''} 
+                        onChange={v => handleChange('increase_description', v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        placeholder="Your {$.name} has increased!" 
+                        contextQualityId={form.id}
+                    />
                 </div>
                 <div className="form-group">
-                     <SmartArea label="On Decrease" value={form.decrease_description || ''} onChange={v => handleChange('decrease_description', v)} storyId={storyId} minHeight="38px" placeholder="Your {$.name} has dropped..." />
+                     <SmartArea 
+                        label="On Decrease" 
+                        value={form.decrease_description || ''} 
+                        onChange={v => handleChange('decrease_description', v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        placeholder="Your {$.name} has dropped..." 
+                        contextQualityId={form.id}
+                    />
                 </div>
             </div>
 
-            {/* TEXT VARIANTS SECTION */}
+            {/* TEXT VARIANTS (Now using SmartArea) */}
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd' }}>Text Variants</label>
                 <p className="special-desc">Custom properties accessed via <code>$quality.property</code>.</p>
@@ -397,7 +460,13 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                                 .{key}
                             </div>
                             <div style={{ flex: 1 }}>
-                                <ScribeEditor value={val} onChange={v => updateVariant(key, v)} minHeight="38px" />
+                                <SmartArea 
+                                    value={val} 
+                                    onChange={v => updateVariant(key, v)} 
+                                    storyId={storyId} 
+                                    minHeight="38px"
+                                    contextQualityId={form.id} 
+                                />
                             </div>
                             <button onClick={() => removeVariant(key)} style={{ background: 'none', border: 'none', color: '#e06c75', cursor: 'pointer', marginTop: '8px' }}>✕</button>
                         </div>
@@ -415,6 +484,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             </div>
 
+            {/* TAGS */}
             <div className="special-field-group" style={{ borderColor: '#98c379' }}>
                 <label className="special-label" style={{ color: '#98c379' }}>Behavior & Tags</label>
                 
@@ -435,6 +505,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             </div>
 
+            {/* ITEM SETTINGS (Use Event is now SmartArea) */}
             {(form.type === 'E' || form.type === 'I') && (
                 <div className="form-group" style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
                     <label className="special-label" style={{color: '#61afef'}}>Item Settings</label>
@@ -448,23 +519,28 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                                 storyId={storyId} 
                                 minHeight="38px" 
                                 placeholder="$strength + 1"
+                                contextQualityId={form.id}
                             />
                         </div>
                     )}
 
                     <div className="form-group">
-                        <label className="form-label">Use Event (Storylet ID)</label>
-                        <input value={form.storylet || ''} onChange={e => handleChange('storylet', e.target.value)} className="form-input" placeholder="Event ID to fire when 'Used'" />
+                        <SmartArea 
+                            label="Use Event (Storylet ID)"
+                            value={form.storylet || ''} 
+                            onChange={v => handleChange('storylet', v)} 
+                            storyId={storyId}
+                            minHeight="38px"
+                            placeholder="Event ID to fire when 'Used'"
+                            contextQualityId={form.id}
+                        />
                     </div>
                 </div>
             )}
 
             <div className="admin-form-footer">
                 <button onClick={handleDelete} className="unequip-btn" style={{width: 'auto', padding: '0.5rem 1rem'}}>Delete</button>
-                
-                {/* DUPLICATE BUTTON */}
                 <button onClick={() => onDuplicate(form)} className="option-button" style={{width: 'auto', padding: '0.5rem 1rem', borderColor: '#e5c07b', color: '#e5c07b'}}>Duplicate</button>
-
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>
         </div>
