@@ -302,7 +302,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
             {/* ORGANIZATION */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Folder (UI)</label>
+                    <label className="form-label">Folder (Editor)</label>
                     <input 
                         value={form.folder || ''} 
                         onChange={e => handleChange('folder', e.target.value)} 
