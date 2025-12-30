@@ -184,7 +184,7 @@ export default function ScriptEvaluator({ storyId, qualityDefs, contextQualityId
                             title="Recursively find all variables used in the script"
                             style={{ background: 'none', border: 'none', color: '#c678dd', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
                         >
-                            🪄 Auto
+                            Auto
                         </button>
                         <button onClick={addRow} style={{ background: 'none', border: 'none', color: '#98c379', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}>
                             + Add Var
