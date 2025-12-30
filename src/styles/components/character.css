@@ -1,0 +1,40 @@
+/* src/styles/components/character.css */
+
+.character-sheet { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: var(--border-radius); }
+.character-sheet h2 { margin-top: 0; text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+.character-sheet ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+
+.quality-name { font-weight: bold; color: var(--text-primary); font-size: 1.1rem; }
+.quality-level { font-size: 1.1rem; font-weight: bold; color: var(--accent-highlight); }
+
+.quality-cp-bar-background { height: 6px; width: 100%; background-color: var(--progress-bg); border-radius: 3px; border: 1px solid var(--border-light); overflow: hidden; }
+.quality-cp-bar-fill { height: 100%; background-color: var(--progress-fill); border-radius: 3px; transition: width 0.3s ease-out; }
+
+.equipment-slots { display: flex; gap: 1rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-color); }
+.equip-slot { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--border-radius); width: 150px; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.slot-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; }
+.equipped-item { text-align: center; display: flex; flex-direction: column; gap: 0.5rem; }
+
+.inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.inventory-item { padding: 1rem; background: var(--bg-item); border: 1px solid var(--border-light); border-radius: var(--border-radius); }
+.item-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+.item-count { background: var(--bg-main); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
+.item-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.item-bonus { font-size: 0.8rem; color: var(--success-text); font-style: italic; margin-bottom: 0.5rem; }
+
+.equip-btn, .unequip-btn { width: 100%; padding: 0.3rem; font-size: 0.9rem; cursor: pointer; border-radius: var(--border-radius); }
+.equip-btn { background: var(--accent-primary); color: var(--text-primary); border: none; }
+.unequip-btn { background: var(--danger-color); color: white; border: none; }
+
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
+.quality-category-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; }
+.profile-quality-item { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-light); }
+.profile-quality-item:last-child { border-bottom: none; }
+
+.q-name { font-weight: bold; color: var(--text-primary); }
+.q-val { font-weight: bold; color: var(--accent-highlight); }
+.q-desc { font-size: 0.85rem; color: var(--text-secondary); margin: 0.25rem 0 0 0; line-height: 1.4; }
+.mini-progress-bar { height: 4px; background: var(--progress-bg); margin-top: 0.5rem; border-radius: 2px; overflow: hidden; }
+.mini-progress-bar .fill { height: 100%; background: var(--progress-fill); }
+
+.london-banner img, .banner-bg-image { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }

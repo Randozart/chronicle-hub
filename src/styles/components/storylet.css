@@ -1,0 +1,121 @@
+/* src/styles/components/storylet.css */
+
+.storylet-container {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    max-width: 900;
+}
+
+.storylet-text {
+    white-space: pre-wrap;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.storylet-main-content {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.storylet-image-container {
+    flex-shrink: 0;
+    width: 210px;
+    position: relative;
+}
+
+.storylet-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-light);
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+}
+
+.storylet-text-content {
+    flex-grow: 1;
+}
+
+.storylet-text-content h1 {
+    margin-top: 0;
+    color: var(--text-primary);
+}
+
+.options-container {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.option-button {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    padding: 0;
+    border-radius: var(--border-radius);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    font-size: 1rem;
+    font-family: var(--font-main);
+}
+
+.option-button:hover {
+    background-color: var(--bg-item-hover);
+    border-color: var(--accent-highlight);
+}
+
+.option-button h3 { margin: 0 0 0.5rem 0; }
+.option-button p { margin: 0; color: var(--text-secondary); font-size: 0.9rem; }
+.option-button.locked { background-color: var(--bg-panel); cursor: not-allowed; opacity: 0.6; border-color: var(--border-color); }
+.option-button.locked:hover { background-color: var(--bg-panel); }
+
+.option-content-wrapper { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem 1.5rem; }
+.option-image-container { flex-shrink: 0; width: 60px; }
+.option-image { width: 100%; display: block; aspect-ratio: 3 / 4; object-fit: cover; border-radius: calc(var(--border-radius) / 2); border: 1px solid var(--border-light); }
+.option-text-wrapper { flex-grow: 1; display: flex; flex-direction: column; }
+.option-text-wrapper > h3, .option-text-wrapper > p { margin-top: 0; }
+
+.option-short-desc { margin-top: 0.5rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 1rem; font-weight: normal; }
+.option-skill-check { margin: 0.75rem 0 0 0; font-size: 0.9rem; font-weight: bold; }
+.option-locked-reason { margin-top: 0.75rem; color: var(--danger-color); font-weight: bold; font-size: 0.85rem; }
+.option-meta-text { margin: 0.75rem 0 0 0; color: var(--accent-highlight); font-size: 0.85rem; font-weight: bold; border-top: 1px dashed var(--border-light); padding-top: 0.75rem; }
+
+.quality-changes { margin-top: 1rem; padding: 1rem; background-color: var(--success-bg); border: 1px solid var(--success-color); border-radius: var(--border-radius); }
+.metatext { font-style: italic; color: var(--text-muted); border-left: 3px solid var(--border-light); padding-left: 1rem; margin-top: 1.5rem; }
+
+.footer-actions { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+.return-button, .continue-button { width: 100%; text-align: center; background-color: var(--accent-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--border-radius); cursor: pointer; font-weight: bold; }
+.return-button:hover, .continue-button:hover { background-color: var(--accent-hover); }
+
+.result-title { padding: 0.5rem 1rem; border-radius: var(--border-radius); margin-bottom: 1rem; display: inline-block; }
+.result-title.success { background-color: var(--success-bg); border-left: 4px solid var(--success-color); }
+.result-title.failure { background-color: var(--danger-bg); border-left: 4px solid var(--danger-color); }
+.skill-check-result { margin-top: 1.5rem; padding: 1rem; background-color: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--border-radius); text-align: center; font-style: italic; color: var(--text-secondary); }
+
+.location-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-color); }
+.location-image-container { flex-shrink: 0; width: 150px; }
+.location-image { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 50%; border: 2px solid var(--border-light); }
+.location-text h2 { margin: 0; font-size: 1rem; font-weight: normal; color: var(--text-muted); }
+.location-text h1 { margin: 0; font-size: 2.5rem; color: var(--text-primary); }
+.location-storylets { margin-top: 2rem; }
+.location-storylets h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+.storylet-list-container { display: flex; flex-direction: column; gap: 1rem; }
+
+.quality-changes-container { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; }
+.quality-change-item { width: 100%; }
+.quality-change-text { margin: 0 0 0.25rem 0; font-size: 0.9rem; color: var(--text-secondary); }
+.quality-change-text.simple-change { padding: 0.5rem 0; }
+.bar-wrapper { display: flex; align-items: center; gap: 0.75rem; }
+.bar-level-label { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
+.quality-bar-background { flex-grow: 1; height: 12px; background-color: var(--progress-bg); border-radius: var(--border-radius); overflow: hidden; border: 1px solid var(--border-light); }
+.quality-bar-fill { height: 100%; background-color: var(--success-color); border-radius: var(--border-radius); transition: width 0.75s ease-in-out; }
+.quality-bar-fill.menace { background-color: var(--danger-color); }
+.simple-change.menace-text { color: var(--danger-color); font-weight: bold; }
+.special-block-text { text-align: center; font-family: var(--font-main); color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.2em; margin: 1.5rem 0; padding: 0.5rem; }

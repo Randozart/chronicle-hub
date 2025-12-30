@@ -1,0 +1,135 @@
+/* src/styles/base/responsive.css */
+
+/* --- TABLET (Max 1024px) --- */
+@media (max-width: 1024px) {
+    
+    /* Collapse the Nexus (Play) Grid */
+    .layout-grid-nexus {
+        /* Sidebar on top, content below */
+        grid-template-columns: 1fr; 
+        grid-template-rows: auto 1fr;
+        height: auto; /* Allow scrolling of the whole page */
+        overflow-y: auto;
+    }
+
+    /* Adjust Sidebar */
+    .sidebar-panel {
+        width: 100%;
+        height: auto;
+        max-height: 300px; /* Limit height, make scrollable */
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        position: relative; /* No longer sticky */
+    }
+
+    /* Simplify Docs Layout */
+    .docs-wrapper {
+        flex-direction: column;
+    }
+    .docs-nav {
+        width: 100%;
+        height: auto;
+        max-height: 200px;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid #333;
+    }
+    .docs-main {
+        padding: 2rem;
+    }
+}
+
+/* --- MOBILE (Max 768px) --- */
+@media (max-width: 768px) {
+
+    /* --- GLOBAL TWEAKS --- */
+    .container, .storylet-container {
+        padding: 1rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* --- DASHBOARD --- */
+    /* Dashboard Grid is already responsive (auto-fill), 
+       but we force single column on very small screens */
+    .theme-wrapper > div > div {
+        padding: 1rem !important; /* Override inline styles */
+    }
+
+    /* --- GAMEPLAY (Nexus) --- */
+    .storylet-main-content {
+        flex-direction: column;
+    }
+    .storylet-image-container {
+        width: 100%;
+        max-width: 100%;
+        margin-bottom: 1rem;
+    }
+    .storylet-image {
+        aspect-ratio: 16/9; /* Widescreen on mobile */
+    }
+
+    /* --- EDITOR (The hard part) --- */
+    .editor-layout {
+        flex-direction: column;
+        overflow-y: auto; /* Enable window scrolling */
+    }
+    
+    /* Hide the visual node graph sidebar on mobile? 
+       Or stack it. Stacking usually breaks graphs. 
+       Let's stack layout columns. */
+    .editor-main {
+        height: auto;
+        min-height: 500px;
+    }
+
+    .editor-sidebar {
+        width: 100% !important; /* Override inline styles */
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Toolbar wrapping */
+    .editor-toolbar {
+        height: auto;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Piano Roll Mobile Fixes */
+    .pianoroll-container {
+        height: 500px; /* Fixed height on mobile */
+    }
+    .pianoroll-keys {
+        width: 30px; /* Thinner keys */
+    }
+    
+    /* --- ADMIN --- */
+    .admin-layout {
+        flex-direction: column;
+    }
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        flex-direction: row;
+        overflow-x: auto; /* Horizontal scroll for menu */
+    }
+    .admin-nav ul {
+        display: flex;
+    }
+    .admin-link {
+        white-space: nowrap;
+    }
+    
+    .admin-split-view {
+        flex-direction: column;
+    }
+    .admin-list-col {
+        width: 100%;
+        position: static;
+        max-height: 300px;
+        margin-bottom: 1rem;
+    }
+}
