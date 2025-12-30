@@ -193,7 +193,7 @@ export default function ScribeEditor({
                 .ss-flow-op { color: #f77e6eff; font-weight: bold; } /* Soft Pink */
 
                 /* 8. Metadata */
-                .ss-metadata { color: #7f848e; font-style: italic; }
+                .ss-metadata { color: #617382ff; font-style: italic; }
                 
                 .ss-js-keyword { 
                     color: #ff79c6; /* Vibrant Pink/Magenta (Dracula Theme inspired) */
