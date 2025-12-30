@@ -121,6 +121,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
     <NavItem href="/docs/logic" label="Logic & Conditions" />
     <NavItem href="/docs/effects" label="Effects & State Changes" />
     <NavItem href="/docs/macros" label="Macros & Functions" />
+    <NavItem href="/docs/highlighting" label="Editor Highlighting" />
 
     <Section title="The World" />
     <NavItem href="/docs/storylets" label="Storylets & Opportunities" />
