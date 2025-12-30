@@ -99,7 +99,8 @@ export interface QualityDefinition {
     
     // UI: Used ONLY for grouping in the sidebar/editor. Does not affect game logic.
     folder?: string; 
-    
+    editor_name?: string; 
+
     image?: string;
     ordering?: number;
 

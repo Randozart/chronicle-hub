@@ -106,7 +106,13 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
         <div className="admin-split-view">
             <AdminListSidebar 
                 title="Qualities" 
-                items={qualities} 
+
+                //Override to use a custom display name, in case the actual name uses scribescript logic
+                items={qualities.map(q => ({
+                    ...q,
+                    name: q.editor_name || q.name || q.id
+                }))}
+                
                 selectedId={selectedId} 
                 onSelect={setSelectedId} 
                 onCreate={handleCreate}
@@ -293,7 +299,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             </div>
 
-            {/* FOLDER & CATEGORY */}
+            {/* ORGANIZATION */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Folder (UI)</label>
@@ -302,21 +308,32 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         onChange={e => handleChange('folder', e.target.value)} 
                         className="form-input" 
                         placeholder="Items.Weapons" 
-                        title="Use dots for nesting: Folder.Subfolder"
                     />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <SmartArea
-                        label="Category (Logic)"
-                        value={form.category || ''}
-                        onChange={v => handleChange('category', v)}
-                        storyId={storyId}
-                        minHeight="38px"
-                        placeholder="For Scripts (e.g. 'Weapons')"
-                        subLabel="Comma-seperated or Conditional"
-                        contextQualityId={form.id}
+                    <label className="form-label">Display Name (Editor)</label>
+                    <input 
+                        value={form.editor_name || ''} 
+                        onChange={e => handleChange('editor_name', e.target.value)} 
+                        className="form-input" 
+                        placeholder="Internal Label (Optional)" 
+                        style={{ borderColor: '#61afef' }} // Subtle hint it's meta
+                        title="Overrides the Name in the sidebar list only. Not seen by players."
                     />
                 </div>
+            </div>
+            
+            <div className="form-group">
+                <SmartArea
+                    label="Category (Logic)"
+                    value={form.category || ''}
+                    onChange={v => handleChange('category', v)}
+                    storyId={storyId}
+                    minHeight="38px"
+                    placeholder="For Scripts (e.g. 'Weapons')"
+                    subLabel="Comma-seperated or Conditional"
+                    contextQualityId={form.id}
+                />
             </div>
 
             {/* IMAGE CODE (Now SmartArea) */}
