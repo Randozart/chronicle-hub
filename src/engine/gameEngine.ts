@@ -74,15 +74,15 @@ export class GameEngine {
         return total;
     }
 
-    public evaluateCondition(expression?: string): boolean {
-        // FIXED ORDER: (expr, quals, defs, self, roll, aliases)
+    public evaluateCondition(expression?: string, contextOverride?: { qid: string, state: QualityState }): boolean {
+        // ...
         return evaluateScribeCondition(
             expression, 
             this.qualities, 
             this.worldContent.qualities, 
-            null, // selfContext
-            this.resolutionRoll, // roll
-            this.tempAliases // aliases
+            contextOverride || null, // Pass override if exists
+            this.resolutionRoll, 
+            this.tempAliases
         );
     }
 
@@ -208,12 +208,56 @@ export class GameEngine {
                 continue;
             }
 
-            const batchMatch = cleanEffect.match(/^%all\[(.*?)\]\s*(=|\+=|-=)\s*(.*)$/);
+            // --- UPGRADE: %all with Filter ---
+            const batchMatch = cleanEffect.match(/^%all\[([^;\]]+)(?:;\s*([^\]]+))?\]\s*(=|\+=|-=)\s*(.*)$/);
             if (batchMatch) {
-                const [, cat, op, val] = batchMatch;
+                const [, catExpr, filterExpr, op, val] = batchMatch;
                 const resolvedVal = this.evaluateText(`{${val}}`);
                 const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-                this.batchChangeQuality(cat, op, numVal, {});
+                this.batchChangeQuality(catExpr, op, numVal, filterExpr); // Pass filterExpr
+                continue;
+            }
+
+            // --- NEW: %new Macro ---
+            // %new[ID; Template, prop:val] = value
+            const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\]\s*(=)\s*(.*)$/);
+            if (newMatch) {
+                const [, idExpr, argsStr, op, valStr] = newMatch;
+                const newId = this.evaluateText(`{${idExpr}}`).trim();
+                const resolvedVal = this.evaluateText(`{${valStr}}`);
+                const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
+
+                const props: Record<string, any> = {};
+                let templateId: string | null = null;
+
+                if (argsStr) {
+                    // Split args by comma (simple split)
+                    const args = argsStr.split(',').map(s => s.trim());
+                    
+                    // Check first arg for "Silent Template" (No colon)
+                    if (args.length > 0 && !args[0].includes(':')) {
+                        const rawTemplate = args.shift()!; // Remove and use as template
+                        templateId = this.evaluateText(`{${rawTemplate}}`);
+                    }
+
+                    // Process remaining Key:Value pairs
+                    args.forEach(arg => {
+                        const [k, ...vParts] = arg.split(':');
+                        if (!k) return;
+                        
+                        const key = k.trim();
+                        let rawVal = vParts.join(':').trim();
+                        
+                        // Check for string literals '...' or "..." to skip evaluation
+                        if ((rawVal.startsWith('"') && rawVal.endsWith('"')) || (rawVal.startsWith("'") && rawVal.endsWith("'"))) {
+                            props[key] = rawVal.slice(1, -1);
+                        } else {
+                            props[key] = this.evaluateText(`{${rawVal}}`);
+                        }
+                    });
+                }
+
+                this.createNewQuality(newId, numVal, templateId, props);
                 continue;
             }
 
@@ -317,21 +361,82 @@ export class GameEngine {
         this.scheduledUpdates.push(instruction);
     }
 
-    public batchChangeQuality(categoryExpr: string, op: string, value: number | string, meta: any) {
-        const targetCat = this.evaluateText(
-            categoryExpr.startsWith('{') ? categoryExpr : `{${categoryExpr}}`
-        ).trim().toLowerCase();
+    public batchChangeQuality(categoryExpr: string, op: string, value: number | string, filterExpr?: string) {
+        const targetCat = this.evaluateText(`{${categoryExpr}}`).trim().toLowerCase();
         
         const qids = Object.values(this.worldContent.qualities)
             .filter(q => {
                 if (!q.category) return false;
                 const cats = q.category.split(',').map(c => c.trim().toLowerCase());
-                return cats.includes(targetCat);
+                if (!cats.includes(targetCat)) return false;
+
+                // --- NEW: Run Filter ---
+                if (filterExpr) {
+                    const state = this.qualities[q.id] || { qualityId: q.id, level: 0, type: q.type } as any;
+                    // We must pass the context override to evaluateCondition
+                    return this.evaluateCondition(filterExpr, { qid: q.id, state });
+                }
+                return true;
             })
             .map(q => q.id);
             
-        console.log(`[Batch] Applying '${op} ${value}' to category '${targetCat}'. Hits: ${qids.length}`);
-        qids.forEach(qid => this.changeQuality(qid, op, value, meta));
+        console.log(`[Batch] Applying '${op} ${value}' to category '${targetCat}' (Filter: ${filterExpr || 'None'}). Hits: ${qids.length}`);
+        qids.forEach(qid => this.changeQuality(qid, op, value, {}));
+    }
+
+    public createNewQuality(id: string, value: number | string, templateId: string | null, props: Record<string, any>) {
+        // 1. Get Template Definition
+        let def: Partial<QualityDefinition> = {};
+        if (templateId && this.worldContent.qualities[templateId]) {
+            def = { ...this.worldContent.qualities[templateId] };
+        } else {
+            // Default type inference
+            def = { type: typeof value === 'string' ? QualityType.String : QualityType.Pyramidal };
+        }
+
+        // 2. Initialize or Update State
+        // Note: We store dynamic properties in 'customProperties' on the state object.
+        // The textProcessor needs to know to look there.
+        
+        let state = this.qualities[id];
+        
+        if (!state) {
+            // Create New
+            this.qualities[id] = {
+                qualityId: id,
+                type: def.type || QualityType.Pyramidal,
+                level: typeof value === 'number' ? value : 0,
+                stringValue: typeof value === 'string' ? value : "",
+                changePoints: 0,
+                customProperties: {
+                    // Copy scalar fields from template definition to state properties
+                    // This allows {$.name} to work even if we don't have a real definition for 'id'
+                    ...(def.name ? { name: def.name } : {}),
+                    ...(def.description ? { description: def.description } : {}),
+                    ...(def.image ? { image: def.image } : {}),
+                    ...props // User overrides win
+                }
+            } as any;
+        } else {
+            // Update Existing
+            // FIX: Cast to any to bypass strict union checks for dynamic updates
+            const dynamicState = state as any;
+
+            if (!dynamicState.customProperties) dynamicState.customProperties = {};
+            
+            Object.assign(dynamicState.customProperties, props);
+            
+            if (typeof value === 'number') {
+                 dynamicState.level = value;
+                 // If it was a string before, we might want to clear stringValue or change type
+                 // For now, assume user knows what they are doing with the type mismatch
+            }
+            if (typeof value === 'string') {
+                 dynamicState.stringValue = value;
+            }
+        }
+        
+        console.log(`[GameEngine] Created/Updated ${id}. Template: ${templateId}`, this.qualities[id]);
     }
 
     public changeQuality(qid: string, op: string, value: number | string, metadata: { desc?: string; source?: string; hidden?: boolean }): void {
@@ -497,4 +602,6 @@ export class GameEngine {
             description: `Rolled ${Math.floor(this.resolutionRoll)} vs ${targetChance}%` 
         };
     }
+
+    
 }
