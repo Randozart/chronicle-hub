@@ -130,6 +130,7 @@ export default function SmartArea({
                     placeholder={placeholder}
                     language="scribescript"
                     errors={errors}
+                    mode={mode} 
                 />
             </div>
             

@@ -18,6 +18,7 @@ interface Props {
     minHeight?: string;
     language?: 'scribescript' | 'ligature';
     errors?: LintError[]; 
+    mode?: 'text' | 'condition' | 'effect'; 
 }
 
 export default function ScribeEditor({ 
@@ -26,10 +27,10 @@ export default function ScribeEditor({
     placeholder, 
     minHeight = "100px", 
     language = 'scribescript',
-    errors = []
+    errors = [],
+    mode = 'text' // NEW PROP with Default
 }: Props) {
     
-    // Register Ligature Grammar on mount (idempotent)
     useEffect(() => {
         if (!languages.ligature) {
             languages.ligature = ligatureGrammar;
@@ -39,21 +40,18 @@ export default function ScribeEditor({
     const [cursorOffset, setCursorOffset] = useState<number | null>(null);
     const isLigature = language === 'ligature';
 
-    // --- HYBRID HIGHLIGHTER ---
+    // --- HIGHLIGHTER STRATEGY ---
     const highlightCode = (code: string) => {
         if (isLigature) {
-            // Use Prism for Ligature
             return highlight(code, languages.ligature || ligatureGrammar, 'ligature'); 
         } else {
-            // Use Custom Stateful Tokenizer for ScribeScript
-            return highlightScribeScript(code, cursorOffset);
+            // Pass the mode prop to the tokenizer
+            return highlightScribeScript(code, cursorOffset, mode);
         }
     };
 
-    // Generate Line Numbers
     const lineCount = useMemo(() => value.split('\n').length, [value]);
     const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1), [lineCount]);
-
     // Error Map
     const errorMap = useMemo(() => {
         const map = new Map<number, 'error' | 'warning'>();
