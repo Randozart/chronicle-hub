@@ -1,7 +1,5 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-// import '@/app/tools.css'; 
-
 import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';

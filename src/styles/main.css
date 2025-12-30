@@ -1,0 +1,28 @@
+/* src/styles/main.css */
+
+/* 1. Configuration */
+@import "./theme.css";
+@import "./base/animations.css";
+
+/* 2. Base & Responsive */
+@import "./base/core.css";
+@import "./base/responsive.css"; 
+
+/* 3. Layouts & Presets */
+@import "./layouts/layout.css";
+@import "./layouts/presets.css"; 
+@import "./layouts/tabletop.css"; 
+@import "./layouts/admin.css";
+@import "./layouts/docs.css";
+
+/* 4. Components */
+@import "./components/ui.css";
+@import "./components/cards.css";
+@import "./components/storylet.css";
+@import "./components/character.css";
+
+/* 5. Tooling */
+@import "./tools/editor.css";
+
+/* 6. Theme Overrides */
+@import "./themes/modifiers.css";

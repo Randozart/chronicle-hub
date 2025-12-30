@@ -1,0 +1,92 @@
+/* src/styles/components/cards.css */
+
+.opportunity-hand { margin-top: 2rem; }
+.opportunity-hand h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+
+.card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
+
+.card {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4); border-color: var(--accent-highlight); }
+.card-image { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; }
+.card-text { padding: 1rem; }
+.card-text h3 { margin: 0 0 0.5rem 0; }
+.card-text p { margin: 0; font-size: 0.9rem; color: var(--text-secondary); font-style: italic; }
+.no-cards-text { color: var(--text-muted); font-style: italic; }
+
+.deck-actions { margin-top: 2rem; text-align: center; }
+.deck-button { background-color: var(--accent-primary); color: var(--text-primary); border: none; padding: 1rem 2rem; border-radius: var(--border-radius); font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+.deck-button:hover { background-color: var(--accent-hover); }
+
+/* Special override to ensure WorldCards in the dashboard behave even inside themes */
+.card.theme-wrapper, .preview-card.theme-wrapper {
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    background-attachment: scroll !important;
+    background-size: cover !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* Fix complex themes bleeding into simple cards */
+.card.theme-wrapper .sidebar-panel,
+.card.theme-wrapper .location-header,
+.preview-card.theme-wrapper .sidebar-panel {
+    position: static !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.card.theme-wrapper img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border: none !important;
+    filter: none !important;
+}
+
+/* Fix buttons inside cards */
+.card.theme-wrapper .continue-button,
+.card.theme-wrapper .return-button {
+    width: auto !important;
+    height: auto !important;
+    flex: 1 1 0% !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    background: var(--bg-item) !important;
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+    position: static !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.card.theme-wrapper .continue-button:hover,
+.card.theme-wrapper .return-button:hover {
+    background: var(--accent-primary) !important;
+    color: #fff !important;
+    border-color: var(--accent-primary) !important;
+}

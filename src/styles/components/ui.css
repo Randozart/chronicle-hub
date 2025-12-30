@@ -1,0 +1,73 @@
+/* src/styles/components/ui.css */
+
+.theme-wrapper {
+    color: var(--text-primary);
+    background: var(--bg-main);
+    font-family: var(--font-main);
+    --_bg-panel: var(--bg-panel);
+    --_bg-item: var(--bg-item);
+    --_text-primary: var(--text-primary);
+    --_border-color: var(--border-color);
+}
+
+.tab-bar {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-item);
+    padding: 0 1rem;
+}
+
+.tab-btn {
+    padding: 1rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    color: var(--accent-highlight);
+    border-bottom-color: var(--accent-highlight);
+}
+
+.switch-char-btn {
+    width: 100%;
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.4);
+    color: var(--danger-color);
+    padding: 0.8rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.switch-char-btn:hover {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: var(--danger-color);
+}
+
+.cost-badge {
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 10px;
+    white-space: nowrap;
+}
+.cost-numeric { color: var(--danger-color); background: rgba(0,0,0,0.3); }
+.cost-free { color: var(--success-color); background: rgba(0,0,0,0.3); }
+.cost-logic { color: var(--accent-highlight); background: rgba(0,0,0,0.3); border: 1px dashed var(--accent-highlight); }

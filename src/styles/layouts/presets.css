@@ -1,0 +1,93 @@
+/* src/styles/layouts/presets.css */
+
+/* --- PRESET: THE "DOSSIER" LAYOUT ---
+   Used for themes that resemble files, folders, or physical papers.
+   Features: Sticky sidebar, rotated elements, floating containers.
+*/
+
+/* 1. The Wrapper */
+.layout-preset-dossier .layout-grid-nexus {
+    display: grid;
+    grid-template-columns: 400px minmax(0, 1fr); /* Wider sidebar */
+    gap: 2rem;
+    max-width: 1500px;
+    width: 95%;
+    height: 100%;
+    margin: 4rem auto;
+    align-items: start;
+}
+
+/* 2. The Sidebar (The Folder) */
+.layout-preset-dossier .sidebar-panel {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-paper, 0 4px 6px rgba(0,0,0,0.1));
+    position: sticky;
+    top: 2rem;
+    max-height: calc(100vh - 4rem);
+    width: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    /* Generic "Tilted Folder" look */
+    transform: rotate(-0.5deg);
+}
+
+/* 3. The Content (The Papers) */
+.layout-preset-dossier .content-area {
+    overflow: visible !important;
+    height: auto !important;
+}
+
+.layout-preset-dossier .storylet-container {
+    background: var(--bg-item);
+    padding: 4rem;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-float, 0 10px 20px rgba(0,0,0,0.2));
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto 3rem auto;
+    /* Generic "Paper Stack" rotation */
+    transform: rotate(0.4deg);
+    overflow: visible !important;
+    height: auto !important;
+}
+
+/* 4. The Options (Index Cards) */
+.layout-preset-dossier .option-button {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-paper, 0 2px 4px rgba(0,0,0,0.1));
+    transition: transform 0.2s ease-out;
+    position: relative; 
+    overflow: visible;
+}
+
+/* Natural randomness for cards */
+.layout-preset-dossier .option-button:nth-child(odd) { transform: rotate(-0.5deg); }
+.layout-preset-dossier .option-button:nth-child(even) { transform: rotate(0.5deg); }
+
+.layout-preset-dossier .option-button:hover {
+    transform: scale(1.01) rotate(0deg) translateY(-3px);
+    z-index: 5;
+    background-color: var(--bg-item-hover);
+}
+
+/* 5. Mobile Override for Dossier */
+@media (max-width: 900px) {
+    .layout-preset-dossier .layout-grid-nexus {
+        grid-template-columns: 1fr;
+        margin: 1rem auto;
+        width: 100%;
+    }
+    .layout-preset-dossier .sidebar-panel,
+    .layout-preset-dossier .storylet-container {
+        transform: none;
+        max-height: none;
+        position: static;
+    }
+}

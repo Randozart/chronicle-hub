@@ -1,0 +1,40 @@
+/* src/styles/base/core.css */
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    padding: 0;
+    margin: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+button, input, textarea, select, h1 {
+    font-family: inherit;
+    color: inherit;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.object-cover { object-fit: cover; }
+
+.text-emphasis {
+    color: var(--accent-highlight);
+    text-decoration: inherit; 
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    font-style: italic;
+    color: var(--text-muted);
+}
