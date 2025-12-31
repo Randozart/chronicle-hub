@@ -71,3 +71,58 @@
 .cost-numeric { color: var(--danger-color); background: rgba(0,0,0,0.3); }
 .cost-free { color: var(--success-color); background: rgba(0,0,0,0.3); }
 .cost-logic { color: var(--accent-highlight); background: rgba(0,0,0,0.3); border: 1px dashed var(--accent-highlight); }
+
+/* Floating Toggle Button (FAB) */
+.mobile-sidebar-toggle {
+    display: none; /* Hidden on Desktop */
+}
+
+/* Sidebar Close Button */
+.mobile-close-btn {
+    display: none; /* Hidden on Desktop */
+}
+
+/* Sidebar Mobile State */
+/* By default on mobile, sidebar is hidden or stacked. 
+   When '.mobile-visible' is applied via React state: */
+.mobile-visible {
+    display: flex !important;
+    position: fixed !important;
+    top: 0; left: 0; bottom: 0; right: 0;
+    z-index: 1000 !important;
+    background-color: var(--bg-panel);
+    padding: 2rem !important;
+    overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+    .mobile-sidebar-toggle {
+        display: block;
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background-color: var(--accent-highlight);
+        color: var(--bg-main);
+        border: none;
+        border-radius: 50px;
+        padding: 1rem 1.5rem;
+        font-weight: bold;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        z-index: 900;
+        cursor: pointer;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
+
+    .mobile-close-btn {
+        display: block;
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(0,0,0,0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+}
