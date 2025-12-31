@@ -30,8 +30,9 @@ type ResolutionState = {
     title: string; body: string; redirectId?: string; image_code?: string;
     wasSuccess?: boolean; skillCheckDetails?: { description: string; };
     qualityChanges: QualityChangeInfo[];
-    // SAFETY_NET: Errors array from engine
     errors?: string[]; 
+    // DEBUG UPDATE
+    rawEffects?: string;
 };
 
 export default function StoryletDisplay({ 
@@ -52,13 +53,13 @@ export default function StoryletDisplay({
     const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     
-    // SAFETY_NET: Debug UI Toggle State
+    // DEBUG STATE
     const [showDebug, setShowDebug] = useState(false);
+    const [showHidden, setShowHidden] = useState(false);
     
     const storylet = eventData; 
     
     const evalText = (text: string | undefined) => {
-        // Fix: Pass null for selfContext
         return evaluateText(text, qualities, qualityDefs, null, 0);
     };
 
@@ -84,7 +85,6 @@ export default function StoryletDisplay({
             
             const data = await response.json();
             
-            // SAFETY_NET: Check for fatal generic error from try/catch in route
             if (data.error && !data.result) {
                  alert(`Critical Error: ${data.error}\n${data.details}`);
                  return;
@@ -123,7 +123,6 @@ export default function StoryletDisplay({
         if (explicitReturn) {
             const target = storyletDefs[explicitReturn];
             if (target) {
-                // Fix: Pass null for selfContext
                 const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, null, 0);
                 const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, null, 0);
                 if (!isVisible || !isUnlocked) return undefined; 
@@ -138,6 +137,9 @@ export default function StoryletDisplay({
     const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
      if (resolution) {
+        // Check if user has ANY debug privileges (errors exist OR rawEffects was sent)
+        const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
+
         return (
             <div className="storylet-container">
                 <div className="storylet-main-content">
@@ -162,36 +164,74 @@ export default function StoryletDisplay({
 
                 {resolution.qualityChanges?.length > 0 && 
                     <div className="quality-changes-container">
-                        {resolution.qualityChanges.map((change) => (
-                            <QualityChangeBar 
-                                key={change.qid} 
-                                change={change} 
-                                categoryDef={categories[change.category || ""]} 
-                            />
-                        ))}
+                        {resolution.qualityChanges.map((change) => {
+                            if (change.hidden && !showHidden) return null;
+                            return (
+                                <div key={change.qid} style={{ opacity: change.hidden ? 0.6 : 1 }}>
+                                    <QualityChangeBar 
+                                        change={change} 
+                                        categoryDef={categories[change.category || ""]} 
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                 }
 
-                {/* SAFETY_NET: Debug Console for Creator/Writer Roles */}
-                {resolution.errors && resolution.errors.length > 0 && (
-                    <div style={{ marginTop: '20px', border: '1px solid #e74c3c', borderRadius: '4px', overflow: 'hidden' }}>
+                {/* DEBUG CONSOLE */}
+                {canDebug && (
+                    <div style={{ marginTop: '20px', border: '1px solid #7f8c8d', borderRadius: '4px', overflow: 'hidden' }}>
                         <div 
                             onClick={() => setShowDebug(!showDebug)}
                             style={{ 
-                                background: '#e74c3c', color: 'white', padding: '8px 12px', 
+                                background: (resolution.errors && resolution.errors.length > 0) ? '#e74c3c' : '#7f8c8d', 
+                                color: 'white', padding: '8px 12px', 
                                 cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' 
                             }}
                         >
-                            <span>⚠️ ScribeScript Errors ({resolution.errors.length})</span>
+                            <span>
+                                {(resolution.errors && resolution.errors.length > 0) ? '⚠️ Script Errors Detected' : '🛠️ Debug Console'}
+                            </span>
                             <span>{showDebug ? '▼' : '▶'}</span>
                         </div>
+                        
                         {showDebug && (
-                            <div style={{ background: '#2c3e50', color: '#ecf0f1', padding: '12px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                                <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                                    {resolution.errors.map((err, idx) => (
-                                        <li key={idx} style={{ marginBottom: '4px' }}>{err}</li>
-                                    ))}
-                                </ul>
+                            <div style={{ background: '#2c3e50', color: '#ecf0f1', padding: '12px', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                                
+                                <div style={{ marginBottom: '10px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={showHidden} 
+                                            onChange={(e) => setShowHidden(e.target.checked)}
+                                            style={{ marginRight: '8px' }}
+                                        />
+                                        Show Hidden Effects
+                                    </label>
+                                </div>
+
+                                {resolution.errors && resolution.errors.length > 0 && (
+                                    <div style={{ marginBottom: '15px', borderBottom: '1px solid #95a5a6', paddingBottom: '10px' }}>
+                                        <strong style={{ color: '#e74c3c' }}>Errors:</strong>
+                                        <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                                            {resolution.errors.map((err, idx) => (
+                                                <li key={idx} style={{ marginBottom: '2px' }}>{err}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {resolution.rawEffects && (
+                                    <div>
+                                        <strong style={{ color: '#3498db' }}>Executed ScribeScript:</strong>
+                                        <pre style={{ 
+                                            background: '#000', padding: '8px', marginTop: '5px', 
+                                            whiteSpace: 'pre-wrap', borderRadius: '4px', color: '#f1c40f' 
+                                        }}>
+                                            {resolution.rawEffects}
+                                        </pre>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -202,6 +242,7 @@ export default function StoryletDisplay({
         );
     }
     
+    // ... [Rest of the file remains unchanged] ...
     const getLockReason = (condition: string): string => {
         const match = condition.match(/\$([a-zA-Z0-9_]+)\s*(>=|<=|==|>|<)\s*(\d+)/);
         if (!match) return `A requirement is not met.`;
@@ -214,10 +255,8 @@ export default function StoryletDisplay({
     };
 
     const optionsToDisplay: DisplayOption[] = storylet.options
-        // Fix: Pass null for selfContext
         .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, null, 0))
         .map(option => {
-            // Fix: Pass null for selfContext
             const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, null, 0);
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
             

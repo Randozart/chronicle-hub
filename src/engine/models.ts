@@ -318,6 +318,7 @@ export interface QualityChangeInfo {
     changeText: string; 
     overrideDescription?: string; 
     scope?: 'character' | 'world';
+    hidden?: boolean; 
 }
 
 export interface EngineResult {

@@ -21,8 +21,8 @@ export class GameEngine {
     private scheduledUpdates: ScheduleInstruction[] = [];
     private resolutionRoll: number;
     
-    // Ephemeral Alias Map for the current resolution cycle
     private tempAliases: Record<string, string> = {}; 
+    private errors: string[] = [];
 
     constructor(
         initialQualities: PlayerQualities,
@@ -75,26 +75,26 @@ export class GameEngine {
     }
 
     public evaluateCondition(expression?: string, contextOverride?: { qid: string, state: QualityState }): boolean {
-        // ...
         return evaluateScribeCondition(
             expression, 
             this.qualities, 
             this.worldContent.qualities, 
-            contextOverride || null, // Pass override if exists
+            contextOverride || null,
             this.resolutionRoll, 
-            this.tempAliases
+            this.tempAliases,
+            this.errors
         );
     }
 
     public evaluateText(rawText: string | undefined): string {
-        // FIXED ORDER: (text, quals, defs, self, roll, aliases)
         return evaluateScribeText(
             rawText, 
             this.qualities, 
             this.worldContent.qualities, 
-            null, // selfContext
-            this.resolutionRoll, // roll
-            this.tempAliases // aliases
+            null, 
+            this.resolutionRoll, 
+            this.tempAliases,
+            this.errors
         );
     }
 
@@ -102,6 +102,7 @@ export class GameEngine {
         this.changes = [];
         this.scheduledUpdates = [];
         this.tempAliases = {}; 
+        this.errors = []; 
         
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
@@ -124,7 +125,9 @@ export class GameEngine {
             moveToId, 
             qualityChanges: this.changes, 
             scheduledUpdates: this.scheduledUpdates, 
-            skillCheckDetails: challengeResult 
+            skillCheckDetails: challengeResult,
+            errors: this.errors,
+            rawEffects: changeString 
         };
     }
 
@@ -151,9 +154,7 @@ export class GameEngine {
     private deepEvaluate(obj: any): any {
         if (typeof obj === 'string') {
             if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@')) {
-                // FIXED ORDER: (text, quals, defs, self, roll, aliases)
-                // Use null for self, roll, and empty for aliases
-                return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, {});
+                return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, {}, []);
             }
             return obj;
         }
@@ -175,29 +176,19 @@ export class GameEngine {
     public applyEffects(effectsString: string): void {
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
         
-        // Split by comma, ignoring commas inside brackets []
         const effects = effectsString.split(/,(?![^\[]*\])/g); 
 
         for (const effect of effects) {
             const cleanEffect = effect.trim();
             if (!cleanEffect) continue;
 
-            console.log(`[ENGINE DEBUG] Processing effect: "${cleanEffect}"`);
-
-            // --- FIX START: DYNAMIC INSTRUCTION SUPPORT ---
-            // If we find a standalone block like "{$enforcer.ability}", we evaluate it.
-            // If the RESULT contains an assignment (=) or a macro (%), we recursively apply it.
             if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
                 const resolvedCommand = this.evaluateText(cleanEffect);
-                
-                // If the resolved text looks like code (has = or %), run it!
                 if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%'))) {
-                    console.log(`[ENGINE DEBUG] Executing injected command: "${resolvedCommand}"`);
                     this.applyEffects(resolvedCommand);
                 }
                 continue;
             }
-            // --- FIX END ---
 
             const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
             if (macroMatch) {
@@ -208,18 +199,15 @@ export class GameEngine {
                 continue;
             }
 
-            // --- UPGRADE: %all with Filter ---
             const batchMatch = cleanEffect.match(/^%all\[([^;\]]+)(?:;\s*([^\]]+))?\]\s*(=|\+=|-=)\s*(.*)$/);
             if (batchMatch) {
                 const [, catExpr, filterExpr, op, val] = batchMatch;
                 const resolvedVal = this.evaluateText(`{${val}}`);
                 const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-                this.batchChangeQuality(catExpr, op, numVal, filterExpr); // Pass filterExpr
+                this.batchChangeQuality(catExpr, op, numVal, filterExpr); 
                 continue;
             }
 
-            // --- NEW: %new Macro ---
-            // %new[ID; Template, prop:val] = value
             const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\]\s*(=)\s*(.*)$/);
             if (newMatch) {
                 const [, idExpr, argsStr, op, valStr] = newMatch;
@@ -231,24 +219,17 @@ export class GameEngine {
                 let templateId: string | null = null;
 
                 if (argsStr) {
-                    // Split args by comma (simple split)
                     const args = argsStr.split(',').map(s => s.trim());
-                    
-                    // Check first arg for "Silent Template" (No colon)
                     if (args.length > 0 && !args[0].includes(':')) {
-                        const rawTemplate = args.shift()!; // Remove and use as template
+                        const rawTemplate = args.shift()!;
                         templateId = this.evaluateText(`{${rawTemplate}}`);
                     }
 
-                    // Process remaining Key:Value pairs
                     args.forEach(arg => {
                         const [k, ...vParts] = arg.split(':');
                         if (!k) return;
-                        
                         const key = k.trim();
                         let rawVal = vParts.join(':').trim();
-                        
-                        // Check for string literals '...' or "..." to skip evaluation
                         if ((rawVal.startsWith('"') && rawVal.endsWith('"')) || (rawVal.startsWith("'") && rawVal.endsWith("'"))) {
                             props[key] = rawVal.slice(1, -1);
                         } else {
@@ -269,8 +250,6 @@ export class GameEngine {
                 let qid = "";
 
                 if (rawLhs.startsWith('{')) {
-                    // Logic Block on LHS: Evaluate it to get the Target ID
-                    // e.g. {%pick[...]} -> "secret_role_01"
                     qid = this.evaluateText(rawLhs).trim();
                     if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) {
                         qid = qid.substring(1);
@@ -280,7 +259,9 @@ export class GameEngine {
                     if (this.tempAliases[aliasKey]) {
                         qid = this.tempAliases[aliasKey]; 
                     } else {
-                        console.warn(`[GameEngine] Alias '${rawLhs}' not found in current context.`);
+                        const msg = `Alias '${rawLhs}' not found in current context.`;
+                        console.warn(msg);
+                        this.errors.push(msg); 
                         continue;
                     }
                 } else {
@@ -369,39 +350,29 @@ export class GameEngine {
                 if (!q.category) return false;
                 const cats = q.category.split(',').map(c => c.trim().toLowerCase());
                 if (!cats.includes(targetCat)) return false;
-
-                // --- NEW: Run Filter ---
                 if (filterExpr) {
                     const state = this.qualities[q.id] || { qualityId: q.id, level: 0, type: q.type } as any;
-                    // We must pass the context override to evaluateCondition
                     return this.evaluateCondition(filterExpr, { qid: q.id, state });
                 }
                 return true;
             })
             .map(q => q.id);
             
-        console.log(`[Batch] Applying '${op} ${value}' to category '${targetCat}' (Filter: ${filterExpr || 'None'}). Hits: ${qids.length}`);
+        console.log(`[Batch] Applying '${op} ${value}' to category '${targetCat}'. Hits: ${qids.length}`);
         qids.forEach(qid => this.changeQuality(qid, op, value, {}));
     }
 
     public createNewQuality(id: string, value: number | string, templateId: string | null, props: Record<string, any>) {
-        // 1. Get Template Definition
         let def: Partial<QualityDefinition> = {};
         if (templateId && this.worldContent.qualities[templateId]) {
             def = { ...this.worldContent.qualities[templateId] };
         } else {
-            // Default type inference
             def = { type: typeof value === 'string' ? QualityType.String : QualityType.Pyramidal };
         }
 
-        // 2. Initialize or Update State
-        // Note: We store dynamic properties in 'customProperties' on the state object.
-        // The textProcessor needs to know to look there.
-        
         let state = this.qualities[id];
         
         if (!state) {
-            // Create New
             this.qualities[id] = {
                 qualityId: id,
                 type: def.type || QualityType.Pyramidal,
@@ -409,40 +380,32 @@ export class GameEngine {
                 stringValue: typeof value === 'string' ? value : "",
                 changePoints: 0,
                 customProperties: {
-                    // Copy scalar fields from template definition to state properties
-                    // This allows {$.name} to work even if we don't have a real definition for 'id'
                     ...(def.name ? { name: def.name } : {}),
                     ...(def.description ? { description: def.description } : {}),
                     ...(def.image ? { image: def.image } : {}),
-                    ...props // User overrides win
+                    ...props 
                 }
             } as any;
         } else {
-            // Update Existing
-            // FIX: Cast to any to bypass strict union checks for dynamic updates
             const dynamicState = state as any;
-
             if (!dynamicState.customProperties) dynamicState.customProperties = {};
-            
             Object.assign(dynamicState.customProperties, props);
-            
             if (typeof value === 'number') {
                  dynamicState.level = value;
-                 // If it was a string before, we might want to clear stringValue or change type
-                 // For now, assume user knows what they are doing with the type mismatch
             }
             if (typeof value === 'string') {
                  dynamicState.stringValue = value;
             }
         }
-        
         console.log(`[GameEngine] Created/Updated ${id}. Template: ${templateId}`, this.qualities[id]);
     }
 
     public changeQuality(qid: string, op: string, value: number | string, metadata: { desc?: string; source?: string; hidden?: boolean }): void {
         const def = this.worldContent.qualities[qid];
         if (!def) {
-            console.warn(`[GameEngine] Unknown quality '${qid}'. Skipping.`);
+            const msg = `[GameEngine] Unknown quality '${qid}'. Skipping.`;
+            console.warn(msg);
+            this.errors.push(msg);
             return;
         }
 
@@ -471,7 +434,7 @@ export class GameEngine {
             const isItem = def.type === QualityType.Item || def.type === QualityType.Equipable;
 
             if (qState.type === QualityType.Pyramidal) {
-                 if (isIncremental) {
+                    if (isIncremental) {
                     if (op === '++' || op === '+=') {
                         if (def.grind_cap) {
                             const cap = parseInt(this.evaluateText(`{${def.grind_cap}}`), 10);
@@ -491,8 +454,8 @@ export class GameEngine {
 
                     if (isAdd) {
                         if (def.grind_cap) {
-                             const cap = parseInt(this.evaluateText(`{${def.grind_cap}}`), 10);
-                             if (!isNaN(cap) && qState.level >= cap) return;
+                                const cap = parseInt(this.evaluateText(`{${def.grind_cap}}`), 10);
+                                if (!isNaN(cap) && qState.level >= cap) return;
                         }
                         qState.level += qty;
                         
@@ -521,25 +484,23 @@ export class GameEngine {
             if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
         }
 
+        // DEBUG UPDATE: Do not return if hidden. Capture it, but mark it.
         const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
-        if (isHidden) return;
 
         const context = { qid: effectiveQid, state: qState };
         const displayName = this.evaluateText(def.name || effectiveQid);
         
         let changeText = "";
         
-        // FIXED ORDER: (text, quals, defs, self, roll, aliases)
-        const increaseDesc = evaluateScribeText(def.increase_description, this.qualities, this.worldContent.qualities, context, this.resolutionRoll, this.tempAliases);
-        const decreaseDesc = evaluateScribeText(def.decrease_description, this.qualities, this.worldContent.qualities, context, this.resolutionRoll, this.tempAliases);
+        const increaseDesc = this.evaluateText(def.increase_description);
+        const decreaseDesc = this.evaluateText(def.decrease_description);
 
         if (qState.level > levelBefore) changeText = increaseDesc || `${displayName} increased.`;
         else if (qState.level < levelBefore) changeText = decreaseDesc || `${displayName} decreased.`;
         else if (qState.type === 'S') changeText = `${displayName} is now ${qState.stringValue}`;
 
         if (metadata.desc) {
-            // FIXED ORDER: (text, quals, defs, self, roll, aliases)
-            changeText = evaluateScribeText(metadata.desc, this.qualities, this.worldContent.qualities, context, this.resolutionRoll, this.tempAliases);
+            changeText = this.evaluateText(metadata.desc);
         }
 
         if (changeText) {
@@ -547,7 +508,8 @@ export class GameEngine {
                 qid: effectiveQid, qualityName: displayName, type: def.type, category: def.category,
                 levelBefore, cpBefore, levelAfter: qState.level, cpAfter: qState.changePoints,
                 stringValue: qState.stringValue, changeText, scope: qid.startsWith('world.') ? 'world' : 'character',
-                overrideDescription: metadata.desc ? changeText : undefined
+                overrideDescription: metadata.desc ? changeText : undefined,
+                hidden: isHidden // MARK HIDDEN
             });
         }
     }
@@ -602,6 +564,4 @@ export class GameEngine {
             description: `Rolled ${Math.floor(this.resolutionRoll)} vs ${targetChance}%` 
         };
     }
-
-    
 }

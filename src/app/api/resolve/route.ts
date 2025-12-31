@@ -9,11 +9,9 @@ import { GameEngine } from '@/engine/gameEngine';
 import { evaluateText } from '@/engine/textProcessor';
 import { getEvent, getWorldState } from '@/engine/worldService'; 
 import { applyWorldUpdates, processAutoEquip } from '@/engine/resolutionService';
-// SAFETY_NET: New import for permissions
 import { verifyWorldAccess } from '@/engine/accessControl';
 
 export async function POST(request: NextRequest) {
-    // SAFETY_NET: Outer try-catch to prevent 500 crashes
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
         const userId = (session.user as any).id;
         const { storyletId, optionId, storyId, characterId } = await request.json();
 
-        // SAFETY_NET: Check debug permissions (Writer/Owner only)
+        // Check debug permissions
         const canDebug = await verifyWorldAccess(storyId, 'writer');
 
         const gameData = await getContent(storyId);
@@ -39,7 +37,6 @@ export async function POST(request: NextRequest) {
         const storyletDef = await getEvent(storyId, storyletId);
         if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
-        // --- LOCATION & HAND CHECKS ---
         const isAutofire = storyletDef.urgency === 'Must' || !!storyletDef.autofire_if;
         if ('location' in storyletDef && storyletDef.location) {
             if (character.currentLocationId !== storyletDef.location && !isAutofire) {
@@ -53,7 +50,6 @@ export async function POST(request: NextRequest) {
             }
         }
         
-        // --- AUTOFIRE PRIORITY CHECK ---
         const pendingAutofires = await getAutofireStorylets(storyId);
         const eligibleAutofires = pendingAutofires.filter(e => engine.evaluateCondition(e.autofire_if));
         
@@ -61,11 +57,10 @@ export async function POST(request: NextRequest) {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
             const pA = priority[a.urgency || 'Normal'];
             const pB = priority[b.urgency || 'Normal'];
-            return pB - pA; // Descending
+            return pB - pA; 
         });
 
         const activeAutofire = eligibleAutofires[0];
-        // Lock check: You cannot play a normal storylet if an Autofire event is waiting
         if (activeAutofire && activeAutofire.id !== storyletId) {
             return NextResponse.json({ error: 'You are locked in a story event.', redirectId: activeAutofire.id }, { status: 409 });
         }
@@ -96,7 +91,7 @@ export async function POST(request: NextRequest) {
         // Resolve Option
         const engineResult = engine.resolveOption(storyletDef, option);
 
-        // Update character qualities after applying effects
+        // Update character qualities
         character.qualities = engine.getQualities();
 
         processScheduledUpdates(character, engineResult.scheduledUpdates);
@@ -125,7 +120,6 @@ export async function POST(request: NextRequest) {
              }
         }
         
-        // Re-check autofire for redirect logic
         const postResolutionEngine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
         const newEligibleAutofires = pendingAutofires.filter(e => postResolutionEngine.evaluateCondition(e.autofire_if));
         newEligibleAutofires.sort((a, b) => {
@@ -147,19 +141,14 @@ export async function POST(request: NextRequest) {
             if (newLoc) {
                 character.currentLocationId = newLocationId;
                 
-                // --- DECK & SETTING LOGIC ---
                 if (oldLoc) {
-                    // 1. Explicit Deck Change (Standard CH)
                     if (oldLoc.deck !== newLoc.deck) {
                         const oldDeckDef = gameData.decks[oldLoc.deck];
                         if (oldDeckDef && oldDeckDef.saved === 'False' && character.opportunityHands[oldLoc.deck]) {
                             character.opportunityHands[oldLoc.deck] = [];
                         }
                     }
-                    
-                    // 2. StoryNexus Mode: Region Change (Setting Change)
                     if (gameData.settings.storynexusMode && oldLoc.regionId !== newLoc.regionId) {
-                        // WIPE ALL HANDS when moving between Regions/Settings
                         console.log("[SN Mode] Region changed. Clearing all hands.");
                         character.opportunityHands = {}; 
                     }
@@ -177,6 +166,11 @@ export async function POST(request: NextRequest) {
         const cleanTitle = evaluateText(resolutionTitle(option, engineResult), character.qualities, gameData.qualities, null, 0);
         const cleanBody = evaluateText(engineResult.body, character.qualities, gameData.qualities, null, 0);
 
+        // DEBUG UPDATE: Filter changes for normal users, allow all for debuggers
+        const visibleQualityChanges = canDebug 
+            ? engineResult.qualityChanges 
+            : engineResult.qualityChanges.filter(c => !c.hidden);
+
         return NextResponse.json({ 
             newQualities: character.qualities,
             updatedHand: 'deck' in storyletDef || finalTags.has('clear_hand') ? character.opportunityHands : undefined, 
@@ -185,14 +179,17 @@ export async function POST(request: NextRequest) {
                 title: cleanTitle, 
                 body: cleanBody, 
                 redirectId: finalRedirectId,
-                // FIX: Type cast engineResult to access 'errors' safely
-                errors: canDebug ? (engineResult as any).errors : undefined 
+                // Pass filtered changes
+                qualityChanges: visibleQualityChanges,
+                // Pass errors if debug
+                errors: canDebug ? (engineResult as any).errors : undefined,
+                // Pass raw effects if debug
+                rawEffects: canDebug ? (engineResult as any).rawEffects : undefined
             }
         });
 
     } catch (fatalError: any) {
         console.error("FATAL RESOLVE ERROR:", fatalError);
-        // SAFETY_NET: Return 200 with error details to prevent app crash
         return NextResponse.json({ 
             error: "An unexpected error occurred while processing the script.",
             details: fatalError.message || String(fatalError)
