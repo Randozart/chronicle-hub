@@ -1,0 +1,62 @@
+/* src/styles/layouts/elysium.css */
+
+.elysium-wrapper {
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+    color: #eee;
+    background: #000;
+}
+
+.elysium-bg-layer {
+    position: absolute;
+    top: -50px; left: -50px; right: -50px; bottom: -50px;
+    z-index: 0;
+    transition: transform 0.1s ease-out;
+}
+
+.elysium-bg-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.5);
+}
+
+.elysium-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.8) 100%);
+}
+
+.elysium-sidebar {
+    width: 400px;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    background: rgba(10, 10, 15, 0.6);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+}
+
+.elysium-content {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    z-index: 5;
+}
+
+.elysium-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+    min-height: 100%;
+}
+
+@media (max-width: 900px) {
+    .elysium-sidebar {
+        display: none; /* Handled by .mobile-visible logic */
+    }
+}
