@@ -37,10 +37,10 @@ export class GameEngine {
         this.resolutionRoll = Math.random() * 100;
     }
 
+    // ... [Setters/Getters unchanged] ...
     public setQualities(newQualities: PlayerQualities): void {
         this.qualities = JSON.parse(JSON.stringify(newQualities));
     }
-
     public getQualities(): PlayerQualities { return this.qualities; }
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
 
@@ -182,122 +182,134 @@ export class GameEngine {
             const cleanEffect = effect.trim();
             if (!cleanEffect) continue;
 
+            // TRACE: Snapshot error length before executing this effect
+            const prevErrorCount = this.errors.length;
+
             if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
                 const resolvedCommand = this.evaluateText(cleanEffect);
                 if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%'))) {
                     this.applyEffects(resolvedCommand);
                 }
-                continue;
             }
-
-            const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
-            if (macroMatch) {
-                const [, command, args] = macroMatch;
-                if (['schedule', 'reset', 'update', 'cancel'].includes(command)) {
-                    this.parseAndQueueTimerInstruction(command, args);
-                }
-                continue;
-            }
-
-            const batchMatch = cleanEffect.match(/^%all\[([^;\]]+)(?:;\s*([^\]]+))?\]\s*(=|\+=|-=)\s*(.*)$/);
-            if (batchMatch) {
-                const [, catExpr, filterExpr, op, val] = batchMatch;
-                const resolvedVal = this.evaluateText(`{${val}}`);
-                const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-                this.batchChangeQuality(catExpr, op, numVal, filterExpr); 
-                continue;
-            }
-
-            const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\]\s*(=)\s*(.*)$/);
-            if (newMatch) {
-                const [, idExpr, argsStr, op, valStr] = newMatch;
-                const newId = this.evaluateText(`{${idExpr}}`).trim();
-                const resolvedVal = this.evaluateText(`{${valStr}}`);
-                const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-
-                const props: Record<string, any> = {};
-                let templateId: string | null = null;
-
-                if (argsStr) {
-                    const args = argsStr.split(',').map(s => s.trim());
-                    if (args.length > 0 && !args[0].includes(':')) {
-                        const rawTemplate = args.shift()!;
-                        templateId = this.evaluateText(`{${rawTemplate}}`);
+            else {
+                // ... [Normal processing logic] ...
+                const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
+                if (macroMatch) {
+                    const [, command, args] = macroMatch;
+                    if (['schedule', 'reset', 'update', 'cancel'].includes(command)) {
+                        this.parseAndQueueTimerInstruction(command, args);
                     }
+                }
+                else {
+                    const batchMatch = cleanEffect.match(/^%all\[([^;\]]+)(?:;\s*([^\]]+))?\]\s*(=|\+=|-=)\s*(.*)$/);
+                    if (batchMatch) {
+                        const [, catExpr, filterExpr, op, val] = batchMatch;
+                        const resolvedVal = this.evaluateText(`{${val}}`);
+                        const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
+                        this.batchChangeQuality(catExpr, op, numVal, filterExpr); 
+                    }
+                    else {
+                        const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\]\s*(=)\s*(.*)$/);
+                        if (newMatch) {
+                            const [, idExpr, argsStr, op, valStr] = newMatch;
+                            const newId = this.evaluateText(`{${idExpr}}`).trim();
+                            const resolvedVal = this.evaluateText(`{${valStr}}`);
+                            const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
 
-                    args.forEach(arg => {
-                        const [k, ...vParts] = arg.split(':');
-                        if (!k) return;
-                        const key = k.trim();
-                        let rawVal = vParts.join(':').trim();
-                        if ((rawVal.startsWith('"') && rawVal.endsWith('"')) || (rawVal.startsWith("'") && rawVal.endsWith("'"))) {
-                            props[key] = rawVal.slice(1, -1);
-                        } else {
-                            props[key] = this.evaluateText(`{${rawVal}}`);
+                            const props: Record<string, any> = {};
+                            let templateId: string | null = null;
+
+                            if (argsStr) {
+                                const args = argsStr.split(',').map(s => s.trim());
+                                if (args.length > 0 && !args[0].includes(':')) {
+                                    const rawTemplate = args.shift()!;
+                                    templateId = this.evaluateText(`{${rawTemplate}}`);
+                                }
+
+                                args.forEach(arg => {
+                                    const [k, ...vParts] = arg.split(':');
+                                    if (!k) return;
+                                    const key = k.trim();
+                                    let rawVal = vParts.join(':').trim();
+                                    if ((rawVal.startsWith('"') && rawVal.endsWith('"')) || (rawVal.startsWith("'") && rawVal.endsWith("'"))) {
+                                        props[key] = rawVal.slice(1, -1);
+                                    } else {
+                                        props[key] = this.evaluateText(`{${rawVal}}`);
+                                    }
+                                });
+                            }
+
+                            this.createNewQuality(newId, numVal, templateId, props);
                         }
-                    });
-                }
+                        else {
+                            const assignMatch = cleanEffect.match(/^((?:[$@][a-zA-Z0-9_]+)|(?:\{.*?\}))(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
+                            
+                            if (assignMatch) {
+                                const [, rawLhs, metaStr, op, valStr] = assignMatch;
+                                
+                                let qid = "";
 
-                this.createNewQuality(newId, numVal, templateId, props);
-                continue;
+                                if (rawLhs.startsWith('{')) {
+                                    qid = this.evaluateText(rawLhs).trim();
+                                    if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) {
+                                        qid = qid.substring(1);
+                                    }
+                                } else if (rawLhs.startsWith('@')) {
+                                    const aliasKey = rawLhs.substring(1);
+                                    if (this.tempAliases[aliasKey]) {
+                                        qid = this.tempAliases[aliasKey]; 
+                                    } else {
+                                        const msg = `Alias '${rawLhs}' not found in current context.`;
+                                        console.warn(msg);
+                                        this.errors.push(msg); 
+                                    }
+                                } else {
+                                    qid = rawLhs.substring(1); 
+                                }
+
+                                if (qid && qid !== "nothing" && qid !== "undefined") {
+                                    const metadata: { desc?: string; source?: string; hidden?: boolean } = {};
+                                    if (metaStr) {
+                                        const metaParts = metaStr.split(',');
+                                        for (const part of metaParts) {
+                                            const [k, ...v] = part.split(':');
+                                            const key = k.trim();
+                                            const val = v.join(':').trim();
+                                            if (key === 'desc') metadata.desc = val;
+                                            if (key === 'source') metadata.source = val;
+                                            if (key === 'hidden') metadata.hidden = true;
+                                        }
+                                    }
+
+                                    let val: string | number = 0;
+                                    
+                                    if (op !== '++' && op !== '--') {
+                                         const resolvedValueStr = this.evaluateText(`{${valStr}}`);
+                                         val = resolvedValueStr;
+                                         if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
+                                             val = Number(resolvedValueStr);
+                                         }
+                                    }
+                                    
+                                    this.changeQuality(qid, op, val, metadata);
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            const assignMatch = cleanEffect.match(/^((?:[$@][a-zA-Z0-9_]+)|(?:\{.*?\}))(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
-            
-            if (assignMatch) {
-                const [, rawLhs, metaStr, op, valStr] = assignMatch;
-                
-                let qid = "";
-
-                if (rawLhs.startsWith('{')) {
-                    qid = this.evaluateText(rawLhs).trim();
-                    if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) {
-                        qid = qid.substring(1);
-                    }
-                } else if (rawLhs.startsWith('@')) {
-                    const aliasKey = rawLhs.substring(1);
-                    if (this.tempAliases[aliasKey]) {
-                        qid = this.tempAliases[aliasKey]; 
-                    } else {
-                        const msg = `Alias '${rawLhs}' not found in current context.`;
-                        console.warn(msg);
-                        this.errors.push(msg); 
-                        continue;
-                    }
-                } else {
-                    qid = rawLhs.substring(1); 
-                }
-
-                if (!qid || qid === "nothing" || qid === "undefined") continue;
-
-                const metadata: { desc?: string; source?: string; hidden?: boolean } = {};
-                if (metaStr) {
-                    const metaParts = metaStr.split(',');
-                    for (const part of metaParts) {
-                        const [k, ...v] = part.split(':');
-                        const key = k.trim();
-                        const val = v.join(':').trim();
-                        if (key === 'desc') metadata.desc = val;
-                        if (key === 'source') metadata.source = val;
-                        if (key === 'hidden') metadata.hidden = true;
-                    }
-                }
-
-                let val: string | number = 0;
-                
-                if (op !== '++' && op !== '--') {
-                     const resolvedValueStr = this.evaluateText(`{${valStr}}`);
-                     val = resolvedValueStr;
-                     if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
-                         val = Number(resolvedValueStr);
-                     }
-                }
-                
-                this.changeQuality(qid, op, val, metadata);
+            // TRACE: If error count increased during this effect, annotate the last error
+            if (this.errors.length > prevErrorCount) {
+                const lastIdx = this.errors.length - 1;
+                // Append context to the last error message
+                this.errors[lastIdx] = `${this.errors[lastIdx]} \n>> Context: "${cleanEffect}"`;
             }
         }
     }
     
+    // ... [Rest of methods identical, ensuring they use `this.evaluateText`] ...
+
     private parseAndQueueTimerInstruction(command: string, argsStr: string) {
         const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
         const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
@@ -484,7 +496,6 @@ export class GameEngine {
             if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
         }
 
-        // DEBUG UPDATE: Do not return if hidden. Capture it, but mark it.
         const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
 
         const context = { qid: effectiveQid, state: qState };
@@ -509,7 +520,7 @@ export class GameEngine {
                 levelBefore, cpBefore, levelAfter: qState.level, cpAfter: qState.changePoints,
                 stringValue: qState.stringValue, changeText, scope: qid.startsWith('world.') ? 'world' : 'character',
                 overrideDescription: metadata.desc ? changeText : undefined,
-                hidden: isHidden // MARK HIDDEN
+                hidden: isHidden 
             });
         }
     }

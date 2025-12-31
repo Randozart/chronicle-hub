@@ -31,7 +31,6 @@ type ResolutionState = {
     wasSuccess?: boolean; skillCheckDetails?: { description: string; };
     qualityChanges: QualityChangeInfo[];
     errors?: string[]; 
-    // DEBUG UPDATE
     rawEffects?: string;
 };
 
@@ -53,7 +52,6 @@ export default function StoryletDisplay({
     const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     
-    // DEBUG STATE
     const [showDebug, setShowDebug] = useState(false);
     const [showHidden, setShowHidden] = useState(false);
     
@@ -137,7 +135,6 @@ export default function StoryletDisplay({
     const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
      if (resolution) {
-        // Check if user has ANY debug privileges (errors exist OR rawEffects was sent)
         const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
 
         return (
@@ -195,8 +192,17 @@ export default function StoryletDisplay({
                             <span>{showDebug ? '▼' : '▶'}</span>
                         </div>
                         
+                        {/* UI FIX: Added max-height and overflow-y for scrolling */}
                         {showDebug && (
-                            <div style={{ background: '#2c3e50', color: '#ecf0f1', padding: '12px', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                            <div style={{ 
+                                background: '#2c3e50', 
+                                color: '#ecf0f1', 
+                                padding: '12px', 
+                                fontFamily: 'monospace', 
+                                fontSize: '0.85rem',
+                                maxHeight: '400px', // Limit height
+                                overflowY: 'auto'   // Enable scrolling
+                            }}>
                                 
                                 <div style={{ marginBottom: '10px' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
@@ -215,7 +221,7 @@ export default function StoryletDisplay({
                                         <strong style={{ color: '#e74c3c' }}>Errors:</strong>
                                         <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
                                             {resolution.errors.map((err, idx) => (
-                                                <li key={idx} style={{ marginBottom: '2px' }}>{err}</li>
+                                                <li key={idx} style={{ marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{err}</li>
                                             ))}
                                         </ul>
                                     </div>
@@ -242,7 +248,6 @@ export default function StoryletDisplay({
         );
     }
     
-    // ... [Rest of the file remains unchanged] ...
     const getLockReason = (condition: string): string => {
         const match = condition.match(/\$([a-zA-Z0-9_]+)\s*(>=|<=|==|>|<)\s*(\d+)/);
         if (!match) return `A requirement is not met.`;

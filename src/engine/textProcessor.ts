@@ -9,13 +9,9 @@ export function evaluateText(
     rawText: string | undefined,
     qualities: PlayerQualities,
     qualityDefs: Record<string, QualityDefinition>,
-    // RESTORED ORDER: Self Context first
     selfContext: { qid: string, state: QualityState } | null = null,
-    // RESTORED ORDER: Resolution Roll second
     resolutionRoll: number = 0,
-    // Aliases
     aliases: Record<string, string> | null = {},
-    // SAFETY_NET: Error accumulator
     errors?: string[] 
 ): string {
     if (!rawText) return '';
@@ -43,6 +39,7 @@ function evaluateRecursive(
     errors?: string[]
 ): string {
     let currentText = text;
+    let currentBlock = ""; // For debugging context
 
     try {
         for (let i = 0; i < 50; i++) {
@@ -51,9 +48,14 @@ function evaluateRecursive(
 
             const blockWithBraces = innermostBlockMatch[0];
             const blockContent = innermostBlockMatch[1];
+            currentBlock = blockWithBraces; // Capture for catch block
 
             const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors);
-            currentText = currentText.replace(blockWithBraces, resolvedValue.toString());
+            
+            // FIX: Handle null/undefined to prevent "Cannot read properties of undefined (reading 'toString')"
+            const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
+            
+            currentText = currentText.replace(blockWithBraces, safeValue);
         }
 
         if (context === 'LOGIC') {
@@ -62,7 +64,7 @@ function evaluateRecursive(
             return currentText;
         }
     } catch (e: any) {
-        if (errors) errors.push(`Recursion Error: ${e.message}`);
+        if (errors) errors.push(`Recursion Error in block "${currentBlock}": ${e.message}`);
         return "[SCRIPT ERROR]";
     }
 }
@@ -87,7 +89,8 @@ function evaluateExpression(
         const rawValue = assignmentMatch[2];
         const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors);
         
-        let storedValue = resolvedValue.toString().trim();
+        // FIX: Ensure not undefined
+        let storedValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
         
         aliases[aliasKey] = storedValue;
@@ -364,7 +367,7 @@ export function evaluateCondition(
         // --- IMPLICIT SELF HANDLING ---
         let leftRaw = trimExpr.substring(0, index).trim();
         if (leftRaw === '' && self) {
-            leftRaw = '$.'; // Default to "Self" if LHS is missing but context exists
+            leftRaw = '$.'; 
         }
 
         const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors);
