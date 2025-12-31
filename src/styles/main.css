@@ -14,6 +14,7 @@
 @import "./layouts/tabletop.css"; 
 @import "./layouts/admin.css";
 @import "./layouts/docs.css";
+@import "./layouts/elysium.css";
 
 /* 4. Components */
 @import "./components/ui.css";
