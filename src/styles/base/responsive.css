@@ -1,62 +1,140 @@
 /* src/styles/base/responsive.css */
 
-/* --- TABLET (Max 1024px) --- */
-@media (max-width: 1024px) {
+/* --- GLOBAL MOBILE TYPOGRAPHY (Fixing the "Zoomed In" feel) --- */
+@media (max-width: 768px) {
+    html {
+        font-size: 14px; /* Slightly smaller base font */
+    }
     
-    /* Collapse the Nexus (Play) Grid */
-    .layout-grid-nexus {
-        /* Sidebar on top, content below */
-        grid-template-columns: 1fr; 
-        grid-template-rows: auto 1fr;
-        height: auto; /* Allow scrolling of the whole page */
-        overflow-y: auto;
+    h1, .location-text h1, .banner-title {
+        font-size: 1.8rem !important; /* Cap massive headers */
     }
-
-    /* Adjust Sidebar */
-    .sidebar-panel {
-        width: 100%;
-        height: auto;
-        max-height: 300px; /* Limit height, make scrollable */
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-        position: relative; /* No longer sticky */
+    
+    h2, .action-box h3 {
+        font-size: 1.2rem !important;
     }
-
-    /* Simplify Docs Layout */
-    .docs-wrapper {
-        flex-direction: column;
+    
+    .storylet-container, .character-sheet, .sidebar-content-scroll {
+        padding: 1.25rem !important; /* Reduce massive padding */
     }
-    .docs-nav {
-        width: 100%;
-        height: auto;
-        max-height: 200px;
-        position: static;
-        border-right: none;
-        border-bottom: 1px solid #333;
-    }
-    .docs-main {
-        padding: 2rem;
+    
+    .location-header {
+        padding: 1rem !important;
     }
 }
 
-/* --- MOBILE (Max 768px) --- */
+/* --- TABLET (Max 1024px) --- */
+@media (max-width: 1024px) {
+    
+    /* NEXUS: Stack Sidebar on top of Content */
+    .layout-grid-nexus {
+        grid-template-columns: 1fr; 
+        grid-template-rows: auto 1fr;
+        height: auto; 
+        overflow-y: auto;
+    }
+
+    /* TABLETOP: Stack Visual -> Sidebar -> Content */
+    .layout-grid-tabletop {
+        display: flex !important; /* Switch to flex to control order easily */
+        flex-direction: column;
+        height: auto !important;
+        overflow-y: auto !important;
+    }
+
+    /* Ensure Visual is Top */
+    .tabletop-visual-col {
+        order: 1;
+        height: 250px;
+        flex-shrink: 0;
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Ensure Content is Middle */
+    .layout-column.content-column {
+        order: 2;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    /* Sidebar Logic for Tablet/Mobile */
+    .sidebar-panel {
+        /* Hide by default on smaller screens! */
+        display: none !important; 
+        
+        /* Reset borders */
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* When the React state adds .mobile-visible, show it as a fullscreen overlay */
+    .sidebar-panel.mobile-visible {
+        display: flex !important;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 9999;
+        background-color: var(--bg-main); /* Ensure it has a background! */
+        /* If using a theme like Noir, ensure we use the panel bg */
+        background-color: var(--bg-panel);
+    }
+}
+
+/* --- MOBILE SPECIFIC (Max 768px) --- */
 @media (max-width: 768px) {
 
     /* --- GLOBAL TWEAKS --- */
     .container, .storylet-container {
-        padding: 1rem;
         width: 100%;
         box-sizing: border-box;
+        margin: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-radius: 0 !important;
     }
 
-    /* --- DASHBOARD --- */
-    /* Dashboard Grid is already responsive (auto-fill), 
-       but we force single column on very small screens */
-    .theme-wrapper > div > div {
-        padding: 1rem !important; /* Override inline styles */
+    /* --- ADMIN & EDITOR --- */
+    .admin-layout, .editor-layout {
+        flex-direction: column;
+        height: auto;
+        overflow-y: auto;
     }
 
-    /* --- GAMEPLAY (Nexus) --- */
+    .admin-sidebar, .editor-sidebar {
+        width: 100% !important;
+        height: auto;
+        position: static;
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .admin-nav ul, .editor-toolbar {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        padding: 0.5rem;
+    }
+
+    .admin-main, .editor-main {
+        height: auto;
+        min-height: 500px;
+    }
+
+    .admin-split-view {
+        flex-direction: column;
+    }
+    .admin-list-col {
+        width: 100%;
+        position: static;
+        max-height: 300px;
+        margin-bottom: 1rem;
+    }
+
+    /* --- GAMEPLAY --- */
     .storylet-main-content {
         flex-direction: column;
     }
@@ -66,70 +144,16 @@
         margin-bottom: 1rem;
     }
     .storylet-image {
-        aspect-ratio: 16/9; /* Widescreen on mobile */
-    }
-
-    /* --- EDITOR (The hard part) --- */
-    .editor-layout {
-        flex-direction: column;
-        overflow-y: auto; /* Enable window scrolling */
+        aspect-ratio: 16/9;
     }
     
-    /* Hide the visual node graph sidebar on mobile? 
-       Or stack it. Stacking usually breaks graphs. 
-       Let's stack layout columns. */
-    .editor-main {
-        height: auto;
-        min-height: 500px;
-    }
-
-    .editor-sidebar {
-        width: 100% !important; /* Override inline styles */
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    /* Toolbar wrapping */
-    .editor-toolbar {
-        height: auto;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    /* Piano Roll Mobile Fixes */
-    .pianoroll-container {
-        height: 500px; /* Fixed height on mobile */
-    }
-    .pianoroll-keys {
-        width: 30px; /* Thinner keys */
-    }
-    
-    /* --- ADMIN --- */
-    .admin-layout {
+    .option-content-wrapper {
         flex-direction: column;
+        align-items: center;
+        text-align: center;
     }
-    .admin-sidebar {
-        width: 100%;
-        height: auto;
-        position: static;
-        flex-direction: row;
-        overflow-x: auto; /* Horizontal scroll for menu */
-    }
-    .admin-nav ul {
-        display: flex;
-    }
-    .admin-link {
-        white-space: nowrap;
-    }
-    
-    .admin-split-view {
-        flex-direction: column;
-    }
-    .admin-list-col {
-        width: 100%;
-        position: static;
-        max-height: 300px;
-        margin-bottom: 1rem;
+    .option-image-container {
+        width: 80px;
+        margin-bottom: 0.5rem;
     }
 }
