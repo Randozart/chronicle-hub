@@ -30,6 +30,8 @@ type ResolutionState = {
     title: string; body: string; redirectId?: string; image_code?: string;
     wasSuccess?: boolean; skillCheckDetails?: { description: string; };
     qualityChanges: QualityChangeInfo[];
+    // SAFETY_NET: Errors array from engine
+    errors?: string[]; 
 };
 
 export default function StoryletDisplay({ 
@@ -50,10 +52,13 @@ export default function StoryletDisplay({
     const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     
+    // SAFETY_NET: Debug UI Toggle State
+    const [showDebug, setShowDebug] = useState(false);
+    
     const storylet = eventData; 
     
     const evalText = (text: string | undefined) => {
-        // FIX: Pass null for selfContext (argument 4)
+        // Fix: Pass null for selfContext
         return evaluateText(text, qualities, qualityDefs, null, 0);
     };
 
@@ -78,6 +83,13 @@ export default function StoryletDisplay({
             if (!response.ok) throw new Error(await response.text());
             
             const data = await response.json();
+            
+            // SAFETY_NET: Check for fatal generic error from try/catch in route
+            if (data.error && !data.result) {
+                 alert(`Critical Error: ${data.error}\n${data.details}`);
+                 return;
+            }
+
             onQualitiesUpdate(data.newQualities); 
             
             if (onCardPlayed && 'deck' in eventData) {
@@ -93,6 +105,7 @@ export default function StoryletDisplay({
             }
         } catch (error) {
             console.error("API Error:", error);
+            alert("Network or Server Error occurred.");
         } finally {
             setIsLoading(false);
         }
@@ -104,14 +117,13 @@ export default function StoryletDisplay({
     };
 
     const disableReturn = storylet.tags?.includes('no_return');
-
     const getReturnTarget = (): string | null | undefined => {
         if (disableReturn) return null;
         const explicitReturn = storylet.return;
         if (explicitReturn) {
             const target = storyletDefs[explicitReturn];
             if (target) {
-                // FIX: Pass null for selfContext
+                // Fix: Pass null for selfContext
                 const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, null, 0);
                 const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, null, 0);
                 if (!isVisible || !isUnlocked) return undefined; 
@@ -129,7 +141,6 @@ export default function StoryletDisplay({
         return (
             <div className="storylet-container">
                 <div className="storylet-main-content">
-                    {/* FIX: Ensure code is string */}
                     {(resolution.image_code || storylet.image_code) && (
                         <div className="storylet-image-frame storylet-image-container"> 
                             <GameImage 
@@ -160,6 +171,32 @@ export default function StoryletDisplay({
                         ))}
                     </div>
                 }
+
+                {/* SAFETY_NET: Debug Console for Creator/Writer Roles */}
+                {resolution.errors && resolution.errors.length > 0 && (
+                    <div style={{ marginTop: '20px', border: '1px solid #e74c3c', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div 
+                            onClick={() => setShowDebug(!showDebug)}
+                            style={{ 
+                                background: '#e74c3c', color: 'white', padding: '8px 12px', 
+                                cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' 
+                            }}
+                        >
+                            <span>⚠️ ScribeScript Errors ({resolution.errors.length})</span>
+                            <span>{showDebug ? '▼' : '▶'}</span>
+                        </div>
+                        {showDebug && (
+                            <div style={{ background: '#2c3e50', color: '#ecf0f1', padding: '12px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                    {resolution.errors.map((err, idx) => (
+                                        <li key={idx} style={{ marginBottom: '4px' }}>{err}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <button className="option-button continue-button" onClick={handleContinue}>Continue</button>
             </div>
         );
@@ -177,10 +214,10 @@ export default function StoryletDisplay({
     };
 
     const optionsToDisplay: DisplayOption[] = storylet.options
-        // FIX: Pass null for selfContext
+        // Fix: Pass null for selfContext
         .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, null, 0))
         .map(option => {
-            // FIX: Pass null for selfContext
+            // Fix: Pass null for selfContext
             const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, null, 0);
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
             
@@ -200,7 +237,7 @@ export default function StoryletDisplay({
                 {storylet.image_code && (
                     <div className="storylet-image-frame storylet-image-container"> 
                         <GameImage 
-                            code={storylet.image_code || ""} // FIX: Ensure string
+                            code={storylet.image_code || ""} 
                             imageLibrary={imageLibrary} 
                             type="storylet"
                             alt={storylet.name}
@@ -253,7 +290,7 @@ export default function StoryletDisplay({
                                 {option.image_code && (
                                     <div className="option-image-container">
                                         <GameImage 
-                                            code={option.image_code || ""} // FIX
+                                            code={option.image_code || ""} 
                                             imageLibrary={imageLibrary} 
                                             type="icon" 
                                             alt={option.name}

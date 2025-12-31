@@ -13,12 +13,23 @@ export function evaluateText(
     selfContext: { qid: string, state: QualityState } | null = null,
     // RESTORED ORDER: Resolution Roll second
     resolutionRoll: number = 0,
-    // NEW: Aliases last (Optional)
-    aliases: Record<string, string> | null = {}
+    // Aliases
+    aliases: Record<string, string> | null = {},
+    // SAFETY_NET: Error accumulator
+    errors?: string[] 
 ): string {
     if (!rawText) return '';
     const effectiveAliases = aliases || {}; 
-    return evaluateRecursive(rawText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll);
+    
+    // SAFETY_NET: Top level try/catch
+    try {
+        return evaluateRecursive(rawText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors);
+    } catch (e: any) {
+        const msg = `Fatal Parser Error: ${e.message}`;
+        console.error(msg);
+        if (errors) errors.push(msg);
+        return `[ERROR: ${e.message}]`;
+    }
 }
 
 function evaluateRecursive(
@@ -28,25 +39,31 @@ function evaluateRecursive(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
+    resolutionRoll: number,
+    errors?: string[]
 ): string {
     let currentText = text;
 
-    for (let i = 0; i < 50; i++) {
-        const innermostBlockMatch = currentText.match(/\{([^{}]*?)\}/);
-        if (!innermostBlockMatch) break;
+    try {
+        for (let i = 0; i < 50; i++) {
+            const innermostBlockMatch = currentText.match(/\{([^{}]*?)\}/);
+            if (!innermostBlockMatch) break;
 
-        const blockWithBraces = innermostBlockMatch[0];
-        const blockContent = innermostBlockMatch[1];
+            const blockWithBraces = innermostBlockMatch[0];
+            const blockContent = innermostBlockMatch[1];
 
-        const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll);
-        currentText = currentText.replace(blockWithBraces, resolvedValue.toString());
-    }
+            const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors);
+            currentText = currentText.replace(blockWithBraces, resolvedValue.toString());
+        }
 
-    if (context === 'LOGIC') {
-        return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll).toString();
-    } else {
-        return currentText;
+        if (context === 'LOGIC') {
+            return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll, errors).toString();
+        } else {
+            return currentText;
+        }
+    } catch (e: any) {
+        if (errors) errors.push(`Recursion Error: ${e.message}`);
+        return "[SCRIPT ERROR]";
     }
 }
 
@@ -56,9 +73,9 @@ function evaluateExpression(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
+    resolutionRoll: number,
+    errors?: string[]
 ): string | number | boolean {
-    //Filter out comments
     const cleanExpr = expr.replace(/\/\/.*$/gm, '').trim();
     if (!cleanExpr) return "";
     const trimmedExpr = cleanExpr; 
@@ -68,7 +85,7 @@ function evaluateExpression(
     if (assignmentMatch) {
         const aliasKey = assignmentMatch[1];
         const rawValue = assignmentMatch[2];
-        const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll);
+        const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors);
         
         let storedValue = resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
@@ -78,11 +95,11 @@ function evaluateExpression(
     }
 
     if (trimmedExpr.includes(':')) {
-        return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
+        return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors);
     }
 
     if (trimmedExpr.startsWith('%')) {
-        return evaluateMacro(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
+        return evaluateMacro(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors);
     }
     
     if (trimmedExpr.match(/^\d+%$/)) {
@@ -93,10 +110,10 @@ function evaluateExpression(
     if (trimmedExpr.includes('|')) {
         const choices = trimmedExpr.split('|');
         const randomIndex = Math.floor(Math.random() * choices.length);
-        return evaluateExpression(choices[randomIndex].trim(), qualities, defs, aliases, self, resolutionRoll);
+        return evaluateExpression(choices[randomIndex].trim(), qualities, defs, aliases, self, resolutionRoll, errors);
     }
     if (trimmedExpr.match(/>>|<<|><|<>/)) {
-        return calculateChance(trimmedExpr, undefined, qualities, defs, aliases, self, resolutionRoll);
+        return calculateChance(trimmedExpr, undefined, qualities, defs, aliases, self, resolutionRoll, errors);
     }
     const rangeMatch = trimmedExpr.match(/^(\d+)\s*~\s*(\d+)$/);
     if (rangeMatch) {
@@ -105,7 +122,7 @@ function evaluateExpression(
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll);
+    return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors);
 }
 
 // --- HELPER: ADVANCED FILTERING FOR MACROS ---
@@ -115,7 +132,8 @@ function getCandidateIds(
     qualities: PlayerQualities,
     defs: Record<string, QualityDefinition>,
     resolutionRoll: number,
-    aliases: Record<string, string>
+    aliases: Record<string, string>,
+    errors?: string[]
 ): string[] {
     const targetCat = evaluateText(
         rawCategoryArg.startsWith('{') ? rawCategoryArg : `{${rawCategoryArg}}`, 
@@ -123,7 +141,8 @@ function getCandidateIds(
         defs, 
         null, 
         resolutionRoll,
-        aliases
+        aliases,
+        errors
     ).trim().toLowerCase();
 
     let candidates = Object.values(defs)
@@ -150,7 +169,7 @@ function getCandidateIds(
                 return 'level' in state ? state.level > 0 : false;
             }
 
-            return evaluateCondition(filterStr, qualities, defs, { qid, state }, resolutionRoll, aliases);
+            return evaluateCondition(filterStr, qualities, defs, { qid, state }, resolutionRoll, aliases, errors);
         });
     }
 
@@ -172,7 +191,8 @@ function evaluateMacro(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
+    resolutionRoll: number,
+    errors?: string[]
 ): string | number | boolean {
     const macroRegex = /^%([a-zA-Z_]+)\[(.*?)\]$/;
     const match = macroString.match(macroRegex);
@@ -196,7 +216,7 @@ function evaluateMacro(
     switch (command.toLowerCase()) {
         case "random": {
             const chanceExpr = mainArg;
-            const chance = Number(evaluateExpression(chanceExpr, qualities, defs, aliases, self, resolutionRoll));
+            const chance = Number(evaluateExpression(chanceExpr, qualities, defs, aliases, self, resolutionRoll, errors));
             const isInverted = optArgs.includes('invert');
             if (isNaN(chance)) return false;
             const success = resolutionRoll < chance;
@@ -206,10 +226,10 @@ function evaluateMacro(
             const choices = fullArgs.split(';').map(s => s.trim()).filter(Boolean); 
             if (choices.length === 0) return "";
             const randomIndex = Math.floor(Math.random() * choices.length);
-            return evaluateExpression(choices[randomIndex], qualities, defs, aliases, self, resolutionRoll);
+            return evaluateExpression(choices[randomIndex], qualities, defs, aliases, self, resolutionRoll, errors);
         }
         case "chance": {
-            return calculateChance(mainArg, rawOptStr, qualities, defs, aliases, self, resolutionRoll);
+            return calculateChance(mainArg, rawOptStr, qualities, defs, aliases, self, resolutionRoll, errors);
         }
         
         case "pick": {
@@ -217,10 +237,10 @@ function evaluateMacro(
             const countExpr = optArgs[0] || "1";
             const filterExpr = optArgs[1];
 
-            const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, self, resolutionRoll, aliases));
+            const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, self, resolutionRoll, aliases, errors));
             const count = isNaN(countVal) ? 1 : Math.max(1, countVal);
 
-            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases);
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
             
             if (candidates.length === 0) return "nothing";
 
@@ -234,7 +254,7 @@ function evaluateMacro(
             const categoryExpr = mainArg;
             const filterExpr = optArgs[0];
 
-            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases);
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
             const pool: string[] = [];
             
             candidates.forEach(qid => {
@@ -257,11 +277,12 @@ function evaluateMacro(
 
             const separator = SEPARATORS[sepArg] || optArgs[0] || ', ';
 
-            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases);
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
             
             const names = candidates.map(qid => {
                 const def = defs[qid];
-                return evaluateText(def.name || qid, qualities, defs, { qid, state: qualities[qid] }, resolutionRoll, aliases);
+                // Pass errors to sub-evaluation
+                return evaluateText(def.name || qid, qualities, defs, { qid, state: qualities[qid] }, resolutionRoll, aliases, errors);
             });
 
             if (names.length === 0) return "nothing";
@@ -272,7 +293,7 @@ function evaluateMacro(
             const categoryExpr = mainArg;
             const filterExpr = optArgs[0]; 
             
-            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases);
+            const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
             
             return candidates.length;
         }
@@ -294,7 +315,8 @@ function evaluateConditional(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>, 
     self: { qid: string, state: QualityState } | null, 
-    resolutionRoll: number
+    resolutionRoll: number,
+    errors?: string[]
 ): string {
     const branches = expr.split('|');
     for (const branch of branches) {
@@ -302,7 +324,7 @@ function evaluateConditional(
         if (colonIndex > -1) {
             const condition = branch.substring(0, colonIndex).trim();
             const resultText = branch.substring(colonIndex + 1).trim();
-            if (evaluateCondition(condition, qualities, defs, self, resolutionRoll, aliases)) {
+            if (evaluateCondition(condition, qualities, defs, self, resolutionRoll, aliases, errors)) {
                 return resultText.replace(/^['"]|['"]$/g, '');
             }
         } else {
@@ -318,47 +340,53 @@ export function evaluateCondition(
     defs: Record<string, QualityDefinition> = {}, 
     self: { qid: string, state: QualityState } | null = null,
     resolutionRoll: number = 0,
-    aliases: Record<string, string> = {}
+    aliases: Record<string, string> = {},
+    errors?: string[]
 ): boolean {
     if (!expression) return true;
     const trimExpr = expression.trim();
 
-    if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases);
-    if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases));
-    if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases));
-    if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases);
+    try {
+        if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors);
+        if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors));
+        if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors));
+        if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors);
 
-    const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
-    if (!operatorMatch) {
-        const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll);
-        return val === 'true' || val === true || Number(val) > 0;
-    }
-    
-    const operator = operatorMatch[0];
-    const index = operatorMatch.index!;
+        const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
+        if (!operatorMatch) {
+            const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors);
+            return val === 'true' || val === true || Number(val) > 0;
+        }
+        
+        const operator = operatorMatch[0];
+        const index = operatorMatch.index!;
 
-    // --- IMPLICIT SELF HANDLING ---
-    let leftRaw = trimExpr.substring(0, index).trim();
-    if (leftRaw === '' && self) {
-        leftRaw = '$.'; // Default to "Self" if LHS is missing but context exists
-    }
+        // --- IMPLICIT SELF HANDLING ---
+        let leftRaw = trimExpr.substring(0, index).trim();
+        if (leftRaw === '' && self) {
+            leftRaw = '$.'; // Default to "Self" if LHS is missing but context exists
+        }
 
-    const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll);
-    const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll);
+        const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors);
+        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors);
 
-    if (operator === '==' || operator === '=') return leftVal == rightVal;
-    if (operator === '!=') return leftVal != rightVal;
-    
-    const lNum = Number(leftVal);
-    const rNum = Number(rightVal);
-    if (isNaN(lNum) || isNaN(rNum)) return false;
+        if (operator === '==' || operator === '=') return leftVal == rightVal;
+        if (operator === '!=') return leftVal != rightVal;
+        
+        const lNum = Number(leftVal);
+        const rNum = Number(rightVal);
+        if (isNaN(lNum) || isNaN(rNum)) return false;
 
-    switch (operator) {
-        case '>': return lNum > rNum;
-        case '<': return lNum < rNum;
-        case '>=': return lNum >= rNum;
-        case '<=': return lNum <= rNum;
-        default: return false;
+        switch (operator) {
+            case '>': return lNum > rNum;
+            case '<': return lNum < rNum;
+            case '>=': return lNum >= rNum;
+            case '<=': return lNum <= rNum;
+            default: return false;
+        }
+    } catch (e: any) {
+        if (errors) errors.push(`Condition Error "${expression}": ${e.message}`);
+        return false;
     }
 }
 
@@ -368,26 +396,28 @@ function resolveComplexExpression(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
+    resolutionRoll: number,
+    errors?: string[]
 ): string | number | boolean {
     
-    // Updated Regex to reliably capture properties
-    const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
-        (match) => { 
-            const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll);
-            if (typeof resolved === 'string') return `"${resolved}"`;
-            return resolved.toString();
-        }
-    );
-
-    if (/^[a-zA-Z0-9_]+$/.test(varReplacedExpr.trim())) {
-        return varReplacedExpr.trim();
-    }
-
+    // SAFETY_NET: Wrap in try/catch to capture resolveVariable errors or eval errors
     try {
+        const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
+            (match) => { 
+                const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors);
+                if (typeof resolved === 'string') return `"${resolved}"`;
+                return resolved.toString();
+            }
+        );
+
+        if (/^[a-zA-Z0-9_]+$/.test(varReplacedExpr.trim())) {
+            return varReplacedExpr.trim();
+        }
+
         return safeEval(varReplacedExpr);
-    } catch (e) {
-        return varReplacedExpr;
+    } catch (e: any) {
+        if (errors) errors.push(`Expression Error "${expr}": ${e.message}`);
+        return `[ERROR: ${expr}]`;
     }
 }
 
@@ -397,125 +427,133 @@ function resolveVariable(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
+    resolutionRoll: number,
+    errors?: string[]
 ): string | number {
     
-    const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
-    if (!match) return fullMatch;
+    try {
+        const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
+        if (!match) return fullMatch;
 
-    const [, sigilAndName, levelSpoof, propChain] = match;
+        const [, sigilAndName, levelSpoof, propChain] = match;
 
-    let sigil: string, identifier: string;
-    
-    if (sigilAndName === '$.') {
-        sigil = '$.';
-        identifier = '';
-    } else {
-        sigil = sigilAndName.charAt(0);
-        identifier = sigilAndName.slice(1);
-    }
-
-    let qualityId: string | undefined;
-    let contextQualities = qualities;
-
-    if (sigil === '$.') qualityId = self?.qid;
-    else if (sigil === '@') qualityId = aliases[identifier];
-    else if (sigil === '$') qualityId = identifier;
-    else if (sigil === '#') qualityId = identifier;
-
-    if (!qualityId) return `[Unknown: ${fullMatch}]`;
-    
-    // NOTE: We don't return here if definition is missing, we try to degrade gracefully
-    // But for properties we need the definition.
-    let definition = defs[qualityId];
-
-    let state: QualityState | undefined;
-
-    if (sigil === '$.' && self) {
-        state = self.state;
-    } else {
-        state = contextQualities[qualityId];
-        if (!state && self?.qid === qualityId) state = self.state;
-    }
-    
-    if (!state) {
-        // Fallback state if quality not found on player
-        state = { 
-            qualityId, 
-            type: definition?.type || QualityType.Pyramidal, 
-            level: 0, 
-            stringValue: "", 
-            changePoints: 0, 
-            sources: [], 
-            spentTowardsPrune: 0 
-        } as any;
-    }
-
-    if (levelSpoof) {
-        const spoofedVal = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll);
-        if (typeof spoofedVal === 'number') {
-            state = { ...state, level: spoofedVal } as any;
-        }
-    }
-
-    const properties = propChain ? propChain.split('.').filter(Boolean) : [];
-    let currentValue: any = state;
-
-    if (properties.length === 0) {
-        if (currentValue.type === QualityType.String) return (currentValue as any).stringValue;
-        if ('level' in currentValue) return (currentValue as any).level;
-        return 0;
-    }
-
-    for (const prop of properties) {
-        if (typeof currentValue === 'string') {
-            if (prop === 'capital') currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1);
-            else if (prop === 'upper') currentValue = currentValue.toUpperCase();
-            else if (prop === 'lower') currentValue = currentValue.toLowerCase();
-            continue;
-        }
-
-        // FIX: Use the definition of the CURRENT quality in the chain, not the initial one
-        const currentQid = currentValue.qualityId || qualityId;
-        const currentDef = defs[currentQid];
+        let sigil: string, identifier: string;
         
-        if (!currentDef) break;
-
-        if (prop === 'name') currentValue = currentDef.name || currentQid;
-        else if (prop === 'description') currentValue = currentDef.description || "";
-        else if (prop === 'category') currentValue = currentDef.category || "";
-        else if (prop === 'plural') {
-             const lvl = ('level' in state!) ? state!.level : 0;
-             currentValue = (lvl !== 1) ? (currentDef.plural_name || currentDef.name || currentQid) : (currentDef.singular_name || currentDef.name || currentQid);
-        }
-        else if (prop === 'singular') currentValue = currentDef.singular_name || currentDef.name || currentQid;
-        else if (currentDef.text_variants && currentDef.text_variants[prop]) {
-            currentValue = currentDef.text_variants[prop];
-        }
-        else if (state!.customProperties && state!.customProperties![prop] !== undefined) {
-            currentValue = state!.customProperties![prop];
+        if (sigilAndName === '$.') {
+            sigil = '$.';
+            identifier = '';
         } else {
-            currentValue = undefined;
+            sigil = sigilAndName.charAt(0);
+            identifier = sigilAndName.slice(1);
         }
 
-        // Recursive Evaluation with Correct Context
-        if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
-            currentValue = evaluateText(
-                currentValue, 
-                qualities, 
-                defs, 
-                { qid: currentQid, state: state! }, // Use currentQid
-                resolutionRoll,
-                aliases
-            );
+        let qualityId: string | undefined;
+        let contextQualities = qualities;
+
+        if (sigil === '$.') qualityId = self?.qid;
+        else if (sigil === '@') qualityId = aliases[identifier];
+        else if (sigil === '$') qualityId = identifier;
+        else if (sigil === '#') qualityId = identifier;
+
+        if (!qualityId) return `[Unknown: ${fullMatch}]`;
+        
+        // NOTE: We don't return here if definition is missing, we try to degrade gracefully
+        // But for properties we need the definition.
+        let definition = defs[qualityId];
+
+        let state: QualityState | undefined;
+
+        if (sigil === '$.' && self) {
+            state = self.state;
+        } else {
+            state = contextQualities[qualityId];
+            if (!state && self?.qid === qualityId) state = self.state;
         }
+        
+        if (!state) {
+            // Fallback state if quality not found on player
+            state = { 
+                qualityId, 
+                type: definition?.type || QualityType.Pyramidal, 
+                level: 0, 
+                stringValue: "", 
+                changePoints: 0, 
+                sources: [], 
+                spentTowardsPrune: 0 
+            } as any;
+        }
+
+        if (levelSpoof) {
+            const spoofedVal = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll, errors);
+            if (typeof spoofedVal === 'number') {
+                state = { ...state, level: spoofedVal } as any;
+            }
+        }
+
+        const properties = propChain ? propChain.split('.').filter(Boolean) : [];
+        let currentValue: any = state;
+
+        if (properties.length === 0) {
+            if (currentValue.type === QualityType.String) return (currentValue as any).stringValue;
+            if ('level' in currentValue) return (currentValue as any).level;
+            return 0;
+        }
+
+        for (const prop of properties) {
+            if (typeof currentValue === 'string') {
+                if (prop === 'capital') currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1);
+                else if (prop === 'upper') currentValue = currentValue.toUpperCase();
+                else if (prop === 'lower') currentValue = currentValue.toLowerCase();
+                continue;
+            }
+
+            // FIX: Use the definition of the CURRENT quality in the chain, not the initial one
+            const currentQid = currentValue.qualityId || qualityId;
+            const currentDef = defs[currentQid];
+            
+            if (!currentDef) break;
+
+            if (prop === 'name') currentValue = currentDef.name || currentQid;
+            else if (prop === 'description') currentValue = currentDef.description || "";
+            else if (prop === 'category') currentValue = currentDef.category || "";
+            else if (prop === 'plural') {
+                const lvl = ('level' in state!) ? state!.level : 0;
+                currentValue = (lvl !== 1) ? (currentDef.plural_name || currentDef.name || currentQid) : (currentDef.singular_name || currentDef.name || currentQid);
+            }
+            else if (prop === 'singular') currentValue = currentDef.singular_name || currentDef.name || currentQid;
+            else if (currentDef.text_variants && currentDef.text_variants[prop]) {
+                currentValue = currentDef.text_variants[prop];
+            }
+            else if (state!.customProperties && state!.customProperties![prop] !== undefined) {
+                currentValue = state!.customProperties![prop];
+            } else {
+                currentValue = undefined;
+            }
+
+            // Recursive Evaluation with Correct Context AND ERRORS
+            if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
+                currentValue = evaluateText(
+                    currentValue, 
+                    qualities, 
+                    defs, 
+                    { qid: currentQid, state: state! }, // Use currentQid
+                    resolutionRoll,
+                    aliases,
+                    errors // PASS ERRORS
+                );
+            }
+        }
+        
+        if (typeof currentValue === 'object' && currentValue !== null) {
+            if (currentValue.type === QualityType.String) return (currentValue as any).stringValue;
+            if ('level' in currentValue) return (currentValue as any).level;
+        }
+        return currentValue?.toString() || "";
+
+    } catch (e: any) {
+        if (errors) errors.push(`Variable Error "${fullMatch}": ${e.message}`);
+        return "[VAR ERROR]";
     }
-    
-    if (typeof currentValue === 'object' && currentValue !== null) {
-        if (currentValue.type === QualityType.String) return (currentValue as any).stringValue;
-        if ('level' in currentValue) return (currentValue as any).level;
-    }
-    return currentValue?.toString() || "";
 }
 
 function preprocessAliases(text: string): [string, Record<string, string>] {
@@ -535,15 +573,17 @@ export function calculateChance(
     defs: Record<string, QualityDefinition>,
     aliases: Record<string, string>,
     self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number
+    resolutionRoll: number,
+    errors?: string[]
 ): number {
     if (!skillCheckExpr) return 0;
     const skillCheckMatch = skillCheckExpr.match(/^\s*(.*?)\s*(>>|<<|><|<>|==|!=)\s*(.*)\s*$/);
     if (!skillCheckMatch) return 0;
 
     const [, skillPart, operator, targetPart] = skillCheckMatch;
-    const skillLevel = Number(evaluateExpression(skillPart, qualities, defs, aliases, self, resolutionRoll));
-    const target = Number(evaluateExpression(targetPart, qualities, defs, aliases, self, resolutionRoll));
+    // Pass errors to sub-evaluations
+    const skillLevel = Number(evaluateExpression(skillPart, qualities, defs, aliases, self, resolutionRoll, errors));
+    const target = Number(evaluateExpression(targetPart, qualities, defs, aliases, self, resolutionRoll, errors));
 
     let margin = target, minCap = 0, maxCap = 100, pivot = 60;
     
@@ -554,7 +594,7 @@ export function calculateChance(
             const namedArgMatch = arg.match(/^([a-zA-Z]+):\s*(.*)$/);
             if (namedArgMatch) {
                 const [, key, valueStr] = namedArgMatch;
-                const value = Number(evaluateExpression(valueStr, qualities, defs, aliases, self, resolutionRoll));
+                const value = Number(evaluateExpression(valueStr, qualities, defs, aliases, self, resolutionRoll, errors));
                 if (!isNaN(value)) {
                     if (key === 'margin') margin = value;
                     else if (key === 'min') minCap = value;
@@ -607,6 +647,7 @@ export function getChallengeDetails(
 ): { chance: number | null, text: string } {
     if (!challengeString) return { chance: null, text: '' };
     // RESTORED ORDER: self=null, roll=0, aliases={}
+    // NOTE: We don't typically capture errors here for the simple display check
     const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, null, 0, {});
     const chance = parseInt(chanceStr, 10);
     if (isNaN(chance)) return { chance: null, text: '' };

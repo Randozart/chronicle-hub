@@ -320,4 +320,17 @@ export interface QualityChangeInfo {
     scope?: 'character' | 'world';
 }
 
+export interface EngineResult {
+    wasSuccess?: boolean;
+    body: string;
+    redirectId?: string;
+    moveToId?: string;
+    qualityChanges: QualityChangeInfo[];
+    scheduledUpdates: any[];
+    skillCheckDetails?: { description: string };
+    title?: string;
+    image_code?: string;
+    errors?: string[]; 
+}
+
 export type WorldContent = WorldConfig;
