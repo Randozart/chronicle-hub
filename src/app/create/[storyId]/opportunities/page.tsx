@@ -1,27 +1,37 @@
+// src/app/create/[storyId]/opportunities/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { Opportunity } from '@/engine/models';
+import { Opportunity, QualityDefinition } from '@/engine/models';
 import OpportunityMainForm from './components/OpportunityMainForm';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import { useToast } from '@/providers/ToastProvider';
 
 export default function OpportunitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast();
     const [opportunities, setOpportunities] = useState<Partial<Opportunity>[]>([]); 
+    const [qualities, setQualities] = useState<QualityDefinition[]>([]); 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeOpportunity, setActiveOpportunity] = useState<Opportunity | null>(null);
     const [isLoadingList, setIsLoadingList] = useState(true);
     const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
-    // 1. Fetch List (Summary)
+    // 1. Fetch List + Qualities
     useEffect(() => {
-        fetch(`/api/admin/opportunities?storyId=${storyId}`) // Dynamic!
-            .then(res => res.json())
-            .then(data => setOpportunities(data))
-            .finally(() => setIsLoadingList(false));
-    }, []);
+        Promise.all([
+            fetch(`/api/admin/opportunities?storyId=${storyId}`),
+            fetch(`/api/admin/qualities?storyId=${storyId}`)
+        ]).then(async ([resOpp, resQual]) => {
+            if (resOpp.ok) setOpportunities(await resOpp.json());
+            if (resQual.ok) {
+                const qData = await resQual.json();
+                setQualities(Object.values(qData));
+            }
+        }).finally(() => setIsLoadingList(false));
+    }, [storyId]);
 
-    // 2. Fetch Detail when selected
+    // 2. Fetch Detail
     useEffect(() => {
         if (!selectedId) {
             setActiveOpportunity(null);
@@ -39,9 +49,8 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
     const handleCreate = async () => {
         const newId = prompt("Enter unique Opportunity ID:");
         if (!newId) return;
-        
         if (opportunities.find(s => s.id === newId)) { alert("Exists"); return; }
-
+        
         const newOpportunity: Opportunity = {
             id: newId,
             name: "New Opportunity",
@@ -53,21 +62,20 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
             can_discard: true,
             keep_if_invalid: false
         };
-
         setOpportunities(prev => [...prev, { id: newId, name: newOpportunity.name }]);
-
-        // SERVER SAVE
+        
         try {
             await fetch('/api/admin/opportunities', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, data: newOpportunity })
             });
-            
             setSelectedId(newId);
             setActiveOpportunity(newOpportunity); 
+            showToast("Card created.", "success");
         } catch (e) {
             console.error(e);
+            showToast("Failed to create card.", "error");
         }
     };
 
@@ -80,21 +88,14 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
                 body: JSON.stringify({ storyId: storyId, data })
             });
             if (res.ok) {
-                alert("Saved!");
+                showToast("Saved successfully!", "success");
                 setOpportunities(prev => prev.map(s => 
                     s.id === data.id 
-                    ? { 
-                        ...s, 
-                        name: data.name, 
-                        deck: data.deck, 
-                        frequency: data.frequency,
-                        folder: data.folder, 
-                        status: data.status 
-                      } 
+                    ? { ...s, name: data.name, deck: data.deck, frequency: data.frequency, folder: data.folder, status: data.status } 
                     : s
                 ));            
             } else {
-                alert("Error saving.");
+                showToast("Error saving card.", "error");
             }
         } catch (e) { console.error(e); }
     };
@@ -105,6 +106,7 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
         await fetch(`/api/admin/opportunities?storyId=${storyId}&id=${id}`, { method: 'DELETE' });
         setOpportunities(prev => prev.filter(s => s.id !== id));
         setSelectedId(null);
+        showToast("Deleted.", "info");
     };
 
     if (isLoadingList) return <div className="loading-container">Loading...</div>;
@@ -117,15 +119,9 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onCreate={handleCreate}
-                groupOptions={[
-                    { label: "Folder", key: "folder" }, 
-                    { label: "Deck", key: "deck" },
-                    { label: "Frequency", key: "frequency" }
-                ]}
+                groupOptions={[{ label: "Folder", key: "folder" }, { label: "Deck", key: "deck" }, { label: "Frequency", key: "frequency" }]}
                 defaultGroupByKey="folder"
             />
-
-            {/* RIGHT: Editor */}
             <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {isLoadingDetail ? (
                     <div>Loading detail...</div>
@@ -134,6 +130,7 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
                         initialData={activeOpportunity} 
                         onSave={handleSave}
                         onDelete={handleDelete}
+                        qualityDefs={qualities} // FIX: Pass qualities here
                     />
                 ) : (
                     <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a card</div>
