@@ -65,7 +65,7 @@ export class GameEngine implements EngineContext {
         );
     }
 
-    // FIXED: Now accepts 'undefined' to match textProcessor signature
+    // FIXED: Now accepts string | undefined to prevent API route errors
     public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
         return evaluateScribeCondition(
             expression, 
