@@ -1,7 +1,7 @@
 // src/app/create/[storyId]/storylets/components/OptionEditor.tsx
 'use client';
 
-import { ResolveOption } from '@/engine/models';
+import { ResolveOption, QualityDefinition } from '@/engine/models';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
@@ -11,9 +11,11 @@ interface Props {
     onChange: (data: ResolveOption) => void;
     onDelete: () => void;
     storyId: string;
+    // NEW PROP
+    qualityDefs: QualityDefinition[];
 }
 
-export default function OptionEditor({ data, onChange, onDelete, storyId }: Props) {
+export default function OptionEditor({ data, onChange, onDelete, storyId, qualityDefs }: Props) {
     const hasDifficulty = !!data.challenge;
 
     const handleChange = (field: keyof ResolveOption, val: any) => {
@@ -30,7 +32,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
             
             <div className="form-row">
                 <div style={{ flex: 2 }}>
-                    <SmartArea label="Label" value={data.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" />
+                    <SmartArea label="Label" value={data.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
                     <SmartArea 
@@ -40,6 +42,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                         storyId={storyId} 
                         minHeight="38px" 
                         placeholder="1 or $stress++"
+                        qualityDefs={qualityDefs}
                     />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
@@ -50,10 +53,10 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
 
             <div className="form-row">
                 <div style={{ flex: 1 }}>
-                     <SmartArea label="Teaser" value={data.short || ''} onChange={v => handleChange('short', v)} storyId={storyId} minHeight="60px" />
+                     <SmartArea label="Teaser" value={data.short || ''} onChange={v => handleChange('short', v)} storyId={storyId} minHeight="60px" qualityDefs={qualityDefs} />
                 </div>
                 <div style={{ flex: 1 }}>
-                     <SmartArea label="Instruction (Meta)" value={data.meta || ''} onChange={v => handleChange('meta', v)} storyId={storyId} minHeight="60px" />
+                     <SmartArea label="Instruction (Meta)" value={data.meta || ''} onChange={v => handleChange('meta', v)} storyId={storyId} minHeight="60px" qualityDefs={qualityDefs} />
                 </div>
             </div>
 
@@ -80,14 +83,15 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                         mode="condition"
                         placeholder="{ $gold > 100 ? 'special_tag' : '' }"
                         subLabel="Comma-separated list calculated at runtime."
+                        qualityDefs={qualityDefs}
                     />
                 </div>
             </div>
 
             <div className="form-group" style={{ background: '#181a1f', padding: '0.75rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="form-row">
-                    <div style={{ flex: 1 }}><SmartArea label="Visible If" value={data.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" /></div>
-                    <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={data.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" /></div>
+                    <div style={{ flex: 1 }}><SmartArea label="Visible If" value={data.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" qualityDefs={qualityDefs} /></div>
+                    <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={data.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" qualityDefs={qualityDefs} /></div>
                 </div>
                 {hasDifficulty && (
                     <div style={{ marginTop: '1rem' }}>
@@ -99,12 +103,13 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                             mode="condition" 
                             initialTab="challenge"
                             placeholder="{%chance[$stat >> 50]}"
+                            qualityDefs={qualityDefs}
                         />
                     </div>
                 )}
             </div>
 
-            {/* OUTCOMES (Simpler now without Rare) */}
+            {/* OUTCOMES */}
             <div style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <h4 style={{ margin: 0, color: '#aaa', textTransform: 'uppercase', fontSize: '0.8rem' }}>Outcomes</h4>
@@ -112,8 +117,8 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-                    <OutcomeColumn title="Success" color="#2ecc71" data={data} prefix="pass" onChange={handleChange} storyId={storyId} />
-                    {hasDifficulty && <OutcomeColumn title="Failure" color="#e74c3c" data={data} prefix="fail" onChange={handleChange} storyId={storyId} />}
+                    <OutcomeColumn title="Success" color="#2ecc71" data={data} prefix="pass" onChange={handleChange} storyId={storyId} qualityDefs={qualityDefs} />
+                    {hasDifficulty && <OutcomeColumn title="Failure" color="#e74c3c" data={data} prefix="fail" onChange={handleChange} storyId={storyId} qualityDefs={qualityDefs} />}
                 </div>
             </div>
 
@@ -124,15 +129,15 @@ export default function OptionEditor({ data, onChange, onDelete, storyId }: Prop
     );
 }
 
-function OutcomeColumn({ title, color, data, prefix, onChange, storyId }: any) {
+function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityDefs }: any) {
     return (
         <div className="outcome-column" style={{ background: `${color}08`, border: `1px solid ${color}40` }}>
             <h4 style={{ color: color, margin: '0 0 0.5rem 0' }}>{title}</h4>
             
-            <SmartArea label="Narrative" value={data[`${prefix}_long`] || ''} onChange={v => onChange(`${prefix}_long`, v)} storyId={storyId} minHeight="80px" placeholder="What happens?" />
+            <SmartArea label="Narrative" value={data[`${prefix}_long`] || ''} onChange={v => onChange(`${prefix}_long`, v)} storyId={storyId} minHeight="80px" placeholder="What happens?" qualityDefs={qualityDefs} />
             
             <div style={{ marginTop: '0.5rem' }}>
-                <SmartArea label="Changes" value={data[`${prefix}_quality_change`] || ''} onChange={v => onChange(`${prefix}_quality_change`, v)} storyId={storyId} mode="effect" />
+                <SmartArea label="Changes" value={data[`${prefix}_quality_change`] || ''} onChange={v => onChange(`${prefix}_quality_change`, v)} storyId={storyId} mode="effect" qualityDefs={qualityDefs} />
             </div>
 
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>

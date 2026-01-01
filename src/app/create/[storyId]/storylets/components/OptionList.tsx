@@ -2,16 +2,18 @@
 'use client';
 
 import { useState } from 'react';
-import { ResolveOption } from '@/engine/models';
+import { ResolveOption, QualityDefinition } from '@/engine/models';
 import OptionEditor from './OptionEditor';
 
 interface Props {
     options: ResolveOption[];
     onChange: (newOptions: ResolveOption[]) => void;
     storyId: string;
+    // NEW PROP
+    qualityDefs: QualityDefinition[];
 }
 
-export default function OptionList({ options, onChange, storyId }: Props) {
+export default function OptionList({ options, onChange, storyId, qualityDefs }: Props) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const handleUpdate = (updated: ResolveOption) => {
@@ -27,7 +29,6 @@ export default function OptionList({ options, onChange, storyId }: Props) {
             id: id,
             name: "New Option",
             pass_long: "Success text...",
-            // Default ordering to end of list
             ordering: options.length + 1
         };
         onChange([...options, newOption]);
@@ -47,8 +48,6 @@ export default function OptionList({ options, onChange, storyId }: Props) {
         newOptions[index] = newOptions[index + direction];
         newOptions[index + direction] = temp;
         
-        // Optional: Re-assign 'ordering' numbers to match array index?
-        // For now, array index defines order, which is simpler for JSON storage.
         onChange(newOptions);
     };
 
@@ -87,6 +86,7 @@ export default function OptionList({ options, onChange, storyId }: Props) {
                                 onChange={handleUpdate} 
                                 onDelete={() => handleDelete(opt.id)}
                                 storyId={storyId}
+                                qualityDefs={qualityDefs} // PASS DATA DOWN
                             />
                         </div>
                     )}

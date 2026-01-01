@@ -316,29 +316,3 @@ export default function ScribeEditor({
             //         outline: 1px solid rgba(229, 192, 123, 0.4);
             //         box-shadow: 0 0 4px rgba(229, 192, 123, 0.2);
             //     }
-                
-                
-                
-
-                
-                
-                
-
-                
-         
-                
-                
-
-                
-                
-                
-
-                
-                
-                 
-
-                
-                
-                
-                
-

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Storylet } from '@/engine/models';
+import { Storylet, QualityDefinition } from '@/engine/models';
 import OptionList from './OptionList';
 import SmartArea from '@/components/admin/SmartArea'; 
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
@@ -12,12 +12,12 @@ interface Props {
     initialData: Storylet;
     onSave: (data: Storylet) => void;
     onDelete: (id: string) => void;
+    // Data Required for Smart Linter
+    qualityDefs: QualityDefinition[];
 }
 
-export default function StoryletMainForm({ initialData, onSave, onDelete }: Props) {
+export default function StoryletMainForm({ initialData, onSave, onDelete, qualityDefs }: Props) {
     const [form, setForm] = useState(initialData);
-    
-    // Extract storyId from window or props (props is cleaner but window works for now in this architecture)
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
     useEffect(() => setForm(initialData), [initialData]);
@@ -31,7 +31,6 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
         handleChange('tags', newTags);
     };
 
-    // CTRL+S Handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -45,7 +44,6 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
 
     return (
         <div className="h-full flex flex-col relative">
-            {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
@@ -62,10 +60,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
 
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
-                {/* BASIC INFO */}
                 <div className="form-row">
                     <div style={{ flex: 2 }}>
-                        <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" />
+                        <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Sort Order</label>
@@ -88,11 +85,11 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                             minHeight="38px" 
                             placeholder="image_id or { $logic }"
                             subLabel="Supports ScribeScript"
+                            qualityDefs={qualityDefs}
                         />
                     </div>
                 </div>
 
-                {/* TEASER */}
                 <SmartArea 
                     label="Teaser Text" 
                     subLabel="Shown on the button before entering."
@@ -100,9 +97,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                     onChange={v => handleChange('short', v)} 
                     storyId={storyId} 
                     minHeight="60px"
+                    qualityDefs={qualityDefs}
                 />
 
-                {/* REQUIREMENTS */}
                 <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Requirements</label>
                     <div className="form-row">
@@ -114,6 +111,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                                 storyId={storyId} 
                                 mode="condition" 
                                 placeholder="$gold > 0" 
+                                qualityDefs={qualityDefs}
                             />
                         </div>
                         <div style={{ flex: 1 }}>
@@ -124,12 +122,12 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                                 storyId={storyId} 
                                 mode="condition" 
                                 placeholder="$gold >= 10" 
+                                qualityDefs={qualityDefs}
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* MAIN TEXT */}
                 <div style={{ marginTop: '1rem' }}>
                     <SmartArea 
                         label="Main Text" 
@@ -138,10 +136,10 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                         storyId={storyId} 
                         minHeight="200px" 
                         placeholder="Write your story..." 
+                        qualityDefs={qualityDefs}
                     />
                 </div>
 
-                {/* META */}
                 <SmartArea 
                     label="Instruction Text (Meta)"
                     subLabel="Italic text below the body."
@@ -149,9 +147,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                     onChange={v => handleChange('metatext', v)} 
                     storyId={storyId} 
                     minHeight="38px"
+                    qualityDefs={qualityDefs}
                 />
 
-                {/* AUTOFIRE */}
                 <div className="special-field-group" style={{ borderColor: form.autofire_if ? '#e06c75' : '#444', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <label className="special-label" style={{ color: form.autofire_if ? '#e06c75' : '#aaa', margin: 0 }}>Must-Event (Autofire)</label>
@@ -164,11 +162,11 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
                             onChange={v => handleChange('autofire_if', v)} 
                             storyId={storyId} 
                             mode="condition" 
+                            qualityDefs={qualityDefs}
                         />
                     )}
                 </div>
 
-                {/* BEHAVIOR */}
                 <div className="special-field-group" style={{ borderColor: '#c678dd', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -183,7 +181,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete }: Prop
 
                 <div style={{ marginTop: '2rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
                     <h3 style={{ fontSize: '1.1rem', color: '#98c379', marginBottom: '1rem' }}>Options</h3>
-                    <OptionList options={form.options || []} onChange={(newOpts) => handleChange('options', newOpts)} storyId={storyId} />
+                    <OptionList options={form.options || []} onChange={(newOpts) => handleChange('options', newOpts)} storyId={storyId} qualityDefs={qualityDefs} />
                 </div>
             </div>
         </div>

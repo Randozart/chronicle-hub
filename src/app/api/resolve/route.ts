@@ -1,4 +1,5 @@
 // src/app/api/resolve/route.ts
+// ... imports same as before ...
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
         }
         
         const pendingAutofires = await getAutofireStorylets(storyId);
-        const eligibleAutofires = pendingAutofires.filter(e => engine.evaluateCondition(e.autofire_if));
+        // FIX: Handle undefined autofire_if by passing empty string ""
+        const eligibleAutofires = pendingAutofires.filter(e => engine.evaluateCondition(e.autofire_if || ""));
         
         eligibleAutofires.sort((a, b) => {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
@@ -120,7 +122,8 @@ export async function POST(request: NextRequest) {
         }
         
         const postResolutionEngine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
-        const newEligibleAutofires = pendingAutofires.filter(e => postResolutionEngine.evaluateCondition(e.autofire_if));
+        // FIX: Handle undefined autofire_if here as well
+        const newEligibleAutofires = pendingAutofires.filter(e => postResolutionEngine.evaluateCondition(e.autofire_if || ""));
         newEligibleAutofires.sort((a, b) => {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
             return priority[b.urgency || 'Normal'] - priority[a.urgency || 'Normal'];
