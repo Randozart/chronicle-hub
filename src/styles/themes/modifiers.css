@@ -276,6 +276,7 @@ html[data-theme='revolutionary']::before {
 [data-theme='detective-noir'] .option-button:hover { transform: translateY(-3px) rotate(-0.5deg); box-shadow: 0 8px 15px rgba(0,0,0,0.15); background-color: var(--bg-item-hover); border-color: var(--text-secondary); }
 [data-theme='detective-noir'] .option-button h3 { font-weight: bold; text-decoration: underline; text-decoration-color: var(--border-light); margin-bottom: 0.5rem; }
 [data-theme='detective-noir'] .option-button:hover h3 { color: var(--accent-highlight); text-decoration-color: var(--accent-highlight); }
+
 [data-theme='detective-noir'] .storylet-image-container { background: #fff; padding: 0.5rem 0.5rem 2.5rem 0.5rem; box-shadow: 0 3px 6px rgba(0,0,0,0.2); border: 1px solid #ddd; transform: rotate(-1deg); width: 220px; position: relative; }
 [data-theme='detective-noir'] .storylet-image-container::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%); pointer-events: none; border: 1px solid rgba(255,255,255,0.4); }
 [data-theme='detective-noir'] .deck-button, [data-theme='detective-noir'] .return-button { background: var(--text-primary); color: #fff; border: 2px solid var(--text-primary); text-transform: uppercase; font-weight: bold; letter-spacing: 2px; padding: 1rem 2rem; border-radius: 0; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); transition: all 0.1s; cursor: pointer; }
@@ -415,9 +416,162 @@ html[data-theme='revolutionary']::before {
     background-color: #f7f4ec; /* Slightly different paper shade? */
 }
 
+
+[data-theme='detective-noir'] .profile-header {
+    /* Make it look like an ID card clipped to the folder */
+    background: #f0f0e8; /* Off-white ID card */
+    color: #111;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    border: 1px solid #ccc;
+    transform: rotate(-1deg);
+}
+
+[data-theme='detective-noir'] .profile-name,
+[data-theme='detective-noir'] .profile-subtitle {
+    color: #111 !important; /* Force dark text on the light ID card */
+}
+
+[data-theme='detective-noir'] .quality-category-card::after {
+    content: '';
+    position: absolute;
+    top: 5px; /* Stick out the top */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 14px;
+    
+    /* Red Pin Style */
+    background: radial-gradient(circle at 30% 30%, #e74c3c, #922b21);
+    border-radius: 50%;
+    /* border: 1px solid #732d2d; */
+    z-index: 10;
+    
+    /* Make it look pushed in */
+    box-shadow: 0 2px 2px rgba(0,0,0,0.4);
+}
+
+/* 2. The Pin Shadow (Cast on the paper) */
+[data-theme='detective-noir'] .quality-category-card::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 14px;
+    height: 6px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 50%;
+    transform: translateX(-40%) rotate(-45deg); /* Offset shadow */
+    z-index: 9;
+}
+
+/* 3. Improve the paper look for the cards */
+[data-theme='detective-noir'] .quality-category-card {
+    background-color: #fcfbf8; /* Very clean paper */
+    border: 1px solid #dcdcdc;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    
+    /* Ensure padding for the pin */
+    padding-top: 1.5rem; 
+    
+    /* Positioning context for the pin */
+    position: relative; 
+}
+
+/* --- POLAROID PROFILE PICTURE (Rect Only) --- */
+[data-theme='detective-noir'] .profile-portrait[data-shape='rect'] {
+    /* 1. White Polaroid Paper Frame */
+    background-color: #fff !important;
+    border: 1px solid #d4d4d4 !important;
+    border-radius: 0 !important; /* Sharp corners */
+    
+    /* 2. The Chin (Thick bottom padding) */
+    padding: 6px 6px 25px 6px !important;
+    
+    /* 3. Sizing & Posture */
+    width: 100px !important;
+    height: 100px !important;
+    box-sizing: content-box !important; /* Ensure padding adds to width */
+    transform: rotate(-3deg);
+    box-shadow: 2px 4px 10px rgba(0,0,0,0.3) !important;
+    
+    position: relative; /* Context for the gloss overlay */
+}
+
+/* Fix the image inside the polaroid */
+[data-theme='detective-noir'] .profile-portrait[data-shape='rect'] img {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 3/4;
+    border: 1px solid #eee; /* Faint border around the photo itself */
+    display: block;
+}
+
+/* The Glossy Reflection Overlay */
+[data-theme='detective-noir'] .profile-portrait[data-shape='rect']::after {
+    content: '';
+    position: absolute;
+    top: 6px; left: 6px; right: 6px; 
+    bottom: 25px; /* Stop exactly where the photo ends */
+    
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.05) 100%);
+    border: 1px solid rgba(255,255,255,0.4);
+    pointer-events: none;
+    z-index: 10;
+}
+
+
+/* --- RANDOMIZED PINS (Investigation Board) --- */
+/* By default, pins are centered (left: 50%). We override this for subsets of cards. */
+
+/* Variation 1: Pinned on the Left */
+[data-theme='detective-noir'] .quality-category-card:nth-child(odd)::after,
+[data-theme='detective-noir'] .quality-category-card:nth-child(odd)::before {
+    left: 45% !important;
+}
+
+/* Variation 2: Pinned on the Right (Every 3rd card) */
+[data-theme='detective-noir'] .quality-category-card:nth-child(3n)::after,
+[data-theme='detective-noir'] .quality-category-card:nth-child(3n)::before {
+    left: 55% !important;
+}
+
+/* Variation 3: Slightly Higher/Haphazard (Every 4th card) */
+[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::after {
+    left: 60% !important;
+    top: -12px !important; /* Stick out more */
+}
+[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::before {
+    left: 60% !important;
+    top: -9px !important; /* Shadow moves with it */
+}
+[data-theme='detective-noir'] .continue-button { background-color: var(--bg-item); border: 1px dashed var(--border-light) !important; padding: 1.5rem; margin-bottom: 1.5rem; position: relative; box-shadow: none; transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); }
+
+[data-theme='detective-noir'] .card.theme-wrapper {
+    color: #ffffff !important;
+}
+
+
+
 /* Mobile */
 @media (max-width: 900px) {
     [data-theme='detective-noir'] .layout-grid-nexus { grid-template-columns: 1fr; gap: 1rem; margin: 1rem auto; padding: 0.5rem; }
-    [data-theme='detective-noir'] .sidebar-panel { max-height: none; position: relative; top: 0; transform: none; }
+    [data-theme='detective-noir'] .sidebar-panel { max-height: none; position: relative; top: 0; transform: none; width: auto; }
     [data-theme='detective-noir'] .storylet-container { padding: 1.5rem; }
+    [data-theme='detective-noir'] .mobile-close-btn  {
+        background-color: var(--accent-highlight);
+        color: var(--bg-main);
+        z-index: 900;
+        cursor: pointer;
+        text-transform: uppercase;
+        border: none;
+        border-radius: 50px;
+        padding: 1rem 1.5rem;
+        font-size: .8rem;
+        font-weight: bold;
+        display: block;
+        position: fixed;
+        right: 2rem;
+        box-shadow: 0 4px 10px #00000080;
+    }
+
 }

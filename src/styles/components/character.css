@@ -38,3 +38,84 @@
 .mini-progress-bar .fill { height: 100%; background: var(--progress-fill); }
 
 .london-banner img, .banner-bg-image { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+
+.profile-header {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.profile-portrait {
+    width: 100px;
+    height: 100px;
+    overflow: hidden;
+    border: 3px solid var(--accent-primary);
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+    background: #000;
+}
+
+.profile-portrait[data-shape='circle'] {
+    border-radius: 50%;
+}
+
+.profile-portrait[data-shape='rect'] {
+    height: 133px;
+    border-radius: 8px;
+}
+
+.profile-identity {
+    flex: 1;
+}
+
+.profile-name {
+    margin: 0;
+    font-size: 2rem;
+    color: var(--text-primary);
+    line-height: 1.1;
+}
+
+.profile-title {
+    margin: 0.25rem 0 0.5rem 0;
+    color: var(--accent-highlight);
+    font-size: 1.1rem;
+    font-weight: normal;
+    font-family: var(--font-main);
+}
+
+.profile-subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.profile-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.profile-search { flex: 1; }
+.profile-sort { width: 150px; }
+
+.profile-category-header {
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    
+    /* Dynamic color via CSS Variable */
+    color: var(--category-color);
+    border-bottom: 1px solid color-mix(in srgb, var(--category-color), transparent 70%); /* Fallback or modern mix */
+    border-bottom: 1px solid var(--category-color); /* Fallback */
+}
+
+.no-qualities-text { color: var(--text-muted); }

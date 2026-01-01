@@ -48,20 +48,9 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
         }
     }
 
-    // 4. Styles
+    // 4. Styles Config
     const showPortrait = settings.enablePortrait !== false;
     const shape = settings.portraitStyle || 'circle';
-    
-    const portraitStyles: React.CSSProperties = {
-        width: shape === 'rect' ? '100px' : '100px',
-        height: shape === 'rect' ? '133px' : '100px', 
-        borderRadius: shape === 'circle' ? '50%' : '8px',
-        overflow: 'hidden',
-        border: '3px solid var(--accent-primary)',
-        boxShadow: '0 0 15px rgba(0,0,0,0.5)',
-        flexShrink: 0,
-        background: '#000' 
-    };
 
     // 5. Prepare List
     const flatList = useMemo(() => {
@@ -75,8 +64,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
                 if (state.type !== 'S' && state.level === 0) return null;
                 
-                // RENDER QUALITY
-                // This resolves dynamic names/descriptions in the list
                 const merged = { ...def, ...state };
                 return engine.render(merged);
             })
@@ -90,13 +77,9 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
         <div className="profile-container">
             
             {/* PASSPORT HEADER */}
-            <div style={{ 
-                display: 'flex', gap: '2rem', alignItems: 'center', 
-                padding: '2rem', marginBottom: '2rem', 
-                background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: '8px' 
-            }}>
+            <div className="profile-header">
                 {showPortrait && (
-                    <div style={portraitStyles}>
+                    <div className="profile-portrait" data-shape={shape}>
                         <GameImage 
                             code={portraitCode} 
                             imageLibrary={imageLibrary} 
@@ -107,31 +90,23 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                     </div>
                 )}
                 
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '2rem', color: 'var(--text-primary)' }}>{playerName}</h1>
+                <div className="profile-identity">
+                    <h1 className="profile-name">{playerName}</h1>
                     
                     {playerTitle && (
-                        <h3 style={{ 
-                            margin: '0.25rem 0 0.5rem 0', 
-                            color: 'var(--accent-highlight)', 
-                            fontSize: '1.1rem', 
-                            fontWeight: 'normal',
-                            fontFamily: 'var(--font-main)'
-                        }}>
-                            {playerTitle}
-                        </h3>
+                        <h3 className="profile-title">{playerTitle}</h3>
                     )}
                     
-                    <p style={{ margin: '0', color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                    <p className="profile-subtitle">
                         A resident of this world.
                     </p>
                 </div>
             </div>
 
             {/* CONTROLS */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search qualities..." className="form-input" style={{ flex: 1 }} />
-                <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className="form-select" style={{ width: '150px' }}>
+            <div className="profile-controls">
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search qualities..." className="form-input profile-search" />
+                <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className="form-select profile-sort">
                     <option value="category">Category</option>
                     <option value="type">Type</option>
                 </select>
@@ -143,7 +118,10 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                     const headerColor = catDef?.color || 'var(--accent-highlight)'; 
                     return (
                         <div key={cat} className="quality-category-card">
-                            <h3 style={{ textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1rem', paddingBottom: '0.5rem', color: headerColor, borderBottom: `1px solid ${headerColor}40` }}>{cat}</h3>
+                            {/* Pass color as CSS variable for the styling to pick up */}
+                            <h3 className="profile-category-header" style={{ '--category-color': headerColor } as React.CSSProperties}>
+                                {cat}
+                            </h3>
                             <div className="quality-list">
                                 {grouped[cat].map((q: any) => (
                                     <div key={q.id} className="profile-quality-item">
@@ -155,11 +133,9 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                         )}
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                {/* Pre-rendered name */}
                                                 <span className="q-name">{q.name}</span> 
                                                 <span className="q-val">{q.type === 'S' ? q.stringValue : q.level}</span>
                                             </div>
-                                            {/* Pre-rendered description */}
                                             <p className="q-desc">{q.description}</p>
                                             {q.type === 'P' && (
                                                 <div className="mini-progress-bar">
@@ -174,7 +150,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                         </div>
                     );
                 })}
-                {groups.length === 0 && <p style={{ color: '#777' }}>No qualities found.</p>}
+                {groups.length === 0 && <p className="no-qualities-text">No qualities found.</p>}
             </div>
         </div>
     );
