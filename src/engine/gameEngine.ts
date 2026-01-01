@@ -37,10 +37,10 @@ export class GameEngine {
         this.resolutionRoll = Math.random() * 100;
     }
 
-    // ... [Setters/Getters unchanged] ...
     public setQualities(newQualities: PlayerQualities): void {
         this.qualities = JSON.parse(JSON.stringify(newQualities));
     }
+
     public getQualities(): PlayerQualities { return this.qualities; }
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
 
@@ -86,12 +86,13 @@ export class GameEngine {
         );
     }
 
-    public evaluateText(rawText: string | undefined): string {
+    // FIX: Added optional context argument to restore $. support
+    public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
             rawText, 
             this.qualities, 
             this.worldContent.qualities, 
-            null, 
+            context || null, // Pass context if provided
             this.resolutionRoll, 
             this.tempAliases,
             this.errors
@@ -182,7 +183,6 @@ export class GameEngine {
             const cleanEffect = effect.trim();
             if (!cleanEffect) continue;
 
-            // TRACE: Snapshot error length before executing this effect
             const prevErrorCount = this.errors.length;
 
             if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
@@ -192,7 +192,6 @@ export class GameEngine {
                 }
             }
             else {
-                // ... [Normal processing logic] ...
                 const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
                 if (macroMatch) {
                     const [, command, args] = macroMatch;
@@ -299,17 +298,13 @@ export class GameEngine {
                 }
             }
 
-            // TRACE: If error count increased during this effect, annotate the last error
             if (this.errors.length > prevErrorCount) {
                 const lastIdx = this.errors.length - 1;
-                // Append context to the last error message
                 this.errors[lastIdx] = `${this.errors[lastIdx]} \n>> Context: "${cleanEffect}"`;
             }
         }
     }
     
-    // ... [Rest of methods identical, ensuring they use `this.evaluateText`] ...
-
     private parseAndQueueTimerInstruction(command: string, argsStr: string) {
         const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
         const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
@@ -498,20 +493,24 @@ export class GameEngine {
 
         const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
 
+        // FIX: Construct context for descriptions
         const context = { qid: effectiveQid, state: qState };
-        const displayName = this.evaluateText(def.name || effectiveQid);
+        // FIX: Pass context to evaluateText for dynamic property resolution (e.g. $.name)
+        const displayName = this.evaluateText(def.name || effectiveQid, context);
         
         let changeText = "";
         
-        const increaseDesc = this.evaluateText(def.increase_description);
-        const decreaseDesc = this.evaluateText(def.decrease_description);
+        // FIX: Pass context to evaluateText for description resolution
+        const increaseDesc = this.evaluateText(def.increase_description, context);
+        const decreaseDesc = this.evaluateText(def.decrease_description, context);
 
         if (qState.level > levelBefore) changeText = increaseDesc || `${displayName} increased.`;
         else if (qState.level < levelBefore) changeText = decreaseDesc || `${displayName} decreased.`;
         else if (qState.type === 'S') changeText = `${displayName} is now ${qState.stringValue}`;
 
         if (metadata.desc) {
-            changeText = this.evaluateText(metadata.desc);
+            // FIX: Pass context to metadata description as well
+            changeText = this.evaluateText(metadata.desc, context);
         }
 
         if (changeText) {
