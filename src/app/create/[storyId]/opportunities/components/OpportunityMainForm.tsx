@@ -2,19 +2,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Opportunity } from '@/engine/models';
+import { Opportunity, QualityDefinition } from '@/engine/models';
 import OptionList from '../../storylets/components/OptionList';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
+import { useToast } from '@/providers/ToastProvider';
 
 interface Props {
     initialData: Opportunity;
     onSave: (data: Opportunity) => void;
     onDelete: (id: string) => void;
+    qualityDefs: QualityDefinition[]; // Required Prop
 }
 
-export default function OpportunityMainForm({ initialData, onSave, onDelete }: Props) {
+export default function OpportunityMainForm({ initialData, onSave, onDelete, qualityDefs }: Props) {
     const [form, setForm] = useState(initialData);
+    const { showToast } = useToast();
     
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
@@ -24,21 +27,15 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    // CTRL+S
+    // GLOBAL SAVE TRIGGER
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                onSave(form);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [form, onSave]);
+        const handleGlobalSave = () => onSave(form);
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, [form]);
 
     return (
         <div className="h-full flex flex-col relative">
-            {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
@@ -59,7 +56,6 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
             
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
-                {/* BASIC INFO */}
                 <div className="form-row">
                     <div style={{ flex: 2 }}>
                         <SmartArea 
@@ -68,6 +64,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                             onChange={v => handleChange('name', v)} 
                             storyId={storyId} 
                             minHeight="38px" 
+                            qualityDefs={qualityDefs} // PASS
                         />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
@@ -88,11 +85,11 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                             minHeight="38px" 
                             placeholder="image_id or { $logic }"
                             subLabel="Supports ScribeScript"
+                            qualityDefs={qualityDefs} // PASS
                         />
                     </div>
                 </div>
 
-                {/* TEASER */}
                 <SmartArea 
                     label="Teaser Text" 
                     subLabel="Shown on the card face."
@@ -100,12 +97,11 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                     onChange={v => handleChange('short', v)} 
                     storyId={storyId} 
                     minHeight="60px"
+                    qualityDefs={qualityDefs} // PASS
                 />
 
-                {/* LOGIC */}
                 <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Card Logic</label>
-                    
                     <div className="form-row">
                         <div style={{ flex: 1 }}>
                             <SmartArea 
@@ -116,6 +112,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                                 mode="condition" 
                                 placeholder="$gold > 10"
                                 subLabel="Requirements to enter hand"
+                                qualityDefs={qualityDefs} // PASS
                             />
                         </div>
                         <div style={{ flex: 1 }}>
@@ -127,10 +124,10 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                                 mode="condition" 
                                 placeholder="$energy > 5"
                                 subLabel="Requirements to play from hand"
+                                qualityDefs={qualityDefs} // PASS
                             />
                         </div>
                     </div>
-                    
                     <div className="form-row" style={{ marginTop: '1rem' }}>
                         <div className="form-group">
                             <label className="form-label">Frequency</label>
@@ -145,7 +142,6 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                     </div>
                 </div>
 
-                {/* BODY */}
                 <div style={{ marginTop: '1rem' }}>
                     <SmartArea 
                         label="Card Body Text" 
@@ -153,15 +149,15 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                         onChange={v => handleChange('text', v)} 
                         storyId={storyId} 
                         minHeight="150px" 
+                        qualityDefs={qualityDefs} // PASS
                     />
                 </div>
 
-                {/* BEHAVIOR */}
                 <div className="special-field-group" style={{ borderColor: '#c678dd', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#c678dd' }}>Card Behavior</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <BehaviorCard 
-                            checked={form.can_discard !== false} // Default true
+                            checked={form.can_discard !== false} 
                             onChange={() => handleChange('can_discard', !form.can_discard)} 
                             label="Discardable" 
                             desc="Player can remove this card." 
@@ -175,10 +171,14 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete }: P
                     </div>
                 </div>
 
-                {/* OPTIONS */}
                 <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                     <h3 style={{ fontSize: '1.1rem', color: '#98c379', marginBottom: '1rem' }}>Options</h3>
-                    <OptionList options={form.options || []} onChange={(newOpts) => handleChange('options', newOpts)} storyId={storyId} />
+                    <OptionList 
+                        options={form.options || []} 
+                        onChange={(newOpts) => handleChange('options', newOpts)} 
+                        storyId={storyId} 
+                        qualityDefs={qualityDefs} // FIX: Pass qualityDefs here
+                    />
                 </div>
             </div>
         </div>
