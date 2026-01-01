@@ -55,7 +55,8 @@ function evaluateRecursive(
             // FIX: Handle null/undefined to prevent crash
             const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
             
-            currentText = currentText.replace(blockWithBraces, safeValue);
+            // FIX: Use callback for replacement to prevent regex pattern injection from the content (e.g., "$" in strings)
+            currentText = currentText.replace(blockWithBraces, () => safeValue);
         }
 
         if (context === 'LOGIC') {
@@ -89,7 +90,6 @@ function evaluateExpression(
         const rawValue = assignmentMatch[2];
         const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors);
         
-        // FIX: Ensure not undefined
         let storedValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
         
@@ -163,7 +163,6 @@ function getCandidateIds(
             if (filterStr === '>0' || filterStr === 'has' || filterStr === 'owned') {
                 return 'level' in state ? state.level > 0 : false;
             }
-            // FIX: Pass context { qid, state } so '$.' works in filters
             return evaluateCondition(filterStr, qualities, defs, { qid, state }, resolutionRoll, aliases, errors);
         });
     }
@@ -330,7 +329,6 @@ function resolveComplexExpression(expr: string, qualities: PlayerQualities, defs
     }
 }
 
-// FIX: Updated logic to allow string modifiers AND property lookup
 function resolveVariable(fullMatch: string, qualities: PlayerQualities, defs: Record<string, QualityDefinition>, aliases: Record<string, string>, self: { qid: string, state: QualityState } | null, resolutionRoll: number, errors?: string[]): string | number {
     try {
         const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
@@ -389,19 +387,13 @@ function resolveVariable(fullMatch: string, qualities: PlayerQualities, defs: Re
                 else if (prop === 'lower') { currentValue = currentValue.toLowerCase(); processed = true; }
             }
             
-            // FIX: If it was a string modifier, continue to next prop. 
-            // If NOT (e.g. prop is 'name'), treat string as an ID and look it up.
             if (processed) continue;
 
             const currentQid = currentValue.qualityId || qualityId;
-            // If currentValue is a string (e.g. "cultist"), use it as the ID.
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             
             const currentDef = defs[lookupId];
             
-            // If currentDef is found, use it. If not, fallback to properties on 'state' if we haven't drifted away from the original object
-            // or return the ID itself if we are looking for 'name'.
-
             if (prop === 'name') currentValue = currentDef?.name || lookupId;
             else if (prop === 'description') currentValue = currentDef?.description || "";
             else if (prop === 'category') currentValue = currentDef?.category || "";
@@ -414,17 +406,20 @@ function resolveVariable(fullMatch: string, qualities: PlayerQualities, defs: Re
                 currentValue = currentDef.text_variants[prop];
             }
             else if (typeof currentValue === 'object' && currentValue.customProperties && currentValue.customProperties[prop] !== undefined) {
-                // If we are still on the state object
                 currentValue = currentValue.customProperties[prop];
             } else {
                 currentValue = undefined;
             }
 
+            // FIX: Recursive evaluation for properties (Russian Doll Support)
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
                 currentValue = evaluateText(
                     currentValue, 
                     qualities, 
                     defs, 
+                    // CRITICAL FIX: Pass the correct context for the child evaluation.
+                    // If we just resolved an object (like finding a weapon), lookupId is correct.
+                    // If we just resolved a description string, lookupId is the ID of the thing we described.
                     { qid: lookupId, state: (typeof currentValue === 'object' ? currentValue : state!) }, 
                     resolutionRoll,
                     aliases,
@@ -444,9 +439,6 @@ function resolveVariable(fullMatch: string, qualities: PlayerQualities, defs: Re
         return "[VAR ERROR]";
     }
 }
-
-// ... [calculateChance, getChallengeDetails ... same as previous] ...
-// Re-pasting calculateChance for safety.
 
 export function calculateChance(
     skillCheckExpr: string,

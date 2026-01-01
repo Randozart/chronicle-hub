@@ -32,6 +32,7 @@ type ResolutionState = {
     qualityChanges: QualityChangeInfo[];
     errors?: string[]; 
     rawEffects?: string;
+    resolvedEffects?: string[]; // TRACE: New Field
 };
 
 export default function StoryletDisplay({ 
@@ -228,13 +229,26 @@ export default function StoryletDisplay({
                                 )}
 
                                 {resolution.rawEffects && (
+                                    <div style={{ marginBottom: '15px' }}>
+                                        <strong style={{ color: '#95a5a6' }}>Raw ScribeScript:</strong>
+                                        <pre style={{ 
+                                            background: '#000', padding: '8px', marginTop: '5px', 
+                                            whiteSpace: 'pre-wrap', borderRadius: '4px', color: '#95a5a6', opacity: 0.8 
+                                        }}>
+                                            {resolution.rawEffects}
+                                        </pre>
+                                    </div>
+                                )}
+
+                                {/* TRACE: Show Final Resolved Effects */}
+                                {resolution.resolvedEffects && resolution.resolvedEffects.length > 0 && (
                                     <div>
-                                        <strong style={{ color: '#3498db' }}>Executed ScribeScript:</strong>
+                                        <strong style={{ color: '#2ecc71' }}>Final Execution Trace:</strong>
                                         <pre style={{ 
                                             background: '#000', padding: '8px', marginTop: '5px', 
                                             whiteSpace: 'pre-wrap', borderRadius: '4px', color: '#f1c40f' 
                                         }}>
-                                            {resolution.rawEffects}
+                                            {resolution.resolvedEffects.join('\n')}
                                         </pre>
                                     </div>
                                 )}

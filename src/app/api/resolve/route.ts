@@ -1,5 +1,4 @@
 // src/app/api/resolve/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -184,7 +183,9 @@ export async function POST(request: NextRequest) {
                 // Pass errors if debug
                 errors: canDebug ? (engineResult as any).errors : undefined,
                 // Pass raw effects if debug
-                rawEffects: canDebug ? (engineResult as any).rawEffects : undefined
+                rawEffects: canDebug ? (engineResult as any).rawEffects : undefined,
+                // TRACE: Pass resolved effects for debugger
+                resolvedEffects: canDebug ? (engineResult as any).resolvedEffects : undefined
             }
         });
 

@@ -332,6 +332,7 @@ export interface EngineResult {
     title?: string;
     image_code?: string;
     errors?: string[]; 
+    resolvedEffects?: string[]; // TRACE: New field for debugger logs
 }
 
 export type WorldContent = WorldConfig;
