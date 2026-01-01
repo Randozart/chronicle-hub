@@ -460,10 +460,7 @@ function resolveVariable(
 
         if (!qualityId) return `[Unknown: ${fullMatch}]`;
         
-        // NOTE: We don't return here if definition is missing, we try to degrade gracefully
-        // But for properties we need the definition.
         let definition = defs[qualityId];
-
         let state: QualityState | undefined;
 
         if (sigil === '$.' && self) {
@@ -474,7 +471,6 @@ function resolveVariable(
         }
         
         if (!state) {
-            // Fallback state if quality not found on player
             state = { 
                 qualityId, 
                 type: definition?.type || QualityType.Pyramidal, 
@@ -514,17 +510,18 @@ function resolveVariable(
             const currentQid = currentValue.qualityId || qualityId;
             const currentDef = defs[currentQid];
             
-            if (!currentDef) break;
+            // REMOVED: if (!currentDef) break; 
+            // We allow missing definitions (dynamic qualities) and fall through to properties
 
-            if (prop === 'name') currentValue = currentDef.name || currentQid;
-            else if (prop === 'description') currentValue = currentDef.description || "";
-            else if (prop === 'category') currentValue = currentDef.category || "";
+            if (prop === 'name') currentValue = currentDef?.name || currentQid;
+            else if (prop === 'description') currentValue = currentDef?.description || "";
+            else if (prop === 'category') currentValue = currentDef?.category || "";
             else if (prop === 'plural') {
                 const lvl = ('level' in state!) ? state!.level : 0;
-                currentValue = (lvl !== 1) ? (currentDef.plural_name || currentDef.name || currentQid) : (currentDef.singular_name || currentDef.name || currentQid);
+                currentValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || currentQid) : (currentDef?.singular_name || currentDef?.name || currentQid);
             }
-            else if (prop === 'singular') currentValue = currentDef.singular_name || currentDef.name || currentQid;
-            else if (currentDef.text_variants && currentDef.text_variants[prop]) {
+            else if (prop === 'singular') currentValue = currentDef?.singular_name || currentDef?.name || currentQid;
+            else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
                 currentValue = currentDef.text_variants[prop];
             }
             else if (state!.customProperties && state!.customProperties![prop] !== undefined) {
@@ -533,16 +530,16 @@ function resolveVariable(
                 currentValue = undefined;
             }
 
-            // Recursive Evaluation with Correct Context AND ERRORS
+            // Recursive Evaluation
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
                 currentValue = evaluateText(
                     currentValue, 
                     qualities, 
                     defs, 
-                    { qid: currentQid, state: state! }, // Use currentQid
+                    { qid: currentQid, state: state! }, 
                     resolutionRoll,
                     aliases,
-                    errors // PASS ERRORS
+                    errors 
                 );
             }
         }
@@ -649,8 +646,6 @@ export function getChallengeDetails(
     defs: Record<string, QualityDefinition>
 ): { chance: number | null, text: string } {
     if (!challengeString) return { chance: null, text: '' };
-    // RESTORED ORDER: self=null, roll=0, aliases={}
-    // NOTE: We don't typically capture errors here for the simple display check
     const chanceStr = evaluateText(`{${challengeString}}`, qualities, defs, null, 0, {});
     const chance = parseInt(chanceStr, 10);
     if (isNaN(chance)) return { chance: null, text: '' };
