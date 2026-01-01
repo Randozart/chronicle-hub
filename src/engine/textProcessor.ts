@@ -17,7 +17,6 @@ export function evaluateText(
     if (!rawText) return '';
     const effectiveAliases = aliases || {}; 
     
-    // SAFETY_NET: Top level try/catch
     try {
         return evaluateRecursive(rawText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors);
     } catch (e: any) {
@@ -39,7 +38,7 @@ function evaluateRecursive(
     errors?: string[]
 ): string {
     let currentText = text;
-    let currentBlock = ""; // For debugging context
+    let currentBlock = ""; 
 
     try {
         for (let i = 0; i < 50; i++) {
@@ -48,11 +47,11 @@ function evaluateRecursive(
 
             const blockWithBraces = innermostBlockMatch[0];
             const blockContent = innermostBlockMatch[1];
-            currentBlock = blockWithBraces; // Capture for catch block
+            currentBlock = blockWithBraces; 
 
             const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors);
             
-            // FIX: Handle null/undefined to prevent "Cannot read properties of undefined (reading 'toString')"
+            // FIX: Handle null/undefined to prevent crash
             const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
             
             currentText = currentText.replace(blockWithBraces, safeValue);
@@ -89,7 +88,6 @@ function evaluateExpression(
         const rawValue = assignmentMatch[2];
         const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors);
         
-        // FIX: Ensure not undefined
         let storedValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
         
@@ -128,7 +126,6 @@ function evaluateExpression(
     return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors);
 }
 
-// --- HELPER: ADVANCED FILTERING FOR MACROS ---
 function getCandidateIds(
     rawCategoryArg: string,
     rawFilterArg: string | undefined,
@@ -172,6 +169,7 @@ function getCandidateIds(
                 return 'level' in state ? state.level > 0 : false;
             }
 
+            // FIX: Pass context { qid, state } so '$.' works in filters
             return evaluateCondition(filterStr, qualities, defs, { qid, state }, resolutionRoll, aliases, errors);
         });
     }
@@ -234,7 +232,6 @@ function evaluateMacro(
         case "chance": {
             return calculateChance(mainArg, rawOptStr, qualities, defs, aliases, self, resolutionRoll, errors);
         }
-        
         case "pick": {
             const categoryExpr = mainArg;
             const countExpr = optArgs[0] || "1";
@@ -249,17 +246,13 @@ function evaluateMacro(
 
             const shuffled = candidates.sort(() => 0.5 - Math.random());
             const selected = shuffled.slice(0, count);
-            
             return selected.join(', ');
         }
-
         case "roll": {
             const categoryExpr = mainArg;
             const filterExpr = optArgs[0];
-
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
             const pool: string[] = [];
-            
             candidates.forEach(qid => {
                 const q = qualities[qid];
                 if (q && 'level' in q && q.level > 0) {
@@ -267,40 +260,30 @@ function evaluateMacro(
                     for(let i=0; i<tickets; i++) pool.push(qid);
                 }
             });
-            
             if (pool.length === 0) return "nothing";
             const rand = Math.floor(Math.random() * pool.length);
             return pool[rand];
         }
-
         case "list": {
             const categoryExpr = mainArg;
             const sepArg = optArgs[0]?.toLowerCase() || 'comma';
             const filterExpr = optArgs[1] || '>0'; 
-
             const separator = SEPARATORS[sepArg] || optArgs[0] || ', ';
-
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
-            
             const names = candidates.map(qid => {
                 const def = defs[qid];
-                // Pass errors to sub-evaluation
+                // Pass context to evaluateText for list names
                 return evaluateText(def.name || qid, qualities, defs, { qid, state: qualities[qid] }, resolutionRoll, aliases, errors);
             });
-
             if (names.length === 0) return "nothing";
             return names.join(separator);
         }
-
         case "count": {
             const categoryExpr = mainArg;
             const filterExpr = optArgs[0]; 
-            
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
-            
             return candidates.length;
         }
-
         case "schedule":
         case "reset":
         case "update":
@@ -403,7 +386,6 @@ function resolveComplexExpression(
     errors?: string[]
 ): string | number | boolean {
     
-    // SAFETY_NET: Wrap in try/catch to capture resolveVariable errors or eval errors
     try {
         const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
             (match) => { 
@@ -506,13 +488,11 @@ function resolveVariable(
                 continue;
             }
 
-            // FIX: Use the definition of the CURRENT quality in the chain, not the initial one
             const currentQid = currentValue.qualityId || qualityId;
             const currentDef = defs[currentQid];
             
-            // REMOVED: if (!currentDef) break; 
-            // We allow missing definitions (dynamic qualities) and fall through to properties
-
+            // Allow chain to continue even if currentDef is missing (dynamic)
+            
             if (prop === 'name') currentValue = currentDef?.name || currentQid;
             else if (prop === 'description') currentValue = currentDef?.description || "";
             else if (prop === 'category') currentValue = currentDef?.category || "";
@@ -530,7 +510,7 @@ function resolveVariable(
                 currentValue = undefined;
             }
 
-            // Recursive Evaluation
+            // Recursive Evaluation with Correct Context
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
                 currentValue = evaluateText(
                     currentValue, 
