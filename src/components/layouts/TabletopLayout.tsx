@@ -24,10 +24,10 @@ export default function TabletopLayout({
     settings,
     onOpenMap,
     onOpenMarket,
-    currentMarketId,
-    onExit
+    currentMarketId
 }: TabletopLayoutProps) {
     const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     // Parallax Logic
     const parallaxEnabled = settings.enableParallax !== false;
@@ -38,53 +38,53 @@ export default function TabletopLayout({
         setMousePos({ x, y });
     };
     
-    // Subtle movement for tabletop
     const moveX = parallaxEnabled ? (mousePos.x - 0.5) * -15 : 0;
     const moveY = parallaxEnabled ? (mousePos.y - 0.5) * -15 : 0;
 
     return (
-        <div className="layout-grid-tabletop" onMouseMove={handleMouseMove} style={{ display: 'grid', gridTemplateColumns: '280px minmax(300px, 35%) 1fr', height: '100vh', overflow: 'hidden', backgroundColor: '#121212', color: '#ccc' }}>
+        <div className="layout-grid-tabletop" onMouseMove={handleMouseMove}>
             
-            {/* COLUMN 1: SIDEBAR */}
-            <div className="sidebar-panel" style={{ backgroundColor: '#181a1f', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
+            {/* COLUMN 1: SIDEBAR (Hidden on Mobile unless toggled) */}
+            <div className={`sidebar-panel ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
+                <div className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</div>
                 {sidebarContent}
             </div>
 
-            {/* COLUMN 2: VISUAL & NAV (Center Column) */}
-            <div className="tabletop-visual-col" style={{ position: 'relative', overflow: 'hidden', borderRight: '1px solid #333', background: '#000', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)', zIndex: 1 }}>
-                <div style={{ position: 'absolute', top: '-20px', bottom: '-20px', left: '-20px', right: '-20px', transform: `translate3d(${moveX}px, ${moveY}px, 0)`, transition: 'transform 0.1s ease-out' }}>
-                    <GameImage code={location.image} imageLibrary={imageLibrary} type="location" alt="" className="w-full h-full object-cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {/* COLUMN 2: VISUAL & NAV (Top on mobile) */}
+            <div className="tabletop-visual-col">
+                <div className="visual-parallax-layer" style={{ transform: `translate3d(${moveX}px, ${moveY}px, 0)` }}>
+                    <GameImage 
+                        code={location.image} 
+                        imageLibrary={imageLibrary} 
+                        type="location" 
+                        alt="" 
+                        className="w-full h-full object-cover" 
+                    />
                 </div>
-                <div className="tabletop-visual-overlay" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, transparent 40%, #000 120%)', pointerEvents: 'none' }} />
+                <div className="tabletop-visual-overlay" />
                 
-                {/* Navigation Buttons Floating at Bottom */}
-                <div style={{ position: 'absolute', bottom: '2rem', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '10px', zIndex: 10 }}>
-                    <button 
-                        onClick={onOpenMap}
-                        style={{ background: '#000', border: '1px solid var(--accent-highlight)', color: 'var(--accent-highlight)', padding: '0.6rem 1.5rem', cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px', boxShadow: '0 0 15px rgba(0,0,0,0.8)' }}
-                        className="hover:bg-[var(--accent-highlight)] hover:text-black transition"
-                    >
-                        Travel
-                    </button>
+                {/* Navigation Buttons */}
+                <div className="visual-nav-buttons">
+                    <button onClick={onOpenMap} className="nav-btn-primary">Travel</button>
                     {currentMarketId && (
-                        <button 
-                            onClick={onOpenMarket}
-                            style={{ background: '#000', border: '1px solid #f1c40f', color: '#f1c40f', padding: '0.6rem 1.5rem', cursor: 'pointer', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px' }}
-                            className="hover:bg-[#f1c40f] hover:text-black transition"
-                        >
-                            Market
-                        </button>
+                        <button onClick={onOpenMarket} className="nav-btn-gold">Market</button>
                     )}
                 </div>
             </div>
 
             {/* COLUMN 3: MAIN CONTENT */}
-            <div className="layout-column" style={{ background: '#1e1e1e', minWidth: '400px', display: 'flex', flexDirection: 'column' }}>
-                <div className="content-area" style={{ padding: '3rem 4rem', flex: 1, overflowY: 'auto' }}>
-                    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                        {mainContent}
-                    </div>
+            <div className="layout-column content-column">
+                <div className="content-area">
+                    {mainContent}
                 </div>
+                
+                {/* Mobile FAB to toggle Sidebar */}
+                <button 
+                    className="mobile-sidebar-toggle"
+                    onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+                >
+                    Character Sheet
+                </button>
             </div>
         </div>
     );

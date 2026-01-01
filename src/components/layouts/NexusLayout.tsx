@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { WorldSettings } from '@/engine/models';
 
 interface NexusLayoutProps {
@@ -10,20 +10,26 @@ interface NexusLayoutProps {
 }
 
 export default function NexusLayout({ sidebarContent, mainContent, settings }: NexusLayoutProps) {
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
     return (
-        /* 
-           We remove any inline styles here. 
-           We rely 100% on the CSS grid to handle width and scrolling.
-        */
         <div className="layout-grid-nexus">
-            {/* LEFT SIDEBAR - The fixed column */}
-            <div className="sidebar-panel">
+            {/* LEFT SIDEBAR */}
+            <div className={`sidebar-panel ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
+                 <div className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</div>
                 {sidebarContent}
             </div>
             
-            {/* MAIN CONTENT - The fluid column */}
+            {/* MAIN CONTENT */}
             <div className="layout-column content-area">
                 {mainContent}
+                
+                <button 
+                    className="mobile-sidebar-toggle"
+                    onClick={() => setMobileSidebarOpen(true)}
+                >
+                    Character Info
+                </button>
             </div>
         </div>
     );
