@@ -376,7 +376,6 @@ html[data-theme='revolutionary']::before {
 
 [data-theme='detective-noir'] .quality-category-card {
     /* Loosen the spacing */
-    margin-bottom: 2rem !important;
     width: 85%; /* vary width slightly so they don't align perfectly on sides */
 }
 
