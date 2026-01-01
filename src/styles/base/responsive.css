@@ -156,4 +156,14 @@
         width: 80px;
         margin-bottom: 0.5rem;
     }
+    .tab-bar {
+        display: flex;
+        width: 100%;
+    }
+    
+    .tab-btn {
+        flex: 1;
+        text-align: center;
+        padding: 1rem 0.5rem; /* Adjust padding for touch targets */
+    }
 }

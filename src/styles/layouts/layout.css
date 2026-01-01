@@ -4,7 +4,13 @@
 .layout-column { display: flex; flex-direction: column; }
 .sidebar-panel { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 10; }
 .glass-sidebar { background: rgba(10, 10, 15, 0.7); backdrop-filter: blur(15px); border-right: 1px solid rgba(255,255,255,0.1); }
-.content-area { flex: 1; overflow-y: auto; position: relative; }
+.content-area {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    /* FIX 1: Restore the lost padding for desktop */
+    padding: 3rem 4rem; 
+}
 .action-box { margin-bottom: 1rem; padding: 1rem; background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--border-radius); text-align: center; }
 
 /* Nexus: Fixed Left Sidebar + Fluid Content */
@@ -166,4 +172,10 @@
     .banner-content { flex-direction: column; align-items: center; gap: 1rem; }
     .banner-title { font-size: 2rem; }
     .layout-main-grid { grid-template-columns: 1fr; padding: 1rem; }
+}
+
+@media (max-width: 900px) {
+    .content-area {
+        padding: 1.5rem;
+    }
 }

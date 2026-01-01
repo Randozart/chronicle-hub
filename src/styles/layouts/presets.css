@@ -91,3 +91,49 @@
         position: static;
     }
 }
+
+
+
+[data-theme='detective-noir'] .sidebar-panel h1,
+[data-theme='detective-noir'] .sidebar-panel h2,
+[data-theme='detective-noir'] .sidebar-panel h3,
+[data-theme='detective-noir'] .sidebar-panel span,
+[data-theme='detective-noir'] .sidebar-panel div {
+    color: var(--text-primary) !important; /* Force Dark Ink Color */
+    text-shadow: none !important;
+}
+
+/* Exception: Make the "Next action in" text slightly lighter, but not invisible */
+[data-theme='detective-noir'] .sidebar-panel .action-timer {
+    color: var(--text-secondary) !important;
+}
+
+@media (max-width: 1024px) {
+    /* Explicitly target the theme selector to override the desktop 'display: flex' */
+    [data-theme='black-crown'] .sidebar-panel,
+    [data-theme='detective-noir'] .sidebar-panel {
+        display: none; /* HIDE BY DEFAULT */
+        
+        transform: none;
+        max-height: none;
+        position: fixed; 
+        padding: 1.5rem;
+        width: 100%;
+        height: 100%;
+        top: 0; left: 0;
+        z-index: 9999;
+        background-color: var(--bg-panel);
+    }
+    
+    /* Only show when the React state adds this class */
+    [data-theme='black-crown'] .sidebar-panel.mobile-visible,
+    [data-theme='detective-noir'] .sidebar-panel.mobile-visible {
+        display: flex; /* SHOW WHEN ACTIVE */
+    }
+    
+    [data-theme='black-crown'] .storylet-container,
+    [data-theme='detective-noir'] .storylet-container {
+        transform: none;
+        padding: 1.5rem;
+    }
+}
