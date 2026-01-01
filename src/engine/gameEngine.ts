@@ -6,7 +6,8 @@ import {
 } from '@/engine/models';
 import {
     evaluateText as evaluateScribeText,
-    evaluateCondition as evaluateScribeCondition
+    evaluateCondition as evaluateScribeCondition,
+    sanitizeScribeScript // IMPORT SANITIZER
 } from './textProcessor';
 
 type SkillCheckResult = { wasSuccess: boolean; roll: number; targetChance: number; description: string; };
@@ -24,7 +25,6 @@ export class GameEngine {
     private tempAliases: Record<string, string> = {}; 
     private errors: string[] = [];
     
-    // TRACE PROJECT: Add logs for fully resolved effects
     private executedEffectsLog: string[] = [];
 
     constructor(
@@ -89,7 +89,6 @@ export class GameEngine {
         );
     }
 
-    // FIX: Restored context argument
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
             rawText, 
@@ -107,7 +106,7 @@ export class GameEngine {
         this.scheduledUpdates = [];
         this.tempAliases = {}; 
         this.errors = []; 
-        this.executedEffectsLog = []; // Reset logs
+        this.executedEffectsLog = [];
         
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
@@ -133,7 +132,7 @@ export class GameEngine {
             skillCheckDetails: challengeResult,
             errors: this.errors,
             rawEffects: changeString,
-            resolvedEffects: this.executedEffectsLog // Trace Project: Return the log
+            resolvedEffects: this.executedEffectsLog
         };
     }
 
@@ -182,8 +181,11 @@ export class GameEngine {
     public applyEffects(effectsString: string): void {
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
         
-        // FIX: Improve splitting to ignore commas inside BOTH [] and {} to support complex nested scripts
-        const effects = effectsString.split(/,(?![^\[]*\])(?![^{]*\})/g); 
+        // FIX: Sanitize comments BEFORE splitting. 
+        const cleanEffectsString = sanitizeScribeScript(effectsString);
+
+        // FIX: Improve splitting to ignore commas inside BOTH [] and {}
+        const effects = cleanEffectsString.split(/,(?![^\[]*\])(?![^{]*\})/g); 
 
         for (const effect of effects) {
             const cleanEffect = effect.trim();
@@ -192,10 +194,14 @@ export class GameEngine {
             const prevErrorCount = this.errors.length;
 
             if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
+                // TRACE: Log the attempt to resolve the block
+                this.executedEffectsLog.push(`[Block] ${cleanEffect}`);
+
                 const resolvedCommand = this.evaluateText(cleanEffect);
-                // TRACE: Log the resolved command if it was wrapped in braces
+                
+                // TRACE: Log the result of that block (often empty for pure logic, but important if it returns commands)
                 if (resolvedCommand !== cleanEffect) {
-                    this.executedEffectsLog.push(`[Resolved] ${resolvedCommand}`);
+                     this.executedEffectsLog.push(`   -> [Result] "${resolvedCommand}"`);
                 }
 
                 if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%'))) {
@@ -206,7 +212,7 @@ export class GameEngine {
                 const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
                 if (macroMatch) {
                     // Log macro execution
-                    this.executedEffectsLog.push(cleanEffect);
+                    this.executedEffectsLog.push(`[Macro] ${cleanEffect}`);
 
                     const [, command, args] = macroMatch;
                     if (['schedule', 'reset', 'update', 'cancel'].includes(command)) {
@@ -220,23 +226,18 @@ export class GameEngine {
                         const resolvedVal = this.evaluateText(`{${val}}`);
                         const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
                         
-                        // Log batch execution
-                        this.executedEffectsLog.push(`%all[${catExpr}] ${op} ${numVal}`);
+                        this.executedEffectsLog.push(`[Batch] %all[${catExpr}] ${op} ${numVal}`);
                         
                         this.batchChangeQuality(catExpr, op, numVal, filterExpr); 
                     }
                     else {
                         const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\]\s*(=)\s*(.*)$/);
                         if (newMatch) {
-                            // ... (Complex new logic omitted for brevity, logic remains same)
-                            // But add log:
-                            this.executedEffectsLog.push(cleanEffect);
-                            // ... Existing logic ...
+                            this.executedEffectsLog.push(`[New] ${cleanEffect}`);
                             const [, idExpr, argsStr, op, valStr] = newMatch;
                             const newId = this.evaluateText(`{${idExpr}}`).trim();
                             const resolvedVal = this.evaluateText(`{${valStr}}`);
                             const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-                            // ... props parsing ...
                             const props: Record<string, any> = {};
                             let templateId: string | null = null;
                              if (argsStr) {
@@ -309,8 +310,8 @@ export class GameEngine {
                                          }
                                     }
                                     
-                                    // TRACE: Log the simple assignment (resolved)
-                                    this.executedEffectsLog.push(`$${qid} ${op} ${val}`);
+                                    // TRACE: Log the exact assignment being made
+                                    this.executedEffectsLog.push(`[Effect] $${qid} ${op} ${val}`);
 
                                     this.changeQuality(qid, op, val, metadata);
                                 }
@@ -327,7 +328,7 @@ export class GameEngine {
         }
     }
     
-    // ... [Rest of methods (parseAndQueueTimerInstruction, batchChangeQuality, createNewQuality, changeQuality, pruneSources, updatePyramidalLevel, evaluateChallenge) remain unchanged]
+    // ... [parseAndQueueTimerInstruction, batchChangeQuality, createNewQuality, changeQuality, pruneSources, updatePyramidalLevel, evaluateChallenge remain unchanged] ...
     private parseAndQueueTimerInstruction(command: string, argsStr: string) {
         const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
         const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
@@ -515,14 +516,11 @@ export class GameEngine {
         }
 
         const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
-        // FIX: Construct context for descriptions
         const context = { qid: effectiveQid, state: qState };
-        // FIX: Pass context to evaluateText for dynamic property resolution (e.g. $.name)
         const displayName = this.evaluateText(def.name || effectiveQid, context);
         
         let changeText = "";
         
-        // FIX: Pass context to evaluateText for description resolution
         const increaseDesc = this.evaluateText(def.increase_description, context);
         const decreaseDesc = this.evaluateText(def.decrease_description, context);
 
@@ -531,7 +529,6 @@ export class GameEngine {
         else if (qState.type === 'S') changeText = `${displayName} is now ${qState.stringValue}`;
 
         if (metadata.desc) {
-            // FIX: Pass context to metadata description as well
             changeText = this.evaluateText(metadata.desc, context);
         }
 

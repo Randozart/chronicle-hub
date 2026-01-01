@@ -3,6 +3,51 @@ import { PlayerQualities, QualityDefinition, QualityState, QualityType } from '.
 
 type EvaluationContext = 'LOGIC' | 'TEXT';
 
+/**
+ * SANITIZER:
+ * Removes comment blocks formatted as {// ... } before processing.
+ * Respects nested braces inside comments to prevent early exit.
+ */
+export function sanitizeScribeScript(text: string): string {
+    if (!text) return "";
+    let buffer = "";
+    let i = 0;
+    
+    // 0 = Normal
+    // >0 = Inside a comment block (tracking depth)
+    let commentDepth = 0;
+
+    while (i < text.length) {
+        // 1. Detect start of a Comment Block: "{" followed immediately by "//"
+        // We look ahead to ensure we don't catch just a loose "{"
+        if (commentDepth === 0 && text[i] === '{' && i + 2 < text.length && text[i+1] === '/' && text[i+2] === '/') {
+            commentDepth = 1;
+            i += 3; // Skip past "{//"
+            continue;
+        }
+
+        // 2. While inside a comment, track depth so we don't exit early on nested braces
+        if (commentDepth > 0) {
+            if (text[i] === '{') {
+                commentDepth++;
+            } else if (text[i] === '}') {
+                commentDepth--;
+                // If depth hits 0, we have successfully closed the main comment block.
+                // We do NOT add this closing brace to buffer, effectively stripping the block.
+            }
+            // We ignore ALL characters inside the comment
+            i++;
+            continue;
+        }
+
+        // 3. Normal character - keep it
+        buffer += text[i];
+        i++;
+    }
+
+    return buffer;
+}
+
 // --- CORE PARSING ENGINE ---
 
 export function evaluateText(
@@ -15,11 +60,16 @@ export function evaluateText(
     errors?: string[] 
 ): string {
     if (!rawText) return '';
+    
+    // STEP 1: Sanitize Comments
+    // This prevents ghost symbols inside {// ...} from affecting logic or regex splits later
+    const cleanText = sanitizeScribeScript(rawText);
+
     const effectiveAliases = aliases || {}; 
     
     // SAFETY_NET: Top level try/catch
     try {
-        return evaluateRecursive(rawText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors);
+        return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors);
     } catch (e: any) {
         const msg = `Fatal Parser Error: ${e.message}`;
         console.error(msg);
@@ -55,7 +105,7 @@ function evaluateRecursive(
             // FIX: Handle null/undefined to prevent crash
             const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
             
-            // FIX: Use callback for replacement to prevent regex pattern injection from the content (e.g., "$" in strings)
+            // FIX: Use callback for replacement to prevent regex pattern injection
             currentText = currentText.replace(blockWithBraces, () => safeValue);
         }
 
@@ -418,8 +468,6 @@ function resolveVariable(fullMatch: string, qualities: PlayerQualities, defs: Re
                     qualities, 
                     defs, 
                     // CRITICAL FIX: Pass the correct context for the child evaluation.
-                    // If we just resolved an object (like finding a weapon), lookupId is correct.
-                    // If we just resolved a description string, lookupId is the ID of the thing we described.
                     { qid: lookupId, state: (typeof currentValue === 'object' ? currentValue : state!) }, 
                     resolutionRoll,
                     aliases,
