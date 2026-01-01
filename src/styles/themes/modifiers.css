@@ -220,7 +220,49 @@ html[data-theme='revolutionary']::before {
 
 /* --- DETECTIVE NOIR --- */
 [data-theme='detective-noir'].theme-wrapper { background-color: #050505; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.07'/%3E%3C/svg%3E"), radial-gradient(circle at 50% 50%, #3a3a3a 0%, #050505 85%); background-attachment: fixed; background-repeat: repeat, no-repeat; background-size: auto, cover; }
-[data-theme='detective-noir'] .sidebar-panel { background: var(--bg-panel); background-color: #050505;padding: 0; box-shadow: var(--shadow-paper); transform: rotate(-0.5deg); display: flex; flex-direction: column; position: sticky; top: 2rem; max-height: 90vh; }
+[data-theme='detective-noir'] .sidebar-panel {
+    /* 1. Force the Neutral Noir Glass (Overrides any blue-ish inline styles) */
+    background-color: rgba(28, 24, 22, 0.5) !important;
+    backdrop-filter: blur(10px);
+    
+    /* 2. Match the "Lit Edge" look */
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5); /* Shadow projecting right */
+    
+    /* 3. Ensure pure grey text context */
+    color: #e0e0e0 !important;
+    
+    /* (Existing layout properties...) */
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 2rem;
+    max-height: 90vh;
+    transform: rotate(-0.5deg);
+    
+}
+
+/* TABLETOP OVERRIDE (Keep this below the block above) */
+/* Ensure the sidebar flattens out correctly in Tabletop mode */
+[data-theme='detective-noir'] .layout-grid-tabletop .sidebar-panel {
+    transform: none;
+    
+    /* 1. Create the Gaps (Matching the right side's 3rem) */
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+    
+    /* 2. Calculate Height (Viewport minus the top/bottom margins) */
+    height: calc(100vh - 6rem);
+    max-height: none; /* Remove previous constraint */
+    top: auto; /* Remove sticky pinning */
+    
+    /* 3. Visuals (Keep existing) */
+    border-radius: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    /* box-shadow: none; <--- You might actually want a shadow on the right side now that it's floating? */
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5); /* Optional: Restore shadow for depth */
+}
 [data-theme='detective-noir'] .tab-bar { background: #d6d3cd; border-bottom: 1px solid var(--border-light); padding: 0.5rem; gap: 0.25rem; }
 [data-theme='detective-noir'] .tab-btn { background: transparent; color: var(--text-secondary); border: 1px solid transparent; border-radius: 2px; font-size: 0.8rem; text-transform: uppercase; font-weight: bold; }
 [data-theme='detective-noir'] .tab-btn.active { background: var(--bg-item-hover); color: var(--text-primary); border: 1px solid var(--border-light); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
@@ -234,18 +276,44 @@ html[data-theme='revolutionary']::before {
 [data-theme='detective-noir'] .option-button:hover { transform: translateY(-3px) rotate(-0.5deg); box-shadow: 0 8px 15px rgba(0,0,0,0.15); background-color: var(--bg-item-hover); border-color: var(--text-secondary); }
 [data-theme='detective-noir'] .option-button h3 { font-weight: bold; text-decoration: underline; text-decoration-color: var(--border-light); margin-bottom: 0.5rem; }
 [data-theme='detective-noir'] .option-button:hover h3 { color: var(--accent-highlight); text-decoration-color: var(--accent-highlight); }
+
 [data-theme='detective-noir'] .storylet-image-container { background: #fff; padding: 0.5rem 0.5rem 2.5rem 0.5rem; box-shadow: 0 3px 6px rgba(0,0,0,0.2); border: 1px solid #ddd; transform: rotate(-1deg); width: 220px; position: relative; }
 [data-theme='detective-noir'] .storylet-image-container::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%); pointer-events: none; border: 1px solid rgba(255,255,255,0.4); }
 [data-theme='detective-noir'] .deck-button, [data-theme='detective-noir'] .return-button { background: var(--text-primary); color: #fff; border: 2px solid var(--text-primary); text-transform: uppercase; font-weight: bold; letter-spacing: 2px; padding: 1rem 2rem; border-radius: 0; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); transition: all 0.1s; cursor: pointer; }
 [data-theme='detective-noir'] .deck-button:hover, [data-theme='detective-noir'] .return-button:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px rgba(0,0,0,0.2); background: var(--accent-highlight); border-color: var(--accent-highlight); }
 [data-theme='detective-noir'] .storylet-container:not(.preview-card) { border-top: 1px solid rgba(0,0,0,0.1); }
 [data-theme='detective-noir'] .storylet-container::after { content: 'EVIDENCE'; position: absolute; bottom: 2rem; right: 2rem; font-size: 3rem; font-weight: 900; color: rgba(138, 3, 3, 0.08); border: 4px solid rgba(138, 3, 3, 0.08); padding: 0.2rem 1rem; transform: rotate(-25deg); pointer-events: none; font-family: sans-serif; letter-spacing: 10px; z-index: 0; mask-image: url("data:image/svg+xml,%3Csvg width='200' height='100' viewBox='0 0 200 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.6'/%3E%3C/svg%3E"); }
-[data-theme='detective-noir'] .tab-btn.active { background: transparent !important; border: none !important; box-shadow: none !important; position: relative; color: var(--text-primary); }
-[data-theme='detective-noir'] .tab-btn.active::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-2deg); width: 90%; height: 80%; border: 2px solid rgba(180, 20, 20, 0.7); border-radius: 50% 60% 50% 40% / 60% 50% 60% 50%; z-index: -1; box-shadow: inset 0 0 2px rgba(180, 20, 20, 0.3); }
+[data-theme='detective-noir'] .tab-btn.active {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    position: relative;
+    color: var(--text-primary);
+    z-index: 1; /* Ensure text creates context */
+}
+
+[data-theme='detective-noir'] .tab-btn.active::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-2deg);
+    width: 60%;
+    height: 80%;
+    
+    border: 5px solid rgba(180, 20, 20, 0.8);
+    border-radius: 50% 60% 50% 40% / 60% 50% 60% 50%;
+    
+    /* THE FIX: Sit on top, but blend like ink */
+    z-index: 1; 
+    pointer-events: none; /* Click through to button */
+    mix-blend-mode: multiply; /* Darkens the text below it, like a real marker */
+    
+    box-shadow: inset 0 0 2px rgba(180, 20, 20, 0.3);
+}
 [data-theme='detective-noir'] .option-button { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 [data-theme='detective-noir'] .option-button:hover { transform: rotate(1deg) scale(1.02) translateY(-5px) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.3) !important; z-index: 10; border-color: #333; }
 [data-theme='detective-noir'] .option-button::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.05'/%3E%3C/svg%3E"); pointer-events: none; mix-blend-mode: multiply; }
-[data-theme='detective-noir'] .layout-grid-tabletop, [data-theme='detective-noir'] .layout-grid-nexus, [data-theme='detective-noir'] .layout-screen { background-color: transparent !important; background: transparent !important; }
+[data-theme='detective-noir'] .layout-grid-tabletop, [data-theme='detective-noir'] .layout-grid-nexus, [data-theme='detective-noir'] .layout-screen { background-color: transparent !important; background: transparent !important; color:#ffffff }
 [data-theme='detective-noir'] .storylet-container::after { 
     content: 'EVIDENCE'; position: absolute; bottom: 2rem; right: 2rem; font-size: 3rem; font-weight: 900; 
     color: rgba(141, 6, 6, 0.626); border: 4px solid rgba(138, 3, 3, 0.08); padding: 0.2rem 1rem; 
@@ -255,11 +323,255 @@ html[data-theme='revolutionary']::before {
 [data-theme='detective-noir'] .card h3 {
     color: var(--bg-item-hover);
 }
+[data-theme='detective-noir'] .tab-bar {
+    justify-content: space-between;
+}
+[data-theme='detective-noir'] .tab-btn {
+    flex: 1; /* Force buttons to fill width */
+    text-align: center;
+}
+[data-theme='detective-noir'] .layout-grid-tabletop .layout-column.content-column {
+    background: transparent !important; /* Remove solid background */
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+    padding-right: 3rem; /* Optional: Adds gap on the right edge too */
+    /* Padding-left is 0 to keep it attached to the visual line, or add if you want it floating */
+}
+
+/* 2. The Panel: Apply the Glass and Lit Edge */
+[data-theme='detective-noir'] .layout-grid-tabletop .content-area {
+    /* Noir Glass Texture */
+    background-color: rgba(28, 24, 22, 0.5) !important;
+    backdrop-filter: blur(10px);
+    
+    /* The "Lit Edge" on the left */
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    
+    /* Subtle definition for the other edges */
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    
+    /* Deep Shadow */
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    
+    /* Ensure text is light grey on the dark glass */
+    color: #e0e0e0;
+    
+    /* Fill the height defined by the wrapper's padding */
+    height: 100%;
+}
+
+/* 1. The Main Case File (Make it look tossed) */
+[data-theme='detective-noir'] .storylet-container {
+    /* Increase rotation from 0.4deg to something noticeable */
+    transform: rotate(-0.5deg) !important; 
+    
+    /* Push it slightly off-center */
+    margin-left: 1rem !important; 
+    
+    /* Enhance the shadow to make it lift off the desk */
+    box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme='detective-noir'] .quality-category-card {
+    /* Loosen the spacing */
+    margin-bottom: 2rem !important;
+    width: 85%; /* vary width slightly so they don't align perfectly on sides */
+}
+
+/* TILT LEFT */
+[data-theme='detective-noir'] .quality-category-card:nth-child(odd) { 
+    transform: rotate(1.2deg) translateX(-5px) !important; 
+}
+
+/* TILT RIGHT */
+[data-theme='detective-noir'] .quality-category-card:nth-child(even) { 
+    transform: rotate(-1.8deg) translateX(5px) !important; 
+}
+
+[data-theme='detective-noir'] .quality-category-card:nth-of-type(3n) {
+    transform: rotate(2.5deg) translateX(10px) !important;
+    background-color: #f7f4ec; /* Slightly different paper shade? */
+}
+
+/* 3. The Left Sidebar (The Dossier) */
+/* Give it a slight angle so it doesn't look like a UI element */
+[data-theme='detective-noir'] .layout-grid-tabletop .sidebar-panel {
+    transform: rotate(0.5deg) !important;
+    margin-top: 3.5rem !important; /* Adjust gap to account for tilt */
+    height: calc(100vh - 7rem) !important;
+}
+
+/* 4. (Optional) The Paper Clip */
+/* Ensure the paper clip on the main file looks realistic */
+[data-theme='detective-noir'] .storylet-container::before {
+    top: -20px;
+    right: 50px;
+    transform: rotate(5deg); /* Tilt the clip itself */
+}
+
+[data-theme='detective-noir'] .option-button:nth-of-type(3n) {
+    transform: rotate(2.5deg) translateX(10px) !important;
+    background-color: #f7f4ec; /* Slightly different paper shade? */
+}
+
+
+[data-theme='detective-noir'] .profile-header {
+    /* Make it look like an ID card clipped to the folder */
+    background: #f0f0e8; /* Off-white ID card */
+    color: #111;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    border: 1px solid #ccc;
+    transform: rotate(-1deg);
+}
+
+[data-theme='detective-noir'] .profile-name,
+[data-theme='detective-noir'] .profile-subtitle {
+    color: #111 !important; /* Force dark text on the light ID card */
+}
+
+[data-theme='detective-noir'] .quality-category-card::after {
+    content: '';
+    position: absolute;
+    top: 5px; /* Stick out the top */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 14px;
+    
+    /* Red Pin Style */
+    background: radial-gradient(circle at 30% 30%, #e74c3c, #922b21);
+    border-radius: 50%;
+    /* border: 1px solid #732d2d; */
+    z-index: 10;
+    
+    /* Make it look pushed in */
+    box-shadow: 0 2px 2px rgba(0,0,0,0.4);
+}
+
+/* 2. The Pin Shadow (Cast on the paper) */
+[data-theme='detective-noir'] .quality-category-card::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 14px;
+    height: 6px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 50%;
+    transform: translateX(-40%) rotate(-45deg); /* Offset shadow */
+    z-index: 9;
+}
+
+/* 3. Improve the paper look for the cards */
+[data-theme='detective-noir'] .quality-category-card {
+    background-color: #fcfbf8; /* Very clean paper */
+    border: 1px solid #dcdcdc;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    
+    /* Ensure padding for the pin */
+    padding-top: 1.5rem; 
+    
+    /* Positioning context for the pin */
+    position: relative; 
+}
+
+/* --- POLAROID PROFILE PICTURE (Rect Only) --- */
+[data-theme='detective-noir'] .profile-portrait[data-shape='rect'] {
+    /* 1. White Polaroid Paper Frame */
+    background-color: #fff !important;
+    border: 1px solid #d4d4d4 !important;
+    border-radius: 0 !important; /* Sharp corners */
+    
+    /* 2. The Chin (Thick bottom padding) */
+    padding: 6px 6px 25px 6px !important;
+    
+    /* 3. Sizing & Posture */
+    width: 100px !important;
+    height: 100px !important;
+    box-sizing: content-box !important; /* Ensure padding adds to width */
+    transform: rotate(-3deg);
+    box-shadow: 2px 4px 10px rgba(0,0,0,0.3) !important;
+    
+    position: relative; /* Context for the gloss overlay */
+}
+
+/* Fix the image inside the polaroid */
+[data-theme='detective-noir'] .profile-portrait[data-shape='rect'] img {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 3/4;
+    border: 1px solid #eee; /* Faint border around the photo itself */
+    display: block;
+}
+
+/* The Glossy Reflection Overlay */
+[data-theme='detective-noir'] .profile-portrait[data-shape='rect']::after {
+    content: '';
+    position: absolute;
+    top: 6px; left: 6px; right: 6px; 
+    bottom: 25px; /* Stop exactly where the photo ends */
+    
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.05) 100%);
+    border: 1px solid rgba(255,255,255,0.4);
+    pointer-events: none;
+    z-index: 10;
+}
+
+
+/* --- RANDOMIZED PINS (Investigation Board) --- */
+/* By default, pins are centered (left: 50%). We override this for subsets of cards. */
+
+/* Variation 1: Pinned on the Left */
+[data-theme='detective-noir'] .quality-category-card:nth-child(odd)::after,
+[data-theme='detective-noir'] .quality-category-card:nth-child(odd)::before {
+    left: 45% !important;
+}
+
+/* Variation 2: Pinned on the Right (Every 3rd card) */
+[data-theme='detective-noir'] .quality-category-card:nth-child(3n)::after,
+[data-theme='detective-noir'] .quality-category-card:nth-child(3n)::before {
+    left: 55% !important;
+}
+
+/* Variation 3: Slightly Higher/Haphazard (Every 4th card) */
+[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::after {
+    left: 60% !important;
+    top: -12px !important; /* Stick out more */
+}
+[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::before {
+    left: 60% !important;
+    top: -9px !important; /* Shadow moves with it */
+}
+[data-theme='detective-noir'] .continue-button { background-color: var(--bg-item); border: 1px dashed var(--border-light) !important; padding: 1.5rem; margin-bottom: 1.5rem; position: relative; box-shadow: none; transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); }
+
+[data-theme='detective-noir'] .card.theme-wrapper {
+    color: #ffffff !important;
+}
+
 
 
 /* Mobile */
 @media (max-width: 900px) {
     [data-theme='detective-noir'] .layout-grid-nexus { grid-template-columns: 1fr; gap: 1rem; margin: 1rem auto; padding: 0.5rem; }
-    [data-theme='detective-noir'] .sidebar-panel { max-height: none; position: relative; top: 0; transform: none; }
+    [data-theme='detective-noir'] .sidebar-panel { max-height: none; position: relative; top: 0; transform: none; width: auto; }
     [data-theme='detective-noir'] .storylet-container { padding: 1.5rem; }
+    [data-theme='detective-noir'] .mobile-close-btn  {
+        background-color: var(--accent-highlight);
+        color: var(--bg-main);
+        z-index: 900;
+        cursor: pointer;
+        text-transform: uppercase;
+        border: none;
+        border-radius: 50px;
+        padding: 1rem 1.5rem;
+        font-size: .8rem;
+        font-weight: bold;
+        display: block;
+        position: fixed;
+        right: 2rem;
+        box-shadow: 0 4px 10px #00000080;
+    }
+
 }
