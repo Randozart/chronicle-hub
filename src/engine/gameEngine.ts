@@ -51,7 +51,6 @@ export class GameEngine implements EngineContext {
 
     // === PUBLIC EVALUATION API ===
 
-    // FIXED: Signature now correctly matches EngineContext by accepting the optional context
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
             rawText, 
@@ -66,7 +65,8 @@ export class GameEngine implements EngineContext {
         );
     }
 
-    public evaluateCondition(expression: string, contextOverride?: { qid: string, state: QualityState }): boolean {
+    // FIXED: Now accepts 'undefined' to match textProcessor signature
+    public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
         return evaluateScribeCondition(
             expression, 
             this.qualities, 
@@ -146,7 +146,6 @@ export class GameEngine implements EngineContext {
     }
 
     public applyEffects(effectsString: string): void {
-        // Delegate to mechanics module
         parseAndApplyEffects(this, effectsString);
     }
 
