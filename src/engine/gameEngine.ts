@@ -7,7 +7,7 @@ import {
 import {
     evaluateText as evaluateScribeText,
     evaluateCondition as evaluateScribeCondition,
-    sanitizeScribeScript // IMPORT SANITIZER
+    sanitizeScribeScript
 } from './textProcessor';
 
 type SkillCheckResult = { wasSuccess: boolean; roll: number; targetChance: number; description: string; };
@@ -25,6 +25,7 @@ export class GameEngine {
     private tempAliases: Record<string, string> = {}; 
     private errors: string[] = [];
     
+    // TRACE LOG
     private executedEffectsLog: string[] = [];
 
     constructor(
@@ -40,12 +41,13 @@ export class GameEngine {
         this.resolutionRoll = Math.random() * 100;
     }
 
-    public setQualities(newQualities: PlayerQualities): void {
-        this.qualities = JSON.parse(JSON.stringify(newQualities));
-    }
-
+    public setQualities(newQualities: PlayerQualities): void { this.qualities = JSON.parse(JSON.stringify(newQualities)); }
     public getQualities(): PlayerQualities { return this.qualities; }
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
+
+    // ==========================================
+    // 1. PUBLIC API & HELPERS
+    // ==========================================
 
     public getEffectiveLevel(qid: string): number {
         const baseState = this.qualities[qid];
@@ -60,7 +62,8 @@ export class GameEngine {
             const itemDef = this.worldContent.qualities[itemId];
             if (!itemDef || !itemDef.bonus) continue;
             
-            const evaluatedBonus = this.evaluateText(itemDef.bonus);
+            // Note: We don't trace bonuses to avoid log spam
+            const evaluatedBonus = evaluateScribeText(itemDef.bonus, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, this.tempAliases, []);
             const bonuses = evaluatedBonus.split(',');
             for (const bonus of bonuses) {
                 const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
@@ -89,6 +92,7 @@ export class GameEngine {
         );
     }
 
+    // MAIN EVALUATOR WITH TRACING
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
             rawText, 
@@ -97,8 +101,23 @@ export class GameEngine {
             context || null,
             this.resolutionRoll, 
             this.tempAliases,
-            this.errors
+            this.errors,
+            // Bind the trace logger
+            (msg, depth, type) => this.traceLog(msg, depth, type),
+            0 
         );
+    }
+
+    private traceLog(message: string, depth: number, type?: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR') {
+        let prefix = depth > 0 ? '|-- ' : '';
+        if (depth > 1) {
+            prefix = '|   '.repeat(depth - 1) + '|-- ';
+        }
+        let icon = '';
+        if (type === 'SUCCESS') icon = '✔ ';
+        if (type === 'ERROR') icon = '❌ ';
+
+        this.executedEffectsLog.push(`${prefix}${icon}${message}`);
     }
 
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
@@ -159,6 +178,7 @@ export class GameEngine {
     private deepEvaluate(obj: any): any {
         if (typeof obj === 'string') {
             if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@')) {
+                // UI rendering does not need trace logs
                 return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, {}, []);
             }
             return obj;
@@ -178,13 +198,14 @@ export class GameEngine {
         return obj;
     }
 
+    // ==========================================
+    // 2. EFFECT PROCESSING
+    // ==========================================
+
     public applyEffects(effectsString: string): void {
         console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
         
-        // FIX: Sanitize comments BEFORE splitting. 
         const cleanEffectsString = sanitizeScribeScript(effectsString);
-
-        // FIX: Improve splitting to ignore commas inside BOTH [] and {}
         const effects = cleanEffectsString.split(/,(?![^\[]*\])(?![^{]*\})/g); 
 
         for (const effect of effects) {
@@ -194,27 +215,17 @@ export class GameEngine {
             const prevErrorCount = this.errors.length;
 
             if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
-                // TRACE: Log the attempt to resolve the block
-                this.executedEffectsLog.push(`[Block] ${cleanEffect}`);
-
                 const resolvedCommand = this.evaluateText(cleanEffect);
                 
-                // TRACE: Log the result of that block (often empty for pure logic, but important if it returns commands)
-                if (resolvedCommand !== cleanEffect) {
-                     this.executedEffectsLog.push(`   -> [Result] "${resolvedCommand}"`);
-                }
-
-                if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%'))) {
-                    this.applyEffects(resolvedCommand);
+                if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%')) && resolvedCommand !== cleanEffect) {
+                     this.applyEffects(resolvedCommand);
                 }
             }
             else {
                 const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
                 if (macroMatch) {
-                    // Log macro execution
-                    this.executedEffectsLog.push(`[Macro] ${cleanEffect}`);
-
                     const [, command, args] = macroMatch;
+                    this.executedEffectsLog.push(`[EXECUTE] ${cleanEffect}`);
                     if (['schedule', 'reset', 'update', 'cancel'].includes(command)) {
                         this.parseAndQueueTimerInstruction(command, args);
                     }
@@ -226,39 +237,31 @@ export class GameEngine {
                         const resolvedVal = this.evaluateText(`{${val}}`);
                         const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
                         
-                        this.executedEffectsLog.push(`[Batch] %all[${catExpr}] ${op} ${numVal}`);
-                        
+                        this.executedEffectsLog.push(`[EXECUTE] Batch Update: Category[${catExpr}] ${op} ${numVal}`);
                         this.batchChangeQuality(catExpr, op, numVal, filterExpr); 
                     }
                     else {
                         const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\]\s*(=)\s*(.*)$/);
                         if (newMatch) {
-                            this.executedEffectsLog.push(`[New] ${cleanEffect}`);
                             const [, idExpr, argsStr, op, valStr] = newMatch;
                             const newId = this.evaluateText(`{${idExpr}}`).trim();
                             const resolvedVal = this.evaluateText(`{${valStr}}`);
                             const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-                            const props: Record<string, any> = {};
-                            let templateId: string | null = null;
+                            
+                            this.executedEffectsLog.push(`[EXECUTE] Create Quality: ${newId} = ${numVal}`);
+                            
+                            const props: Record<string, any> = {}; 
                              if (argsStr) {
                                 const args = argsStr.split(',').map(s => s.trim());
                                 if (args.length > 0 && !args[0].includes(':')) {
-                                    const rawTemplate = args.shift()!;
-                                    templateId = this.evaluateText(`{${rawTemplate}}`);
+                                    args.shift(); 
                                 }
                                 args.forEach(arg => {
                                     const [k, ...vParts] = arg.split(':');
-                                    if (!k) return;
-                                    const key = k.trim();
-                                    let rawVal = vParts.join(':').trim();
-                                    if ((rawVal.startsWith('"') && rawVal.endsWith('"')) || (rawVal.startsWith("'") && rawVal.endsWith("'"))) {
-                                        props[key] = rawVal.slice(1, -1);
-                                    } else {
-                                        props[key] = this.evaluateText(`{${rawVal}}`);
-                                    }
+                                    if(k) props[k.trim()] = vParts.join(':').trim().replace(/['"]/g, "");
                                 });
                             }
-                            this.createNewQuality(newId, numVal, templateId, props);
+                            this.createNewQuality(newId, numVal, null, props);
                         }
                         else {
                             const assignMatch = cleanEffect.match(/^((?:[$@][a-zA-Z0-9_]+)|(?:\{.*?\}))(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
@@ -267,21 +270,12 @@ export class GameEngine {
                                 const [, rawLhs, metaStr, op, valStr] = assignMatch;
                                 
                                 let qid = "";
-
                                 if (rawLhs.startsWith('{')) {
-                                    qid = this.evaluateText(rawLhs).trim();
-                                    if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) {
-                                        qid = qid.substring(1);
-                                    }
+                                    qid = this.evaluateText(rawLhs).trim(); 
+                                    if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) qid = qid.substring(1);
                                 } else if (rawLhs.startsWith('@')) {
                                     const aliasKey = rawLhs.substring(1);
-                                    if (this.tempAliases[aliasKey]) {
-                                        qid = this.tempAliases[aliasKey]; 
-                                    } else {
-                                        const msg = `Alias '${rawLhs}' not found in current context.`;
-                                        console.warn(msg);
-                                        this.errors.push(msg); 
-                                    }
+                                    qid = this.tempAliases[aliasKey]; 
                                 } else {
                                     qid = rawLhs.substring(1); 
                                 }
@@ -301,18 +295,15 @@ export class GameEngine {
                                     }
 
                                     let val: string | number = 0;
-                                    
                                     if (op !== '++' && op !== '--') {
-                                         const resolvedValueStr = this.evaluateText(`{${valStr}}`);
+                                         const resolvedValueStr = this.evaluateText(`{${valStr}}`); 
                                          val = resolvedValueStr;
                                          if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
                                              val = Number(resolvedValueStr);
                                          }
                                     }
                                     
-                                    // TRACE: Log the exact assignment being made
-                                    this.executedEffectsLog.push(`[Effect] $${qid} ${op} ${val}`);
-
+                                    this.executedEffectsLog.push(`[EXECUTE] $${qid} ${op} ${val}`);
                                     this.changeQuality(qid, op, val, metadata);
                                 }
                             }
@@ -327,8 +318,11 @@ export class GameEngine {
             }
         }
     }
-    
-    // ... [parseAndQueueTimerInstruction, batchChangeQuality, createNewQuality, changeQuality, pruneSources, updatePyramidalLevel, evaluateChallenge remain unchanged] ...
+
+    // ==========================================
+    // 3. QUALITY MANAGEMENT
+    // ==========================================
+
     private parseAndQueueTimerInstruction(command: string, argsStr: string) {
         const [mainArgs, optArgs] = argsStr.split(';').map(s => s.trim());
         const instruction: any = { type: command, rawOptions: optArgs ? optArgs.split(',') : [] };
