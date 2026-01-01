@@ -17,5 +17,6 @@ export interface EngineContext {
     // Methods needed by helpers
     evaluateText: (text: string, context?: { qid: string, state: QualityState }) => string;
     getEffectiveLevel: (qid: string) => number;
-    evaluateCondition: (expr: string, contextOverride?: { qid: string, state: QualityState }) => boolean;
+    // FIXED: Allow undefined expression
+    evaluateCondition: (expr: string | undefined, contextOverride?: { qid: string, state: QualityState }) => boolean;
 }
