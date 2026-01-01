@@ -1,5 +1,6 @@
+// src/providers/ToastProvider.tsx
 'use client';
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -17,7 +18,7 @@ export const useToast = () => {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
     const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
-    const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     const showToast = useCallback((msg: string, type: ToastType = 'success') => {
         if (timerRef.current) clearTimeout(timerRef.current);
@@ -29,12 +30,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         }, 3000);
     }, []);
 
-    // Styles based on type
-    const getBgColor = (type: ToastType) => {
+    const getStyles = (type: ToastType): React.CSSProperties => {
+        const base: React.CSSProperties = {
+            position: 'fixed', 
+            bottom: '40px', 
+            left: '50%', 
+            transform: 'translateX(-50%)',
+            color: '#fff', 
+            padding: '10px 20px', 
+            borderRadius: '4px', 
+            zIndex: 99999,
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)', 
+            fontWeight: 'bold', 
+            fontSize: '0.9rem',
+            pointerEvents: 'none',
+            animation: 'fadeIn 0.2s ease-out'
+        };
+
         switch (type) {
-            case 'success': return '#2ecc71'; // Green
-            case 'error': return '#e74c3c';   // Red
-            default: return '#3498db';        // Blue
+            case 'success': return { ...base, background: '#2ecc71' };
+            case 'error': return { ...base, background: '#e74c3c' };
+            default: return { ...base, background: '#3498db' };
         }
     };
 
@@ -42,22 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <ToastContext.Provider value={{ showToast }}>
             {children}
             {toast && (
-                <div style={{
-                    position: 'fixed', 
-                    bottom: 40, 
-                    left: '50%', 
-                    transform: 'translateX(-50%)',
-                    background: getBgColor(toast.type),
-                    color: '#fff', 
-                    padding: '10px 20px', 
-                    borderRadius: '4px', 
-                    zIndex: 99999,
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.4)', 
-                    fontWeight: 'bold', 
-                    fontSize: '0.9rem',
-                    pointerEvents: 'none',
-                    animation: 'fadeIn 0.2s ease-out'
-                }}>
+                <div style={getStyles(toast.type)}>
                     {toast.msg}
                 </div>
             )}

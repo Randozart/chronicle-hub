@@ -1,10 +1,12 @@
+// src/app/create/[storyId]/markets/components/MarketMainForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { MarketDefinition, ShopStall, ShopListing, QualityDefinition, QualityType } from '@/engine/models';
 import { v4 as uuidv4 } from 'uuid';
-import SmartArea from '@/components/admin/SmartArea'; // <--- NEW
-import BehaviorCard from '@/components/admin/BehaviorCard'; // <--- NEW
+import SmartArea from '@/components/admin/SmartArea';
+import BehaviorCard from '@/components/admin/BehaviorCard';
+import { useToast } from '@/providers/ToastProvider';
 
 interface Props {
     initialData: MarketDefinition;
@@ -18,20 +20,16 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
     const [form, setForm] = useState(initialData);
     const [activeStallIndex, setActiveStallIndex] = useState(0);
     const [expandedListingId, setExpandedListingId] = useState<string | null>(null);
+    const { showToast } = useToast();
 
     useEffect(() => setForm(initialData), [initialData]);
 
-    // CTRL+S
+    // GLOBAL SAVE TRIGGER
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                onSave(form);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [form, onSave]);
+        const handleGlobalSave = () => onSave(form);
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, [form]);
 
     const handleChange = (field: keyof MarketDefinition, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
@@ -99,14 +97,13 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
             }
         });
         updateStall(activeStallIndex, 'listings', newListings);
-        alert(`Added ${addedCount} items.`);
+        showToast(`Added ${addedCount} items.`, "success");
     };
 
     const categories = Array.from(new Set(tradeableQualities.map(q => q.category?.split(',')[0].trim()).filter(Boolean)));
 
     return (
         <div className="h-full flex flex-col relative">
-            {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
                 <div style={{ display: 'flex', gap: '1rem' }}>
@@ -116,7 +113,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
-                
                 <div className="form-row">
                     <div className="form-group"><label className="form-label">Display Name</label><input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" /></div>
                     <div className="form-group">
@@ -158,7 +154,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                         </div>
 
                         <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                             {/* Using SmartArea for source tag allows easier editing if logic needed later */}
                              <SmartArea 
                                 label="Item Source Tag" 
                                 value={currentStall.source || ''} 
@@ -166,6 +161,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                 storyId={storyId} 
                                 minHeight="38px"
                                 placeholder={`bought at ${currentStall.name}`}
+                                qualityDefs={allQualities} // PASS
                             />
                         </div>
 
@@ -182,7 +178,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                             <div style={{ display: 'grid', gridTemplateColumns: '30px 3fr 2fr 2fr 30px', gap: '1rem', padding: '0 0.5rem', fontSize: '0.75rem', color: '#aaa', textTransform: 'uppercase' }}>
                                 <span></span><span>Item</span><span>Price</span><span>Currency</span><span></span>
                             </div>
-
                             {currentStall.listings.map((listing, lIdx) => (
                                 <div key={listing.id} style={{ background: '#21252b', border: '1px solid #333', borderRadius: '4px' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '30px 3fr 2fr 2fr 30px', gap: '1rem', alignItems: 'center', padding: '0.5rem' }}>
@@ -192,7 +187,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                             {tradeableQualities.map(q => <option key={q.id} value={q.id}>{q.name} ({q.id})</option>)}
                                         </select>
                                         
-                                        {/* Price Input with Logic Support (Not using full SmartArea for compact layout, but allowing text) */}
                                         <input value={listing.price} onChange={e => updateListing(lIdx, 'price', e.target.value)} className="form-input" placeholder="10" title="Logic allowed (e.g. $rep * 5)" />
                                         
                                         <select value={listing.currencyId || ""} onChange={e => updateListing(lIdx, 'currencyId', e.target.value || undefined)} className="form-select" style={{ fontSize: '0.85rem', color: listing.currencyId ? 'var(--accent-highlight)' : '#777' }}>
@@ -211,6 +205,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                                     onChange={v => updateListing(lIdx, 'visible_if', v)} 
                                                     storyId={storyId} 
                                                     mode="text" 
+                                                    qualityDefs={allQualities} // PASS
                                                 />
                                                 <SmartArea 
                                                     label="Unlock If" 
@@ -218,6 +213,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                                     onChange={v => updateListing(lIdx, 'unlock_if', v)} 
                                                     storyId={storyId} 
                                                     mode="text" 
+                                                    qualityDefs={allQualities} // PASS
                                                 />
                                                 <div style={{ gridColumn: '1 / -1' }}>
                                                      <SmartArea 
@@ -226,6 +222,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                                                         onChange={v => updateListing(lIdx, 'description', v)} 
                                                         storyId={storyId} 
                                                         minHeight="60px"
+                                                        qualityDefs={allQualities} // PASS
                                                     />
                                                 </div>
                                             </div>

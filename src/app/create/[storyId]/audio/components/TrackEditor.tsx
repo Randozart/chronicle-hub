@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/audio/components/TrackEditor.tsx
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
@@ -72,6 +73,13 @@ export default function TrackEditor({
     // Initial Load
     useEffect(() => { setIsClient(true); setSource(data.source); }, [data]);
     
+    // Global Save Trigger
+    useEffect(() => {
+        const handleGlobalSave = () => handleSaveClick();
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, [source, data.id]);
+
     // --- Parsing Logic (Debounced) ---
     useEffect(() => {
         setIsParsing(true);
@@ -146,7 +154,6 @@ export default function TrackEditor({
                 events.forEach((e: any) => { e.time *= 2; e.duration *= 2; });
             });
         }
-
         setSource(serializeParsedTrack(newTrack));
     };
 
@@ -182,7 +189,6 @@ export default function TrackEditor({
     const handleFormat = () => setSource(formatLigatureSource(source));
     
     const handleSaveClick = async () => {
-        // Just call parent save, parent handles toast
         onSave({ id: data.id, name: data.name, source, category: 'track' });
     };
 
@@ -192,6 +198,7 @@ export default function TrackEditor({
         const a = document.createElement('a');
         a.href = url; a.download = `${data.id || 'track'}.lig`; a.click(); URL.revokeObjectURL(url);
     };
+
     const handleEditInstrument = (id: string) => setEditingInstrument(availableInstruments.find(i => i.id === id) || null);
     const handleInsertInstrumentToTrack = (instrumentId: string, presetId: string) => {
         const snippet = `[INSTRUMENTS]\n${instrumentId}: ${presetId}`;

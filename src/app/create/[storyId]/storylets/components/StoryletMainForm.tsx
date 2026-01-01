@@ -7,17 +7,19 @@ import OptionList from './OptionList';
 import SmartArea from '@/components/admin/SmartArea'; 
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import BehaviorCard from '@/components/admin/BehaviorCard';
+import { useToast } from '@/providers/ToastProvider'; // NEW
 
 interface Props {
     initialData: Storylet;
     onSave: (data: Storylet) => void;
     onDelete: (id: string) => void;
-    // Data Required for Smart Linter
     qualityDefs: QualityDefinition[];
 }
 
 export default function StoryletMainForm({ initialData, onSave, onDelete, qualityDefs }: Props) {
     const [form, setForm] = useState(initialData);
+    const { showToast } = useToast();
+    
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
     useEffect(() => setForm(initialData), [initialData]);
@@ -31,19 +33,20 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
         handleChange('tags', newTags);
     };
 
+    // GLOBAL SAVE LISTENER
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                onSave(form);
-            }
+        const handleGlobalSave = () => {
+            onSave(form);
+            // We let the parent page handle the toast usually, but if onSave is sync, we can do it here.
+            // Assuming onSave in page.tsx handles the async fetch and toast.
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
     }, [form, onSave]);
 
     return (
         <div className="h-full flex flex-col relative">
+            {/* ... [Header and rest of JSX remains exactly the same] ... */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>

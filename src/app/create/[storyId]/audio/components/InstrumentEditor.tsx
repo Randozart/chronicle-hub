@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/audio/components/InstrumentEditor.tsx
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { InstrumentDefinition, EmbellishmentDef } from '@/engine/audio/models';
@@ -7,7 +8,7 @@ import { getOrMakeInstrument, AnySoundSource } from '@/engine/audio/synth';
 import { useAudio } from '@/providers/AudioProvider';
 import { Note } from 'tonal';
 
-// --- Sub-Components ---
+// ... [WaveformDisplay & Slider sub-components remain unchanged] ...
 function WaveformDisplay({ 
     peaks, loopStart, loopEnd, duration 
 }: { 
@@ -101,6 +102,13 @@ export default function InstrumentEditor({
 
     useEffect(() => setForm(data), [data]);
     
+    // GLOBAL SAVE TRIGGER
+    useEffect(() => {
+        const handleGlobalSave = () => { onSave(form); if (onClose) onClose(); };
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, [form]);
+
     useEffect(() => {
         return () => stopPreviewNote();
     }, [stopPreviewNote]);
@@ -243,7 +251,7 @@ export default function InstrumentEditor({
     let currentMode = 'poly';
     if (noteCutVal) currentMode = 'mono_cut';
     else if (portamentoVal > 0 && !isSampler) currentMode = 'mono_glide';
-    else if (portamentoVal > 0 && isSampler) currentMode = 'mono_glide'; // Now supported!
+    else if (portamentoVal > 0 && isSampler) currentMode = 'mono_glide'; 
     
     const editorContent = (
         <div>

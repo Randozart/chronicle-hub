@@ -1,16 +1,18 @@
+// src/app/create/[storyId]/regions/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
 import { MapRegion } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import { useToast } from '@/providers/ToastProvider';
 
 export default function RegionsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast();
     const [regions, setRegions] = useState<MapRegion[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    // 1. Fetch
     useEffect(() => {
         fetch(`/api/admin/regions?storyId=${storyId}`)
             .then(r => r.json())
@@ -27,11 +29,13 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
 
     const handleSaveSuccess = (updated: MapRegion) => {
         setRegions(prev => prev.map(r => r.id === updated.id ? updated : r));
+        showToast("Region saved.", "success");
     };
 
     const handleDeleteSuccess = (id: string) => {
         setRegions(prev => prev.filter(r => r.id !== id));
         setSelectedId(null);
+        showToast("Region deleted.", "info");
     };
 
     return (
@@ -60,9 +64,17 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
 function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData: MapRegion, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
+    const { showToast } = useToast();
 
     useEffect(() => setForm(initialData), [initialData]);
     const handleChange = (field: string, val: any) => setForm(prev => ({ ...prev, [field]: val }));
+
+    // GLOBAL SAVE TRIGGER
+    useEffect(() => {
+        const handleGlobalSave = () => handleSave();
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, [form]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -71,7 +83,7 @@ function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData:
                 method: 'POST',
                 body: JSON.stringify({ storyId: storyId, category: 'regions', itemId: form.id, data: form })
             });
-            if (res.ok) { onSave(form); alert("Saved!"); }
+            if (res.ok) { onSave(form); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
@@ -114,12 +126,11 @@ function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData:
                 <p className="special-desc">If left empty, Travel will use a simple List View instead of a Visual Map.</p>
             </div>
 
-            {/* Preview */}
             {form.image && (
                 <div style={{ marginTop: '1rem', border: '1px solid #444', height: '200px', position: 'relative' }}>
                     <GameImage 
                         code={form.image} 
-                        imageLibrary={{}} // You should pass library here in real app
+                        imageLibrary={{}} 
                         type="map"
                         alt="Map Preview"
                         className="w-full h-full object-cover"

@@ -1,24 +1,25 @@
-// ... existing imports
-// Add this new component to the bottom of the file or import it:
-
+// src/app/create/[storyId]/settings/components/DataManagement.tsx
+'use client';
 import { useState } from "react";
+import { useToast } from "@/providers/ToastProvider";
 
 export function DataManagement({ storyId }: { storyId: string }) {
     const [isImporting, setIsImporting] = useState(false);
+    const { showToast } = useToast();
 
     const handleExport = () => {
-        // Trigger browser download
         window.open(`/api/admin/export?storyId=${storyId}`, '_blank');
+        showToast("Export started...", "info");
     };
 
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.[0]) return;
         
-        if (!confirm("WARNING: This will overwrite existing settings and update storylets with matching IDs. This action cannot be undone. Are you sure?")) {
-            e.target.value = ''; // Reset input
+        if (!confirm("WARNING: This will overwrite existing settings. This action cannot be undone. Are you sure?")) {
+            e.target.value = ''; 
             return;
         }
-
+        
         setIsImporting(true);
         const file = e.target.files[0];
         const formData = new FormData();
@@ -33,17 +34,17 @@ export function DataManagement({ storyId }: { storyId: string }) {
             const data = await res.json();
             
             if (res.ok) {
-                alert(`Success! ${data.message}`);
-                window.location.reload(); // Refresh to show new settings
+                showToast("Import Successful!", "success");
+                setTimeout(() => window.location.reload(), 1000);
             } else {
-                alert(`Import Failed: ${data.error}`);
+                showToast(`Import Failed: ${data.error}`, "error");
             }
         } catch (err) {
             console.error(err);
-            alert("Network error during import.");
+            showToast("Network error.", "error");
         } finally {
             setIsImporting(false);
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
         }
     };
 

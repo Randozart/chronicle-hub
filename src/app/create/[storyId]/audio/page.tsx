@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/audio/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -6,9 +7,8 @@ import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import InstrumentEditor from './components/InstrumentEditor';
 import TrackEditor from './components/TrackEditor';
 import { AUDIO_PRESETS } from '@/engine/audio/presets';
-import { useToast } from '@/providers/ToastProvider'; // Import hook
+import { useToast } from '@/providers/ToastProvider';
 
-// ... (AudioItem type and EMPTY_TEMPLATE remain same) ...
 type AudioItem = (InstrumentDefinition | LigatureTrack) & { 
     category: 'instrument' | 'track';
     scope: 'local' | 'global';
@@ -19,7 +19,7 @@ const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUME
 
 export default function AudioAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
-    const { showToast } = useToast(); // Use global toast
+    const { showToast } = useToast();
     const [items, setItems] = useState<AudioItem[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +30,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             .then(res => res.json())
             .then(data => {
                 const combined: AudioItem[] = [];
-                // ... (data mapping logic remains same) ...
                 if (data.instruments) {
                     Object.values(data.instruments).forEach((i: any) => 
                         combined.push({ ...i, category: 'instrument', scope: 'local', folder: 'Project Instruments' })
@@ -62,7 +61,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     }, [storyId]);
 
     const handleCreate = (type: 'instrument' | 'track') => {
-        // ... (creation logic same) ...
         const name = prompt(`New ${type} name:`);
         if (!name) return;
         const id = name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -112,7 +110,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 });
             }
             setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-            showToast(`${updated.category === 'instrument' ? 'Instrument' : 'Track'} saved!`);
+            showToast(`${updated.category === 'instrument' ? 'Instrument' : 'Track'} saved!`, 'success');
         } catch(e) {
             console.error(e);
             showToast("Save failed", 'error');
@@ -120,7 +118,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     };
 
     const handleDelete = async (id: string, category: string) => {
-        // ... (delete logic) ...
         const item = items.find(i => i.id === id);
         if (!item) return;
         if (!confirm(`Delete ${item.scope} item: ${item.name}?`)) return;
@@ -133,7 +130,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         }
         setItems(prev => prev.filter(i => i.id !== id));
         setSelectedId(null);
-        showToast("Deleted successfully.");
+        showToast("Deleted successfully.", "info");
     };
 
     const handleUpdateInstrument = (updatedInstrument: InstrumentDefinition) => {
@@ -158,8 +155,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
 
     return (
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', height: 'calc(100vh - 50px)' }}>
-            
-            {/* 1. SIDEBAR */}
             <div style={{ borderRight: '1px solid #333', height: 'calc(100vh - 50px)', position: 'sticky', top: '50px', width: '300px', display: 'flex', flexDirection: 'column' }}>
                  <div className="list-header" style={{display:'flex', gap:'10px', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom:'1px solid #333', background:'#21252b'}}>
                     <span style={{fontWeight:'bold', color:'#fff'}}>Audio Assets</span>
@@ -186,14 +181,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 </div>
             </div>
 
-            {/* 2. MAIN EDITOR AREA */}
-            <div style={{ 
-                height: '100%', 
-                overflow: 'hidden', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                background:'#141414' 
-            }}>
+            <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background:'#141414' }}>
                 {selectedItem?.category === 'instrument' && (
                     <div style={{padding:'2rem', overflowY: 'auto', flex: 1}}>
                         <InstrumentEditor 

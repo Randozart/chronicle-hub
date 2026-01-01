@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, use, useMemo } from 'react';
+import { useState, useEffect, use, useMemo } from 'react'; // Added useMemo
 import { WorldSettings, QualityType, CharCreateRule, QualityDefinition } from '@/engine/models';
+import { useToast } from '@/providers/ToastProvider'; // Added Toast
 import CollaboratorManager from './components/CollaboratorManager';
 import ThemePreview from './components/ThemePreview';
 import SmartArea from '@/components/admin/SmartArea';
@@ -47,7 +48,8 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const [existingLocIDs, setExistingLocIDs] = useState<string[]>([]); 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [qualityDefs, setQualityDefs] = useState<Record<string, QualityDefinition>>({}); // NEW
+    const { showToast } = useToast(); // Hook
+    const [qualityDefs, setQualityDefs] = useState<Record<string, QualityDefinition>>({});
 
     // 1. FETCH DATA
     useEffect(() => {
@@ -62,7 +64,6 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 
                 const sData = await sRes.json();
                 
-                // SAFE DATA HANDLING
                 const cDataRaw = cRes.ok ? await cRes.json() : {};
                 const cData = cDataRaw || {};
 
@@ -74,14 +75,14 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
 
                 setExistingQIDs(qIDs);
                 setExistingLocIDs(lIDs);
-
+                
                 const defsRecord: Record<string, QualityDefinition> = {};
                 if (Array.isArray(qData)) {
                     qData.forEach((q: any) => defsRecord[q.id] = q);
                 } else {
                     Object.assign(defsRecord, qData);
                 }
-                setQualityDefs(defsRecord); // SAVE IT
+                setQualityDefs(defsRecord);
 
                 const normalizedCharCreate: Record<string, CharCreateRule> = {};
                 for (const key in cData) {
@@ -162,8 +163,16 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId, category: 'qualities', itemId: cleanId, data: newQuality })
             });
-            setExistingQIDs(prev => [...prev, cleanId]); 
-        } catch(e) { console.error(e); }
+            setExistingQIDs(prev => [...prev, cleanId]);
+            
+            const newDef: QualityDefinition = { id: cleanId, type, category: 'system', description: 'Auto-generated...', ...extra };
+            setQualityDefs(prev => ({ ...prev, [cleanId]: newDef }));
+
+            showToast(`Created ${cleanId}`, "success");
+        } catch(e) { 
+            console.error(e); 
+            showToast("Failed to create quality", "error"); 
+        }
 
         const newDef: QualityDefinition = { 
              id: cleanId, type, category: 'system', description: 'Auto-generated...', ...extra 
@@ -202,10 +211,20 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'coverImage', data: form.coverImage }) });
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'tags', data: form.tags }) });
 
-            alert("Saved!");
-        } catch (e) { console.error(e); alert("Error saving."); } 
+            showToast("Settings saved!", "success");
+        } catch (e) { 
+            console.error(e); 
+            showToast("Error saving settings.", "error"); 
+        } 
         finally { setIsSaving(false); }
     };
+
+    // GLOBAL SAVE TRIGGER
+    useEffect(() => {
+        const handleGlobalSave = () => handleSave();
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, [form]);
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
@@ -542,8 +561,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     storyId={storyId}
                     existingQIDs={existingQIDs}
                     onCreateQuality={createQuality}
-                    qualityDefs={qualityDefs} // PASS IT
-                    // FIX: Use functional state update to handle multiple rapid calls
+                    qualityDefs={qualityDefs} 
                     onAddCategory={(cat, type) => {
                          const field = type === 'equip' ? 'equipCategories' : 'characterSheetCategories';
                          setForm(prev => {

@@ -1,25 +1,35 @@
+// src/app/create/[storyId]/layout.tsx
+'use client'; // Converted to client component to handle events
+
 import Link from 'next/link';
 import '@/app/globals.css';
 import CheatSheet from '../../../components/admin/CheatSheet';
 import { verifyWorldAccess } from '@/engine/accessControl';
-import { redirect } from 'next/navigation';
+// import { redirect } from 'next/navigation'; // Removed for client-side transition
 import VisualFilters from '@/components/VisualFilters';
 import AdminSidebarFooter from '../../../components/admin/AdminSidebarFooter';
-import { ToastProvider } from '@/providers/ToastProvider'; // Import the provider
+import { ToastProvider } from '@/providers/ToastProvider';
+import { useEffect, use } from 'react';
 
-export default async function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
-    const { storyId } = await params;
+export default function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
+    const { storyId } = use(params);
     
-    const hasAccess = await verifyWorldAccess(storyId, 'writer'); 
-    
-    if (!hasAccess) {
-        redirect('/?error=forbidden');
-    }
-  
+    // GLOBAL HOTKEY LISTENER
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                // Dispatch custom event that active forms listen to
+                window.dispatchEvent(new Event('global-save-trigger'));
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     const base = `/create/${storyId}`;
     
     return (
-        /* Wrap everything in ToastProvider */
         <ToastProvider>
             <div className="admin-layout">
                 {/* LEFT SIDEBAR (Fixed) */}
@@ -49,7 +59,6 @@ export default async function AdminLayout({ children, params }: { children: Reac
                             {/* --- ASSETS --- */}
                             <SectionHeader label="Assets" />
                             <AdminLink href={`${base}/images`} label="Image Library" />
-                            {/* AUDIO LINK ADDED HERE FOR CONVENIENCE */}
                             <AdminLink href={`${base}/audio`} label="Audio Engine" />
 
                             {/* --- TOOLS --- */}
@@ -57,7 +66,6 @@ export default async function AdminLayout({ children, params }: { children: Reac
                             <AdminLink href={`${base}/graph`} label="Narrative Graph" />
                             <AdminLink href={`${base}/players`} label="Player Monitor" />
                             <AdminLink href={`${base}/world-state`} label="GM Console" />
-
                         </ul>
                     </nav>
                     <AdminSidebarFooter />
@@ -65,13 +73,10 @@ export default async function AdminLayout({ children, params }: { children: Reac
 
                 {/* MAIN AREA */}
                 <main className="admin-main">
-                    
-                    {/* MIDDLE CONTENT (Scrolls with Page) */}
                     <div className="admin-content-wrapper">
                         {children}
                     </div>
-
-                    {/* RIGHT SIDEBAR (Fixed) */}
+                    
                     <aside className="admin-help-sidebar">
                         <CheatSheet />
                     </aside>

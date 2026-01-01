@@ -75,6 +75,7 @@ export default function SmartArea({
         
         const timer = setTimeout(() => {
             try {
+                // 1. Setup Mock Data
                 const mockQualities: PlayerQualities = {};
                 const defMap: Record<string, QualityDefinition> = {};
                 
@@ -83,15 +84,17 @@ export default function SmartArea({
                     mockQualities[q.id] = {
                         qualityId: q.id,
                         type: q.type,
-                        level: 1, 
+                        level: 1, // Default to 1 to allow conditions to pass
                         stringValue: "Test Value",
                         changePoints: 0
                     } as any;
                 });
 
+                // Context for $. calls
                 const selfContext = contextQualityId ? { qid: contextQualityId, state: mockQualities[contextQualityId] || null } : null;
 
                 if (mode === 'effect') {
+                    // EFFECT MODE: Run Engine and show Trace Log
                     const mockConfig: WorldConfig = {
                         qualities: defMap,
                         locations: {}, decks: {}, settings: {} as any, char_create: {}, images: {},
@@ -99,6 +102,7 @@ export default function SmartArea({
                     };
                     
                     const engine = new GameEngine(mockQualities, mockConfig);
+                    // Pass trace logger support implies using the engine's internal log
                     engine.applyEffects(value);
                     
                     if (engine.executedEffectsLog.length > 0) {
@@ -108,6 +112,8 @@ export default function SmartArea({
                     }
 
                 } else {
+                    // TEXT/CONDITION MODE: Show Result String
+                    // evaluateText internally uses the trace logger if we passed one, but here we just want the output string
                     const result = evaluateText(value, mockQualities, defMap, selfContext, 50, {});
                     setPreviewResult(result);
                 }
@@ -142,6 +148,7 @@ export default function SmartArea({
                         </span>
                     )}
                     
+                    {/* QUICK EVAL BUTTON */}
                     <button 
                         onClick={() => setShowPreview(!showPreview)}
                         style={{ 
@@ -210,7 +217,6 @@ export default function SmartArea({
                 </div>
             )}
 
-            {/* ERROR DISPLAY FIX: Show count if more than 1 */}
             {errors.length > 0 && !showPreview && (
                 <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#e06c75', fontFamily: 'monospace' }}>
                     <div>Line {errors[0].line}: {errors[0].message}</div>

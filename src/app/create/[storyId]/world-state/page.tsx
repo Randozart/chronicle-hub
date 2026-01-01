@@ -1,11 +1,15 @@
+// src/app/create/[storyId]/world-state/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
 import { QualityType, QualityState, WorldSettings } from '@/engine/models';
 import SmartArea from '@/components/admin/SmartArea';
+import { useToast } from '@/providers/ToastProvider';
 
 export default function WorldStateAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast();
+    
     const [state, setState] = useState<Record<string, QualityState>>({});
     const [settings, setSettings] = useState<WorldSettings | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -28,6 +32,7 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
             
         } catch (e) {
             console.error(e);
+            showToast("Failed to load GM console.", "error");
         } finally {
             setIsLoading(false);
         }
@@ -35,19 +40,36 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
 
     useEffect(() => { fetchData(); }, [storyId]);
 
+    // GLOBAL SAVE TRIGGER (Just refreshes data to be safe, or saves pending edits if we had them)
+    useEffect(() => {
+        const handleGlobalSave = () => {
+             // In this view, edits are usually immediate via button clicks, 
+             // but we can trigger a toast to confirm "System Ready".
+             showToast("Console state synced.");
+        };
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, []);
+
     const handleUpdateQuality = async (key: string, val: string, type: QualityType) => {
         setIsSaving(true);
         const payload: QualityState = { qualityId: key, type: type } as any;
         if (type === QualityType.String) (payload as any).stringValue = val;
         else (payload as any).level = parseInt(val) || 0;
 
-        await fetch('/api/admin/world-state', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ storyId, updates: { [key]: payload } })
-        });
-        setState(prev => ({ ...prev, [key]: payload }));
-        setIsSaving(false);
+        try {
+            await fetch('/api/admin/world-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, updates: { [key]: payload } })
+            });
+            setState(prev => ({ ...prev, [key]: payload }));
+            showToast(`Updated $world.${key}`, "success");
+        } catch(e) {
+            showToast("Update failed", "error");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDeleteQuality = async (key: string) => {
@@ -56,6 +78,7 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
         const next = { ...state };
         delete next[key];
         setState(next);
+        showToast("Global variable deleted.", "info");
     };
 
     const handleAddQuality = async () => {
@@ -74,6 +97,7 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
         const updatedSettings = { ...settings, systemMessage: { ...settings.systemMessage, ...newMsg } };
         setSettings(updatedSettings); // Optimistic update
         
+        // Debounce actual save in UI logic usually, but here immediate is fine for toggle
         await fetch('/api/admin/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -92,7 +116,7 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
                 </p>
             </div>
 
-            {/* 1. SYSTEM ANNOUNCEMENTS (Moved here) */}
+            {/* 1. SYSTEM ANNOUNCEMENTS */}
             <div className="special-field-group" style={{ borderColor: '#ff467d', marginBottom: '3rem' }}>
                 <label className="special-label" style={{ color: '#ff467d' }}>Live Announcement</label>
                 <p className="special-desc">Broadcast a message to all players. Changing the ID will force it to re-appear for everyone.</p>

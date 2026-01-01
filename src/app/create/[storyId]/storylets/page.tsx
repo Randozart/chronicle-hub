@@ -1,39 +1,50 @@
+// src/app/create/[storyId]/storylets/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { Storylet } from '@/engine/models';
-import StoryletMainForm from './components/StoryletMainForm'; // We'll create this next
+import { Storylet, QualityDefinition } from '@/engine/models';
+import StoryletMainForm from './components/StoryletMainForm';
 import AdminListSidebar from './components/AdminListSidebar';
 import { useSearchParams } from 'next/navigation';
+import { useToast } from '@/providers/ToastProvider'; // NEW
 
 export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast();
     const searchParams = useSearchParams();
-    const [storylets, setStorylets] = useState<Partial<Storylet>[]>([]); // List only has partial data
+    
+    const [storylets, setStorylets] = useState<Partial<Storylet>[]>([]);
+    const [qualities, setQualities] = useState<QualityDefinition[]>([]); // NEW: Store qualities
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeStorylet, setActiveStorylet] = useState<Storylet | null>(null);
     const [isLoadingList, setIsLoadingList] = useState(true);
     const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
-    // 1. Fetch List (Summary)
+    // 1. Fetch List + Qualities (for Linter)
     useEffect(() => {
-        fetch(`/api/admin/storylets?storyId=${storyId}`)
-            .then(res => res.json())
-            .then(data => {
-                setStorylets(data);
-                
-                const paramId = searchParams.get('id');
-                if (paramId) {
-                    const exists = data.find((s: any) => s.id === paramId);
-                    if (exists) {
-                        setSelectedId(paramId);
-                    }
-                }
-            })
-            .finally(() => setIsLoadingList(false));
-    }, [storyId, searchParams]); // Add searchParams to dependency
+        Promise.all([
+            fetch(`/api/admin/storylets?storyId=${storyId}`),
+            fetch(`/api/admin/qualities?storyId=${storyId}`) // FETCH QUALITIES
+        ])
+        .then(async ([resStorylets, resQualities]) => {
+            const sData = await resStorylets.json();
+            setStorylets(sData);
+            
+            if (resQualities.ok) {
+                const qData = await resQualities.json();
+                setQualities(Object.values(qData));
+            }
 
-    // 2. Fetch Detail when selected
+            const paramId = searchParams.get('id');
+            if (paramId) {
+                const exists = sData.find((s: any) => s.id === paramId);
+                if (exists) setSelectedId(paramId);
+            }
+        })
+        .finally(() => setIsLoadingList(false));
+    }, [storyId, searchParams]);
+
+    // 2. Fetch Detail
     useEffect(() => {
         if (!selectedId) {
             setActiveStorylet(null);
@@ -51,8 +62,6 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
     const handleCreate = async () => {
         const newId = prompt("Enter unique Storylet ID:");
         if (!newId) return;
-        
-        // Basic validation
         if (storylets.find(s => s.id === newId)) { alert("Exists"); return; }
         
         const newStorylet: Storylet = {
@@ -60,27 +69,23 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
             name: "New Storylet",
             text: "Write your story here...",
             options: [],
-            tags: [], // Ensure this is initialized
+            tags: [],
             status: 'draft'
         };
-
-        // OPTIMISTIC UPDATE
         setStorylets(prev => [...prev, { id: newId, name: newStorylet.name }]);
         
-        // SERVER SAVE (The Fix)
         try {
             await fetch('/api/admin/storylets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, data: newStorylet })
             });
-            
-            // Only select AFTER save is confirmed
             setSelectedId(newId);
             setActiveStorylet(newStorylet);
+            showToast("Storylet created!", "success");
         } catch (e) {
-            console.error("Failed to create storylet:", e);
-            alert("Failed to save new storylet to server.");
+            console.error(e);
+            showToast("Failed to create.", "error");
         }
     };
 
@@ -93,13 +98,12 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                 body: JSON.stringify({ storyId: storyId, data })
             });
             if (res.ok) {
-                alert("Saved!");
-                // Update list view in case Name changed
+                showToast("Saved successfully!", "success"); // TOAST
                 setStorylets(prev => prev.map(s => 
                     s.id === data.id ? { ...s, name: data.name, location: data.location, folder: data.folder, status: data.status } : s
                 ));
             } else {
-                alert("Error saving.");
+                showToast("Error saving storylet.", "error");
             }
         } catch (e) { console.error(e); }
     };
@@ -110,6 +114,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
         await fetch(`/api/admin/storylets?storyId=${storyId}&id=${id}`, { method: 'DELETE' });
         setStorylets(prev => prev.filter(s => s.id !== id));
         setSelectedId(null);
+        showToast("Deleted.", "info");
     };
 
     if (isLoadingList) return <div className="loading-container">Loading...</div>;
@@ -118,7 +123,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
         <div className="admin-split-view">
             <AdminListSidebar 
                 title="Storylets"
-                items={storylets as any} // Cast because partial
+                items={storylets as any}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onCreate={handleCreate}
@@ -128,7 +133,6 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                 ]}
                 defaultGroupByKey="folder" 
             />
-
             <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {isLoadingDetail ? (
                     <div>Loading detail...</div>
@@ -137,6 +141,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                         initialData={activeStorylet} 
                         onSave={handleSave}
                         onDelete={handleDelete}
+                        qualityDefs={qualities} // PASS QUALITIES
                     />
                 ) : (
                     <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a storylet</div>

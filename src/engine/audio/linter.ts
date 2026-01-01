@@ -174,44 +174,29 @@ export function lintScribeScript(
 
     let braceDepth = 0;
     let bracketDepth = 0;
-    
-    // Comment Tracking
-    let commentDepth = 0; 
+    let commentDepth = 0; // NEW: Track comments across lines
 
     const scopeStack: ScopeState[] = []; 
 
     const validIds = definitions ? new Set(definitions.map(d => d.id)) : null;
     const localVars = new Set<string>();
 
-    // Pass 1: Detect Local Assignments (Global Source Scan)
-    // FIX: Updated regex to handle metadata blocks [desc:...] between name and =
-    const assignmentMatches = [...source.matchAll(/(?:^|[^@])([\$#])([a-zA-Z0-9_]+)(?:\[[\s\S]*?\])?\s*=/g)];
-    for (const m of assignmentMatches) {
-        localVars.add(m[2]);
-    }
-    // Detect Aliases (@var =)
-    const aliasMatches = [...source.matchAll(/(@[a-zA-Z0-9_]+)\s*=/g)];
-    for (const m of aliasMatches) {
-        localVars.add(m[1].substring(1));
-    }
+    // --- PASS 1: Discovery (Find local assignments) ---
+    lines.forEach(line => {
+        // Regex to find @var =, $var =, #var = 
+        // Handles: {@alias = ...}, $var[desc:...] = ...
+        const assignmentMatches = [...line.matchAll(/(?:^|[^@])([\$#@])([a-zA-Z0-9_]+)(?:\[[\s\S]*?\])?\s*=/g)];
+        for (const m of assignmentMatches) {
+            localVars.add(m[2]);
+        }
+    });
 
-    // Pass 2: Line-by-Line Validation
+    // --- PASS 2: Validation ---
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         
         // 1. Variable Spell-Checking
-        // Only check if we are NOT inside a multi-line comment block logic (handled roughly below)
-        // Note: Ideally we'd strip comments before checking vars, but for now we rely on the character loop to track comment state
-        // and only push errors if we determine we aren't in a comment. 
-        // However, regex match happens on the whole line string. 
-        // Simple Fix: Don't check vars on lines that start with // or appear to be inside a comment block?
-        // Since comment blocks { // ... } are structural, it's safer to trust the character loop for everything.
-        // BUT, `varMatches` logic below runs independently.
-        // Let's rely on the fact that if a line is pure comment, we likely won't match much, or we accept minor noise.
-        // Better: We will SKIP variable checking here and move it into the character loop? 
-        // No, that's too complex for regex.
-        // Compromise: We check vars, but we check if the line looks like a comment.
-        
+        // Only run if we are NOT inside a comment block and the line isn't a full comment
         if (validIds && commentDepth === 0 && !line.trim().startsWith('//')) {
             const varMatches = [...line.matchAll(/(?:^|[^@])([\$#])([a-zA-Z0-9_]+)/g)];
             for (const m of varMatches) {
@@ -222,6 +207,7 @@ export function lintScribeScript(
                 const isGlobal = validIds.has(varName);
                 const isLocal = localVars.has(varName);
                 
+                // If it's neither global nor local, warn
                 if (!isGlobal && !isLocal) {
                     errors.push({
                         line: lineNumber,
@@ -232,18 +218,16 @@ export function lintScribeScript(
             }
         }
 
+        // 2. Structural Parsing (Char by Char)
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
             const nextChar = line[i + 1] || '';
             const prevChar = line[i - 1] || '';
 
-            // 0. Comment Block Tracking
-            // Start { //
+            // A. Comment Block Tracking: { //
+            // Check for { followed immediately by //
             if (commentDepth === 0 && char === '{' && line.substr(i, 3) === '{//') {
                 commentDepth = 1;
-                // We don't skip i here because we still want to count the { for balance if needed? 
-                // Actually, sanitization removes it. Linter must respect it.
-                // If we enter comment mode, we effectively stop checking logic until we exit.
             }
             
             // If inside comment...
@@ -251,11 +235,11 @@ export function lintScribeScript(
                 if (char === '{') commentDepth++;
                 else if (char === '}') commentDepth--;
                 
-                // While in comment, skip all other checks
+                // While in comment, skip all other checks for this char
                 continue; 
             }
 
-            // 1. Bracket Tracking
+            // B. Bracket Tracking
             if (char === '{') {
                 braceDepth++;
                 scopeStack.push({ type: 'brace', hasSeenColon: false });
@@ -276,26 +260,28 @@ export function lintScribeScript(
                 }
             }
 
-            // 2. Colon Tracking
+            // C. Colon Tracking (for Conditional branches)
             if (char === ':' && braceDepth > 0 && bracketDepth === 0) {
                 if (scopeStack.length > 0) {
                     scopeStack[scopeStack.length - 1].hasSeenColon = true;
                 }
             }
 
-            // 3. Logic Checks
+            // D. Logic Checks (Assignments)
             if (char === '=' && nextChar !== '=' && prevChar !== '!' && prevChar !== '>' && prevChar !== '<' && prevChar !== '=') {
                 
-                // INSIDE LOGIC BLOCK
+                // CASE 1: Inside { ... }
                 if (braceDepth > 0 && bracketDepth === 0) {
                     const currentScope = scopeStack[scopeStack.length - 1];
+                    
+                    // Look backwards to see what's being assigned
                     const textBefore = line.substring(0, i).trimEnd();
                     const lastToken = textBefore.split(/[^a-zA-Z0-9_$@#.]/).pop() || "";
                     
                     const isAliasDef = lastToken.startsWith('@');
                     const isWorldDef = lastToken.startsWith('#');
-                    const isVarDef = lastToken.startsWith('$'); // Fixed: Allow $var =
-                    const isEffectInBranch = currentScope?.hasSeenColon;
+                    const isVarDef = lastToken.startsWith('$'); // Allow $var = 5
+                    const isEffectInBranch = currentScope?.hasSeenColon; // Allow { cond : $var = 5 }
 
                     const isAllowed = isEffectInBranch || isAliasDef || isWorldDef || isVarDef;
 
@@ -308,7 +294,7 @@ export function lintScribeScript(
                     }
                 }
                 
-                // OUTSIDE LOGIC BLOCK (Condition Field)
+                // CASE 2: Outside logic (Condition fields)
                 if (braceDepth === 0 && mode === 'condition') {
                      errors.push({ 
                         line: lineNumber, 

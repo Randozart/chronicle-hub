@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/qualities/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -9,13 +10,11 @@ import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import { useToast } from '@/providers/ToastProvider';
 
-// ENGINE RESERVED WORDS
 const ENGINE_RESERVED = ['luck', 'target', 'schedule', 'cancel', 'all', 'world', 'source', 'desc'];
 
 export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const { showToast } = useToast();
-
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [settings, setSettings] = useState<WorldSettings | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -56,11 +55,7 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
         }
         
         const newQ: QualityDefinition = { 
-            id: cleanId, 
-            name: "New Quality", 
-            type: QualityType.Pyramidal, 
-            tags: [],
-            folder: "New" 
+            id: cleanId, name: "New Quality", type: QualityType.Pyramidal, tags: [], folder: "New" 
         };
         
         setQualities(prev => [...prev, newQ]);
@@ -77,13 +72,11 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
             showToast("Quality ID already exists.", "error");
             return;
         }
-
         const newQ: QualityDefinition = {
             ...JSON.parse(JSON.stringify(source)),
             id: cleanId,
             name: `${source.name} (Copy)`
         };
-
         setQualities(prev => [...prev, newQ]);
         setSelectedId(cleanId);
         showToast("Quality duplicated.", "success");
@@ -106,21 +99,11 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
         <div className="admin-split-view">
             <AdminListSidebar 
                 title="Qualities" 
-
-                //Override to use a custom display name, in case the actual name uses scribescript logic
-                items={qualities.map(q => ({
-                    ...q,
-                    name: q.editor_name || q.name || q.id
-                }))}
-                
+                items={qualities.map(q => ({ ...q, name: q.editor_name || q.name || q.id }))}
                 selectedId={selectedId} 
                 onSelect={setSelectedId} 
                 onCreate={handleCreate}
-                groupOptions={[
-                    { label: "Folder", key: "folder" },
-                    { label: "Category", key: "category" }, 
-                    { label: "Type", key: "type" }
-                ]}
+                groupOptions={[{ label: "Folder", key: "folder" }, { label: "Category", key: "category" }, { label: "Type", key: "type" }]}
                 defaultGroupByKey="folder"
             />
             <div className="admin-editor-col">
@@ -132,6 +115,7 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
                         onDelete={handleDeleteSuccess} 
                         onDuplicate={handleDuplicate}
                         storyId={storyId} 
+                        qualityDefs={qualities} // PASS LIST FOR LINTER
                     />
                 ) : <div style={{color:'#777', textAlign:'center', marginTop:'20%'}}>Select a quality</div>}
             </div>
@@ -139,18 +123,18 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
     );
 }
 
-function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, storyId }: { 
+function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, storyId, qualityDefs }: { 
     initialData: QualityDefinition, 
     settings: WorldSettings, 
     onSave: (d: any) => void, 
     onDelete: (id: string) => void, 
     onDuplicate: (q: QualityDefinition) => void,
-    storyId: string 
+    storyId: string,
+    qualityDefs: QualityDefinition[]
 }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
     const { showToast } = useToast();
-    
     const [newVariantKey, setNewVariantKey] = useState("");
 
     useEffect(() => setForm(initialData), [initialData]);
@@ -169,15 +153,11 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
         handleChange('tags', arr);
     };
 
+    // GLOBAL SAVE TRIGGER
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                handleSave();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        const handleGlobalSave = () => handleSave();
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
     }, [form]);
 
     const handleSave = async () => {
@@ -188,13 +168,11 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId, category: 'qualities', itemId: form.id, data: form })
             });
-
             if (!res.ok) throw new Error("Save failed");
-            
             onSave(form);
         } catch (e) { 
             console.error(e);
-            showToast("Failed to save quality.", "error");
+            showToast("Failed to save.", "error");
         } finally { 
             setIsSaving(false); 
         }
@@ -208,11 +186,10 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
             onDelete(form.id);
         } catch (e) {
             console.error(e);
-            showToast("Failed to delete quality.", "error");
+            showToast("Failed to delete.", "error");
         }
     };
 
-    // Variant Handlers
     const addVariant = () => {
         if (!newVariantKey) return;
         const current = form.text_variants || {};
@@ -236,10 +213,8 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
         if (ENGINE_RESERVED.includes(cleanId)) return { type: 'critical', msg: `"${id}" is a reserved Engine Keyword.` };
         if (cleanId === settings.actionId?.replace('$', '')) return { type: 'info', msg: "Bound to 'Action Points'." };
         if (cleanId === settings.playerName?.replace('$', '')) return { type: 'info', msg: "Bound to 'Player Name'." };
-        
         const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', ''));
         if (currencyIds.includes(cleanId)) return { type: 'currency', msg: "Defined as a Currency (Wallet)." };
-
         return null;
     };
 
@@ -247,7 +222,6 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
 
     return (
         <div className="space-y-4">
-            
             {conflict && (
                 <div style={{
                     padding: '1rem', borderRadius: '4px', marginBottom: '1rem',
@@ -260,8 +234,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     <span style={{ fontSize: '0.85rem', color: '#ccc' }}>{conflict.msg}</span>
                 </div>
             )}
-
-            {/* ID & SORT ORDER */}
+            
             <div className="form-row">
                 <div className="form-group" style={{flex: 1}}>
                     <label className="form-label">ID</label>
@@ -273,7 +246,6 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             </div>
 
-            {/* NAME & TYPE */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 2 }}>
                     <SmartArea 
@@ -284,6 +256,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         minHeight="38px" 
                         placeholder="Display Name (ScribeScript allowed)"
                         contextQualityId={form.id}
+                        qualityDefs={qualityDefs} // PASS
                     />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
@@ -299,27 +272,15 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 </div>
             </div>
 
-            {/* ORGANIZATION */}
+            {/* ... [Folder/Display Name/Category] ... */}
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Folder (Editor)</label>
-                    <input 
-                        value={form.folder || ''} 
-                        onChange={e => handleChange('folder', e.target.value)} 
-                        className="form-input" 
-                        placeholder="Items.Weapons" 
-                    />
+                    <input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" placeholder="Items.Weapons" />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Display Name (Editor)</label>
-                    <input 
-                        value={form.editor_name || ''} 
-                        onChange={e => handleChange('editor_name', e.target.value)} 
-                        className="form-input" 
-                        placeholder="Internal Label (Optional)" 
-                        style={{ borderColor: '#61afef' }} // Subtle hint it's meta
-                        title="Overrides the Name in the sidebar list only. Not seen by players."
-                    />
+                    <input value={form.editor_name || ''} onChange={e => handleChange('editor_name', e.target.value)} className="form-input" placeholder="Internal Label (Optional)" style={{ borderColor: '#61afef' }} />
                 </div>
             </div>
             
@@ -333,10 +294,10 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     placeholder="For Scripts (e.g. 'Weapons')"
                     subLabel="Comma-seperated or Conditional"
                     contextQualityId={form.id}
+                    qualityDefs={qualityDefs} // PASS
                 />
             </div>
 
-            {/* IMAGE CODE (Now SmartArea) */}
             <div className="form-group">
                 <label className="form-label">Image Code</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -347,13 +308,13 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                             storyId={storyId}
                             minHeight="38px"
                             contextQualityId={form.id}
+                            qualityDefs={qualityDefs} // PASS
                         />
                     </div>
                     {form.image && <div style={{width: 32, height: 32}}><GameImage code={form.image} imageLibrary={{}} type="icon" className="option-image"/></div>}
                 </div>
             </div>
             
-            {/* SINGULAR & PLURAL NAMES (Now SmartArea) */}
             <div className="form-row">
                  <div className="form-group" style={{ flex: 1 }}>
                     <SmartArea 
@@ -364,6 +325,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         minHeight="38px"
                         placeholder="e.g. Coin" 
                         contextQualityId={form.id}
+                        qualityDefs={qualityDefs} // PASS
                     />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
@@ -375,6 +337,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         minHeight="38px"
                         placeholder="e.g. Coins" 
                         contextQualityId={form.id}
+                        qualityDefs={qualityDefs} // PASS
                     />
                 </div>
             </div>
@@ -388,6 +351,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     minHeight="80px"
                     placeholder="Visible in tooltip. Use {$.level} for current level."
                     contextQualityId={form.id}
+                    qualityDefs={qualityDefs} // PASS
                 />
             </div>
             
@@ -405,6 +369,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                                 minHeight="38px" 
                                 placeholder="Infinity" 
                                 contextQualityId={form.id}
+                                qualityDefs={qualityDefs}
                             />
                             <p className="special-desc">Absolute maximum effective level.</p>
                         </div>
@@ -417,6 +382,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                                 minHeight="38px" 
                                 placeholder="None" 
                                 contextQualityId={form.id}
+                                qualityDefs={qualityDefs}
                             />
                             <p className="special-desc">Limit for repeatable actions.</p>
                         </div>
@@ -430,6 +396,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                                     minHeight="38px" 
                                     placeholder="None" 
                                     contextQualityId={form.id}
+                                    qualityDefs={qualityDefs}
                                 />
                                 <p className="special-desc">Max CP needed per level.</p>
                             </div>
@@ -450,6 +417,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         minHeight="38px" 
                         placeholder="Your {$.name} has increased!" 
                         contextQualityId={form.id}
+                        qualityDefs={qualityDefs}
                     />
                 </div>
                 <div className="form-group">
@@ -461,21 +429,19 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         minHeight="38px" 
                         placeholder="Your {$.name} has dropped..." 
                         contextQualityId={form.id}
+                        qualityDefs={qualityDefs}
                     />
                 </div>
             </div>
 
-            {/* TEXT VARIANTS (Now using SmartArea) */}
+            {/* TEXT VARIANTS */}
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd' }}>Text Variants</label>
                 <p className="special-desc">Custom properties accessed via <code>$quality.property</code>.</p>
-                
                 <div style={{ display: 'grid', gap: '10px', marginTop: '1rem' }}>
                     {Object.entries(form.text_variants || {}).map(([key, val]) => (
                         <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                            <div style={{ width: '120px', paddingTop: '8px', fontWeight: 'bold', color: '#ccc', textAlign: 'right' }}>
-                                .{key}
-                            </div>
+                            <div style={{ width: '120px', paddingTop: '8px', fontWeight: 'bold', color: '#ccc', textAlign: 'right' }}>.{key}</div>
                             <div style={{ flex: 1 }}>
                                 <SmartArea 
                                     value={val} 
@@ -483,20 +449,15 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                                     storyId={storyId} 
                                     minHeight="38px"
                                     contextQualityId={form.id} 
+                                    qualityDefs={qualityDefs}
                                 />
                             </div>
                             <button onClick={() => removeVariant(key)} style={{ background: 'none', border: 'none', color: '#e06c75', cursor: 'pointer', marginTop: '8px' }}>✕</button>
                         </div>
                     ))}
                 </div>
-                
                 <div style={{ display: 'flex', gap: '10px', marginTop: '1rem', borderTop: '1px dashed #444', paddingTop: '1rem' }}>
-                    <input 
-                        value={newVariantKey} 
-                        onChange={e => setNewVariantKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                        placeholder="new_property_key" 
-                        className="form-input" 
-                    />
+                    <input value={newVariantKey} onChange={e => setNewVariantKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="new_property_key" className="form-input" />
                     <button onClick={addVariant} className="save-btn" style={{ width: 'auto', padding: '0.4rem 1rem' }}>+ Add Variant</button>
                 </div>
             </div>
@@ -504,10 +465,8 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
             {/* TAGS */}
             <div className="special-field-group" style={{ borderColor: '#98c379' }}>
                 <label className="special-label" style={{ color: '#98c379' }}>Behavior & Tags</label>
-                
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handleTagToggle('hidden')} label="Hidden" desc="Do not show on profile." />
-                    
                     {(form.type === 'E' || form.type === 'I') && (
                         <>
                             <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />
@@ -515,18 +474,16 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                         </>
                     )}
                 </div>
-
                 <div style={{ marginTop: '1rem' }}>
                     <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Tags</label>
                     <input value={form.tags?.join(', ') || ''} onChange={e => handleRawTagsChange(e.target.value)} className="form-input" style={{ fontSize: '0.8rem' }} />
                 </div>
             </div>
 
-            {/* ITEM SETTINGS (Use Event is now SmartArea) */}
+            {/* ITEM SETTINGS */}
             {(form.type === 'E' || form.type === 'I') && (
                 <div className="form-group" style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
                     <label className="special-label" style={{color: '#61afef'}}>Item Settings</label>
-                    
                     {form.type === 'E' && (
                         <div className="form-group">
                             <SmartArea 
@@ -537,10 +494,10 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                                 minHeight="38px" 
                                 placeholder="$strength + 1"
                                 contextQualityId={form.id}
+                                qualityDefs={qualityDefs}
                             />
                         </div>
                     )}
-
                     <div className="form-group">
                         <SmartArea 
                             label="Use Event (Storylet ID)"
@@ -550,6 +507,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                             minHeight="38px"
                             placeholder="Event ID to fire when 'Used'"
                             contextQualityId={form.id}
+                            qualityDefs={qualityDefs}
                         />
                     </div>
                 </div>

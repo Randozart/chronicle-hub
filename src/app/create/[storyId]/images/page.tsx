@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/images/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -5,18 +6,18 @@ import { ImageDefinition } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import ImageUploader from './components/ImageUploader';
+import { useToast } from '@/providers/ToastProvider'; // NEW
 
 export default function ImagesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast();
     const [images, setImages] = useState<ImageDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     
-    // Storage Stats State
     const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 20 * 1024 * 1024 });
 
     useEffect(() => {
-        // 1. Fetch Images List
         fetch(`/api/admin/images?storyId=${storyId}`) 
             .then(res => res.json())
             .then(data => {
@@ -25,7 +26,6 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             })
             .finally(() => setIsLoading(false));
 
-        // 2. Fetch User Storage Usage
         fetch('/api/admin/usage')
             .then(res => res.json())
             .then(data => {
@@ -37,7 +37,6 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             
     }, [storyId]);
     
-    // Callback when ImageUploader finishes
     const handleUploadSuccess = (data: { image: ImageDefinition, usage: number }) => {
         setImages(prev => [...prev, data.image]);
         setSelectedId(data.image.id);
@@ -45,6 +44,7 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
         if (data.usage !== undefined) {
             setStorageUsage(prev => ({ ...prev, used: data.usage }));
         }
+        showToast("Image uploaded!", "success");
     };
 
     const handleStorageUpdate = (newUsage: number) => {
@@ -68,11 +68,13 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
 
     const handleSaveSuccess = (updatedItem: ImageDefinition) => {
         setImages(prev => prev.map(q => q.id === updatedItem.id ? updatedItem : q));
+        showToast("Asset info saved.", "success");
     };
 
     const handleDeleteSuccess = (deletedId: string) => {
         setImages(prev => prev.filter(q => q.id !== deletedId));
         setSelectedId(null);
+        showToast("Asset deleted.", "info");
     };
 
     if (isLoading) return <div className="loading-container">Loading Assets...</div>;
@@ -85,7 +87,6 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
     return (
         <div className="admin-split-view" style={{ flexDirection: 'column' }}>
             
-            {/* STORAGE BAR */}
             <div style={{ padding: '0.5rem 1rem', background: '#111', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <span style={{ fontSize: '0.8rem', color: '#888' }}>Storage Usage:</span>
                 <div style={{ flex: 1, height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
@@ -102,7 +103,6 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             </div>
 
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                {/* LEFT: SIDEBAR */}
                 <AdminListSidebar 
                     title="Assets"
                     items={images}
@@ -130,7 +130,6 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
                     )}
                 />
 
-                {/* RIGHT: EDITOR CONTENT */}
                 <div className="admin-editor-col">
                     <ImageUploader 
                         storyId={storyId} 
@@ -158,11 +157,10 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
     );
 }
 
-// --- SUB-COMPONENT: EDITOR ---
-
 function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: ImageDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
+    const { showToast } = useToast(); // Use Hook
     
     // Interaction State
     const [coords, setCoords] = useState<{x:number, y:number} | null>(null);
@@ -176,8 +174,14 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
     const handleChange = (field: string, val: any) => {
         setForm(prev => ({ ...prev, [field]: val }));
     };
+    
+    // GLOBAL SAVE TRIGGER
+    useEffect(() => {
+        const handleGlobalSave = () => handleSave();
+        window.addEventListener('global-save-trigger', handleGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
+    }, [form]);
 
-    // Parallax Preview Logic
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
         setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height });
@@ -185,31 +189,19 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
     const moveX = (mousePos.x - 0.5) * 20; 
     const moveY = (mousePos.y - 0.5) * 20;
 
-    // FOCAL POINT & Map Logic
-    // We treat every click on the preview as setting focus
     const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        
-        // Percentages for Focus
         const xPct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
         const yPct = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-        
-        // Pixel Coords for Map clipboard
         const xPx = Math.round(e.clientX - rect.left);
         const yPx = Math.round(e.clientY - rect.top);
         
-        // Save to form
-        setForm(prev => ({ 
-            ...prev, 
-            focus: { x: xPct, y: yPct } 
-        }));
-        
-        // Save local coord state for dot rendering
+        setForm(prev => ({ ...prev, focus: { x: xPct, y: yPct } }));
         setCoords({ x: xPx, y: yPx }); 
         
-        // Copy map coords if in map mode
         if (form.category === 'map') {
             navigator.clipboard.writeText(`{ x: ${xPx}, y: ${yPx} }`);
+            showToast("Coords copied to clipboard!", "info");
         }
     };
 
@@ -221,7 +213,8 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, category: 'images', itemId: form.id, data: form })
             });
-            if (res.ok) { onSave(form); alert("Saved!"); } else { alert("Failed to save."); }
+            if (res.ok) { onSave(form); } 
+            else { showToast("Failed to save.", "error"); }
         } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
@@ -284,7 +277,6 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                 />
             </div>
 
-            {/* --- CONTEXTUAL PREVIEW --- */}
             <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#181a1f', borderRadius: '8px', border: '1px solid #333' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <label className="form-label" style={{ color: '#61afef' }}>
@@ -296,13 +288,10 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    
-                    {/* UNIVERSAL CLICK HANDLER WRAPPER */}
                     <div 
                         style={{ position: 'relative', border: '2px solid #444', cursor: 'crosshair', display: 'inline-block', maxWidth: '100%' }}
                         onClick={(e: any) => handleImageClick(e)}
                     >
-                        {/* 1. PARALLAX VIEW */}
                         {form.category === 'background' ? (
                              <div onMouseMove={handleMouseMove} style={{ width: '500px', height: '300px', position: 'relative', overflow: 'hidden' }}>
                                 <img 
@@ -318,7 +307,6 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                                 </div>
                              </div>
                         ) : (
-                            // 2. STANDARD IMAGE VIEW (Uncropped for setting focus)
                              <img 
                                 src={form.url} 
                                 alt="Preview"
@@ -328,8 +316,6 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                                 }} 
                             />
                         )}
-
-                        {/* FOCAL POINT INDICATOR */}
                         {form.focus && (
                             <div style={{ 
                                 position: 'absolute', 

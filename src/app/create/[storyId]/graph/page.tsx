@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/graph/page.tsx
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -9,6 +10,7 @@ import SelfLoopEdge from '@/components/admin/SelfLoopEdge';
 import GraphNode from '@/components/admin/GraphNode';
 import GraphContextMenu from '@/components/admin/GraphContextMenu';
 import { v4 as uuidv4 } from 'uuid';
+import { useToast } from '@/providers/ToastProvider';
 
 interface NodeData {
     label: string;
@@ -26,6 +28,7 @@ export default function GraphPage({ params }: { params: Promise<{ storyId: strin
 
 function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
     const { screenToFlowPosition } = useReactFlow();
+    const { showToast } = useToast();
     const [storyId, setStoryId] = useState<string>("");
     
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -38,20 +41,17 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
     const [selectedQuality, setSelectedQuality] = useState<string>("");
     const [showSelfLoops, setShowSelfLoops] = useState(true);
 
-    // Inspector State
     const [hoveredData, setHoveredData] = useState<NodeData | null>(null);
     const [lockedData, setLockedData] = useState<NodeData | null>(null);
     const activeData = lockedData || hoveredData;
     const isLocked = !!lockedData;
 
-    // Context Menu State
     const [menu, setMenu] = useState<{ x: number, y: number, type: 'pane' | 'node', nodeId?: string } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
 
     const nodeTypes = useMemo(() => ({ custom: GraphNode }), []);
     const edgeTypes = useMemo(() => ({ selfloop: SelfLoopEdge }), []);
 
-    // 1. DATA FETCHING (Decoupled from selection state)
     const fetchData = useCallback(async (sId: string) => {
         try {
             const [sRes, qRes] = await Promise.all([
@@ -62,44 +62,32 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
             const sData = await sRes.json();
             const qData = await qRes.json();
 
-            // 1. Handle Storylets
             if (Array.isArray(sData)) {
                 const sRecord: any = {};
                 sData.forEach((s: any) => sRecord[s.id] = s);
                 setStorylets(sRecord);
             }
 
-            // 2. Handle Qualities (The Fix)
             let qList: QualityDefinition[] = [];
-            
             if (Array.isArray(qData)) {
                 qList = qData;
             } else if (qData && typeof qData === 'object') {
-                // Convert Dictionary to Array
                 qList = Object.values(qData);
             }
-
             setQualities(qList);
 
-            // 3. Set Default Selection (if none selected)
             if (qList.length > 0) {
-                // Prefer Pyramidal stats as they are usually the most interesting for graphs
                 const firstStat = qList.find((q: any) => q.type === 'P');
-                
-                // Only override if we don't have a selection (or current selection is invalid)
-                // But since this runs on mount, we usually want to set a default.
                 setSelectedQuality((prev) => {
                     if (prev && qList.find(q => q.id === prev)) return prev;
                     return firstStat ? firstStat.id : qList[0].id;
                 });
             }
-
         } catch (e) {
             console.error("Graph Fetch Error:", e);
         }
-    }, []); // Empty dependency array is fine here
-    
-    // Initial Load
+    }, []);
+
     useEffect(() => {
         params.then(p => { 
             setStoryId(p.storyId); 
@@ -107,26 +95,21 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
         });
     }, []);
 
-    // 2. AUTO-SELECT DEFAULT QUALITY
     useEffect(() => {
-        // Only select a default if we have qualities AND nothing is currently selected
         if (qualities.length > 0 && !selectedQuality) {
             const firstStat = qualities.find((q: any) => q.type === 'P');
             if (firstStat) setSelectedQuality(firstStat.id);
             else setSelectedQuality(qualities[0].id);
         }
-    }, [qualities]); // Run only when qualities list loads
+    }, [qualities]);
 
-    // 3. GRAPH GENERATION
     useEffect(() => {
         if (!storylets || Object.keys(storylets).length === 0) return;
         const { nodes: gNodes, edges: gEdges } = generateGraph(storylets, mode, selectedQuality, showSelfLoops);
         setNodes(gNodes);
         setEdges(gEdges);
-        // We do NOT reset lockedData here, so you can switch views while inspecting a node
     }, [storylets, mode, selectedQuality, showSelfLoops, setNodes, setEdges]);
 
-    // --- HANDLERS ---
     const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
         if (!lockedData && node.data) setHoveredData(node.data as unknown as NodeData);
     }, [lockedData]);
@@ -158,7 +141,6 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
         setHoveredData(null);
     }, []);
 
-    // --- EDITOR ACTIONS ---
     const handleMenuAction = async (action: string) => {
         if (!menu) return;
         const { x, y, nodeId } = menu;
@@ -178,6 +160,7 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
             if (!name) return;
             const id = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
             await saveStorylet({ id, name, text: "Write something...", options: [], tags: [], status: 'draft' });
+            showToast("Node created", "success");
         }
 
         if (action === 'link_new_redirect' && nodeId) {
@@ -186,9 +169,8 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
             const name = prompt("Name of Next Step:");
             if (!name) return;
             const targetId = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-
             await saveStorylet({ id: targetId, name, text: "...", options: [], tags: [], status: 'draft' });
-
+            
             const newOption: ResolveOption = {
                 id: `opt_${uuidv4().slice(0,8)}`,
                 name: `Go to ${name}`,
@@ -197,6 +179,7 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                 action_cost: "1"
             };
             await saveStorylet({ ...source, options: [...source.options, newOption] });
+            showToast("Linked new storylet", "success");
         }
 
         if (action === 'link_new_quality' && nodeId) {
@@ -222,6 +205,7 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                 action_cost: "1"
             };
             await saveStorylet({ ...source, options: [...source.options, newOption] });
+            showToast("Logic branch created", "success");
         }
 
         if (action === 'edit_node' && nodeId) {
@@ -232,8 +216,6 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
 
     return (
         <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }} ref={ref}>
-            
-            {/* HEADER */}
             <div style={{ padding: '1rem', borderBottom: '1px solid #444', background: '#181a1f', display: 'flex', gap: '2rem', alignItems: 'center', zIndex: 20 }}>
                 <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>Narrative Graph</h2>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -249,8 +231,7 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                     <input type="checkbox" checked={showSelfLoops} onChange={e => setShowSelfLoops(e.target.checked)} /> Show Loops
                 </label>
             </div>
-
-            {/* CANVAS */}
+            
             <div style={{ flex: 1, background: '#111', position: 'relative' }}>
                 <ReactFlow
                     nodes={nodes}
@@ -272,7 +253,8 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                     <Controls />
                     <MiniMap style={{ background: '#222' }} nodeColor={() => '#61afef'} />
                 </ReactFlow>
-                {/* --- RESTORED INSPECTOR PANEL --- */}
+
+                {/* INSPECTOR PANEL */}
                 {activeData && (
                     <div style={{ 
                         position: 'absolute', top: '1rem', right: '1rem', width: '320px', 
@@ -281,7 +263,7 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                         borderRadius: '8px', padding: '0', 
                         boxShadow: '0 10px 30px rgba(0,0,0,0.6)', 
                         zIndex: 50, maxHeight: '80vh', overflowY: 'auto',
-                        pointerEvents: isLocked ? 'auto' : 'none', // Pass-through for hover
+                        pointerEvents: isLocked ? 'auto' : 'none', 
                         transition: 'opacity 0.2s',
                         display: 'flex', flexDirection: 'column'
                     }}>
@@ -314,7 +296,6 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                                 </div>
                             )}
                         </div>
-
                         <div style={{ borderTop: '1px solid #444', padding: '1rem', background: 'rgba(0,0,0,0.2)' }}>
                             {isLocked ? (
                                 <a 
