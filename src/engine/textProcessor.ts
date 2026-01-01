@@ -17,6 +17,7 @@ export function evaluateText(
     if (!rawText) return '';
     const effectiveAliases = aliases || {}; 
     
+    // SAFETY_NET: Top level try/catch
     try {
         return evaluateRecursive(rawText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors);
     } catch (e: any) {
@@ -88,6 +89,7 @@ function evaluateExpression(
         const rawValue = assignmentMatch[2];
         const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors);
         
+        // FIX: Ensure not undefined
         let storedValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
         
@@ -126,6 +128,7 @@ function evaluateExpression(
     return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors);
 }
 
+// --- HELPER: ADVANCED FILTERING FOR MACROS ---
 function getCandidateIds(
     rawCategoryArg: string,
     rawFilterArg: string | undefined,
@@ -155,36 +158,19 @@ function getCandidateIds(
 
     if (rawFilterArg && rawFilterArg.trim() !== "") {
         const filterStr = rawFilterArg.trim();
-        
         candidates = candidates.filter(qid => {
-            const state = qualities[qid] || { 
-                qualityId: qid, 
-                type: defs[qid].type, 
-                level: 0, 
-                stringValue: "", 
-                changePoints: 0 
-            } as QualityState;
-
+            const state = qualities[qid] || { qualityId: qid, type: defs[qid].type, level: 0, stringValue: "", changePoints: 0 } as QualityState;
             if (filterStr === '>0' || filterStr === 'has' || filterStr === 'owned') {
                 return 'level' in state ? state.level > 0 : false;
             }
-
             // FIX: Pass context { qid, state } so '$.' works in filters
             return evaluateCondition(filterStr, qualities, defs, { qid, state }, resolutionRoll, aliases, errors);
         });
     }
-
     return candidates;
 }
 
-const SEPARATORS: Record<string, string> = {
-    'comma': ', ',
-    'pipe': ' | ',
-    'newline': '\n',
-    'break': '<br/>',
-    'and': ' and ',
-    'space': ' '
-};
+const SEPARATORS: Record<string, string> = { 'comma': ', ', 'pipe': ' | ', 'newline': '\n', 'break': '<br/>', 'and': ' and ', 'space': ' ' };
 
 function evaluateMacro(
     macroString: string,
@@ -195,23 +181,17 @@ function evaluateMacro(
     resolutionRoll: number,
     errors?: string[]
 ): string | number | boolean {
-    const macroRegex = /^%([a-zA-Z_]+)\[(.*?)\]$/;
-    const match = macroString.match(macroRegex);
+    const match = macroString.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
     if (!match) return `[Invalid Macro: ${macroString}]`;
-
     const [, command, fullArgs] = match;
-
     let mainArg = fullArgs.trim();
     let optArgs: string[] = [];
     let rawOptStr = ""; 
-
     const semiIndex = fullArgs.indexOf(';');
     if (semiIndex !== -1) {
         mainArg = fullArgs.substring(0, semiIndex).trim();
         rawOptStr = fullArgs.substring(semiIndex + 1).trim();
-        if (rawOptStr) {
-            optArgs = rawOptStr.split(',').map(s => s.trim());
-        }
+        if (rawOptStr) optArgs = rawOptStr.split(',').map(s => s.trim());
     }
 
     switch (command.toLowerCase()) {
@@ -220,33 +200,23 @@ function evaluateMacro(
             const chance = Number(evaluateExpression(chanceExpr, qualities, defs, aliases, self, resolutionRoll, errors));
             const isInverted = optArgs.includes('invert');
             if (isNaN(chance)) return false;
-            const success = resolutionRoll < chance;
-            return isInverted ? !success : success;
+            return isInverted ? !(resolutionRoll < chance) : (resolutionRoll < chance);
         }
         case "choice": {
             const choices = fullArgs.split(';').map(s => s.trim()).filter(Boolean); 
             if (choices.length === 0) return "";
-            const randomIndex = Math.floor(Math.random() * choices.length);
-            return evaluateExpression(choices[randomIndex], qualities, defs, aliases, self, resolutionRoll, errors);
+            return evaluateExpression(choices[Math.floor(Math.random() * choices.length)], qualities, defs, aliases, self, resolutionRoll, errors);
         }
-        case "chance": {
-            return calculateChance(mainArg, rawOptStr, qualities, defs, aliases, self, resolutionRoll, errors);
-        }
+        case "chance": return calculateChance(mainArg, rawOptStr, qualities, defs, aliases, self, resolutionRoll, errors);
         case "pick": {
             const categoryExpr = mainArg;
             const countExpr = optArgs[0] || "1";
             const filterExpr = optArgs[1];
-
             const countVal = parseInt(evaluateText(`{${countExpr}}`, qualities, defs, self, resolutionRoll, aliases, errors));
             const count = isNaN(countVal) ? 1 : Math.max(1, countVal);
-
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
-            
             if (candidates.length === 0) return "nothing";
-
-            const shuffled = candidates.sort(() => 0.5 - Math.random());
-            const selected = shuffled.slice(0, count);
-            return selected.join(', ');
+            return candidates.sort(() => 0.5 - Math.random()).slice(0, count).join(', ');
         }
         case "roll": {
             const categoryExpr = mainArg;
@@ -261,8 +231,7 @@ function evaluateMacro(
                 }
             });
             if (pool.length === 0) return "nothing";
-            const rand = Math.floor(Math.random() * pool.length);
-            return pool[rand];
+            return pool[Math.floor(Math.random() * pool.length)];
         }
         case "list": {
             const categoryExpr = mainArg;
@@ -272,7 +241,6 @@ function evaluateMacro(
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
             const names = candidates.map(qid => {
                 const def = defs[qid];
-                // Pass context to evaluateText for list names
                 return evaluateText(def.name || qid, qualities, defs, { qid, state: qualities[qid] }, resolutionRoll, aliases, errors);
             });
             if (names.length === 0) return "nothing";
@@ -284,34 +252,18 @@ function evaluateMacro(
             const candidates = getCandidateIds(categoryExpr, filterExpr, qualities, defs, resolutionRoll, aliases, errors);
             return candidates.length;
         }
-        case "schedule":
-        case "reset":
-        case "update":
-        case "cancel":
-        case "all":
-            return macroString; 
-        default:
-            return `[Unknown Macro: ${command}]`;
+        case "schedule": case "reset": case "update": case "cancel": case "all": return macroString; 
+        default: return `[Unknown Macro: ${command}]`;
     }
 }
 
-function evaluateConditional(
-    expr: string, 
-    qualities: PlayerQualities, 
-    defs: Record<string, QualityDefinition>,
-    aliases: Record<string, string>, 
-    self: { qid: string, state: QualityState } | null, 
-    resolutionRoll: number,
-    errors?: string[]
-): string {
+function evaluateConditional(expr: string, qualities: PlayerQualities, defs: Record<string, QualityDefinition>, aliases: Record<string, string>, self: { qid: string, state: QualityState } | null, resolutionRoll: number, errors?: string[]): string {
     const branches = expr.split('|');
     for (const branch of branches) {
         const colonIndex = branch.indexOf(':');
         if (colonIndex > -1) {
-            const condition = branch.substring(0, colonIndex).trim();
-            const resultText = branch.substring(colonIndex + 1).trim();
-            if (evaluateCondition(condition, qualities, defs, self, resolutionRoll, aliases, errors)) {
-                return resultText.replace(/^['"]|['"]$/g, '');
+            if (evaluateCondition(branch.substring(0, colonIndex).trim(), qualities, defs, self, resolutionRoll, aliases, errors)) {
+                return branch.substring(colonIndex + 1).trim().replace(/^['"]|['"]$/g, '');
             }
         } else {
             return branch.trim().replace(/^['"]|['"]$/g, '');
@@ -320,18 +272,9 @@ function evaluateConditional(
     return "";
 }
 
-export function evaluateCondition(
-    expression: string | undefined, 
-    qualities: PlayerQualities, 
-    defs: Record<string, QualityDefinition> = {}, 
-    self: { qid: string, state: QualityState } | null = null,
-    resolutionRoll: number = 0,
-    aliases: Record<string, string> = {},
-    errors?: string[]
-): boolean {
+export function evaluateCondition(expression: string | undefined, qualities: PlayerQualities, defs: Record<string, QualityDefinition> = {}, self: { qid: string, state: QualityState } | null = null, resolutionRoll: number = 0, aliases: Record<string, string> = {}, errors?: string[]): boolean {
     if (!expression) return true;
     const trimExpr = expression.trim();
-
     try {
         if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors);
         if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors));
@@ -346,23 +289,17 @@ export function evaluateCondition(
         
         const operator = operatorMatch[0];
         const index = operatorMatch.index!;
-
-        // --- IMPLICIT SELF HANDLING ---
         let leftRaw = trimExpr.substring(0, index).trim();
-        if (leftRaw === '' && self) {
-            leftRaw = '$.'; 
-        }
+        if (leftRaw === '' && self) leftRaw = '$.';
 
         const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors);
         const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors);
 
         if (operator === '==' || operator === '=') return leftVal == rightVal;
         if (operator === '!=') return leftVal != rightVal;
-        
         const lNum = Number(leftVal);
         const rNum = Number(rightVal);
         if (isNaN(lNum) || isNaN(rNum)) return false;
-
         switch (operator) {
             case '>': return lNum > rNum;
             case '<': return lNum < rNum;
@@ -376,16 +313,7 @@ export function evaluateCondition(
     }
 }
 
-function resolveComplexExpression(
-    expr: string,
-    qualities: PlayerQualities,
-    defs: Record<string, QualityDefinition>,
-    aliases: Record<string, string>,
-    self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number,
-    errors?: string[]
-): string | number | boolean {
-    
+function resolveComplexExpression(expr: string, qualities: PlayerQualities, defs: Record<string, QualityDefinition>, aliases: Record<string, string>, self: { qid: string, state: QualityState } | null, resolutionRoll: number, errors?: string[]): string | number | boolean {
     try {
         const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
             (match) => { 
@@ -394,11 +322,7 @@ function resolveComplexExpression(
                 return resolved.toString();
             }
         );
-
-        if (/^[a-zA-Z0-9_]+$/.test(varReplacedExpr.trim())) {
-            return varReplacedExpr.trim();
-        }
-
+        if (/^[a-zA-Z0-9_]+$/.test(varReplacedExpr.trim())) return varReplacedExpr.trim();
         return safeEval(varReplacedExpr);
     } catch (e: any) {
         if (errors) errors.push(`Expression Error "${expr}": ${e.message}`);
@@ -406,31 +330,16 @@ function resolveComplexExpression(
     }
 }
 
-function resolveVariable(
-    fullMatch: string, 
-    qualities: PlayerQualities, 
-    defs: Record<string, QualityDefinition>,
-    aliases: Record<string, string>,
-    self: { qid: string, state: QualityState } | null,
-    resolutionRoll: number,
-    errors?: string[]
-): string | number {
-    
+// FIX: Updated logic to allow string modifiers AND property lookup
+function resolveVariable(fullMatch: string, qualities: PlayerQualities, defs: Record<string, QualityDefinition>, aliases: Record<string, string>, self: { qid: string, state: QualityState } | null, resolutionRoll: number, errors?: string[]): string | number {
     try {
         const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
 
         const [, sigilAndName, levelSpoof, propChain] = match;
-
         let sigil: string, identifier: string;
-        
-        if (sigilAndName === '$.') {
-            sigil = '$.';
-            identifier = '';
-        } else {
-            sigil = sigilAndName.charAt(0);
-            identifier = sigilAndName.slice(1);
-        }
+        if (sigilAndName === '$.') { sigil = '$.'; identifier = ''; } 
+        else { sigil = sigilAndName.charAt(0); identifier = sigilAndName.slice(1); }
 
         let qualityId: string | undefined;
         let contextQualities = qualities;
@@ -445,30 +354,22 @@ function resolveVariable(
         let definition = defs[qualityId];
         let state: QualityState | undefined;
 
-        if (sigil === '$.' && self) {
-            state = self.state;
-        } else {
+        if (sigil === '$.' && self) state = self.state;
+        else {
             state = contextQualities[qualityId];
             if (!state && self?.qid === qualityId) state = self.state;
         }
         
         if (!state) {
             state = { 
-                qualityId, 
-                type: definition?.type || QualityType.Pyramidal, 
-                level: 0, 
-                stringValue: "", 
-                changePoints: 0, 
-                sources: [], 
-                spentTowardsPrune: 0 
+                qualityId, type: definition?.type || QualityType.Pyramidal, level: 0, 
+                stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 
             } as any;
         }
 
         if (levelSpoof) {
             const spoofedVal = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll, errors);
-            if (typeof spoofedVal === 'number') {
-                state = { ...state, level: spoofedVal } as any;
-            }
+            if (typeof spoofedVal === 'number') state = { ...state, level: spoofedVal } as any;
         }
 
         const properties = propChain ? propChain.split('.').filter(Boolean) : [];
@@ -481,42 +382,50 @@ function resolveVariable(
         }
 
         for (const prop of properties) {
+            let processed = false;
             if (typeof currentValue === 'string') {
-                if (prop === 'capital') currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1);
-                else if (prop === 'upper') currentValue = currentValue.toUpperCase();
-                else if (prop === 'lower') currentValue = currentValue.toLowerCase();
-                continue;
+                if (prop === 'capital') { currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1); processed = true; }
+                else if (prop === 'upper') { currentValue = currentValue.toUpperCase(); processed = true; }
+                else if (prop === 'lower') { currentValue = currentValue.toLowerCase(); processed = true; }
             }
+            
+            // FIX: If it was a string modifier, continue to next prop. 
+            // If NOT (e.g. prop is 'name'), treat string as an ID and look it up.
+            if (processed) continue;
 
             const currentQid = currentValue.qualityId || qualityId;
-            const currentDef = defs[currentQid];
+            // If currentValue is a string (e.g. "cultist"), use it as the ID.
+            const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             
-            // Allow chain to continue even if currentDef is missing (dynamic)
+            const currentDef = defs[lookupId];
             
-            if (prop === 'name') currentValue = currentDef?.name || currentQid;
+            // If currentDef is found, use it. If not, fallback to properties on 'state' if we haven't drifted away from the original object
+            // or return the ID itself if we are looking for 'name'.
+
+            if (prop === 'name') currentValue = currentDef?.name || lookupId;
             else if (prop === 'description') currentValue = currentDef?.description || "";
             else if (prop === 'category') currentValue = currentDef?.category || "";
             else if (prop === 'plural') {
                 const lvl = ('level' in state!) ? state!.level : 0;
-                currentValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || currentQid) : (currentDef?.singular_name || currentDef?.name || currentQid);
+                currentValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || lookupId) : (currentDef?.singular_name || currentDef?.name || lookupId);
             }
-            else if (prop === 'singular') currentValue = currentDef?.singular_name || currentDef?.name || currentQid;
+            else if (prop === 'singular') currentValue = currentDef?.singular_name || currentDef?.name || lookupId;
             else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
                 currentValue = currentDef.text_variants[prop];
             }
-            else if (state!.customProperties && state!.customProperties![prop] !== undefined) {
-                currentValue = state!.customProperties![prop];
+            else if (typeof currentValue === 'object' && currentValue.customProperties && currentValue.customProperties[prop] !== undefined) {
+                // If we are still on the state object
+                currentValue = currentValue.customProperties[prop];
             } else {
                 currentValue = undefined;
             }
 
-            // Recursive Evaluation with Correct Context
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
                 currentValue = evaluateText(
                     currentValue, 
                     qualities, 
                     defs, 
-                    { qid: currentQid, state: state! }, 
+                    { qid: lookupId, state: (typeof currentValue === 'object' ? currentValue : state!) }, 
                     resolutionRoll,
                     aliases,
                     errors 
@@ -536,15 +445,8 @@ function resolveVariable(
     }
 }
 
-function preprocessAliases(text: string): [string, Record<string, string>] {
-    const aliasMap: Record<string, string> = {};
-    const aliasRegex = /\{@([a-zA-Z0-9_]+)\s*=\s*\$([a-zA-Z0-9_]+)\}/g;
-    const cleanText = text.replace(aliasRegex, (_, alias, qid) => {
-        aliasMap[alias] = qid;
-        return '';
-    });
-    return [cleanText, aliasMap];
-}
+// ... [calculateChance, getChallengeDetails ... same as previous] ...
+// Re-pasting calculateChance for safety.
 
 export function calculateChance(
     skillCheckExpr: string,
@@ -561,7 +463,6 @@ export function calculateChance(
     if (!skillCheckMatch) return 0;
 
     const [, skillPart, operator, targetPart] = skillCheckMatch;
-    // Pass errors to sub-evaluations
     const skillLevel = Number(evaluateExpression(skillPart, qualities, defs, aliases, self, resolutionRoll, errors));
     const target = Number(evaluateExpression(targetPart, qualities, defs, aliases, self, resolutionRoll, errors));
 
