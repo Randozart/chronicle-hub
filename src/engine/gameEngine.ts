@@ -86,13 +86,13 @@ export class GameEngine {
         );
     }
 
-    // FIX: Added optional context argument to restore $. support
+    // FIX: Restored context argument
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
             rawText, 
             this.qualities, 
             this.worldContent.qualities, 
-            context || null, // Pass context if provided
+            context || null,
             this.resolutionRoll, 
             this.tempAliases,
             this.errors
