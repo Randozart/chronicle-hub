@@ -58,3 +58,206 @@
 .property-hint { font-size: 0.7rem; color: #61afef; font-family: monospace; margin-left: 0.5rem; opacity: 0.8; }
 .toggle-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 4px; }
 .toggle-label { font-size: 0.85rem; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
+
+/* src/styles/layouts/admin.css */
+
+/* ... (Existing Desktop Styles) ... */
+
+/* --- MOBILE ADMIN INTERFACE --- */
+
+/* 1. The Mobile Top Bar (Hidden on Desktop) */
+.admin-mobile-topbar {
+    display: none;
+}
+
+.admin-mobile-only-header { display: none !important; }
+
+.mobile-list-toggle-btn {
+    display: none; /* Hidden on Desktop */
+}
+
+.mobile-list-header-row {
+    display: none; /* Hidden on Desktop */
+}
+
+@media (max-width: 900px) {
+    /* RESET: Default Mobile Layout Behavior defined in responsive.css 
+       might force sidebars to be static blocks. We need to override that 
+       to make them hidden drawers. */
+
+    .admin-layout {
+        position: relative;
+        flex-direction: column;
+    }
+
+    /* 2. Show the Top Bar */
+    .admin-mobile-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #21252b;
+        border-bottom: 1px solid #333;
+        padding: 0.75rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        width: 100%;
+    }
+
+    .admin-mobile-btn {
+        background: transparent;
+        border: 1px solid #444;
+        color: #ccc;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1.2rem;
+        line-height: 1;
+    }
+
+    .admin-mobile-title {
+        font-weight: bold;
+        color: #fff;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* 3. The Navigation Drawer (Left) */
+    .admin-sidebar {
+        position: fixed !important;
+        top: 0; bottom: 0; left: 0;
+        width: 280px !important;
+        z-index: 100 !important;
+        transform: translateX(-100%); /* Hidden by default */
+        transition: transform 0.3s ease-in-out;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        display: flex !important; /* Force flex so internals work */
+        flex-direction: column;
+    }
+
+    .admin-sidebar.mobile-open {
+        transform: translateX(0); /* Slide In */
+    }
+
+    /* 4. The Help/CheatSheet Drawer (Right) */
+    .admin-help-sidebar {
+        position: fixed !important;
+        top: 0; bottom: 0; right: 0;
+        width: 320px !important; /* Full width or mostly full */
+        max-width: 85vw;
+        z-index: 100 !important;
+        transform: translateX(100%); /* Hidden by default */
+        transition: transform 0.3s ease-in-out;
+        box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+        display: flex !important;
+    }
+
+    .admin-help-sidebar.mobile-open {
+        transform: translateX(0); /* Slide In */
+    }
+
+    /* 5. Backdrop Dimmer */
+    .admin-mobile-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(2px);
+        z-index: 90;
+    }
+
+     .admin-nav ul {
+        display: flex !important;
+        flex-direction: column !important; /* Force stack */
+        gap: 0 !important;
+    }
+
+    .admin-link {
+        padding: 1rem !important; /* Bigger tap targets */
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        width: 100%;
+    }
+
+    /* FIX 2: Limit the "Selection List" height so the Editor isn't pushed off-screen */
+    .admin-list-col {
+        max-height: 200px !important; /* Scrollable list at top */
+        min-height: 150px;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid var(--accent-primary);
+        flex-shrink: 0; /* Don't squash me */
+    }
+    
+    .admin-editor-col {
+        overflow: visible !important; /* Let the form scroll naturally */
+        height: auto !important;
+    }
+    
+    /* FIX 3: Ensure the Reference/CheatSheet fills the drawer */
+    .admin-help-sidebar .cheat-sheet-container {
+        width: 100% !important;
+        border: none !important;
+    }
+    
+    /* Hide the internal vertical toggle button of the CheatSheet on mobile */
+    .cheat-toggle-btn {
+        display: none !important;
+    }
+
+    .admin-mobile-only-header { display: flex !important; }
+    
+    .mobile-list-toggle-btn {
+        display: flex;
+        width: 100%;
+        padding: 1rem;
+        background: #2c313a;
+        border: 1px solid #444;
+        color: #e5c07b; /* Gold text */
+        font-weight: bold;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    /* 2. Hide the list column by default */
+    .admin-list-col {
+        display: none !important; 
+    }
+
+    /* 3. The Active Modal State (When open) */
+    .admin-list-col.mobile-active {
+        display: flex !important;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 2000; /* Top level */
+        background: #181a1f;
+        margin: 0;
+        border: none;
+        border-radius: 0;
+        max-height: none !important; /* Remove the responsive.css limit */
+        padding: 0;
+    }
+
+    /* 4. Internal Header for the Modal */
+    .mobile-list-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #21252b;
+        border-bottom: 1px solid #333;
+        flex-shrink: 0;
+    }
+
+    /* Hide the normal header inside the modal to avoid duplication */
+    .admin-list-col.mobile-active .list-header {
+        display: none !important;
+    }
+    
+    /* Ensure the list part scrolls */
+    .admin-list-col.mobile-active .list-items {
+        padding: 1rem;
+    }
+}

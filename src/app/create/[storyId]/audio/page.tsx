@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/audio/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -154,62 +153,92 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     const allInstruments = Array.from(allInstrumentsMap.values());
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', height: 'calc(100vh - 50px)' }}>
-            <div style={{ borderRight: '1px solid #333', height: 'calc(100vh - 50px)', position: 'sticky', top: '50px', width: '300px', display: 'flex', flexDirection: 'column' }}>
-                 <div className="list-header" style={{display:'flex', gap:'10px', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom:'1px solid #333', background:'#21252b'}}>
-                    <span style={{fontWeight:'bold', color:'#fff'}}>Audio Assets</span>
-                    <div style={{display:'flex', gap:'5px'}}>
-                        <button className="new-btn" onClick={() => handleCreate('instrument')} style={{fontSize:'0.7rem', padding:'2px 6px'}}>+ Inst</button>
-                        <button className="new-btn" onClick={() => handleCreate('track')} style={{fontSize:'0.7rem', padding:'2px 6px'}}>+ Track</button>
+        <div className="admin-split-view">
+            {/* 1. SIDEBAR (Collapses on Mobile) */}
+            <AdminListSidebar 
+                title="Audio Assets" 
+                items={items}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={() => handleCreate('track')} 
+                groupOptions={[
+                    { label: "By Folder", key: "folder" },
+                    { label: "By Type", key: "category" },
+                    { label: "By Scope", key: "scope" }
+                ]}
+                defaultGroupByKey="folder"
+                renderItem={(item) => (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="item-title">{item.name}</span>
+                        <span style={{ fontSize: '0.7rem', color: item.scope === 'global' ? '#98c379' : '#61afef' }}>
+                            {item.category.toUpperCase()} • {item.scope}
+                        </span>
                     </div>
-                </div>
-                
-                <div style={{flex:1, overflow:'hidden'}}>
-                    <AdminListSidebar 
-                        title="" 
-                        items={items}
-                        selectedId={selectedId}
-                        onSelect={setSelectedId}
-                        onCreate={() => {}}
-                        groupOptions={[
-                            { label: "By Folder", key: "folder" },
-                            { label: "By Type", key: "category" },
-                            { label: "By Scope", key: "scope" }
-                        ]}
-                        defaultGroupByKey="folder"
-                    />
-                </div>
-            </div>
+                )}
+            />
 
-            <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background:'#141414' }}>
+            {/* 2. EDITOR AREA */}
+            <div className="admin-editor-col" style={{ 
+                padding: 0, 
+                background: '#141414', 
+                display: 'flex', 
+                flexDirection: 'column',
+                maxWidth: '100vw', /* Prevent Mobile Overflow */
+                overflowX: 'hidden'
+            }}>
+                
+                {/* TOOLBAR */}
+                <div style={{ 
+                    padding: '0.5rem 1rem', 
+                    borderBottom: '1px solid #333', 
+                    background: '#21252b', 
+                    display: 'flex', 
+                    gap: '10px',
+                    flexWrap: 'wrap' /* Allow wrapping on small screens */
+                }}>
+                    <button className="new-btn" onClick={() => handleCreate('instrument')}>+ New Instrument</button>
+                    <button className="new-btn" onClick={() => handleCreate('track')}>+ New Track</button>
+                </div>
+
                 {selectedItem?.category === 'instrument' && (
-                    <div style={{padding:'2rem', overflowY: 'auto', flex: 1}}>
+                    <div style={{ padding: 'clamp(1rem, 5vw, 2rem)', overflowY: 'auto', flex: 1 }}>
                         <InstrumentEditor 
                             key={selectedItem.id}
                             data={selectedItem as InstrumentDefinition} 
                             onSave={(d) => handleUpdateInstrument(d)} 
                             onDelete={() => handleDelete(selectedItem.id, 'instrument')}
                         />
-                        <div style={{marginTop:'1rem', fontSize:'0.8rem', color:'#666'}}>
-                            Scope: <span style={{color: selectedItem.scope === 'global' ? '#98c379' : '#61afef'}}>{selectedItem.scope.toUpperCase()}</span> | Folder: {selectedItem.folder}
+                        <div style={{ marginTop:'1rem', fontSize:'0.8rem', color:'#666' }}>
+                            Scope: <span style={{ color: selectedItem.scope === 'global' ? '#98c379' : '#61afef' }}>{selectedItem.scope.toUpperCase()}</span>
                         </div>
                     </div>
                 )}
+                
                 {selectedItem?.category === 'track' && (
-                    <TrackEditor 
-                        key={selectedItem.id}
-                        data={selectedItem as LigatureTrack} 
-                        onSave={handleSave} 
-                        onDelete={() => handleDelete(selectedItem.id, 'track')}
-                        availableInstruments={allInstruments} 
-                        onUpdateInstrument={handleUpdateInstrument}
-                        enableDownload={true}
-                    />
+                    /* Track Editor Container */
+                    <div style={{ 
+                        flex: 1, 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        width: '100%',
+                        overflow: 'hidden' /* Force child scroll */
+                    }}>
+                        <TrackEditor 
+                            key={selectedItem.id}
+                            data={selectedItem as LigatureTrack} 
+                            onSave={handleSave} 
+                            onDelete={() => handleDelete(selectedItem.id, 'track')}
+                            availableInstruments={allInstruments} 
+                            onUpdateInstrument={handleUpdateInstrument}
+                            enableDownload={true}
+                        />
+                    </div>
                 )}
+                
                 {!selectedItem && (
-                    <div style={{ height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#444', flexDirection:'column' }}>
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', flexDirection: 'column', padding: '2rem', textAlign: 'center' }}>
                         <h3>Select an asset to edit</h3>
-                        <p style={{fontSize:'0.9rem'}}>Manage your project music and global library here.</p>
+                        <p style={{ fontSize: '0.9rem' }}>Or use the + buttons above to create one.</p>
                     </div>
                 )}
             </div>

@@ -1,11 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import SparkleIcon from '@/components/icons/SparkleIcon';
 
 export default function CheatSheet() {
     const [isOpen, setIsOpen] = useState(true); 
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Hydration-safe mobile check
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 900);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // ON MOBILE: Always render content (The Layout Drawer handles visibility)
+    // ON DESKTOP: Respect the toggle state
+    const showContent = isMobile || isOpen;
 
     if (!isOpen) {
         return (
@@ -46,7 +59,7 @@ export default function CheatSheet() {
                     borderBottom: '1px solid #333', 
                     background: '#21252b',
                     cursor: 'pointer',
-                    display: 'flex',
+                    display: isMobile ? 'none' : 'flex', 
                     justifyContent: 'space-between',
                     alignItems: 'center'
                 }}

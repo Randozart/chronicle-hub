@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/images/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -6,7 +5,7 @@ import { ImageDefinition } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import ImageUploader from './components/ImageUploader';
-import { useToast } from '@/providers/ToastProvider'; // NEW
+import { useToast } from '@/providers/ToastProvider';
 
 export default function ImagesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -85,73 +84,74 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
     const isCritical = percent > 90;
 
     return (
-        <div className="admin-split-view" style={{ flexDirection: 'column' }}>
-            
-            <div style={{ padding: '0.5rem 1rem', background: '#111', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span style={{ fontSize: '0.8rem', color: '#888' }}>Storage Usage:</span>
-                <div style={{ flex: 1, height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ 
-                        width: `${percent}%`, 
-                        height: '100%', 
-                        background: isCritical ? '#e74c3c' : '#61afef',
-                        transition: 'width 0.3s ease' 
-                    }} />
-                </div>
-                <span style={{ fontSize: '0.8rem', color: isCritical ? '#e74c3c' : '#ccc' }}>
-                    {usedMB} / {limitMB} MB
-                </span>
-            </div>
-
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                <AdminListSidebar 
-                    title="Assets"
-                    items={images}
-                    selectedId={selectedId}
-                    onSelect={setSelectedId}
-                    onCreate={handleCreate}
-                    groupOptions={[{ label: "Category", key: "category" }]}
-                    defaultGroupByKey="category"
-                    renderItem={(img) => (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '24px', height: '24px', flexShrink: 0, overflow: 'hidden', borderRadius: '3px' }}>
-                                <GameImage 
-                                    code={img.id} 
-                                    imageLibrary={{ [img.id]: img }} 
-                                    alt="" 
-                                    type="icon"
-                                    className="option-image" 
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span className="item-title" style={{ fontSize: '0.85rem' }}>{img.id}</span>
-                                {img.size && <span style={{ fontSize: '0.65rem', color: '#666' }}>{(img.size / 1024).toFixed(0)} KB</span>}
-                            </div>
+        <div className="admin-split-view">
+            {/* LEFT SIDEBAR (Mobile Drawer) */}
+            <AdminListSidebar 
+                title="Assets"
+                items={images}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={handleCreate}
+                groupOptions={[{ label: "Category", key: "category" }]}
+                defaultGroupByKey="category"
+                renderItem={(img) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '24px', height: '24px', flexShrink: 0, overflow: 'hidden', borderRadius: '3px' }}>
+                            <GameImage 
+                                code={img.id} 
+                                imageLibrary={{ [img.id]: img }} 
+                                alt="" 
+                                type="icon"
+                                className="option-image" 
+                            />
                         </div>
-                    )}
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span className="item-title" style={{ fontSize: '0.85rem' }}>{img.id}</span>
+                            {img.size && <span style={{ fontSize: '0.65rem', color: '#666' }}>{(img.size / 1024).toFixed(0)} KB</span>}
+                        </div>
+                    </div>
+                )}
+            />
+
+            {/* MAIN CONTENT AREA */}
+            <div className="admin-editor-col">
+                {/* Storage Indicator */}
+                <div style={{ padding: '0.5rem 1rem', background: '#111', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>Storage:</span>
+                    <div style={{ flex: 1, height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ 
+                            width: `${percent}%`, 
+                            height: '100%', 
+                            background: isCritical ? '#e74c3c' : '#61afef',
+                            transition: 'width 0.3s ease' 
+                        }} />
+                    </div>
+                    <span style={{ fontSize: '0.8rem', color: isCritical ? '#e74c3c' : '#ccc' }}>
+                        {usedMB} / {limitMB} MB
+                    </span>
+                </div>
+
+                <ImageUploader 
+                    storyId={storyId} 
+                    onUploadComplete={handleUploadSuccess} 
+                    onStorageUpdate={handleStorageUpdate}
                 />
-
-                <div className="admin-editor-col">
-                    <ImageUploader 
-                        storyId={storyId} 
-                        onUploadComplete={handleUploadSuccess} 
-                        onStorageUpdate={handleStorageUpdate}
+                
+                <hr style={{ borderColor: '#333', margin: '1.5rem 0' }} />
+                
+                {selectedId ? (
+                    <ImageEditor 
+                        key={selectedId} // Force remount on selection change
+                        initialData={images.find(q => q.id === selectedId)!} 
+                        onSave={handleSaveSuccess} 
+                        onDelete={handleDeleteSuccess}
+                        storyId={storyId}
                     />
-                    
-                    <hr style={{ borderColor: '#333', margin: '1.5rem 0' }} />
-                    
-                    {selectedId ? (
-                        <ImageEditor 
-                            initialData={images.find(q => q.id === selectedId)!} 
-                            onSave={handleSaveSuccess} 
-                            onDelete={handleDeleteSuccess}
-                            storyId={storyId}
-                        />
-                    ) : (
-                        <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>
-                            Select an asset from the list to edit details.
-                        </div>
-                    )}
-                </div>
+                ) : (
+                    <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>
+                        Select an asset from the list to edit details.
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -160,7 +160,7 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
 function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: ImageDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
     const [isSaving, setIsSaving] = useState(false);
-    const { showToast } = useToast(); // Use Hook
+    const { showToast } = useToast(); 
     
     // Interaction State
     const [coords, setCoords] = useState<{x:number, y:number} | null>(null);

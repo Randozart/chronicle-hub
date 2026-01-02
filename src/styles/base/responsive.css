@@ -242,4 +242,16 @@
         box-sizing: border-box;
         flex-wrap: wrap; /* Allow buttons to stack if needed */
     }
+
+    /* EDITOR MOBILE TWEAKS */
+    .editor-sidebar-collapsed-text {
+        writing-mode: horizontal-tb !important; /* Force Horizontal text */
+        transform: none !important; /* Remove rotation */
+        letter-spacing: 1px;
+        font-size: 0.7rem;
+    }
+    
+    .editor-sidebar {
+        min-height: 40px; /* Ensure click target is big enough */
+    }
 }

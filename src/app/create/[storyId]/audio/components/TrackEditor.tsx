@@ -1,7 +1,7 @@
-// src/app/create/[storyId]/audio/components/TrackEditor.tsx
 'use client';
+
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { InstrumentDefinition, ParsedTrack } from '@/engine/audio/models';
+import { InstrumentDefinition, ParsedTrack, LigatureTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { formatLigatureSource } from '@/engine/audio/formatter';
 import dynamic from 'next/dynamic';
@@ -15,6 +15,7 @@ import { mergeLigatureSnippet } from '@/engine/audio/merger';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
 import { useDebounce } from '@/hooks/useDebounce';
 
+// Dynamic Imports to avoid SSR issues with canvas/audio
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
 const PianoRoll = dynamic(() => import('@/components/admin/pianoroll/PianoRoll'), { ssr: false });
 import ArrangementView from './ArrangementView';
@@ -23,10 +24,8 @@ import MixerView from '@/engine/audio/components/MixerView';
 
 const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\nPiano: hq_piano\n\n[PATTERN: Main]\n\nPiano |................|\n\n[PLAYLIST]\n\nMain\n`;
 
-interface TrackData { id: string; name: string; source: string; category?: string; }
-
 interface Props {
-    data: TrackData;
+    data: LigatureTrack;
     onSave: (d: any) => void;
     onDelete: () => void;
     availableInstruments: InstrumentDefinition[];
@@ -53,8 +52,11 @@ export default function TrackEditor({
     const [showMixer, setShowMixer] = useState(false); 
     const [noteEditorMode, setNoteEditorMode] = useState<'piano' | 'tracker'>('piano');
     const [showMasterSettings, setShowMasterSettings] = useState(false);
-    const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-    const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+    
+    // Default sidebars to CLOSED to save space, useEffect opens them on Desktop
+    const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+    const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+    
     const [lintErrors, setLintErrors] = useState<LintError[]>([]);
     const [editingInstrument, setEditingInstrument] = useState<InstrumentDefinition | null>(null);
     
@@ -70,8 +72,17 @@ export default function TrackEditor({
     const { playTrack, stop, isPlaying, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume } = useAudio();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Initial Load
-    useEffect(() => { setIsClient(true); setSource(data.source); }, [data]);
+    // Initial Load & Mobile Sidebar Check
+    useEffect(() => { 
+        setIsClient(true); 
+        setSource(data.source);
+        
+        // Auto-open sidebars ONLY on desktop (screen wider than 900px)
+        if (typeof window !== 'undefined' && window.innerWidth > 900) {
+            setLeftSidebarOpen(true);
+            setRightSidebarOpen(true);
+        }
+    }, [data]);
     
     // Global Save Trigger
     useEffect(() => {
@@ -105,6 +116,7 @@ export default function TrackEditor({
 
     const handleSourceChange = (newSource: string) => setSource(newSource);
     
+    // Callbacks from Visual Editors to update Source Code
     const handleVisualUpdate = (newSource: string) => {
         setSource(newSource);
     };
@@ -210,10 +222,10 @@ export default function TrackEditor({
         <div className="editor-layout">
             <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".lig,.txt" />
             
-            {/* LEFT SIDEBAR */}
+            {/* LEFT SIDEBAR (Debugger) */}
             <div 
                 className="editor-sidebar"
-                style={{ width: leftSidebarOpen ? '250px' : '40px' }}
+                style={{ width: leftSidebarOpen ? '250px' : '40px', cursor: 'pointer' }}
                 onClick={() => !leftSidebarOpen && setLeftSidebarOpen(true)}
             >
                 <div className="editor-sidebar-header">
@@ -222,23 +234,27 @@ export default function TrackEditor({
                     </button>
                 </div>
                 {leftSidebarOpen ? (
-                    <ScribeDebugger onUpdate={handleDebuggerUpdate} />
+                    <div onClick={e => e.stopPropagation()} style={{cursor:'default'}}>
+                        <ScribeDebugger onUpdate={handleDebuggerUpdate} />
+                    </div>
                 ) : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
             </div>
 
             {/* MAIN CONTENT */}
             <div className="editor-main">
-                {/* TOOLBAR */}
-                <div className="editor-toolbar">
+                {/* TOOLBAR (Sticky at Top) */}
+                <div className="editor-toolbar" style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                      <div className="editor-toolbar-group">
                         <h2 className="editor-title">{data.name}</h2>
                         <span className="editor-status" style={{color: isParsing ? '#e5c07b' : '#777'}}>
-                            {isParsing ? "⚡ PARSING..." : (isPlaying ? "▶ PLAYING" : status)}
+                            {isParsing ? "⚡" : (isPlaying ? "▶" : "")}
                         </span>
                     </div>
-                    <div className="editor-toolbar-group">
+                    
+                    {/* Allow wrapping for mobile */}
+                    <div className="editor-toolbar-group" style={{ flexWrap: 'wrap' }}>
                         <div style={{ position: 'relative' }}>
-                            <button onClick={() => setShowMasterSettings(!showMasterSettings)} className="tool-btn">🎚️ Master</button>
+                            <button onClick={() => setShowMasterSettings(!showMasterSettings)} className="tool-btn">🎚️</button>
                             {showMasterSettings && (
                                 <div className="tool-popup">
                                     <h4>Master Bus</h4>
@@ -254,15 +270,15 @@ export default function TrackEditor({
                         <button onClick={handleClear} className="tool-btn">New</button>
                         
                         <div className="toggle-group">
-                            <button onClick={() => setShowArrangement(!showArrangement)} className={showArrangement ? 'active' : ''}>Timeline</button>
-                            <button onClick={() => setShowMixer(!showMixer)} className={showMixer ? 'active' : ''}>Mixer</button>
-                            <button onClick={() => setShowNoteEditor(!showNoteEditor)} className={showNoteEditor ? 'active' : ''}>Notes</button>
+                            <button onClick={() => setShowArrangement(!showArrangement)} className={showArrangement ? 'active' : ''}>Time</button>
+                            <button onClick={() => setShowMixer(!showMixer)} className={showMixer ? 'active' : ''}>Mix</button>
+                            <button onClick={() => setShowNoteEditor(!showNoteEditor)} className={showNoteEditor ? 'active' : ''}>Note</button>
                         </div>
                         
                         <button onClick={handleFormat} className="tool-btn">Format</button>
                         {isPlaying 
-                            ? <button onClick={handleStop} className="tool-btn tool-btn-stop">■ Stop</button> 
-                            : <button onClick={handlePlay} className="tool-btn tool-btn-play">▶ Play</button>
+                            ? <button onClick={handleStop} className="tool-btn tool-btn-stop">■</button> 
+                            : <button onClick={handlePlay} className="tool-btn tool-btn-play">▶</button>
                         }
                         {enableDownload && <button onClick={handleDownload} className="tool-btn tool-btn-action">.lig</button>}
                         {!isPlayground && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
@@ -271,57 +287,67 @@ export default function TrackEditor({
 
                 {/* SCROLLABLE CONTENT WRAPPER */}
                 <div className="editor-scrollable-content">
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                        
+                        {/* Timeline (Wrapped for horizontal scroll) */}
                         {showArrangement && isClient && (
-                            <div style={{ borderBottom: '1px solid #333' }}>
-                            <ArrangementView 
-                                    parsedTrack={parsedTrack} 
-                                    onChange={handleVisualUpdate} 
-                                    onSelectRow={setActivePlaylistIndex}
-                                    activeIndex={activePlaylistIndex}
-                                    onConfigUpdate={handleConfigUpdate}
-                                    onPatternAction={handlePatternAction}
-                                    isPlaying={isPlaying}
-                                    playbackMode={playbackMode} 
-                                />
+                            <div style={{ borderBottom: '1px solid #333', overflowX: 'auto', width: '100%' }}>
+                                <div style={{ minWidth: '600px' }}> {/* Forces internal scroll */}
+                                    <ArrangementView 
+                                        parsedTrack={parsedTrack} 
+                                        onChange={handleVisualUpdate} 
+                                        onSelectRow={setActivePlaylistIndex}
+                                        activeIndex={activePlaylistIndex}
+                                        onConfigUpdate={handleConfigUpdate}
+                                        onPatternAction={handlePatternAction}
+                                        isPlaying={isPlaying}
+                                        playbackMode={playbackMode} 
+                                    />
+                                </div>
                             </div>
                         )}
                         
+                        {/* Mixer (Wrapped for horizontal scroll) */}
                         {showMixer && isClient && (
-                            <div style={{ borderBottom: '1px solid #333', height: '220px', resize: 'vertical', overflow: 'hidden' }}>
-                                <MixerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} />
+                            <div style={{ borderBottom: '1px solid #333', height: '220px', resize: 'vertical', overflow: 'hidden', overflowX: 'auto', width: '100%' }}>
+                                <div style={{ minWidth: '400px' }}>
+                                    <MixerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} />
+                                </div>
                             </div>
                         )}
 
+                        {/* Piano Roll (Wrapped for horizontal scroll) */}
                         {showNoteEditor && isClient && (
-                            <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column', width: '100%' }}>
                                 <div className="note-editor-header">
                                     <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button onClick={() => setNoteEditorMode('piano')} className={`note-editor-tab ${noteEditorMode === 'piano' ? 'active' : ''}`}>Piano Roll</button>
+                                        <button onClick={() => setNoteEditorMode('piano')} className={`note-editor-tab ${noteEditorMode === 'piano' ? 'active' : ''}`}>Piano</button>
                                         <button onClick={() => setNoteEditorMode('tracker')} className={`note-editor-tab ${noteEditorMode === 'tracker' ? 'active' : ''}`}>Tracker</button>
                                     </div>
-                                    <span style={{fontSize: '0.75rem', color: '#555'}}>Context: Playlist Row {activePlaylistIndex}</span>
+                                    <span style={{fontSize: '0.75rem', color: '#555'}}>Row {activePlaylistIndex}</span>
                                 </div>
-                                <div style={{ background: '#0d0d0d' }}>
-                                    {noteEditorMode === 'piano' ? (
-                                        <PianoRoll 
-                                            source={source} 
-                                            qualities={mockQualities} 
-                                            onChange={handleVisualUpdate}
-                                            availableInstruments={availableInstruments} 
-                                            playbackMode={playbackMode} 
-                                            onPlaybackModeChange={setPlaybackMode}
-                                        />
-                                    ) : (
-                                        <TrackerView 
-                                            parsedTrack={parsedTrack} 
-                                            onChange={handleVisualUpdate} 
-                                            playlistIndex={activePlaylistIndex}
-                                            availableInstruments={availableInstruments} 
-                                            playbackMode={playbackMode} 
-                                            onPlaybackModeChange={setPlaybackMode}
-                                        />
-                                    )}
+                                <div style={{ background: '#0d0d0d', overflowX: 'auto', width: '100%' }}>
+                                    <div style={{ minWidth: '600px' }}>
+                                        {noteEditorMode === 'piano' ? (
+                                            <PianoRoll 
+                                                source={source} 
+                                                qualities={mockQualities} 
+                                                onChange={handleVisualUpdate}
+                                                availableInstruments={availableInstruments} 
+                                                playbackMode={playbackMode} 
+                                                onPlaybackModeChange={setPlaybackMode}
+                                            />
+                                        ) : (
+                                            <TrackerView 
+                                                parsedTrack={parsedTrack} 
+                                                onChange={handleVisualUpdate} 
+                                                playlistIndex={activePlaylistIndex}
+                                                availableInstruments={availableInstruments} 
+                                                playbackMode={playbackMode} 
+                                                onPlaybackModeChange={setPlaybackMode}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -341,10 +367,10 @@ export default function TrackEditor({
                 </div>
             </div>
 
-            {/* RIGHT SIDEBAR */}
+            {/* RIGHT SIDEBAR (Library) */}
             <div 
                 className="editor-sidebar right"
-                style={{ width: rightSidebarOpen ? '250px' : '40px' }}
+                style={{ width: rightSidebarOpen ? '250px' : '40px', cursor: 'pointer' }}
                 onClick={() => !rightSidebarOpen && setRightSidebarOpen(true)}
             >
                 <div className="editor-sidebar-header">
@@ -353,7 +379,9 @@ export default function TrackEditor({
                     </button>
                 </div>
                 {rightSidebarOpen 
-                    ? <InstrumentLibrary instruments={availableInstruments.filter(inst => !hideCategories.includes(inst.category || ''))} onSelect={handleEditInstrument} /> 
+                    ? <div onClick={e => e.stopPropagation()} style={{cursor:'default'}}>
+                        <InstrumentLibrary instruments={availableInstruments.filter(inst => !hideCategories.includes(inst.category || ''))} onSelect={handleEditInstrument} /> 
+                      </div>
                     : <div className="editor-sidebar-collapsed-text">LIBRARY</div>
                 }
             </div>

@@ -255,9 +255,9 @@ export default function InstrumentEditor({
     
     const editorContent = (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid #333', paddingBottom: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid #333', paddingBottom: '1rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <h2 style={{margin: 0}}>Instrument: {form.name}</h2>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {onInsertIntoTrack && (
                         <button onClick={handleInsertClick} style={{ background: '#98c379', color: '#000', fontWeight: 'bold', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
                            + Insert into Track
@@ -306,7 +306,12 @@ export default function InstrumentEditor({
                 </div>
             )}
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem' }}>
+            {/* GRID LAYOUT FIX FOR MOBILE: auto-fit columns */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                gap: '2rem' 
+            }}>
                 
                 {/* COLUMN 1: CORE */}
                 <div>
@@ -543,7 +548,12 @@ export default function InstrumentEditor({
     if (onClose) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-                <div style={{ background: '#181a1f', padding: '2rem', borderRadius: '8px', width: '90%', maxWidth: '1400px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 5px 15px rgba(0,0,0,0.5)', border: '1px solid #444' }} onClick={e => e.stopPropagation()}>
+                <div style={{ 
+                    background: '#181a1f', padding: '2rem', borderRadius: '8px', 
+                    width: '90%', maxWidth: '1400px', maxHeight: '90vh', 
+                    overflowY: 'auto', boxShadow: '0 5px 15px rgba(0,0,0,0.5)', 
+                    border: '1px solid #444' 
+                }} onClick={e => e.stopPropagation()}>
                     {editorContent}
                 </div>
             </div>

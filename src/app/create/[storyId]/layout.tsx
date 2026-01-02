@@ -1,25 +1,32 @@
-// src/app/create/[storyId]/layout.tsx
-'use client'; // Converted to client component to handle events
+'use client'; 
 
 import Link from 'next/link';
 import '@/app/globals.css';
 import CheatSheet from '../../../components/admin/CheatSheet';
-import { verifyWorldAccess } from '@/engine/accessControl';
-// import { redirect } from 'next/navigation'; // Removed for client-side transition
-import VisualFilters from '@/components/VisualFilters';
 import AdminSidebarFooter from '../../../components/admin/AdminSidebarFooter';
 import { ToastProvider } from '@/providers/ToastProvider';
-import { useEffect, use } from 'react';
+import { useEffect, useState, use } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const pathname = usePathname();
     
+    // --- MOBILE STATE ---
+    const [showNav, setShowNav] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
+
+    // Close sidebars automatically when route changes (user clicked a link)
+    useEffect(() => {
+        setShowNav(false);
+        setShowHelp(false);
+    }, [pathname]);
+
     // GLOBAL HOTKEY LISTENER
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                // Dispatch custom event that active forms listen to
                 window.dispatchEvent(new Event('global-save-trigger'));
             }
         };
@@ -32,12 +39,40 @@ export default function AdminLayout({ children, params }: { children: React.Reac
     return (
         <ToastProvider>
             <div className="admin-layout">
-                {/* LEFT SIDEBAR (Fixed) */}
-                <aside className="admin-sidebar">
-                    <div className="admin-header">Creator Studio</div>
+                
+                {/* --- MOBILE TOP BAR --- */}
+                <div className="admin-mobile-topbar">
+                    <button className="admin-mobile-btn" onClick={() => setShowNav(true)}>
+                        ☰
+                    </button>
+                    <span className="admin-mobile-title">Creator Studio</span>
+                    <button className="admin-mobile-btn" onClick={() => setShowHelp(true)}>
+                        ?
+                    </button>
+                </div>
+
+                {/* --- MOBILE BACKDROP --- */}
+                {(showNav || showHelp) && (
+                    <div 
+                        className="admin-mobile-backdrop" 
+                        onClick={() => { setShowNav(false); setShowHelp(false); }} 
+                    />
+                )}
+
+                {/* --- LEFT SIDEBAR (Navigation) --- */}
+                <aside className={`admin-sidebar ${showNav ? 'mobile-open' : ''}`}>
+                    <div className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        Creator Studio
+                        {/* Mobile Close Button */}
+                        <button 
+                            className="mobile-close-btn" 
+                            onClick={() => setShowNav(false)}
+                            style={{ display: showNav ? 'block' : 'none' }} // Only show logic inside
+                        >✕</button>
+                    </div>
+                    
                     <nav className="admin-nav">
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        
                             {/* --- SYSTEM --- */}
                             <SectionHeader label="Game System" />
                             <AdminLink href={`${base}/settings`} label="Settings" />
@@ -71,13 +106,24 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                     <AdminSidebarFooter />
                 </aside>
 
-                {/* MAIN AREA */}
+                {/* --- MAIN AREA --- */}
                 <main className="admin-main">
                     <div className="admin-content-wrapper">
                         {children}
                     </div>
                     
-                    <aside className="admin-help-sidebar">
+                    {/* --- RIGHT SIDEBAR (Help/Reference) --- */}
+                    <aside className={`admin-help-sidebar ${showHelp ? 'mobile-open' : ''}`}>
+                        {/* NEW: Mobile Close Header for Right Sidebar */}
+                        <div style={{ 
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                            padding: '1rem', background: '#21252b', borderBottom: '1px solid #333',
+                            // Only show this header on mobile via CSS class or inline logic
+                        }} className="admin-mobile-only-header">
+                            <span style={{fontWeight:'bold'}}>Reference</span>
+                            <button className="mobile-close-btn" onClick={() => setShowHelp(false)}>✕</button>
+                        </div>
+
                         <CheatSheet />
                     </aside>
                 </main>
