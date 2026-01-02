@@ -116,7 +116,7 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
             {/* MAIN CONTENT AREA */}
             <div className="admin-editor-col">
                 {/* Storage Indicator */}
-                <div style={{ padding: '0.5rem 1rem', background: '#111', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
+                <div style={{ padding: '0.5rem 1rem', background: '#111', borderBottom: '1px solid var(--tool-border)', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', borderRadius: '4px' }}>
                     <span style={{ fontSize: '0.8rem', color: '#888' }}>Storage:</span>
                     <div style={{ flex: 1, height: '8px', background: '#222', borderRadius: '4px', overflow: 'hidden' }}>
                         <div style={{ 
@@ -148,7 +148,7 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
                         storyId={storyId}
                     />
                 ) : (
-                    <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>
+                    <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>
                         Select an asset from the list to edit details.
                     </div>
                 )}
@@ -277,7 +277,7 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                 />
             </div>
 
-            <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#181a1f', borderRadius: '8px', border: '1px solid #333' }}>
+            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--tool-bg-input)', borderRadius: '8px', border: '1px solid #333' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <label className="form-label" style={{ color: '#61afef' }}>
                         Visual Context Preview: {form.category?.toUpperCase() || 'RAW'}
@@ -333,7 +333,7 @@ function ImageEditor({ initialData, onSave, onDelete, storyId }: { initialData: 
                     </div>
                 </div>
                 
-                <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: '#ccc' }}>
+                <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: 'var(--tool-text-main)' }}>
                     Focal Point: {form.focus ? `X: ${form.focus.x}%, Y: ${form.focus.y}%` : 'Center (50%, 50%)'}
                     {form.category === 'map' && coords && <div style={{ color: '#98c379', marginTop: '4px' }}>Pixel Coords Copied: {coords.x}, {coords.y}</div>}
                 </div>

@@ -4,10 +4,10 @@ import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs'; 
 import { useMemo, useState, useEffect } from 'react';
 import { highlightScribeScript } from '@/utils/scribeHighlighter';
-import { ligatureGrammar } from '@/utils/prism-ligature'; // Import the grammar
+import { ligatureGrammar } from '@/utils/prism-ligature'; 
 import { LintError } from '@/engine/audio/linter'; 
 
-// Import Prism base styles (we override them, but this prevents crashes)
+// Import Prism base styles
 import 'prismjs/components/prism-clike';
 import 'prismjs/themes/prism-dark.css'; 
 
@@ -28,7 +28,7 @@ export default function ScribeEditor({
     minHeight = "100px", 
     language = 'scribescript',
     errors = [],
-    mode = 'text' // NEW PROP with Default
+    mode = 'text'
 }: Props) {
     
     useEffect(() => {
@@ -45,14 +45,13 @@ export default function ScribeEditor({
         if (isLigature) {
             return highlight(code, languages.ligature || ligatureGrammar, 'ligature'); 
         } else {
-            // Pass the mode prop to the tokenizer
             return highlightScribeScript(code, cursorOffset, mode);
         }
     };
 
     const lineCount = useMemo(() => value.split('\n').length, [value]);
     const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1), [lineCount]);
-    // Error Map
+    
     const errorMap = useMemo(() => {
         const map = new Map<number, 'error' | 'warning'>();
         errors.forEach(e => map.set(e.line, e.severity));
@@ -65,8 +64,8 @@ export default function ScribeEditor({
         <div 
             className={`scribe-editor-wrapper ${scopeClass}`}
             style={{
-                background: '#181a1f', 
-                border: '1px solid #333',
+                background: 'var(--tool-bg-input)', // UPDATED
+                border: '1px solid var(--tool-border)', // UPDATED
                 borderRadius: '4px',
                 fontSize: '14px',
                 lineHeight: '1.5',
@@ -81,15 +80,15 @@ export default function ScribeEditor({
                 width: '40px',
                 textAlign: 'right',
                 padding: '10px 8px 10px 0',
-                background: '#21252b',
-                borderRight: '1px solid #333',
-                color: '#495162',
+                background: 'var(--tool-bg-sidebar)', // UPDATED
+                borderRight: '1px solid var(--tool-border)', // UPDATED
+                color: 'var(--tool-text-dim)', // UPDATED
                 fontFamily: '"Fira Code", "Fira Mono", monospace',
                 userSelect: 'none'
             }}>
                 {lineNumbers.map(n => {
                     const status = errorMap.get(n);
-                    const color = status === 'error' ? '#e06c75' : status === 'warning' ? '#e5c07b' : 'inherit';
+                    const color = status === 'error' ? 'var(--danger-color)' : status === 'warning' ? 'var(--warning-color)' : 'inherit';
                     const weight = status ? 'bold' : 'normal';
                     const marker = status === 'error' ? '!' : status === 'warning' ? '?' : n;
                     
@@ -104,7 +103,6 @@ export default function ScribeEditor({
             {/* EDITOR AREA */}
             <div style={{ 
                 flex: 1, 
-                // Ligature needs X-Scroll for long tracks. ScribeScript wraps.
                 overflowX: isLigature ? 'auto' : 'hidden', 
                 position: 'relative'
             }}>
@@ -120,7 +118,7 @@ export default function ScribeEditor({
                              background: err.severity === 'error' 
                                 ? 'linear-gradient(90deg, rgba(224, 108, 117, 0.1) 0%, transparent 100%)' 
                                 : 'linear-gradient(90deg, rgba(229, 192, 123, 0.1) 0%, transparent 100%)',
-                             borderBottom: err.severity === 'error' ? '1px dashed rgba(224, 108, 117, 0.5)' : '1px dashed rgba(229, 192, 123, 0.5)'
+                             borderBottom: err.severity === 'error' ? '1px dashed var(--danger-color)' : '1px dashed var(--warning-color)'
                          }} />
                      ))}
                 </div>
@@ -130,8 +128,6 @@ export default function ScribeEditor({
                     onValueChange={onChange}
                     highlight={highlightCode} 
                     padding={10}
-                    
-                    // Only track cursor for ScribeScript (performance)
                     onSelect={!isLigature ? (e) => {
                         const target = e.target as HTMLTextAreaElement;
                         if (target.selectionStart === target.selectionEnd) {
@@ -144,9 +140,7 @@ export default function ScribeEditor({
                     style={{
                         fontFamily: '"Fira Code", "Fira Mono", monospace',
                         minHeight: minHeight,
-                        color: '#abb2bf',
-                        // Ligature = No Wrap (Music notation needs alignment)
-                        // ScribeScript = Wrap (Text/Logic)
+                        color: 'var(--tool-text-main)', // UPDATED: Adapts to theme
                         whiteSpace: isLigature ? 'pre' : 'pre-wrap', 
                         minWidth: isLigature ? 'max-content' : '100%',
                         lineHeight: '21px',
@@ -158,161 +152,95 @@ export default function ScribeEditor({
             </div>
             
             <style jsx global>{`
-                /* 1. Base Text */
-                .ss-text-raw { color: #bec0c5ff; } 
-                .ss-md-bold { 
-                    font-weight: bold; 
-                }
-                .ss-md-italic { 
-                    font-style: italic; 
-                }
-                /* 2. Braces */
+                /* === SCRIBESCRIPT THEME (Dark Default) === */
+                .ss-text-raw { color: #bec0c5; } 
+                .ss-md-bold { font-weight: bold; }
+                .ss-md-italic { font-style: italic; }
                 .ss-brace { font-weight: bold; }
                 .ss-brace-odd { color: #e5c07b; } /* Gold */
-                .ss-brace-even { color: #df8749ff; } /* Copper */
+                .ss-brace-even { color: #df8749; } /* Copper */
 
-                /* 3. Variables */
                 .ss-var-local { color: #61afef; font-weight: bold; } 
                 .ss-var-alias { color: #98c379;  font-weight: bold;} 
-                .ss-var-world { color: #ff3b90ff;  font-weight: bold;} 
+                .ss-var-world { color: #ff3b90;  font-weight: bold;} 
                 
-                .ss-dynamic-marker { color: #9ba1adff; } 
+                .ss-dynamic-marker { color: #9ba1ad; } 
 
-                /* 4. Macros */
-                .ss-macro { color: #6361ffff;  font-weight: bold;} /* Royal Blue */
-                .ss-bracket { color: #5646ffff; } /* Deep Blue */
+                .ss-macro { color: #6361ff; font-weight: bold;} 
+                .ss-bracket { color: #5646ff; } 
 
-                /* 5. Values & Math (The New Group) */
-                .ss-number { color: #7cee7aff; } /* Light Lime (Values) */
-                .ss-math { color: #bec0c5ff; font-weight: bold; }
+                .ss-number { color: #7cee7a; } 
+                .ss-math { color: #bec0c5; font-weight: bold; }
+                .ss-operator { color: #9ba1ad; }    
+                .ss-flow-op { color: #f77e6e; font-weight: bold; } 
 
-                /* 6. Standard Operators (Comparison/Assignment) */
-                .ss-operator { color: #9ba1adff; } /* Grey */    
-                
-                /* 7. Flow Control */
-                .ss-flow-op { color: #f77e6eff; font-weight: bold; } /* Soft Pink */
+                .ss-metadata { color: #617382; font-style: italic; }
+                .ss-js-keyword { color: #ff79c6; font-style: italic; font-weight: bold; text-shadow: 0 0 2px rgba(255, 121, 198, 0.2); }
 
-                /* 8. Metadata */
-                .ss-metadata { color: #617382ff; font-style: italic; }
-                
-                .ss-js-keyword { 
-                    color: #ff79c6; /* Vibrant Pink/Magenta (Dracula Theme inspired) */
-                    font-style: italic; 
-                    font-weight: bold;
-                    text-shadow: 0 0 2px rgba(255, 121, 198, 0.2); /* Subtle glow */
-                }
+                .ss-comment, .ss-brace-comment { color: #6A9955; font-style: italic; font-family: "Fira Code", monospace; }
 
-                .ss-comment { 
-                    color: #6A9955; 
-                    font-style: italic;
-                    font-family: "Fira Code", monospace; /* Enforce mono to look "code-like" */
-                }
-                 .ss-brace-comment { 
-                    color: #6A9955; 
-                    font-style: italic;
-                }
-
-                /* Matched Brace */
                 .ss-brace-match {
                     background-color: rgba(228, 222, 211, 0.15);
                     border-radius: 2px;
                     outline: 1px solid rgba(230, 225, 217, 0.4);
                     box-shadow: 0 0 4px rgba(224, 221, 215, 0.2);
                 }
-                /* === LIGATURE THEME (Restored One Dark) === */
+
+                /* === LIGHT MODE OVERRIDES (Atom One Light Inspired) === */
+                :root[data-global-theme='light'] .ss-text-raw { color: #383a42; }
+                :root[data-global-theme='light'] .ss-brace-odd { color: #c18401; } /* Dark Gold */
+                :root[data-global-theme='light'] .ss-brace-even { color: #986801; } /* Dark Copper */
                 
-                /* 1. Comments & Punctuation */
+                :root[data-global-theme='light'] .ss-var-local { color: #4078f2; } /* Dark Blue */
+                :root[data-global-theme='light'] .ss-var-alias { color: #50a14f; } /* Green */
+                :root[data-global-theme='light'] .ss-var-world { color: #e45649; } /* Red */
+                :root[data-global-theme='light'] .ss-dynamic-marker { color: #4c4d50ff;; }
+
+                :root[data-global-theme='light'] .ss-macro { color: #a626a4; } /* Purple */
+                :root[data-global-theme='light'] .ss-bracket { color: #4078f2; }
+                
+                :root[data-global-theme='light'] .ss-number { color: #986801; } /* Orange/Brown */
+                :root[data-global-theme='light'] .ss-math { color: #383a42; }
+                :root[data-global-theme='light'] .ss-operator { color: #4c4d50ff; }
+                :root[data-global-theme='light'] .ss-flow-op { color: #e45649; }
+
+                :root[data-global-theme='light'] .ss-metadata { color: #a0a1a7; }
+                :root[data-global-theme='light'] .ss-brace-match {
+                    background-color: rgba(0, 0, 0, 0.1);
+                    outline: 1px solid rgba(0, 0, 0, 0.2);
+                }
+
+                /* === LIGATURE THEME (Dark Default) === */
                 .lang-ligature .token.comment { color: #5c6370; font-style: italic; }
-                .lang-ligature .token.punctuation { color: #abb2bf; } /* Grey brackets/commas */
-                
-                /* 2. Headers: [CONFIG] -> Purple */
-                .lang-ligature .token.keyword { color: #ee3feeff; }  
-
-                /* 3. Keys: BPM:, Trumpet: -> Orange */
-                .lang-ligature .token.attr-name { color: #dd9b5dff; }  
-
-                /* 4. Values/Instruments: noir_trumpet -> Cyan */
-                .lang-ligature .token.string { color: #98c379; }  /* (Tuplet) */
-                .lang-ligature .token.attr-value { color: #63c9d6ff; }
-
-                /* 5. Track Names (Functions): Trumpet -> Blue */
+                .lang-ligature .token.punctuation { color: #abb2bf; } 
+                .lang-ligature .token.keyword { color: #ee3fee; }  
+                .lang-ligature .token.attr-name { color: #dd9b5d; }  
+                .lang-ligature .token.string { color: #98c379; } 
+                .lang-ligature .token.attr-value { color: #63c9d6; }
                 .lang-ligature .token.function { color: #61afef; }  
-
-                /* 6. Bar Lines: | -> Red */
-                .lang-ligature .token.operator { color: #ca4e59ff; font-weight: bold; } 
-
-                /* 7. Numbers/Notes: 64, 5, 7 -> Orange */
-                .lang-ligature .token.number { color: #e7a263ff; } 
-
-                /* 8. Logic/Important: { } -> Cyan/Teal */
+                .lang-ligature .token.operator { color: #ca4e59; font-weight: bold; } 
+                .lang-ligature .token.number { color: #e7a263; } 
                 .lang-ligature .token.important { color: #56b6c2; font-weight: bold; } 
+                .lang-ligature .token.builtin { color: #ead363; } 
+                .lang-ligature .token.sustain { color: #e2e6ee; font-weight: bold;}
+                .lang-ligature .token.effect-block { color: #a678dd; } 
+                .lang-ligature .token.variable { color: #95df61; } 
+                .lang-ligature .token.class-name { color: #e4d233; }
 
-                /* 9. Builtins: Octave modifiers -> Yellow/Gold */
-                .lang-ligature .token.builtin { color: #ead363ff; } 
-
-                /* 10. Sustain/Silence: - . -> Muted Grey */
-                .lang-ligature .token.sustain { color: #e2e6eeff; font-weight: bold;}
-                
-                /* 11. Effect Blocks: ^[...] -> Purple */
-                .lang-ligature .token.effect-block { color: #a678ddff; } 
-
-                /* 12. Variables: @Alias -> Red/Coral */
-                .lang-ligature .token.variable { color: #95df61ff; } /* @Alias */
-                .lang-ligature .token.class-name { color: #e4d233ff; } /* [Chord] */
+                /* === LIGATURE LIGHT MODE === */
+                :root[data-global-theme='light'] .lang-ligature .token.comment { color: #a0a1a7; }
+                :root[data-global-theme='light'] .lang-ligature .token.punctuation { color: #383a42; }
+                :root[data-global-theme='light'] .lang-ligature .token.keyword { color: #a626a4; } /* Purple */
+                :root[data-global-theme='light'] .lang-ligature .token.attr-name { color: #986801; } /* Orange */
+                :root[data-global-theme='light'] .lang-ligature .token.string { color: #50a14f; } /* Green */
+                :root[data-global-theme='light'] .lang-ligature .token.function { color: #4078f2; } /* Blue */
+                :root[data-global-theme='light'] .lang-ligature .token.number { color: #986801; }
 
                 /* SCROLLBARS */
                 .scribe-editor-wrapper div::-webkit-scrollbar { height: 8px; width: 8px; }
-                .scribe-editor-wrapper div::-webkit-scrollbar-track { background: #21252b; }
-                .scribe-editor-wrapper div::-webkit-scrollbar-thumb { background: #3e4451; border-radius: 4px; }
+                .scribe-editor-wrapper div::-webkit-scrollbar-track { background: var(--tool-bg-sidebar); }
+                .scribe-editor-wrapper div::-webkit-scrollbar-thumb { background: var(--tool-border-highlight); border-radius: 4px; }
             `}</style>
         </div>
     );
 }
-
-                
-       
-            // /* === SCRIBESCRIPT THEME (Final Mix) === */
-                
-            //     /* 1. Base Text */
-            //     .ss-text-raw { color: #d9dce1ff; } 
-
-            //     /* 2. Braces: Mauve & Red (Distinct Structure) */
-            //     .ss-brace { font-weight: bold; }
-            //     .ss-brace-odd { color: #c67d8d; } /* Mauve */
-            //     .ss-brace-even { color: #e06c75; } /* Red */
-
-            //     /* 3. Variables: Electric Blue (Data) */
-            //     .ss-var-local { color: #61afef; font-weight: bold; } 
-            //     .ss-var-alias { color: #98c379; } 
-            //     .ss-var-world { color: #ff3b90ff; } 
-                
-            //     /* Dynamic Marker matches logic punctuation */
-            //     .ss-dynamic-marker { color: #abb2bf; } 
-
-            //     /* 4. Macros: Royal Blue (Action) */
-            //     .ss-macro { color: #6361ffff; } 
-            //     /* Brackets: Deep Blue (Separates args) */
-            //     .ss-bracket { color: #5646ffff; } 
-
-            //     /* 5. Values: Light Lime */
-            //     .ss-number { color: #7cee7aff; } 
-                
-            //     /* 6. Math: Pale Yellow (Distinct from Operators) */
-            //     .ss-math { color:  #abb2bf; font-weight: bold;}
-
-            //     /* 7. Standard Operators: Grey (Assignments, Separators) */
-            //     .ss-operator { color: #abb2bf; }    
-                
-            //     /* 8. Flow Control: Purple (Logic Gates) */
-            //     .ss-flow-op { color: #c67d8d; font-weight: bold; } 
-
-            //     /* 9. Metadata */
-            //     .ss-metadata { color: #7f848e; font-size: 0.85em; font-style: italic; }
-
-            //     /* Matched Brace Highlight: Gold Tint */
-            //     .ss-brace-match {
-            //         background-color: rgba(229, 192, 123, 0.15);
-            //         border-radius: 2px;
-            //         outline: 1px solid rgba(229, 192, 123, 0.4);
-            //         box-shadow: 0 0 4px rgba(229, 192, 123, 0.2);
-            //     }

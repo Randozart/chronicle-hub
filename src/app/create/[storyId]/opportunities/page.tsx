@@ -133,7 +133,7 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
                         qualityDefs={qualities} // FIX: Pass qualities here
                     />
                 ) : (
-                    <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a card</div>
+                    <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a card</div>
                 )}
             </div>
         </div>

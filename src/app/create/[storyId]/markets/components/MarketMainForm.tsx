@@ -105,7 +105,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
     return (
         <div className="h-full flex flex-col relative">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
-                <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
+                <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button onClick={() => onDelete(form.id)} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete</button>
                     <button onClick={() => onSave(form)} className="save-btn" style={{ padding: '0.5rem 1rem' }}>Save</button>
@@ -125,7 +125,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                 </div>
                 <div className="form-group"><label className="form-label">Image/Banner</label><input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" /></div>
 
-                <div style={{ marginBottom: '2rem', background: '#181a1f', padding: '0.5rem', borderRadius: '4px', border: '1px dashed #444' }}>
+                <div style={{ marginBottom: '2rem', background: 'var(--tool-bg-input)', padding: '0.5rem', borderRadius: '4px', border: '1px dashed #444' }}>
                     <BehaviorCard 
                         checked={form.allowAllTypes || false} 
                         onChange={() => handleChange('allowAllTypes', !form.allowAllTypes)}
@@ -144,7 +144,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                 </div>
 
                 {currentStall && (
-                    <div style={{ background: '#181a1f', padding: '1.5rem', borderRadius: '0 0 4px 4px', border: '1px solid #333', borderTop: 'none' }}>
+                    <div style={{ background: 'var(--tool-bg-input)', padding: '1.5rem', borderRadius: '0 0 4px 4px', border: '1px solid #333', borderTop: 'none' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                             <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
                                 <div style={{flex: 2}}><label className="form-label">Stall Name</label><input value={currentStall.name} onChange={e => updateStall(activeStallIndex, 'name', e.target.value)} className="form-input" style={{ fontWeight: 'bold' }} /></div>
@@ -175,13 +175,13 @@ export default function MarketMainForm({ initialData, onSave, onDelete, allQuali
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '30px 3fr 2fr 2fr 30px', gap: '1rem', padding: '0 0.5rem', fontSize: '0.75rem', color: '#aaa', textTransform: 'uppercase' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '30px 3fr 2fr 2fr 30px', gap: '1rem', padding: '0 0.5rem', fontSize: '0.75rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase' }}>
                                 <span></span><span>Item</span><span>Price</span><span>Currency</span><span></span>
                             </div>
                             {currentStall.listings.map((listing, lIdx) => (
-                                <div key={listing.id} style={{ background: '#21252b', border: '1px solid #333', borderRadius: '4px' }}>
+                                <div key={listing.id} style={{ background: 'var(--tool-bg-header)', border: '1px solid #333', borderRadius: '4px' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '30px 3fr 2fr 2fr 30px', gap: '1rem', alignItems: 'center', padding: '0.5rem' }}>
-                                        <button onClick={() => setExpandedListingId(expandedListingId === listing.id ? null : listing.id)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>{expandedListingId === listing.id ? '▼' : '▶'}</button>
+                                        <button onClick={() => setExpandedListingId(expandedListingId === listing.id ? null : listing.id)} style={{ background: 'none', border: 'none', color: 'var(--tool-text-dim)', cursor: 'pointer' }}>{expandedListingId === listing.id ? '▼' : '▶'}</button>
                                         <select value={listing.qualityId} onChange={e => updateListing(lIdx, 'qualityId', e.target.value)} className="form-select">
                                             <option value="">Select Item...</option>
                                             {tradeableQualities.map(q => <option key={q.id} value={q.id}>{q.name} ({q.id})</option>)}

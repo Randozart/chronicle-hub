@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation'; // Keep for other navs
 import Link from 'next/link';
 import WorldCard from '@/components/dashboard/WorldCard';
 import CreateWorldModal from '@/components/dashboard/CreateWorldModal';
 import { signOut } from 'next-auth/react';
 import SystemMessageBanner from '@/components/SystemMessageBanner';
+import { useTheme } from '@/providers/ThemeProvider'; // NEW IMPORT
+import MainLogo from '@/components/icons/MainLogo';
 
 export default function Dashboard() {
     const { data: session, status } = useSession();
-    // const router = useRouter(); // Not strictly needed for redirects if using Links
+    const { theme, setTheme, resolvedTheme } = useTheme(); // NEW HOOK
+    
     const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | any[] | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [activeTab, setActiveTab] = useState<'my' | 'discover'>('my');
@@ -72,39 +74,56 @@ export default function Dashboard() {
             {/* HEADER */}
             <div style={{ background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', padding: '0 2rem', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <img 
-                        src="/logo-w.svg" 
-                        alt="ChronicleHub Logo" 
-                        style={{ 
-                            width: '48px', 
-                            height: '48px', 
-                            color: 'var(--accent-highlight)' // The SVG will be this color!
-                        }} 
-                    />
+                    <MainLogo width={48} height={48} style={{ marginRight: '10px' }} />
+
                     <h1 style={{ fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
                         Chronicle<span style={{ color: 'var(--accent-highlight)' }}>Hub</span>
                     </h1>                
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    
+                    {/* NEW: THEME TOGGLE */}
+                    <button 
+                        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                        style={{
+                            background: 'transparent', 
+                            border: '1px solid var(--border-light)', 
+                            color: 'var(--text-secondary)', 
+                            borderRadius: '50%',
+                            width: '32px', height: '32px', 
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '1.1rem'
+                        }}
+                        className="hover:text-white hover:border-white transition"
+                        title={`Switch to ${resolvedTheme === 'dark' ? 'Light' : 'Dark'} Mode`}
+                    >
+                        {resolvedTheme === 'dark' ? '☀' : '☾'}
+                    </button>
+
+                    <Link href="/docs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }} className="hover:text-white transition">
+                        Documentation
+                    </Link>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {isGuest ? (
+                            <Link href="/login" style={{ color: 'var(--accent-highlight)', textDecoration: 'none', fontWeight: 'bold' }}>
+                                Login / Register
+                            </Link>
+                        ) : (
+                            <>
+                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{session?.user?.email}</span>
+                                <button 
+                                    onClick={() => signOut({ callbackUrl: '/login' })}
+                                    style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.4rem 1rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
+                                    className="hover:bg-[#333] hover:text-white transition"
+                                >
+                                    Log Out
+                                </button>
+                            </>
+                        )}
                     </div>
-                <Link href="/docs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }} className="hover:text-white transition">
-                    Documentation
-                </Link>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {isGuest ? (
-                        <Link href="/login" style={{ color: 'var(--accent-highlight)', textDecoration: 'none', fontWeight: 'bold' }}>
-                            Login / Register
-                        </Link>
-                    ) : (
-                        <>
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{session?.user?.email}</span>
-                            <button 
-                                onClick={() => signOut({ callbackUrl: '/login' })}
-                                style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.4rem 1rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-                                className="hover:bg-[#333] hover:text-white transition"
-                            >
-                                Log Out
-                            </button>
-                        </>
-                    )}
                 </div>
             </div>
 
@@ -153,7 +172,7 @@ export default function Dashboard() {
                                 key={w.worldId} 
                                 w={w} 
                                 isOwner={activeTab === 'my'} 
-                                isGuest={isGuest} // Pass guest status
+                                isGuest={isGuest} 
                             />
                         ))}
                         
@@ -164,7 +183,7 @@ export default function Dashboard() {
                         )}
                     </div>
                     
-                    {/* ... (Recent Adventures Block - Keep existing, but check !isGuest) ... */}
+                    {/* ... (Recent Adventures Block) ... */}
                     {activeTab === 'my' && data && 'playedWorlds' in data && data.playedWorlds.length > 0 && (
                         <>
                             <h2 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', margin: '4rem 0 2rem 0', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>Recent Adventures</h2>

@@ -255,7 +255,7 @@ export default function InstrumentEditor({
     
     const editorContent = (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid #333', paddingBottom: '1rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '1rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <h2 style={{margin: 0}}>Instrument: {form.name}</h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {onInsertIntoTrack && (
@@ -296,7 +296,7 @@ export default function InstrumentEditor({
 
             {form.type === 'sampler' && (
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label className="form-label" style={{ color: '#aaa', textTransform: 'uppercase' }}>Sample Waveform</label>
+                    <label className="form-label" style={{ color: 'var(--tool-text-dim)', textTransform: 'uppercase' }}>Sample Waveform</label>
                     <WaveformDisplay 
                         peaks={waveformPeaks}
                         duration={sampleDuration}
@@ -315,14 +315,14 @@ export default function InstrumentEditor({
                 
                 {/* COLUMN 1: CORE */}
                 <div>
-                    <h3 style={{marginTop: 0, color: '#fff'}}>Core</h3>
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h3 style={{marginTop: 0, color: 'var(--tool-text-header)'}}>Core</h3>
+                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <Slider label="Volume (dB)" val={form.config.volume} onChange={(v: number) => handleChange('config.volume', v)} min={-60} max={6} step={1} />
                         <Slider label="Octave Offset" val={form.config.octaveOffset} onChange={(v: number) => handleChange('config.octaveOffset', v)} min={-3} max={3} step={1} />
                         
                         {/* VOICING MODE TOGGLES */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                            <label style={{ fontSize: '0.75rem', color: '#aaa', fontWeight: 'bold' }}>VOICING MODE</label>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', fontWeight: 'bold' }}>VOICING MODE</label>
                             
                             <div style={{ display: 'flex', gap: '4px', background: '#111', padding: '2px', borderRadius: '4px' }}>
                                 <button 
@@ -381,8 +381,8 @@ export default function InstrumentEditor({
                         )}
                     </div>
                     
-                    <h3 style={{ marginTop: '1.5rem', color: '#fff' }}>Envelope</h3>
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <h3 style={{ marginTop: '1.5rem', color: 'var(--tool-text-header)' }}>Envelope</h3>
+                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <Slider label="Attack" val={form.config.envelope?.attack} onChange={(v: number) => handleChange('config.envelope.attack', v)} max={2} />
                         <Slider label="Decay" val={form.config.envelope?.decay} onChange={(v: number) => handleChange('config.envelope.decay', v)} max={2} />
                         <Slider label="Sustain" val={form.config.envelope?.sustain} onChange={(v: number) => handleChange('config.envelope.sustain', v)} max={1} />
@@ -392,19 +392,19 @@ export default function InstrumentEditor({
 
                 {/* COLUMN 2: LOOP & HUMANIZATION */}
                 <div>
-                    <h3 style={{ marginTop: 0, color: '#fff' }}>Loop & Pan</h3>
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h3 style={{ marginTop: 0, color: 'var(--tool-text-header)' }}>Loop & Pan</h3>
+                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                             <input type="checkbox" checked={form.config.loop?.enabled || false} onChange={e => handleChange('config.loop.enabled', e.target.checked)} />
                             Loop Enabled
                         </label>
                         <div style={{ opacity: form.config.loop?.enabled ? 1 : 0.5, display: 'grid', gap: '1rem' }}>
                             <div>
-                                <label className="form-label" style={{ fontSize: '0.8rem', color: '#aaa' }}>Type</label>
+                                <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)'}}>Type</label>
                                 <select 
                                     value={form.config.loop?.type || 'forward'} 
                                     onChange={e => handleChange('config.loop.type', e.target.value)} 
-                                    style={{width: '100%', background: '#111', border: '1px solid #444', color: '#ccc', padding: '6px', borderRadius: '4px'}}
+                                    style={{width: '100%', background: '#111', border: '1px solid #444', color: 'var(--tool-text-main)', padding: '6px', borderRadius: '4px'}}
                                     disabled={!form.config.loop?.enabled}
                                 >
                                     <option value="forward">Forward</option>
@@ -418,7 +418,7 @@ export default function InstrumentEditor({
                     </div>
                     
                     <h3 style={{ marginTop: '1.5rem', color: '#98c379' }}>Humanization</h3>
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                             <input type="checkbox" checked={c.humanize?.enabled || false} onChange={e => handleHumanizeChange('enabled', e.target.checked)} />
                             Enable Jitter
@@ -429,7 +429,7 @@ export default function InstrumentEditor({
                         
                         {/* VIBRATO (New) */}
                         <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
-                            <label style={{ fontSize: '0.75rem', color: '#aaa', fontWeight: 'bold', marginBottom: '4px', display: 'block' }}>VIBRATO</label>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', fontWeight: 'bold', marginBottom: '4px', display: 'block' }}>VIBRATO</label>
                             <Slider label="Depth (Cents)" val={c.vibrato?.depth ?? 0} onChange={v => handleVibratoChange('depth', v)} max={100} step={1} />
                             {c.vibrato?.depth > 0 && (
                                 <>
@@ -447,9 +447,9 @@ export default function InstrumentEditor({
                     <h3 style={{ marginTop: 0, color: '#98c379' }}>Tone Shaping</h3>
                     
                     {/* Filter */}
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
+                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
                         <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
-                            <label style={{fontWeight:'bold', color: '#ccc'}}>Filter</label>
+                            <label style={{fontWeight:'bold', color: 'var(--tool-text-main)'}}>Filter</label>
                             <select 
                                 value={c.filter?.type || 'lowpass'} 
                                 onChange={e => handleFilterChange('type', e.target.value)}
@@ -470,8 +470,8 @@ export default function InstrumentEditor({
                     </div>
 
                     {/* EQ */}
-                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px' }}>
-                        <div style={{fontWeight:'bold', marginBottom:'0.5rem', color: '#ccc'}}>3-Band EQ</div>
+                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px' }}>
+                        <div style={{fontWeight:'bold', marginBottom:'0.5rem', color: 'var(--tool-text-main)'}}>3-Band EQ</div>
                         <Slider label="Low (dB)" val={c.eq?.low ?? 0} onChange={(v: number) => handleEqChange('low', v)} min={-20} max={10} step={1} />
                         <Slider label="Mid (dB)" val={c.eq?.mid ?? 0} onChange={(v: number) => handleEqChange('mid', v)} min={-20} max={10} step={1} />
                         <Slider label="High (dB)" val={c.eq?.high ?? 0} onChange={(v: number) => handleEqChange('high', v)} min={-20} max={10} step={1} />
@@ -519,22 +519,22 @@ export default function InstrumentEditor({
                     <h3 style={{ marginTop: '1.5rem', color: '#e5c07b' }}>Embellishments</h3>
                     <div style={{ background: '#1c1e24', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
                         {c.embellishments?.map((emb: EmbellishmentDef, i: number) => (
-                            <div key={i} style={{ marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+                            <div key={i} style={{ marginBottom: '1rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                    <label style={{ fontSize: '0.7rem', color: '#aaa' }}>Sample URL</label>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--tool-text-dim)'}}>Sample URL</label>
                                     <button onClick={() => removeEmbellishment(i)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
                                 </div>
                                 <input 
                                     value={emb.url} 
                                     onChange={e => updateEmbellishment(i, 'url', e.target.value)}
-                                    style={{ width: '100%', background: '#111', border: '1px solid #444', color: '#ccc', fontSize: '0.8rem', marginBottom: '8px' }}
+                                    style={{ width: '100%', background: '#111', border: '1px solid #444', color: 'var(--tool-text-main)', fontSize: '0.8rem', marginBottom: '8px' }}
                                     placeholder="fret_noise.mp3"
                                 />
                                 <Slider label="Prob." val={emb.probability} onChange={(v: number) => updateEmbellishment(i, 'probability', v)} max={1} />
                                 <Slider label="Vol (dB)" val={emb.volume} onChange={(v: number) => updateEmbellishment(i, 'volume', v)} min={-40} max={0} step={1} />
                             </div>
                         ))}
-                        <button onClick={addEmbellishment} style={{ width: '100%', background: '#333', border: '1px dashed #555', color: '#ccc', padding: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                        <button onClick={addEmbellishment} style={{ width: '100%', background: '#333', border: '1px dashed #555', color: 'var(--tool-text-main)', padding: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
                             + Add Layer
                         </button>
                     </div>
@@ -549,7 +549,7 @@ export default function InstrumentEditor({
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
                 <div style={{ 
-                    background: '#181a1f', padding: '2rem', borderRadius: '8px', 
+                    background: 'var(--tool-bg-input)', padding: '2rem', borderRadius: '8px', 
                     width: '90%', maxWidth: '1400px', maxHeight: '90vh', 
                     overflowY: 'auto', boxShadow: '0 5px 15px rgba(0,0,0,0.5)', 
                     border: '1px solid #444' 

@@ -66,7 +66,7 @@ export default function SelfLoopEdge({
                 borderRadius: '4px',
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#ccc',
+                color: 'var(--tool-text-main)',
                 border: '1px solid #555',
                 
                 // Interaction

@@ -36,24 +36,24 @@ export default function InstrumentLibrary({ instruments, onSelect }: Props) {
 
     return (
         <div style={{ 
-            background: '#21252b', border: '1px solid #333', borderRadius: '4px', 
+            background: 'var(--tool-bg-header)', border: '1px solid #333', borderRadius: '4px', 
             height: '100%', display: 'flex', flexDirection: 'column' 
         }}>
             <h3 style={{ 
                 marginTop: 0, fontSize: '0.9rem', color: '#61afef', 
                 textTransform: 'uppercase', padding: '1rem', 
-                borderBottom: '1px solid #333', margin: 0
+                borderBottom: '1px solid var(--tool-border)', margin: 0
             }}>
                 Instrument Library
             </h3>
             
-            <div style={{ padding: '1rem', borderBottom: '1px solid #333' }}>
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--tool-border)' }}>
                 <input
                     type="text"
                     placeholder="Search instruments..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    style={{ width: '100%', background: '#111', border: '1px solid #555', color: '#ccc', padding: '0.5rem', borderRadius: '4px' }}
+                    style={{ width: '100%', background: '#111', border: '1px solid #555', color: 'var(--tool-text-main)', padding: '0.5rem', borderRadius: '4px' }}
                 />
             </div>
 
@@ -83,11 +83,11 @@ export default function InstrumentLibrary({ instruments, onSelect }: Props) {
                                         style={{
                                             background: '#2c313a', border: '1px solid #333',
                                             borderRadius: '4px', padding: '0.5rem',
-                                            textAlign: 'left', color: '#ccc', cursor: 'pointer'
+                                            textAlign: 'left', color: 'var(--tool-text-main)', cursor: 'pointer'
                                         }}
                                     >
                                         <div style={{ fontWeight: 'bold' }}>{instrument.name}</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#777', fontFamily: 'monospace' }}>{instrument.id}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', fontFamily: 'monospace' }}>{instrument.id}</div>
                                     </button>
                                 ))}
                             </div>

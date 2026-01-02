@@ -216,7 +216,7 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
 
     return (
         <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }} ref={ref}>
-            <div style={{ padding: '1rem', borderBottom: '1px solid #444', background: '#181a1f', display: 'flex', gap: '2rem', alignItems: 'center', zIndex: 20 }}>
+            <div style={{ padding: '1rem', borderBottom: '1px solid #444', background: 'var(--tool-bg-input)', display: 'flex', gap: '2rem', alignItems: 'center', zIndex: 20 }}>
                 <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>Narrative Graph</h2>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button onClick={() => setMode('redirect')} style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: mode === 'redirect' ? '#61afef' : '#333', color: 'white' }}>Redirects</button>
@@ -227,7 +227,7 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                         {qualities.map(q => <option key={q.id} value={q.id}>{q.name} ({q.id})</option>)}
                     </select>
                 )}
-                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#ccc', fontSize: '0.9rem', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--tool-text-main)', fontSize: '0.9rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={showSelfLoops} onChange={e => setShowSelfLoops(e.target.checked)} /> Show Loops
                 </label>
             </div>
@@ -270,9 +270,9 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', padding: '1rem', borderBottom: '1px solid #444', background: 'rgba(0,0,0,0.2)' }}>
                             <div>
                                 <span style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Selected Node</span>
-                                <h3 style={{ margin: '0.25rem 0 0 0', color: '#fff', fontSize: '1.1rem' }}>{activeData.label}</h3>
+                                <h3 style={{ margin: '0.25rem 0 0 0', color: 'var(--tool-text-header)', fontSize: '1.1rem' }}>{activeData.label}</h3>
                             </div>
-                            {isLocked && <button onClick={() => setLockedData(null)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>}
+                            {isLocked && <button onClick={() => setLockedData(null)} style={{ background: 'none', border: 'none', color: 'var(--tool-text-dim)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>}
                         </div>
                         
                         <div style={{ padding: '1rem' }}>
@@ -328,8 +328,8 @@ function GraphContent({ params }: { params: Promise<{ storyId: string }> }) {
                 )}
                 
                 {/* LEGEND */}
-                <div style={{ position: 'absolute', bottom: 20, left: 20, background: 'rgba(0,0,0,0.8)', padding: '1rem', borderRadius: '8px', border: '1px solid #444', zIndex: 10, fontSize: '0.8rem', color: '#ccc' }}>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff' }}>Legend</h4>
+                <div style={{ position: 'absolute', bottom: 20, left: 20, background: 'rgba(0,0,0,0.8)', padding: '1rem', borderRadius: '8px', border: '1px solid #444', zIndex: 10, fontSize: '0.8rem', color: 'var(--tool-text-main)' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--tool-text-header)' }}>Legend</h4>
                     {mode === 'redirect' ? (
                         <div style={{ display: 'grid', gap: '5px' }}>
                             <div style={{display:'flex', gap:'5px', alignItems:'center'}}><div style={{width:10, height:10, background:'#2ecc71', borderRadius:'50%'}}/> Pass</div>

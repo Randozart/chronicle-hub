@@ -98,7 +98,7 @@ export default function MarketsAdmin({ params }: { params: Promise<{ storyId: st
                         allQualities={qualities} // PASS QUALITIES
                         storyId={storyId}
                     />
-                ) : <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a market</div>}
+                ) : <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a market</div>}
             </div>
         </div>
     );

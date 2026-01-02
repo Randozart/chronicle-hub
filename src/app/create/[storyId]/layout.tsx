@@ -1,7 +1,6 @@
 'use client'; 
 
 import Link from 'next/link';
-import '@/app/globals.css';
 import CheatSheet from '../../../components/admin/CheatSheet';
 import AdminSidebarFooter from '../../../components/admin/AdminSidebarFooter';
 import { ToastProvider } from '@/providers/ToastProvider';
@@ -117,7 +116,7 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                         {/* NEW: Mobile Close Header for Right Sidebar */}
                         <div style={{ 
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                            padding: '1rem', background: '#21252b', borderBottom: '1px solid #333',
+                            padding: '1rem', background: 'var(--tool-bg-header)', borderBottom: '1px solid var(--tool-border)',
                             // Only show this header on mobile via CSS class or inline logic
                         }} className="admin-mobile-only-header">
                             <span style={{fontWeight:'bold'}}>Reference</span>

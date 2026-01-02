@@ -52,7 +52,7 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
         <div className="admin-editor-col" style={{ maxWidth: '1000px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid #444', paddingBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>Player Monitor</h2>
-                <span style={{ color: '#777', fontSize: '0.9rem' }}>
+                <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.9rem' }}>
                     {players.length} Total Players
                 </span>
             </div>
@@ -60,25 +60,25 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
             {isLoading ? (
                 <div className="loading-container">Scanning world...</div>
             ) : players.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#777', padding: '4rem' }}>
+                <div style={{ textAlign: 'center', color: 'var(--tool-text-dim)', padding: '4rem' }}>
                     <p>No souls have entered this world yet.</p>
                 </div>
             ) : (
-                <div style={{ background: '#181a1f', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--tool-bg-input)', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: '#21252b', textAlign: 'left' }}>
+                        <thead style={{ background: 'var(--tool-bg-header)', textAlign: 'left' }}>
                             <tr>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase' }}>User</th>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase' }}>Location</th>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase' }}>Actions</th>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase' }}>Last Seen</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.85rem', textTransform: 'uppercase' }}>User</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Location</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Actions</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Last Seen</th>
                             </tr>
                         </thead>
                         <tbody>
                             {players.map((p) => (
                                 <tr key={p.userId} style={{ borderBottom: '1px solid #2c313a' }}>
                                     <td style={{ padding: '1rem' }}>
-                                        <div style={{ fontWeight: 'bold', color: '#fff' }}>{p.username}</div>
+                                        <div style={{ fontWeight: 'bold', color: 'var(--tool-text-header)' }}>{p.username}</div>
                                         <div style={{ fontSize: '0.8rem', color: '#666' }}>{p.email}</div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>
@@ -89,7 +89,7 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                                             {p.location}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '1rem', color: '#ccc' }}>
+                                    <td style={{ padding: '1rem', color: 'var(--tool-text-main)' }}>
                                         {p.actions}
                                     </td>
                                     <td style={{ padding: '1rem' }}>

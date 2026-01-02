@@ -51,7 +51,7 @@ function MenuButton({ label, onClick }: { label: string, onClick: () => void }) 
             style={{ 
                 display: 'block', width: '100%', textAlign: 'left', 
                 padding: '10px 15px', background: 'transparent', border: 'none', 
-                color: '#ccc', cursor: 'pointer', borderBottom: '1px solid #2c313a',
+                color: 'var(--tool-text-main)', cursor: 'pointer', borderBottom: '1px solid #2c313a',
                 fontSize: '0.85rem'
             }}
             className="hover:bg-[#2c313a] hover:text-white"

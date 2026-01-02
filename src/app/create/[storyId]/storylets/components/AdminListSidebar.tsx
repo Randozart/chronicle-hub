@@ -107,7 +107,7 @@ export default function AdminListSidebar<T extends ListItem>({
                                     padding: '0.5rem', paddingLeft: `${depth * 0.8 + 0.5}rem`, 
                                     cursor: 'pointer', color: '#e5c07b', fontWeight: 'bold', fontSize: '0.85rem',
                                     display: 'flex', alignItems: 'center', gap: '5px',
-                                    backgroundColor: '#282c34', borderBottom: '1px solid #333',
+                                    backgroundColor: 'var(--tool-bg-dark)', borderBottom: '1px solid var(--tool-border)',
                                     userSelect: 'none'
                                 }}
                             >
@@ -154,11 +154,11 @@ export default function AdminListSidebar<T extends ListItem>({
                 <div className="mobile-list-header-row">
                     <button 
                         onClick={() => setIsMobileOpen(false)}
-                        style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '1.2rem', cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--tool-text-main)', fontSize: '1.2rem', cursor: 'pointer' }}
                     >
                         ← Back
                     </button>
-                    <span style={{ fontWeight: 'bold', color: '#fff' }}>Select {title}</span>
+                    <span style={{ fontWeight: 'bold', color: 'var(--tool-text-header)' }}>Select {title}</span>
                     <button className="new-btn" onClick={() => { onCreate(); setIsMobileOpen(false); }}>+ New</button>
                 </div>
 
@@ -170,11 +170,11 @@ export default function AdminListSidebar<T extends ListItem>({
                     </div>
                     {groupOptions.length > 0 && (
                         <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem' }}>
-                            <span style={{ color: '#777' }}>Group by:</span>
+                            <span style={{ color: 'var(--tool-text-dim)' }}>Group by:</span>
                             <select 
                                 value={groupByKey} 
                                 onChange={(e) => setGroupByKey(e.target.value)}
-                                style={{ background: '#181a1f', border: '1px solid #333', color: '#ccc', borderRadius: '3px', padding: '2px' }}
+                                style={{ background: 'var(--tool-bg-input)', border: '1px solid #333', color: 'var(--tool-text-main)', borderRadius: '3px', padding: '2px' }}
                             >
                                 <option value="">None (Flat)</option>
                                 {groupOptions.map(opt => (
@@ -186,7 +186,7 @@ export default function AdminListSidebar<T extends ListItem>({
                 </div>
 
                 {/* Search */}
-                <div style={{ padding: '0.5rem', borderBottom: '1px solid #333', background: '#21252b' }}>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)' }}>
                     <input 
                         value={search}
                         onChange={e => setSearch(e.target.value)}

@@ -88,7 +88,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                 </div>
             </div>
 
-            <div className="form-group" style={{ background: '#181a1f', padding: '0.75rem', borderRadius: '4px', border: '1px solid #333' }}>
+            <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '0.75rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="form-row">
                     <div style={{ flex: 1 }}><SmartArea label="Visible If" value={data.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" qualityDefs={qualityDefs} /></div>
                     <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={data.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" qualityDefs={qualityDefs} /></div>
@@ -112,7 +112,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
             {/* OUTCOMES */}
             <div style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h4 style={{ margin: 0, color: '#aaa', textTransform: 'uppercase', fontSize: '0.8rem' }}>Outcomes</h4>
+                    <h4 style={{ margin: 0, color: 'var(--tool-text-dim)', textTransform: 'uppercase', fontSize: '0.8rem' }}>Outcomes</h4>
                     <p style={{ margin: 0, fontSize: '0.75rem', color: '#666' }}>Use <code>%random</code> in text/effects for rare outcomes.</p>
                 </div>
 

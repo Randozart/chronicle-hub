@@ -83,7 +83,7 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
                         storyId={storyId}
                     />
                 ) : (
-                    <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select a location</div>
+                    <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>Select a location</div>
                 )}
             </div>
         </div>
@@ -182,7 +182,7 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
             </div>
 
             {/* CONDITIONS */}
-            <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
+            <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <label className="special-label" style={{ color: '#61afef' }}>Access Control</label>
                 
                 <div className="form-group" style={{ position: 'relative' }}>

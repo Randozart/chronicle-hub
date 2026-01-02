@@ -66,7 +66,7 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
                         onDelete={handleDeleteSuccess}
                         storyId={storyId}
                     />
-                ) : <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a category</div>}
+                ) : <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a category</div>}
             </div>
         </div>
     );

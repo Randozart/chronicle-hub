@@ -166,7 +166,7 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
 
             {/* 2. GLOBAL VARIABLES */}
             <div>
-                <h4 style={{ margin: '0 0 1rem 0', color: '#ccc', fontSize: '0.9rem', textTransform: 'uppercase', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>Global State ($world)</h4>
+                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-main)', fontSize: '0.9rem', textTransform: 'uppercase', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>Global State ($world)</h4>
                 
                 <div style={{ display: 'grid', gap: '1rem' }}>
                     {Object.keys(state).length === 0 && (
@@ -179,7 +179,7 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
                         const val = data.type === 'S' ? (data as any).stringValue : (data as any).level;
                         
                         return (
-                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#181a1f', padding: '1rem', borderRadius: '4px', borderLeft: '3px solid #f1c40f' }}>
+                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', borderLeft: '3px solid #f1c40f' }}>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ color: '#f1c40f', fontWeight: 'bold', fontFamily: 'monospace' }}>$world.{key}</div>
                                     <div style={{ fontSize: '0.7rem', color: '#666' }}>Type: {data.type}</div>

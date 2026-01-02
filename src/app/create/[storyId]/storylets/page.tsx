@@ -144,7 +144,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                         qualityDefs={qualities} // PASS QUALITIES
                     />
                 ) : (
-                    <div style={{ color: '#777', marginTop: '20%', textAlign: 'center' }}>Select a storylet</div>
+                    <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a storylet</div>
                 )}
             </div>
         </div>

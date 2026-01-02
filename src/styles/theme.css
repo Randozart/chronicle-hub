@@ -30,6 +30,9 @@
     
     --progress-bg: #2c3e50;
     --progress-fill: #3498db;
+
+    --info-color: #56B6C2;
+    --warning-color: #e5c07b; /* Gold/Yellow */
     
     --font-main: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --border-radius: 8px;
@@ -48,13 +51,20 @@
     --tool-accent-fade: rgba(97, 175, 239, 0.2);
     --tool-key-white: #222222;
     --tool-key-black: #000000;
+
+    --tool-accent-mauve: #c678dd;
+
+        /* DOCS VARIABLES (Defaults = Dark) */
+    --docs-bg-sidebar: #21252b;
+    --docs-bg-content: #181a1f;
+    --docs-text-main: #abb2bf;
+    --docs-text-header: #fff;
+    --docs-border: #333;
+    --docs-code-bg: rgba(0,0,0,0.3);
 }
 
-/* ... (Existing Dark Defaults) ... */
 
-/* --- THEME: CHRONICLE LIGHT (Requested) --- */
-[data-theme='light'] {
-    /* Bright, clean base */
+:root[data-global-theme='light'] {
     --bg-main: #f0f2f5; 
     --bg-panel: #ffffff;
     --bg-item: #f7f9fc;
@@ -79,23 +89,40 @@
     
     --progress-bg: #e5e7eb;
     --progress-fill: #2563eb;
+
+    --warning-color: #986801; /* A darker gold for light mode */
+
     
     --font-main: var(--font-inter), sans-serif;
     --border-radius: 6px;
     
     /* Invert Editor Colors for Light Mode */
-    --tool-bg-dark: #f3f4f6;
-    --tool-bg-header: #ffffff;
-    --tool-bg-sidebar: #f9fafb;
-    --tool-bg-input: #ffffff;
-    --tool-text-main: #374151;
-    --tool-text-dim: #9ca3af;
-    --tool-text-header: #111827;
-    --tool-border: #e5e7eb;
+    --tool-bg-dark: #f3f4f6;     /* Light Grey Background */
+    --tool-bg-header: #ffffff;   /* White Headers */
+    --tool-bg-sidebar: #f9fafb;  /* Sidebar */
+    --tool-bg-input: #ffffff;    /* Input Background */
+    
+    --tool-text-main: #374151;   /* Dark Grey Text */
+    --tool-text-dim: #9ca3af;    /* Light Grey Text */
+    --tool-text-header: #111827; /* Black Text */
+    
+    --tool-border: #e5e7eb;      /* Light Border */
     --tool-border-highlight: #d1d5db;
-    --tool-accent: #2563eb;
+    
+    --tool-accent: #2563eb;      /* Blue Accent */
     --tool-key-white: #ffffff;
     --tool-key-black: #1f2937;
+
+    --tool-accent-mauve: #a626a4; /* A darker purple */
+
+
+        /* DOCS LIGHT MODE OVERRIDES */
+    --docs-bg-sidebar: #f3f4f6;     /* Light Grey */
+    --docs-bg-content: #ffffff;     /* Pure White */
+    --docs-text-main: #374151;      /* Dark Grey */
+    --docs-text-header: #111827;    /* Near Black */
+    --docs-border: #e5e7eb;         /* Light Border */
+    --docs-code-bg: rgba(0,0,0,0.05);
 }
 
 /* --- THEME PALETTES --- */

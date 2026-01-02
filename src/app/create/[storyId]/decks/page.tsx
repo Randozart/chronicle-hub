@@ -61,7 +61,7 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
                         onDelete={handleDeleteSuccess}
                         storyId={storyId}
                     />
-                ) : <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select a deck</div>}
+                ) : <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>Select a deck</div>}
             </div>
         </div>
     );
@@ -118,7 +118,7 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
             </div>
 
-            <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
+            <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <label className="form-label">Regeneration Timer</label>
                 <select 
                     value={isSynced ? 'sync_actions' : 'custom'}
@@ -143,7 +143,7 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                             style={{ width: '200px' }}
                             placeholder="10 or { $speed * 2 }"
                         />
-                        <span style={{ color: '#aaa', fontSize: '0.9rem' }}>minutes</span>
+                        <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.9rem' }}>minutes</span>
                     </div>
                 )}
                 <p className="special-desc">

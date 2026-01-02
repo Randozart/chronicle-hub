@@ -251,9 +251,9 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
     };
 
     let helperText = <span style={{color: '#666'}}>Select a cell to edit...</span>;
-    if (cursor.sub === 0) helperText = <span style={{color: '#fff'}}>NOTE: Z=1, S=1#... | CHORD: @alias</span>;
-    else if (cursor.sub === 1) helperText = <span style={{color: '#fff'}}>MODS: v:-10 (Vol), o:1 (Oct), t:12 (Trans)</span>;
-    else if (cursor.sub === 2) helperText = <span style={{color: '#fff'}}>FX: F50 (Fade), S10 (Slide), P-50 (Pan)</span>;
+    if (cursor.sub === 0) helperText = <span style={{color: 'var(--tool-text-header)'}}>NOTE: Z=1, S=1#... | CHORD: @alias</span>;
+    else if (cursor.sub === 1) helperText = <span style={{color: 'var(--tool-text-header)'}}>MODS: v:-10 (Vol), o:1 (Oct), t:12 (Trans)</span>;
+    else if (cursor.sub === 2) helperText = <span style={{color: 'var(--tool-text-header)'}}>FX: F50 (Fade), S10 (Slide), P-50 (Pan)</span>;
     
     const gridRows = [];
     for (let t = 0; t < maxDuration; t++) {
@@ -276,13 +276,13 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
             onKeyDown={handleKeyDown}
             ref={containerRef}
         >
-            <div style={{ padding: '4px', background: '#21252b', borderBottom: '1px solid #333', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <select value={viewMode} onChange={e => setViewMode(e.target.value as any)} style={{ background: '#111', color: '#fff', border: '1px solid #444', fontSize:'11px' }}>
+            <div style={{ padding: '4px', background: 'var(--tool-bg-header)', borderBottom: '1px solid var(--tool-border)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <select value={viewMode} onChange={e => setViewMode(e.target.value as any)} style={{ background: '#111', color: 'var(--tool-text-header)', border: '1px solid #444', fontSize:'11px' }}>
                     <option value="context">Playlist Row</option>
                     <option value="pattern">Pattern</option>
                 </select>
                 {viewMode === 'pattern' && (
-                    <select value={selectedPatternId} onChange={e => setSelectedPatternId(e.target.value)} style={{ background: '#111', color: '#fff', border: '1px solid #444', fontSize:'11px' }}>
+                    <select value={selectedPatternId} onChange={e => setSelectedPatternId(e.target.value)} style={{ background: '#111', color: 'var(--tool-text-header)', border: '1px solid #444', fontSize:'11px' }}>
                         <option value="" disabled>Select</option>
                         {Object.keys(parsedTrack.patterns).map(k => <option key={k} value={k}>{k}</option>)}
                     </select>
@@ -296,13 +296,13 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
                     <button onClick={() => { setRowHeight(h => Math.min(40, h+2)); setFontSize(f => Math.min(16, f+1)); }} style={{background:'#333', color:'#fff', border:'none', cursor:'pointer', width:'20px'}}>+</button>
                 </div>
                 
-                <label style={{ color: '#ccc', display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', marginLeft: 'auto' }}>
+                <label style={{ color: 'var(--tool-text-main)', display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', marginLeft: 'auto' }}>
                     <input type="checkbox" checked={useAbsolute} onChange={e => setUseAbsolute(e.target.checked)} />
                     Abs/Rel
                 </label>
             </div>
 
-            <div style={{ padding: '4px 8px', background: isEditing ? '#1e222a' : '#111', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', color: '#aaa', height: '28px' }}>
+            <div style={{ padding: '4px 8px', background: isEditing ? '#1e222a' : '#111', borderBottom: '1px solid var(--tool-border)', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', color: 'var(--tool-text-dim)', height: '28px' }}>
                 <span style={{ color: '#98c379', minWidth: '50px' }}>Row: {cursor.row}</span>
                 <div style={{ display: 'flex', gap: '4px', color: isEditing ? '#fff' : '#555', fontWeight: isEditing ? 'bold' : 'normal' }}>
                     <span>INPUT:</span>
@@ -315,9 +315,9 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
             
             <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
                 <table style={{ borderCollapse: 'collapse', width: 'auto' }}>
-                    <thead style={{ position: 'sticky', top: 0, background: '#181a1f', zIndex: 20 }}>
+                    <thead style={{ position: 'sticky', top: 0, background: 'var(--tool-bg-input)', zIndex: 20 }}>
                         <tr>
-                            <th style={{ width: '40px', borderRight: '1px solid #333', color: '#555', background: '#181a1f' }}>#</th>
+                            <th style={{ width: '40px', borderRight: '1px solid #333', color: '#555', background: 'var(--tool-bg-input)' }}>#</th>
                             {columns.map((col, i) => {
                                 // --- NEW: Format Header Name to show "(2)" for sub-lanes ---
                                 let label = col.trackName;
@@ -333,12 +333,12 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
                             })}
                         </tr>
                         <tr style={{ color: '#666', fontSize: `${Math.max(9, fontSize-2)}px` }}>
-                            <th style={{ background: '#21252b', borderRight:'1px solid #333' }}></th>
+                            <th style={{ background: 'var(--tool-bg-header)', borderRight:'1px solid #333' }}></th>
                             {columns.map((_, i) => (
                                 <React.Fragment key={i}>
-                                    <th style={{ width:'50px', background: '#21252b', textAlign:'center' }}>Note</th>
-                                    <th style={{ width:'40px', background: '#21252b', textAlign:'center' }}>Mod</th>
-                                    <th style={{ width:'40px', background: '#21252b', textAlign:'center', borderRight:'1px solid #444' }}>FX</th>
+                                    <th style={{ width:'50px', background: 'var(--tool-bg-header)', textAlign:'center' }}>Note</th>
+                                    <th style={{ width:'40px', background: 'var(--tool-bg-header)', textAlign:'center' }}>Mod</th>
+                                    <th style={{ width:'40px', background: 'var(--tool-bg-header)', textAlign:'center', borderRight:'1px solid #444' }}>FX</th>
                                 </React.Fragment>
                             ))}
                         </tr>
@@ -364,7 +364,7 @@ export default function TrackerView({ parsedTrack, onChange, playlistIndex, avai
 
                                     if (cell.type === 'sustain') return (
                                         <React.Fragment key={i}>
-                                            <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: '#fff', fontWeight:'bold', letterSpacing:'3px' }}> — </td>
+                                            <td onClick={() => setCursor({row: t, col: i, sub: 0})} style={{ ...getCellStyle(0), color: 'var(--tool-text-header)', fontWeight:'bold', letterSpacing:'3px' }}> — </td>
                                             <td onClick={() => setCursor({row: t, col: i, sub: 1})} style={{ ...getCellStyle(1), opacity: 0.2 }}> | </td>
                                             <td onClick={() => setCursor({row: t, col: i, sub: 2})} style={{ ...getCellStyle(2), borderRight: '1px solid #333', opacity: 0.2 }}> | </td>
                                         </React.Fragment>

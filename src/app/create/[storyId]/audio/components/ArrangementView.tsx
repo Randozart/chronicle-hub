@@ -240,7 +240,7 @@ export default function ArrangementView({
                     padding: '1rem',
                     overflowX: 'auto',
                     minHeight: '180px',
-                    background: '#181a1f',
+                    background: 'var(--tool-bg-input)',
                     position: 'relative'
                 }}
             >
@@ -286,7 +286,7 @@ export default function ArrangementView({
                                             style={{
                                                 height: LAYER_HEIGHT,
                                                 display: 'flex',
-                                                background: '#21252b',
+                                                background: 'var(--tool-bg-header)',
                                                 marginBottom: 2,
                                                 position: 'relative'
                                             }}
@@ -343,8 +343,8 @@ export default function ArrangementView({
 
                                 {activeIndex === index && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginTop: 4, padding: '0 4px' }}>
-                                        <button onClick={e => { e.stopPropagation(); handleMove(index, 'left'); }} disabled={index === 0} style={{ padding: '2px 8px', background: '#333', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', opacity: index === 0 ? 0.3 : 1 }}>←</button>
-                                        <button onClick={e => { e.stopPropagation(); handleMove(index, 'right'); }} disabled={index === parsedTrack.playlist.length - 1} style={{ padding: '2px 8px', background: '#333', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', opacity: index === parsedTrack.playlist.length - 1 ? 0.3 : 1 }}>→</button>
+                                        <button onClick={e => { e.stopPropagation(); handleMove(index, 'left'); }} disabled={index === 0} style={{ padding: '2px 8px', background: '#333', color: 'var(--tool-text-header)', border: 'none', borderRadius: 4, cursor: 'pointer', opacity: index === 0 ? 0.3 : 1 }}>←</button>
+                                        <button onClick={e => { e.stopPropagation(); handleMove(index, 'right'); }} disabled={index === parsedTrack.playlist.length - 1} style={{ padding: '2px 8px', background: '#333', color: 'var(--tool-text-header)', border: 'none', borderRadius: 4, cursor: 'pointer', opacity: index === parsedTrack.playlist.length - 1 ? 0.3 : 1 }}>→</button>
                                     </div>
                                 )}
 
@@ -352,7 +352,7 @@ export default function ArrangementView({
                                     onClick={(e) => { e.stopPropagation(); handleDelete(index); }}
                                     style={{
                                         position: 'absolute', top: -8, right: -8,
-                                        background: '#e06c75', color: '#fff', border: 'none',
+                                        background: '#e06c75', color: 'var(--tool-text-header)', border: 'none',
                                         borderRadius: '50%', width: 16, height: 16, fontSize: 10,
                                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         zIndex: 20

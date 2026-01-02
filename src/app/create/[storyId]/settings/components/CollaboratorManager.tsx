@@ -102,9 +102,9 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
 
             <div style={{ display: 'grid', gap: '0.5rem' }}>
                 {Array.isArray(list) && list.map((colab: any) => (
-                    <div key={colab.userId} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#181a1f', padding: '0.5rem', borderRadius: '4px' }}>
-                        <div style={{ flex: 1, color: '#ccc' }}>
-                            {colab.userId.substring(0, 10)}... <span style={{ color: '#777', fontSize: '0.8rem' }}>({colab.role})</span>
+                    <div key={colab.userId} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--tool-bg-input)', padding: '0.5rem', borderRadius: '4px' }}>
+                        <div style={{ flex: 1, color: 'var(--tool-text-main)' }}>
+                            {colab.userId.substring(0, 10)}... <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem' }}>({colab.role})</span>
                         </div>
                         <button 
                             onClick={() => handleRemove(colab.userId)} 

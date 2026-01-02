@@ -26,7 +26,7 @@ export default function GraphNode({ data, isConnectable }: NodeProps) {
         borderRadius: '4px',
         padding: '8px',
         width: '180px', // Fixed width for consistent layout
-        color: '#fff',
+        color: 'var(--tool-text-header)',
         fontSize: '12px',
         textAlign: 'center',
         position: 'relative',

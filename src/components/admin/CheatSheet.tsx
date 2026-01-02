@@ -27,9 +27,10 @@ export default function CheatSheet() {
                 className="cheat-toggle-btn"
                 style={{ 
                     width: '40px', 
-                    borderLeft: '1px solid #333',
-                    background: '#181a1f',
-                    color: '#aaa',
+                    borderLeft: '1px solid var(--tool-border)',
+                    background: 'var(--tool-bg-sidebar)'
+,
+                    color: 'var(--tool-text-dim)',
                     cursor: 'pointer',
                     writingMode: 'vertical-rl',
                     textOrientation: 'mixed',
@@ -47,8 +48,7 @@ export default function CheatSheet() {
     }
 
     return (
-        <div className="cheat-sheet-container" style={{ width: '320px', display: 'flex', flexDirection: 'column', height: '100%', background: '#181a1f', borderLeft: '1px solid #333' }}>
-            
+<div className="cheat-sheet-container" style={{ width: isMobile ? '100%' : '320px', display: 'flex', flexDirection: 'column', height: '100%' }}>            
             {/* FIXED HEADER - Clickable to Close */}
             <div 
                 className="cheat-sheet-header" 
@@ -56,8 +56,8 @@ export default function CheatSheet() {
                 style={{ 
                     flexShrink: 0, 
                     padding: '1.5rem', 
-                    borderBottom: '1px solid #333', 
-                    background: '#21252b',
+                    borderBottom: '1px solid var(--tool-border)', 
+                    background: 'var(--tool-bg-header)',
                     cursor: 'pointer',
                     display: isMobile ? 'none' : 'flex', 
                     justifyContent: 'space-between',
@@ -67,10 +67,10 @@ export default function CheatSheet() {
             >
                 {/* TEXT COLUMN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#fff' }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--tool-text-header)' }}>
                         ScribeScript
                     </h3>
-                    <p style={{ fontSize: '0.75rem', color: '#777', margin: 0 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', margin: 0 }}>
                         Syntax Reference Guide
                     </p>
                 </div>
@@ -84,7 +84,7 @@ export default function CheatSheet() {
                     style={{ 
                         background: 'rgba(255,255,255,0.05)', 
                         border: '1px solid #444', 
-                        color: '#aaa', 
+                        color: 'var(--tool-text-dim)', 
                         borderRadius: '6px',
                         width: '32px', height: '32px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -105,7 +105,7 @@ export default function CheatSheet() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#61afef', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '5px' }}>
                         <SparkleIcon /> The Scribe Assistant
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#ccc', margin: 0, lineHeight: '1.4' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--tool-text-main)', margin: 0, lineHeight: '1.4' }}>
                         Don't type manually! Look for the <strong>Logic</strong> or <strong>Sparkle</strong> buttons in the editor to auto-generate these codes.
                     </p>
                 </div>
@@ -293,7 +293,7 @@ export default function CheatSheet() {
 function Accordion({ title, children }: { title: string, children: React.ReactNode }) {
     const [open, setOpen] = useState(false);
     return (
-        <div style={{ borderBottom: '1px solid #333' }}>
+        <div style={{ borderBottom: '1px solid var(--tool-border)' }}>
             <button 
                 onClick={() => setOpen(!open)}
                 style={{ 
@@ -304,7 +304,7 @@ function Accordion({ title, children }: { title: string, children: React.ReactNo
                 }}
             >
                 {title}
-                <span style={{ color: '#777', fontSize: '1.2rem', lineHeight: 0 }}>{open ? '−' : '+'}</span>
+                <span style={{ color: 'var(--tool-text-dim)', fontSize: '1.2rem', lineHeight: 0 }}>{open ? '−' : '+'}</span>
             </button>
             {open && <div style={{ paddingBottom: '1rem' }}>{children}</div>}
         </div>

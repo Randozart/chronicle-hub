@@ -190,8 +190,8 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 {/* TOOLBAR */}
                 <div style={{ 
                     padding: '0.5rem 1rem', 
-                    borderBottom: '1px solid #333', 
-                    background: '#21252b', 
+                    borderBottom: '1px solid var(--tool-border)', 
+                    background: 'var(--tool-bg-header)', 
                     display: 'flex', 
                     gap: '10px',
                     flexWrap: 'wrap' /* Allow wrapping on small screens */

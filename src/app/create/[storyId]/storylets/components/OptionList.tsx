@@ -54,14 +54,14 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
     return (
         <div>
             {options.map((opt, index) => (
-                <div key={opt.id} style={{ marginBottom: '1rem', border: '1px solid #333', borderRadius: '4px', background: '#21252b' }}>
+                <div key={opt.id} style={{ marginBottom: '1rem', border: '1px solid #333', borderRadius: '4px', background: 'var(--tool-bg-header)' }}>
                     <div 
                         style={{ padding: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: expandedId === opt.id ? '#2c313a' : 'transparent', borderBottom: expandedId === opt.id ? '1px solid #333' : 'none' }}
                     >
                         {/* REORDER CONTROLS */}
                         <div style={{ display: 'flex', flexDirection: 'column', marginRight: '0.5rem' }}>
-                            <button onClick={(e) => { e.stopPropagation(); moveOption(index, -1); }} disabled={index === 0} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#aaa', fontSize: '0.6rem', padding: 0 }}>▲</button>
-                            <button onClick={(e) => { e.stopPropagation(); moveOption(index, 1); }} disabled={index === options.length - 1} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#aaa', fontSize: '0.6rem', padding: 0 }}>▼</button>
+                            <button onClick={(e) => { e.stopPropagation(); moveOption(index, -1); }} disabled={index === 0} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--tool-text-dim)', fontSize: '0.6rem', padding: 0 }}>▲</button>
+                            <button onClick={(e) => { e.stopPropagation(); moveOption(index, 1); }} disabled={index === options.length - 1} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--tool-text-dim)', fontSize: '0.6rem', padding: 0 }}>▼</button>
                         </div>
 
                         <div 
@@ -69,7 +69,7 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
                             style={{ flex: 1, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                         >
                             <div>
-                                <span style={{ color: '#aaa', fontSize: '0.8rem', marginRight: '0.5rem' }}>#{index + 1}</span>
+                                <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', marginRight: '0.5rem' }}>#{index + 1}</span>
                                 <span style={{ fontWeight: 'bold', color: expandedId === opt.id ? '#fff' : '#ccc' }}>{opt.name || opt.id}</span>
                                 {opt.tags?.includes('dangerous') && <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: '#e74c3c', border: '1px solid #e74c3c', padding: '0 4px', borderRadius: '4px' }}>DANGEROUS</span>}
                             </div>

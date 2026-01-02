@@ -55,7 +55,7 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
                         onDelete={handleDeleteSuccess}
                         storyId={storyId}
                     />
-                ) : <div style={{ color: '#777', textAlign: 'center', marginTop: '20%' }}>Select a region</div>}
+                ) : <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>Select a region</div>}
             </div>
         </div>
     );

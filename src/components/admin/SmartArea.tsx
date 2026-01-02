@@ -1,4 +1,3 @@
-// src/components/admin/SmartArea.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -10,9 +9,17 @@ import { QualityDefinition, PlayerQualities, QualityType, WorldConfig } from '@/
 import { evaluateText } from '@/engine/textProcessor';
 import { GameEngine } from '@/engine/gameEngine';
 
+// FIX 1: Use CSS Variables for Loading State
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
-    loading: () => <div style={{ minHeight: '38px', background: '#111', borderRadius: '4px', border: '1px solid #333' }} />
+    loading: () => (
+        <div style={{ 
+            minHeight: '38px', 
+            background: 'var(--tool-bg-input)', 
+            borderRadius: '4px', 
+            border: '1px solid var(--tool-border)' 
+        }} />
+    )
 });
 
 interface Props {
@@ -90,11 +97,9 @@ export default function SmartArea({
                     } as any;
                 });
 
-                // Context for $. calls
                 const selfContext = contextQualityId ? { qid: contextQualityId, state: mockQualities[contextQualityId] || null } : null;
 
                 if (mode === 'effect') {
-                    // EFFECT MODE: Run Engine and show Trace Log
                     const mockConfig: WorldConfig = {
                         qualities: defMap,
                         locations: {}, decks: {}, settings: {} as any, char_create: {}, images: {},
@@ -102,7 +107,6 @@ export default function SmartArea({
                     };
                     
                     const engine = new GameEngine(mockQualities, mockConfig);
-                    // Pass trace logger support implies using the engine's internal log
                     engine.applyEffects(value);
                     
                     if (engine.executedEffectsLog.length > 0) {
@@ -112,8 +116,6 @@ export default function SmartArea({
                     }
 
                 } else {
-                    // TEXT/CONDITION MODE: Show Result String
-                    // evaluateText internally uses the trace logger if we passed one, but here we just want the output string
                     const result = evaluateText(value, mockQualities, defMap, selfContext, 50, {});
                     setPreviewResult(result);
                 }
@@ -137,13 +139,13 @@ export default function SmartArea({
                 {(label || subLabel) ? (
                     <div>
                         {label && <label className="form-label" style={{ margin: 0 }}>{label}</label>}
-                        {subLabel && <p style={{ fontSize: '0.7rem', color: '#666', margin: 0 }}>{subLabel}</p>}
+                        {subLabel && <p style={{ fontSize: '0.7rem', color: 'var(--tool-text-dim)', margin: 0 }}>{subLabel}</p>}
                     </div>
                 ) : <div />}
                 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto' }}>
                     {errors.length > 0 && (
-                        <span style={{ color: '#e06c75', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                        <span style={{ color: 'var(--danger-color)', fontSize: '0.7rem', fontWeight: 'bold' }}>
                             {errors.length} Issue{errors.length > 1 ? 's' : ''}
                         </span>
                     )}
@@ -152,9 +154,9 @@ export default function SmartArea({
                     <button 
                         onClick={() => setShowPreview(!showPreview)}
                         style={{ 
-                            background: showPreview ? '#98c379' : 'transparent', 
-                            color: showPreview ? '#000' : '#98c379',
-                            border: '1px solid #98c379', borderRadius: '4px', 
+                            background: showPreview ? 'var(--success-color)' : 'transparent', 
+                            color: showPreview ? '#000' : 'var(--success-color)',
+                            border: '1px solid var(--success-color)', borderRadius: '4px', 
                             cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold',
                             padding: '2px 6px', transition: 'all 0.1s'
                         }}
@@ -167,8 +169,9 @@ export default function SmartArea({
                     <button 
                         onClick={() => setShowAssistant(!showAssistant)}
                         style={{ 
-                            background: showAssistant ? 'rgba(97, 175, 239, 0.2)' : 'transparent', 
-                            border: '1px solid #61afef', borderRadius: '4px', color: '#61afef', 
+                            background: showAssistant ? 'var(--tool-accent-fade)' : 'transparent', 
+                            border: '1px solid var(--tool-accent)', borderRadius: '4px', 
+                            color: 'var(--tool-accent)', 
                             cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold',
                             display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 8px',
                             transition: 'all 0.1s'
@@ -192,7 +195,7 @@ export default function SmartArea({
                 />
             )}
 
-            <div style={{ border: '1px solid #333', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--tool-border)', borderRadius: '4px', overflow: 'hidden' }}>
                 <ScribeEditor 
                     value={value} 
                     onChange={onChange} 
@@ -207,18 +210,20 @@ export default function SmartArea({
             {showPreview && (
                 <div style={{ 
                     marginTop: '5px', padding: '8px', 
-                    background: '#21252b', borderLeft: '3px solid #98c379', borderRadius: '0 4px 4px 0',
-                    color: '#abb2bf', fontSize: '0.85rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap'
+                    background: 'var(--tool-bg-sidebar)', /* Was #21252b */
+                    borderLeft: '3px solid var(--success-color)', borderRadius: '0 4px 4px 0',
+                    color: 'var(--tool-text-main)', /* Was #abb2bf */
+                    fontSize: '0.85rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap'
                 }}>
-                    <strong style={{ color: '#98c379', fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                    <strong style={{ color: 'var(--success-color)', fontSize: '0.7rem', textTransform: 'uppercase' }}>
                         {mode === 'effect' ? "Trace Log:" : "Preview:"}
                     </strong><br/>
-                    {previewResult || <span style={{ color: '#555' }}>(Empty)</span>}
+                    {previewResult || <span style={{ color: 'var(--tool-text-dim)' }}>(Empty)</span>}
                 </div>
             )}
 
             {errors.length > 0 && !showPreview && (
-                <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#e06c75', fontFamily: 'monospace' }}>
+                <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--danger-color)', fontFamily: 'monospace' }}>
                     <div>Line {errors[0].line}: {errors[0].message}</div>
                     {errors.length > 1 && (
                         <div style={{ opacity: 0.7, fontStyle: 'italic', marginTop: '2px' }}>

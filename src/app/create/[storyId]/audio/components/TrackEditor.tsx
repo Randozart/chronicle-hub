@@ -291,7 +291,7 @@ export default function TrackEditor({
                         
                         {/* Timeline (Wrapped for horizontal scroll) */}
                         {showArrangement && isClient && (
-                            <div style={{ borderBottom: '1px solid #333', overflowX: 'auto', width: '100%' }}>
+                            <div style={{ borderBottom: '1px solid var(--tool-border)', overflowX: 'auto', width: '100%' }}>
                                 <div style={{ minWidth: '600px' }}> {/* Forces internal scroll */}
                                     <ArrangementView 
                                         parsedTrack={parsedTrack} 
@@ -309,7 +309,7 @@ export default function TrackEditor({
                         
                         {/* Mixer (Wrapped for horizontal scroll) */}
                         {showMixer && isClient && (
-                            <div style={{ borderBottom: '1px solid #333', height: '220px', resize: 'vertical', overflow: 'hidden', overflowX: 'auto', width: '100%' }}>
+                            <div style={{ borderBottom: '1px solid var(--tool-border)', height: '220px', resize: 'vertical', overflow: 'hidden', overflowX: 'auto', width: '100%' }}>
                                 <div style={{ minWidth: '400px' }}>
                                     <MixerView parsedTrack={parsedTrack} onChange={handleVisualUpdate} />
                                 </div>
@@ -318,7 +318,7 @@ export default function TrackEditor({
 
                         {/* Piano Roll (Wrapped for horizontal scroll) */}
                         {showNoteEditor && isClient && (
-                            <div style={{ borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            <div style={{ borderBottom: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', width: '100%' }}>
                                 <div className="note-editor-header">
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <button onClick={() => setNoteEditorMode('piano')} className={`note-editor-tab ${noteEditorMode === 'piano' ? 'active' : ''}`}>Piano</button>

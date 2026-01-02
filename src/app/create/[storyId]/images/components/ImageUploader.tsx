@@ -387,8 +387,8 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
     };
 
     return (
-        <div style={{ padding: '1rem', background: '#21252b', borderRadius: '4px', border: '1px solid #333' }}>
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+        <div style={{ padding: '1rem', background: 'var(--tool-bg-header)', borderRadius: '4px', border: '1px solid #333' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
                 <button 
                     onClick={() => setActiveTab('upload')}
                     style={{ background: 'none', border: 'none', color: activeTab === 'upload' ? '#61afef' : '#777', fontWeight: 'bold', cursor: 'pointer' }}
@@ -443,7 +443,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                             <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                                         ))}
                                     </select>
-                                    <p style={{ fontSize: '0.75rem', color: '#777', marginTop: '4px' }}>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', marginTop: '4px' }}>
                                         Preset: {OUTPUT_WIDTHS[category]}px width
                                     </p>
                                 </div>
@@ -458,7 +458,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                                     {quality}%
                                                 </span>
                                                 {estimatedSize && (
-                                                    <span style={{ fontSize: '0.8rem', color: '#ccc', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-main)', background: '#333', padding: '2px 6px', borderRadius: '4px' }}>
                                                         ~{(estimatedSize / 1024).toFixed(0)} KB
                                                     </span>
                                                 )}
@@ -542,7 +542,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                             <span style={{ fontSize: '2rem', color: '#444' }}>?</span>
                                         </div>
                                     </div>
-                                    <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#ccc' }}>
+                                    <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--tool-text-main)' }}>
                                         {asset.id}
                                     </div>
                                     

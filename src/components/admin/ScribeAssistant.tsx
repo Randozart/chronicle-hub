@@ -9,7 +9,7 @@ const styles = {
     container: {
         // We set defaults here, but 'fixed' and 'zIndex' are critical overrides below
         position: 'absolute' as const, bottom: '100%', right: 0, marginBottom: '10px',
-        zIndex: 100, background: '#181a1f', border: '1px solid #61afef', padding: '1rem', 
+        zIndex: 100, background: 'var(--tool-bg-input)', border: '1px solid #61afef', padding: '1rem', 
         borderRadius: '8px', width: '380px', 
         boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
         display: 'flex', flexDirection: 'column' as const,
@@ -18,7 +18,7 @@ const styles = {
     insertBtn: { width: '100%', marginTop: '0.5rem', padding: '0.5rem', background: '#2a3e5c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }
 };
 
-const MINI_LABEL: React.CSSProperties = { display: 'block', fontSize: '0.7rem', color: '#aaa', marginBottom: '3px' };
+const MINI_LABEL: React.CSSProperties = { display: 'block', fontSize: '0.7rem', color: 'var(--tool-text-dim)', marginBottom: '3px' };
 
 type LogicType = 'variable' | 'conditional' | 'challenge' | 'random' | 'effect' | 'timer' | 'batch' | 'collections' | 'eval';
 
@@ -255,13 +255,13 @@ export default function ScribeAssistant({
                 style={{ 
                     display: 'flex', justifyContent: 'space-between', padding: '1rem', 
                     alignItems: 'center', cursor: 'grab', background: 'rgba(255,255,255,0.02)',
-                    borderBottom: '1px solid #333', borderRadius: '8px 8px 0 0', flexShrink: 0
+                    borderBottom: '1px solid var(--tool-border)', borderRadius: '8px 8px 0 0', flexShrink: 0
                 }}
             >
                 <h4 style={{ margin: 0, color: '#61afef', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', pointerEvents: 'none' }}>
                     Scribe Assistant
                 </h4>
-                <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tool-text-dim)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
             </div>
 
             <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -377,7 +377,7 @@ export default function ScribeAssistant({
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', background: '#2c313a', padding: '0.5rem', borderRadius: '4px' }}>
                                     <input type="checkbox" checked={isAssignment} onChange={e => setIsAssignment(e.target.checked)} />
-                                    <label style={{ fontSize: '0.8rem', color: '#ccc' }}>Save as Alias (@var)</label>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--tool-text-main)' }}>Save as Alias (@var)</label>
                                     {isAssignment && (
                                         <input className="form-input" value={assignAlias} onChange={e => setAssignAlias(e.target.value)} placeholder="alias_name" style={{ flex: 1, padding: '2px 4px', fontSize: '0.8rem' }} />
                                     )}

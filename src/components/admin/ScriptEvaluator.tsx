@@ -173,7 +173,7 @@ export default function ScriptEvaluator({ storyId, qualityDefs, contextQualityId
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '1rem', overflow: 'hidden' }}>
             
             {/* TOP: MOCK STATE */}
-            <div style={{ maxHeight: '180px', flexShrink: 0, overflowY: 'auto', borderBottom: '1px solid #333', paddingBottom: '1rem' }}>
+            <div style={{ maxHeight: '180px', flexShrink: 0, overflowY: 'auto', borderBottom: '1px solid var(--tool-border)', paddingBottom: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#61afef', fontWeight: 'bold', letterSpacing: '1px' }}>
                         Mock State
@@ -239,7 +239,7 @@ export default function ScriptEvaluator({ storyId, qualityDefs, contextQualityId
             </div>
 
             {/* BOTTOM: RESULT */}
-            <div style={{ flexShrink: 0, background: '#21252b', border: '1px solid #333', borderRadius: '4px', padding: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
+            <div style={{ flexShrink: 0, background: 'var(--tool-bg-header)', border: '1px solid #333', borderRadius: '4px', padding: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
                 <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#98c379', fontWeight: 'bold', letterSpacing: '1px', display:'block', marginBottom:'5px' }}>
                     Output Preview
                 </label>
@@ -248,7 +248,7 @@ export default function ScriptEvaluator({ storyId, qualityDefs, contextQualityId
                         Error: {error}
                     </div>
                 ) : (
-                    <div style={{ color: '#ccc', fontSize: '0.95rem', whiteSpace: 'pre-wrap', fontFamily: 'serif', lineHeight: '1.5' }}>
+                    <div style={{ color: 'var(--tool-text-main)', fontSize: '0.95rem', whiteSpace: 'pre-wrap', fontFamily: 'serif', lineHeight: '1.5' }}>
                         {result || <span style={{ color: '#555', fontStyle: 'italic' }}>(Empty Result)</span>}
                     </div>
                 )}

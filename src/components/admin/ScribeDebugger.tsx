@@ -77,7 +77,7 @@ export default function ScribeDebugger({ onUpdate }: Props) {
     };
 
     return (
-        <div style={{ background: '#111', borderBottom: '1px solid #333', padding: '1rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ background: '#111', borderBottom: '1px solid var(--tool-border)', padding: '1rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
             <h3 style={{ marginTop: 0, fontSize: '0.8rem', color: '#61afef', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '1px' }}>
                 State Debugger
             </h3>
@@ -91,7 +91,7 @@ export default function ScribeDebugger({ onUpdate }: Props) {
                                 value={row.key}
                                 onChange={e => handleChange(i, 'key', e.target.value)}
                                 placeholder="variable"
-                                style={{ background: 'transparent', border: 'none', color: '#fff', width: '100%', padding: '0.4rem', outline: 'none', fontSize: '0.8rem', fontFamily: 'monospace' }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--tool-text-header)', width: '100%', padding: '0.4rem', outline: 'none', fontSize: '0.8rem', fontFamily: 'monospace' }}
                             />
                         </div>
                         <span style={{ color: '#555' }}>=</span>

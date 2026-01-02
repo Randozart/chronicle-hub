@@ -22,7 +22,7 @@ export default function BehaviorCard({ checked, onChange, label, desc }: Props) 
                 <input type="checkbox" checked={checked} readOnly />
                 {label}
             </div>
-            {desc && <p style={{ margin: '4px 0 0 24px', fontSize: '0.7rem', color: '#777' }}>{desc}</p>}
+            {desc && <p style={{ margin: '4px 0 0 24px', fontSize: '0.7rem', color: 'var(--tool-text-dim)' }}>{desc}</p>}
         </div>
     );
 }

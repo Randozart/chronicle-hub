@@ -287,9 +287,9 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             </div>
 
             {/* 2. SYSTEM BINDINGS */}
-            <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
-                <label className="special-label" style={{ color: '#e5c07b' }}>System Bindings</label>
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+            <div className="special-field-group" style={{ borderColor: 'var(--warning-color)' }}>
+                <label className="special-label" style={{ color: 'var(--warning-color)' }}>System Bindings</label>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
                     <strong>Map Engine Concepts to Data:</strong> The engine is agnostic. It does not know what "Health" or "Gold" is. 
                     Use these fields to tell the engine which of your Qualities represent core system features.
                 </div>
@@ -337,7 +337,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     />
                     {locRule ? (
                         <div style={{ marginTop: '0.25rem' }}>
-                            <p style={{ color: '#e5c07b', fontSize: '0.8rem', margin: 0 }}>
+                            <p style={{ color: 'var(--warning-color)', fontSize: '0.8rem', margin: 0 }}>
                                 🔒 <strong>Managed via Logic:</strong> Defined by the <code>$location</code> rule in Character Initialization.
                             </p>
                             {charCreateLocationError && <p style={{ color: '#e74c3c', fontSize: '0.8rem', marginTop: '0.25rem', fontWeight: 'bold' }}>{charCreateLocationError}</p>}
@@ -352,9 +352,9 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             </div>
 
             {/* 3. GAME RULES (Action Economy) */}
-            <div className="special-field-group" style={{ borderColor: '#61afef' }}>
-                <label className="special-label" style={{ color: '#61afef' }}>Game Rules & Action Economy</label>
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+            <div className="special-field-group" style={{ borderColor: 'var(--tool-accent)' }}>
+                <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Game Rules & Action Economy</label>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
                     <strong>Energy System:</strong> Configure how the player spends and regains actions. 
                     Values like "Max Actions" or "Regen Amount" can be <strong>Dynamic Logic</strong> (e.g. <code>{`{ 10 + $vitality }`}</code>), allowing stats to affect the economy.
                 </div>
@@ -390,7 +390,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     <div style={{ flex: 1 }}><SmartArea label="Default Draw Cost" value={String(form.defaultDrawCost || "")} onChange={v => handleChange('defaultDrawCost', v)} storyId={storyId} minHeight="38px" placeholder="1" subLabel="Cost per card draw." /></div>
                 </div>
                 
-                <div className="form-group" style={{ marginTop: '1rem', borderTop: '1px dashed #444', paddingTop: '1rem' }}>
+                <div className="form-group" style={{ marginTop: '1rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
                     <label className="toggle-label">
                         <input type="checkbox" checked={form.allowScribeScriptInInputs || false} onChange={e => handleChange('allowScribeScriptInInputs', e.target.checked)} />
                         Allow ScribeScript in Player Inputs
@@ -404,9 +404,9 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             </div>
             
             {/* 4. CHALLENGE PHYSICS */}
-            <div className="special-field-group" style={{ borderColor: '#f1c40f' }}>
-                <label className="special-label" style={{ color: '#f1c40f' }}>Challenge Physics</label>
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+            <div className="special-field-group" style={{ borderColor: 'var(--warning-color)' }}>
+                <label className="special-label" style={{ color: 'var(--warning-color)' }}>Challenge Physics</label>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
                     <strong>Global Probability Settings:</strong> These defaults are used by the <code>%chance</code> macro if specific parameters (margin, pivot) are not provided in the call.
                 </div>
                 <div className="form-row" style={{ marginTop: '1rem' }}>
@@ -422,15 +422,15 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             </div>
 
             {/* 5. ECONOMY & UI Categories */}
-            <div className="special-field-group" style={{ borderColor: '#2ecc71' }}>
-                <label className="special-label" style={{ color: '#2ecc71' }}>Economy & UI Layout</label>
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+            <div className="special-field-group" style={{ borderColor: 'var(--success-color)' }}>
+                <label className="special-label" style={{ color: 'var(--success-color)' }}>Economy & UI Layout</label>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
                     <strong>Organization:</strong> Define which qualities appear in specific parts of the player interface. Qualities not matching these categories will be hidden from the sidebar.
                 </div>
                 {missingCurrencies.length > 0 && (
                      <div style={{ background: 'rgba(241, 196, 15, 0.15)', border: '1px solid #f1c40f', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <strong style={{ color: '#f1c40f', display: 'block', marginBottom: '0.25rem' }}>Missing Currencies</strong>
+                            <strong style={{ color: 'var(--warning-color)', display: 'block', marginBottom: '0.25rem' }}>Missing Currencies</strong>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: '#ccc' }}>
                                 The following currencies are defined but not created:
                             </p>
@@ -473,8 +473,8 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             </div>
 
             {/* 6. VISUALS */}
-             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
-                <label className="special-label" style={{ color: '#c678dd' }}>Visuals</label>
+             <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)' }}>
+                <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Visuals</label>
                  <div className="form-row">
                     <div className="form-group">
                         <label className="form-label">Layout & Theme</label>
@@ -848,7 +848,7 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
                 </div>
             </div>
 
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', fontSize: '0.85rem', color: '#ccc' }}>
+            <div style={{ background: 'var(--tool-bg-dark)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', fontSize: '0.85rem', color: '#ccc' }}>
                 <p style={{ margin: '0 0 0.5rem 0' }}><strong>How to use:</strong> Define the starting qualities. Drag to reorder.</p>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.4' }}>
                      <li><strong>Headers:</strong> Create sections. Can be set as "Modal Root" to group subsequent fields into a popup.</li>
@@ -876,18 +876,18 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
                             onDragOver={(e) => onDragOver(e, key)}
                             onDrop={(e) => onDrop(e, key)}
                             style={{ 
-                                background: '#1e2127', padding: '0.75rem', borderRadius: '4px', 
-                                borderLeft: `3px solid ${rule.type === 'header' ? '#c678dd' : '#98c379'}`,
+                                background: 'var(--tool-bg-header)', padding: '0.75rem', borderRadius: '4px', 
+                                borderLeft: `3px solid ${rule.type === 'header' ? 'var(--tool-accent-mauve)' : 'var(--success-color)'}`,
                                 cursor: 'move',
                                 opacity: draggedKey === key ? 0.5 : 1
                             }}
                         >
                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <div style={{ fontFamily: 'monospace', color: rule.type === 'header' ? '#c678dd' : '#98c379', flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <div style={{ fontFamily: 'monospace', color: rule.type === 'header' ? 'var(--tool-accent-mauve)' : 'var(--success-color)', flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     <span style={{ cursor: 'grab', marginRight: '5px', opacity: 0.5 }}>☰</span>
                                     {isConditional && <span title={`Visible If: ${rule.visible_if}`}>👁️</span>}
                                     {key}
-                                    {isDerived && <span title="Derived/Calculated Value" style={{ color: '#c678dd' }}>ƒ</span>}
+                                    {isDerived && <span title="Derived/Calculated Value" style={{ color: 'var(--tool-accent-mauve)' }}>ƒ</span>}
                                     {rule.type === 'header' && rule.displayMode === 'modal' && <span style={{fontSize:'0.7rem', border:'1px solid #c678dd', padding:'0 4px', borderRadius:'4px'}}>MODAL</span>}
                                 </div>
                                 <select 
@@ -903,7 +903,7 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
                                     <option value="image_select">Images</option>
                                     <option value="labeled_image_select">Img+Label</option>
                                 </select>
-                                <button onClick={() => handleDelete(key)} style={{color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer'}}>✕</button>
+                                <button onClick={() => handleDelete(key)} style={{color: 'var(--danger-color)', background: 'none', border: 'none', cursor: 'pointer'}}>✕</button>
                             </div>
 
                             {/* CONTROLS ROW */}
@@ -932,7 +932,7 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
                             </div>
 
                             {/* FLAGS ROW */}
-                            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem', borderTop: '1px dashed #333', paddingTop: '0.5rem' }}>
+                            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '0.5rem' }}>
                                 {/* ... Visible / ReadOnly ... */}
                                 <label className="toggle-label">
                                     <input type="checkbox" checked={rule.visible} onChange={e => handleUpdate(key, 'visible', e.target.checked)} /> Visible
@@ -951,7 +951,7 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
 
                                 {rule.type === 'string' && (
                                     <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
-                                        <label style={{ marginRight:'5px', color:'#aaa' }}>Format:</label>
+                                        <label style={{ marginRight:'5px', color:'var(--tool-text-dim)' }}>Format:</label>
                                         <select 
                                             value={rule.input_transform || 'none'}
                                             onChange={e => handleUpdate(key, 'input_transform', e.target.value as any)}
@@ -1025,7 +1025,7 @@ function PresetToggle({ has, onAdd, onRemove, label }: { has: boolean, onAdd: ()
                     onClick={onRemove}
                     style={{ 
                         fontSize: '0.7rem', padding: '4px 6px', 
-                        background: 'rgba(0,0,0,0.2)', color: '#e06c75', border: 'none', borderLeft: '1px solid #2ecc71',
+                        background: 'var(--tool-bg-dark)', color: 'var(--danger-color)', border: 'none', borderLeft: '1px solid #2ecc71',
                         cursor: 'pointer' 
                     }}
                     title="Remove Preset"

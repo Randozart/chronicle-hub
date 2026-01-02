@@ -49,7 +49,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
             {/* ... [Header and rest of JSX remains exactly the same] ... */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0, color: '#fff' }}>{form.id}</h2>
+                    <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
                      <select value={form.status || 'draft'} onChange={e => handleChange('status', e.target.value)} style={{ background: form.status === 'published' ? '#2ecc71' : '#f1c40f', color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px' }}>
                         <option value="draft">DRAFT</option>
                         <option value="published">PUBLISHED</option>
@@ -103,7 +103,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
                     qualityDefs={qualityDefs}
                 />
 
-                <div className="form-group" style={{ background: '#181a1f', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
+                <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Requirements</label>
                     <div className="form-row">
                         <div style={{ flex: 1 }}>

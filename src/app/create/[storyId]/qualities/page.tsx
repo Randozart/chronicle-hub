@@ -231,7 +231,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     <strong style={{ color: conflict.type === 'critical' ? '#e74c3c' : '#f1c40f', display: 'block', marginBottom: '0.25rem' }}>
                         {conflict.type === 'critical' ? '⚠️ Reserved Keyword' : 'System Binding'}
                     </strong>
-                    <span style={{ fontSize: '0.85rem', color: '#ccc' }}>{conflict.msg}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--tool-text-main)' }}>{conflict.msg}</span>
                 </div>
             )}
             
@@ -441,7 +441,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                 <div style={{ display: 'grid', gap: '10px', marginTop: '1rem' }}>
                     {Object.entries(form.text_variants || {}).map(([key, val]) => (
                         <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                            <div style={{ width: '120px', paddingTop: '8px', fontWeight: 'bold', color: '#ccc', textAlign: 'right' }}>.{key}</div>
+                            <div style={{ width: '120px', paddingTop: '8px', fontWeight: 'bold', color: 'var(--tool-text-main)', textAlign: 'right' }}>.{key}</div>
                             <div style={{ flex: 1 }}>
                                 <SmartArea 
                                     value={val} 
