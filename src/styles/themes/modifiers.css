@@ -574,3 +574,28 @@ html[data-theme='revolutionary']::before {
     }
 
 }
+
+@media (max-width: 900px) {
+    [data-theme='detective-noir'] .storylet-container {
+        /* 1. Remove the "toss" rotation and offset */
+        transform: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        
+        /* 2. Ensure it fits in the box */
+        width: 100% !important;
+        max-width: 100% !important;
+        
+        /* 3. Tweak the shadow to be less directional/deep for flat mobile view */
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    /* Optional: Tame the option cards on mobile too so they don't poke out */
+    [data-theme='detective-noir'] .option-button,
+    [data-theme='detective-noir'] .option-button:nth-child(odd),
+    [data-theme='detective-noir'] .option-button:nth-child(even) {
+        transform: none !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+}
