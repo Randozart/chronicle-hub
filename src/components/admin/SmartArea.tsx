@@ -15,7 +15,7 @@ const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), {
     loading: () => (
         <div style={{ 
             minHeight: '38px', 
-            background: 'var(--tool-bg-input)', 
+            background: 'var(--tool-bg-dark)', 
             borderRadius: '4px', 
             border: '1px solid var(--tool-border)' 
         }} />
