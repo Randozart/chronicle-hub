@@ -261,3 +261,119 @@
         font-size: 14px; 
     }
 }
+
+/* src/styles/base/responsive.css */
+
+/* --- GLOBAL DENSITY SCALING (The "Zoom Out") --- */
+@media (max-width: 768px) {
+    html {
+        /* Standard is 16px. Setting to 12px shrinks the entire UI by 25%.
+           If this is still too big, try 11px. */
+        font-size: 12px; 
+    }
+
+    /* Shrink the massive headers */
+    h1, .location-text h1, .banner-title, .profile-name {
+        font-size: 1.8rem !important; /* Was ~3rem */
+        line-height: 1.1;
+    }
+    
+    h2, .action-box h3 {
+        font-size: 1.3rem !important;
+    }
+
+    /* Tighten the gaps */
+    .container, 
+    .storylet-container, 
+    .main-content-wrapper,
+    .admin-content-wrapper {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Ensure images don't blow out the width */
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+}
+
+/* --- ADMIN SPECIFIC DENSITY --- */
+@media (max-width: 900px) {
+    /* Make the admin sidebar/list compact */
+    .admin-list-col {
+        min-height: 100px;
+        max-height: 180px !important;
+    }
+    
+    /* Allow form inputs to sit side-by-side if they fit */
+    .form-row {
+        display: flex;
+        gap: 0.5rem !important;
+    }
+    
+    .form-group {
+        margin-bottom: 0.8rem !important;
+    }
+    
+    /* Make inputs smaller but still tappable */
+    .form-input, .form-select {
+        padding: 0.4rem !important;
+        font-size: 1rem !important; /* 12px based on root */
+    }
+}
+
+/* --- TABLET/MOBILE LAYOUT LOGIC --- */
+@media (max-width: 1024px) {
+    /* Collapse Nexus Grid */
+    .layout-grid-nexus {
+        grid-template-columns: 1fr; 
+        grid-template-rows: auto 1fr;
+        height: auto; 
+        overflow-y: auto;
+    }
+
+    /* Collapse Tabletop Grid */
+    .layout-grid-tabletop {
+        display: flex !important;
+        flex-direction: column;
+        height: auto !important;
+        overflow-y: auto !important;
+    }
+
+    /* Visual on top */
+    .tabletop-visual-col {
+        order: 1;
+        height: 200px; /* Reduced height */
+        width: 100%;
+    }
+
+    .layout-column.content-column {
+        order: 2;
+    }
+
+    /* Hide Sidebar by default (Drawer logic) */
+    .sidebar-panel {
+        display: none; 
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 9999;
+        width: 100%;
+        background-color: var(--bg-panel);
+    }
+
+    .sidebar-panel.mobile-visible {
+        display: flex !important;
+    }
+    
+    /* Ensure collapsed sidebar text is horizontal */
+    .editor-sidebar-collapsed-text {
+        writing-mode: horizontal-tb !important;
+        transform: none !important;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+    }
+}
