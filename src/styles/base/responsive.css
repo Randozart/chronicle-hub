@@ -254,4 +254,10 @@
     .editor-sidebar {
         min-height: 40px; /* Ensure click target is big enough */
     }
+
+    html {
+        /* Default is usually 16px. Setting to 14px makes 1rem = 14px.
+           This effectively zooms the entire UI out by ~12%. */
+        font-size: 14px; 
+    }
 }
