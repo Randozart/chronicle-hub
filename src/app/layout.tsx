@@ -12,12 +12,12 @@ export const metadata: Metadata = {
   },
 };
 
-// ADD THIS EXPORT
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false, // Prevents double-tap to zoom issues in games
+  // maximumScale: 1,
+  // userScalable: false,
   themeColor: '#000000',
 };
 
