@@ -140,7 +140,8 @@ export default function ScribeEditor({
                     style={{
                         fontFamily: '"Fira Code", "Fira Mono", monospace',
                         minHeight: minHeight,
-                        color: 'var(--tool-text-main)', // UPDATED: Adapts to theme
+                        color: 'var(--tool-text-main)',
+                        background: 'var(--tool-bg-input)',
                         whiteSpace: isLigature ? 'pre' : 'pre-wrap', 
                         minWidth: isLigature ? 'max-content' : '100%',
                         lineHeight: '21px',
