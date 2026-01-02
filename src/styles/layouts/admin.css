@@ -260,4 +260,60 @@
     .admin-list-col.mobile-active .list-items {
         padding: 1rem;
     }
+    
+    /* 1. FIX THE OVERFLOW (The "Broader than top bar" issue) */
+    .admin-content-wrapper {
+        padding: 1rem !important; /* Reduce from 2rem */
+        width: 100vw;
+        overflow-x: hidden; /* Cut off anything protruding */
+    }
+
+    .admin-editor-col {
+        padding: 1rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    /* 2. STACK INPUTS VERTICALLY */
+    /* This prevents the form from forcing the page wide */
+    .form-row {
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+    
+    .form-group {
+        width: 100% !important;
+        min-width: 0 !important; /* Allow shrinking */
+    }
+
+    /* 3. MAKE UI "SMALLER" (Simulate Zoom Out) */
+    .admin-main {
+        font-size: 0.9rem; /* Scale down base text */
+    }
+
+    .admin-header, h2 {
+        font-size: 1.25rem !important; /* Shrink huge headers */
+    }
+
+    .form-label, .special-label {
+        font-size: 0.8rem !important;
+    }
+
+    /* Fix inputs feeling "huge" but keep them readable */
+    .form-input, .form-select, .form-textarea {
+        padding: 0.4rem !important;
+        font-size: 16px !important; /* 16px prevents iOS from auto-zooming on focus */
+    }
+
+    /* 4. TIGHTEN THE SPECIAL GROUPS (Color borders) */
+    .special-field-group {
+        padding: 0.75rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Fix Toggle switches taking up too much room */
+    .toggle-label {
+        font-size: 0.8rem !important;
+    }
 }
