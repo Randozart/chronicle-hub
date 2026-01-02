@@ -64,8 +64,8 @@ export default function ScribeEditor({
         <div 
             className={`scribe-editor-wrapper ${scopeClass}`}
             style={{
-                background: 'var(--tool-bg-input)', // UPDATED
-                border: '1px solid var(--tool-border)', // UPDATED
+                background: 'var(--tool-bg-input)', 
+                border: '1px solid var(--tool-border)',
                 borderRadius: '4px',
                 fontSize: '14px',
                 lineHeight: '1.5',
@@ -141,7 +141,7 @@ export default function ScribeEditor({
                         fontFamily: '"Fira Code", "Fira Mono", monospace',
                         minHeight: minHeight,
                         color: 'var(--tool-text-main)',
-                        background: 'var(--tool-bg-input)',
+                        background: 'var(--tool-bg-dark)',
                         whiteSpace: isLigature ? 'pre' : 'pre-wrap', 
                         minWidth: isLigature ? 'max-content' : '100%',
                         lineHeight: '21px',
