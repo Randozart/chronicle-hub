@@ -169,7 +169,7 @@ export interface WorldSettings {
     titleQualityId?: string;
     
     layoutStyle: LayoutStyle;
-    locationHeaderStyle?: 'standard' | 'banner' | 'hidden'; 
+    locationHeaderStyle?: 'standard' | 'banner' | 'hidden' | 'square' | 'circle'; 
     tabLocation?: 'main' | 'header' | 'sidebar';
     visualTheme?: string;
     enableParallax?: boolean;

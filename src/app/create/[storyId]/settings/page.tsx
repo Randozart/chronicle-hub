@@ -479,7 +479,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     <div className="form-group">
                         <label className="form-label">Layout & Theme</label>
                         <div style={{ display: 'flex', gap: '10px' }}>
-                             <select value={form.layoutStyle || 'nexus'} onChange={e => handleChange('layoutStyle', e.target.value as any)} className="form-select">
+                            <select value={form.layoutStyle || 'nexus'} onChange={e => handleChange('layoutStyle', e.target.value as any)} className="form-select">
                                 <option value="nexus">Classic</option>
                                 <option value="london">Cinematic</option>
                                 <option value="elysium">Immersive</option>
@@ -529,12 +529,22 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <option value="dark-parchment">Dark Parchment</option>
                             </select>
                         </div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: '300px' }}>
-                        <ThemePreview theme={form.visualTheme || 'default'} />
-                    </div>
-                </div>
-                 <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Location Header Style</label>
+                            <select 
+                                value={form.locationHeaderStyle || 'standard'} 
+                                onChange={e => handleChange('locationHeaderStyle', e.target.value as any)} 
+                                className="form-select"
+                            >
+                                <option value="standard">Standard (Default)</option>
+                                <option value="banner">Banner (Wide Image)</option>
+                                <option value="square">Square Icon</option>
+                                <option value="circle">Circle Icon</option>
+                                <option value="hidden">Hidden</option>
+                            </select>
+                            <p className="special-desc">Controls how the current location name and image are displayed.</p>
+                        </div>
+                        <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem' }}>
                     <label className="toggle-label"><input type="checkbox" checked={form.enablePortrait !== false} onChange={e => handleChange('enablePortrait', e.target.checked)} /> Show Portrait</label>
                     {form.enablePortrait !== false && (
                          <div className="form-group" style={{ marginTop: '0' }}>
@@ -542,15 +552,26 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <option value="circle">Circle</option>
                                 <option value="square">Square</option>
                                 <option value="rect">Portrait</option>
-                            </select>
+                            </select> 
                          </div>
                      )}
-                     <label className="toggle-label"><input type="checkbox" checked={form.enableTitle || false} onChange={e => handleChange('enableTitle', e.target.checked)} /> Show Title</label>
-                     <label className="toggle-label"><input type="checkbox" checked={form.enableParallax !== false} onChange={e => handleChange('enableParallax', e.target.checked)} /> Parallax</label>
-                 </div>
-                 {form.enableTitle && (
-                     <div className="form-group" style={{marginTop:'0.5rem'}}><label className="form-label">Title Quality ID</label><input value={form.titleQualityId || ''} onChange={e => handleChange('titleQualityId', e.target.value)} className="form-input" placeholder="$current_title" /></div>
-                 )}
+                    
+                    </div>
+                    <div>
+                        <label className="toggle-label"><input type="checkbox" checked={form.enableParallax !== false} onChange={e => handleChange('enableParallax', e.target.checked)} /> Parallax</label>
+                        <label className="toggle-label"><input type="checkbox" checked={form.enableTitle || false} onChange={e => handleChange('enableTitle', e.target.checked)} /> Show Title</label>
+                    </div>
+                    {form.enableTitle && (
+                        <div className="form-group" style={{marginTop:'0.5rem'}}>
+                            <label className="form-label">Title Quality ID</label><input value={form.titleQualityId || ''} onChange={e => handleChange('titleQualityId', e.target.value)} className="form-input" placeholder="$current_title" />
+                        </div>
+                    )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: '300px' }}>
+                        <ThemePreview theme={form.visualTheme || 'default'} />
+                    </div>
+                </div>
+                 
             </div>
 
             {/* 8. CHARACTER INITIALIZATION */}

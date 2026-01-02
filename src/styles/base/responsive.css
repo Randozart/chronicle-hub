@@ -21,6 +21,23 @@
     .location-header {
         padding: 1rem !important;
     }
+
+    .main-content-wrapper, 
+    .layout-column, 
+    .content-area {
+        width: 100% !important;
+        max-width: 100vw !important;
+        padding-left: 1rem !important;  /* Standardize padding */
+        padding-right: 1rem !important;
+        margin: 0 !important;
+    }
+
+    /* Force images to fit */
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+    
 }
 
 /* --- TABLET (Max 1024px) --- */
@@ -165,5 +182,64 @@
         flex: 1;
         text-align: center;
         padding: 1rem 0.5rem; /* Adjust padding for touch targets */
+    }
+
+    .theme-wrapper, 
+    .main-content-wrapper, 
+    .layout-column, 
+    .content-area,
+    .hub-view,
+    .event-view {
+        width: 100% !important;
+        max-width: 100vw !important; /* Hard stop at viewport width */
+        overflow-x: hidden !important; /* Clip anything that tries to escape */
+        box-sizing: border-box !important;
+    }
+
+    /* 2. RESPONSIVE LOCATION HEADER (Stacks vertically on mobile) */
+    .location-header {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 1rem !important;
+        width: 100% !important;
+    }
+
+    /* The "Image + Text" group inside the header */
+    .location-header > div:first-child {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+        width: 100%;
+        align-items: center !important;
+    }
+
+    /* The "Market/Travel" Buttons group */
+    .location-header > div:last-child {
+        width: 100%;
+        justify-content: center !important;
+        flex-wrap: wrap !important; /* Allow buttons to wrap if names are long */
+        margin-top: 0.5rem;
+    }
+
+    /* 3. RESPONSIVE TAB BAR */
+    .tab-bar {
+        display: flex;
+        flex-wrap: wrap; /* Allow tabs to wrap if screen is tiny */
+        width: 100%;
+    }
+    
+    .tab-btn {
+        flex: 1 1 auto; /* Grow to fill, but shrink if needed */
+        min-width: 80px; /* Prevent crushing */
+        font-size: 0.8rem;
+        padding: 0.8rem 0.5rem;
+    }
+
+    /* 4. TABLETOP SPECIFICS (Your screenshot) */
+    .visual-nav-buttons {
+        width: 100%;
+        padding: 0 1rem;
+        box-sizing: border-box;
+        flex-wrap: wrap; /* Allow buttons to stack if needed */
     }
 }

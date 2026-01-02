@@ -95,6 +95,26 @@
     overflow-y: auto;
 }
 
+/* Circle Icon (Default) */
+.header-icon.circle img {
+    border-radius: 50%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+}
+
+/* Square Icon */
+.header-icon.square img {
+    border-radius: 8px; /* Slight rounding */
+    aspect-ratio: 1/1;
+    object-fit: cover;
+}
+
+.location-image-container.square,
+.location-image-container.square img {
+    border-radius: 8px !important; /* Small rounded corners instead of 50% */
+}
+
+
 @media (max-width: 900px) {
     .mobile-sidebar-toggle {
         display: block;
@@ -124,5 +144,49 @@
         border-radius: 4px;
         cursor: pointer;
         font-weight: bold;
+    }
+}
+
+@media (max-width: 768px) {
+    .location-header h1 {
+        font-size: 1.5rem; /* Shrink title */
+        word-wrap: break-word; /* Prevent overflow */
+    }
+    
+    .location-header {
+        flex-direction: column; /* Stack image and text */
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .header-controls {
+        width: 100%;
+        justify-content: center;
+    }
+
+     .location-text {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .location-text h1 {
+        text-align: center;
+        font-size: 1.8rem; /* Cap size so long names don't break width */
+        word-wrap: break-word; /* Break long fantasy names */
+        line-height: 1.2;
+    }
+    
+    .location-text h2 {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Ensure the location icon doesn't shrink */
+    .location-image-container {
+        flex-shrink: 0;
+        margin-bottom: 0.5rem;
     }
 }

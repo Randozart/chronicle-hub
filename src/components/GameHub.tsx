@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage, WorldConfig } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
@@ -90,13 +90,13 @@ export default function GameHub(props: GameHubProps) {
     }, [props.storyId, character]);
 
     useEffect(() => {
-        const trackId = (location as any).musicTrackId; 
+        const trackId = (location as any)?.musicTrackId; 
         if (trackId && props.musicTracks && props.musicTracks[trackId]) {
             const trackSource = props.musicTracks[trackId].source;
             const instrumentList = props.instruments ? Object.values(props.instruments) : [];
             playTrack(trackSource, instrumentList);
         }
-    }, [location, props.musicTracks, props.instruments]);
+    }, [location, props.musicTracks, props.instruments, playTrack]);
 
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
         setCharacter(prev => prev ? { ...prev, qualities: newQualities } : null);
@@ -146,6 +146,7 @@ export default function GameHub(props: GameHubProps) {
     }, [props.storyId]);
 
 
+    // --- LOBBY & LOADING ---
     if (!character) {
         return (
             <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper">
@@ -155,6 +156,8 @@ export default function GameHub(props: GameHubProps) {
     }
     if (!location) return <div>Loading location data...</div>;
 
+    // --- ENGINE INIT ---
+    // Using useMemo to prevent engine recreation on every render unless data changes
     const worldConfig: WorldConfig = {
         settings: props.settings, 
         qualities: props.qualityDefs, 
@@ -169,10 +172,14 @@ export default function GameHub(props: GameHubProps) {
         music: props.musicTracks || {}
     };
     
+    // Engine instance
     const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
+    
+    // Render Data
     const renderedLocation = renderEngine.render(location);
     const renderedActiveEvent = activeEvent ? renderEngine.renderStorylet(activeEvent) : null;
 
+    // Deck Stats
     let currentDeckStats = undefined;
     const deckDef = props.deckDefs[location.deck];
     if (deckDef) {
@@ -181,16 +188,19 @@ export default function GameHub(props: GameHubProps) {
         currentDeckStats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
     }
 
+    // Market Data
     const locationMarket = location?.marketId;
     const regionMarket = (location?.regionId && props.regions[location.regionId]) ? props.regions[location.regionId].marketId : null;
     const activeMarketId = locationMarket || regionMarket || undefined;
     const activeMarketDefinition = activeMarketId && props.markets[activeMarketId] ? props.markets[activeMarketId] : null;
 
+    // Action Points
     const actionQid = props.settings.actionId.replace('$', '');
     const actionState = character.qualities[actionQid];
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
     const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
 
+    // --- HELPER COMPONENT: TAB BAR ---
     const TabBar = () => (
         <div className="tab-bar">
             <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
@@ -204,6 +214,7 @@ export default function GameHub(props: GameHubProps) {
     const buildSidebar = () => {
         const isBlackCrown = props.settings.visualTheme === 'black-crown';
         
+        // Special Sidebar Structure for "Dossier" themes
         if (isBlackCrown) {
             return (
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -222,7 +233,7 @@ export default function GameHub(props: GameHubProps) {
             );
         }
 
-        // Default Sidebar
+        // Standard Sidebar Structure (Uses class for mobile responsiveness)
         return (
             <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div className="sidebar-header">
@@ -245,7 +256,11 @@ export default function GameHub(props: GameHubProps) {
     const buildMainContent = () => {
         const isBlackCrown = props.settings.visualTheme === 'black-crown';
         const isBannerMode = isBlackCrown && props.settings.locationHeaderStyle === 'banner';
-        // @ts-ignore
+        
+        // 1. Get the Header Style setting
+        const headerStyle = props.settings.locationHeaderStyle || 'standard';
+
+        // @ts-ignore - Engine renders generic objects
         const imageCode = renderedLocation?.imageId || renderedLocation?.image;
 
         let innerContent = null;
@@ -271,8 +286,11 @@ export default function GameHub(props: GameHubProps) {
                 </div>
             );
         } else if (renderedActiveEvent) {
+            // --- EVENT VIEW (Inside a Storylet) ---
             innerContent = (
                 <div className="event-view">
+                    
+                    {/* A. Black Crown / Dossier Header */}
                     {isBlackCrown && (
                         <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
                             {isBannerMode && imageCode && (
@@ -280,15 +298,38 @@ export default function GameHub(props: GameHubProps) {
                                     <GameImage code={imageCode} type="location" imageLibrary={props.imageLibrary} className="banner-img" />
                                 </div>
                             )}
-                            <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={() => setShowMap(true)} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} />
+                            <LocationHeader 
+                                location={renderedLocation!} 
+                                imageLibrary={props.imageLibrary} 
+                                onOpenMap={() => setShowMap(true)} 
+                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                                styleMode={headerStyle} 
+                            />
                         </div>
                     )}
+                    
+                    {/* B. Standard Header (For Classic/Nexus/Tabletop) */}
+                    {!isBlackCrown && (
+                        <div className="location-header-wrapper" style={{ marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                            <LocationHeader 
+                                location={renderedLocation!} 
+                                imageLibrary={props.imageLibrary} 
+                                onOpenMap={() => setShowMap(true)} 
+                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                                styleMode={headerStyle}
+                            />
+                        </div>
+                    )}
+
                     <StoryletDisplay eventData={renderedActiveEvent} qualities={character.qualities} onFinish={handleEventFinish} onQualitiesUpdate={handleQualitiesUpdate} onCardPlayed={handleCardPlayed} qualityDefs={props.qualityDefs} storyletDefs={props.storyletDefs} opportunityDefs={props.opportunityDefs} settings={props.settings} imageLibrary={props.imageLibrary} categories={props.categories} storyId={props.storyId} characterId={character.characterId} />
                 </div>
             );
         } else {
+            // --- HUB VIEW (Default Location Screen) ---
             innerContent = (
                 <div className="hub-view">
+                    
+                    {/* A. Black Crown Header */}
                     {isBlackCrown && (
                         <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
                             {isBannerMode && imageCode && (
@@ -296,9 +337,29 @@ export default function GameHub(props: GameHubProps) {
                                     <GameImage code={imageCode} type="location" imageLibrary={props.imageLibrary} className="banner-img" />
                                 </div>
                             )}
-                            <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={() => setShowMap(true)} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} />
+                            <LocationHeader 
+                                location={renderedLocation!} 
+                                imageLibrary={props.imageLibrary} 
+                                onOpenMap={() => setShowMap(true)} 
+                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                                styleMode={headerStyle} 
+                            />
                         </div>
                     )}
+
+                    {/* B. Standard Header (Restored) */}
+                    {!isBlackCrown && (
+                        <div className="location-header-wrapper" style={{ marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                            <LocationHeader 
+                                location={renderedLocation!} 
+                                imageLibrary={props.imageLibrary} 
+                                onOpenMap={() => setShowMap(true)} 
+                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                                styleMode={headerStyle} 
+                            />
+                        </div>
+                    )}
+
                     <div className="storylet-feed" style={{ marginTop: '2rem' }}>
                         <LocationStorylets storylets={props.locationStorylets} onStoryletClick={showEvent} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} />
                     </div>
@@ -309,8 +370,9 @@ export default function GameHub(props: GameHubProps) {
             );
         }
 
+        // Use main-content-wrapper for mobile sizing
         return (
-            <div className="main-content-wrapper" style={{ maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+            <div className="main-content-wrapper">
                 {!isBlackCrown && <div className="tab-container" style={{ marginBottom: '2rem' }}><TabBar /></div>}
                 {innerContent}
             </div>
