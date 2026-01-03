@@ -540,6 +540,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <option value="banner">Banner (Wide Image)</option>
                                 <option value="square">Square Icon</option>
                                 <option value="circle">Circle Icon</option>
+                                <option value="title-card">Title Card (Text Only)</option>
                                 <option value="hidden">Hidden</option>
                             </select>
                             <p className="special-desc">Controls how the current location name and image are displayed.</p>

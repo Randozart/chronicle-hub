@@ -138,7 +138,30 @@
     overflow: hidden;
 }
 
+.location-header.mode-title-card {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem; /* Creates its own spacing */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 
+    /* Subtle pinstripe background */
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        color-mix(in srgb, var(--border-color), transparent 85%) 10px,
+        color-mix(in srgb, var(--border-color), transparent 85%) 12px
+    );
+}
+
+/* When using title-card, remove the wrapper's default border and padding */
+.location-header-wrapper:has(.mode-title-card) {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
 
 
 @media (max-width: 900px) {

@@ -169,7 +169,7 @@ export interface WorldSettings {
     titleQualityId?: string;
     
     layoutStyle: LayoutStyle;
-    locationHeaderStyle?: 'standard' | 'banner' | 'hidden' | 'square' | 'circle'; 
+    locationHeaderStyle?: 'standard' | 'banner' | 'hidden' | 'square' | 'circle' | 'title-card'; 
     showHeaderInStorylet?: boolean; 
     tabLocation?: 'main' | 'header' | 'sidebar';
     visualTheme?: string;

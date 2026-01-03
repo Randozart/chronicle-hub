@@ -8,7 +8,7 @@ interface LocationHeaderProps {
     imageLibrary: Record<string, ImageDefinition>;
     onOpenMap: () => void; 
     onOpenMarket?: () => void;
-    styleMode?: 'standard' | 'banner' | 'square' | 'circle' | 'hidden'; 
+    styleMode?: 'standard' | 'banner' | 'square' | 'circle' | 'title-card' | 'hidden'; 
 }
 
 export default function LocationHeader({ 
@@ -26,8 +26,10 @@ export default function LocationHeader({
 
     // LOGIC: Show icon only if not hidden and not banner mode
     // (Banner mode handles the image in the parent wrapper)
-    const showIcon = imageCode && styleMode !== 'hidden' && styleMode !== 'banner';
-
+    const showIcon = imageCode && 
+        styleMode !== 'hidden' && 
+        styleMode !== 'banner' && 
+        styleMode !== 'title-card';
     // Shape Class Logic
     // If standard, we default to circle (Classic behavior) unless theme overrides it via CSS.
     // If explicit 'square' or 'circle', we force that class.
