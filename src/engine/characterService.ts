@@ -1,7 +1,7 @@
 // src/engine/characterService.ts
-
+import { processAutoEquip } from './resolutionService'; 
 import clientPromise from '@/engine/database';
-import { PlayerQualities, CharacterDocument, WorldConfig, QualityType, PendingEvent } from '@/engine/models';
+import { PlayerQualities, CharacterDocument, WorldConfig, QualityType, PendingEvent, QualityChangeInfo } from '@/engine/models';
 import { getWorldConfig, getSettings } from '@/engine/worldService'; 
 import { GameEngine } from './gameEngine';
 import { v4 as uuidv4 } from 'uuid';
@@ -225,11 +225,6 @@ export const getOrCreateCharacter = async (
     storyId: string,
     choices?: Record<string, string>
 ): Promise<CharacterDocument> => {
-    // ... (This function remains largely the same as before, ensuring it initializes pendingEvents)
-    // For brevity, assuming the previous robust implementation. 
-    // Just ensure pendingEvents: [] is in the new object.
-    
-    // ... Copying the previous implementation but ensuring pendingEvents ...
     console.log(`[CharCreate] Starting for ${storyId}`);
     const client = await clientPromise;
     const db = client.db(DB_NAME);
@@ -331,11 +326,37 @@ export const getOrCreateCharacter = async (
         lastDeckUpdate: initialLastDeckUpdate,
         equipment: {},
         lastActionTimestamp: new Date(),
-        pendingEvents: [], // Initialize Empty
-        acknowledgedMessages: [] // Initialize Empty
+        pendingEvents: [],
+        acknowledgedMessages: []
     };
 
+    const initialChanges: QualityChangeInfo[] = [];
+    for (const qid in newCharacter.qualities) {
+        const qualityState = newCharacter.qualities[qid];
+        const qualityDef = worldContent.qualities[qid];
+
+        // We only care about equippable items that the character is starting with.
+        if (qualityDef?.type === QualityType.Equipable && 'level' in qualityState && qualityState.level > 0) {
+            initialChanges.push({
+                qid: qid,
+                qualityName: qualityDef?.name || qid,
+                type: QualityType.Equipable,
+                levelBefore: 0, // It came from nothing
+                cpBefore: 0,
+                levelAfter: qualityState.level, // The level it was created with
+                cpAfter: 0,
+                changeText: "Character started with this item." // A descriptive text
+            });
+        }
+    }
+
+    if (initialChanges.length > 0) {
+        console.log(`[CharCreate] Found ${initialChanges.length} equippable items. Checking for auto-equip.`);
+        processAutoEquip(newCharacter, initialChanges, worldContent);
+    }
+
     await collection.insertOne(newCharacter);
+    
     return newCharacter;
 };
 

@@ -168,26 +168,22 @@ export async function POST(request: NextRequest) {
         const cleanTitle = evaluateText(resolutionTitle(option, engineResult), character.qualities, gameData.qualities, null, 0);
         const cleanBody = evaluateText(engineResult.body, character.qualities, gameData.qualities, null, 0);
 
-        // DEBUG UPDATE: Filter changes for normal users, allow all for debuggers
         const visibleQualityChanges = canDebug 
             ? engineResult.qualityChanges 
             : engineResult.qualityChanges.filter(c => !c.hidden);
 
         return NextResponse.json({ 
             newQualities: character.qualities,
+            equipment: character.equipment, 
             updatedHand: 'deck' in storyletDef || finalTags.has('clear_hand') ? character.opportunityHands : undefined, 
             result: { 
                 ...engineResult, 
                 title: cleanTitle, 
                 body: cleanBody, 
                 redirectId: finalRedirectId,
-                // Pass filtered changes
                 qualityChanges: visibleQualityChanges,
-                // Pass errors if debug
                 errors: canDebug ? (engineResult as any).errors : undefined,
-                // Pass raw effects if debug
                 rawEffects: canDebug ? (engineResult as any).rawEffects : undefined,
-                // TRACE: Pass resolved effects for debugger
                 resolvedEffects: canDebug ? (engineResult as any).resolvedEffects : undefined
             }
         });
