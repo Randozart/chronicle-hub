@@ -264,6 +264,7 @@ export interface CharacterDocument {
     equipment: Record<string, string | null>;
     pendingEvents?: PendingEvent[];
     acknowledgedMessages?: string[];
+dynamicQualities?: Record<string, QualityDefinition>;
 }
 
 export interface UserDocument {
