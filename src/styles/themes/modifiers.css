@@ -217,30 +217,32 @@ html[data-theme='revolutionary']::before {
 [data-theme='black-crown'] ::-webkit-scrollbar { width: 12px; height: 12px; }
 [data-theme='black-crown'] ::-webkit-scrollbar-track { background: #0f1a0f; }
 [data-theme='black-crown'] ::-webkit-scrollbar-thumb { background: #5c554a; border: 3px solid #0f1a0f; border-radius: 6px; }
-
+    [data-theme='black-crown'] .action-box,
+    [data-theme='black-crown'] .action-box h3,
+    [data-theme='black-crown'] .action-timer span {
+        color: #000 !important;
+    }
 /* --- DETECTIVE NOIR --- */
 [data-theme='detective-noir'].theme-wrapper { background-color: #050505; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.07'/%3E%3C/svg%3E"), radial-gradient(circle at 50% 50%, #3a3a3a 0%, #050505 85%); background-attachment: fixed; background-repeat: repeat, no-repeat; background-size: auto, cover; }
 [data-theme='detective-noir'] .sidebar-panel {
-    /* 1. Force the Neutral Noir Glass (Overrides any blue-ish inline styles) */
-    background-color: rgba(28, 24, 22, 0.5) !important;
+    /* Noir Glass Texture */
+    background-color: rgba(28, 24, 22, 0.8) !important;
     backdrop-filter: blur(10px);
     
-    /* 2. Match the "Lit Edge" look */
+    /* Edges & Shadows */
     border-right: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5); /* Shadow projecting right */
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
     
-    /* 3. Ensure pure grey text context */
+    /* Text */
     color: #e0e0e0 !important;
     
-    /* (Existing layout properties...) */
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    position: sticky;
-    top: 2rem;
-    max-height: 90vh;
-    transform: rotate(-0.5deg);
+    /* Layout - STRAIGHT (No Rotation) */
+    transform: none !important; 
+    margin-top: 0 !important;
     
+    /* Ensure it fills height but respects header/padding if needed */
+    height: 100%;
+    min-height: 100vh;
 }
 
 /* TABLETOP OVERRIDE (Keep this below the block above) */
@@ -267,7 +269,7 @@ html[data-theme='revolutionary']::before {
 [data-theme='detective-noir'] .tab-btn { background: transparent; color: var(--text-secondary); border: 1px solid transparent; border-radius: 2px; font-size: 0.8rem; text-transform: uppercase; font-weight: bold; }
 [data-theme='detective-noir'] .tab-btn.active { background: var(--bg-item-hover); color: var(--text-primary); border: 1px solid var(--border-light); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 [data-theme='detective-noir'] .location-header { background-color: var(--bg-panel); background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E"); border: 4px solid var(--text-primary); padding: 2.5rem; margin-bottom: 3rem; position: relative; text-align: center; box-shadow: var(--shadow-float); transform: rotate(0.3deg); }
-[data-theme='detective-noir'] .location-header::after { content: ''; position: absolute; top: 6px; left: 6px; right: 6px; bottom: 6px; border: 1px solid var(--text-primary); pointer-events: none; }
+[data-theme='detective-noir'] .location-header:not(.mode-banner)::after { content: ''; position: absolute; top: 6px; left: 6px; right: 6px; bottom: 6px; border: 1px solid var(--text-primary); pointer-events: none; }
 [data-theme='detective-noir'] .location-header h1 { font-size: 2.2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.25rem; margin: 0; border: none; padding: 0; color: var(--text-primary); }
 [data-theme='detective-noir'] .location-header h2 { font-size: 0.9rem; color: var(--text-secondary); font-style: italic; border: none; margin-top: 0.75rem; font-family: serif; }
 [data-theme='detective-noir'] .storylet-container { background: var(--bg-item); padding: 3rem 4rem; border: 1px solid var(--border-light); box-shadow: var(--shadow-float); position: relative; max-width: 900px; margin: 0 auto 3rem auto; }
@@ -339,39 +341,48 @@ html[data-theme='revolutionary']::before {
 }
 
 /* 2. The Panel: Apply the Glass and Lit Edge */
-[data-theme='detective-noir'] .layout-grid-tabletop .content-area {
+[data-theme='detective-noir'] .layout-grid-tabletop .content-area,
+[data-theme='detective-noir'] .layout-main-grid,
+[data-theme='detective-noir'] .elysium-content-wrapper {
     /* Noir Glass Texture */
-    background-color: rgba(28, 24, 22, 0.5) !important;
+    background-color: rgba(28, 24, 22, 0.8) !important;
     backdrop-filter: blur(10px);
     
-    /* The "Lit Edge" on the left */
+    /* Lit Edge */
     border-left: 1px solid rgba(255, 255, 255, 0.15);
-    
-    /* Subtle definition for the other edges */
     border-top: 1px solid rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
     
     /* Deep Shadow */
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
     
-    /* Ensure text is light grey on the dark glass */
+    /* Text Color Override */
     color: #e0e0e0;
     
-    /* Fill the height defined by the wrapper's padding */
-    height: 100%;
+    /* Spacing for London/Elysium to float */
+    border-radius: 4px;
+    margin-bottom: 2rem;
 }
 
 /* 1. The Main Case File (Make it look tossed) */
 [data-theme='detective-noir'] .storylet-container {
-    /* Increase rotation from 0.4deg to something noticeable */
-    transform: rotate(-0.5deg) !important; 
+    background: var(--bg-item);
+    padding: 3rem 4rem;
+    border: 1px solid var(--border-light);
     
-    /* Push it slightly off-center */
-    margin-left: 1rem !important; 
+    /* The "Toss" Effect */
+    transform: rotate(-0.5deg);
+    margin: 1rem auto 3rem auto;
+    max-width: 900px;
     
-    /* Enhance the shadow to make it lift off the desk */
-    box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.4) !important;
+    /* Realistic Shadow */
+    box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.4);
+    position: relative;
+    
+    /* FIX: Clip the Evidence Stamp so it doesn't bleed out */
+    overflow: hidden !important; 
+    
+    /* Text color on paper */
+    color: var(--text-primary); 
 }
 
 [data-theme='detective-noir'] .quality-category-card {
@@ -543,59 +554,177 @@ html[data-theme='revolutionary']::before {
     left: 60% !important;
     top: -9px !important; /* Shadow moves with it */
 }
-[data-theme='detective-noir'] .continue-button { background-color: var(--bg-item); border: 1px dashed var(--border-light) !important; padding: 1.5rem; margin-bottom: 1.5rem; position: relative; box-shadow: none; transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); }
+[data-theme='detective-noir'] .continue-button { background-color: var(--bg-item); border: 1px dashed var(--border-light) !important; padding: 1.5rem; position: relative; box-shadow: none; transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); }
 
 [data-theme='detective-noir'] .card.theme-wrapper {
     color: #ffffff !important;
 }
 
-
-
-/* Mobile */
-@media (max-width: 900px) {
-    [data-theme='detective-noir'] .layout-grid-nexus { grid-template-columns: 1fr; gap: 1rem; margin: 1rem auto; padding: 0.5rem; }
-    [data-theme='detective-noir'] .sidebar-panel { max-height: none; position: relative; top: 0; transform: none; width: auto; }
-    [data-theme='detective-noir'] .storylet-container { padding: 1.5rem; }
-    [data-theme='detective-noir'] .mobile-close-btn  {
-        background-color: var(--accent-highlight);
-        color: var(--bg-main);
-        z-index: 900;
-        cursor: pointer;
-        text-transform: uppercase;
-        border: none;
-        border-radius: 50px;
-        padding: 1rem 1.5rem;
-        font-size: .8rem;
-        font-weight: bold;
-        display: block;
-        position: fixed;
-        right: 2rem;
-        box-shadow: 0 4px 10px #00000080;
+[data-theme='detective-noir'] .action-box,
+    [data-theme='detective-noir'] .action-box h3,
+    [data-theme='detective-noir'] .action-timer,
+    [data-theme='detective-noir'] .action-timer span {
+        color: #111 !important;
+    }
+    
+    /* Optional: Make the "Next action in:" label slightly lighter */
+    [data-theme='detective-noir'] .action-timer > span {
+        color: #444 !important;
     }
 
+    [data-theme='detective-noir'] .sidebar-footer {
+    padding-bottom: 1rem;
 }
 
+/* Adds a bit of space below the button so it doesn't hug the bottom */
+[data-theme='detective-noir'] .switch-char-btn {
+    margin-bottom: 4.5rem;
+}
+
+
+/* --- MOBILE RESET FOR NOIR (Consolidated) --- */
 @media (max-width: 900px) {
+    
+    /* 1. Reset Grid Layouts */
+    [data-theme='detective-noir'] .layout-grid-nexus,
+    [data-theme='detective-noir'] .layout-grid-tabletop { 
+        grid-template-columns: 1fr; 
+        gap: 1rem; 
+        margin: 1rem auto; 
+        padding: 0.5rem; 
+    }
+
+    /* 2. Flatten Content (Remove "Toss" effect) */
     [data-theme='detective-noir'] .storylet-container {
-        /* 1. Remove the "toss" rotation and offset */
         transform: none !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
-        
-        /* 2. Ensure it fits in the box */
         width: 100% !important;
         max-width: 100% !important;
-        
-        /* 3. Tweak the shadow to be less directional/deep for flat mobile view */
+        padding: 1.5rem;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
     }
 
-    /* Optional: Tame the option cards on mobile too so they don't poke out */
+    /* 3. Flatten Options (Remove Tilts) */
     [data-theme='detective-noir'] .option-button,
     [data-theme='detective-noir'] .option-button:nth-child(odd),
-    [data-theme='detective-noir'] .option-button:nth-child(even) {
+    [data-theme='detective-noir'] .option-button:nth-child(even),
+    [data-theme='detective-noir'] .option-button:nth-of-type(3n) {
         transform: none !important;
         width: 100% !important;
         margin-left: 0 !important;
     }
+
+    /* 4. Fullscreen Sidebar Overlay (Both Sidebar Types) */
+    [data-theme='detective-noir'] .sidebar-panel,
+    [data-theme='detective-noir'] .elysium-sidebar {
+        /* Visuals: Solid dark glass to hide content behind */
+        background-color: rgba(28, 24, 22, 0.98) !important;
+        backdrop-filter: blur(15px);
+        box-shadow: none; 
+        border: none;
+        
+        /* Positioning: Fullscreen Fixed */
+        position: fixed !important; 
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw !important; 
+        height: 100vh !important;
+        max-height: none !important;
+        transform: none !important;
+        z-index: 9999;
+        
+        /* Layout */
+        padding: 4rem 1.5rem 2rem 1.5rem !important; /* Top padding for Close Button */
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* 5. FORCE Sidebar Text Colors (Global Reset) */
+    [data-theme='detective-noir'] .sidebar-panel,
+    [data-theme='detective-noir'] .elysium-sidebar,
+    [data-theme='detective-noir'] .sidebar-panel *,
+    [data-theme='detective-noir'] .elysium-sidebar * {
+        color: #e0e0e0 !important; /* Force light text everywhere */
+        text-shadow: none !important;
+    }
+
+    /* --- EXCEPTIONS --- */
+    
+    /* A. The Action Box (Beige Top Box) */
+    [data-theme='detective-noir'] .sidebar-panel .action-box,
+    [data-theme='detective-noir'] .elysium-sidebar .action-box {
+        background-color: #e6e2d8 !important; /* Light Paper */
+        border: 1px solid #8c857b !important;
+        margin-top: 1rem !important;
+        margin-bottom: 2rem !important;
+    }
+    
+    /* Force Dark Text INSIDE the Action Box (Overrides rule #5) */
+    [data-theme='detective-noir'] .sidebar-panel .action-box *,
+    [data-theme='detective-noir'] .elysium-sidebar .action-box * {
+        color: #111 !important; 
+    }
+
+    /* B. The Character Sheet Cards (Glassy Notes) */
+    [data-theme='detective-noir'] .sidebar-panel .quality-category-card,
+    [data-theme='detective-noir'] .elysium-sidebar .quality-category-card {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        transform: none !important; /* Remove rotation on mobile */
+        width: 100% !important;
+    }
+    
+    /* C. The Tab Bar */
+    [data-theme='detective-noir'] .sidebar-panel .tab-bar,
+    [data-theme='detective-noir'] .elysium-sidebar .tab-bar {
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(255,255,255,0.2) !important;
+        margin-bottom: 1rem !important;
+    }
+    [data-theme='detective-noir'] .sidebar-panel .tab-btn,
+    [data-theme='detective-noir'] .elysium-sidebar .tab-btn {
+        color: #aaa !important;
+    }
+    [data-theme='detective-noir'] .sidebar-panel .tab-btn.active,
+    [data-theme='detective-noir'] .elysium-sidebar .tab-btn.active {
+        color: #fff !important;
+        border-bottom: 2px solid var(--accent-highlight) !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    /* Remove the red circle on mobile sidebar tabs */
+    [data-theme='detective-noir'] .sidebar-panel .tab-btn.active::before,
+    [data-theme='detective-noir'] .elysium-sidebar .tab-btn.active::before {
+        display: none !important;
+    }
+
+[data-theme='detective-noir'] .mobile-close-btn {
+        /* Visibility & Layout */
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        
+        /* Positioning (Pins to the screen) */
+        position: fixed !important; 
+        top: 1.5rem;
+        right: 1.5rem;
+        z-index: 10000 !important; /* Above the sidebar overlay */
+        
+        /* Visuals */
+        background-color: var(--accent-highlight) !important;
+        color: var(--bg-main) !important;
+        border: 2px solid rgba(255,255,255,0.2) !important;
+        border-radius: 50px;
+        padding: 0.8rem 1.2rem;
+        
+        font-size: 0.9rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        
+        cursor: pointer;
+        pointer-events: auto !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    }
 }
+

@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/storylets/components/StoryletMainForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +6,7 @@ import OptionList from './OptionList';
 import SmartArea from '@/components/admin/SmartArea'; 
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import BehaviorCard from '@/components/admin/BehaviorCard';
-import { useToast } from '@/providers/ToastProvider'; // NEW
+import { useToast } from '@/providers/ToastProvider';
 
 interface Props {
     initialData: Storylet;
@@ -20,6 +19,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
     const [form, setForm] = useState(initialData);
     const { showToast } = useToast();
     
+    // Safety check for window access during SSR
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
     useEffect(() => setForm(initialData), [initialData]);
@@ -37,20 +37,30 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
     useEffect(() => {
         const handleGlobalSave = () => {
             onSave(form);
-            // We let the parent page handle the toast usually, but if onSave is sync, we can do it here.
-            // Assuming onSave in page.tsx handles the async fetch and toast.
         };
         window.addEventListener('global-save-trigger', handleGlobalSave);
         return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
     }, [form, onSave]);
 
     return (
-        <div className="h-full flex flex-col relative">
-            {/* ... [Header and rest of JSX remains exactly the same] ... */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
+        <div className="h-full flex flex-col relative" style={{ color: 'var(--tool-text-main)' }}>
+            
+            {/* HEADER */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--tool-border)' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
-                     <select value={form.status || 'draft'} onChange={e => handleChange('status', e.target.value)} style={{ background: form.status === 'published' ? '#2ecc71' : '#f1c40f', color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px' }}>
+                     <select 
+                        value={form.status || 'draft'} 
+                        onChange={e => handleChange('status', e.target.value)} 
+                        style={{ 
+                            background: form.status === 'published' ? 'var(--success-color)' : 'var(--warning-color)', 
+                            color: '#000', 
+                            fontWeight: 'bold', 
+                            border: 'none', 
+                            padding: '0.3rem', 
+                            borderRadius: '4px' 
+                        }}
+                    >
                         <option value="draft">DRAFT</option>
                         <option value="published">PUBLISHED</option>
                     </select>
@@ -61,6 +71,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
                 </div>
             </div>
 
+            {/* SCROLLABLE FORM AREA */}
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
                 
                 <div className="form-row">
@@ -103,8 +114,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
                     qualityDefs={qualityDefs}
                 />
 
-                <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
-                    <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Requirements</label>
+                {/* REQUIREMENTS BOX */}
+                <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
+                    <label className="special-label" style={{ color: 'var(--tool-accent)', marginBottom: '0.5rem' }}>Requirements</label>
                     <div className="form-row">
                         <div style={{ flex: 1 }}>
                             <SmartArea 
@@ -153,10 +165,14 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
                     qualityDefs={qualityDefs}
                 />
 
-                <div className="special-field-group" style={{ borderColor: form.autofire_if ? '#e06c75' : '#444', marginTop: '1rem' }}>
+                {/* AUTOFIRE (MUST-EVENT) */}
+                <div className="special-field-group" style={{ borderColor: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-border)', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label className="special-label" style={{ color: form.autofire_if ? '#e06c75' : '#aaa', margin: 0 }}>Must-Event (Autofire)</label>
-                        <input type="checkbox" checked={!!form.autofire_if} onChange={e => handleChange('autofire_if', e.target.checked ? '$quality >= 1' : undefined)} />
+                        <label className="special-label" style={{ color: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-text-dim)', margin: 0 }}>Must-Event (Autofire)</label>
+                        <label className="toggle-label">
+                            <input type="checkbox" checked={!!form.autofire_if} onChange={e => handleChange('autofire_if', e.target.checked ? '$quality >= 1' : undefined)} />
+                            Enable
+                        </label>
                     </div>
                     {form.autofire_if !== undefined && (
                         <SmartArea 
@@ -170,8 +186,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
                     )}
                 </div>
 
-                <div className="special-field-group" style={{ borderColor: '#c678dd', marginTop: '1rem' }}>
-                    <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
+                {/* BEHAVIOR */}
+                <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
+                    <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Behavior</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                         <BehaviorCard checked={hasProperty(form.tags, 'no_return')} onChange={() => handleTagToggle('no_return')} label="Disable Return" desc="Removes the 'Go Back' button." />
                         <BehaviorCard checked={hasProperty(form.tags, 'instant_redirect')} onChange={() => handleTagToggle('instant_redirect')} label="Instant Redirect" desc="Skip to first option." />
@@ -182,8 +199,8 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
                     </div>
                 </div>
 
-                <div style={{ marginTop: '2rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: '#98c379', marginBottom: '1rem' }}>Options</h3>
+                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--tool-border)', paddingTop: '1rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', color: 'var(--success-color)', marginBottom: '1rem' }}>Options</h3>
                     <OptionList options={form.options || []} onChange={(newOpts) => handleChange('options', newOpts)} storyId={storyId} qualityDefs={qualityDefs} />
                 </div>
             </div>

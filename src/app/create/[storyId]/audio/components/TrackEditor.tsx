@@ -15,7 +15,7 @@ import { mergeLigatureSnippet } from '@/engine/audio/merger';
 import { serializeParsedTrack } from '@/engine/audio/serializer';
 import { useDebounce } from '@/hooks/useDebounce';
 
-// Dynamic Imports to avoid SSR issues with canvas/audio
+// Dynamic Imports
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
 const PianoRoll = dynamic(() => import('@/components/admin/pianoroll/PianoRoll'), { ssr: false });
 import ArrangementView from './ArrangementView';
@@ -39,59 +39,54 @@ export default function TrackEditor({
     data, onSave, onDelete, availableInstruments, onUpdateInstrument,
     enableDownload = false, isPlayground = false, hideCategories = []
 }: Props) {
-    // --- State ---
     const [source, setSource] = useState(data.source || "");
     const debouncedSource = useDebounce(source, 600);
-    
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const [isParsing, setIsParsing] = useState(false);
 
-    // --- UI State ---
+    // UI State
     const [showArrangement, setShowArrangement] = useState(true);
     const [showNoteEditor, setShowNoteEditor] = useState(false);
     const [showMixer, setShowMixer] = useState(false); 
     const [noteEditorMode, setNoteEditorMode] = useState<'piano' | 'tracker'>('piano');
     const [showMasterSettings, setShowMasterSettings] = useState(false);
     
-    // Default sidebars to CLOSED to save space, useEffect opens them on Desktop
-    const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+    // Default closed on mobile, open on desktop
+    const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); 
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
     
     const [lintErrors, setLintErrors] = useState<LintError[]>([]);
     const [editingInstrument, setEditingInstrument] = useState<InstrumentDefinition | null>(null);
-    
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
     const [mockDefs, setMockDefs] = useState<Record<string, QualityDefinition>>({});
-    
     const [status, setStatus] = useState("");
     const [isClient, setIsClient] = useState(false);
     
-    // --- Audio State ---
     const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
     const [playbackMode, setPlaybackMode] = useState<'global' | 'local' | 'stopped'>('stopped');
     const { playTrack, stop, isPlaying, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume } = useAudio();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Initial Load & Mobile Sidebar Check
+    // Initial Load & Mobile Check
     useEffect(() => { 
         setIsClient(true); 
         setSource(data.source);
         
-        // Auto-open sidebars ONLY on desktop (screen wider than 900px)
+        // Auto-open sidebars only on wide screens
         if (typeof window !== 'undefined' && window.innerWidth > 900) {
             setLeftSidebarOpen(true);
             setRightSidebarOpen(true);
         }
     }, [data]);
     
-    // Global Save Trigger
+    // Save Trigger
     useEffect(() => {
         const handleGlobalSave = () => handleSaveClick();
         window.addEventListener('global-save-trigger', handleGlobalSave);
         return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
     }, [source, data.id]);
 
-    // --- Parsing Logic (Debounced) ---
+    // Parsing Logic
     useEffect(() => {
         setIsParsing(true);
         const timer = setTimeout(() => {
@@ -100,52 +95,33 @@ export default function TrackEditor({
                 const parser = new LigatureParser();
                 const track = parser.parse(debouncedSource, mockQualities, mockDefs);
                 setParsedTrack(track);
-            } catch(e) {
-                console.error("Parse error", e);
-            } finally {
-                setIsParsing(false);
-            }
+            } catch(e) { console.error("Parse error", e); } finally { setIsParsing(false); }
         }, 0);
         return () => clearTimeout(timer);
     }, [debouncedSource, mockQualities, mockDefs]);
 
+    // Handlers
     const handleDebuggerUpdate = useCallback((qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => {
         setMockQualities(q => JSON.stringify(q) === JSON.stringify(qualities) ? q : qualities);
         setMockDefs(d => JSON.stringify(d) === JSON.stringify(defs) ? d : defs);
     }, []);
-
     const handleSourceChange = (newSource: string) => setSource(newSource);
+    const handleVisualUpdate = (newSource: string) => setSource(newSource);
     
-    // Callbacks from Visual Editors to update Source Code
-    const handleVisualUpdate = (newSource: string) => {
-        setSource(newSource);
-    };
-
     const handleConfigUpdate = (key: string, val: any) => {
         if (!parsedTrack) return;
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
-
         if (key === 'grid') {
-            const oldGrid = newTrack.config.grid;
-            const newGrid = val;
-            
+            const oldGrid = newTrack.config.grid; const newGrid = val;
             if (oldGrid !== newGrid && oldGrid > 0) {
                 const ratio = newGrid / oldGrid;
                 Object.values(newTrack.patterns).forEach((pat: any) => {
                     pat.duration = Math.round(pat.duration * ratio);
-                    Object.values(pat.tracks).forEach((events: any) => {
-                        events.forEach((ev: any) => {
-                            ev.time = ev.time * ratio;
-                            ev.duration = ev.duration * ratio;
-                        });
-                    });
+                    Object.values(pat.tracks).forEach((events: any) => { events.forEach((ev: any) => { ev.time = ev.time * ratio; ev.duration = ev.duration * ratio; }); });
                 });
                 newTrack.config.grid = newGrid;
             }
-        } else {
-            // @ts-ignore
-            newTrack.config[key] = val;
-        }
+        } else { newTrack.config[key] = val; }
         setSource(serializeParsedTrack(newTrack));
     };
 
@@ -154,17 +130,12 @@ export default function TrackEditor({
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
         const pattern = newTrack.patterns[patternId];
         if (!pattern) return;
-
         if (action === 'double_speed') {
             pattern.duration = Math.ceil(pattern.duration / 2);
-            Object.values(pattern.tracks).forEach((events: any) => {
-                events.forEach((e: any) => { e.time /= 2; e.duration /= 2; });
-            });
+            Object.values(pattern.tracks).forEach((events: any) => { events.forEach((e: any) => { e.time /= 2; e.duration /= 2; }); });
         } else if (action === 'half_speed') {
             pattern.duration *= 2;
-            Object.values(pattern.tracks).forEach((events: any) => {
-                events.forEach((e: any) => { e.time *= 2; e.duration *= 2; });
-            });
+            Object.values(pattern.tracks).forEach((events: any) => { events.forEach((e: any) => { e.time *= 2; e.duration *= 2; }); });
         }
         setSource(serializeParsedTrack(newTrack));
     };
@@ -179,38 +150,18 @@ export default function TrackEditor({
     };
     
     const handlePlay = () => {
-        try {
-            stop(); 
-            setPlaybackMode('global'); 
-            playTrack(source, availableInstruments, mockQualities);
-            setStatus("Playing Global...");
-        } catch (e: any) {
-            setStatus("Error: " + e.message);
-            stop();
-            setPlaybackMode('stopped');
-        }
+        try { stop(); setPlaybackMode('global'); playTrack(source, availableInstruments, mockQualities); setStatus("Playing Global..."); } 
+        catch (e: any) { setStatus("Error: " + e.message); stop(); setPlaybackMode('stopped'); }
     };
-    
-    const handleStop = () => {
-        stop();
-        setPlaybackMode('stopped');
-        setStatus("Stopped");
-    };    
-    
+    const handleStop = () => { stop(); setPlaybackMode('stopped'); setStatus("Stopped"); };    
     const handleClear = () => { if (confirm("Clear track?")) setSource(EMPTY_TEMPLATE); };
     const handleFormat = () => setSource(formatLigatureSource(source));
-    
-    const handleSaveClick = async () => {
-        onSave({ id: data.id, name: data.name, source, category: 'track' });
-    };
-
+    const handleSaveClick = async () => { onSave({ id: data.id, name: data.name, source, category: 'track' }); };
     const handleDownload = () => {
         const blob = new Blob([source], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `${data.id || 'track'}.lig`; a.click(); URL.revokeObjectURL(url);
+        const a = document.createElement('a'); a.href = url; a.download = `${data.id || 'track'}.lig`; a.click(); URL.revokeObjectURL(url);
     };
-
     const handleEditInstrument = (id: string) => setEditingInstrument(availableInstruments.find(i => i.id === id) || null);
     const handleInsertInstrumentToTrack = (instrumentId: string, presetId: string) => {
         const snippet = `[INSTRUMENTS]\n${instrumentId}: ${presetId}`;
@@ -222,7 +173,7 @@ export default function TrackEditor({
         <div className="editor-layout">
             <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".lig,.txt" />
             
-            {/* LEFT SIDEBAR (Debugger) */}
+            {/* LEFT SIDEBAR */}
             <div 
                 className="editor-sidebar"
                 style={{ width: leftSidebarOpen ? '250px' : '40px', cursor: 'pointer' }}
@@ -242,16 +193,16 @@ export default function TrackEditor({
 
             {/* MAIN CONTENT */}
             <div className="editor-main">
-                {/* TOOLBAR (Sticky at Top) */}
+                
+                {/* TOOLBAR */}
                 <div className="editor-toolbar" style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                      <div className="editor-toolbar-group">
                         <h2 className="editor-title">{data.name}</h2>
-                        <span className="editor-status" style={{color: isParsing ? '#e5c07b' : '#777'}}>
+                        <span className="editor-status" style={{color: isParsing ? 'var(--warning-color)' : 'var(--tool-text-dim)'}}>
                             {isParsing ? "⚡" : (isPlaying ? "▶" : "")}
                         </span>
                     </div>
                     
-                    {/* Allow wrapping for mobile */}
                     <div className="editor-toolbar-group" style={{ flexWrap: 'wrap' }}>
                         <div style={{ position: 'relative' }}>
                             <button onClick={() => setShowMasterSettings(!showMasterSettings)} className="tool-btn">🎚️</button>
@@ -259,15 +210,13 @@ export default function TrackEditor({
                                 <div className="tool-popup">
                                     <h4>Master Bus</h4>
                                     <div><label>Volume: {masterVolume} dB</label><input type="range" min="-30" max="10" step="1" value={masterVolume} onChange={e => setMasterVolume(parseInt(e.target.value))} style={{ width: '100%' }}/></div>
-                                    <div style={{ borderTop: '1px solid #333', paddingTop: '1rem', marginTop: '1rem' }}>
+                                    <div style={{ borderTop: '1px solid var(--tool-border)', paddingTop: '1rem', marginTop: '1rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><label style={{ fontSize: '0.9rem' }}>Limiter</label><input type="checkbox" checked={limiterSettings.enabled} onChange={e => setLimiterSettings({...limiterSettings, enabled: e.target.checked})} /></div>
                                         {limiterSettings.enabled && (<div style={{marginTop: '0.5rem'}}><label>Threshold: {limiterSettings.threshold} dB</label><input type="range" min="-40" max="0" step="1" value={limiterSettings.threshold} onChange={e => setLimiterSettings({...limiterSettings, threshold: parseInt(e.target.value)})}/></div>)}
                                     </div>
                                 </div>
                             )}
                         </div>
-                        <button onClick={handleImportClick} className="tool-btn">Import</button>
-                        <button onClick={handleClear} className="tool-btn">New</button>
                         
                         <div className="toggle-group">
                             <button onClick={() => setShowArrangement(!showArrangement)} className={showArrangement ? 'active' : ''}>Time</button>
@@ -275,24 +224,22 @@ export default function TrackEditor({
                             <button onClick={() => setShowNoteEditor(!showNoteEditor)} className={showNoteEditor ? 'active' : ''}>Note</button>
                         </div>
                         
-                        <button onClick={handleFormat} className="tool-btn">Format</button>
                         {isPlaying 
                             ? <button onClick={handleStop} className="tool-btn tool-btn-stop">■</button> 
                             : <button onClick={handlePlay} className="tool-btn tool-btn-play">▶</button>
                         }
-                        {enableDownload && <button onClick={handleDownload} className="tool-btn tool-btn-action">.lig</button>}
                         {!isPlayground && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
                     </div>
                 </div>
 
-                {/* SCROLLABLE CONTENT WRAPPER */}
-                <div className="editor-scrollable-content">
+                {/* SCROLLABLE CONTENT */}
+                <div className="editor-scrollable-content" style={{ overflowX: 'hidden' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                         
-                        {/* Timeline (Wrapped for horizontal scroll) */}
+                        {/* Timeline */}
                         {showArrangement && isClient && (
                             <div style={{ borderBottom: '1px solid var(--tool-border)', overflowX: 'auto', width: '100%' }}>
-                                <div style={{ minWidth: '600px' }}> {/* Forces internal scroll */}
+                                <div style={{ minWidth: '600px' }}>
                                     <ArrangementView 
                                         parsedTrack={parsedTrack} 
                                         onChange={handleVisualUpdate} 
@@ -307,7 +254,7 @@ export default function TrackEditor({
                             </div>
                         )}
                         
-                        {/* Mixer (Wrapped for horizontal scroll) */}
+                        {/* Mixer */}
                         {showMixer && isClient && (
                             <div style={{ borderBottom: '1px solid var(--tool-border)', height: '220px', resize: 'vertical', overflow: 'hidden', overflowX: 'auto', width: '100%' }}>
                                 <div style={{ minWidth: '400px' }}>
@@ -316,7 +263,7 @@ export default function TrackEditor({
                             </div>
                         )}
 
-                        {/* Piano Roll (Wrapped for horizontal scroll) */}
+                        {/* Piano Roll / Tracker */}
                         {showNoteEditor && isClient && (
                             <div style={{ borderBottom: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', width: '100%' }}>
                                 <div className="note-editor-header">
@@ -324,9 +271,9 @@ export default function TrackEditor({
                                         <button onClick={() => setNoteEditorMode('piano')} className={`note-editor-tab ${noteEditorMode === 'piano' ? 'active' : ''}`}>Piano</button>
                                         <button onClick={() => setNoteEditorMode('tracker')} className={`note-editor-tab ${noteEditorMode === 'tracker' ? 'active' : ''}`}>Tracker</button>
                                     </div>
-                                    <span style={{fontSize: '0.75rem', color: '#555'}}>Row {activePlaylistIndex}</span>
+                                    <span style={{fontSize: '0.75rem', color: 'var(--tool-text-dim)'}}>Row {activePlaylistIndex}</span>
                                 </div>
-                                <div style={{ background: '#0d0d0d', overflowX: 'auto', width: '100%' }}>
+                                <div style={{ background: 'var(--tool-bg-dark)', overflowX: 'auto', width: '100%' }}>
                                     <div style={{ minWidth: '600px' }}>
                                         {noteEditorMode === 'piano' ? (
                                             <PianoRoll 
@@ -367,7 +314,7 @@ export default function TrackEditor({
                 </div>
             </div>
 
-            {/* RIGHT SIDEBAR (Library) */}
+            {/* RIGHT SIDEBAR */}
             <div 
                 className="editor-sidebar right"
                 style={{ width: rightSidebarOpen ? '250px' : '40px', cursor: 'pointer' }}

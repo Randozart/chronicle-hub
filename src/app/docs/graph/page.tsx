@@ -21,7 +21,7 @@ export default function GraphDocs() {
 
                 <div className="docs-grid">
                     <div className="docs-card">
-                        <h4 className="docs-h4" style={{color: '#61afef'}}>Redirect Mode</h4>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-blue)'}}>Redirect Mode</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>The Visual Novel View.</strong>
                         </p>

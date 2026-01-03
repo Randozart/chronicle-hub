@@ -33,7 +33,7 @@ export default function DocsPage() {
                         In QBN, the story is not a tree; it is a <strong>State Machine</strong>. 
                         Instead of asking <em>&quot;What node comes next?&quot;</em>, the engine asks:
                     </p>
-                    <p className="docs-p" style={{ fontWeight: 'bold', color: '#fff', textAlign: 'center', margin: '1.5rem 0' }}>
+                    <p className="docs-p" style={{ fontWeight: 'bold', textAlign: 'center', margin: '1.5rem 0' }}>
                         &quot;Given who the player is right now, what content is available to them?&quot;
                     </p>
                     <p className="docs-p">

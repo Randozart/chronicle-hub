@@ -121,7 +121,7 @@ export default function LogicMathPage() {
     </div>
 </div>
 <div className="docs-callout">
-    <strong style={{color: '#fff'}}>Grouping with Parentheses:</strong> Use <code>( )</code> to control the order of operations for complex checks.
+    <strong style={{color: 'var(--docs-text-main)'}}>Grouping with Parentheses:</strong> Use <code>( )</code> to control the order of operations for complex checks.
     <br/>
     <code className="docs-code">($has_key == 1 || $lockpicking &gt; 5) && $stamina &gt; 0</code>
 </div>
@@ -145,14 +145,14 @@ export default function LogicMathPage() {
                 <strong>The Engine Switch.</strong> Tells the parser to "stop reading text and start calculating." This is how you inject dynamic values into a string.
             </p>
         </div>
-        <div className="docs-card" style={{borderColor: '#61afef'}}>
-            <h4 className="docs-h4" style={{color: '#61afef'}}>{`( )`} Parentheses</h4>
+        <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
+            <h4 className="docs-h4" style={{color: 'var(--docs-accent-blue)'}}>{`( )`} Parentheses</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>
                 <strong>The Grouper.</strong> Used inside code to control the order of operations, especially for combining AND/OR logic. It tells the engine "do this part first."
             </p>
         </div>
-        <div className="docs-card" style={{borderColor: '#98c379'}}>
-            <h4 className="docs-h4" style={{color: '#98c379'}}>{`[ ]`} Square Brackets</h4>
+        <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
+            <h4 className="docs-h4" style={{color: 'var(--docs-accent-green)'}}>{`[ ]`} Square Brackets</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>
                 <strong>The Parameter Block.</strong> Used to provide arguments to a macro (`%chance[...]`) or metadata to an effect (`$gold[desc:...]`).
             </p>
@@ -176,7 +176,7 @@ export default function LogicMathPage() {
             <br/><br/>
             <span style={{color:'#777'}}>// CORRECT: The "Russian Doll" model solves the inner block first.</span>
             <br/>
-            <code className="docs-code" style={{color: '#98c379'}}>
+            <code className="docs-code" style={{color: 'var(--docs-accent-green)'}}>
                 $gold &gt; {`{ $level * 50 }`}
             </code>
         </div>
@@ -197,7 +197,7 @@ export default function LogicMathPage() {
             <br/><br/>
             <span style={{color:'#777'}}>// CORRECT: The conditional is resolved to a number before the `+=` is executed.</span>
             <br/>
-            <code className="docs-code" style={{color: '#98c379'}}>
+            <code className="docs-code" style={{color: 'var(--docs-accent-green)'}}>
                 $supplies += {`{ #season == 'Winter' : 2 | 1 }`}
             </code>
         </div>
@@ -219,7 +219,7 @@ export default function LogicMathPage() {
             <br/><br/>
             <span style={{color:'#777'}}>// CORRECT: The parentheses create an unambiguous group.</span>
             <br/>
-            <code className="docs-code" style={{color: '#98c379'}}>
+            <code className="docs-code" style={{color: 'var(--docs-accent-green)'}}>
                 ($has_key == 1 || $lockpicking &gt; 5) && !$is_barred
             </code>
         </div>
@@ -235,18 +235,18 @@ export default function LogicMathPage() {
     </p>
 
     <div className="docs-callout">
-        <strong style={{color: '#fff'}}>How to tell the difference:</strong>
+        <strong style={{color: 'var(--docs-text-main)'}}>How to tell the difference:</strong>
         <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
             If it starts with <code>Math.</code>, it's a JavaScript function. If it doesn't, it's a standard ScribeScript operation.
         </p>
         <div className="docs-grid" style={{margin:'1rem 0 0 0'}}>
             <div className="docs-card" style={{padding:'1rem'}}>
-                <h4 className="docs-h4" style={{color:'#61afef'}}>ScribeScript</h4>
+                <h4 className="docs-h4" style={{color:'var(--docs-accent-blue)'}}>ScribeScript</h4>
                 <code className="docs-code">{`{ 1 ~ 10 }`}</code>
                 <code className="docs-code" style={{marginLeft:'1rem'}}>{`{ A | B }`}</code>
             </div>
             <div className="docs-card" style={{padding:'1rem'}}>
-                <h4 className="docs-h4" style={{color:'#98c379'}}>JavaScript `Math`</h4>
+                <h4 className="docs-h4" style={{color:'var(--docs-accent-green)'}}>JavaScript `Math`</h4>
                 <code className="docs-code">{`{ Math.floor(...) }`}</code>
                 <code className="docs-code" style={{marginLeft:'1rem'}}>{`{ Math.pow(...) }`}</code>
             </div>
@@ -329,7 +329,7 @@ export default function LogicMathPage() {
                     {`$ledger_coroner += { 2 * @power_of_10 }`}
                 </code>
             </div>
-        <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'#e5c07b'}}>How The Math Works</h5>
+        <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'var(--docs-accent-gold)'}}>How The Math Works</h5>
         <p className="docs-p" style={{fontSize:'0.9rem'}}>
             Let's say <code>$ledger_coroner</code> is <strong>43210</strong> and we want the status for Suspect #3.
         </p>
@@ -381,7 +381,7 @@ export default function LogicMathPage() {
     </table>
 
     <div className="docs-callout" style={{padding:'1rem', margin:'1rem 0', borderColor:'#56b6c2'}}>
-    <strong style={{color:'#fff'}}>Explaining flag setting with RMO from <em>Concrete Requiem</em></strong>
+    <strong style={{color:'var(--docs-text-main)'}}>Explaining flag setting with RMO from <em>Concrete Requiem</em></strong>
     <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
         In <em>Concrete Requiem</em> Every character profile is defined by three factors, stored as "flags" in a single number:
     </p>

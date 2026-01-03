@@ -170,6 +170,7 @@ export interface WorldSettings {
     
     layoutStyle: LayoutStyle;
     locationHeaderStyle?: 'standard' | 'banner' | 'hidden' | 'square' | 'circle'; 
+    showHeaderInStorylet?: boolean; 
     tabLocation?: 'main' | 'header' | 'sidebar';
     visualTheme?: string;
     enableParallax?: boolean;

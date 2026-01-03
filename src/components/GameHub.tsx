@@ -254,16 +254,59 @@ export default function GameHub(props: GameHubProps) {
     };
 
     const buildMainContent = () => {
-        const isBlackCrown = props.settings.visualTheme === 'black-crown';
-        const isBannerMode = isBlackCrown && props.settings.locationHeaderStyle === 'banner';
-        
-        // 1. Get the Header Style setting
         const headerStyle = props.settings.locationHeaderStyle || 'standard';
-
+        const isBannerMode = headerStyle === 'banner';
+        
         // @ts-ignore - Engine renders generic objects
         const imageCode = renderedLocation?.imageId || renderedLocation?.image;
 
         let innerContent = null;
+
+        // --- Reusable Header Rendering Logic ---
+        const renderHeader = () => {
+            // 1. If header is hidden, render nothing.
+            if (headerStyle === 'hidden') {
+                return null;
+            }
+            
+            // 2. If BANNER mode is active (for ANY theme)
+            if (isBannerMode) {
+                return (
+                    <div className={`location-wrapper mode-banner`}>
+                        {imageCode && (
+                            <div className="banner-bg-layer">
+                                <GameImage 
+                                    code={imageCode} 
+                                    type="location" 
+                                    imageLibrary={props.imageLibrary} 
+                                    className="banner-img" 
+                                />
+                            </div>
+                        )}
+                        <LocationHeader 
+                            location={renderedLocation!} 
+                            imageLibrary={props.imageLibrary} 
+                            onOpenMap={() => setShowMap(true)} 
+                            onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                            styleMode={headerStyle} 
+                        />
+                    </div>
+                );
+            }
+
+            // 3. Standard Header for all other styles (circle, square, standard)
+            return (
+                <div className="location-header-wrapper">
+                    <LocationHeader 
+                        location={renderedLocation!} 
+                        imageLibrary={props.imageLibrary} 
+                        onOpenMap={() => setShowMap(true)} 
+                        onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
+                        styleMode={headerStyle}
+                    />
+                </div>
+            );
+        };
 
         if (activeTab === 'profile') {
             innerContent = (
@@ -279,87 +322,40 @@ export default function GameHub(props: GameHubProps) {
             );
         } else if (isLoading) {
             innerContent = <div className="loading-container"><p>Loading...</p></div>;
-        } else if (showMarket && activeMarketDefinition) {
+        } else if (showMarket && activeMarketId) {
             innerContent = (
                 <div className="content-panel">
-                    <MarketInterface market={activeMarketDefinition} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} onClose={() => setShowMarket(false)} onUpdate={handleQualitiesUpdate} storyId={props.storyId} characterId={character.characterId} worldState={props.worldState} />
+                    <MarketInterface market={props.markets[activeMarketId]!} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} onClose={() => setShowMarket(false)} onUpdate={handleQualitiesUpdate} storyId={props.storyId} characterId={character.characterId} worldState={props.worldState} />
                 </div>
             );
         } else if (renderedActiveEvent) {
-            // --- EVENT VIEW (Inside a Storylet) ---
+             const showHeaderInStorylet = props.settings.showHeaderInStorylet === true;
+
             innerContent = (
                 <div className="event-view">
-                    
-                    {/* A. Black Crown / Dossier Header */}
-                    {isBlackCrown && (
-                        <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
-                            {isBannerMode && imageCode && (
-                                <div className="banner-bg-layer">
-                                    <GameImage code={imageCode} type="location" imageLibrary={props.imageLibrary} className="banner-img" />
-                                </div>
-                            )}
-                            <LocationHeader 
-                                location={renderedLocation!} 
-                                imageLibrary={props.imageLibrary} 
-                                onOpenMap={() => setShowMap(true)} 
-                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
-                                styleMode={headerStyle} 
-                            />
-                        </div>
-                    )}
-                    
-                    {/* B. Standard Header (For Classic/Nexus/Tabletop) */}
-                    {!isBlackCrown && (
-                        <div className="location-header-wrapper" style={{ marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                            <LocationHeader 
-                                location={renderedLocation!} 
-                                imageLibrary={props.imageLibrary} 
-                                onOpenMap={() => setShowMap(true)} 
-                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
-                                styleMode={headerStyle}
-                            />
-                        </div>
-                    )}
+                    {showHeaderInStorylet && renderHeader()}
 
-                    <StoryletDisplay eventData={renderedActiveEvent} qualities={character.qualities} onFinish={handleEventFinish} onQualitiesUpdate={handleQualitiesUpdate} onCardPlayed={handleCardPlayed} qualityDefs={props.qualityDefs} storyletDefs={props.storyletDefs} opportunityDefs={props.opportunityDefs} settings={props.settings} imageLibrary={props.imageLibrary} categories={props.categories} storyId={props.storyId} characterId={character.characterId} />
+                    <StoryletDisplay 
+                        eventData={renderedActiveEvent} 
+                        qualities={character.qualities} 
+                        onFinish={handleEventFinish} 
+                        onQualitiesUpdate={handleQualitiesUpdate} 
+                        onCardPlayed={handleCardPlayed} 
+                        qualityDefs={props.qualityDefs} 
+                        storyletDefs={props.storyletDefs} 
+                        opportunityDefs={props.opportunityDefs} 
+                        settings={props.settings} 
+                        imageLibrary={props.imageLibrary} 
+                        categories={props.categories} 
+                        storyId={props.storyId} 
+                        characterId={character.characterId} 
+                    />
                 </div>
             );
         } else {
-            // --- HUB VIEW (Default Location Screen) ---
             innerContent = (
                 <div className="hub-view">
-                    
-                    {/* A. Black Crown Header */}
-                    {isBlackCrown && (
-                        <div className={`location-wrapper mode-${props.settings.locationHeaderStyle || 'standard'}`}>
-                            {isBannerMode && imageCode && (
-                                <div className="banner-bg-layer">
-                                    <GameImage code={imageCode} type="location" imageLibrary={props.imageLibrary} className="banner-img" />
-                                </div>
-                            )}
-                            <LocationHeader 
-                                location={renderedLocation!} 
-                                imageLibrary={props.imageLibrary} 
-                                onOpenMap={() => setShowMap(true)} 
-                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
-                                styleMode={headerStyle} 
-                            />
-                        </div>
-                    )}
-
-                    {/* B. Standard Header (Restored) */}
-                    {!isBlackCrown && (
-                        <div className="location-header-wrapper" style={{ marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                            <LocationHeader 
-                                location={renderedLocation!} 
-                                imageLibrary={props.imageLibrary} 
-                                onOpenMap={() => setShowMap(true)} 
-                                onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
-                                styleMode={headerStyle} 
-                            />
-                        </div>
-                    )}
-
+                    {renderHeader()}
                     <div className="storylet-feed" style={{ marginTop: '2rem' }}>
                         <LocationStorylets storylets={props.locationStorylets} onStoryletClick={showEvent} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} />
                     </div>
@@ -370,10 +366,9 @@ export default function GameHub(props: GameHubProps) {
             );
         }
 
-        // Use main-content-wrapper for mobile sizing
         return (
             <div className="main-content-wrapper">
-                {!isBlackCrown && <div className="tab-container" style={{ marginBottom: '2rem' }}><TabBar /></div>}
+                <div className="tab-container" style={{ marginBottom: '2rem' }}><TabBar /></div>
                 {innerContent}
             </div>
         );

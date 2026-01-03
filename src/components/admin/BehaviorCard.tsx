@@ -13,12 +13,12 @@ export default function BehaviorCard({ checked, onChange, label, desc }: Props) 
             onClick={onChange}
             style={{ 
                 padding: '0.5rem', borderRadius: '4px', cursor: 'pointer',
-                border: checked ? '1px solid #61afef' : '1px solid #333',
-                background: checked ? 'rgba(97, 175, 239, 0.1)' : '#21252b',
+                border: checked ? '1px solid var(--tool-accent)' : '1px solid var(--tool-border)',
+                background: checked ? 'var(--tool-accent-fade)' : 'var(--tool-bg-input)',
                 transition: 'all 0.2s'
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: checked ? '#61afef' : '#ccc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: checked ? 'var(--tool-accent)' : 'var(--tool-text-main)' }}>
                 <input type="checkbox" checked={checked} readOnly />
                 {label}
             </div>

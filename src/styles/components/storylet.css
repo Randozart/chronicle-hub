@@ -99,8 +99,8 @@
 .result-title.failure { background-color: var(--danger-bg); border-left: 4px solid var(--danger-color); }
 .skill-check-result { margin-top: 1.5rem; padding: 1rem; background-color: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--border-radius); text-align: center; font-style: italic; color: var(--text-secondary); }
 
-.location-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-color); }
-.location-image-container { flex-shrink: 0; width: 150px; }
+.location-header { display: flex; align-items: center; gap: 1.5rem; }
+.location-image-container { flex-shrink: 0; width: 150px; height: 150px; }
 .location-image { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 50%; border: 2px solid var(--border-light); }
 .location-text h2 { margin: 0; font-size: 1rem; font-weight: normal; color: var(--text-muted); }
 .location-text h1 { margin: 0; font-size: 2.5rem; color: var(--text-primary); }

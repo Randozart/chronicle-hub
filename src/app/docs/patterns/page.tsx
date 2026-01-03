@@ -17,8 +17,8 @@ export default function PatternsDocs() {
             <section id="patterns">
                 
                 {/* PATTERN 1: THE CAROUSEL */}
-                <div className="docs-card" style={{borderColor: '#98c379', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#98c379'}}>1. The Carousel (The Grind)</h3>
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: 'var(--docs-accent-green)'}}>1. The Carousel (The Grind)</h3>
                     <p className="docs-p">
                         A repeatable activity loop used to gather resources. 
                         The player enters, performs actions to build a tracker, claims a reward, and resets.
@@ -64,8 +64,8 @@ export default function PatternsDocs() {
 
 
                 {/* PATTERN 3: VISUAL NOVEL */}
-<div className="docs-card" style={{borderColor: '#61afef', marginTop: '2rem'}}>
-    <h3 style={{marginTop: 0, color: '#61afef'}}>3. The Simple Chain (Visual Novel)</h3>
+<div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '2rem'}}>
+    <h3 style={{marginTop: 0, color: 'var(--docs-accent-blue)'}}>3. The Simple Chain (Visual Novel)</h3>
     <p className="docs-p">
         A traditional, linear story where the player moves from Scene A to B to C without interruption.
     </p>
@@ -249,14 +249,14 @@ export default function PatternsDocs() {
 
             <style jsx>{`
                 .docs-content { max-width: 900px; margin: 0 auto; color: #ccc; line-height: 1.7; }
-                .docs-h1 { font-size: 3rem; color: #fff; margin-bottom: 0.5rem; line-height: 1.1; margin-top: 0; }
-                .docs-h2 { color: #61afef; font-size: 2.2rem; margin-top: 4rem; margin-bottom: 1.5rem; border-bottom: 1px solid #2c313a; padding-bottom: 0.5rem; }
-                .docs-h3 { margin-top: 0; font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 10px; }
+                .docs-h1 { font-size: 3rem; color: var(--docs-text-main); margin-bottom: 0.5rem; line-height: 1.1; margin-top: 0; }
+                .docs-h2 { color: var(--docs-accent-blue); font-size: 2.2rem; margin-top: 4rem; margin-bottom: 1.5rem; border-bottom: 1px solid #2c313a; padding-bottom: 0.5rem; }
+                .docs-h3 { margin-top: 0; font-size: 1.4rem; color: var(--docs-text-main); display: flex; align-items: center; gap: 10px; }
                 .docs-p { margin-bottom: 1rem; color: #c8ccd4; }
                 .docs-card { background: #21252b; padding: 2rem; border-radius: 8px; border-left: 4px solid #555; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
                 .docs-list { padding-left: 1.5rem; }
                 .docs-li { margin-bottom: 0.75rem; }
-                .docs-code { font-family: 'Consolas', monospace; color: #98c379; background: rgba(0,0,0,0.3); padding: 2px 6px; borderRadius: 4px; }
+                .docs-code { font-family: 'Consolas', monospace; color: var(--docs-accent-green); background: rgba(0,0,0,0.3); padding: 2px 6px; borderRadius: 4px; }
                 .docs-pre { background: #1e2127; padding: 1rem; border-radius: 6px; border: 1px solid #333; margin: 1rem 0; font-family: monospace; color: #abb2bf; }
             `}</style>
         </div>

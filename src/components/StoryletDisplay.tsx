@@ -183,7 +183,7 @@ export default function StoryletDisplay({
                             onClick={() => setShowDebug(!showDebug)}
                             style={{ 
                                 background: (resolution.errors && resolution.errors.length > 0) ? '#e74c3c' : '#7f8c8d', 
-                                color: 'white', padding: '8px 12px', 
+                                color: 'var(--text-primary)', padding: '8px 12px', 
                                 cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' 
                             }}
                         >

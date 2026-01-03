@@ -56,12 +56,12 @@ export default function MapModal({
                 
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', margin: 0 }}>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
                         Travel: <span style={{ color: 'var(--success-color)' }}>{region?.name || "Local Area"}</span>
                     </h2>
                     <button 
                         onClick={onClose} 
-                        style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '1.5rem', cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
                     >✕</button>
                 </div>
 
@@ -111,7 +111,7 @@ export default function MapModal({
                                             />
                                         </div>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', color: 'white' }}>{loc.name}</div>
+                                            <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{loc.name}</div>
                                             {isCurrent && <div style={{ fontSize: '0.75rem', color: '#2ecc71', textTransform: 'uppercase', fontWeight: 'bold' }}>Current Location</div>}
                                         </div>
                                     </button>

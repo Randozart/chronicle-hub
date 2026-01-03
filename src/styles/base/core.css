@@ -48,3 +48,39 @@ button, input, textarea, select, h1 {
     font-style: italic;
     color: var(--text-muted);
 }
+
+
+.action-box h3, 
+.action-timer, 
+.action-timer span {
+    color: inherit !important; /* Force it to take the parent's color */
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) var(--bg-main);
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px; 
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-main); 
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--border-light); 
+    border-radius: 5px;
+    
+    border: 2px solid var(--bg-main); 
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted); 
+}
+
+::-webkit-scrollbar-corner {
+    background: var(--bg-main);
+}

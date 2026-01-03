@@ -114,6 +114,32 @@
     border-radius: 8px !important; /* Small rounded corners instead of 50% */
 }
 
+.location-image-container.shape-circle .location-image,
+.location-image-container.shape-standard .location-image {
+    border-radius: 50%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border: 2px solid var(--border-light);
+}
+
+/* Square */
+.location-image-container.shape-square .location-image {
+    border-radius: 8px; /* Slight rounding for polish */
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border: 2px solid var(--border-light);
+}
+
+/* Ensure container sizing is consistent */
+.location-image-container {
+    width: 80px;  /* Or whatever your preferred size is */
+    height: 80px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+
+
 
 @media (max-width: 900px) {
     .mobile-sidebar-toggle {

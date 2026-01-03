@@ -43,15 +43,15 @@ export default function QualitiesDocs() {
                 </p>
 
                 <div className="docs-grid">
-                    <div className="docs-card" style={{borderColor: '#61afef'}}>
-                        <h4 className="docs-h4" style={{color: '#61afef'}}>Pyramidal (P)</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-blue)'}}>Pyramidal (P)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             An exponential stat that gets harder to level up over time. Uses <strong>Change Points (CP)</strong>. Perfect for core character attributes and skills.
                         </p>
-                        <ProgressBar percent={33} color="#61afef" />
+                        <ProgressBar percent={33} color="var(--docs-accent-blue)" />
                     </div>
-                    <div className="docs-card" style={{borderColor: '#e5c07b'}}>
-                        <h4 className="docs-h4" style={{color: '#e5c07b'}}>Counter (C)</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-gold)'}}>Counter (C)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             A simple, linear number. <code>+1</code> always adds exactly 1 level. Used for currency, quest progress, and simple counters.
                         </p>
@@ -63,8 +63,8 @@ export default function QualitiesDocs() {
                         </p>
                         <ProgressBar percent={75} color="#f1c40f" />
                     </div>
-                    <div className="docs-card" style={{borderColor: '#98c379'}}>
-                        <h4 className="docs-h4" style={{color: '#98c379'}}>Item (I)</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-green)'}}>Item (I)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             A linear counter that is displayed in the player's "Possessions" tab. Supports <strong>Source Tracking</strong>.
                         </p>

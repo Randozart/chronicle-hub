@@ -122,7 +122,7 @@ export default function OpportunityHand({
                                         onClick={(e) => handleDiscard(card.id, e)}
                                         style={{
                                             position: 'absolute', top: 5, right: 5,
-                                            background: 'rgba(0,0,0,0.6)', color: '#fff',
+                                            background: 'rgba(0,0,0,0.6)', color: 'var(--text-primary)',
                                             border: '1px solid #aaa', borderRadius: '50%',
                                             width: '24px', height: '24px', cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',

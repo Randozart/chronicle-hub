@@ -558,7 +558,21 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     
                     </div>
                     <div>
-                        <label className="toggle-label"><input type="checkbox" checked={form.enableParallax !== false} onChange={e => handleChange('enableParallax', e.target.checked)} /> Parallax</label>
+                        <label className="toggle-label">
+                            <input 
+                                type="checkbox" 
+                                checked={form.showHeaderInStorylet || false} 
+                                onChange={e => handleChange('showHeaderInStorylet', e.target.checked)} 
+                            /> 
+                            Show Location Header in Storylets
+                        </label>
+                        <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
+                            When enabled, the location header/banner will appear above the storylet text.
+                        </p>
+
+                        <label className="toggle-label">
+                            <input type="checkbox" checked={form.enableParallax !== false} onChange={e => handleChange('enableParallax', e.target.checked)} /> Parallax
+                        </label>
                         <label className="toggle-label"><input type="checkbox" checked={form.enableTitle || false} onChange={e => handleChange('enableTitle', e.target.checked)} /> Show Title</label>
                     </div>
                     {form.enableTitle && (

@@ -182,7 +182,7 @@ export default function AdminDocs() {
         This part of the console is a direct interface to your world's global variables. Any quality created or modified here will be visible to <strong>all players</strong> who reference it with the <code>#</code> sigil (e.g., <code>{`{#season}`}</code>).
     </p>
     <div className="docs-callout">
-        <strong style={{color: '#fff'}}>The Source of Truth:</strong>
+        <strong style={{color: 'var(--docs-text-main)'}}>The Source of Truth:</strong>
         <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
             While you can change world qualities from a storylet (using <code>#quality = value</code>), the GM Console is the primary tool for setting their initial state or making manual adjustments during a live event. It is the source of truth for your game's global state to avoid needing to set the value elsewhere.
         </p>

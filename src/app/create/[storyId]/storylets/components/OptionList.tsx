@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/storylets/components/OptionList.tsx
 'use client';
 
 import { useState } from 'react';
@@ -9,7 +8,6 @@ interface Props {
     options: ResolveOption[];
     onChange: (newOptions: ResolveOption[]) => void;
     storyId: string;
-    // NEW PROP
     qualityDefs: QualityDefinition[];
 }
 
@@ -42,21 +40,23 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
 
     const moveOption = (index: number, direction: -1 | 1) => {
         if (index + direction < 0 || index + direction >= options.length) return;
-        
         const newOptions = [...options];
         const temp = newOptions[index];
         newOptions[index] = newOptions[index + direction];
         newOptions[index + direction] = temp;
-        
         onChange(newOptions);
     };
 
     return (
         <div>
             {options.map((opt, index) => (
-                <div key={opt.id} style={{ marginBottom: '1rem', border: '1px solid #333', borderRadius: '4px', background: 'var(--tool-bg-header)' }}>
+                <div key={opt.id} style={{ marginBottom: '1rem', border: '1px solid var(--tool-border)', borderRadius: '4px', background: 'var(--tool-bg-sidebar)' }}>
                     <div 
-                        style={{ padding: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: expandedId === opt.id ? '#2c313a' : 'transparent', borderBottom: expandedId === opt.id ? '1px solid #333' : 'none' }}
+                        style={{ 
+                            padding: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                            background: expandedId === opt.id ? 'var(--tool-bg-header)' : 'transparent', 
+                            borderBottom: expandedId === opt.id ? '1px solid var(--tool-border)' : 'none' 
+                        }}
                     >
                         {/* REORDER CONTROLS */}
                         <div style={{ display: 'flex', flexDirection: 'column', marginRight: '0.5rem' }}>
@@ -70,10 +70,10 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
                         >
                             <div>
                                 <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', marginRight: '0.5rem' }}>#{index + 1}</span>
-                                <span style={{ fontWeight: 'bold', color: expandedId === opt.id ? '#fff' : '#ccc' }}>{opt.name || opt.id}</span>
-                                {opt.tags?.includes('dangerous') && <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: '#e74c3c', border: '1px solid #e74c3c', padding: '0 4px', borderRadius: '4px' }}>DANGEROUS</span>}
+                                <span style={{ fontWeight: 'bold', color: expandedId === opt.id ? 'var(--tool-text-header)' : 'var(--tool-text-main)' }}>{opt.name || opt.id}</span>
+                                {opt.tags?.includes('dangerous') && <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', padding: '0 4px', borderRadius: '4px' }}>DANGEROUS</span>}
                             </div>
-                            <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
                                 {opt.id} {expandedId === opt.id ? '▼' : '▶'}
                             </div>
                         </div>
@@ -86,7 +86,7 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
                                 onChange={handleUpdate} 
                                 onDelete={() => handleDelete(opt.id)}
                                 storyId={storyId}
-                                qualityDefs={qualityDefs} // PASS DATA DOWN
+                                qualityDefs={qualityDefs} 
                             />
                         </div>
                     )}
@@ -95,8 +95,8 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
             
             <button 
                 onClick={handleAdd}
-                style={{ width: '100%', padding: '0.75rem', border: '1px dashed #444', background: 'transparent', color: '#888', cursor: 'pointer', borderRadius: '4px' }}
-                className="hover:bg-[#2c313a] hover:text-white transition"
+                style={{ width: '100%', padding: '0.75rem', border: '1px dashed var(--tool-border)', background: 'transparent', color: 'var(--tool-text-dim)', cursor: 'pointer', borderRadius: '4px' }}
+                className="hover:bg-[var(--tool-bg-header)] hover:text-[var(--tool-text-main)] transition"
             >
                 + Add Option
             </button>

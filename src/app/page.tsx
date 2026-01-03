@@ -7,35 +7,27 @@ import WorldCard from '@/components/dashboard/WorldCard';
 import CreateWorldModal from '@/components/dashboard/CreateWorldModal';
 import { signOut } from 'next-auth/react';
 import SystemMessageBanner from '@/components/SystemMessageBanner';
-import { useTheme } from '@/providers/ThemeProvider'; // NEW IMPORT
-import MainLogo from '@/components/icons/MainLogo';
+import { useTheme } from '@/providers/ThemeProvider';
+import MainLogo from '@/components/icons/MainLogo'; // Ensure you have this from previous steps
+import ThemeControls from '@/components/ui/ThemeControls';
 
 export default function Dashboard() {
     const { data: session, status } = useSession();
-    const { theme, setTheme, resolvedTheme } = useTheme(); // NEW HOOK
+    const { theme } = useTheme();
     
     const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | any[] | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [activeTab, setActiveTab] = useState<'my' | 'discover'>('my');
     const [platformMsg, setPlatformMsg] = useState<any>(null);
 
-    // 1. Determine Mode on Load
     useEffect(() => {
         if (status === 'loading') return;
-        
-        if (status === 'unauthenticated') {
-            // GUEST: Force Discover mode
-            setActiveTab('discover');
-        } else {
-            // USER: Default to My Projects
-            setActiveTab('my');
-        }
+        if (status === 'unauthenticated') setActiveTab('discover');
+        else setActiveTab('my');
     }, [status]);
 
-    // 2. Fetch Data when tab changes or status settles
     useEffect(() => {
         if (status === 'loading') return;
-        
         const modeToFetch = status === 'unauthenticated' ? 'discover' : activeTab;
         const endpoint = modeToFetch === 'my' ? '/api/worlds' : '/api/worlds?mode=discover';
         
@@ -43,84 +35,44 @@ export default function Dashboard() {
             .then(r => r.json())
             .then(setData)
             .catch(console.error);
-            
     }, [activeTab, status]);
     
     useEffect(() => {
-        fetch('/api/platform/announcement')
-            .then(r => r.json())
-            .then(setPlatformMsg)
-            .catch(() => {}); // silent fail
+        fetch('/api/platform/announcement').then(r => r.json()).then(setPlatformMsg).catch(() => {}); 
     }, []);
 
     const dismissPlatformMsg = async () => {
          if (!platformMsg) return;
-         await fetch('/api/user/acknowledge-message', {
-             method: 'POST',
-             body: JSON.stringify({ messageId: platformMsg.id })
-         });
+         await fetch('/api/user/acknowledge-message', { method: 'POST', body: JSON.stringify({ messageId: platformMsg.id }) });
     };
 
     if (status === 'loading') return <div className="loading-container">Loading Studio...</div>;
 
     const displayList = Array.isArray(data) ? data : (activeTab === 'my' ? (data?.myWorlds || []) : (data?.playedWorlds || []));
-
-    // Helper for Guests
     const isGuest = status === 'unauthenticated';
 
     return (
         <div className="theme-wrapper" data-theme="default" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
             
             {/* HEADER */}
-            <div style={{ background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', padding: '0 2rem', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <MainLogo width={48} height={48} style={{ marginRight: '10px' }} />
-
-                    <h1 style={{ fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
-                        Chronicle<span style={{ color: 'var(--accent-highlight)' }}>Hub</span>
-                    </h1>                
+            <div className="dashboard-header">
+                <div className="header-brand">
+                    <MainLogo width={40} height={40} />
+                    <h1>Chronicle<span>Hub</span></h1>                
                 </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                    
-                    {/* NEW: THEME TOGGLE */}
-                    <button 
-                        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                        style={{
-                            background: 'transparent', 
-                            border: '1px solid var(--border-light)', 
-                            color: 'var(--text-secondary)', 
-                            borderRadius: '50%',
-                            width: '32px', height: '32px', 
-                            cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '1.1rem'
-                        }}
-                        className="hover:text-white hover:border-white transition"
-                        title={`Switch to ${resolvedTheme === 'dark' ? 'Light' : 'Dark'} Mode`}
-                    >
-                        {resolvedTheme === 'dark' ? '☀' : '☾'}
-                    </button>
+                <div className="header-controls">
+                    <ThemeControls />
 
-                    <Link href="/docs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }} className="hover:text-white transition">
-                        Documentation
-                    </Link>
+                    <Link href="/docs" className="header-link">Docs</Link>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div className="user-menu">
                         {isGuest ? (
-                            <Link href="/login" style={{ color: 'var(--accent-highlight)', textDecoration: 'none', fontWeight: 'bold' }}>
-                                Login / Register
-                            </Link>
+                            <Link href="/login" className="login-link">Login</Link>
                         ) : (
                             <>
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{session?.user?.email}</span>
-                                <button 
-                                    onClick={() => signOut({ callbackUrl: '/login' })}
-                                    style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.4rem 1rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-                                    className="hover:bg-[#333] hover:text-white transition"
-                                >
-                                    Log Out
-                                </button>
+                                <span className="user-email">{session?.user?.email}</span>
+                                <button onClick={() => signOut({ callbackUrl: '/login' })} className="logout-btn">Log Out</button>
                             </>
                         )}
                     </div>
@@ -128,66 +80,56 @@ export default function Dashboard() {
             </div>
 
             {platformMsg && (
-                <SystemMessageBanner 
-                    message={platformMsg} 
-                    type="platform" 
-                    onDismiss={dismissPlatformMsg} 
-                />
+                <SystemMessageBanner message={platformMsg} type="platform" onDismiss={dismissPlatformMsg} />
              )}
 
             {/* CONTENT */}
-            <div style={{ flex: 1, padding: '3rem', overflowY: 'auto' }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="dashboard-content">
+                <div className="dashboard-container">
                     
                     {/* TABS & ACTIONS */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                        <div style={{ display: 'flex', gap: '2rem' }}>
+                    <div className="dashboard-tabs">
+                        <div className="tab-group">
                             {!isGuest && (
                                 <button 
                                     onClick={() => setActiveTab('my')}
-                                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'my' ? '2px solid var(--accent-highlight)' : '2px solid transparent', color: activeTab === 'my' ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer', paddingBottom: '5px' }}
+                                    className={`dash-tab ${activeTab === 'my' ? 'active' : ''}`}
                                 >
                                     My Projects
                                 </button>
                             )}
                             <button 
                                 onClick={() => setActiveTab('discover')}
-                                style={{ background: 'none', border: 'none', borderBottom: activeTab === 'discover' ? '2px solid var(--success-color)' : '2px solid transparent', color: activeTab === 'discover' ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer', paddingBottom: '5px' }}
+                                className={`dash-tab discover ${activeTab === 'discover' ? 'active' : ''}`}
                             >
                                 Community Arcade
                             </button>
                         </div>
                         
                         {!isGuest && activeTab === 'my' && (
-                            <button onClick={() => setShowCreate(true)} className="deck-button" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
+                            <button onClick={() => setShowCreate(true)} className="deck-button compact">
                                 + New Project
                             </button>
                         )}
                     </div>
 
                     {/* GRID */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '2rem' }}>
+                    <div className="dashboard-grid">
                         {displayList.map((w: any) => (
-                            <WorldCard 
-                                key={w.worldId} 
-                                w={w} 
-                                isOwner={activeTab === 'my'} 
-                                isGuest={isGuest} 
-                            />
+                            <WorldCard key={w.worldId} w={w} isOwner={activeTab === 'my'} isGuest={isGuest} />
                         ))}
                         
                         {displayList.length === 0 && (
-                            <div style={{ gridColumn: '1 / -1', padding: '4rem', border: '2px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <div className="empty-state">
                                 {activeTab === 'my' ? "No projects found. Create one to get started." : "No public worlds found yet."}
                             </div>
                         )}
                     </div>
                     
-                    {/* ... (Recent Adventures Block) ... */}
                     {activeTab === 'my' && data && 'playedWorlds' in data && data.playedWorlds.length > 0 && (
                         <>
-                            <h2 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', margin: '4rem 0 2rem 0', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>Recent Adventures</h2>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                            <h2 className="section-title">Recent Adventures</h2>
+                            <div className="dashboard-grid">
                                 {data.playedWorlds.map((w: any) => (
                                     <WorldCard key={w.worldId} w={w} isOwner={false} />
                                 ))}

@@ -127,7 +127,7 @@ export default function EsotericPatternsPage() {
         Walking around is free, but drawing Opportunity Cards costs a specific quality.
     </p>
     <div className="docs-callout">
-        <strong style={{color: '#fff'}}>How to set it up:</strong>
+        <strong style={{color: 'var(--docs-text-main)'}}>How to set it up:</strong>
         <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
             In the <strong>Settings</strong> page, find the <strong>Default Draw Cost</strong> field. Instead of a number like <code>1</code>, enter a full ScribeScript effect string.
         </p>
@@ -221,17 +221,17 @@ export default function EsotericPatternsPage() {
 
             <style jsx>{`
                 .docs-content { max-width: 900px; margin: 0 auto; color: #ccc; line-height: 1.7; }
-                .docs-h1 { font-size: 3rem; color: #fff; margin-bottom: 0.5rem; line-height: 1.1; margin-top: 0; }
+                .docs-h1 { font-size: 3rem; color: var(--docs-text-main); margin-bottom: 0.5rem; line-height: 1.1; margin-top: 0; }
                 .lead { font-size: 1.3rem; color: #777; margin-bottom: 2rem; font-weight: 300; }
                 .docs-divider { border: 0; border-bottom: 1px solid #333; margin: 4rem 0; }
-                .docs-h2 { color: #61afef; font-size: 2.2rem; margin-top: 4rem; margin-bottom: 1.5rem; border-bottom: 1px solid #2c313a; padding-bottom: 0.5rem; scroll-margin-top: 2rem; }
+                .docs-h2 { color: var(--docs-accent-blue); font-size: 2.2rem; margin-top: 4rem; margin-bottom: 1.5rem; border-bottom: 1px solid #2c313a; padding-bottom: 0.5rem; scroll-margin-top: 2rem; }
                 .docs-p { margin-bottom: 1rem; color: #c8ccd4; }
                 .docs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
                 .docs-card { background: #21252b; padding: 1.5rem; border-radius: 8px; border: 1px solid #333; }
-                .docs-card h4 { color: #e5c07b; margin-top: 0; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+                .docs-card h4 { color: var(--docs-accent-gold); margin-top: 0; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
                 .docs-props-list { list-style: none; padding: 0; }
-                .docs-props-list li { margin-bottom: 1rem; background: #181a1f; padding: 0.5rem 1rem; border-radius: 4px; border-left: 3px solid #61afef; }
-                .docs-code { font-family: 'Consolas', monospace; color: #98c379; background: rgba(0,0,0,0.3); padding: 2px 6px; borderRadius: 4px; }
+                .docs-props-list li { margin-bottom: 1rem; background: #181a1f; padding: 0.5rem 1rem; border-radius: 4px; border-left: 3px solid var(--docs-accent-blue); }
+                .docs-code { font-family: 'Consolas', monospace; color: var(--docs-accent-green); background: rgba(0,0,0,0.3); padding: 2px 6px; borderRadius: 4px; }
                 .docs-syntax-box { background: #1e2127; border: 1px dashed #5c6370; padding: 1.5rem; margin: 2rem 0; border-radius: 8px; font-family: monospace; color: #abb2bf; }
             `}</style>
         </div>

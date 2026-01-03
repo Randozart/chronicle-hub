@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/settings/components/DataManagement.tsx
 'use client';
 import { useState } from "react";
 import { useToast } from "@/providers/ToastProvider";
@@ -49,17 +48,17 @@ export function DataManagement({ storyId }: { storyId: string }) {
     };
 
     return (
-        <div className="special-field-group" style={{ borderColor: '#61afef', marginBottom: '2rem' }}>
-            <label className="special-label" style={{ color: '#61afef' }}>Data Management</label>
+        <div className="special-field-group" style={{ borderColor: 'var(--tool-accent)', marginBottom: '2rem' }}>
+            <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Data Management</label>
             <p className="special-desc">Backup your world or import data from another source.</p>
             
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
-                <button onClick={handleExport} className="save-btn" style={{ background: '#2a3e5c' }}>
+                <button onClick={handleExport} className="save-btn" style={{ background: 'var(--tool-bg-header)', border: '1px solid var(--tool-border)' }}>
                     ⬇ Export Backup
                 </button>
                 
                 <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block' }}>
-                    <button className="save-btn" style={{ background: isImporting ? '#444' : '#2e7d32', cursor: isImporting ? 'wait' : 'pointer' }}>
+                    <button className="save-btn" style={{ background: isImporting ? 'var(--tool-border)' : 'var(--success-color)', cursor: isImporting ? 'wait' : 'pointer', color: 'var(--tool-key-black)' }}>
                         {isImporting ? 'Importing...' : '⬆ Import JSON'}
                     </button>
                     <input 

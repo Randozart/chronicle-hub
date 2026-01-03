@@ -143,7 +143,7 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
                                         <div style={{ fontWeight: 'bold', color: canAfford && !isLocked ? 'var(--success-color)' : 'var(--danger-color)' }}>
                                             {price}
                                         </div>
-                                        <div style={{ fontSize: '0.7rem', color: '#aaa', textTransform: 'uppercase' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
                                             {currencyDef?.name || currencyId}
                                         </div>
                                     </div>

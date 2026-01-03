@@ -14,7 +14,7 @@ type AudioItem = (InstrumentDefinition | LigatureTrack) & {
     folder?: string;
 };
 
-const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\n[PATTERN: Main]\n\nPiano |................|\n\n[PLAYLIST]\n\nMain\n`;
+const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\nPiano: hq_piano\n\n[PATTERN: Main]\n\nPiano |................|\n\n[PLAYLIST]\n\nMain\n`;
 
 export default function AudioAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -170,7 +170,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 renderItem={(item) => (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span className="item-title">{item.name}</span>
-                        <span style={{ fontSize: '0.7rem', color: item.scope === 'global' ? '#98c379' : '#61afef' }}>
+                        <span style={{ fontSize: '0.7rem', color: item.scope === 'global' ? 'var(--success-color)' : 'var(--tool-accent)' }}>
                             {item.category.toUpperCase()} • {item.scope}
                         </span>
                     </div>
@@ -180,21 +180,21 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             {/* 2. EDITOR AREA */}
             <div className="admin-editor-col" style={{ 
                 padding: 0, 
-                background: '#141414', 
+                background: 'var(--tool-bg-dark)', /* Replaced #141414 */
                 display: 'flex', 
                 flexDirection: 'column',
-                maxWidth: '100vw', /* Prevent Mobile Overflow */
+                maxWidth: '100vw', 
                 overflowX: 'hidden'
             }}>
                 
                 {/* TOOLBAR */}
                 <div style={{ 
                     padding: '0.5rem 1rem', 
-                    borderBottom: '1px solid var(--tool-border)', 
-                    background: 'var(--tool-bg-header)', 
+                    borderBottom: '1px solid var(--tool-border)', /* Replaced #333 */
+                    background: 'var(--tool-bg-header)', /* Replaced #21252b */
                     display: 'flex', 
                     gap: '10px',
-                    flexWrap: 'wrap' /* Allow wrapping on small screens */
+                    flexWrap: 'wrap'
                 }}>
                     <button className="new-btn" onClick={() => handleCreate('instrument')}>+ New Instrument</button>
                     <button className="new-btn" onClick={() => handleCreate('track')}>+ New Track</button>
@@ -208,20 +208,19 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                             onSave={(d) => handleUpdateInstrument(d)} 
                             onDelete={() => handleDelete(selectedItem.id, 'instrument')}
                         />
-                        <div style={{ marginTop:'1rem', fontSize:'0.8rem', color:'#666' }}>
-                            Scope: <span style={{ color: selectedItem.scope === 'global' ? '#98c379' : '#61afef' }}>{selectedItem.scope.toUpperCase()}</span>
+                        <div style={{ marginTop:'1rem', fontSize:'0.8rem', color:'var(--tool-text-dim)' }}>
+                            Scope: <span style={{ color: selectedItem.scope === 'global' ? 'var(--success-color)' : 'var(--tool-accent)' }}>{selectedItem.scope.toUpperCase()}</span>
                         </div>
                     </div>
                 )}
                 
                 {selectedItem?.category === 'track' && (
-                    /* Track Editor Container */
                     <div style={{ 
                         flex: 1, 
                         display: 'flex', 
                         flexDirection: 'column',
                         width: '100%',
-                        overflow: 'hidden' /* Force child scroll */
+                        overflow: 'hidden' 
                     }}>
                         <TrackEditor 
                             key={selectedItem.id}
@@ -236,7 +235,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 )}
                 
                 {!selectedItem && (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', flexDirection: 'column', padding: '2rem', textAlign: 'center' }}>
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tool-text-dim)', flexDirection: 'column', padding: '2rem', textAlign: 'center' }}>
                         <h3>Select an asset to edit</h3>
                         <p style={{ fontSize: '0.9rem' }}>Or use the + buttons above to create one.</p>
                     </div>

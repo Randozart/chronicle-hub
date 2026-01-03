@@ -23,14 +23,14 @@ export default function SystemMessageBanner({ message, onDismiss, type }: Props)
 
     // Style based on severity
     let bgColor = '#2a3e5c'; // Info (Blue)
-    let borderColor = '#61afef';
+    let borderColor = 'var(--accent-highlight)';
     
     if (message.severity === 'warning') {
         bgColor = '#4a3b18'; // Yellow/Brown
         borderColor = '#f1c40f';
     } else if (message.severity === 'critical') {
         bgColor = '#3e1a1a'; // Red
-        borderColor = '#e06c75';
+        borderColor = 'var(--danger-color)';
     }
 
     return (
@@ -51,7 +51,7 @@ export default function SystemMessageBanner({ message, onDismiss, type }: Props)
                         }}>
                             {type === 'platform' ? 'SYSTEM' : 'ANNOUNCEMENT'}
                         </span>
-                        <strong style={{ color: '#fff', fontSize: '1rem' }}>{message.title}</strong>
+                        <strong style={{ color: 'var(--text-primary)', fontSize: '1rem' }}>{message.title}</strong>
                     </div>
                     <div style={{ color: '#e0e0e0', fontSize: '0.9rem', lineHeight: '1.5' }}>
                          <FormattedText text={message.content} />
@@ -60,7 +60,7 @@ export default function SystemMessageBanner({ message, onDismiss, type }: Props)
                 <button 
                     onClick={handleDismiss}
                     style={{ 
-                        background: 'transparent', border: 'none', color: '#aaa', 
+                        background: 'transparent', border: 'none', color: 'var(--text-secondary)', 
                         cursor: 'pointer', fontSize: '1.5rem', padding: '0 0.5rem',
                         lineHeight: 1
                     }}

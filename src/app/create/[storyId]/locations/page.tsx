@@ -2,28 +2,30 @@
 
 import { useState, useEffect, use } from 'react';
 import { LocationDefinition } from '@/engine/models';
-import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import AdminListSidebar from '../storylets/components/AdminListSidebar'; // Ensure this path is correct
 import GameImage from '@/components/GameImage';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import SparkleIcon from '@/components/icons/SparkleIcon';
 import BehaviorCard from '../../../../components/admin/BehaviorCard';
 import ScribeAssistant from '../../../../components/admin/ScribeAssistant';
+import { useToast } from '@/providers/ToastProvider';
 
 export default function LocationsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const { showToast } = useToast();
     const [locations, setLocations] = useState<LocationDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch(`/api/admin/locations?storyId=${storyId}`) // Dynamic!
+        fetch(`/api/admin/locations?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => {
                 const arr = Object.values(data).map((q: any) => q);
                 setLocations(arr);
             })
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [storyId]);
 
     const handleCreate = () => {
         const newId = prompt("Enter Location ID (e.g. 'village_square'):");
@@ -44,52 +46,55 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
 
     const handleSaveSuccess = (updated: LocationDefinition) => {
         setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+        showToast("Location saved.", "success");
     };
 
     const handleDeleteSuccess = (id: string) => {
         setLocations(prev => prev.filter(l => l.id !== id));
         setSelectedId(null);
+        showToast("Location deleted.", "info");
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     return (
         <div className="admin-split-view">
-            <div className="admin-list-col">
-                <div className="list-header">
-                    <span>Locations</span>
-                    <button className="new-btn" onClick={handleCreate}>+ New</button>
-                </div>
-                <div className="list-items">
-                    {locations.map(loc => (
-                        <div 
-                            key={loc.id} 
-                            onClick={() => setSelectedId(loc.id)}
-                            className={`list-item ${selectedId === loc.id ? 'active' : ''}`}
-                        >
-                            <span className="item-title">{loc.name}</span>
-                            <span className="item-subtitle">{loc.id}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            {/* 1. SIDEBAR (Mobile Compatible) */}
+            <AdminListSidebar 
+                title="Locations"
+                items={locations}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onCreate={handleCreate}
+                groupOptions={[{ label: "Region", key: "regionId" }]}
+                defaultGroupByKey="regionId"
+                renderItem={(loc) => (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="item-title">{loc.name}</span>
+                        <span className="item-subtitle">{loc.id}</span>
+                    </div>
+                )}
+            />
 
+            {/* 2. MAIN EDITOR */}
             <div className="admin-editor-col">
                 {selectedId ? (
                     <LocationEditor 
+                        key={selectedId} // Force remount
                         initialData={locations.find(l => l.id === selectedId)!} 
                         onSave={handleSaveSuccess}
                         onDelete={handleDeleteSuccess}
                         storyId={storyId}
                     />
                 ) : (
-                    <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>Select a location</div>
+                    <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>
+                        Select a location to edit.
+                    </div>
                 )}
             </div>
         </div>
     );
 }
-
 
 function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialData: LocationDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
     const [form, setForm] = useState(initialData);
@@ -105,7 +110,6 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
     };
 
     const handleTagToggle = (tag: string) => {
-        // Use the array-aware helper
         const newTags = toggleProperty(form.tags, tag);
         handleChange('tags', newTags);
     };
@@ -181,9 +185,9 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 </div>
             </div>
 
-            {/* CONDITIONS */}
-            <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
-                <label className="special-label" style={{ color: '#61afef' }}>Access Control</label>
+            {/* CONDITIONS (Updated to use CSS Class instead of hardcoded background) */}
+            <div className="admin-panel-box">
+                <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Access Control</label>
                 
                 <div className="form-group" style={{ position: 'relative' }}>
                     <label className="form-label">Visible Condition</label>
@@ -195,11 +199,16 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                             placeholder="$discovered_map >= 1"
                             style={{ paddingRight: '40px' }}
                         />
-                        <button onClick={() => setActiveField('visible')} /* ... styles ... */>
+                        <button 
+                            onClick={() => setActiveField('visible')} 
+                            style={{ 
+                                position: 'absolute', right: 5, top: 5, background: 'none', 
+                                border: 'none', cursor: 'pointer', color: 'var(--tool-accent)' 
+                            }}
+                        >
                             <SparkleIcon />
                         </button>
                     </div>
-                    {/* UPDATED TEXT */}
                     <p className="special-desc">If empty, it is always visible. If condition fails, it's hidden from the map.</p>
                 </div>
 
@@ -213,7 +222,13 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                             placeholder="$route_to_town >= 1"
                             style={{ paddingRight: '40px' }}
                         />
-                         <button onClick={() => setActiveField('unlock')} style={{ position: 'absolute', right: 5, top: 5, background: 'none', border: 'none', cursor: 'pointer', color: '#61afef' }}>
+                         <button 
+                            onClick={() => setActiveField('unlock')} 
+                            style={{ 
+                                position: 'absolute', right: 5, top: 5, background: 'none', 
+                                border: 'none', cursor: 'pointer', color: 'var(--tool-accent)' 
+                            }}
+                        >
                             <SparkleIcon />
                         </button>
                     </div>
@@ -222,8 +237,8 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
             </div>
 
             {/* BEHAVIOR TAGS */}
-            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
-                <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
+            <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)' }}>
+                <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Behavior</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <BehaviorCard 
                         checked={hasProperty(form.tags, 'lock_equipment')} 
@@ -241,7 +256,7 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
             </div>
 
             {/* Coordinates */}
-            <div className="form-row" style={{ borderTop: '1px dashed #444', paddingTop: '1rem', marginTop: '1rem' }}>
+            <div className="form-row" style={{ borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', marginTop: '1rem' }}>
                 <div className="form-group">
                     <label className="form-label">Map Region ID</label>
                     <input value={form.regionId || ''} onChange={e => handleChange('regionId', e.target.value)} className="form-input" />
@@ -255,8 +270,8 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 </div>
             </div>
 
-            {/* DELETE BUTTON (Standardized) */}
-            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #333', display: 'flex', justifyContent: 'space-between' }}>
+            {/* DELETE BUTTON */}
+            <div className="admin-form-footer">
                 <button onClick={handleDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete Location</button>
                 <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
             </div>

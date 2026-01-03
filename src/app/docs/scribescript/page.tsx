@@ -33,7 +33,7 @@ export default function ScribeScriptSyntaxPage() {
                     Every field in the editor follows a strict two-step process:
                 </p>
                 
-                    <div className="docs-card" style={{borderLeft: '4px solid #61afef'}}>
+                    <div className="docs-card" style={{borderLeft: '4px solid var(--docs-accent-blue)'}}>
                         <h4 className="docs-h4">Step 1: ScribeScript Resolution</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             First, the ScribeScript parser scans the text for Curly Braces <code>{`{ ... }`}</code>. 
@@ -42,12 +42,12 @@ export default function ScribeScriptSyntaxPage() {
                         <div className="docs-code" style={{marginBottom: '0.5rem', fontSize:'0.85rem'}}>
                             <strong>Input:</strong> "Reward: {`{ $level * 100 }`} Gold"
                         </div>
-                        <div className="docs-code" style={{color: '#98c379', fontSize:'0.85rem'}}>
+                        <div className="docs-code" style={{color: 'var(--docs-accent-green)', fontSize:'0.85rem'}}>
                             <strong>Output:</strong> "Reward: 500 Gold"
                         </div>
                     </div>
 
-                    <div className="docs-card" style={{borderLeft: '4px solid #e5c07b'}}>
+                    <div className="docs-card" style={{borderLeft: '4px solid var(--docs-accent-gold)'}}>
                         <h4 className="docs-h4">Step 2: Field Parsing</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             Once ScribeScript has resolved all <code>{`{...}`}</code> blocks, the Field receives a final, plain string. 
@@ -203,7 +203,7 @@ export default function ScribeScriptSyntaxPage() {
         ScribeScript is <strong>Recursive</strong>. It doesn't read left-to-right like a book; it evaluates from the <strong>Inside Out</strong>, like opening a set of Russian nesting dolls. This allows you to build complex logic from simple parts.
     </p>
     <div className="docs-callout">
-        <strong style={{color: '#fff'}}>How the Parser Thinks:</strong>
+        <strong style={{color: 'var(--docs-text-main)'}}>How the Parser Thinks:</strong>
         <br/>
         1. Find the most deeply nested <code>{`{...}`}</code> block (one that contains no other braces).
         <br/>
@@ -263,8 +263,8 @@ export default function ScribeScriptSyntaxPage() {
         Understanding this model is key to avoiding common bugs. The parser treats text inside and outside braces very differently, especially regarding whitespace.
     </p>
     <div className="docs-grid">
-        <div className="docs-card" style={{borderColor: '#61afef'}}>
-            <h4 className="docs-h4" style={{color: '#61afef'}}>Text Context</h4>
+        <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
+            <h4 className="docs-h4" style={{color: 'var(--docs-accent-blue)'}}>Text Context</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>
                 Outside of braces, the parser is in <strong>Text Mode</strong>.
                 <br/>Whitespace is preserved and qualities aren't evaluated.
@@ -312,8 +312,8 @@ export default function ScribeScriptSyntaxPage() {
             <strong>Why it fails:</strong> The engine sees <code>$gold</code> as literal text, not a variable to look up. It needs <code>{`{$gold}`}</code> to switch into Logic Mode.
         </p>
     </div>
-    <div className="docs-callout" style={{padding:'1rem', marginTop:'1rem', borderColor: '#98c379'}}>
-    <strong style={{color:'#98c379'}}>Deep Dive: How Whitespace is Handled</strong>
+    <div className="docs-callout" style={{padding:'1rem', marginTop:'1rem', borderColor: 'var(--docs-accent-green)'}}>
+    <strong style={{color:'var(--docs-accent-green)'}}>Deep Dive: How Whitespace is Handled</strong>
     <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
         The ScribeScript parser is intentionally flexible with how you format your code. It actively discards whitespace (spaces, tabs, and newlines) around your logic to keep the final output clean. Let's trace a complex example:
     </p>
@@ -355,7 +355,7 @@ export default function ScribeScriptSyntaxPage() {
     </p>
 
     <div className="docs-callout">
-        <strong style={{color: '#fff'}}>The Zero-State Fallback:</strong>
+        <strong style={{color: 'var(--docs-text-main)'}}>The Zero-State Fallback:</strong>
         <br/>
         What happens if you check a quality the player doesn't have, like <code>$wounds</code>?
         <br/>
@@ -409,7 +409,7 @@ export default function ScribeScriptSyntaxPage() {
     </p>
 
     <div className="docs-callout" style={{padding:'1rem'}}>
-        <strong style={{color:'#fff'}}>How it Works:</strong>
+        <strong style={{color:'var(--docs-text-main)'}}>How it Works:</strong>
         <br/>
         The engine recognizes the special <code>$.</code> prefix as a single unit meaning "this quality". 
         You can then immediately add a dot to access its properties, just like with a normal <code>$</code> variable.
@@ -422,7 +422,7 @@ export default function ScribeScriptSyntaxPage() {
         </p>
     </div>
 
-    <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'#e5c07b'}}>Example 1: Simple Value Access</h5>
+    <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'var(--docs-accent-gold)'}}>Example 1: Simple Value Access</h5>
     <p className="docs-p" style={{fontSize:'0.9rem'}}>
         In its simplest form, <code>$.</code> accesses the quality's current level.
     </p>
@@ -435,7 +435,7 @@ export default function ScribeScriptSyntaxPage() {
     </div>
     <p className="docs-p" style={{fontSize:'0.9rem'}}>This makes the description text change as the value of <code>$wounds</code> itself changes.</p>
 
-    <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'#e5c07b'}}>Example 2: Property Access</h5>
+    <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'var(--docs-accent-gold)'}}>Example 2: Property Access</h5>
     <p className="docs-p" style={{fontSize:'0.9rem'}}>
         You can use <code>$.</code> to make a quality describe itself dynamically.
     </p>
@@ -450,7 +450,7 @@ export default function ScribeScriptSyntaxPage() {
         <strong>Result:</strong> "Your Renown is currently 15."
     </p>
 
-    <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'#e5c07b'}}>Advanced Example: Dynamic Naming</h5>
+    <h5 className="docs-h4" style={{marginTop:'1.5rem', fontSize:'1rem', color:'var(--docs-accent-gold)'}}>Advanced Example: Dynamic Naming</h5>
     <p className="docs-p" style={{fontSize:'0.9rem'}}>
         You can even change a quality's public-facing name based on its own level.
     </p>
@@ -496,7 +496,7 @@ export default function ScribeScriptSyntaxPage() {
         <div className="docs-code" style={{marginTop:'0.5rem', fontSize:'0.8rem', color: '#e06c75'}}>
             Wrong: $gold += @val, {`{@val = 5}`}
         </div>
-        <div className="docs-code" style={{marginTop:'0.25rem', fontSize:'0.8rem', color: '#98c379'}}>
+        <div className="docs-code" style={{marginTop:'0.25rem', fontSize:'0.8rem', color: 'var(--docs-accent-green)'}}>
             Right: {`{@val = 5}`}, $gold += @val
         </div>
     </div>
@@ -746,7 +746,7 @@ export default function ScribeScriptSyntaxPage() {
         <strong>Result:</strong> "You inspect the strange coin. You remember that you found it in a dusty chest."
     </p>
     <div className="docs-callout" style={{padding:'1rem', marginTop:'1rem'}}>
-        <strong style={{color:'#fff'}}>The Pruning Logic: Smart History</strong>
+        <strong style={{color:'var(--docs-text-main)'}}>The Pruning Logic: Smart History</strong>
         <p className="docs-p" style={{fontSize: '0.85rem', margin: '0.5rem 0 0 0'}}>
             When you spend an item in the effects field, rather than just accessing it in the text, the engine doesn't just remove a random source. 
             It uses a <strong>Proportional, Credit-Based System</strong> to decide what to forget. 
@@ -863,7 +863,7 @@ export default function ScribeScriptSyntaxPage() {
         <br/><small style={{color:'#777'}}>The reward scales based on your success chance. A 70% chance would yield 700 gold.</small>
     </div>
      <div className="docs-callout">
-        <strong style={{color: '#fff'}}>Anonymous vs. Explicit Macros:</strong>
+        <strong style={{color: 'var(--docs-text-main)'}}>Anonymous vs. Explicit Macros:</strong>
         <br/>
         The syntax <code>{`{ $strength >> 50 }`}</code> is an "anonymous" shorthand. There is also an explicit macro, <code>{`{%chance[...]}`}</code>, which offers more control. Both perform the same core function of calculating a probability number. The explicit macro is covered in detail in the Macros & Functions chapter.
     </div>
@@ -883,7 +883,7 @@ export default function ScribeScriptSyntaxPage() {
 </p>
 
 <div className="docs-callout">
-    <strong style={{color: '#fff'}}>The Single Roll Rule (Unified Randomness):</strong>
+    <strong style={{color: 'var(--docs-text-main)'}}>The Single Roll Rule (Unified Randomness):</strong>
     <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
         When a player clicks an option, the engine generates <strong>one single random number</strong> for that entire action (the "Resolution Roll," from 0-100). This one number is used for everything.
     </p>
@@ -994,7 +994,7 @@ You cast your line... {
     </ul>
 </div>
 <div className="docs-callout">
-    <strong style={{color: '#fff'}}>This pattern allows for scalable, tiered random outcomes.</strong> It ensures that a "critical" result always feels rarer than a "normal" success, because its probability is directly proportional to the player's overall chance to succeed.
+    <strong style={{color: 'var(--docs-text-main)'}}>This pattern allows for scalable, tiered random outcomes.</strong> It ensures that a "critical" result always feels rarer than a "normal" success, because its probability is directly proportional to the player's overall chance to succeed.
 </div>
 
  <h3 className="docs-h3">Dynamic Difficulty Curves and Modifiers</h3>
@@ -1067,8 +1067,8 @@ You cast your line... {
     <code className="docs-code">{`{ $stat >> 50 ; pivot:30 }`}</code>
 </div>
 
-<div className="docs-card" style={{ marginTop: '1.5rem', border: '1px solid #61afef' }}>
-    <h4 style={{ marginTop: 0, color: '#61afef' }}>Interactive Probability Playground</h4>
+<div className="docs-card" style={{ marginTop: '1.5rem', border: '1px solid var(--docs-accent-blue)' }}>
+    <h4 style={{ marginTop: 0, color: 'var(--docs-accent-blue)' }}>Interactive Probability Playground</h4>
     <p className="docs-p" style={{ fontSize: '0.85rem' }}>
         Adjust the values below to visualize how the difficulty curve changes. Notice how `pivot` creates a "kink" in the curve at the `Target` level.
     </p>
@@ -1090,7 +1090,7 @@ You cast your line... {
             <select 
                 value={op} 
                 onChange={(e) => setOp(e.target.value)}
-                style={{ width: '100%', background: '#111', border: '1px solid #444', color: '#fff', padding: '4px', borderRadius: '4px' }}
+                style={{ width: '100%', background: '#111', border: '1px solid #444', color: 'var(--docs-text-main)', padding: '4px', borderRadius: '4px' }}
             >
                 <option value=">>">{">>"}</option>
                 <option value="<<">{"<<"}</option>
@@ -1122,7 +1122,7 @@ You cast your line... {
         </div>
     </div>
 
-    <div style={{ marginTop: '1rem', padding: '0.5rem', background: '#111', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem', color: '#98c379', textAlign: 'center' }}>
+    <div style={{ marginTop: '1rem', padding: '0.5rem', background: '#111', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--docs-accent-green)', textAlign: 'center' }}>
         {`{ $stat ${op} ${target} ; margin:${margin}, min:${min}, max:${max}, pivot:${pivot} }`}
     </div>
 </div>

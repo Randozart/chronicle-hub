@@ -61,6 +61,14 @@
     --docs-text-header: #fff;
     --docs-border: #333;
     --docs-code-bg: rgba(0,0,0,0.3);
+
+    --docs-accent-blue: #61afef;
+    --docs-accent-green: #98c379;
+    --docs-accent-gold: #e5c07b;
+
+    --bg-overlay: rgba(0, 0, 0, 0.85); /* Dark dimming for modals */
+    --bg-input: #111;                  /* Dark input background */
+    --shadow-modal: 0 5px 15px rgba(0,0,0,0.5);
 }
 
 
@@ -123,6 +131,14 @@
     --docs-text-header: #111827;    /* Near Black */
     --docs-border: #e5e7eb;         /* Light Border */
     --docs-code-bg: rgba(0,0,0,0.05);
+
+    --docs-accent-blue: #4078f2;  /* Darker Blue */
+    --docs-accent-green: #50a14f; /* Darker Green */
+    --docs-accent-gold: #c18401;  /* Darker Gold */
+
+    --bg-overlay: rgba(255, 255, 255, 0.85); /* Light/Blurry dimming */
+    --bg-input: #ffffff;
+    --shadow-modal: 0 5px 15px rgba(0,0,0,0.1);
 }
 
 /* --- THEME PALETTES --- */

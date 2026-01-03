@@ -25,7 +25,7 @@ export default function EffectsPage() {
                         An effect is an <strong>Instruction</strong>, not an equation. It must always have a variable on the left (the "L-Value" or address) and the data on the right (the "R-Value" or value).
                     </p>
                     <div className="docs-pre" style={{marginTop:'1rem'}}>
-                        <code className="docs-code" style={{color:'#98c379'}}>
+                        <code className="docs-code" style={{color:'var(--docs-accent-green)'}}>
                             $gold += 10  // Correct!
                         </code>
                         <br/><br/>
@@ -122,7 +122,7 @@ export default function EffectsPage() {
                 </p>
 
                 <div className="docs-grid">
-                    <div className="docs-card" style={{borderColor: '#e5c07b'}}>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
                         <h4 className="docs-h4">Linear (Types: C, I, E, T)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>1 Point = 1 Level.</strong> Used for Currency, Items, and simple Trackers. Math is direct.
@@ -132,7 +132,7 @@ export default function EffectsPage() {
                             Result: You gain exactly 1 Gold.
                         </p>
                     </div>
-                    <div className="docs-card" style={{borderColor: '#61afef'}}>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
                         <h4 className="docs-h4">Pyramidal (Type: P)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>1 Point = 1 Change Point (CP).</strong> Used for Skills and Attributes that get harder to level up.
@@ -168,7 +168,7 @@ export default function EffectsPage() {
     </p>
 </div>
                 <div className="docs-callout">
-    <strong style={{color: '#fff'}}>Pro Tip: The "=" Override and Level-Based Math</strong>
+    <strong style={{color: 'var(--docs-text-main)'}}>Pro Tip: The "=" Override and Level-Based Math</strong>
     <p className="docs-p" style={{fontSize: '0.9rem', margin:'0.5rem 0 0 0'}}>
         The <code>=</code> operator is a powerful tool for Pyramidal qualities. It bypasses the Change Point system and sets the <strong>level</strong> directly, resetting the CP to 0.
     </p>

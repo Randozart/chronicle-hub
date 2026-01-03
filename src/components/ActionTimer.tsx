@@ -56,11 +56,11 @@ export default function ActionTimer({
     }, [currentActions, maxActions, lastTimestamp, regenIntervalMinutes, onRegen]);
 
     return (
-        <div className="action-timer" style={{ fontSize: '0.9rem', color: '#aaa' }}>
+        <div className="action-timer" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
             {currentActions >= maxActions ? (
                 <span>Actions Full</span>
             ) : (
-                <span>Next action in: <span style={{ color: 'white', fontWeight: 'bold' }}>{timeLeft}</span></span>
+                <span>Next action in: <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{timeLeft}</span></span>
             )}
         </div>
     );

@@ -8,7 +8,6 @@ interface LocationHeaderProps {
     imageLibrary: Record<string, ImageDefinition>;
     onOpenMap: () => void; 
     onOpenMarket?: () => void;
-    // NEW: Accept the style setting
     styleMode?: 'standard' | 'banner' | 'square' | 'circle' | 'hidden'; 
 }
 
@@ -17,7 +16,7 @@ export default function LocationHeader({
     imageLibrary, 
     onOpenMap, 
     onOpenMarket,
-    styleMode = 'standard' // Default to standard
+    styleMode = 'standard'
 }: LocationHeaderProps) {
     if (!location) return null;
 
@@ -25,15 +24,14 @@ export default function LocationHeader({
     const imageCode = location.image;
     const canTravel = !!location.regionId;
 
-    // LOGIC: When to show the icon?
-    // 1. Image code must exist.
-    // 2. styleMode must NOT be 'hidden'.
-    // 3. styleMode must NOT be 'banner' (because the banner is handled by the wrapper in GameHub).
+    // LOGIC: Show icon only if not hidden and not banner mode
+    // (Banner mode handles the image in the parent wrapper)
     const showIcon = imageCode && styleMode !== 'hidden' && styleMode !== 'banner';
 
-    // CSS Class for specific shapes (square vs circle)
-    // If standard, default to circle.
-    const shapeClass = styleMode === 'square' ? 'square' : 'circle';
+    // Shape Class Logic
+    // If standard, we default to circle (Classic behavior) unless theme overrides it via CSS.
+    // If explicit 'square' or 'circle', we force that class.
+    const shapeClass = styleMode === 'square' ? 'shape-square' : (styleMode === 'circle' ? 'shape-circle' : 'shape-standard');
 
     return (
         <div className={`location-header mode-${styleMode}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WorldSettings, LocationDefinition, ImageDefinition } from '@/engine/models';
 
 interface ElysiumLayoutProps {
@@ -20,6 +20,22 @@ export default function ElysiumLayout({
 }: ElysiumLayoutProps) {
     const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    
+    // NEW: State to track if we're on a mobile device
+    const [isMobile, setIsMobile] = useState(false);
+
+    // NEW: Client-side effect to check screen width
+    useEffect(() => {
+        const checkDevice = () => {
+            setIsMobile(window.innerWidth <= 900);
+        };
+        // Check on mount
+        checkDevice();
+        // Check on resize
+        window.addEventListener('resize', checkDevice);
+        return () => window.removeEventListener('resize', checkDevice);
+    }, []);
+
 
     // Parallax Logic
     const parallaxEnabled = settings.enableParallax !== false;
@@ -36,6 +52,9 @@ export default function ElysiumLayout({
     const bgDef = imageLibrary[location.image];
     const bgSrc = bgDef ? bgDef.url : `/images/locations/${location.image}.png`;
 
+    // THE FIX: Conditionally choose the correct class name
+    const sidebarClassName = isMobile ? 'sidebar-panel' : 'elysium-sidebar';
+
     return (
         <div className="elysium-wrapper" onMouseMove={handleMouseMove}>
             
@@ -50,9 +69,9 @@ export default function ElysiumLayout({
                 <div className="elysium-vignette" />
             </div>
 
-            {/* --- LEFT SIDEBAR (Glass HUD) --- */}
-            <div className={`elysium-sidebar ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
-                <div className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</div>
+            {/* --- SIDEBAR --- */}
+            {/* Uses the dynamic class name. On mobile, it becomes .sidebar-panel */}
+            <div className={`${sidebarClassName} ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
                 {sidebarContent}
             </div>
 
@@ -71,6 +90,18 @@ export default function ElysiumLayout({
                     </button>
                 </div>
             </div>
+
+            {/* --- CLOSE BUTTON (as sibling) --- */}
+            {/* This will now work because .sidebar-panel has the correct mobile styles */}
+            {mobileSidebarOpen && (
+                <button 
+                    className="mobile-close-btn" 
+                    onClick={() => setMobileSidebarOpen(false)}
+                    type="button"
+                >
+                    × Close
+                </button>
+            )}
         </div>
     );
 }

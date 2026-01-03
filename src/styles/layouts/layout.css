@@ -1,5 +1,3 @@
-/* src/styles/layouts/layout.css */
-
 .layout-screen { height: 100vh; display: flex; overflow: hidden; background-color: var(--bg-main); color: var(--text-primary); }
 .layout-column { display: flex; flex-direction: column; }
 .sidebar-panel { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 10; }
@@ -166,7 +164,263 @@
     gap: 2rem;
 }
 
-/* Mobile London Override */
+/* --- DASHBOARD HEADER --- */
+.dashboard-header {
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap; /* Allow wrapping on mobile */
+    gap: 1rem;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-brand h1 {
+    font-weight: bold;
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+}
+.header-brand h1 span { color: var(--accent-highlight); }
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.header-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+.header-link:hover { color: var(--text-primary); }
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-email { font-size: 0.9rem; color: var(--text-muted); }
+
+.logout-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.logout-btn:hover { background: #333; color: white; }
+.login-link { color: var(--accent-highlight); text-decoration: none; font-weight: bold; }
+
+/* --- DASHBOARD CONTENT --- */
+.dashboard-content {
+    flex: 1;
+    padding: 3rem;
+    overflow-y: auto;
+}
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Tabs */
+.dashboard-tabs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.tab-group { display: flex; gap: 2rem; }
+
+.dash-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding-bottom: 5px;
+    font-family: inherit;
+}
+
+.dash-tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-highlight);
+}
+.dash-tab.discover.active { border-bottom-color: var(--success-color); }
+
+.deck-button.compact { padding: 0.5rem 1rem; font-size: 0.9rem; }
+
+/* --- RESPONSIVE GRID --- */
+.dashboard-grid {
+    display: grid;
+    /* Smart grid that fits 350px cards if possible, but shrinks to 100% on mobile */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    padding: 4rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin: 4rem 0 2rem 0;
+    border-top: 1px solid var(--border-color);
+    padding-top: 2rem;
+}
+
+.location-wrapper.mode-banner {
+    display: grid; /* Stack image and content */
+    grid-template-areas: "stack"; 
+    
+    width: 100%;
+    max-width: 1000px; /* Or your preferred max width */
+    margin: 0 auto 1.5rem auto; /* WAS: 3rem. Halves the gap below. */
+    
+    border: 4px solid var(--border-color);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    background: var(--bg-item); /* Fallback bg */
+    overflow: hidden; /* CRITICAL: Clips the image */
+    position: relative;
+}
+
+/* 1. The Background Image Layer */
+.banner-bg-layer {
+    grid-area: stack;
+    position: relative;
+    width: 100%;
+    
+    /* FIX: Force aspect ratio for consistent height */
+    /* aspect-ratio: 16 / 5;  */
+        height: 200px;
+
+    z-index: 0;
+}
+
+.banner-bg-layer img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    
+    /* FIX: This is the magic. It zooms and centers the image. */
+    object-fit: cover; 
+    
+    /* Optional: Control where it crops from (e.g., center, top) */
+    object-position: center 25%;
+    
+    /* Visual Filters */
+    mask-image: linear-gradient(to top, transparent 0%, black 100%);
+    -webkit-mask-image: linear-gradient(to top, transparent 0%, black 100%);
+    filter: brightness(0.8) sepia(0.1);
+}
+
+/* 2. The Header Content (Floats on Top) */
+.location-wrapper.mode-banner .location-header {
+    grid-area: stack; 
+    align-self: end; /* Sits at the bottom of the banner */
+    
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    
+    padding: 1rem 2rem;
+    box-sizing: border-box; 
+    
+    /* Make the container transparent so the image shows through */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+}
+
+/* Hide the icon inside the floating header, it's redundant */
+.location-wrapper.mode-banner .location-image-container {
+    display: none !important;
+}
+
+/* Ensure text is readable */
+.location-wrapper.mode-banner .location-text h1,
+.location-wrapper.mode-banner .location-text h2 {
+    color: #fff !important;
+}
+
+/* --- MOBILE BREAKPOINT --- */
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .header-brand {
+        justify-content: center;
+    }
+
+    .header-controls {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .user-email { display: none; } /* Hide email on mobile to save space */
+    
+    .dashboard-content {
+        padding: 1.5rem 1rem;
+    }
+    
+    .dashboard-grid {
+        grid-template-columns: 1fr; /* Full width cards on mobile */
+        gap: 1.5rem;
+    }
+    
+    .tab-group {
+        gap: 1rem;
+        justify-content: space-between;
+        width: 100%;
+    }
+    
+    .dash-tab { font-size: 1rem; }
+    
+    .dashboard-tabs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .deck-button.compact {
+        width: 100%;
+    }
+}
+
 @media (max-width: 900px) {
     .layout-banner { height: 200px; }
     .banner-content { flex-direction: column; align-items: center; gap: 1rem; }
@@ -179,3 +433,4 @@
         padding: 1.5rem;
     }
 }
+

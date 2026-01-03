@@ -16,10 +16,10 @@ export default function SyntaxHighlightingPage() {
     // Color Constants (Matched to your CSS)
     const C = {
         text: '#bec0c5',     // Base Text
-        brace1: '#e5c07b',   // Gold
+        brace1: 'var(--docs-accent-gold)',   // Gold
         brace2: '#df8749',   // Copper
-        varLocal: '#61afef', // Electric Blue
-        varAlias: '#98c379', // Green
+        varLocal: 'var(--docs-accent-blue)', // Electric Blue
+        varAlias: 'var(--docs-accent-green)', // Green
         varWorld: '#ff3b90', // Pink
         macro: '#6361ff',    // Royal Blue
         bracket: '#5646ff',  // Deep Blue

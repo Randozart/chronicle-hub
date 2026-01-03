@@ -231,8 +231,8 @@ export default function MacrosPage() {
                     </div>
                 </div>
 
-                <div className="docs-card" style={{marginTop: '1.5rem', borderColor: '#98c379'}}>
-                    <h4 className="docs-h4" style={{color:'#98c379'}}>Advanced Filtering</h4>
+                <div className="docs-card" style={{marginTop: '1.5rem', borderColor: 'var(--docs-accent-green)'}}>
+                    <h4 className="docs-h4" style={{color:'var(--docs-accent-green)'}}>Advanced Filtering</h4>
                     <p className="docs-p" style={{fontSize:'0.9rem'}}>
                         The <code>FILTER</code> argument allows you to run a ScribeScript condition against every candidate quality. 
                         Inside the filter, the special sigil <code>$.</code> refers to the <strong>candidate quality being checked</strong>.
@@ -271,7 +271,7 @@ export default function MacrosPage() {
     </p>
 
     <div className="docs-callout">
-        <strong style={{color: '#fff'}}>Understanding the Schedule Stack:</strong>
+        <strong style={{color: 'var(--docs-text-main)'}}>Understanding the Schedule Stack:</strong>
         <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
             Think of each character having a list of "appointments" for each quality. When you use <code>%schedule</code>, you add a new appointment to the bottom of the list for that quality.
         </p>

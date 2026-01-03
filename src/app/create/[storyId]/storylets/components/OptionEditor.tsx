@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/storylets/components/OptionEditor.tsx
 'use client';
 
 import { ResolveOption, QualityDefinition } from '@/engine/models';
@@ -11,7 +10,6 @@ interface Props {
     onChange: (data: ResolveOption) => void;
     onDelete: () => void;
     storyId: string;
-    // NEW PROP
     qualityDefs: QualityDefinition[];
 }
 
@@ -61,8 +59,8 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
             </div>
 
             {/* TAGS & BEHAVIOR */}
-            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
-                <label className="special-label" style={{ color: '#c678dd' }}>Behavior & Tags</label>
+            <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)' }}>
+                <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Behavior & Tags</label>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <BehaviorCard checked={hasProperty(data.tags, 'instant_redirect')} onChange={() => handleTagToggle('instant_redirect')} label="Instant Redirect" desc="Skips result." />
@@ -88,7 +86,8 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                 </div>
             </div>
 
-            <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '0.75rem', borderRadius: '4px', border: '1px solid #333' }}>
+            {/* CONDITIONS */}
+            <div className="admin-panel-box">
                 <div className="form-row">
                     <div style={{ flex: 1 }}><SmartArea label="Visible If" value={data.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" qualityDefs={qualityDefs} /></div>
                     <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={data.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" qualityDefs={qualityDefs} /></div>
@@ -110,19 +109,19 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
             </div>
 
             {/* OUTCOMES */}
-            <div style={{ borderTop: '1px solid #444', paddingTop: '1rem' }}>
+            <div style={{ borderTop: '1px solid var(--tool-border)', paddingTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <h4 style={{ margin: 0, color: 'var(--tool-text-dim)', textTransform: 'uppercase', fontSize: '0.8rem' }}>Outcomes</h4>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#666' }}>Use <code>%random</code> in text/effects for rare outcomes.</p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>Use <code>%random</code> in text/effects for rare outcomes.</p>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-                    <OutcomeColumn title="Success" color="#2ecc71" data={data} prefix="pass" onChange={handleChange} storyId={storyId} qualityDefs={qualityDefs} />
-                    {hasDifficulty && <OutcomeColumn title="Failure" color="#e74c3c" data={data} prefix="fail" onChange={handleChange} storyId={storyId} qualityDefs={qualityDefs} />}
+                    <OutcomeColumn title="Success" color="var(--success-color)" data={data} prefix="pass" onChange={handleChange} storyId={storyId} qualityDefs={qualityDefs} />
+                    {hasDifficulty && <OutcomeColumn title="Failure" color="var(--danger-color)" data={data} prefix="fail" onChange={handleChange} storyId={storyId} qualityDefs={qualityDefs} />}
                 </div>
             </div>
 
-            <div style={{ paddingTop: '1rem', borderTop: '1px solid #333', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--tool-border)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.3rem 1rem' }}>Delete Option</button>
             </div>
         </div>
@@ -131,7 +130,10 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
 
 function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityDefs }: any) {
     return (
-        <div className="outcome-column" style={{ background: `${color}08`, border: `1px solid ${color}40` }}>
+        <div className="outcome-column" style={{ 
+            background: `color-mix(in srgb, ${color}, transparent 95%)`, /* Dynamic Tint */
+            border: `1px solid color-mix(in srgb, ${color}, transparent 60%)` 
+        }}>
             <h4 style={{ color: color, margin: '0 0 0.5rem 0' }}>{title}</h4>
             
             <SmartArea label="Narrative" value={data[`${prefix}_long`] || ''} onChange={v => onChange(`${prefix}_long`, v)} storyId={storyId} minHeight="80px" placeholder="What happens?" qualityDefs={qualityDefs} />

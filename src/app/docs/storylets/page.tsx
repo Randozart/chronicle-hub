@@ -33,8 +33,8 @@ export default function StoryletsDocs() {
                     While they share the same structure, they behave differently based on where they live.
                 </p>
                 <div className="docs-grid">
-                    <div className="docs-card" style={{borderColor: '#61afef'}}>
-                        <h4 className="docs-h4" style={{color:'#61afef'}}>Storylet (Fixed)</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
+                        <h4 className="docs-h4" style={{color:'var(--docs-accent-blue)'}}>Storylet (Fixed)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>Lives in:</strong> A Location.
                         </p>

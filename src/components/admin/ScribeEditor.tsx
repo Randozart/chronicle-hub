@@ -67,7 +67,7 @@ export default function ScribeEditor({
                 background: 'var(--tool-bg-input)', 
                 border: '1px solid var(--tool-border)',
                 borderRadius: '4px',
-                fontSize: '14px',
+                fontSize: '0.9rem',
                 lineHeight: '1.5',
                 position: 'relative',
                 display: 'flex', 

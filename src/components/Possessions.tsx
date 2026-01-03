@@ -244,7 +244,7 @@ export default function Possessions({
                 </div>
             ))}
             
-            {inventoryItems.length === 0 && <p style={{ color: '#777', fontStyle: 'italic' }}>Your pockets are empty.</p>}
+            {inventoryItems.length === 0 && <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Your pockets are empty.</p>}
         </div>
     );
 }
