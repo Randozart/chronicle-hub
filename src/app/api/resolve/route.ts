@@ -156,9 +156,9 @@ export async function POST(request: NextRequest) {
                     }
                 }
                 
-                if (!engineResult.redirectId && !newAutofire) {
-                    finalRedirectId = undefined; 
-                }
+                // if (!engineResult.redirectId && !newAutofire) {
+                //     finalRedirectId = undefined; 
+                // }
             }
         }
         
@@ -176,6 +176,7 @@ export async function POST(request: NextRequest) {
             newQualities: character.qualities,
             equipment: character.equipment, 
             updatedHand: 'deck' in storyletDef || finalTags.has('clear_hand') ? character.opportunityHands : undefined, 
+            currentLocationId: character.currentLocationId,
             result: { 
                 ...engineResult, 
                 title: cleanTitle, 
