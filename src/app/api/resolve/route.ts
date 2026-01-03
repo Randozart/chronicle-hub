@@ -132,9 +132,22 @@ export async function POST(request: NextRequest) {
         const newAutofire = newEligibleAutofires[0];
 
         let finalRedirectId: string | undefined = undefined;
-        if (newAutofire) { finalRedirectId = newAutofire.id; }
-        else if (engineResult.redirectId) { finalRedirectId = engineResult.redirectId; }
-        else if (!('deck' in storyletDef)) { finalRedirectId = character.currentStoryletId; }
+
+        if (newAutofire) {
+            finalRedirectId = newAutofire.id;
+        }
+
+        else if (engineResult.redirectId) {
+            finalRedirectId = engineResult.redirectId;
+        }
+
+        else if (engineResult.moveToId) {
+
+            finalRedirectId = undefined;
+        }
+        else if (!('deck' in storyletDef)) {
+            finalRedirectId = character.currentStoryletId;
+        }
         
         const newLocationId = engineResult.moveToId;
         if (newLocationId) {
