@@ -16,7 +16,17 @@ export function resolveComplexExpression(
     evaluator: ScribeEvaluator // Injected
 ): string | number | boolean {
     try {
-        const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
+        // --- LEGERDEMAIN: Ground Self-References ---
+        // Convert ambiguous relative syntax "$.index" into absolute syntax "$s1.index"
+        // This prevents the parser from greedily resolving "$." to a number before seeing the property.
+        let processedExpr = expr;
+        if (self && self.qid) {
+            // Replace "$." with "$qid" (e.g., "$s1")
+            // We use a global replace. 
+            processedExpr = processedExpr.replace(/\$\./g, '$' + self.qid);
+        }
+
+        const varReplacedExpr = processedExpr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
             (match) => { 
                 const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
                 if (typeof resolved === 'string') return `"${resolved}"`;
@@ -74,7 +84,6 @@ export function resolveVariable(
             if (!state && self?.qid === qualityId) state = self.state;
         }
         
-        // Auto-create state shim if missing but definition exists (for static lookups)
         if (!state) {
             if (definition) {
                 state = { 
@@ -137,7 +146,7 @@ export function resolveVariable(
             else if (typeof currentValue === 'object' && currentValue.customProperties && currentValue.customProperties[prop] !== undefined) {
                 currentValue = currentValue.customProperties[prop];
             } 
-            // 5. Custom Properties on DEFINITION (Fallback - THE FIX for $.index)
+            // 5. Custom Properties on DEFINITION (Fallback - Critical for $.index)
             // This ensures that static properties defined in the quality template are accessible
             else if (currentDef && (currentDef as any)[prop] !== undefined) {
                 currentValue = (currentDef as any)[prop];
@@ -146,13 +155,12 @@ export function resolveVariable(
                 currentValue = undefined;
             }
 
-            // 6. Recursion (Resolve {nested} in the value we just found)
+            // 6. Recursion via Injected Evaluator
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
                 currentValue = evaluator(
                     currentValue, 
                     qualities, 
                     defs, 
-                    // Update context to the item we just resolved
                     { qid: lookupId, state: (typeof currentValue === 'object' ? currentValue : qualities[lookupId] || { qualityId: lookupId, type: QualityType.Pyramidal, level: 0 } as any) }, 
                     resolutionRoll,
                     aliases,
