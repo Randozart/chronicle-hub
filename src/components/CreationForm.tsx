@@ -97,7 +97,7 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
             
             mockQualities[qid] = {
                 qualityId: qid, type: type, level: isNum ? Number(val) : 0, stringValue: String(val),
-                changePoints: 0, sources: [], spentTowardsPrune: 0, customProperties: {}
+                changePoints: 0, sources: [], spentTowardsPrune: 0, text_variants: {}
             } as any;
         });
 

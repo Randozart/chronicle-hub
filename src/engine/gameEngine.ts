@@ -1,4 +1,5 @@
-// ... imports unchanged ...
+// src/engine/gameEngine.ts
+
 import {
     PlayerQualities, QualityState, QualityType, ResolveOption, Storylet,
     QualityChangeInfo, WorldConfig, Opportunity, QualityDefinition
@@ -8,20 +9,23 @@ import {
     evaluateCondition as evaluateScribeCondition,
     sanitizeScribeScript
 } from './textProcessor';
+
+// Mechanics imports
 import { EngineContext } from './mechanics/types';
 import { parseAndApplyEffects } from './mechanics/effectParser';
-import { changeQuality, createNewQuality, batchChangeQuality } from './mechanics/qualityOperations';
+import { changeQuality, createNewQuality, batchChangeQuality, updatePyramidalLevel } from './mechanics/qualityOperations';
 
 type SkillCheckResult = { wasSuccess: boolean; roll: number; targetChance: number; description: string; };
 type ScheduleInstruction = any;
 
 export class GameEngine implements EngineContext {
+    // === STATE (EngineContext Implementation) ===
     public qualities: PlayerQualities;
     public worldQualities: PlayerQualities;
     public worldContent: WorldConfig;
     public equipment: Record<string, string | null>;
     
-    // NEW: Track definitions created dynamically
+    // Track definitions created dynamically (e.g., via %new)
     public dynamicQualities: Record<string, QualityDefinition> = {};
 
     public changes: QualityChangeInfo[] = [];
@@ -46,21 +50,36 @@ export class GameEngine implements EngineContext {
 
     public setQualities(newQualities: PlayerQualities): void { this.qualities = JSON.parse(JSON.stringify(newQualities)); }
     public getQualities(): PlayerQualities { return this.qualities; }
+    // Expose dynamic definitions
     public getDynamicQualities(): Record<string, QualityDefinition> { return this.dynamicQualities; }
+    
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
+
+    // === PUBLIC EVALUATION API ===
 
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
-            rawText, this.qualities, this.worldContent.qualities, context || null,
-            this.resolutionRoll, this.tempAliases, this.errors,
-            (msg, depth, type) => this.traceLog(msg, depth, type), 0 
+            rawText, 
+            this.qualities, 
+            this.worldContent.qualities, 
+            context || null,
+            this.resolutionRoll, 
+            this.tempAliases,
+            this.errors,
+            (msg, depth, type) => this.traceLog(msg, depth, type),
+            0 
         );
     }
 
     public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
         return evaluateScribeCondition(
-            expression, this.qualities, this.worldContent.qualities, contextOverride || null,
-            this.resolutionRoll, this.tempAliases, this.errors
+            expression, 
+            this.qualities, 
+            this.worldContent.qualities, 
+            contextOverride || null,
+            this.resolutionRoll, 
+            this.tempAliases,
+            this.errors
         );
     }
 
@@ -93,6 +112,8 @@ export class GameEngine implements EngineContext {
         }
         return total;
     }
+
+    // === MAIN RESOLUTION FLOW ===
 
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
         this.changes = [];
@@ -135,13 +156,18 @@ export class GameEngine implements EngineContext {
         parseAndApplyEffects(this, effectsString);
     }
 
+    // === UTILS ===
+
     private traceLog(message: string, depth: number, type?: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR') {
         let prefix = depth > 0 ? '|-- ' : '';
-        if (depth > 1) { prefix = '|   '.repeat(depth - 1) + '|-- '; }
+        if (depth > 1) {
+            prefix = '|   '.repeat(depth - 1) + '|-- ';
+        }
         let icon = '';
         if (type === 'SUCCESS') icon = '✔ ';
         if (type === 'ERROR') icon = '❌ ';
         if (type === 'WARN') icon = '⚠ ';
+
         this.executedEffectsLog.push(`${prefix}${icon}${message}`);
     }
 
@@ -149,31 +175,50 @@ export class GameEngine implements EngineContext {
         if (!challengeString) return { wasSuccess: true, roll: -1, targetChance: 100, description: "" };
         const chanceStr = this.evaluateText(`{${challengeString}}`);
         const targetChance = parseInt(chanceStr, 10) || 100;
-        return { wasSuccess: this.resolutionRoll <= targetChance, roll: Math.floor(this.resolutionRoll), targetChance, description: `Rolled ${Math.floor(this.resolutionRoll)} vs ${targetChance}%` };
+        
+        return { 
+            wasSuccess: this.resolutionRoll <= targetChance, 
+            roll: Math.floor(this.resolutionRoll), 
+            targetChance, 
+            description: `Rolled ${Math.floor(this.resolutionRoll)} vs ${targetChance}%` 
+        };
     }
 
+    // === API Wrappers ===
+
     public createNewQuality(id: string, value: number | string, templateId: string | null, props: Record<string, any>) {
-        // 1. Update State
+        // 1. Update State (This is now correct from the previous step)
         createNewQuality(this, id, value, templateId, props);
         
-        // 2. Construct Definition for Persistence
-        let newDef: QualityDefinition = {
-            id: id,
-            name: (props.name as string) || id,
-            type: typeof value === 'string' ? QualityType.String : QualityType.Pyramidal,
-            description: (props.description as string) || "Dynamically created.",
-            category: "Dynamic",
-            ...props
-        };
+        // 2. Construct the Definition for Persistence
+        const templateDef = templateId ? this.worldContent.qualities[templateId] : null;
 
-        if (templateId && this.worldContent.qualities[templateId]) {
-            newDef = { ...this.worldContent.qualities[templateId], ...newDef, id };
+        // CRITICAL FIX: Use a deep copy to ensure `text_variants` and `category` are unique to this instance.
+        const newDef: QualityDefinition = templateDef 
+            ? JSON.parse(JSON.stringify(templateDef)) 
+            : { type: QualityType.Pyramidal }; // Fallback for no template
+
+        // A. Set the unique ID.
+        newDef.id = id;
+
+        // B. Ensure text_variants dictionary exists.
+        if (!newDef.text_variants) {
+            newDef.text_variants = {};
         }
 
-        // 3. Update Engine Context
+        // C. Merge props from the macro (e.g., index:1) into BOTH the top-level and text_variants.
+        // This makes them accessible via {$s1.index} and ensures they are part of the logic context.
+        Object.assign(newDef, props);
+        Object.assign(newDef.text_variants, props);
+        
+        // D. Set name and type, prioritizing template values.
+        newDef.name = newDef.name || id;
+        newDef.type = templateDef ? templateDef.type : (typeof value === 'string' ? QualityType.String : QualityType.Pyramidal);
+
+        // 3. Update Engine Context for immediate use in this turn.
         this.worldContent.qualities[id] = newDef;
 
-        // 4. Register for Persistence
+        // 4. Register for Persistence to be saved to the database.
         this.dynamicQualities[id] = newDef;
     }
 
@@ -217,7 +262,9 @@ export class GameEngine implements EngineContext {
         }
         if (obj && typeof obj === 'object') {
             for (const key in obj) {
-                if (['id', 'deck', 'ordering', 'worldId', 'ownerId', '_id'].includes(key)) { continue; }
+                if (['id', 'deck', 'ordering', 'worldId', 'ownerId', '_id'].includes(key)) {
+                    continue;
+                }
                 obj[key] = this.deepEvaluate(obj[key]);
             }
             return obj;

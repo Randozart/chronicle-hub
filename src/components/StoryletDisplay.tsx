@@ -14,7 +14,7 @@ interface StoryletDisplayProps {
     storyletDefs: Record<string, Storylet>;
     opportunityDefs: Record<string, Opportunity>;
     settings: WorldSettings;
-    onFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
+    onFinish: (newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => void;
     onQualitiesUpdate: (newQualities: PlayerQualities) => void;
     onCardPlayed?: (cardId: string) => void;
     imageLibrary: Record<string, ImageDefinition>; 
@@ -27,12 +27,12 @@ type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; sk
 
 type ResolutionState = {
     qualities: PlayerQualities;
-    title: string; body: string; redirectId?: string; image_code?: string;
+    title: string; body: string; redirectId?: string; moveToId?: string; image_code?: string;
     wasSuccess?: boolean; skillCheckDetails?: { description: string; };
     qualityChanges: QualityChangeInfo[];
     errors?: string[]; 
     rawEffects?: string;
-    resolvedEffects?: string[]; // TRACE: New Field
+    resolvedEffects?: string[];
 };
 
 export default function StoryletDisplay({ 
@@ -58,8 +58,9 @@ export default function StoryletDisplay({
     
     const storylet = eventData; 
     
-    const evalText = (text: string | undefined) => {
-        return evaluateText(text, qualities, qualityDefs, null, 0);
+    // Helper for pre-resolution text evaluation
+    const evalText = (text: string | undefined, context?: { qid: string, state: any } | null) => {
+        return evaluateText(text, qualities, qualityDefs, context, 0);
     };
 
     const handleOptionClick = async (option: ResolveOption) => {
@@ -86,6 +87,7 @@ export default function StoryletDisplay({
             
             if (data.error && !data.result) {
                  alert(`Critical Error: ${data.error}\n${data.details}`);
+                 setIsLoading(false);
                  return;
             }
 
@@ -98,7 +100,7 @@ export default function StoryletDisplay({
             const isInstant = option.tags?.includes('instant_redirect');
 
             if (isInstant) {
-                onFinish(data.newQualities, data.result.redirectId);
+                onFinish(data.newQualities, data.result.redirectId, data.result.moveToId);
             } else {
                 setResolution({ ...data.result, image_code: option.image_code, qualities: data.newQualities });
             }
@@ -106,13 +108,13 @@ export default function StoryletDisplay({
             console.error("API Error:", error);
             alert("Network or Server Error occurred.");
         } finally {
-            setIsLoading(false);
+            if (!resolution) setIsLoading(false);
         }
     };
 
     const handleContinue = () => {
         if (!resolution) return;
-        onFinish(resolution.qualities, resolution.redirectId);
+        onFinish(resolution.qualities, resolution.redirectId, resolution.moveToId);
     };
 
     const disableReturn = storylet.tags?.includes('no_return');
@@ -137,6 +139,7 @@ export default function StoryletDisplay({
 
      if (resolution) {
         const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
+        const postResolutionQualities = resolution.qualities;
 
         return (
             <div className="storylet-container">
@@ -164,10 +167,15 @@ export default function StoryletDisplay({
                     <div className="quality-changes-container">
                         {resolution.qualityChanges.map((change) => {
                             if (change.hidden && !showHidden) return null;
+
+                            // FIX: Evaluate change text here with post-resolution state
+                            const resolvedChangeText = evaluateText(change.changeText, postResolutionQualities, qualityDefs, null, 0);
+                            const finalChange = {...change, changeText: resolvedChangeText};
+
                             return (
                                 <div key={change.qid} style={{ opacity: change.hidden ? 0.6 : 1 }}>
                                     <QualityChangeBar 
-                                        change={change} 
+                                        change={finalChange} 
                                         categoryDef={categories[change.category || ""]} 
                                     />
                                 </div>
@@ -193,7 +201,6 @@ export default function StoryletDisplay({
                             <span>{showDebug ? '▼' : '▶'}</span>
                         </div>
                         
-                        {/* UI FIX: Added max-height and overflow-y for scrolling */}
                         {showDebug && (
                             <div style={{ 
                                 background: '#2c3e50', 
@@ -201,8 +208,8 @@ export default function StoryletDisplay({
                                 padding: '12px', 
                                 fontFamily: 'monospace', 
                                 fontSize: '0.85rem',
-                                maxHeight: '400px', // Limit height
-                                overflowY: 'auto'   // Enable scrolling
+                                maxHeight: '400px',
+                                overflowY: 'auto'
                             }}>
                                 
                                 <div style={{ marginBottom: '10px' }}>
@@ -239,8 +246,7 @@ export default function StoryletDisplay({
                                         </pre>
                                     </div>
                                 )}
-
-                                {/* TRACE: Show Final Resolved Effects */}
+                                
                                 {resolution.resolvedEffects && resolution.resolvedEffects.length > 0 && (
                                     <div>
                                         <strong style={{ color: '#2ecc71' }}>Final Execution Trace:</strong>
@@ -359,12 +365,12 @@ export default function StoryletDisplay({
                                 <div className="option-text-wrapper">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                         <h3 style={{ margin: 0, padding: 0 }}>
-                                            <FormattedText text={option.name} />
+                                            <FormattedText text={evalText(option.name)} />
                                         </h3>
                                         {costDisplay}
                                     </div>
-                                    {option.short && <div className="option-short-desc"><FormattedText text={option.short} /></div>}
-                                    {option.meta && <div className="option-meta-text"><FormattedText text={option.meta} /></div>}
+                                    {option.short && <div className="option-short-desc"><FormattedText text={evalText(option.short)} /></div>}
+                                    {option.meta && <div className="option-meta-text"><FormattedText text={evalText(option.meta)} /></div>}
                                     {option.skillCheckText && (
                                         <p className="option-skill-check" style={{ color: option.chance !== null ? (option.chance > 80 ? '#2ecc71' : option.chance < 40 ? '#e74c3c' : '#f1c40f') : 'inherit' }}>
                                             {option.skillCheckText}

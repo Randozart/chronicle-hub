@@ -12,8 +12,7 @@ export enum QualityType {
     Equipable = 'E',
 }
 
-// ... (Other interfaces like LogicGates, ResolveOption, Storylet, etc. remain unchanged) ...
-
+// ... (other interfaces are correct) ...
 export interface LogicGates {
     visible_if?: string; 
     unlock_if?: string;  
@@ -73,8 +72,6 @@ export interface Opportunity extends ContentCommon {
     unlock_if?: string;
 }
 
-// --- CONFIGURATION DEFINITIONS ---
-
 export interface QualityDefinition {
     id: string;
     name?: string;
@@ -96,8 +93,6 @@ export interface QualityDefinition {
     tags?: string[];
     bonus?: string;
     storylet?: string;
-
-    // CRITICAL: Allow dynamic custom properties (like 'index', 'secret', etc.)
     [key: string]: any;
 }
 
@@ -169,8 +164,6 @@ export interface ShopListing { id: string; qualityId: string; price: string; cur
 export interface ShopStall { id: string; name: string; mode: 'buy' | 'sell'; source?: string; listings: ShopListing[]; }
 export interface MarketDefinition { id: string; name: string; image?: string; defaultCurrencyId: string; allowAllTypes?: boolean; stalls: ShopStall[]; }
 
-// --- WORLD DOCUMENT ---
-
 export interface WorldConfig {
     qualities: Record<string, QualityDefinition>;
     locations: Record<string, LocationDefinition>;
@@ -190,8 +183,9 @@ export interface WorldConfig {
 export interface BaseQualityState {
     qualityId: string;
     type: QualityType;
-    customProperties?: Record<string, string | number | boolean>;
+    text_variants?: Record<string, string | number | boolean>;
 }
+
 
 export interface CounterQualityState extends BaseQualityState { type: QualityType.Counter | QualityType.Tracker; level: number; }
 export interface PyramidalQualityState extends BaseQualityState { type: QualityType.Pyramidal; level: number; changePoints: number; }
@@ -231,7 +225,7 @@ export interface CharacterDocument {
     acknowledgedMessages?: string[];
     dynamicQualities?: Record<string, QualityDefinition>;
 }
-
+// ... (rest of file is correct and unchanged) ...
 export interface UserDocument {
     _id: ObjectId | string; 
     username: string;

@@ -9,6 +9,8 @@ export function changeQuality(
     value: number | string, 
     metadata: { desc?: string; source?: string; hidden?: boolean }
 ): void {
+        console.log(`[Scribe_Op] Change Action: QID='${qid}', OP='${op}', VALUE='${value}'`);
+
     const def = ctx.worldContent.qualities[qid];
     if (!def) {
         const msg = `[GameEngine] Unknown quality '${qid}'. Skipping.`;
@@ -33,11 +35,14 @@ export function changeQuality(
     }
 
     const qState = targetState[effectiveQid] as any;
+        console.log(`[Scribe_Op] State BEFORE:`, JSON.parse(JSON.stringify(qState)));
+
     const levelBefore = qState.level || 0;
 
     if (qState.type === QualityType.String) {
         if (typeof value === 'string' && op === '=') qState.stringValue = value;
     } 
+    
     else if (typeof value === 'number') {
         const numValue = Math.floor(value);
         const isIncremental = ['+=', '-=', '++', '--'].includes(op);
@@ -99,10 +104,10 @@ export function changeQuality(
         qState.level = Math.floor(qState.level);
         if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
     }
+    console.log(`[Scribe_Op] State AFTER:`, JSON.parse(JSON.stringify(targetState[effectiveQid])));
 
     const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
     
-    // Pass context to resolve names like "My Level {$level}"
     const context = { qid: effectiveQid, state: qState };
     const displayName = ctx.evaluateText(def.name || effectiveQid, context); 
     
@@ -136,43 +141,39 @@ export function createNewQuality(
     templateId: string | null, 
     props: Record<string, any>
 ) {
-    let def: Partial<QualityDefinition> = {};
-    if (templateId && ctx.worldContent.qualities[templateId]) {
-        def = { ...ctx.worldContent.qualities[templateId] };
-    } else {
-        def = { type: typeof value === 'string' ? QualityType.String : QualityType.Pyramidal };
-    }
+    const templateDef = templateId ? ctx.worldContent.qualities[templateId] : null;
 
-    let state = ctx.qualities[id];
-    
-    if (!state) {
+    // Determine the final set of variants for the new state.
+    const finalVariants = {
+        ...(templateDef?.text_variants || {}),
+        ...props
+    };
+
+    const qualityType = templateDef ? templateDef.type : (typeof value === 'string' ? QualityType.String : QualityType.Pyramidal);
+
+    if (!ctx.qualities[id]) {
+        // Create a new state object from scratch.
         ctx.qualities[id] = {
             qualityId: id,
-            type: def.type || QualityType.Pyramidal,
+            type: qualityType,
             level: typeof value === 'number' ? value : 0,
             stringValue: typeof value === 'string' ? value : "",
             changePoints: 0,
-            customProperties: {
-                ...(def.name ? { name: def.name } : {}),
-                ...(def.description ? { description: def.description } : {}),
-                ...(def.image ? { image: def.image } : {}),
-                ...props 
-            }
+            text_variants: finalVariants
         } as any;
     } else {
-        const dynamicState = state as any;
-        if (!dynamicState.customProperties) dynamicState.customProperties = {};
-        Object.assign(dynamicState.customProperties, props);
+        // If the state already exists, update it.
+        const dynamicState = ctx.qualities[id] as any;
+        if (!dynamicState.text_variants) dynamicState.text_variants = {};
+        Object.assign(dynamicState.text_variants, finalVariants);
 
-        if (typeof value === 'number') {
-             dynamicState.level = value;
-        }
-        if (typeof value === 'string') {
-             dynamicState.stringValue = value;
-        }
+        if (typeof value === 'number') dynamicState.level = value;
+        if (typeof value === 'string') dynamicState.stringValue = value;
     }
-    console.log(`[GameEngine] Created/Updated ${id}. Template: ${templateId}`, ctx.qualities[id]);
+
+    console.log(`[GameEngine] Created/Updated ${id} with type ${qualityType}. Template: ${templateId}`, ctx.qualities[id]);
 }
+
 
 export function batchChangeQuality(
     ctx: EngineContext,

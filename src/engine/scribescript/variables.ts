@@ -1,3 +1,4 @@
+// src/engine/scribescript/variables.ts
 import { safeEval } from '@/utils/safeEval';
 import { PlayerQualities, QualityDefinition, QualityState, QualityType } from '../models';
 import { ScribeEvaluator, TraceLogger } from './types';
@@ -43,7 +44,8 @@ export function resolveVariable(
     evaluator: ScribeEvaluator
 ): string | number {
     try {
-        const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
+        // FIX: Modified Regex to allow a {...} block as part of an identifier
+        const match = fullMatch.match(/^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
 
         const [, sigilAndName, levelSpoof, propChain] = match;
@@ -51,8 +53,12 @@ export function resolveVariable(
         if (sigilAndName === '$.') { sigil = '$.'; identifier = ''; } 
         else { sigil = sigilAndName.charAt(0); identifier = sigilAndName.slice(1); }
 
+        // FIX: If the identifier is a dynamic block, resolve it first.
+        if (identifier.startsWith('{')) {
+            identifier = evaluator(identifier, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+        }
+
         let qualityId: string | undefined;
-        let contextQualities = qualities;
 
         if (sigil === '$.') qualityId = self?.qid;
         else if (sigil === '@') qualityId = aliases[identifier];
@@ -64,23 +70,20 @@ export function resolveVariable(
             return 0; 
         }
         
-        // CRITICAL: Ensure we get the definition, even if it was just created dynamically
-        // The gameEngine logic now updates 'defs' (worldContent.qualities) when %new is called.
         let definition = defs[qualityId];
         let state: QualityState | undefined;
 
         if (sigil === '$.' && self) state = self.state;
         else {
-            state = contextQualities[qualityId];
+            state = qualities[qualityId];
             if (!state && self?.qid === qualityId) state = self.state;
         }
         
-        // Fallback: If no state exists, spoof one from definition (common for checking static world qualities)
         if (!state) {
             if (definition) {
                 state = { 
                     qualityId, type: definition.type || QualityType.Pyramidal, level: 0, 
-                    stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 
+                    stringValue: "", changePoints: 0
                 } as any;
             } else {
                 if (logger) logger(`[WARN] Variable "${qualityId}" not defined.`, depth, 'WARN');
@@ -88,7 +91,6 @@ export function resolveVariable(
             }
         }
 
-        // Handle Level Spoofing (e.g., $strength[5])
         if (levelSpoof) {
             const spoofedVal = evaluator(
                 levelSpoof, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth
@@ -101,73 +103,46 @@ export function resolveVariable(
         const properties = propChain ? propChain.split('.').filter(Boolean) : [];
         let currentValue: any = state;
 
-        // Base case: No properties, return level or string value
         if (properties.length === 0) {
             if (currentValue.type === QualityType.String) return (currentValue as any).stringValue;
             if ('level' in currentValue) return (currentValue as any).level;
             return 0;
         }
 
-        // Property Resolution Chain
         for (const prop of properties) {
-            let processed = false;
-            
-            // 1. String manipulators
-            if (typeof currentValue === 'string') {
-                if (prop === 'capital') { currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1); processed = true; }
-                else if (prop === 'upper') { currentValue = currentValue.toUpperCase(); processed = true; }
-                else if (prop === 'lower') { currentValue = currentValue.toLowerCase(); processed = true; }
-            }
-            if (processed) continue;
-
-            // Determine context for lookup
             const currentQid = (currentValue && typeof currentValue === 'object' && currentValue.qualityId) ? currentValue.qualityId : qualityId;
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
-            const currentDef = defs[lookupId]; // Use refreshed defs
+            const currentDef = defs[lookupId];
             
-            // 2. Standard Properties
-            if (prop === 'name') currentValue = currentDef?.name || lookupId;
-            else if (prop === 'description') currentValue = currentDef?.description || "";
-            else if (prop === 'category') currentValue = currentDef?.category || "";
-            else if (prop === 'plural') {
-                const lvl = ('level' in state!) ? state!.level : 0;
-                currentValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || lookupId) : (currentDef?.singular_name || currentDef?.name || lookupId);
+            let found = false;
+
+            // CRITICAL FIX: The state object now has `text_variants`, check it first.
+            if (typeof currentValue === 'object' && (currentValue as any).text_variants && (currentValue as any).text_variants[prop] !== undefined) {
+                currentValue = (currentValue as any).text_variants[prop];
+                found = true;
             }
-            else if (prop === 'singular') currentValue = currentDef?.singular_name || currentDef?.name || lookupId;
-            else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
+            // Fallback to the definition (for non-dynamic qualities)
+            else if (!found && currentDef?.text_variants && currentDef.text_variants[prop] !== undefined) {
                 currentValue = currentDef.text_variants[prop];
+                found = true;
             }
-            
-            // 3. Custom Properties Lookup
-            // PRIORITY: Check State (Dynamic overrides) -> Then check Definition (Template/Static defaults)
-            else {
-                let found = false;
-
-                // A: Check State Custom Properties
-                if (typeof currentValue === 'object' && currentValue.customProperties && currentValue.customProperties[prop] !== undefined) {
-                    currentValue = currentValue.customProperties[prop];
-                    found = true;
-                } 
-                
-                // B: Check Definition (Fallback)
-                // This resolves {$s1.index} if 'index' is defined on the template but not explicitly copied to state properties
-                if (!found && currentDef && (currentDef as any)[prop] !== undefined) {
-                    currentValue = (currentDef as any)[prop];
-                    found = true;
-                }
-
-                if (!found) {
-                    currentValue = undefined;
-                }
+            // Fallback for top-level properties like .name or macro-injected .index
+            else if (!found && currentDef && (currentDef as any)[prop] !== undefined) {
+                currentValue = (currentDef as any)[prop];
+                found = true;
             }
 
-            // RECURSION via Injected Evaluator
+            if (!found) {
+                currentValue = undefined;
+            }
+
+            // RECURSION for expressions within properties
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
                 currentValue = evaluator(
                     currentValue, 
                     qualities, 
                     defs, 
-                    { qid: lookupId, state: (typeof currentValue === 'object' ? currentValue : qualities[lookupId] || { qualityId: lookupId, type: QualityType.Pyramidal, level: 0 } as any) }, 
+                    { qid: lookupId, state: (qualities[lookupId] || state as any) }, 
                     resolutionRoll,
                     aliases,
                     errors,
