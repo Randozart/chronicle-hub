@@ -13,7 +13,7 @@ export function resolveComplexExpression(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number,
-    evaluator: ScribeEvaluator
+    evaluator: ScribeEvaluator // Injected
 ): string | number | boolean {
     try {
         const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
@@ -41,11 +41,10 @@ export function resolveVariable(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number,
-    evaluator: ScribeEvaluator
+    evaluator: ScribeEvaluator // Injected
 ): string | number {
     try {
-        // FIX: Modified Regex to allow a {...} block as part of an identifier
-        const match = fullMatch.match(/^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
+        const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
 
         const [, sigilAndName, levelSpoof, propChain] = match;
@@ -53,12 +52,8 @@ export function resolveVariable(
         if (sigilAndName === '$.') { sigil = '$.'; identifier = ''; } 
         else { sigil = sigilAndName.charAt(0); identifier = sigilAndName.slice(1); }
 
-        // FIX: If the identifier is a dynamic block, resolve it first.
-        if (identifier.startsWith('{')) {
-            identifier = evaluator(identifier, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
-        }
-
         let qualityId: string | undefined;
+        let contextQualities = qualities;
 
         if (sigil === '$.') qualityId = self?.qid;
         else if (sigil === '@') qualityId = aliases[identifier];
@@ -75,15 +70,16 @@ export function resolveVariable(
 
         if (sigil === '$.' && self) state = self.state;
         else {
-            state = qualities[qualityId];
+            state = contextQualities[qualityId];
             if (!state && self?.qid === qualityId) state = self.state;
         }
         
+        // Auto-create state shim if missing but definition exists (for static lookups)
         if (!state) {
             if (definition) {
                 state = { 
                     qualityId, type: definition.type || QualityType.Pyramidal, level: 0, 
-                    stringValue: "", changePoints: 0
+                    stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 
                 } as any;
             } else {
                 if (logger) logger(`[WARN] Variable "${qualityId}" not defined.`, depth, 'WARN');
@@ -110,39 +106,54 @@ export function resolveVariable(
         }
 
         for (const prop of properties) {
+            let processed = false;
+            
+            // 1. String Helpers
+            if (typeof currentValue === 'string') {
+                if (prop === 'capital') { currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1); processed = true; }
+                else if (prop === 'upper') { currentValue = currentValue.toUpperCase(); processed = true; }
+                else if (prop === 'lower') { currentValue = currentValue.toLowerCase(); processed = true; }
+            }
+            if (processed) continue;
+
+            // 2. Resolve Definition for the *current* value
             const currentQid = (currentValue && typeof currentValue === 'object' && currentValue.qualityId) ? currentValue.qualityId : qualityId;
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             const currentDef = defs[lookupId];
             
-            let found = false;
-
-            // CRITICAL FIX: The state object now has `text_variants`, check it first.
-            if (typeof currentValue === 'object' && (currentValue as any).text_variants && (currentValue as any).text_variants[prop] !== undefined) {
-                currentValue = (currentValue as any).text_variants[prop];
-                found = true;
+            // 3. Metadata Properties
+            if (prop === 'name') currentValue = currentDef?.name || lookupId;
+            else if (prop === 'description') currentValue = currentDef?.description || "";
+            else if (prop === 'category') currentValue = currentDef?.category || "";
+            else if (prop === 'plural') {
+                const lvl = ('level' in state!) ? state!.level : 0;
+                currentValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || lookupId) : (currentDef?.singular_name || currentDef?.name || lookupId);
             }
-            // Fallback to the definition (for non-dynamic qualities)
-            else if (!found && currentDef?.text_variants && currentDef.text_variants[prop] !== undefined) {
+            else if (prop === 'singular') currentValue = currentDef?.singular_name || currentDef?.name || lookupId;
+            else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
                 currentValue = currentDef.text_variants[prop];
-                found = true;
             }
-            // Fallback for top-level properties like .name or macro-injected .index
-            else if (!found && currentDef && (currentDef as any)[prop] !== undefined) {
+            // 4. Custom Properties on STATE (Priority)
+            else if (typeof currentValue === 'object' && currentValue.customProperties && currentValue.customProperties[prop] !== undefined) {
+                currentValue = currentValue.customProperties[prop];
+            } 
+            // 5. Custom Properties on DEFINITION (Fallback - THE FIX for $.index)
+            // This ensures that static properties defined in the quality template are accessible
+            else if (currentDef && (currentDef as any)[prop] !== undefined) {
                 currentValue = (currentDef as any)[prop];
-                found = true;
             }
-
-            if (!found) {
+            else {
                 currentValue = undefined;
             }
 
-            // RECURSION for expressions within properties
+            // 6. Recursion (Resolve {nested} in the value we just found)
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
                 currentValue = evaluator(
                     currentValue, 
                     qualities, 
                     defs, 
-                    { qid: lookupId, state: (qualities[lookupId] || state as any) }, 
+                    // Update context to the item we just resolved
+                    { qid: lookupId, state: (typeof currentValue === 'object' ? currentValue : qualities[lookupId] || { qualityId: lookupId, type: QualityType.Pyramidal, level: 0 } as any) }, 
                     resolutionRoll,
                     aliases,
                     errors,

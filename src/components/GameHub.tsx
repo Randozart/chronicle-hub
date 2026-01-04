@@ -208,7 +208,7 @@ export default function GameHub(props: GameHubProps) {
 
     const worldConfig: WorldConfig = {
         settings: props.settings, 
-        qualities: mergedQualityDefs, // USE MERGED DEFS
+        qualities: mergedQualityDefs, 
         decks: props.deckDefs,
         locations: props.locations, 
         regions: props.regions, 
@@ -218,7 +218,6 @@ export default function GameHub(props: GameHubProps) {
         markets: props.markets,
         instruments: props.instruments || {},
         music: props.musicTracks || {},
-        // REVERT: Removed 'storylets' property as it is not in the model
     };
     
     // Engine instance

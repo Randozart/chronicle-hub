@@ -65,13 +65,7 @@ export function evaluateText(
     depth: number = 0
 ): string {
     if (!rawText) return '';
-    const indent = '  '.repeat(depth);
-    console.log(`${indent}[Scribe_Entry] Text: "${rawText.substring(0, 70).replace(/\n/g, "\\n")}..."`);
-    if (selfContext) {
-        console.log(`${indent}[Scribe_Entry] selfContext: { qid: '${selfContext.qid}' }`);
-    } else {
-        console.warn(`${indent}[Scribe_Entry] ⚠️ No selfContext provided.`);
-    }
+    
     // Step 1: Sanitize
     const cleanText = sanitizeScribeScript(rawText);
     const effectiveAliases = aliases || {}; 
@@ -100,7 +94,6 @@ function evaluateRecursive(
 ): string {
     let currentText = text;
     let currentBlock = ""; 
-    const indent = '  '.repeat(depth);
 
     try {
         for (let i = 0; i < 50; i++) {
@@ -110,7 +103,6 @@ function evaluateRecursive(
             const blockWithBraces = innermostBlockMatch[0];
             const blockContent = innermostBlockMatch[1];
             currentBlock = blockWithBraces; 
-            console.log(`${indent}[Scribe_Recurse] Found Block: {${blockContent}}`);
 
             // Log Entry
             if (logger && context === 'TEXT') {
@@ -119,8 +111,7 @@ function evaluateRecursive(
 
             const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1);
             const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
-                        console.log(`${indent}[Scribe_Recurse] ✅ Resolved to: "${safeValue}"`);
-
+            
             // Log Result (if meaningful)
             if (logger && context === 'TEXT' && safeValue !== "") {
                  logger(`Result: "${safeValue}"`, depth, 'SUCCESS');
@@ -157,8 +148,6 @@ function evaluateExpression(
 ): string | number | boolean {
     const cleanExpr = expr.replace(/\/\/.*$/gm, '').trim();
     if (!cleanExpr) return "";
-        const indent = '  '.repeat(depth);
-
     const trimmedExpr = cleanExpr; 
     
     // 1. Alias Assignment: @alias = value
@@ -228,9 +217,6 @@ function resolveComplexExpression(
     logger?: TraceLogger, 
     depth: number = 0
 ): string | number | boolean {
-        const indent = '  '.repeat(depth);
-    console.log(`${indent}[Scribe_Expr] Evaluating: "${expr}"`);
-
     try {
         const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
             (match) => { 
@@ -258,11 +244,6 @@ function resolveVariable(
     logger?: TraceLogger, 
     depth: number = 0
 ): string | number {
-    const indent = '  '.repeat(depth);
-    console.log(`${indent}[Scribe_Var] Resolving: "${fullMatch}"`);
-    if (self) {
-        console.log(`${indent}[Scribe_Var] selfContext is: '${self.qid}'`);
-    }
     try {
         const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
@@ -279,7 +260,7 @@ function resolveVariable(
         else if (sigil === '@') qualityId = aliases[identifier];
         else if (sigil === '$') qualityId = identifier;
         else if (sigil === '#') qualityId = identifier;
-        
+
         if (!qualityId) return `[Unknown: ${fullMatch}]`;
         
         let definition = defs[qualityId];
@@ -292,8 +273,6 @@ function resolveVariable(
         }
         
         if (!state) {
-                        console.warn(`${indent}[Scribe_Var] ⚠️ No STATE found for '${qualityId}'. Creating ghost state.`);
-
             state = { 
                 qualityId, type: definition?.type || QualityType.Pyramidal, level: 0, 
                 stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 
@@ -316,51 +295,36 @@ function resolveVariable(
 
         for (const prop of properties) {
             let processed = false;
-                        console.log(`${indent}[Scribe_Var] > Looping for property: ".${prop}"`);
-
             if (typeof currentValue === 'string') {
                 if (prop === 'capital') { currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1); processed = true; }
                 else if (prop === 'upper') { currentValue = currentValue.toUpperCase(); processed = true; }
                 else if (prop === 'lower') { currentValue = currentValue.toLowerCase(); processed = true; }
             }
             if (processed) continue;
+
             const currentQid = currentValue.qualityId || qualityId;
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             const currentDef = defs[lookupId];
             
-            let foundIn: string | null = null;
-            let foundValue: any = undefined;
-
-            if (typeof state === 'object' && (state as any).text_variants && (state as any).text_variants[prop] !== undefined) {
-                foundIn = 'state.text_variants';
-                foundValue = (state as any).text_variants[prop];
-            }
-            else if (prop === 'name') { foundIn = 'builtin.name'; foundValue = currentDef?.name || lookupId; }
-            else if (prop === 'description') { foundIn = 'builtin.description'; foundValue = currentDef?.description || ""; }
-            else if (prop === 'category') { foundIn = 'builtin.category'; foundValue = currentDef?.category || ""; }
+            if (prop === 'name') currentValue = currentDef?.name || lookupId;
+            else if (prop === 'description') currentValue = currentDef?.description || "";
+            else if (prop === 'category') currentValue = currentDef?.category || "";
             else if (prop === 'plural') {
-                foundIn = 'builtin.plural';
                 const lvl = ('level' in state!) ? state!.level : 0;
-                foundValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || lookupId) : (currentDef?.singular_name || currentDef?.name || lookupId);
+                currentValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || lookupId) : (currentDef?.singular_name || currentDef?.name || lookupId);
             }
-            else if (prop === 'singular') { foundIn = 'builtin.singular'; foundValue = currentDef?.singular_name || currentDef?.name || lookupId; }
+            else if (prop === 'singular') currentValue = currentDef?.singular_name || currentDef?.name || lookupId;
             else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
-                foundIn = 'definition.text_variants';
-                foundValue = currentDef.text_variants[prop];
+                currentValue = currentDef.text_variants[prop];
             }
-
-            if (foundIn) {
-                currentValue = foundValue;
-                console.log(`${indent}[Scribe_Var] >> ✅ Found ".${prop}" in ${foundIn}. Value:`, currentValue);
+            else if (typeof currentValue === 'object' && currentValue.customProperties && currentValue.customProperties[prop] !== undefined) {
+                currentValue = currentValue.customProperties[prop];
             } else {
-                console.error(`${indent}[Scribe_Var] >> ❌ Property ".${prop}" NOT FOUND.`);
                 currentValue = undefined;
             }
 
             // NESTED RECURSION
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
-                                console.log(`${indent}[Scribe_Var] >> Recursing into property value: "${currentValue}"`);
-
                 currentValue = evaluateText(
                     currentValue, 
                     qualities, 
@@ -376,19 +340,11 @@ function resolveVariable(
         }
         
         if (typeof currentValue === 'object' && currentValue !== null) {
-            if (currentValue.type === QualityType.String) {
-                console.log(`${indent}[Scribe_Var] Final value is an object, returning stringValue.`);
-                return (currentValue as any).stringValue;
-            }
-            if ('level' in currentValue) {
-                console.log(`${indent}[Scribe_Var] Final value is an object, returning level.`);
-                return (currentValue as any).level;
-            }
+            if (currentValue.type === QualityType.String) return (currentValue as any).stringValue;
+            if ('level' in currentValue) return (currentValue as any).level;
         }
-     console.log(`${indent}[Scribe_Var] ✅ Final resolved value for "${fullMatch}":`, currentValue);
         return currentValue?.toString() || "";
     } catch (e: any) {
-        console.error(`${indent}[Scribe_Var] ❌ FATAL ERROR in resolveVariable for "${fullMatch}":`, e);
         if (errors) errors.push(`Variable Error "${fullMatch}": ${e.message}`);
         return "[VAR ERROR]";
     }
