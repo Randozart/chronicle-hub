@@ -75,6 +75,16 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
 
     // 3. UPDATE CHARACTER STATE
     character.qualities = engine.getQualities();
+
+    // NEW: Capture dynamic qualities (e.g., from %new) and merge them into character doc
+    const newDefinitions = engine.getDynamicQualities();
+    if (Object.keys(newDefinitions).length > 0) {
+        character.dynamicQualities = {
+            ...(character.dynamicQualities || {}),
+            ...newDefinitions
+        };
+        console.log(`[LivingStory] Persisting ${Object.keys(newDefinitions).length} dynamic qualities.`);
+    }
     
     // Remove fired events
     character.pendingEvents = character.pendingEvents.filter(e => !eventsToRemoveIds.has(e.instanceId));

@@ -1,3 +1,4 @@
+// src/components/GameHub.tsx
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -66,6 +67,9 @@ export default function GameHub(props: GameHubProps) {
     const [showMarket, setShowMarket] = useState(false);
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
     const { playTrack } = useAudio(); 
+    
+    // NEW: Transition State
+    const [isTransitioning, setIsTransitioning] = useState(false);
 
     useEffect(() => {
         setCharacter(props.initialCharacter);
@@ -75,6 +79,28 @@ export default function GameHub(props: GameHubProps) {
         setShowMap(false);
         setShowMarket(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
+
+    // NEW: Monitor character location changes for seamless transitions
+    useEffect(() => {
+        if (!character || !location) return;
+        
+        if (character.currentLocationId !== location.id) {
+            // Location has changed in data, update UI
+            const newLoc = props.locations[character.currentLocationId];
+            if (newLoc) {
+                // Start Transition
+                setIsTransitioning(true);
+                
+                // Short timeout to allow "exit" animation if we were doing complex CSS
+                setTimeout(() => {
+                    setLocation(newLoc);
+                    // End Transition
+                    setTimeout(() => setIsTransitioning(false), 500); 
+                }, 150);
+            }
+        }
+    }, [character, location, props.locations]);
+
 
     // --- HANDLERS ---
     const showEvent = useCallback(async (eventId: string | null) => {
@@ -106,8 +132,16 @@ export default function GameHub(props: GameHubProps) {
         setCharacter(newCharacterState);
     }, []);
 
-    const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string) => {
-        setCharacter(prev => prev ? { ...prev, qualities: newQualities } : null);
+    const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => {
+        // FIX: Update character locally to trigger location transition if move_to was used
+        setCharacter(prev => {
+            if (!prev) return null;
+            const newChar = { ...prev, qualities: newQualities };
+            if (moveToId) {
+                newChar.currentLocationId = moveToId;
+            }
+            return newChar;
+        });
         showEvent(redirectId ?? null);
     }, [showEvent]);
 
@@ -131,14 +165,22 @@ export default function GameHub(props: GameHubProps) {
 
     const handleTravel = useCallback(async (targetId: string) => {
         if (!character) return;
-        setIsLoading(true);
+        // Don't set global isLoading, maybe just map loading state
         try {
             const res = await fetch('/api/travel', { 
                 method: 'POST', body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
             });
             const data = await res.json();
-            if (data.success) window.location.reload(); else alert(data.error);
-        } catch(e) { console.error(e); } finally { setIsLoading(false); }
+            
+            if (data.success) {
+                // FIX: Removed window.location.reload()
+                // Update character location locally. The useEffect will pick this up and handle the transition.
+                setCharacter(prev => prev ? { ...prev, currentLocationId: targetId } : null);
+                setShowMap(false); // Close map immediately
+            } else {
+                alert(data.error);
+            }
+        } catch(e) { console.error(e); } 
     }, [character, props.storyId]);
 
     const handleExit = useCallback(() => {
@@ -157,10 +199,16 @@ export default function GameHub(props: GameHubProps) {
     if (!location) return <div>Loading location data...</div>;
 
     // --- ENGINE INIT ---
-    // Using useMemo to prevent engine recreation on every render unless data changes
+    // Merge dynamic qualities from character into world config
+    // This ensures that items created via %new have definitions (name, etc.)
+    const mergedQualityDefs = {
+        ...props.qualityDefs,
+        ...(character.dynamicQualities || {})
+    };
+
     const worldConfig: WorldConfig = {
         settings: props.settings, 
-        qualities: props.qualityDefs, 
+        qualities: mergedQualityDefs, // USE MERGED DEFS
         decks: props.deckDefs,
         locations: props.locations, 
         regions: props.regions, 
@@ -169,7 +217,8 @@ export default function GameHub(props: GameHubProps) {
         char_create: {}, 
         markets: props.markets,
         instruments: props.instruments || {},
-        music: props.musicTracks || {}
+        music: props.musicTracks || {},
+        // REVERT: Removed 'storylets' property as it is not in the model
     };
     
     // Engine instance
@@ -224,7 +273,7 @@ export default function GameHub(props: GameHubProps) {
                             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                             <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
                         </div>
-                        <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
+                        <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} settings={props.settings} categories={props.categories} />
                     </div>
                     <div className="sidebar-footer">
                         <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
@@ -237,14 +286,14 @@ export default function GameHub(props: GameHubProps) {
         return (
             <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div className="sidebar-header">
-                    <WalletHeader qualities={character.qualities} qualityDefs={props.qualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
+                    <WalletHeader qualities={character.qualities} qualityDefs={mergedQualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
                 </div>
                 <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
                     <div className="action-box">
                         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
                     </div>
-                    <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} settings={props.settings} categories={props.categories} />
+                    <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} settings={props.settings} categories={props.categories} />
                 </div>
                 <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
@@ -311,13 +360,13 @@ export default function GameHub(props: GameHubProps) {
         if (activeTab === 'profile') {
             innerContent = (
                 <div className="content-panel">
-                    <ProfilePanel qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />
+                    <ProfilePanel qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} categories={props.categories} settings={props.settings} />
                 </div>
             );
         } else if (activeTab === 'possessions') {
             innerContent = (
                 <div className="content-panel">
-                    <Possessions qualities={character.qualities} equipment={character.equipment} qualityDefs={props.qualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={handleCharacterUpdate} storyId={props.storyId} imageLibrary={props.imageLibrary} settings={props.settings} />
+                    <Possessions qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} equipCategories={props.settings.equipCategories || []} onUpdateCharacter={handleCharacterUpdate} storyId={props.storyId} imageLibrary={props.imageLibrary} settings={props.settings} />
                 </div>
             );
         } else if (isLoading) {
@@ -325,7 +374,7 @@ export default function GameHub(props: GameHubProps) {
         } else if (showMarket && activeMarketId) {
             innerContent = (
                 <div className="content-panel">
-                    <MarketInterface market={props.markets[activeMarketId]!} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} onClose={() => setShowMarket(false)} onUpdate={handleQualitiesUpdate} storyId={props.storyId} characterId={character.characterId} worldState={props.worldState} />
+                    <MarketInterface market={props.markets[activeMarketId]!} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} onClose={() => setShowMarket(false)} onUpdate={handleQualitiesUpdate} storyId={props.storyId} characterId={character.characterId} worldState={props.worldState} />
                 </div>
             );
         } else if (renderedActiveEvent) {
@@ -341,7 +390,7 @@ export default function GameHub(props: GameHubProps) {
                         onFinish={handleEventFinish} 
                         onQualitiesUpdate={handleQualitiesUpdate} 
                         onCardPlayed={handleCardPlayed} 
-                        qualityDefs={props.qualityDefs} 
+                        qualityDefs={mergedQualityDefs} 
                         storyletDefs={props.storyletDefs} 
                         opportunityDefs={props.opportunityDefs} 
                         settings={props.settings} 
@@ -357,10 +406,10 @@ export default function GameHub(props: GameHubProps) {
                 <div className="hub-view">
                     {renderHeader()}
                     <div className="storylet-feed" style={{ marginTop: '2rem' }}>
-                        <LocationStorylets storylets={props.locationStorylets} onStoryletClick={showEvent} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} />
+                        <LocationStorylets storylets={props.locationStorylets} onStoryletClick={showEvent} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} />
                     </div>
                     <div className="deck-feed" style={{ marginTop: '3rem' }}>
-                        <OpportunityHand hand={hand} onCardClick={showEvent} onDrawClick={handleDrawCard} isLoading={isLoading} qualities={character.qualities} qualityDefs={props.qualityDefs} imageLibrary={props.imageLibrary} character={character} locationDeckId={location!.deck} deckDefs={props.deckDefs} settings={props.settings} currentDeckStats={currentDeckStats} />
+                        <OpportunityHand hand={hand} onCardClick={showEvent} onDrawClick={handleDrawCard} isLoading={isLoading} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} character={character} locationDeckId={location!.deck} deckDefs={props.deckDefs} settings={props.settings} currentDeckStats={currentDeckStats} />
                     </div>
                 </div>
             );
@@ -387,12 +436,25 @@ export default function GameHub(props: GameHubProps) {
             currentMarketId: activeMarketId
         };
 
-        switch (props.settings.layoutStyle) {
-            case 'london': return <LondonLayout {...layoutProps} />;
-            case 'elysium': return <ElysiumLayout {...layoutProps} />; 
-            case 'tabletop': return <TabletopLayout {...layoutProps} />;
-            default: return <NexusLayout {...layoutProps} />;
-        }
+        // NEW: Transition wrapper
+        const content = (
+            <div style={{ 
+                opacity: isTransitioning ? 0 : 1, 
+                transition: 'opacity 0.3s ease-in-out',
+                height: '100%' 
+            }}>
+                {(() => {
+                    switch (props.settings.layoutStyle) {
+                        case 'london': return <LondonLayout {...layoutProps} />;
+                        case 'elysium': return <ElysiumLayout {...layoutProps} />; 
+                        case 'tabletop': return <TabletopLayout {...layoutProps} />;
+                        default: return <NexusLayout {...layoutProps} />;
+                    }
+                })()}
+            </div>
+        );
+
+        return content;
     };
 
     return (

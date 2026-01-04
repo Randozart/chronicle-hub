@@ -72,6 +72,28 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                     
                     <nav className="admin-nav">
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            
+                            {/* --- NEW: PLAYTEST BUTTON --- */}
+                            <li style={{ marginBottom: '1.5rem', padding: '0 1rem' }}>
+                                <Link 
+                                    href={`/play/${storyId}`} 
+                                    target="_blank"
+                                    className="admin-link"
+                                    style={{
+                                        backgroundColor: 'var(--tool-accent-green, #28a745)',
+                                        color: '#fff',
+                                        textAlign: 'center',
+                                        justifyContent: 'center',
+                                        fontWeight: 'bold',
+                                        padding: '0.6rem',
+                                        borderRadius: '4px',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                    }}
+                                >
+                                    ▶ Playtest World
+                                </Link>
+                            </li>
+
                             {/* --- SYSTEM --- */}
                             <SectionHeader label="Game System" />
                             <AdminLink href={`${base}/settings`} label="Settings" />

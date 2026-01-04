@@ -1,154 +1,118 @@
-import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from "@/lib/auth";
-import { checkLivingStories, getCharacter, getCharactersList } from '@/engine/characterService';
-import { getContent } from '@/engine/contentCache'; 
-import { getLocationStorylets, getEvent, getWorldState } from '@/engine/worldService';
-import { Storylet, Opportunity, CharacterDocument } from '@/engine/models';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getContent, getAutofireStorylets, getStorylets } from '@/engine/contentCache';
+import { getCharacter, getCharactersList } from '@/engine/characterService';
+import { getWorldState } from '@/engine/worldService';
+import { Storylet, Opportunity } from '@/engine/models';
 import GameHub from '@/components/GameHub';
-import { GameEngine } from '@/engine/gameEngine';
-import { getAutofireStorylets } from '@/engine/contentCache'; // Ensure this is imported
-import CharacterLobby from '@/components/CharacterLobby';
 
+function serialize<T>(data: T): T {
+    return JSON.parse(JSON.stringify(data));
+}
 
-const sanitize = (obj: any) => JSON.parse(JSON.stringify(obj));
+type Props = {
+    params: Promise<{ storyId: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
 
-export default async function GamePage({ 
-    params, 
-    searchParams 
-}: { 
-    params: Promise<{ storyId: string }>, 
-    searchParams: Promise<{ charId?: string; menu?: string }>
-}) {
-    const { storyId } = await params;
-    const { charId, menu } = await searchParams;
-    
+export default async function PlayPage({ params, searchParams }: Props) {
     const session = await getServerSession(authOptions);
-    if (!session?.user) redirect('/login');
+    if (!session?.user) {
+        const resolvedParams = await params;
+        redirect(`/auth/signin?callbackUrl=/play/${resolvedParams.storyId}`);
+    }
+
+    const resolvedParams = await params;
+    const resolvedSearchParams = await searchParams;
+    const storyId = resolvedParams.storyId;
     const userId = (session.user as any).id;
-
-    const [charList, gameData, worldState] = await Promise.all([
-        getCharactersList(userId, storyId),
-        getContent(storyId),
-        getWorldState(storyId)
-    ]);
-
-    if (charList.length === 0) redirect(`/play/${storyId}/creation`);
-
-    let activeCharId = charId;
-    if (!activeCharId && charList.length > 0 && !menu) {
-        activeCharId = charList[0].characterId;
-    }
     
-    let character: CharacterDocument | null = null;
-    if (activeCharId) {
-        character = await getCharacter(userId, storyId, activeCharId);
-        if (character) character = await checkLivingStories(character);
-    }
+    // 1. Fetch World Configuration
+    const gameData = await getContent(storyId);
+    if (!gameData) return <div>Story not found.</div>;
 
-    if (!character) {
-        return (
-             <div data-theme={gameData.settings.visualTheme || 'default'} className="theme-wrapper">
-                <CharacterLobby 
-                    availableCharacters={charList} 
-                    storyId={storyId}
-                    imageLibrary={gameData.images || {}}
-                    locations={gameData.locations || {}}
-                    settings={gameData.settings}
-                    initialCharacter={sanitize(character)}
-                />
-            </div>
-        );
-    }
+    // 2. Fetch Storylets
+    const storylets = await getStorylets(storyId);
 
-    let initialLocation = gameData.locations[character.currentLocationId];
+    // 3. Fetch Characters
+    const availableCharacters = await getCharactersList(userId, storyId);
     
-    // --- AUTOFIRE LOGIC START ---
-    const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
-    const pendingAutofires = await getAutofireStorylets(storyId);
-    
-    const eligibleAutofires = pendingAutofires.filter(e => engine.evaluateCondition(e.autofire_if));
-    
-    // Sort: Must > High > Normal
-    eligibleAutofires.sort((a, b) => {
-        const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
-        const pA = priority[a.urgency as keyof typeof priority || 'Normal'];
-        const pB = priority[b.urgency as keyof typeof priority || 'Normal'];
-        return pB - pA;
-    });
-
+    // Determine active character
+    let character = null;
+    let initialLocation = null;
+    let initialHand: any[] = [];
     let activeEvent = null;
-    const activeAutofire = eligibleAutofires[0];
 
-    if (activeAutofire) {
-        // Priority 1: An Autofire event is pending. It takes precedence.
-        console.log(`[GamePage] Autofire event triggered: ${activeAutofire.id}`);
-        activeEvent = await getEvent(storyId, activeAutofire.id);
-    } else if (character.currentStoryletId) {
-        // Priority 2: No autofire, but player was in a storylet. Resume it.
-        console.log(`[GamePage] Resuming saved storylet: ${character.currentStoryletId}`);
-        activeEvent = await getEvent(storyId, character.currentStoryletId);
-    }
-    // Priority 3 (Default): No autofire and no saved storylet. activeEvent remains null.
-
-    // Render the event if one was found
-    if (activeEvent) {
-         // Cast to both types for safety, as getEvent can return either
-         activeEvent = engine.renderStorylet(activeEvent) as Storylet | Opportunity;
-    }
-    // --- AUTOFIRE & RESUME LOGIC END ---
-
-    let initialHand: Opportunity[] = [];
-    if (!activeEvent) {
-        const initialHandIds = character.opportunityHands?.[initialLocation?.deck] || [];
-        const rawHand = (await Promise.all(initialHandIds.map((id: string) => getEvent(storyId, id)))).filter((item): item is Opportunity => item !== null && 'deck' in item);
-        initialHand = rawHand.map(card => engine.renderStorylet(card) as Opportunity);
+    if (resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
+        const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
+        character = await getCharacter(userId, storyId, charIdToLoad);
     }
 
-    const rawStorylets = await getLocationStorylets(storyId, character.currentLocationId);
-    const locationStorylets = rawStorylets.map(s => engine.renderStorylet(s) as Storylet);
-    
-    const visibleStoryletsMap: Record<string, Storylet> = {};
-    const visibleOpportunitiesMap: Record<string, Opportunity> = {};
-    locationStorylets.forEach(s => visibleStoryletsMap[s.id] = s);
-    initialHand.forEach(o => visibleOpportunitiesMap[o.id] = o);
-    
-    // Also include the active autofire event in the definition map so it can render
-    if (activeEvent) {
-        visibleStoryletsMap[activeEvent.id] = activeEvent as Storylet;
+    // Hydration Logic
+    if (character) {
+        const locDef = gameData.locations[character.currentLocationId];
+        initialLocation = locDef || null;
+
+        if (initialLocation && initialLocation.deck) {
+            const handIds = character.opportunityHands?.[initialLocation.deck] || [];
+            
+            initialHand = handIds.map(id => 
+                storylets.find(s => s.id === id) as Opportunity
+            ).filter(Boolean);
+        }
+        
+        if (character.currentStoryletId) {
+             const evt = await getAutofireStorylets(storyId).then(list => list.find(s => s.id === character.currentStoryletId)) 
+                 || storylets.find(s => s.id === character.currentStoryletId);
+             
+             if (evt) activeEvent = evt;
+        }
     }
-    
-    let activeMessage = null;
-    if (gameData.settings.systemMessage?.enabled && !character.acknowledgedMessages?.includes(gameData.settings.systemMessage.id)) {
-        activeMessage = gameData.settings.systemMessage;
-    }
+
+    const worldState = await getWorldState(storyId);
+
+    // --- MERGE DYNAMIC DEFINITIONS ---
+    const mergedQualityDefs = {
+        ...gameData.qualities,
+        ...(character?.dynamicQualities || {}) 
+    };
+
+    // Serialize everything before passing to Client Component
+    const safeCharacter = serialize(character);
+    const safeLocation = serialize(initialLocation);
+    const safeHand = serialize(initialHand);
+    const safeActiveEvent = serialize(activeEvent);
+    const safeStorylets = serialize(storylets);
+    const safeAvailableChars = serialize(availableCharacters);
 
     return (
-        <main>
-            <GameHub
-                initialCharacter={sanitize(character)}
-                initialLocation={sanitize(initialLocation)}
-                initialHand={sanitize(initialHand)}
-                locationStorylets={sanitize(locationStorylets)}
-                availableCharacters={sanitize(charList)}
-                
-                // Pass the auto-detected event
-                activeEvent={sanitize(activeEvent)}
-                
-                qualityDefs={sanitize(gameData.qualities)}
-                storyletDefs={sanitize(visibleStoryletsMap)}
-                opportunityDefs={sanitize(visibleOpportunitiesMap)} 
-                settings={sanitize(gameData.settings)}
-                deckDefs={sanitize(gameData.decks || {})} 
-                markets={sanitize(gameData.markets || {})}
-                imageLibrary={sanitize(gameData.images || {})}
-                categories={sanitize(gameData.categories || {})}
-                locations={sanitize(gameData.locations)} 
-                regions={sanitize(gameData.regions || {})}
-                storyId={storyId}
-                worldState={sanitize(worldState)}
-                systemMessage={sanitize(activeMessage)}
-            />
-        </main>
+        <GameHub 
+            storyId={storyId}
+            initialCharacter={safeCharacter}
+            initialLocation={safeLocation}
+            initialHand={safeHand}
+            availableCharacters={safeAvailableChars}
+            
+            qualityDefs={serialize(mergedQualityDefs)} 
+            
+            storyletDefs={safeStorylets.reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {})}
+            opportunityDefs={safeStorylets.filter((s: Storylet | Opportunity) => 'deck' in s).reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {})}
+            deckDefs={serialize(gameData.decks)}
+            
+            settings={serialize(gameData.settings)}
+            locations={serialize(gameData.locations)}
+            regions={serialize(gameData.regions)}
+            locationStorylets={safeStorylets.filter((s: Storylet | Opportunity) => 'location' in s && s.location) as Storylet[]} 
+            
+            imageLibrary={serialize(gameData.images)}
+            categories={serialize(gameData.categories || {})}
+            markets={serialize(gameData.markets)}
+            worldState={serialize(worldState)}
+            instruments={serialize(gameData.instruments)}
+            musicTracks={serialize(gameData.music)}
+            
+            activeEvent={safeActiveEvent}
+        />
     );
 }

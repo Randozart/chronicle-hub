@@ -1,5 +1,3 @@
-// src/app/api/resolve/route.ts
-// ... imports same as before ...
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -32,7 +30,16 @@ export async function POST(request: NextRequest) {
             character = await regenerateActions(character);
         }
 
+        // 1. Initialize Engine 
         const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
+        
+        // IMPORTANT: Inject previously saved dynamic qualities into the engine's view of the world
+        // This ensures s1, s2 etc created in previous turns are recognized immediately
+        if (character.dynamicQualities) {
+            engine.dynamicQualities = { ...character.dynamicQualities };
+            // Also merge into the engine's worldContent for lookups
+            Object.assign(engine.worldContent.qualities, character.dynamicQualities);
+        }
 
         const storyletDef = await getEvent(storyId, storyletId);
         if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
@@ -51,7 +58,6 @@ export async function POST(request: NextRequest) {
         }
         
         const pendingAutofires = await getAutofireStorylets(storyId);
-        // FIX: Handle undefined autofire_if by passing empty string ""
         const eligibleAutofires = pendingAutofires.filter(e => engine.evaluateCondition(e.autofire_if || ""));
         
         eligibleAutofires.sort((a, b) => {
@@ -95,6 +101,19 @@ export async function POST(request: NextRequest) {
         // Update character qualities
         character.qualities = engine.getQualities();
 
+        // --- CRITICAL FIX: DYNAMIC QUALITY PERSISTENCE ---
+        // Retrieve any new Definitions created via %new during this resolution
+        // The Engine now tracks these in its dynamicQualities property
+        const newDefinitions = engine.getDynamicQualities();
+        if (Object.keys(newDefinitions).length > 0) {
+            console.log(`[Resolution] Saving ${Object.keys(newDefinitions).length} dynamic qualities to character.`);
+            character.dynamicQualities = {
+                ...(character.dynamicQualities || {}),
+                ...newDefinitions
+            };
+        }
+        // -------------------------------------------------
+
         processScheduledUpdates(character, engineResult.scheduledUpdates);
         await applyWorldUpdates(storyId, engineResult.qualityChanges);
         processAutoEquip(character, engineResult.qualityChanges, gameData);
@@ -121,8 +140,13 @@ export async function POST(request: NextRequest) {
              }
         }
         
+        // Re-init engine for post-resolution checks (ensure it has the new dynamic qualities too)
         const postResolutionEngine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
-        // FIX: Handle undefined autofire_if here as well
+        // Inject definitions again for the autofire check context
+        if (character.dynamicQualities) {
+             Object.assign(postResolutionEngine.worldContent.qualities, character.dynamicQualities);
+        }
+
         const newEligibleAutofires = pendingAutofires.filter(e => postResolutionEngine.evaluateCondition(e.autofire_if || ""));
         newEligibleAutofires.sort((a, b) => {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
@@ -136,13 +160,10 @@ export async function POST(request: NextRequest) {
         if (newAutofire) {
             finalRedirectId = newAutofire.id;
         }
-
         else if (engineResult.redirectId) {
             finalRedirectId = engineResult.redirectId;
         }
-
         else if (engineResult.moveToId) {
-
             finalRedirectId = undefined;
         }
         else if (!('deck' in storyletDef)) {
@@ -168,18 +189,15 @@ export async function POST(request: NextRequest) {
                         character.opportunityHands = {}; 
                     }
                 }
-                
-                // if (!engineResult.redirectId && !newAutofire) {
-                //     finalRedirectId = undefined; 
-                // }
             }
         }
         
         character.currentStoryletId = finalRedirectId || "";
         await saveCharacterState(character);
 
-        const cleanTitle = evaluateText(resolutionTitle(option, engineResult), character.qualities, gameData.qualities, null, 0);
-        const cleanBody = evaluateText(engineResult.body, character.qualities, gameData.qualities, null, 0);
+        // For display text evaluation, use the updated context (with dynamic qualities)
+        const cleanTitle = postResolutionEngine.evaluateText(resolutionTitle(option, engineResult));
+        const cleanBody = postResolutionEngine.evaluateText(engineResult.body);
 
         const visibleQualityChanges = canDebug 
             ? engineResult.qualityChanges 

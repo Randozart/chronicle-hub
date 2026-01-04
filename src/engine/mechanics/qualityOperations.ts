@@ -2,10 +2,6 @@
 import { QualityDefinition, QualityType, QualityState } from '../models';
 import { EngineContext } from './types';
 
-// ==========================================
-// PUBLIC MUTATION METHODS
-// ==========================================
-
 export function changeQuality(
     ctx: EngineContext,
     qid: string, 
@@ -38,9 +34,7 @@ export function changeQuality(
 
     const qState = targetState[effectiveQid] as any;
     const levelBefore = qState.level || 0;
-    const cpBefore = qState.changePoints || 0;
 
-    // 1. APPLY MATH
     if (qState.type === QualityType.String) {
         if (typeof value === 'string' && op === '=') qState.stringValue = value;
     } 
@@ -67,7 +61,6 @@ export function changeQuality(
                 qState.changePoints = 0; 
             }
         } else {
-            // Counter / Item
             if (isIncremental) {
                 const isAdd = op === '++' || op === '+=';
                 const qty = (op === '++' || op === '--') ? 1 : numValue;
@@ -107,7 +100,6 @@ export function changeQuality(
         if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
     }
 
-    // 2. GENERATE CHANGE RECORD
     const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
     
     // Pass context to resolve names like "My Level {$level}"
@@ -115,8 +107,6 @@ export function changeQuality(
     const displayName = ctx.evaluateText(def.name || effectiveQid, context); 
     
     let changeText = "";
-    
-    // Pass context to resolve descriptions
     const increaseDesc = ctx.evaluateText(def.increase_description || "", context);
     const decreaseDesc = ctx.evaluateText(def.decrease_description || "", context);
 
@@ -131,7 +121,7 @@ export function changeQuality(
     if (changeText) {
         ctx.changes.push({
             qid: effectiveQid, qualityName: displayName, type: def.type, category: def.category,
-            levelBefore, cpBefore, levelAfter: qState.level, cpAfter: qState.changePoints,
+            levelBefore, cpBefore: 0, levelAfter: qState.level, cpAfter: qState.changePoints,
             stringValue: qState.stringValue, changeText, scope: qid.startsWith('world.') ? 'world' : 'character',
             overrideDescription: metadata.desc ? changeText : undefined,
             hidden: isHidden 
@@ -173,6 +163,7 @@ export function createNewQuality(
         const dynamicState = state as any;
         if (!dynamicState.customProperties) dynamicState.customProperties = {};
         Object.assign(dynamicState.customProperties, props);
+
         if (typeof value === 'number') {
              dynamicState.level = value;
         }
@@ -191,7 +182,6 @@ export function batchChangeQuality(
     filterExpr?: string
 ) {
     const targetCat = ctx.evaluateText(`{${categoryExpr}}`).trim().toLowerCase();
-    
     const qids = Object.values(ctx.worldContent.qualities)
         .filter(q => {
             if (!q.category) return false;
@@ -204,14 +194,8 @@ export function batchChangeQuality(
             return true;
         })
         .map(q => q.id);
-        
-    console.log(`[Batch] Applying '${op} ${value}' to category '${targetCat}'. Hits: ${qids.length}`);
     qids.forEach(qid => changeQuality(ctx, qid, op, value, {}));
 }
-
-// ==========================================
-// HELPERS
-// ==========================================
 
 export function updatePyramidalLevel(ctx: EngineContext, qState: any, def: QualityDefinition): void {
     const cpCap = def.cp_cap ? Number(ctx.evaluateText(`{${def.cp_cap}}`)) || Infinity : Infinity;

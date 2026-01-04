@@ -1,23 +1,60 @@
 // src/engine/mechanics/effectParser.ts
-import { sanitizeScribeScript } from '../scribescript/utils'; // Corrected import path from previous refactor
+import { sanitizeScribeScript } from '../scribescript/utils';
 import { EngineContext } from './types';
 import { changeQuality, createNewQuality, batchChangeQuality } from './qualityOperations';
 import { parseAndQueueTimerInstruction } from './scheduler';
+import { evaluateText as evaluateScribeText } from '../textProcessor';
+
+function splitEffectsString(str: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let bracketDepth = 0; 
+    let braceDepth = 0;   
+    let inQuote = false;
+    let quoteChar = '';
+
+    for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        if (inQuote) {
+            current += char;
+            if (char === quoteChar) inQuote = false;
+        } else {
+            if (char === '"' || char === "'") {
+                inQuote = true; quoteChar = char; current += char;
+            } else if (char === '[') {
+                bracketDepth++; current += char;
+            } else if (char === ']') {
+                if (bracketDepth > 0) bracketDepth--; current += char;
+            } else if (char === '{') {
+                braceDepth++; current += char;
+            } else if (char === '}') {
+                if (braceDepth > 0) braceDepth--; current += char;
+            } else if (char === ',' && bracketDepth === 0 && braceDepth === 0) {
+                result.push(current.trim()); current = '';
+            } else {
+                current += char;
+            }
+        }
+    }
+    if (current.trim()) result.push(current.trim());
+    return result;
+}
 
 export function parseAndApplyEffects(
     ctx: EngineContext,
     effectsString: string,
 ): void {
-    console.log(`[ENGINE DEBUG] applyEffects called with: "${effectsString}"`);
-    
-    const cleanEffectsString = sanitizeScribeScript(effectsString);
-    const effects = cleanEffectsString.split(/,(?![^\[]*\])(?![^{]*\})/g); 
+    const cleanEffectsString = sanitizeScribeScript(effectsString).replace(/\n/g, ' ');
+    const effects = splitEffectsString(cleanEffectsString); 
+
+    // Inject evaluateText into context wrapper if needed, or use existing
+    // We modify ctx directly for temporary evaluation scope if needed, 
+    // but we trust the main EngineContext for data storage.
 
     for (const effect of effects) {
         const cleanEffect = effect.trim();
         if (!cleanEffect) continue;
 
-        // VISUAL SPACER: Add a newline between top-level instructions for readability
         ctx.executedEffectsLog.push(""); 
         ctx.executedEffectsLog.push(`[RESOLVING: ${cleanEffect.substring(0, 50)}${cleanEffect.length > 50 ? '...' : ''}]`);
 
@@ -25,29 +62,19 @@ export function parseAndApplyEffects(
 
         if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
             const resolvedCommand = ctx.evaluateText(cleanEffect);
-            
             if (resolvedCommand !== cleanEffect) {
                  ctx.executedEffectsLog.push(`   -> [Result] "${resolvedCommand}"`);
             }
-
             if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%'))) {
-                // Recursion
                 parseAndApplyEffects(ctx, resolvedCommand);
             }
         }
         else {
             const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
-            if (macroMatch) {
+            if (macroMatch && ['schedule', 'reset', 'update', 'cancel'].includes(macroMatch[1])) {
                 const [, command, args] = macroMatch;
-                
-                if (['schedule', 'reset', 'update', 'cancel'].includes(command)) {
-                    ctx.executedEffectsLog.push(`[EXECUTE] Timer Command: ${command}`);
-                    parseAndQueueTimerInstruction(ctx, command, args);
-                } else {
-                    // Other macros handled by evaluator usually, but if top level?
-                    // This block catches standalone macros like %list[...] which don't do anything as an effect
-                    // unless they return a command.
-                }
+                 ctx.executedEffectsLog.push(`[EXECUTE] Timer Command: ${command}`);
+                 parseAndQueueTimerInstruction(ctx, command, args);
             }
             else {
                 const batchMatch = cleanEffect.match(/^%all\[([^;\]]+)(?:;\s*([^\]]+))?\]\s*(=|\+=|-=)\s*(.*)$/);
@@ -55,39 +82,62 @@ export function parseAndApplyEffects(
                     const [, catExpr, filterExpr, op, val] = batchMatch;
                     const resolvedVal = ctx.evaluateText(`{${val}}`);
                     const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-                    
                     ctx.executedEffectsLog.push(`[EXECUTE] Batch: Category[${catExpr}] ${op} ${numVal}`);
                     batchChangeQuality(ctx, catExpr, op, numVal, filterExpr); 
                 }
                 else {
-                    const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\]\s*(=)\s*(.*)$/);
+                    // %new logic
+                    const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\](?:\s*(=)\s*(.*))?$/);
+                    
                     if (newMatch) {
                         const [, idExpr, argsStr, op, valStr] = newMatch;
-                        const newId = ctx.evaluateText(`{${idExpr}}`).trim();
-                        const resolvedVal = ctx.evaluateText(`{${valStr}}`);
-                        const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
+                        
+                        let newId = idExpr.trim();
+                        if (newId.includes('{') || newId.includes('$') || newId.startsWith('@')) {
+                            newId = ctx.evaluateText(`{${newId}}`).trim();
+                        }
+
+                        let numVal: string | number = 1; 
+                        if (op && valStr) {
+                            const resolvedVal = ctx.evaluateText(`{${valStr}}`);
+                            numVal = resolvedVal;
+                            if (resolvedVal !== "" && !isNaN(Number(resolvedVal))) {
+                                numVal = Number(resolvedVal);
+                            }
+                        }
                         
                         ctx.executedEffectsLog.push(`[EXECUTE] New: ${newId} = ${numVal}`);
                         
                         const props: Record<string, any> = {}; 
-                            if (argsStr) {
+                        let templateId = null;
+
+                        if (argsStr) {
                             const args = argsStr.split(',').map(s => s.trim());
                             if (args.length > 0 && !args[0].includes(':')) {
-                                args.shift(); 
+                                templateId = args.shift() || null; 
                             }
                             args.forEach(arg => {
                                 const [k, ...vParts] = arg.split(':');
-                                if(k) props[k.trim()] = vParts.join(':').trim().replace(/['"]/g, "");
+                                if (k) {
+                                    const rawVal = vParts.join(':').trim().replace(/['"]/g, "");
+                                    props[k.trim()] = isNaN(Number(rawVal)) || rawVal === "" ? rawVal : Number(rawVal);
+                                }
                             });
                         }
-                        createNewQuality(ctx, newId, numVal, null, props);
+                        
+                        // CRITICAL: Use the method on the context if available (GameEngine)
+                        // If not available (e.g. stripped context), fallback to basic operations
+                        if (ctx.createNewQuality) {
+                            ctx.createNewQuality(newId, numVal, templateId, props);
+                        } else {
+                            // Fallback: creates state only, no definition
+                            createNewQuality(ctx, newId, numVal, templateId, props);
+                        }
                     }
                     else {
                         const assignMatch = cleanEffect.match(/^((?:[$@][a-zA-Z0-9_]+)|(?:\{.*?\}))(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
-                        
                         if (assignMatch) {
                             const [, rawLhs, metaStr, op, valStr] = assignMatch;
-                            
                             let qid = "";
                             if (rawLhs.startsWith('{')) {
                                 qid = ctx.evaluateText(rawLhs).trim(); 
@@ -121,9 +171,6 @@ export function parseAndApplyEffects(
                                             val = Number(resolvedValueStr);
                                         }
                                 }
-                                
-                                const oldVal = ctx.getEffectiveLevel(qid);
-                                ctx.executedEffectsLog.push(`[EXECUTE] $${qid}: ${oldVal} -> ${val} (${op})`);
                                 
                                 changeQuality(ctx, qid, op, val, metadata);
                             }

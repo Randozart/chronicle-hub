@@ -141,6 +141,235 @@
     --shadow-modal: 0 5px 15px rgba(0,0,0,0.1);
 }
 
+:root[data-global-theme='soft-dark'] {
+    /* Based on Atom One Dark / Original Design */
+    --bg-main: #282c34;
+    --bg-panel: #21252b;
+    --bg-item: #2c313a;
+    --bg-item-hover: #3a404b;
+    
+    --border-color: #4b5263;
+    --border-light: #5c6370;
+    
+    --text-primary: #abb2bf;
+    --text-secondary: #828997;
+    --text-muted: #5c6370;
+    
+    --accent-primary:  #2a3e5c;  /* Softer Blue */
+    --accent-hover: #56b6c2;
+    --accent-highlight: #61afef;/* Gold/Yellow */
+
+    --success-color: #98c379;
+    --danger-color: #e06c75;
+    --warning-color: #d19a66;
+
+    /* Editor Mapping */
+    --tool-bg-dark: #282c34;
+    --tool-bg-header: #21252b;
+    --tool-bg-sidebar: #21252b;
+    --tool-bg-input: #1b1d23;
+    
+    --tool-text-main: #abb2bf;
+    --tool-text-dim: #5c6370;
+    --tool-text-header: #ffffff;
+    
+    --tool-border: #4b5263;
+    --tool-border-highlight: #abb2bf;
+    --tool-accent: #61afef;
+    
+    /* Scrollbars */
+    --scrollbar-bg: #282c34;
+    --scrollbar-thumb: #4b5263;
+    --scrollbar-thumb-hover: #61afef;
+
+    /* Docs */
+    --docs-bg-sidebar: #21252b;
+    --docs-bg-content: #282c34;
+    --docs-text-main: #abb2bf;
+    --docs-text-header: #e5c07b;
+    --docs-border: #4b5263;
+    --docs-accent-blue: #61afef;
+    --docs-accent-green: #98c379;
+    --docs-accent-gold: #e5c07b;
+}
+
+
+:root[data-global-theme='soft-light'] {
+    /* Warm, low-contrast light mode */
+    --bg-main: #fcf8f2;      /* Off-white paper */
+    --bg-panel: #ffffff;     /* White card */
+    --bg-item: #f4efe9;      /* Slightly darker paper */
+    --bg-item-hover: #eaddcf;
+    
+    --border-color: #dcd0c0; /* Sandstone border */
+    --border-light: #e6ddd0;
+    
+    --text-primary: #4a443e; /* Warm Charcoal */
+    --text-secondary: #746d65;
+    --text-muted: #9e958a;
+    
+    --accent-primary: #b08d55; /* Antique Gold */
+    --accent-hover: #c4a166;
+    --accent-highlight: #d35400; /* Burnt Orange */
+
+    --success-color: #558b2f;
+    --danger-color: #c62828;
+    --warning-color: #f57f17;
+
+    /* Editor Mapping (Warm Grey) */
+    --tool-bg-dark: #fcf8f2;
+    --tool-bg-header: #fffefc;
+    --tool-bg-sidebar: #f7f3ec;
+    --tool-bg-input: #ffffff;
+    
+    --tool-text-main: #5d5650;
+    --tool-text-dim: #999085;
+    --tool-text-header: #2b2520;
+    
+    --tool-border: #dcd0c0;
+    --tool-border-highlight: #b08d55;
+    --tool-accent: #b08d55;
+    
+    /* Scrollbars */
+    --scrollbar-bg: #fcf8f2;
+    --scrollbar-thumb: #dcd0c0;
+    --scrollbar-thumb-hover: #b08d55;
+
+    /* Docs */
+    --docs-bg-sidebar: #f7f3ec;
+    --docs-bg-content: #fcf8f2;
+    --docs-text-main: #4a443e;
+    --docs-text-header: #2b2520;
+    --docs-border: #dcd0c0;
+    --docs-accent-blue: #2980b9;
+    --docs-accent-green: #27ae60;
+    --docs-accent-gold: #d35400;
+}
+
+/* --- 5. STORYNEXUS CLASSIC (Slate & Orange) --- */
+:root[data-global-theme='storynexus'] {
+    /* Base: Deep Slate Blue */
+    --bg-main: #141e26;       /* Darkest slate (Background) */
+    --bg-panel: #1c2e3d;      /* Panel slate (Cards/Headers) */
+    --bg-item: #253a4b;       /* Lighter slate (Inputs/Items) */
+    --bg-item-hover: #2f475b;
+    
+    /* Borders: Darker Navy */
+    --border-color: #0d1319;
+    --border-light: #344c60;
+    
+    /* Text: White & Crisp */
+    --text-primary: #f0f4f8; 
+    --text-secondary: #9ab0c0;
+    --text-muted: #5b7385;
+    
+    /* Accents: The Signature Orange */
+    --accent-primary: #d65b17;   /* Button Orange */
+    --accent-hover: #e87b3a;     /* Lighter Orange */
+    --accent-highlight: #ff9f43; /* Text Highlight Orange */
+
+    --success-color: #2ecc71;
+    --danger-color: #e74c3c;
+    --warning-color: #f39c12;
+    
+    --progress-bg: #253a4b;
+    --progress-fill: #d65b17;
+
+    /* Editor Mapping - Matching the Dashboard */
+    --tool-bg-dark: #141e26;
+    --tool-bg-header: #1c2e3d;
+    --tool-bg-sidebar: #172531;
+    --tool-bg-input: #0f161c;
+    
+    --tool-text-main: #f0f4f8;
+    --tool-text-dim: #9ab0c0;
+    --tool-text-header: #ffffff;
+    
+    --tool-border: #0d1319;
+    --tool-border-highlight: #d65b17;
+    --tool-accent: #d65b17;
+    
+    /* Scrollbars */
+    --scrollbar-bg: #141e26;
+    --scrollbar-thumb: #253a4b;
+    --scrollbar-thumb-hover: #d65b17;
+
+    /* Docs */
+    --docs-bg-sidebar: #172531;
+    --docs-bg-content: #141e26;
+    --docs-text-main: #f0f4f8;
+    --docs-text-header: #d65b17;
+    --docs-border: #0d1319;
+    --docs-accent-blue: #3498db; 
+    --docs-accent-green: #2ecc71;
+    --docs-accent-gold: #f39c12;
+    
+    /* Fonts: StoryNexus used a Serif for headers */
+    --font-main: "Georgia", "Times New Roman", serif;
+}
+
+/* --- 6. STORYNEXUS LIGHT (Twilight / Dusk) --- */
+:root[data-global-theme='storynexus-light'] {
+    /* Base: Deeper, dusty blues */
+    --bg-main: #d1dbe4;       /* Dusty Blue (The main background) */
+    --bg-panel: #e4e9f0;      /* Lighter Slate (For cards/panels) */
+    --bg-item: #dce3eb;       /* Item background, subtle difference */
+    --bg-item-hover: #ffffff;  /* Brightens on hover for clear feedback */
+    
+    /* Borders: Soft Slate */
+    --border-color: #b8c5d3;
+    --border-light: #cbd5e1;
+    
+    /* Text: Dark Slate (High legibility, softer than black) */
+    --text-primary: #1e293b; 
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    
+    /* Accents: The Classic StoryNexus Orange */
+    --accent-primary: #d65b17;   
+    --accent-hover: #e87b3a;
+    --accent-highlight: #c05621; /* Darker orange for text on light bg */
+
+    --success-color: #38a169;
+    --danger-color: #e53e3e;
+    --warning-color: #dd6b20;
+    
+    --progress-bg: #e2e8f0;
+    --progress-fill: #d65b17;
+
+    /* Editor Mapping */
+    --tool-bg-dark: #d1dbe4;
+    --tool-bg-header: #e4e9f0;
+    --tool-bg-sidebar: #eef2f6;
+    --tool-bg-input: #ffffff;
+    
+    --tool-text-main: #1e293b;
+    --tool-text-dim: #94a3b8;
+    --tool-text-header: #0f172a; /* Even darker for titles */
+    
+    --tool-border: #b8c5d3;
+    --tool-border-highlight: #d65b17;
+    --tool-accent: #d65b17;
+    
+    /* Scrollbars */
+    --scrollbar-bg: #d1dbe4;
+    --scrollbar-thumb: #b8c5d3;
+    --scrollbar-thumb-hover: #d65b17;
+
+    /* Docs */
+    --docs-bg-sidebar: #eef2f6;
+    --docs-bg-content: #d1dbe4;
+    --docs-text-main: #1e293b;
+    --docs-text-header: #d65b17;
+    --docs-border: #b8c5d3;
+    --docs-accent-blue: #3182ce; 
+    --docs-accent-green: #38a169;
+    --docs-accent-gold: #dd6b20;
+    
+    /* Fonts: The Literary Feel */
+    --font-main: "Georgia", "Times New Roman", serif;
+}
+
 /* --- THEME PALETTES --- */
 
 [data-theme='victorian'] {

@@ -3,15 +3,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'soft-light' | 'dark' | 'soft-dark' | 'storynexus' | 'storynexus-light' | 'system';
 
 interface ThemeContextType {
     theme: Theme;
     setTheme: (theme: Theme) => void;
-    resolvedTheme: 'light' | 'dark';
-    
-    // NEW: Zoom Controls
-    zoom: number; // Percentage (e.g. 100, 90, 110)
+    resolvedTheme: 'light' | 'dark'; // Still useful for binary logic if needed
+    zoom: number;
     setZoom: (zoom: number) => void;
 }
 
@@ -20,61 +18,53 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const { data: session } = useSession();
     
-    const [theme, setThemeState] = useState<Theme>('dark');
-    const [zoom, setZoomState] = useState<number>(100); // Default 100%
+    // Default to 'soft-dark' as the middle ground you wanted
+    const [theme, setThemeState] = useState<Theme>('soft-dark'); 
     
+    const [zoom, setZoomState] = useState<number>(100);
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
     const [mounted, setMounted] = useState(false);
 
-    // 1. Initialize from LocalStorage
     useEffect(() => {
-        // Theme
         const storedTheme = localStorage.getItem('chronicle-theme') as Theme;
         if (storedTheme) setThemeState(storedTheme);
         
-        // Zoom
         const storedZoom = localStorage.getItem('chronicle-zoom');
         if (storedZoom) {
             const z = parseInt(storedZoom);
             if (!isNaN(z)) setZoomState(z);
         }
-
         setMounted(true);
     }, []);
 
-    // 2. Apply Theme & Zoom
     useEffect(() => {
         if (!mounted) return;
-
         const root = document.documentElement;
-        
-        // --- APPLY ZOOM ---
-        // 16px is standard browser default. 
-        // 80% = 12.8px (Small), 100% = 16px (Normal), 120% = 19.2px (Large)
-        // Since we use 'rem' for almost everything, this scales the whole app.
+
+        // Apply Zoom
         root.style.fontSize = `${(zoom / 100) * 16}px`;
 
-        // --- APPLY THEME ---
+        // Apply Theme
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const applyTheme = () => {
-            let currentTheme = theme;
-            if (currentTheme === 'system') {
-                currentTheme = mediaQuery.matches ? 'dark' : 'light';
-            }
-            setResolvedTheme(currentTheme as 'light' | 'dark');
-            root.setAttribute('data-global-theme', currentTheme);
-        };
+        let target = theme;
+        
+        if (theme === 'system') {
+            target = mediaQuery.matches ? 'soft-dark' : 'soft-light'; // System defaults to soft versions
+        }
 
-        applyTheme();
-        mediaQuery.addEventListener('change', applyTheme);
-        return () => mediaQuery.removeEventListener('change', applyTheme);
+        // Determine if it counts as "Dark" or "Light" for high-level checks
+        const isDark = target === 'dark' || target === 'soft-dark';
+        setResolvedTheme(isDark ? 'dark' : 'light');
+        
+        // Apply the specific data attribute
+        root.setAttribute('data-global-theme', target);
+
     }, [theme, zoom, mounted]);
 
     const setTheme = (newTheme: Theme) => {
         setThemeState(newTheme);
         localStorage.setItem('chronicle-theme', newTheme);
         if (session) {
-            // Optional: Sync to DB
             fetch('/api/user/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -84,8 +74,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const setZoom = (newZoom: number) => {
-        // Clamp between 50% and 150%
-        const clamped = Math.min(Math.max(newZoom, 50), 150);
+        const clamped = Math.min(Math.max(newZoom, 70), 150);
         setZoomState(clamped);
         localStorage.setItem('chronicle-zoom', String(clamped));
     };

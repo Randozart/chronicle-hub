@@ -1,3 +1,4 @@
+// src/app/api/admin/opportunities/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/engine/database';
 import { verifyWorldAccess } from '@/engine/accessControl';
@@ -37,6 +38,15 @@ export async function POST(request: NextRequest) {
     }    
     
     if (!storyId || !data.id) return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+
+    // NEW: Auto-generate IDs for options
+    if (data.options && Array.isArray(data.options)) {
+        data.options.forEach((opt: any, index: number) => {
+            if (!opt.id || opt.id.trim() === '') {
+                opt.id = `${data.id}_${index}`;
+            }
+        });
+    }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);

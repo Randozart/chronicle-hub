@@ -239,3 +239,14 @@
         margin-bottom: 0.5rem;
     }
 }
+
+.theme-zoom-controls {
+    display: none;
+}
+
+/* Mobile & Tablet: Show the zoom controls */
+@media (max-width: 900px) {
+    .theme-zoom-controls {
+        display: flex;
+    }
+}

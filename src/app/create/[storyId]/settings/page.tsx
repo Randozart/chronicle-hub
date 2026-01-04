@@ -289,7 +289,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             {/* 2. SYSTEM BINDINGS */}
             <div className="special-field-group" style={{ borderColor: 'var(--warning-color)' }}>
                 <label className="special-label" style={{ color: 'var(--warning-color)' }}>System Bindings</label>
-                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--tool-text-main)' }}>
                     <strong>Map Engine Concepts to Data:</strong> The engine is agnostic. It does not know what "Health" or "Gold" is. 
                     Use these fields to tell the engine which of your Qualities represent core system features.
                 </div>
@@ -354,7 +354,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             {/* 3. GAME RULES (Action Economy) */}
             <div className="special-field-group" style={{ borderColor: 'var(--tool-accent)' }}>
                 <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Game Rules & Action Economy</label>
-                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--tool-text-main)' }}>
                     <strong>Energy System:</strong> Configure how the player spends and regains actions. 
                     Values like "Max Actions" or "Regen Amount" can be <strong>Dynamic Logic</strong> (e.g. <code>{`{ 10 + $vitality }`}</code>), allowing stats to affect the economy.
                 </div>
@@ -406,7 +406,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             {/* 4. CHALLENGE PHYSICS */}
             <div className="special-field-group" style={{ borderColor: 'var(--warning-color)' }}>
                 <label className="special-label" style={{ color: 'var(--warning-color)' }}>Challenge Physics</label>
-                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--tool-text-main)' }}>
                     <strong>Global Probability Settings:</strong> These defaults are used by the <code>%chance</code> macro if specific parameters (margin, pivot) are not provided in the call.
                 </div>
                 <div className="form-row" style={{ marginTop: '1rem' }}>
@@ -424,14 +424,14 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             {/* 5. ECONOMY & UI Categories */}
             <div className="special-field-group" style={{ borderColor: 'var(--success-color)' }}>
                 <label className="special-label" style={{ color: 'var(--success-color)' }}>Economy & UI Layout</label>
-                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: '#ccc' }}>
+                <div style={{ background: 'var(--tool-bg-dark)', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--tool-text-main)' }}>
                     <strong>Organization:</strong> Define which qualities appear in specific parts of the player interface. Qualities not matching these categories will be hidden from the sidebar.
                 </div>
                 {missingCurrencies.length > 0 && (
                      <div style={{ background: 'rgba(241, 196, 15, 0.15)', border: '1px solid #f1c40f', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <strong style={{ color: 'var(--warning-color)', display: 'block', marginBottom: '0.25rem' }}>Missing Currencies</strong>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#ccc' }}>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--tool-text-main)' }}>
                                 The following currencies are defined but not created:
                             </p>
                         </div>
@@ -863,7 +863,7 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
                 </div>
             </div>
 
-            <div style={{ background: 'var(--tool-bg-dark)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', fontSize: '0.85rem', color: '#ccc' }}>
+            <div style={{ background: 'var(--tool-bg-dark)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--tool-text-main)' }}>
                 <p style={{ margin: '0 0 0.5rem 0' }}><strong>How to use:</strong> Define the starting qualities. Drag to reorder.</p>
                 <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.4' }}>
                      <li><strong>Headers:</strong> Create sections. Can be set as "Modal Root" to group subsequent fields into a popup.</li>
