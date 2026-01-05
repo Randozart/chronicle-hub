@@ -556,8 +556,18 @@ html[data-theme='revolutionary']::before {
 }
 [data-theme='detective-noir'] .continue-button { background-color: var(--bg-item); border: 1px dashed var(--border-light) !important; padding: 1.5rem; position: relative; box-shadow: none; transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); }
 
-[data-theme='detective-noir'] .card.theme-wrapper {
+.dashboard-grid [data-theme='detective-noir'].card h3,
+.dashboard-grid [data-theme='detective-noir'].card span,
+.dashboard-grid [data-theme='detective-noir'].card p { 
+        opacity: 0.85;
+
     color: #ffffff !important;
+}
+
+/* Optional: Make the tags and summary slightly dimmer for hierarchy */
+.dashboard-grid [data-theme='detective-noir'].card span,
+.dashboard-grid [data-theme='detective-noir'].card p {
+    opacity: 0.5;
 }
 
 [data-theme='detective-noir'] .action-box,
