@@ -95,7 +95,6 @@ function evaluateRecursive(
 ): string {
     let currentText = text;
     let currentBlock = ""; 
-    const indent = '  '.repeat(depth);
 
     try {
         for (let i = 0; i < 50; i++) {
@@ -112,7 +111,6 @@ function evaluateRecursive(
 
             const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1);
             const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
-
             if (logger && context === 'TEXT' && safeValue !== "") {
                  logger(`Result: "${safeValue}"`, depth, 'SUCCESS');
             }
@@ -306,7 +304,7 @@ function resolveVariable(
         else if (sigil === '@') qualityId = aliases[identifier];
         else if (sigil === '$') qualityId = identifier;
         else if (sigil === '#') qualityId = identifier;
-        
+
         if (!qualityId) return `[Unknown: ${fullMatch}]`;
         
         let definition = defs[qualityId];

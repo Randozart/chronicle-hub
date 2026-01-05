@@ -20,7 +20,7 @@ export function resolveComplexExpression(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number,
-    evaluator: ScribeEvaluator
+    evaluator: ScribeEvaluator // Injected
 ): string | number | boolean {
     const indent = '  '.repeat(depth);
     if (logger) logger(`Expr: "${expr}"`, depth, 'INFO');
@@ -61,7 +61,7 @@ export function resolveVariable(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number,
-    evaluator: ScribeEvaluator
+    evaluator: ScribeEvaluator // Injected
 ): string | number {
     const indent = '  '.repeat(depth);
     
@@ -93,6 +93,7 @@ export function resolveVariable(
         }
 
         let qualityId: string | undefined;
+        let contextQualities = qualities;
 
         if (sigil === '$.') qualityId = self?.qid;
         else if (sigil === '@') qualityId = aliases[identifier];
