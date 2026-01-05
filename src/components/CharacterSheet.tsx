@@ -2,65 +2,48 @@
 import { PlayerQualities, QualityDefinition, WorldSettings, QualityType, CategoryDefinition } from "@/engine/models"; 
 import { useMemo } from "react"; 
 import { evaluateText } from "@/engine/textProcessor"; 
+import { GameEngine } from "@/engine/gameEngine";
 
 interface CharacterSheetProps {
-    qualities: PlayerQualities;
+    qualities: PlayerQualities; // RAW State
     equipment: Record<string, string | null>; 
     qualityDefs: Record<string, QualityDefinition>;
     settings: WorldSettings;
     categories: Record<string, CategoryDefinition>;
+    engine: GameEngine; // Needed for calculations
 }
 
 const getCPforNextLevel = (level: number): number => level + 1;
 
-export default function CharacterSheet({ qualities, equipment, qualityDefs, settings, categories }: CharacterSheetProps) {
+export default function CharacterSheet({ qualities, equipment, qualityDefs, settings, categories, engine }: CharacterSheetProps) {
     
     const categoriesToDisplay = settings.characterSheetCategories || [];
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
 
-    const getEffectiveLevel = (qid: string, baseLevel: number) => {
-        let total = baseLevel;
-        Object.values(equipment || {}).forEach(itemId => {
-            if (!itemId) return;
-            const itemDef = qualityDefs[itemId];
-            if (!itemDef || !itemDef.bonus) return;
-            const bonuses = itemDef.bonus.split(',');
-            for (const bonus of bonuses) {
-                const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
-                if (match) {
-                    const [, targetQid, op, value] = match;
-                    if (targetQid === qid) {
-                        const numVal = parseInt(value, 10);
-                        if (op === '+') total += numVal;
-                        if (op === '-') total -= numVal;
-                    }
-                }
-            }
-        });
-        return total;
-    };
-
     const characterQualities = useMemo(() => {
-        return Object.keys(qualities)
-        .map(qid => {
+        // Iterate only RAW qualities (hides ghosts like 'darkness' if base is 0)
+        return Object.keys(qualities).map(qid => {
             if (currencyIds.includes(qid)) return null;
 
             const definition = qualityDefs[qid];
-            const state = qualities[qid];
             if (!definition) return null;
 
             const cats = (definition.category ?? "").split(",").map(s => s.trim());
+            // Strict filtering
             const shouldDisplay = categoriesToDisplay.some(c => cats.includes(c));
             
             if (!shouldDisplay) return null;
 
+            const state = qualities[qid];
             const baseLevel = ('level' in state) ? state.level : 0;
-            const effectiveLevel = getEffectiveLevel(qid, baseLevel);
+            
+            // Calculate effective level for the (+1) display
+            const effectiveLevel = engine.getEffectiveLevel(qid);
 
             return { ...definition, ...state, baseLevel, effectiveLevel };
         })
         .filter(Boolean as any);
-    }, [qualities, equipment, qualityDefs, categoriesToDisplay]);
+    }, [qualities, equipment, qualityDefs, categoriesToDisplay, engine]);
 
     const validQualities = characterQualities.filter(q => q !== null);
 
@@ -79,13 +62,12 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     const cpNeeded = isPyramidal ? getCPforNextLevel(q.baseLevel) : 0;
                     const cpPercent = cpNeeded > 0 ? (changePoints / cpNeeded) * 100 : 0;
 
+                    // Calculate the difference for display
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
                     const bonusText = bonusDiff > 0 ? `(+${bonusDiff})` : bonusDiff < 0 ? `(${bonusDiff})` : '';
                     const bonusClass = bonusDiff > 0 ? 'text-green-400' : 'text-red-400';
                     
-                    // Dynamic Name Resolution
                     const displayName = evaluateText(q.name, qualities, qualityDefs, null, 0);
-
                     const primaryCat = (q.category || "").split(',')[0].trim();
                     const catDef = categories[primaryCat];
                     const barColor = catDef?.color || 'var(--progress-fill)';

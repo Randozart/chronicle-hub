@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
         const storyletDef = await getEvent(storyId, storyletId);
         if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
+        // Location & Deck Validation
         const isAutofire = storyletDef.urgency === 'Must' || !!storyletDef.autofire_if;
         if ('location' in storyletDef && storyletDef.location) {
             if (character.currentLocationId !== storyletDef.location && !isAutofire) {
@@ -57,8 +58,12 @@ export async function POST(request: NextRequest) {
             }
         }
         
+        // Check pending autofires (Pre-Resolution)
         const pendingAutofires = await getAutofireStorylets(storyId);
-        const eligibleAutofires = pendingAutofires.filter(e => engine.evaluateCondition(e.autofire_if || ""));
+        const eligibleAutofires = pendingAutofires.filter(e => 
+            (!e.location || e.location === character.currentLocationId) && // FIX: Check location
+            engine.evaluateCondition(e.autofire_if || "")
+        );
         
         eligibleAutofires.sort((a, b) => {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
@@ -74,6 +79,13 @@ export async function POST(request: NextRequest) {
 
         const option = storyletDef.options.find(o => o.id === optionId);
         if (!option) return NextResponse.json({ error: 'Option not found' }, { status: 404 });
+
+        // --- NEW FIX: SERVER AUTHORITY CHECK ---
+        // Validate that the option is actually visible given current state
+        if (!engine.evaluateCondition(option.visible_if)) {
+             return NextResponse.json({ error: 'Option is not available.' }, { status: 403 });
+        }
+        // ---------------------------------------
 
         if (gameData.settings.useActionEconomy) {
             let costExpr: string | number = gameData.settings.defaultActionCost ?? 1;
@@ -102,8 +114,6 @@ export async function POST(request: NextRequest) {
         character.qualities = engine.getQualities();
 
         // --- CRITICAL FIX: DYNAMIC QUALITY PERSISTENCE ---
-        // Retrieve any new Definitions created via %new during this resolution
-        // The Engine now tracks these in its dynamicQualities property
         const newDefinitions = engine.getDynamicQualities();
         if (Object.keys(newDefinitions).length > 0) {
             console.log(`[Resolution] Saving ${Object.keys(newDefinitions).length} dynamic qualities to character.`);
@@ -140,14 +150,17 @@ export async function POST(request: NextRequest) {
              }
         }
         
-        // Re-init engine for post-resolution checks (ensure it has the new dynamic qualities too)
+        // Re-init engine for post-resolution checks
         const postResolutionEngine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
-        // Inject definitions again for the autofire check context
         if (character.dynamicQualities) {
              Object.assign(postResolutionEngine.worldContent.qualities, character.dynamicQualities);
         }
 
-        const newEligibleAutofires = pendingAutofires.filter(e => postResolutionEngine.evaluateCondition(e.autofire_if || ""));
+        // Check autofires again (Post-Resolution)
+        const newEligibleAutofires = pendingAutofires.filter(e => 
+            (!e.location || e.location === character.currentLocationId) && // FIX: Check location
+            postResolutionEngine.evaluateCondition(e.autofire_if || "")
+        );
         newEligibleAutofires.sort((a, b) => {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
             return priority[b.urgency || 'Normal'] - priority[a.urgency || 'Normal'];
@@ -164,10 +177,10 @@ export async function POST(request: NextRequest) {
             finalRedirectId = engineResult.redirectId;
         }
         else if (engineResult.moveToId) {
-            finalRedirectId = undefined;
+            finalRedirectId = undefined; // Clear redirect on move
         }
         else if (!('deck' in storyletDef)) {
-            finalRedirectId = character.currentStoryletId;
+            finalRedirectId = character.currentStoryletId; // Sticky context
         }
         
         const newLocationId = engineResult.moveToId;
@@ -189,13 +202,18 @@ export async function POST(request: NextRequest) {
                         character.opportunityHands = {}; 
                     }
                 }
+
+                // FIX: Ensure we land in hub if no redirect logic overrides it
+                if (!engineResult.redirectId && !newAutofire) {
+                    finalRedirectId = undefined; 
+                }
             }
         }
         
         character.currentStoryletId = finalRedirectId || "";
         await saveCharacterState(character);
 
-        // For display text evaluation, use the updated context (with dynamic qualities)
+        // Render text with post-resolution context
         const cleanTitle = postResolutionEngine.evaluateText(resolutionTitle(option, engineResult));
         const cleanBody = postResolutionEngine.evaluateText(engineResult.body);
 

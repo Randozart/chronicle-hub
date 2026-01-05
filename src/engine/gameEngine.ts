@@ -55,12 +55,116 @@ export class GameEngine implements EngineContext {
     
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
 
+    // Returns a list of Quality IDs that are being modified by current equipment
+    public getBonusQualities(): string[] {
+        const affectedQids = new Set<string>();
+        for (const slot in this.equipment) {
+            const itemId = this.equipment[slot];
+            if (!itemId) continue;
+            const itemDef = this.worldContent.qualities[itemId];
+            if (itemDef && itemDef.bonus) {
+                const matches = itemDef.bonus.matchAll(/[\$#]([a-zA-Z0-9_]+)/g);
+                for (const m of matches) {
+                    affectedQids.add(m[1]);
+                }
+            }
+        }
+        return Array.from(affectedQids);
+    }
+
+    // Creates a visual-only state object that includes ghost qualities and effective levels
+    public getDisplayState(): PlayerQualities {
+        const displayState = JSON.parse(JSON.stringify(this.qualities));
+        const bonusKeys = this.getBonusQualities();
+
+        bonusKeys.forEach(qid => {
+            const effective = this.getEffectiveLevel(qid);
+            
+            if (displayState[qid]) {
+                if (displayState[qid].type !== QualityType.String) {
+                    displayState[qid].level = effective;
+                }
+            } else if (effective !== 0) {
+                // Mock ghost quality
+                const def = this.worldContent.qualities[qid];
+                if (def) {
+                    displayState[qid] = {
+                        qualityId: qid,
+                        type: def.type,
+                        level: effective,
+                        stringValue: "",
+                        changePoints: 0
+                    } as any;
+                }
+            }
+        });
+        return displayState;
+    }
     // === PUBLIC EVALUATION API ===
+
+    // Helper to create a Proxy that injects Effective Levels into ScribeScript lookups
+    // Helper to create a Proxy that injects Effective Levels into ScribeScript lookups
+    private getEffectiveQualitiesProxy(): PlayerQualities {
+        return new Proxy(this.qualities, {
+            get: (target, prop) => {
+                // Allow standard props/methods to pass through
+                if (typeof prop !== 'string') return Reflect.get(target, prop);
+                
+                const qid = prop;
+                const baseState = target[qid];
+                
+                // Calculate effective level (Base + Equipment)
+                // Note: getEffectiveLevel returns 0 for String qualities or missing qualities
+                const effectiveLevel = this.getEffectiveLevel(qid);
+                
+                // If the quality exists in state
+                if (baseState) {
+                    // String qualities don't use 'level', so return them as-is
+                    if (baseState.type === QualityType.String) {
+                        return baseState;
+                    }
+
+                    // For numeric qualities (P, C, T, I, E), check if optimization is possible
+                    // Cast to 'any' or check type to satisfy TS that .level exists
+                    if ('level' in baseState && baseState.level === effectiveLevel) {
+                        return baseState;
+                    }
+                    
+                    // Return shallow copy with overridden level
+                    return { ...baseState, level: effectiveLevel };
+                }
+
+                // If quality doesn't exist in character state, but has a non-zero effective level 
+                // (e.g. from equipment only, or a world quality), mock a state object for it.
+                if (effectiveLevel !== 0 || this.worldQualities[qid]) {
+                    // Check if it's a world quality first
+                    if (this.worldQualities[qid]) {
+                        const wq = this.worldQualities[qid];
+                        if (wq.type === QualityType.String) return wq;
+                        return { ...wq, level: effectiveLevel };
+                    }
+
+                    // Create transient state for equipment-only quality
+                    const def = this.worldContent.qualities[qid];
+                    return {
+                        qualityId: qid,
+                        type: def?.type || QualityType.Counter,
+                        level: effectiveLevel,
+                        stringValue: "",
+                        changePoints: 0
+                    } as QualityState;
+                }
+
+                // Default: Return undefined (let TextProcessor handle ghosting)
+                return undefined;
+            }
+        });
+    }
 
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
             rawText, 
-            this.qualities, 
+            this.getEffectiveQualitiesProxy(), // <--- USE PROXY
             this.worldContent.qualities, 
             context || null,
             this.resolutionRoll, 
@@ -74,7 +178,7 @@ export class GameEngine implements EngineContext {
     public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
         return evaluateScribeCondition(
             expression, 
-            this.qualities, 
+            this.getEffectiveQualitiesProxy(), // <--- USE PROXY
             this.worldContent.qualities, 
             contextOverride || null,
             this.resolutionRoll, 
@@ -86,19 +190,40 @@ export class GameEngine implements EngineContext {
     public getEffectiveLevel(qid: string): number {
         const baseState = this.qualities[qid];
         let total = (baseState && 'level' in baseState) ? baseState.level : 0;
+        
+        // World Quality Fallback
         if (!baseState && this.worldQualities[qid]) {
              const worldState = this.worldQualities[qid];
              total = ('level' in worldState) ? worldState.level : 0;
         }
+
+        // Equipment Bonuses
         for (const slot in this.equipment) {
             const itemId = this.equipment[slot];
             if (!itemId) continue;
             const itemDef = this.worldContent.qualities[itemId];
             if (!itemDef || !itemDef.bonus) continue;
             
-            const evaluatedBonus = evaluateScribeText(itemDef.bonus, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, this.tempAliases, []);
+            // Evaluates bonus text. IMPORTANT: This calls evaluateScribeText using RAW this.qualities 
+            // inside textProcessor to prevent infinite recursion loop (Bonus -> Effective -> Bonus).
+            // This is safe because evaluateScribeText doesn't call back into GameEngine unless we pass callbacks.
+            // But wait, evaluateScribeText uses the qualities object passed to it.
+            // We must manually parse the bonus string here to avoid circular dependency if we used this.evaluateText.
+            
+            // We use the imported evaluateScribeText with raw this.qualities.
+            const evaluatedBonus = evaluateScribeText(
+                itemDef.bonus, 
+                this.qualities, // RAW qualities, preventing recursion
+                this.worldContent.qualities, 
+                null, 
+                this.resolutionRoll, 
+                this.tempAliases, 
+                []
+            );
+
             const bonuses = evaluatedBonus.split(',');
             for (const bonus of bonuses) {
+                // Regex matches "$stat + val" or "$stat - val"
                 const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
                 if (match) {
                     const [, targetQid, op, value] = match;
@@ -253,7 +378,8 @@ export class GameEngine implements EngineContext {
     private deepEvaluate(obj: any): any {
         if (typeof obj === 'string') {
             if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@')) {
-                return evaluateScribeText(obj, this.qualities, this.worldContent.qualities, null, this.resolutionRoll, {}, []);
+                // FIX: Use evaluateText so it uses the Proxy and respects bonuses
+                return this.evaluateText(obj); 
             }
             return obj;
         }

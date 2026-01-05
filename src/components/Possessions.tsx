@@ -16,6 +16,7 @@ interface PossessionsProps {
     storyId: string;
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
+    engine: GameEngine; // <--- ADD THIS
 }
 
 const formatBonus = (bonusStr: string, qualityDefs: Record<string, QualityDefinition>, qualities: PlayerQualities) => {
@@ -41,7 +42,8 @@ export default function Possessions({
     onUpdateCharacter,
     storyId,
     imageLibrary,
-    settings
+    settings,
+    engine // <--- DESTUCTURE THIS
 }: PossessionsProps) {
     
     const [isLoading, setIsLoading] = useState(false);
@@ -51,11 +53,11 @@ export default function Possessions({
 
     // 1. Instantiate Engine for Universal ScribeScript
     // We create a minimal config since we only need qualities and settings for item rendering
-    const engine = useMemo(() => new GameEngine(
-        qualities, 
-        { qualities: qualityDefs, settings } as any, 
-        equipment
-    ), [qualities, qualityDefs, settings, equipment]);
+    // const engine = useMemo(() => new GameEngine(
+    //     qualities, 
+    //     { qualities: qualityDefs, settings } as any, 
+    //     equipment
+    // ), [qualities, qualityDefs, settings, equipment]);
 
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
