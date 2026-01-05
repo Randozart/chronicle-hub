@@ -15,7 +15,6 @@ interface SettingsForm extends WorldSettings {
     coverImage?: string;
     tags?: string[];
     deckDrawCostsAction?: boolean; 
-    hideProfileIdentity?: boolean; // NEW
 }
 
 export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
@@ -548,19 +547,42 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             </select>
                             <p className="special-desc">Controls how the current location name and image are displayed.</p>
                         </div>
-                        <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem' }}>
-                    <label className="toggle-label"><input type="checkbox" checked={form.enablePortrait !== false} onChange={e => handleChange('enablePortrait', e.target.checked)} /> Show Portrait</label>
-                    {form.enablePortrait !== false && (
-                         <div className="form-group" style={{ marginTop: '0' }}>
-                            <select value={form.portraitStyle || 'circle'} onChange={e => handleChange('portraitStyle', e.target.value as any)} className="form-select" style={{ fontSize: '0.8rem', padding: '2px 8px' }}>
-                                <option value="circle">Circle</option>
-                                <option value="square">Square</option>
-                                <option value="rect">Portrait</option>
-                            </select> 
-                         </div>
-                     )}
-                    
-                    </div>
+                        <div style={{ marginTop: '1rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
+                            <label className="toggle-label">
+                                <input type="checkbox" checked={form.hideProfileIdentity || false} onChange={e => handleChange('hideProfileIdentity', e.target.checked)} /> 
+                                Hide Identity (Anonymous Protagonist)
+                            </label>
+                            <p className="special-desc" style={{ marginLeft: '1.5rem' }}>If checked, name, title, and portrait are hidden in the Profile tab and Lobby.</p>
+                        </div>
+                        
+                        <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem', opacity: form.hideProfileIdentity ? 0.5 : 1 }}>
+                            <label className="toggle-label">
+                                <input type="checkbox" checked={form.enablePortrait !== false} onChange={e => handleChange('enablePortrait', e.target.checked)} disabled={form.hideProfileIdentity} /> 
+                                Show Portrait
+                            </label>
+                            {form.enablePortrait !== false && (
+                                <div className="form-group" style={{ marginTop: '0' }}>
+                                    <select value={form.portraitStyle || 'circle'} onChange={e => handleChange('portraitStyle', e.target.value as any)} className="form-select" style={{ fontSize: '0.8rem', padding: '2px 8px' }}>
+                                        <option value="circle">Circle</option>
+                                        <option value="square">Square</option>
+                                        <option value="rect">Portrait</option>
+                                    </select> 
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div style={{ opacity: form.hideProfileIdentity ? 0.5 : 1 }}>
+                            <label className="toggle-label">
+                                <input type="checkbox" checked={form.enableTitle || false} onChange={e => handleChange('enableTitle', e.target.checked)} disabled={form.hideProfileIdentity} /> 
+                                Show Title
+                            </label>
+                            {form.enableTitle && (
+                                <div className="form-group" style={{marginTop:'0.5rem', marginLeft: '1.5rem'}}>
+                                    <label className="form-label">Title Quality ID</label>
+                                    <input value={form.titleQualityId || ''} onChange={e => handleChange('titleQualityId', e.target.value)} className="form-input" placeholder="$current_title" />
+                                </div>
+                            )}
+                        </div>
                     <div>
                         <label className="toggle-label">
                             <input 
@@ -577,13 +599,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         <label className="toggle-label">
                             <input type="checkbox" checked={form.enableParallax !== false} onChange={e => handleChange('enableParallax', e.target.checked)} /> Parallax
                         </label>
-                        <label className="toggle-label"><input type="checkbox" checked={form.enableTitle || false} onChange={e => handleChange('enableTitle', e.target.checked)} /> Show Title</label>
                     </div>
-                    {form.enableTitle && (
-                        <div className="form-group" style={{marginTop:'0.5rem'}}>
-                            <label className="form-label">Title Quality ID</label><input value={form.titleQualityId || ''} onChange={e => handleChange('titleQualityId', e.target.value)} className="form-input" placeholder="$current_title" />
-                        </div>
-                    )}
                     </div>
                     <div style={{ flex: 1, minWidth: '300px' }}>
                         <ThemePreview theme={form.visualTheme || 'default'} />

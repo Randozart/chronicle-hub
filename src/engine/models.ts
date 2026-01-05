@@ -153,6 +153,8 @@ export interface WorldSettings {
     systemMessage?: SystemMessage;
     allowScribeScriptInInputs?: boolean;
     storynexusMode?: boolean; 
+    hideProfileIdentity?: boolean;
+
 }
 
 export interface DeckDefinition { id: string; saved: string; timer?: string; draw_cost?: string; hand_size: string; deck_size?: string; ordering?: number; }

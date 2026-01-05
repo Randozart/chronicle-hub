@@ -18,22 +18,24 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category"); 
 
-    // 1. Instantiate Engine
     const engine = useMemo(() => new GameEngine(
         qualities, 
         { qualities: qualityDefs, settings } as any, 
         {}
     ), [qualities, qualityDefs, settings]);
 
-    // 2. Extract Identity
+    // Check Anonymous Setting
+    const hideIdentity = settings.hideProfileIdentity === true;
+    
+    // Extract Identity (only if needed)
     const nameState = qualities['player_name'];
     const portraitState = qualities['player_portrait'];
-    const playerName = (nameState?.type === 'S') ? nameState.stringValue : "Unknown Drifter";
-    const portraitCode = (portraitState?.type === 'S') ? portraitState.stringValue : "default_avatar";
+    const playerName = !hideIdentity && (nameState?.type === 'S') ? nameState.stringValue : "Unknown Drifter";
+    const portraitCode = !hideIdentity && (portraitState?.type === 'S') ? portraitState.stringValue : "default_avatar";
 
-    // 3. Extract Title
+    // Extract Title (only if needed)
     let playerTitle = "";
-    if (settings.enableTitle && settings.titleQualityId) {
+    if (!hideIdentity && settings.enableTitle && settings.titleQualityId) {
         const qid = settings.titleQualityId.replace('$', '');
         const titleState = qualities[qid];
         const titleDef = qualityDefs[qid];
@@ -48,7 +50,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
         }
     }
 
-    const showPortrait = settings.enablePortrait !== false;
+    const showPortrait = !hideIdentity && settings.enablePortrait !== false;
     const shape = settings.portraitStyle || 'circle';
 
     // 5. Prepare List
@@ -61,7 +63,8 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 if (def.tags?.includes('hidden')) return null;
                 if (qid === settings.titleQualityId?.replace('$', '')) return null; 
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
-                if (state.type !== 'S' && state.level === 0) return null;
+                // Keep level 0 qualities for the profile page
+                if (state.type !== 'S' && state.level === 0 && !Object.values(engine.equipment).some(id => id && qualityDefs[id]?.bonus?.includes(`$${qid}`))) return null;
                 
                 const merged = { ...def, ...state };
                 return engine.render(merged);
@@ -75,32 +78,33 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     return (
         <div className="profile-container">
             
-            {/* PASSPORT HEADER */}
-            <div className="profile-header">
-                {showPortrait && (
-                    <div className="profile-portrait" data-shape={shape}>
-                        <GameImage 
-                            code={portraitCode} 
-                            imageLibrary={imageLibrary} 
-                            type="portrait" 
-                            alt="Portrait" 
-                            className="w-full h-full object-cover" 
-                        />
-                    </div>
-                )}
-                
-                <div className="profile-identity">
-                    <h1 className="profile-name">{playerName}</h1>
-                    
-                    {playerTitle && (
-                        <h3 className="profile-title">{playerTitle}</h3>
+            {/* CONDITIONAL PASSPORT HEADER */}
+            {!hideIdentity ? (
+                <div className="profile-header">
+                    {showPortrait && (
+                        <div className="profile-portrait" data-shape={shape}>
+                            <GameImage 
+                                code={portraitCode} 
+                                imageLibrary={imageLibrary} 
+                                type="portrait" 
+                                alt="Portrait" 
+                                className="w-full h-full object-cover" 
+                            />
+                        </div>
                     )}
-                    
-                    <p className="profile-subtitle">
-                        A resident of this world.
-                    </p>
+                    <div className="profile-identity">
+                        <h1 className="profile-name">{playerName}</h1>
+                        {playerTitle && (
+                            <h3 className="profile-title">{playerTitle}</h3>
+                        )}
+                        <p className="profile-subtitle">A resident of this world.</p>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                 <h1 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '2rem', fontSize: '1.5rem', color: 'var(--text-primary)' }}>
+                     Qualities
+                 </h1>
+            )}
 
             {/* CONTROLS */}
             <div className="profile-controls">
@@ -114,13 +118,11 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
             <div className="profile-grid">
                 {groups.map(cat => {
                     const catDef = categories[cat];
-                    // FIX: Use category name if available, else ID
                     const displayName = catDef?.name || cat; 
                     const headerColor = catDef?.color || 'var(--accent-highlight)'; 
                     
                     return (
                         <div key={cat} className="quality-category-card">
-                            {/* Pass color as CSS variable for the styling to pick up */}
                             <h3 className="profile-category-header" style={{ '--category-color': headerColor } as React.CSSProperties}>
                                 {displayName}
                             </h3>

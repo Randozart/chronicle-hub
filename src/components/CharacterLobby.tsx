@@ -20,11 +20,14 @@ interface CharacterLobbyProps {
     locations: Record<string, LocationDefinition>;
     storyId: string; 
 }
+
 export default function CharacterLobby (props: CharacterLobbyProps) {
-            // Use the theme from settings
     const theme = props.settings.visualTheme || 'default';
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
     
+    // Check for anonymous setting
+    const hideIdentity = props.settings.hideProfileIdentity === true;
+
     const handleDismissMessage = async () => {
         if (!props.systemMessage || !character) return;
         try {
@@ -57,13 +60,13 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
             style={{ 
                 minHeight: '100vh', 
                 width: '100vw',
-                background: 'var(--bg-main)', // Loads theme background (image/color)
+                background: 'var(--bg-main)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                position: 'fixed', // Lock to screen
+                position: 'fixed',
                 top: 0, left: 0
             }}
         >
@@ -75,7 +78,6 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 />
             )}
 
-            {/* Overlay for readability if background is busy */}
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 0 }} />
             
             <div style={{ 
@@ -99,31 +101,34 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                         <button 
                             key={c.characterId || index} 
                             onClick={() => window.location.href = `/play/${props.storyId}?charId=${c.characterId}`}
-                            className="option-button" // Use standard class for hover effects
+                            className="option-button"
                             style={{ 
                                 padding: '1rem', 
                                 display: 'flex', alignItems: 'center', gap: '1rem',
                                 textAlign: 'left', width: '100%'
                             }}
                         >
-                            {/* PORTRAIT */}
-                            <div style={{ 
-                                width: '60px', height: '60px', borderRadius: '50%', 
-                                overflow: 'hidden', border: '2px solid var(--accent-primary)',
-                                flexShrink: 0, background: '#000'
-                            }}>
-                                <GameImage 
-                                    code={c.portrait || "default_avatar"} 
-                                    imageLibrary={props.imageLibrary} 
-                                    type="portrait" 
-                                    className="w-full h-full object-cover"
-                                    alt=""
-                                />
-                            </div>
+                            {/* CONDITIONAL PORTRAIT */}
+                            {!hideIdentity && (
+                                <div style={{ 
+                                    width: '60px', height: '60px', borderRadius: '50%', 
+                                    overflow: 'hidden', border: '2px solid var(--accent-primary)',
+                                    flexShrink: 0, background: '#000'
+                                }}>
+                                    <GameImage 
+                                        code={c.portrait || "default_avatar"} 
+                                        imageLibrary={props.imageLibrary} 
+                                        type="portrait" 
+                                        className="w-full h-full object-cover"
+                                        alt=""
+                                    />
+                                </div>
+                            )}
 
                             <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)', fontSize: '1.1rem' }}>
-                                    {c.name}
+                                    {/* CONDITIONAL NAME */}
+                                    {hideIdentity ? `Save Slot ${index + 1}` : c.name}
                                 </h3>
                                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                                     {props.locations[c.currentLocationId]?.name || "Unknown Location"}
@@ -171,5 +176,4 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
             </div>
         </div>
     );
-
 };
