@@ -14,6 +14,7 @@ interface LondonLayoutProps {
     onOpenMap: () => void;
     onOpenMarket: () => void;
     currentMarketId?: string;
+    isTransitioning?: boolean; // Added Prop
 }
 
 export default function LondonLayout({ 
@@ -24,7 +25,8 @@ export default function LondonLayout({
     onExit, 
     onOpenMap, 
     onOpenMarket, 
-    currentMarketId 
+    currentMarketId,
+    isTransitioning
 }: LondonLayoutProps) {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -34,6 +36,7 @@ export default function LondonLayout({
             {/* --- BANNER --- */}
             <div className="layout-banner">
                 <div className="banner-image-container">
+                    {/* GameImage handles its own cross-fade via key change */}
                     <GameImage code={location.image} imageLibrary={imageLibrary} type="location" alt="" className="banner-bg-image" />
                 </div>
                 <div className="banner-gradient-overlay" />
@@ -65,8 +68,14 @@ export default function LondonLayout({
                         {sidebarContent}
                     </div>
                     
-                    {/* Content */}
-                    <div className="layout-content-col layout-column">
+                    {/* Content - Fades Out */}
+                    <div 
+                        className="layout-content-col layout-column"
+                        style={{ 
+                            opacity: isTransitioning ? 0 : 1, 
+                            transition: 'opacity 0.2s ease-in-out' 
+                        }}
+                    >
                         {mainContent}
                         
                         <button 

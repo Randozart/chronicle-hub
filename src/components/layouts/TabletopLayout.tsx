@@ -14,6 +14,7 @@ interface TabletopLayoutProps {
     onOpenMarket: () => void;
     currentMarketId?: string;
     onExit: () => void;
+    isTransitioning?: boolean; // Added Prop
 }
 
 export default function TabletopLayout({ 
@@ -24,7 +25,8 @@ export default function TabletopLayout({
     settings,
     onOpenMap,
     onOpenMarket,
-    currentMarketId
+    currentMarketId,
+    isTransitioning
 }: TabletopLayoutProps) {
     const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -53,6 +55,7 @@ export default function TabletopLayout({
             {/* COLUMN 2: VISUAL & NAV (Top on mobile) */}
             <div className="tabletop-visual-col">
                 <div className="visual-parallax-layer" style={{ transform: `translate3d(${moveX}px, ${moveY}px, 0)` }}>
+                    {/* GameImage handles key-based fade */}
                     <GameImage 
                         code={location.image} 
                         imageLibrary={imageLibrary} 
@@ -74,7 +77,13 @@ export default function TabletopLayout({
 
             {/* COLUMN 3: MAIN CONTENT */}
             <div className="layout-column content-column">
-                <div className="content-area">
+                <div 
+                    className="content-area"
+                    style={{ 
+                        opacity: isTransitioning ? 0 : 1, 
+                        transition: 'opacity 0.2s ease-in-out' 
+                    }}
+                >
                     {mainContent}
                 </div>
                 

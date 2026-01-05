@@ -9,7 +9,7 @@ interface GameImageProps {
 
     className?: string;
     priority?: boolean;
-    style?: React.CSSProperties; // <--- ADDED THIS
+    style?: React.CSSProperties; 
 }
 
 export default function GameImage({ code, imageLibrary, alt, type, className, priority, style }: GameImageProps) {
@@ -27,7 +27,7 @@ export default function GameImage({ code, imageLibrary, alt, type, className, pr
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    ...style // <--- SPREAD HERE
+                    ...style 
                 }}
             >
                 <span style={{ fontSize: '2rem', color: '#333' }}>?</span>
@@ -48,19 +48,25 @@ export default function GameImage({ code, imageLibrary, alt, type, className, pr
                 width: '100%', 
                 height: '100%', 
                 overflow: 'hidden',
-                ...style // <--- SPREAD HERE
+                ...style 
             }}
         >
             <img
+                key={code} // TRIGGERS RE-MOUNT ANIMATION ON CHANGE
                 src={def.url}
                 alt={alt || def.alt || code}
+                className="fade-in-image" // Requires CSS
                 style={{
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
                     objectPosition: objectPosition,
+                    animation: 'fadeIn 0.5s ease-out' // Inline animation if CSS unavailable
                 }}
             />
+            {/* Global CSS should define:
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            */}
         </div>
     );
 }

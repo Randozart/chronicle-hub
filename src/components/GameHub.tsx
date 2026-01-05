@@ -172,7 +172,7 @@ export default function GameHub(props: GameHubProps) {
             const data = await res.json();
             
             if (data.success) {
-                // FIX: Reload to ensure server-side filtering and deck logic are refreshed
+                // Force reload to fetch fresh storylets for new location
                 window.location.reload();
             } else {
                 alert(data.error);
@@ -200,8 +200,6 @@ export default function GameHub(props: GameHubProps) {
     if (!location) return <div>Loading location data...</div>;
 
     // --- ENGINE INIT ---
-    // Merge dynamic qualities from character into world config
-    // This ensures that items created via %new have definitions (name, etc.)
     const mergedQualityDefs = {
         ...props.qualityDefs,
         ...(character.dynamicQualities || {})
@@ -225,8 +223,6 @@ export default function GameHub(props: GameHubProps) {
     const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
     
     // --- FIX: DISPLAY STATE ---
-    // This contains Effective Levels and Ghost Qualities (e.g. Darkness 1)
-    // Used for "Profile Panel" (Myself Tab)
     const displayQualities = renderEngine.getDisplayState();
 
     // --- FIX: DYNAMIC STORYLET FILTERING ---
@@ -300,7 +296,6 @@ export default function GameHub(props: GameHubProps) {
                             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                             <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
                         </div>
-                        {/* SIDEBAR: Uses RAW qualities + Engine for (+1) */}
                         <CharacterSheet 
                             qualities={character.qualities} 
                             equipment={character.equipment} 
@@ -327,7 +322,6 @@ export default function GameHub(props: GameHubProps) {
                         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
                     </div>
-                    {/* SIDEBAR: Uses RAW qualities + Engine for (+1) */}
                     <CharacterSheet 
                         qualities={character.qualities} 
                         equipment={character.equipment} 
@@ -357,6 +351,8 @@ export default function GameHub(props: GameHubProps) {
         const renderHeader = () => {
             if (headerStyle === 'hidden') return null;
             
+            // FADE-IN: The wrapper itself handles the fade via layout props, 
+            // but for the banner specifically, we rely on GameImage key-based transitions if needed.
             if (isBannerMode) {
                 return (
                     <div className={`location-wrapper mode-banner`}>
@@ -397,7 +393,6 @@ export default function GameHub(props: GameHubProps) {
         if (activeTab === 'profile') {
             innerContent = (
                 <div className="content-panel">
-                    {/* PROFILE: Uses DISPLAY State (Shows ghosts like Darkness) */}
                     <ProfilePanel 
                         qualities={displayQualities} 
                         qualityDefs={mergedQualityDefs} 
@@ -410,7 +405,6 @@ export default function GameHub(props: GameHubProps) {
         } else if (activeTab === 'possessions') {
             innerContent = (
                 <div className="content-panel">
-                    {/* POSSESSIONS: Passed Engine for Bonus Parsing */}
                     <Possessions 
                         qualities={character.qualities} 
                         equipment={character.equipment} 
@@ -494,27 +488,17 @@ export default function GameHub(props: GameHubProps) {
             onExit: handleExit,
             onOpenMap: () => setShowMap(true),
             onOpenMarket: () => setShowMarket(true),
-            currentMarketId: activeMarketId
+            currentMarketId: activeMarketId,
+            isTransitioning: isTransitioning // <--- Pass Transition State
         };
 
-        const content = (
-            <div style={{ 
-                opacity: isTransitioning ? 0 : 1, 
-                transition: 'opacity 0.3s ease-in-out',
-                height: '100%' 
-            }}>
-                {(() => {
-                    switch (props.settings.layoutStyle) {
-                        case 'london': return <LondonLayout {...layoutProps} />;
-                        case 'elysium': return <ElysiumLayout {...layoutProps} />; 
-                        case 'tabletop': return <TabletopLayout {...layoutProps} />;
-                        default: return <NexusLayout {...layoutProps} />;
-                    }
-                })()}
-            </div>
-        );
-
-        return content;
+        // REMOVED: The global opacity wrapper. Layouts now handle transitions.
+        switch (props.settings.layoutStyle) {
+            case 'london': return <LondonLayout {...layoutProps} />;
+            case 'elysium': return <ElysiumLayout {...layoutProps} />; 
+            case 'tabletop': return <TabletopLayout {...layoutProps} />;
+            default: return <NexusLayout {...layoutProps} />;
+        }
     };
 
     return (

@@ -9,6 +9,7 @@ interface ElysiumLayoutProps {
     location: LocationDefinition;
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
+    isTransitioning?: boolean; // Added Prop
 }
 
 export default function ElysiumLayout({ 
@@ -16,7 +17,8 @@ export default function ElysiumLayout({
     mainContent, 
     location, 
     imageLibrary, 
-    settings 
+    settings,
+    isTransitioning
 }: ElysiumLayoutProps) {
     const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -60,24 +62,31 @@ export default function ElysiumLayout({
             
             {/* BACKGROUND LAYER (Parallax) */}
             <div className="elysium-bg-layer" style={{ transform: `translate3d(${-moveX}px, ${-moveY}px, 0)` }}>
+                {/* Note: We don't fade this out with isTransitioning, creating a stable background feel */}
                 <img 
+                    key={location.id} // Force image swap animation
                     src={bgSrc} 
                     alt="" 
-                    className="elysium-bg-img"
+                    className="elysium-bg-img fade-in-image" // Add fade class
                     onError={(e) => e.currentTarget.style.display = 'none'} 
                 />
                 <div className="elysium-vignette" />
             </div>
 
             {/* --- SIDEBAR --- */}
-            {/* Uses the dynamic class name. On mobile, it becomes .sidebar-panel */}
             <div className={`${sidebarClassName} ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
                 {sidebarContent}
             </div>
 
             {/* --- MAIN CONTENT AREA --- */}
             <div className="elysium-content">
-                <div className="elysium-container">
+                <div 
+                    className="elysium-container"
+                    style={{ 
+                        opacity: isTransitioning ? 0 : 1, 
+                        transition: 'opacity 0.3s ease-in-out' 
+                    }}
+                >
                     <div className="elysium-content-wrapper">
                         {mainContent}
                     </div>
@@ -92,7 +101,6 @@ export default function ElysiumLayout({
             </div>
 
             {/* --- CLOSE BUTTON (as sibling) --- */}
-            {/* This will now work because .sidebar-panel has the correct mobile styles */}
             {mobileSidebarOpen && (
                 <button 
                     className="mobile-close-btn" 

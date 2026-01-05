@@ -59,10 +59,8 @@ export function evaluateText(
     depth: number = 0
 ): string {
     if (!rawText) return '';
-    const indent = '  '.repeat(depth);
-    if (depth === 0) console.log(`${indent}[Scribe_Entry] Text: "${rawText.substring(0, 70).replace(/\n/g, "\\n")}..."`);
     if (selfContext && depth === 0) {
-        console.log(`${indent}[Scribe_Entry] selfContext: { qid: '${selfContext.qid}' }`);
+
     } else {
         if (rawText.includes('$.')) {
             // console.warn(`${indent}[Scribe_Entry] ⚠️ Text contains '$.' but No selfContext provided.`);
@@ -264,10 +262,7 @@ function resolveVariable(
     errors?: string[], 
     logger?: TraceLogger, 
     depth: number = 0
-): string | number {
-    const indent = '  '.repeat(depth);
-    // console.log(`${indent}[Scribe_Var] Resolving: "${fullMatch}"`);
-    
+): string | number {    
     try {
         const match = fullMatch.match(/^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;

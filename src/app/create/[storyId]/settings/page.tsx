@@ -15,6 +15,7 @@ interface SettingsForm extends WorldSettings {
     coverImage?: string;
     tags?: string[];
     deckDrawCostsAction?: boolean; 
+    hideProfileIdentity?: boolean; // NEW
 }
 
 export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
@@ -42,6 +43,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         enablePortrait: true,
         enableTitle: false,
         allowScribeScriptInInputs: false,
+        hideProfileIdentity: false,
     });
     
     const [existingQIDs, setExistingQIDs] = useState<string[]>([]); 
@@ -321,6 +323,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         <input value={form.playerImage} onChange={e => handleChange('playerImage', e.target.value)} className="form-input" placeholder="$player_portrait" />
                         <p className="special-desc">Stores the image code for the avatar.</p>
                     </div>
+                    
                 </div>
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                     <label className="form-label">Starting Location ID</label>
