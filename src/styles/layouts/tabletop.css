@@ -5,29 +5,30 @@
     display: grid;
     grid-template-columns: 280px minmax(300px, 35%) 1fr;
     
-    /* FIX: Override layout.css to allow scrolling */
-    height: auto;
-    min-height: 100vh; 
-    overflow: visible; /* Allow child columns to manage their own overflow */
+    /* FIX: Lock the entire grid to the viewport height and prevent it from scrolling. */
+    height: 100vh;
+    overflow: hidden;
 
     background-color: var(--bg-main); 
     color: var(--text-primary);
 }
 
 /* --- Column 1: Sidebar --- */
-.layout-grid-tabletop > .sidebar-panel {
-    position: sticky;
-    top: 0;
-    height: 100vh; 
-    overflow-y: auto; 
+/* Your component uses .sidebar-panel, so we target that. */
+.layout-grid-tabletop .sidebar-panel {
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    
+    /* FIX: Allow this column to scroll its own content if it overflows. */
+    overflow-y: auto;
 }
 
 /* --- Column 2: Visual (Center) --- */
 .tabletop-visual-col {
-    position: sticky;
-    top: 0;
-    height: 100vh; 
-    overflow: hidden;
+    position: relative;
+    overflow: hidden; /* This is correct, it should not scroll */
     border-right: 1px solid var(--border-color);
     background: #000;
     box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
@@ -59,15 +60,18 @@
 }
 
 /* --- Column 3: Main Content --- */
+/* Your component uses .content-column */
 .content-column {
     background: var(--bg-main);
     display: flex;
     flex-direction: column;
     min-width: 0;
-    /* This column will now create the page's main scrollbar */
+
+    /* FIX: Allow THIS column to scroll its own content. */
+    overflow-y: auto;
 }
 
-/* --- Buttons --- */
+/* --- Buttons (Using names from your TSX) --- */
 .nav-btn-primary {
     background: #000;
     border: 1px solid var(--accent-highlight);
@@ -106,7 +110,7 @@
     .layout-grid-tabletop {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto 1fr;
-        height: auto;
+        height: auto; /* Allow page to grow and scroll on mobile */
         overflow-y: auto; 
     }
 
@@ -115,7 +119,6 @@
         order: 1;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
-        position: relative; /* Un-sticky on mobile */
     }
     
     .sidebar-panel {
@@ -124,14 +127,13 @@
         order: 2;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
-        position: relative; /* Un-sticky on mobile */
         overflow-y: auto;
     }
 
     .content-column {
         order: 3;
         height: auto;
-        overflow: visible;
+        overflow: visible; /* Let content flow naturally within the page scroll */
     }
     
     .content-area {
