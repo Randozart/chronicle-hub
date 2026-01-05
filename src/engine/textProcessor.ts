@@ -19,10 +19,6 @@ const SEPARATORS: Record<string, string> = {
 // 2. SANITIZER (Comment Stripper)
 // ==========================================
 
-/**
- * Removes blocks formatted as {// ... } before processing.
- * Respects nested braces inside comments to prevent early exit.
- */
 export function sanitizeScribeScript(text: string): string {
     if (!text) return "";
     let buffer = "";
@@ -30,13 +26,11 @@ export function sanitizeScribeScript(text: string): string {
     let commentDepth = 0;
 
     while (i < text.length) {
-        // Detect start of a Comment Block: "{" followed by "//"
         if (commentDepth === 0 && text[i] === '{' && i + 2 < text.length && text[i+1] === '/' && text[i+2] === '/') {
             commentDepth = 1;
             i += 3; 
             continue;
         }
-        // While inside a comment, track depth
         if (commentDepth > 0) {
             if (text[i] === '{') commentDepth++;
             else if (text[i] === '}') commentDepth--;
@@ -66,16 +60,14 @@ export function evaluateText(
 ): string {
     if (!rawText) return '';
     const indent = '  '.repeat(depth);
-    console.log(`${indent}[Scribe_Entry] Text: "${rawText.substring(0, 70).replace(/\n/g, "\\n")}..."`);
-    if (selfContext) {
+    if (depth === 0) console.log(`${indent}[Scribe_Entry] Text: "${rawText.substring(0, 70).replace(/\n/g, "\\n")}..."`);
+    if (selfContext && depth === 0) {
         console.log(`${indent}[Scribe_Entry] selfContext: { qid: '${selfContext.qid}' }`);
     } else {
-        // Optional: Warn only if text actually contains self-reference to avoid log noise
         if (rawText.includes('$.')) {
-            console.warn(`${indent}[Scribe_Entry] ⚠️ Text contains '$.' but No selfContext provided.`);
+            // console.warn(`${indent}[Scribe_Entry] ⚠️ Text contains '$.' but No selfContext provided.`);
         }
     }
-    // Step 1: Sanitize
     const cleanText = sanitizeScribeScript(rawText);
     const effectiveAliases = aliases || {}; 
     
@@ -113,18 +105,14 @@ function evaluateRecursive(
             const blockWithBraces = innermostBlockMatch[0];
             const blockContent = innermostBlockMatch[1];
             currentBlock = blockWithBraces; 
-            console.log(`${indent}[Scribe_Recurse] Found Block: {${blockContent}}`);
-
-            // Log Entry
+            
             if (logger && context === 'TEXT') {
                 logger(`Eval: ${blockWithBraces}`, depth);
             }
 
             const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1);
             const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
-                        console.log(`${indent}[Scribe_Recurse] ✅ Resolved to: "${safeValue}"`);
 
-            // Log Result (if meaningful)
             if (logger && context === 'TEXT' && safeValue !== "") {
                  logger(`Result: "${safeValue}"`, depth, 'SUCCESS');
             }
@@ -160,11 +148,9 @@ function evaluateExpression(
 ): string | number | boolean {
     const cleanExpr = expr.replace(/\/\/.*$/gm, '').trim();
     if (!cleanExpr) return "";
-        const indent = '  '.repeat(depth);
-
     const trimmedExpr = cleanExpr; 
     
-    // 1. Alias Assignment: @alias = value
+    // 1. Alias Assignment
     const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
     if (assignmentMatch) {
         const aliasKey = assignmentMatch[1];
@@ -232,28 +218,30 @@ function resolveComplexExpression(
     depth: number = 0
 ): string | number | boolean {
     const indent = '  '.repeat(depth);
-    console.log(`${indent}[Scribe_Expr] Evaluating: "${expr}"`);
+    if(depth < 2 && logger) logger(`Expr: "${expr}"`, depth);
 
     try {
-        // --- FIX: SMART PRE-SUBSTITUTION STRATEGY ---
-        // If '$.' is followed by a property identifier, we must ensure a dot remains.
-        // If it's standing alone (e.g. $. > 5), we substitute the ID directly.
+        // --- SMART PRE-SUBSTITUTION ---
         let processedExpr = expr;
         if (self && expr.includes('$.')) {
-            processedExpr = processedExpr.replace(/\$\./g, (match, offset, string) => {
-                const nextChar = string[offset + 2]; // The character immediately after "$."
-                // If the next char starts an identifier (e.g. 'i' in $.index), append a dot.
+            processedExpr = processedExpr.replace(/\$\.(.?)/g, (match, nextChar) => {
+                // If next char is alphanumeric (property), keep dot: $.index -> $s1.index
                 if (nextChar && /[a-zA-Z0-9_]/.test(nextChar)) {
-                    return `$${self.qid}.`;
+                    return `$${self.qid}.${nextChar}`;
                 }
-                // Otherwise (space, operator, brace), return the ID alone.
-                return `$${self.qid}`;
+                // Otherwise (value access, brackets, etc), remove dot: $. > 5 -> $s1 > 5 OR $.[1] -> $s1[1]
+                return `$${self.qid}${nextChar}`;
             });
-            console.log(`${indent}[Scribe_Expr] Pre-substituted '$.' -> '$${self.qid}': "${processedExpr}"`);
         }
-        // -------------------------------------
-
-        const varReplacedExpr = processedExpr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
+        
+        // --- EXPANDED REGEX ---
+        // Matches:
+        // 1. $. (Self)
+        // 2. @/#/$ followed by:
+        //    a. Alphanumeric name
+        //    b. { ... } dynamic name (evaluated now)
+        //    c. ( ... ) deferred name (evaluated recursively inside resolveVariable)
+        const varReplacedExpr = processedExpr.replace(/((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
             (match) => { 
                 const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
                 if (typeof resolved === 'string') return `"${resolved}"`;
@@ -280,16 +268,36 @@ function resolveVariable(
     depth: number = 0
 ): string | number {
     const indent = '  '.repeat(depth);
-    console.log(`${indent}[Scribe_Var] Resolving: "${fullMatch}"`);
+    if(depth < 2) console.log(`${indent}[Scribe_Var] Resolving: "${fullMatch}"`);
     
     try {
-        const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
+        // Match regex must align with resolveComplexExpression
+        const match = fullMatch.match(/^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
 
         const [, sigilAndName, levelSpoof, propChain] = match;
         let sigil: string, identifier: string;
-        if (sigilAndName === '$.') { sigil = '$.'; identifier = ''; } 
-        else { sigil = sigilAndName.charAt(0); identifier = sigilAndName.slice(1); }
+        
+        if (sigilAndName === '$.') { 
+            sigil = '$.'; identifier = ''; 
+        } else { 
+            sigil = sigilAndName.charAt(0); 
+            identifier = sigilAndName.slice(1); 
+        }
+
+        // --- RECURSIVE RESOLUTION ---
+        if (identifier.startsWith('{')) {
+            // Immediate resolution (e.g. ${prefix}_name)
+            const resolvedId = evaluateText(identifier, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+            identifier = resolvedId.toString().trim();
+        } 
+        else if (identifier.startsWith('(')) {
+            // Deferred resolution (e.g. $($.id))
+            const inner = identifier.slice(1, -1);
+            const resolvedId = evaluateText(inner, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+            identifier = resolvedId.toString().trim();
+        }
+        // ----------------------------
 
         let qualityId: string | undefined;
         let contextQualities = qualities;
@@ -311,7 +319,7 @@ function resolveVariable(
         }
         
         if (!state) {
-            console.warn(`${indent}[Scribe_Var] ⚠️ No STATE found for '${qualityId}'. Creating ghost state.`);
+            // Safe ghost state
             state = { 
                 qualityId, type: definition?.type || QualityType.Pyramidal, level: 0, 
                 stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 
@@ -333,18 +341,9 @@ function resolveVariable(
         }
 
         for (const prop of properties) {
-            // --- FIX: CRASH GUARD ---
-            // If the previous iteration resulted in undefined (prop not found), stop immediately.
-            // This prevents "Cannot read properties of undefined" on the next loop iteration.
-            if (currentValue === undefined || currentValue === null) {
-                console.warn(`${indent}[Scribe_Var] 🛑 Lookup chain broken before '.${prop}'. Returning undefined.`);
-                break;
-            }
-            // ------------------------
+            if (currentValue === undefined || currentValue === null) break;
 
             let processed = false;
-            console.log(`${indent}[Scribe_Var] > Looping for property: ".${prop}"`);
-
             if (typeof currentValue === 'string') {
                 if (prop === 'capital') { currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1); processed = true; }
                 else if (prop === 'upper') { currentValue = currentValue.toUpperCase(); processed = true; }
@@ -352,7 +351,6 @@ function resolveVariable(
             }
             if (processed) continue;
             
-            // Check if currentValue is actually an object before reading .qualityId
             const currentQid = (typeof currentValue === 'object') ? (currentValue.qualityId || qualityId) : qualityId;
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             const currentDef = defs[lookupId];
@@ -361,40 +359,34 @@ function resolveVariable(
             let foundValue: any = undefined;
 
             if (typeof state === 'object' && (state as any).text_variants && (state as any).text_variants[prop] !== undefined) {
-                foundIn = 'state.text_variants';
                 foundValue = (state as any).text_variants[prop];
+                foundIn = 'state';
             }
-            else if (prop === 'name') { foundIn = 'builtin.name'; foundValue = currentDef?.name || lookupId; }
-            else if (prop === 'description') { foundIn = 'builtin.description'; foundValue = currentDef?.description || ""; }
-            else if (prop === 'category') { foundIn = 'builtin.category'; foundValue = currentDef?.category || ""; }
+            else if (prop === 'name') { foundValue = currentDef?.name || lookupId; foundIn = 'def'; }
+            else if (prop === 'description') { foundValue = currentDef?.description || ""; foundIn = 'def'; }
+            else if (prop === 'category') { foundValue = currentDef?.category || ""; foundIn = 'def'; }
             else if (prop === 'plural') {
-                foundIn = 'builtin.plural';
                 const lvl = ('level' in state!) ? state!.level : 0;
                 foundValue = (lvl !== 1) ? (currentDef?.plural_name || currentDef?.name || lookupId) : (currentDef?.singular_name || currentDef?.name || lookupId);
+                foundIn = 'def';
             }
-            else if (prop === 'singular') { foundIn = 'builtin.singular'; foundValue = currentDef?.singular_name || currentDef?.name || lookupId; }
+            else if (prop === 'singular') { foundValue = currentDef?.singular_name || currentDef?.name || lookupId; foundIn = 'def'; }
             else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
-                foundIn = 'definition.text_variants';
                 foundValue = currentDef.text_variants[prop];
+                foundIn = 'def';
             }
-            // Fallback: Check if the definition has this property directly (for custom macro props)
             else if (currentDef && (currentDef as any)[prop] !== undefined) {
-                foundIn = 'definition.raw';
                 foundValue = (currentDef as any)[prop];
+                foundIn = 'def';
             }
 
             if (foundIn) {
                 currentValue = foundValue;
-                console.log(`${indent}[Scribe_Var] >> ✅ Found ".${prop}" in ${foundIn}. Value:`, currentValue);
             } else {
-                console.error(`${indent}[Scribe_Var] >> ❌ Property ".${prop}" NOT FOUND.`);
                 currentValue = undefined;
             }
 
-            // NESTED RECURSION
             if (typeof currentValue === 'string' && (currentValue.includes('{') || currentValue.includes('$'))) {
-                                console.log(`${indent}[Scribe_Var] >> Recursing into property value: "${currentValue}"`);
-
                 currentValue = evaluateText(
                     currentValue, 
                     qualities, 
@@ -410,25 +402,17 @@ function resolveVariable(
         }
         
         if (typeof currentValue === 'object' && currentValue !== null) {
-            if (currentValue.type === QualityType.String) {
-                return (currentValue as any).stringValue;
-            }
-            if ('level' in currentValue) {
-                return (currentValue as any).level;
-            }
+            if (currentValue.type === QualityType.String) return (currentValue as any).stringValue;
+            if ('level' in currentValue) return (currentValue as any).level;
         }
-        console.log(`${indent}[Scribe_Var] ✅ Final resolved value for "${fullMatch}":`, currentValue);
         return currentValue?.toString() || "";
     } catch (e: any) {
-        console.error(`${indent}[Scribe_Var] ❌ FATAL ERROR in resolveVariable for "${fullMatch}":`, e);
         if (errors) errors.push(`Variable Error "${fullMatch}": ${e.message}`);
         return "[VAR ERROR]";
     }
 }
 
-// ==========================================
-// 6. LOGIC GATES & MACROS
-// ==========================================
+// ... (Rest of logic gates/macros/utils) ...
 
 function evaluateConditional(
     expr: string, 
@@ -454,11 +438,8 @@ function evaluateConditional(
             if (isMet) {
                 if (logger) logger(`Condition [${conditionStr}] TRUE`, depth, 'INFO');
                 return evaluateText(resultStr.replace(/^['"]|['"]$/g, ''), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
-            } else {
-                 // if (logger) logger(`Condition [${conditionStr}] FALSE`, depth); // Optional: Verbose mode
             }
         } else {
-            // Default Branch
             if (logger) logger(`-> Default branch`, depth, 'INFO');
             const resultStr = branch.trim();
             return evaluateText(resultStr.replace(/^['"]|['"]$/g, ''), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
@@ -491,7 +472,6 @@ function evaluateMacro(
         if (rawOptStr) optArgs = rawOptStr.split(',').map(s => s.trim());
     }
 
-    // Helper for recursion in macros
     const evalArg = (s: string) => evaluateExpression(s, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1);
     
     switch (command.toLowerCase()) {

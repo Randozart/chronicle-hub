@@ -131,10 +131,10 @@ export default function LogicMathPage() {
                 
             
 
-            <section id="syntax-rules">
-    <h2 className="docs-h2">2. Brackets: The Three Meanings</h2>
+    <section id="syntax-rules">
+    <h2 className="docs-h2">2. Brackets: The Four Meanings</h2>
     <p className="docs-p">
-        ScribeScript uses three types of brackets, each with a very specific job. Understanding the difference is the key to writing powerful and bug-free logic.
+        ScribeScript uses four specific bracket patterns. Understanding the difference is key to mastering complex logic.
     </p>
 
     {/* DEFINITIONS */}
@@ -148,7 +148,7 @@ export default function LogicMathPage() {
         <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
             <h4 className="docs-h4" style={{color: 'var(--docs-accent-blue)'}}>{`( )`} Parentheses</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                <strong>The Grouper.</strong> Used inside code to control the order of operations, especially for combining AND/OR logic. It tells the engine "do this part first."
+                <strong>The Grouper.</strong> Used inside code to control the order of operations (e.g. <code>(A || B) && C</code>).
             </p>
         </div>
         <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
@@ -157,9 +157,16 @@ export default function LogicMathPage() {
                 <strong>The Parameter Block.</strong> Used to provide arguments to a macro (`%chance[...]`) or metadata to an effect (`$gold[desc:...]`).
             </p>
         </div>
+        <div className="docs-card" style={{borderColor: '#9b59b6'}}>
+            <h4 className="docs-h4" style={{color: '#9b59b6'}}>{`$( )`} Deferred Identifier</h4>
+            <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                <strong>The Context Protector.</strong> It tells the main parser to <strong>delay</strong> evaluating the logic inside the parentheses. The raw code is passed to the part of the engine that needs it (like a macro's filter), which then evaluates it in the correct context.
+                Note that this differs crucially from regular parentheses, in that the result of the evaluation inside of the parentheses is used as a dynamic variable call. 
+            </p>
+        </div>
     </div>
 
-    <h3 className="docs-h3">Edge Cases: When Braces <code>{`{}`}</code> Are Essential</h3>
+    <h3 className="docs-h3">Edge Cases: When Braces Are Essential</h3>
     <p className="docs-p">
         Braces are required whenever you need to resolve a complex expression into a single value <em>before</em> the surrounding logic is processed.
     </p>
@@ -170,11 +177,11 @@ export default function LogicMathPage() {
             A logic field like <code>visible_if</code> can parse a simple comparison. But if the target of the comparison is itself a calculation, you <strong>must</strong> wrap that calculation in braces.
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// INCORRECT: The parser will break trying to read this.</span>
+            <span style={{color:'var(--text-muted)'}}>// INCORRECT: The parser will break trying to read this.</span>
             <br/>
             <code className="docs-code" style={{color: '#e06c75'}}>$gold &gt; $level * 50</code>
             <br/><br/>
-            <span style={{color:'#777'}}>// CORRECT: The "Russian Doll" model solves the inner block first.</span>
+            <span style={{color:'var(--text-muted)'}}>// CORRECT: The "Russian Doll" model solves the inner block first.</span>
             <br/>
             <code className="docs-code" style={{color: 'var(--docs-accent-green)'}}>
                 $gold &gt; {`{ $level * 50 }`}
@@ -185,47 +192,57 @@ export default function LogicMathPage() {
         </p>
     </div>
 
-    <div className="docs-card">
+    <div className="docs-card" style={{marginTop:'1.5rem'}}>
         <h4 className="docs-h4">Edge Case 2: Conditional Values in Effect Fields</h4>
         <p className="docs-p">
             The same rule applies to effects. If the <em>value</em> you are assigning is conditional, that condition must be resolved to a single value first.
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// INCORRECT: This is syntactically invalid.</span>
-            <br/>
-            <code className="docs-code" style={{color: '#e06c75'}}>$supplies += #season == 'Winter' : 2 | 1</code>
-            <br/><br/>
-            <span style={{color:'#777'}}>// CORRECT: The conditional is resolved to a number before the `+=` is executed.</span>
-            <br/>
             <code className="docs-code" style={{color: 'var(--docs-accent-green)'}}>
                 $supplies += {`{ #season == 'Winter' : 2 | 1 }`}
             </code>
         </div>
     </div>
 
-    <h3 className="docs-h3">Edge Case: When Parentheses <code>()</code> Are Essential</h3>
-    <p className="docs-p">
-        The parser has a default order for <code>&&</code> and <code>||</code>, but relying on it can lead to bugs. You <strong>should try to</strong> use parentheses to make your intent clear when combining these operators.
-    </p>
-    <div className="docs-card">
-        <h4 className="docs-h4">The Ambiguity of AND/OR</h4>
+    <div className="docs-card" style={{marginTop:'1.5rem', borderColor:'#9b59b6'}}>
+        <h4 className="docs-h4">Edge Case 3: Variable-from-Variable (The <code>$.</code>Problem)</h4>
         <p className="docs-p">
-            Imagine you want to open a door if you have a key OR are a good lockpick, but ONLY if the door isn't barred.
+            In advanced macros like <code>%pick</code>, you often iterate over a list of items. Sometimes, you need to use the properties of the <em>current</em> item (<code>$.</code>) to look up a <em>different</em> variable.
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// AMBIGUOUS: Could be read two ways. Is the bar irrelevant if you have the key?</span>
+            <span style={{color:'var(--text-muted)'}}>// Scenario: You want to check the 'ledger' property of a variable named 's1', 's2', etc.</span>
             <br/>
-            <code className="docs-code" style={{color: '#e06c75'}}>$has_key == 1 || $lockpicking &gt; 5 && !$is_barred</code>
+            <span style={{color:'var(--text-muted)'}}>// The current item <code>$.</code>has the ID 's1'.</span>
             <br/><br/>
-            <span style={{color:'#777'}}>// CORRECT: The parentheses create an unambiguous group.</span>
-            <br/>
             <code className="docs-code" style={{color: 'var(--docs-accent-green)'}}>
-                ($has_key == 1 || $lockpicking &gt; 5) && !$is_barred
+                {`%pick[Suspects; 1, $($.id).ledger < 3]`}
             </code>
         </div>
         <p className="docs-p" style={{fontSize:'0.9rem'}}>
-            The second version makes it clear: the "barred door" check applies to both the key and the lockpicking skill. Using parentheses prevents subtle logic bugs that are very hard to track down.
+            <strong>How it works:</strong>
+            <br/>1. The inner <code>($.id)</code> resolves to the string <code>"s1"</code>.
+            <br/>2. The engine then uses that string to look up the variable <code>$s1</code>.
+            <br/>3. Finally, it checks <code>$s1.ledger</code>.
         </p>
+        <div className="docs-callout" style={{marginTop:'1rem', borderColor:'#e06c75'}}>
+            <strong style={{color:'#e06c75'}}>Why Braces <code>{`{}`}</code> Fail Inside a Macro Filter</strong>
+            <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
+                The engine's "Russian Doll" model resolves the innermost <code>{`{}`}</code> blocks <strong>before the macro runs</strong>.
+            </p>
+            <div className="docs-pre" style={{marginTop:'0.5rem', fontSize:'0.85rem'}}>
+                <span style={{color:'var(--text-muted)'}}>// Incorrect Syntax</span><br/>
+                <code className="docs-code" style={{color:'#e06c75'}}>{`{%pick[Suspects; 1, {$.id}.ledger < 3]}`}</code>
+                <br/><br/>
+                <strong>How it Fails:</strong>
+                <br/>1. The outer parser sees <code>{`{$.id}`}</code> and resolves it immediately.
+                <br/>2. At this point, there is no "current item," so <code>$.</code> is unknown. It resolves to an error or empty string.
+                <br/>3. The macro receives a broken filter: <code>%pick[Suspects; 1, .ledger {`<`} 3]</code>, which fails.
+            </div>
+
+            <p className="docs-p" style={{fontSize:'0.9rem', margin:'1rem 0 0 0'}}>
+                The <code>$(...)</code> syntax works because it "hides" the logic from the outer parser. The macro receives the raw string <code>$($.id)</code> and only evaluates it later, when it has set the correct <code>$.</code> context for each suspect it is checking.
+            </p>
+        </div>
     </div>
 </section>
 <section id="advanced-math">
@@ -246,16 +263,16 @@ export default function LogicMathPage() {
                 <code className="docs-code" style={{marginLeft:'1rem'}}>{`{ A | B }`}</code>
             </div>
             <div className="docs-card" style={{padding:'1rem'}}>
-                <h4 className="docs-h4" style={{color:'var(--docs-accent-green)'}}>JavaScript `Math`</h4>
+                <h4 className="docs-h4" style={{color:'var(--docs-accent-green)'}}>JavaScript <code>{`Math()`}</code></h4>
                 <code className="docs-code">{`{ Math.floor(...) }`}</code>
                 <code className="docs-code" style={{marginLeft:'1rem'}}>{`{ Math.pow(...) }`}</code>
             </div>
         </div>
     </div>
 
-    <h3 className="docs-h3">Useful <code>Math</code> Functions</h3>
+    <h3 className="docs-h3">Useful <code>{`Math()`}</code> Functions</h3>
     <p className="docs-p">
-        You can call standard JavaScript <code>Math</code> functions directly inside a logic block. Here are some of the most useful ones for game development.
+        You can call standard JavaScript <code>{`Math()`}</code> functions directly inside a logic block. Here are some of the most useful ones for game development.
     </p>
     <table className="docs-table">
         <thead><tr><th>Function</th><th>Description</th><th>Example</th></tr></thead>
@@ -298,20 +315,20 @@ export default function LogicMathPage() {
                 To track the status of multiple different quality levels between 0 and 9, you can use math operations to encode this in a single number or quality level. Each decimal place acts as a "slot" for one of these levels, and the digit in that slot is their status code (e.g., 0=Available, 2=Wounded, 4=Dead).
             </p>
             <div className="docs-pre">
-                <span style={{color:'#777'}}>// Check the history of Suspect #3 for the Coroner role.</span>
+                <span style={{color:'var(--text-muted)'}}>// Check the history of Suspect #3 for the Coroner role.</span>
                 <br/>
                 <code className="docs-code">
                     {`{@suspect_id = 3}`}
                 </code>
                 <br/><br/>
-                <span style={{color:'#777'}}>// 1. Isolate the digit for Suspect #3 from the ledger number.</span>
+                <span style={{color:'var(--text-muted)'}}>// 1. Isolate the digit for Suspect #3 from the ledger number.</span>
                 <br/>
                 <code className="docs-code" style={{ whiteSpace: 'pre-wrap' }}>
                     {`{@power_of_10 = { Math.pow(10, @suspect_id - 1) }}
             {@status = { Math.floor( ($ledger_coroner / @power_of_10) ) % 10 }}`}
                 </code>
                 <br/><br/>
-                <span style={{color:'#777'}}>// 2. Use the status to change the narrative.</span>
+                <span style={{color:'var(--text-muted)'}}>// 2. Use the status to change the narrative.</span>
                 <br/>
                 <code className="docs-code" style={{ whiteSpace: 'pre-wrap' }}>
             {`{ @status == 2 : 
@@ -321,9 +338,9 @@ export default function LogicMathPage() {
             }`}
                 </code>
                 <br/><br/>
-                <span style={{color:'#777'}}>// 3. (In another effect) Update the ledger after a case.</span>
+                <span style={{color:'var(--text-muted)'}}>// 3. (In another effect) Update the ledger after a case.</span>
                 <br/>
-                <span style={{color:'#777'}}>// Mark Suspect #3 as 'Booked (Innocent)' (Code 2)</span>
+                <span style={{color:'var(--text-muted)'}}>// Mark Suspect #3 as 'Booked (Innocent)' (Code 2)</span>
                 <br/>
                 <code className="docs-code">
                     {`$ledger_coroner += { 2 * @power_of_10 }`}
@@ -396,50 +413,50 @@ export default function LogicMathPage() {
 </div>
 
     <div className="docs-card" style={{marginTop:'1rem'}}>
-        <h4 className="docs-h4">Example 1: Checking a Flag with AND `&`</h4>
+        <h4 className="docs-h4">Example 1: Checking a Flag with AND <code>&</code></h4>
         <p className="docs-p" style={{fontSize:'0.9rem'}}>
             The <code>&</code> operator checks which bits are active in *both* numbers. We use it to see if a specific flag is part of a character's RMO.
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// Check if $rmo has the "Relation" (4) flag turned on</span>
+            <span style={{color:'var(--text-muted)'}}>// Check if $rmo has the "Relation" (4) flag turned on</span>
             <br/>
             <code className="docs-code">
                 ($rmo & 4) == 4
             </code>
             <br/><br/>
-            <span style={{color:'#777'}}>// Logic: If $rmo is 5 (101), then (101 & 100) results in 100 (which is 4).</span>
+            <span style={{color:'var(--text-muted)'}}>// Logic: If $rmo is 5 (101), then (101 & 100) results in 100 (which is 4).</span>
         </div>
     </div>
     
     <div className="docs-card">
-        <h4 className="docs-h4">Example 2: Setting a Flag with OR `|`</h4>
+        <h4 className="docs-h4">Example 2: Setting a Flag with OR <code>|</code></h4>
         <p className="docs-p" style={{fontSize:'0.9rem'}}>
             The <code>|</code> operator combines the active bits from both numbers. Use this to grant a character a new flag without erasing their existing ones.
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// The character gains Opportunity (1) at the crime scene.</span>
+            <span style={{color:'var(--text-muted)'}}>// The character gains Opportunity (1) at the crime scene.</span>
             <br/>
             <code className="docs-code">
                 $rmo = {`{ $rmo | 1 }`}
             </code>
             <br/><br/>
-            <span style={{color:'#777'}}>// Logic: If $rmo was 4 (100), it becomes (100 | 001), resulting in 101 (which is 5).</span>
+            <span style={{color:'var(--text-muted)'}}>// Logic: If $rmo was 4 (100), it becomes (100 | 001), resulting in 101 (which is 5).</span>
         </div>
     </div>
     
     <div className="docs-card">
-        <h4 className="docs-h4">Example 3: Comparing Flags with XOR `^`</h4>
+        <h4 className="docs-h4">Example 3: Comparing Flags with XOR <code>^</code></h4>
         <p className="docs-p" style={{fontSize:'0.9rem'}}>
             The <code>^</code> operator returns a number representing only the bits that are different. This is perfect for checking "Degrees of Separation."
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// Check if two RMOs are identical (result 0) OR have only 1 difference (result 1, 2, or 4).</span>
+            <span style={{color:'var(--text-muted)'}}>// Check if two RMOs are identical (result 0) OR have only 1 difference (result 1, 2, or 4).</span>
             <br/>
             <code className="docs-code">
                 ($rmo_A ^ $rmo_B) {'<'} 5 && ($rmo_A ^ $rmo_B) != 3
             </code>
             <br/><br/>
-            <span style={{color:'#777'}}>// Logic: If A is 7 (111) and B is 5 (101), (A ^ B) results in 010 (which is 2).</span>
+            <span style={{color:'var(--text-muted)'}}>// Logic: If A is 7 (111) and B is 5 (101), (A ^ B) results in 010 (which is 2).</span>
         </div>
     </div>
 </section>
