@@ -31,8 +31,9 @@ export default function FormattedText({ text }: { text: string | undefined | nul
     );
 }
 
-// A unique, unlikely-to-be-typed string for placeholders.
-const ESCAPE_PLACEHOLDER = '___PLACEHOLDER___';
+// A character from the Unicode Private Use Area.
+// This is guaranteed not to be part of the formatting syntax or user input.
+const PLACEHOLDER_SENTINEL = '\uE000';
 
 function parseInlineFormatting(line: string): React.ReactNode[] {
     if (!line) return [];
@@ -40,35 +41,35 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
     const escapes: string[] = [];
 
     // 1. Pre-processing Step: Handle Escapes
-    // Find all backticked segments, store their raw inner content,
-    // and replace them with a unique placeholder.
+    // Replace backticked content with a unique, non-parsable placeholder.
     const placeholderLine = line.replace(/`(.+?)`/g, (match, content) => {
         escapes.push(content);
-        return `${ESCAPE_PLACEHOLDER}${escapes.length - 1}`;
+        // The placeholder is now wrapped in sentinels, e.g., "\uE0000\uE000"
+        return `${PLACEHOLDER_SENTINEL}${escapes.length - 1}${PLACEHOLDER_SENTINEL}`;
     });
 
-    // --- HELPER FUNCTION MOVED INSIDE ---
-    // Now has access to the 'escapes' array from its parent scope.
+    // Helper to substitute placeholders back to their original content.
     function substituteEscapes(text: string): React.ReactNode[] {
-        if (!text.includes(ESCAPE_PLACEHOLDER)) {
+        if (!text.includes(PLACEHOLDER_SENTINEL)) {
             return [text];
         }
         
-        const parts = text.split(new RegExp(`(${ESCAPE_PLACEHOLDER}\\d+)`, 'g'));
+        // Split the string by the placeholder pattern, keeping the delimiters.
+        const placeholderRegex = new RegExp(`(${PLACEHOLDER_SENTINEL}\\d+${PLACEHOLDER_SENTINEL})`, 'g');
+        const parts = text.split(placeholderRegex);
 
         return parts.map((part) => {
-            if (part.startsWith(ESCAPE_PLACEHOLDER)) {
-                const index = parseInt(part.replace(ESCAPE_PLACEHOLDER, ''), 10);
-                // Return the original content from the (now accessible) escapes array.
+            if (part.startsWith(PLACEHOLDER_SENTINEL) && part.endsWith(PLACEHOLDER_SENTINEL)) {
+                // Extract the index from between the sentinels.
+                const index = parseInt(part.slice(1, -1), 10);
                 return escapes[index];
             }
             return part;
-        }).filter(part => part !== ''); // Filter out empty strings from splitting
+        }).filter(part => part !== ''); // Filter out empty strings from splitting.
     }
 
-
-    // 2. Main Parsing Step (without backticks in the regex)
-    // This parser is "blind" to the escaped content.
+    // 2. Main Parsing Step
+    // The regex no longer contains the backtick rule.
     const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_|\*(?:.+?)\*|\[(?:[^\]]+)\])/g;
 
     function recursiveParse(subLine: string): React.ReactNode[] {
@@ -80,12 +81,12 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
             const segment = match[0];
             const index = match.index!;
 
-            // Add plain text before this match (with escapes substituted back in)
+            // Add plain text before this match (substituting any placeholders).
             if (index > lastIndex) {
                 results.push(...substituteEscapes(subLine.slice(lastIndex, index)));
             }
 
-            // Process the formatted segment
+            // Process the formatted segment.
             if (segment.startsWith('**') && segment.endsWith('**')) {
                 results.push(<strong key={index}>{recursiveParse(segment.slice(2, -2))}</strong>);
             } else if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith('*') && segment.endsWith('*'))) {
@@ -100,7 +101,7 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
             lastIndex = index + segment.length;
         }
 
-        // Add any remaining plain text after the last match (with escapes substituted back in)
+        // Add any remaining plain text after the last match.
         if (lastIndex < subLine.length) {
             results.push(...substituteEscapes(subLine.slice(lastIndex)));
         }
@@ -108,6 +109,6 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
         return results;
     }
 
-    // 3. Kick off the process
+    // 3. Kick off the process.
     return recursiveParse(placeholderLine);
 }
