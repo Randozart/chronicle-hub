@@ -44,145 +44,73 @@ export function parseAndApplyEffects(
     ctx: EngineContext,
     effectsString: string,
 ): void {
-    const cleanEffectsString = sanitizeScribeScript(effectsString).replace(/\n/g, ' ');
+    const cleanEffectsString = effectsString.replace(/\n/g, ' ');
     const effects = splitEffectsString(cleanEffectsString); 
 
-    // Inject evaluateText into context wrapper if needed, or use existing
-    // We modify ctx directly for temporary evaluation scope if needed, 
-    // but we trust the main EngineContext for data storage.
-
+    // Loop through each comma-separated instruction one at a time.
     for (const effect of effects) {
         const cleanEffect = effect.trim();
         if (!cleanEffect) continue;
 
-        ctx.executedEffectsLog.push(""); 
-        ctx.executedEffectsLog.push(`[RESOLVING: ${cleanEffect.substring(0, 50)}${cleanEffect.length > 50 ? '...' : ''}]`);
-
-        const prevErrorCount = ctx.errors.length;
-
-        if (cleanEffect.startsWith('{') && cleanEffect.endsWith('}')) {
-            const resolvedCommand = ctx.evaluateText(cleanEffect);
-            if (resolvedCommand !== cleanEffect) {
-                 ctx.executedEffectsLog.push(`   -> [Result] "${resolvedCommand}"`);
-            }
-            if (resolvedCommand && (resolvedCommand.includes('=') || resolvedCommand.startsWith('%'))) {
-                parseAndApplyEffects(ctx, resolvedCommand);
-            }
+        ctx.executedEffectsLog.push(`[RESOLVING: ${cleanEffect}]`);
+        
+        // --- 1. ALIAS DEFINITION: {@alias = ...} ---
+        // This is a special case that only sets a temporary variable.
+        if (cleanEffect.startsWith('{@') && cleanEffect.endsWith('}')) {
+            // Evaluate the content to populate the alias in the context.
+            ctx.evaluateText(cleanEffect);
+            continue; // Move to the next instruction
         }
-        else {
-            const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
-            if (macroMatch && ['schedule', 'reset', 'update', 'cancel'].includes(macroMatch[1])) {
-                const [, command, args] = macroMatch;
-                 ctx.executedEffectsLog.push(`[EXECUTE] Timer Command: ${command}`);
-                 parseAndQueueTimerInstruction(ctx, command, args);
-            }
-            else {
-                const batchMatch = cleanEffect.match(/^%all\[([^;\]]+)(?:;\s*([^\]]+))?\]\s*(=|\+=|-=)\s*(.*)$/);
-                if (batchMatch) {
-                    const [, catExpr, filterExpr, op, val] = batchMatch;
-                    const resolvedVal = ctx.evaluateText(`{${val}}`);
-                    const numVal = isNaN(Number(resolvedVal)) ? resolvedVal : Number(resolvedVal);
-                    ctx.executedEffectsLog.push(`[EXECUTE] Batch: Category[${catExpr}] ${op} ${numVal}`);
-                    batchChangeQuality(ctx, catExpr, op, numVal, filterExpr); 
-                }
-                else {
-                    // %new logic
-                    const newMatch = cleanEffect.match(/^%new\[(.*?)(?:;\s*(.*))?\](?:\s*(=)\s*(.*))?$/);
-                    
-                    if (newMatch) {
-                        const [, idExpr, argsStr, op, valStr] = newMatch;
-                        
-                        let newId = idExpr.trim();
-                        if (newId.includes('{') || newId.includes('$') || newId.startsWith('@')) {
-                            newId = ctx.evaluateText(`{${newId}}`).trim();
-                        }
-
-                        let numVal: string | number = 1; 
-                        if (op && valStr) {
-                            const resolvedVal = ctx.evaluateText(`{${valStr}}`);
-                            numVal = resolvedVal;
-                            if (resolvedVal !== "" && !isNaN(Number(resolvedVal))) {
-                                numVal = Number(resolvedVal);
-                            }
-                        }
-                        
-                        ctx.executedEffectsLog.push(`[EXECUTE] New: ${newId} = ${numVal}`);
-                        
-                        const props: Record<string, any> = {}; 
-                        let templateId = null;
-
-                        if (argsStr) {
-                            const args = argsStr.split(',').map(s => s.trim());
-                            if (args.length > 0 && !args[0].includes(':')) {
-                                templateId = args.shift() || null; 
-                            }
-                            args.forEach(arg => {
-                                const [k, ...vParts] = arg.split(':');
-                                if (k) {
-                                    const rawVal = vParts.join(':').trim().replace(/['"]/g, "");
-                                    props[k.trim()] = isNaN(Number(rawVal)) || rawVal === "" ? rawVal : Number(rawVal);
-                                }
-                            });
-                        }
-                        
-                        // CRITICAL: Use the method on the context if available (GameEngine)
-                        // If not available (e.g. stripped context), fallback to basic operations
-                        if (ctx.createNewQuality) {
-                            ctx.createNewQuality(newId, numVal, templateId, props);
-                        } else {
-                            // Fallback: creates state only, no definition
-                            createNewQuality(ctx, newId, numVal, templateId, props);
-                        }
-                    }
-                    else {
-                        const assignMatch = cleanEffect.match(/^((?:[$@][a-zA-Z0-9_]+)|(?:\{.*?\}))(?:\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
-                        if (assignMatch) {
-                            const [, rawLhs, metaStr, op, valStr] = assignMatch;
-                            let qid = "";
-                            if (rawLhs.startsWith('{')) {
-                                qid = ctx.evaluateText(rawLhs).trim(); 
-                                if (qid.startsWith('$') || qid.startsWith('@') || qid.startsWith('#')) qid = qid.substring(1);
-                            } else if (rawLhs.startsWith('@')) {
-                                const aliasKey = rawLhs.substring(1);
-                                qid = ctx.tempAliases[aliasKey]; 
-                            } else {
-                                qid = rawLhs.substring(1); 
-                            }
-
-                            if (qid && qid !== "nothing" && qid !== "undefined") {
-                                const metadata: { desc?: string; source?: string; hidden?: boolean } = {};
-                                if (metaStr) {
-                                    const metaParts = metaStr.split(',');
-                                    for (const part of metaParts) {
-                                        const [k, ...v] = part.split(':');
-                                        const key = k.trim();
-                                        const val = v.join(':').trim();
-                                        if (key === 'desc') metadata.desc = val;
-                                        if (key === 'source') metadata.source = val;
-                                        if (key === 'hidden') metadata.hidden = true;
-                                    }
-                                }
-
-                                let val: string | number = 0;
-                                if (op !== '++' && op !== '--') {
-                                        const resolvedValueStr = ctx.evaluateText(`{${valStr}}`); 
-                                        val = resolvedValueStr;
-                                        if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
-                                            val = Number(resolvedValueStr);
-                                        }
-                                }
-                                
-                                changeQuality(ctx, qid, op, val, metadata);
-                            }
-                        }
-                    }
-                }
-            }
+        
+        // --- 2. MACRO COMMANDS that are NOT assignments ---
+        // E.g., {%schedule[...]}, {%cancel[...]}
+        const macroMatch = cleanEffect.match(/^%([a-zA-Z_]+)\[(.*?)\]$/);
+        if (macroMatch && ['schedule', 'reset', 'update', 'cancel'].includes(macroMatch[1])) {
+            const [, command, args] = macroMatch;
+            ctx.executedEffectsLog.push(`[EXECUTE] Timer Command: ${command}`);
+            parseAndQueueTimerInstruction(ctx, command, args);
+            continue; // Move to the next instruction
         }
 
-        if (ctx.errors.length > prevErrorCount) {
-            const lastIdx = ctx.errors.length - 1;
-            ctx.errors[lastIdx] = `${ctx.errors[lastIdx]} \n>> Context: "${cleanEffect}"`;
+        // --- 3. STANDARD ASSIGNMENTS (LHS op RHS) ---
+        // This regex is designed to find the last operator, correctly handling dynamic LHS.
+        const assignMatch = cleanEffect.match(/^(.*)\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
+        if (assignMatch) {
+            let [, rawLhs, op, valStr] = assignMatch;
+            rawLhs = rawLhs.trim();
+
+            // STEP 1: Resolve the Right-Hand Side (RHS) to get the value.
+            // This reads the CURRENT, fully updated state.
+            let value: string | number = 0;
+            if (op !== '++' && op !== '--') {
+                const resolvedValueStr = ctx.evaluateText(`{${valStr}}`);
+                value = resolvedValueStr;
+                if (!isNaN(Number(resolvedValueStr)) && resolvedValueStr.trim() !== '') {
+                    value = Number(resolvedValueStr);
+                }
+            }
+
+            // STEP 2: Resolve the Left-Hand Side (LHS) to get the target quality ID.
+            let qid = "";
+            if (rawLhs.startsWith('$') && rawLhs.includes('{')) { // Dynamic e.g. ${...}
+                qid = ctx.evaluateText(rawLhs.substring(1));
+            } else if (rawLhs.startsWith('@')) {
+                qid = ctx.tempAliases[rawLhs.substring(1)];
+            } else if (rawLhs.startsWith('$') || rawLhs.startsWith('#')) {
+                qid = rawLhs.substring(1);
+            } else {
+                ctx.errors.push(`Invalid Left-Hand-Side in effect: "${rawLhs}"`);
+                continue;
+            }
+            
+            if (qid && qid !== "nothing" && qid !== "undefined") {
+                // STEP 3: Apply the change. This mutates ctx.qualities immediately.
+                changeQuality(ctx, qid, op, value, {});
+            }
+        } else {
+             // If it's not a known macro or assignment, it might be a standalone logic block.
+             // We evaluate it for its side effects (like alias creation within a conditional).
+             ctx.evaluateText(`{${cleanEffect}}`);
         }
     }
 }
