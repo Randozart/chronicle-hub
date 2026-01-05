@@ -31,17 +31,28 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             const definition = qualityDefs[qid];
             if (!definition) return null;
 
+            // --- FIX: STRICT FILTERING LOGIC ---
+
+            // 1. Check Category
+            const cats = (definition.category ?? "").split(",").map(s => s.trim());
+            const isInSidebarCategory = categoriesToDisplay.length > 0 && categoriesToDisplay.some(c => cats.includes(c));
+            if (!isInSidebarCategory) return null;
+
+            // 2. Check Hidden Tag
+            // FIX: Pass a valid object to render and ensure type safety
+            const renderedObject = engine.render({ id: qid, tags: definition.tags || [] });
+            const renderedTags = Array.isArray(renderedObject.tags) ? renderedObject.tags : [];
+            if (renderedTags.includes('hidden')) return null;
+
+            // 3. Get Levels
             const state = qualities[qid];
             const baseLevel = (state && 'level' in state) ? state.level : 0;
             const effectiveLevel = engine.getEffectiveLevel(qid);
-
-            const cats = (definition.category ?? "").split(",").map(s => s.trim());
-            const shouldDisplay = categoriesToDisplay.length === 0 || categoriesToDisplay.some(c => cats.includes(c));
             
-            if (!shouldDisplay) return null;
-
-            // Hide zero-level items unless they are relevant bonuses or strings
+            // 4. Hide if no value
             if (effectiveLevel <= 0 && definition.type !== QualityType.String) return null;
+            
+            // ------------------------------------
 
             const mergedState = state || { qualityId: qid, type: definition.type };
 
@@ -52,7 +63,9 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
 
     const validQualities = characterQualities.filter(q => q !== null);
 
-    if (validQualities.length === 0) return null;
+    if (validQualities.length === 0) {
+        return null;
+    }
 
     return (
         <aside className="character-sheet">
@@ -69,8 +82,6 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
 
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
                     
-                    // VISUAL FIX: "Base + Bonus" format
-                    // Display: "5 +2" or "0 +1"
                     let displayValue: React.ReactNode = q.baseLevel;
                     let subText: React.ReactNode = null;
 
@@ -78,10 +89,8 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                         const sign = bonusDiff > 0 ? '+' : '';
                         const colorVar = bonusDiff > 0 ? 'var(--success-color)' : 'var(--danger-color)';
                         
-                        // The big number is the BASE level
                         displayValue = <span>{q.baseLevel}</span>;
                         
-                        // The modifier sits next to it
                         subText = (
                             <span 
                                 style={{ color: colorVar, marginLeft: '4px', fontWeight: 'bold' }} 
