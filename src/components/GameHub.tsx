@@ -67,7 +67,6 @@ export default function GameHub(props: GameHubProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
     const { playTrack } = useAudio(); 
     
-    // NEW: Transition State
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     useEffect(() => {
@@ -79,21 +78,15 @@ export default function GameHub(props: GameHubProps) {
         setShowMarket(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
 
-    // NEW: Monitor character location changes for seamless transitions
     useEffect(() => {
         if (!character || !location) return;
         
         if (character.currentLocationId !== location.id) {
-            // Location has changed in data, update UI
             const newLoc = props.locations[character.currentLocationId];
             if (newLoc) {
-                // Start Transition
                 setIsTransitioning(true);
-                
-                // Short timeout to allow "exit" animation if we were doing complex CSS
                 setTimeout(() => {
                     setLocation(newLoc);
-                    // End Transition
                     setTimeout(() => setIsTransitioning(false), 500); 
                 }, 150);
             }
@@ -132,7 +125,6 @@ export default function GameHub(props: GameHubProps) {
     }, []);
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => {
-        // FIX: Update character locally to trigger location transition if move_to was used
         setCharacter(prev => {
             if (!prev) return null;
             const newChar = { ...prev, qualities: newQualities };
@@ -172,7 +164,6 @@ export default function GameHub(props: GameHubProps) {
             const data = await res.json();
             
             if (data.success) {
-                // Force reload to fetch fresh storylets for new location
                 window.location.reload();
             } else {
                 alert(data.error);
@@ -221,11 +212,8 @@ export default function GameHub(props: GameHubProps) {
     
     // Engine instance
     const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
-    
-    // --- FIX: DISPLAY STATE ---
     const displayQualities = renderEngine.getDisplayState();
 
-    // --- FIX: DYNAMIC STORYLET FILTERING ---
     const visibleStorylets = useMemo(() => {
         if (!character || !location) return [];
         
@@ -242,7 +230,6 @@ export default function GameHub(props: GameHubProps) {
     const renderedLocation = renderEngine.render(location);
     let renderedActiveEvent = activeEvent ? renderEngine.renderStorylet(activeEvent) : null;
     
-    // --- FIX: DYNAMIC OPTION FILTERING ---
     if (renderedActiveEvent && renderedActiveEvent.options) {
         renderedActiveEvent = {
             ...renderedActiveEvent,
@@ -252,9 +239,10 @@ export default function GameHub(props: GameHubProps) {
         };
     }
 
-    // Deck Stats
+    // Deck Logic
+    const deckDef = location?.deck ? props.deckDefs[location.deck] : null;
+    const shouldShowDeck = !!deckDef;
     let currentDeckStats = undefined;
-    const deckDef = props.deckDefs[location.deck];
     if (deckDef) {
         const handVal = renderEngine.evaluateText(`{${deckDef.hand_size || 3}}`);
         const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
@@ -351,8 +339,6 @@ export default function GameHub(props: GameHubProps) {
         const renderHeader = () => {
             if (headerStyle === 'hidden') return null;
             
-            // FADE-IN: The wrapper itself handles the fade via layout props, 
-            // but for the banner specifically, we rely on GameImage key-based transitions if needed.
             if (isBannerMode) {
                 return (
                     <div className={`location-wrapper mode-banner`}>
@@ -454,18 +440,39 @@ export default function GameHub(props: GameHubProps) {
             innerContent = (
                 <div className="hub-view">
                     {renderHeader()}
-                    <div className="storylet-feed" style={{ marginTop: '2rem' }}>
-                        <LocationStorylets 
-                            storylets={visibleStorylets} 
-                            onStoryletClick={showEvent} 
-                            qualities={character.qualities} 
-                            qualityDefs={mergedQualityDefs} 
-                            imageLibrary={props.imageLibrary} 
-                        />
-                    </div>
-                    <div className="deck-feed" style={{ marginTop: '3rem' }}>
-                        <OpportunityHand hand={hand} onCardClick={showEvent} onDrawClick={handleDrawCard} isLoading={isLoading} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} character={character} locationDeckId={location!.deck} deckDefs={props.deckDefs} settings={props.settings} currentDeckStats={currentDeckStats} />
-                    </div>
+
+                    {/* --- FIX: HIDE ACTIONS IF NO STORYLETS --- */}
+                    {visibleStorylets.length > 0 && (
+                        <div className="storylet-feed" style={{ marginTop: '2rem' }}>
+                            <LocationStorylets 
+                                storylets={visibleStorylets} 
+                                onStoryletClick={showEvent} 
+                                qualities={character.qualities} 
+                                qualityDefs={mergedQualityDefs} 
+                                imageLibrary={props.imageLibrary} 
+                            />
+                        </div>
+                    )}
+
+                    {/* --- FIX: HIDE OPPORTUNITIES IF NO DECK --- */}
+                    {shouldShowDeck && (
+                        <div className="deck-feed" style={{ marginTop: '3rem' }}>
+                            <OpportunityHand 
+                                hand={hand} 
+                                onCardClick={showEvent} 
+                                onDrawClick={handleDrawCard} 
+                                isLoading={isLoading} 
+                                qualities={character.qualities} 
+                                qualityDefs={mergedQualityDefs} 
+                                imageLibrary={props.imageLibrary} 
+                                character={character} 
+                                locationDeckId={location!.deck} 
+                                deckDefs={props.deckDefs} 
+                                settings={props.settings} 
+                                currentDeckStats={currentDeckStats} 
+                            />
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -489,10 +496,9 @@ export default function GameHub(props: GameHubProps) {
             onOpenMap: () => setShowMap(true),
             onOpenMarket: () => setShowMarket(true),
             currentMarketId: activeMarketId,
-            isTransitioning: isTransitioning // <--- Pass Transition State
+            isTransitioning: isTransitioning
         };
 
-        // REMOVED: The global opacity wrapper. Layouts now handle transitions.
         switch (props.settings.layoutStyle) {
             case 'london': return <LondonLayout {...layoutProps} />;
             case 'elysium': return <ElysiumLayout {...layoutProps} />; 
