@@ -120,9 +120,20 @@ function CategoryEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 <label className="form-label">Description</label>
                 <input value={form.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input" />
             </div>
-            <div className="form-group">
-                <label className="form-label">Color</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
+              <div className="form-group">
+                <label className="form-label">Color {`(note: #ffffff allows the color to default to the theme default for categories)`}</label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <button 
+                        onClick={() => handleChange('color', '')}
+                        style={{ 
+                            fontSize: '0.75rem', padding: '4px 8px', background: 'transparent', 
+                            border: '1px solid #555', color: '#888', cursor: 'pointer', borderRadius: '4px' 
+                        }}
+                        title="Reset to Theme Default"
+                    >
+                        Default
+                    </button>
+                    
                     <input 
                         type="color" 
                         value={form.color || '#ffffff'} 
@@ -135,6 +146,8 @@ function CategoryEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                         className="form-input" 
                         placeholder="#ffffff"
                     />
+                    {/* NEW: Button to clear color */}
+
                 </div>
             </div>
             <div className="admin-form-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>

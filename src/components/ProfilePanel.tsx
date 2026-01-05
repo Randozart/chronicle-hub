@@ -48,7 +48,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
         }
     }
 
-    // 4. Styles Config
     const showPortrait = settings.enablePortrait !== false;
     const shape = settings.portraitStyle || 'circle';
 
@@ -115,12 +114,15 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
             <div className="profile-grid">
                 {groups.map(cat => {
                     const catDef = categories[cat];
+                    // FIX: Use category name if available, else ID
+                    const displayName = catDef?.name || cat; 
                     const headerColor = catDef?.color || 'var(--accent-highlight)'; 
+                    
                     return (
                         <div key={cat} className="quality-category-card">
                             {/* Pass color as CSS variable for the styling to pick up */}
                             <h3 className="profile-category-header" style={{ '--category-color': headerColor } as React.CSSProperties}>
-                                {cat}
+                                {displayName}
                             </h3>
                             <div className="quality-list">
                                 {grouped[cat].map((q: any) => (
