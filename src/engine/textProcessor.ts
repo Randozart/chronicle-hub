@@ -266,10 +266,9 @@ function resolveVariable(
     depth: number = 0
 ): string | number {
     const indent = '  '.repeat(depth);
-    if(depth < 2) console.log(`${indent}[Scribe_Var] Resolving: "${fullMatch}"`);
+    // console.log(`${indent}[Scribe_Var] Resolving: "${fullMatch}"`);
     
     try {
-        // Match regex must align with resolveComplexExpression
         const match = fullMatch.match(/^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
 
@@ -285,12 +284,10 @@ function resolveVariable(
 
         // --- RECURSIVE RESOLUTION ---
         if (identifier.startsWith('{')) {
-            // Immediate resolution (e.g. ${prefix}_name)
             const resolvedId = evaluateText(identifier, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
             identifier = resolvedId.toString().trim();
         } 
         else if (identifier.startsWith('(')) {
-            // Deferred resolution (e.g. $($.id))
             const inner = identifier.slice(1, -1);
             const resolvedId = evaluateText(inner, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
             identifier = resolvedId.toString().trim();
@@ -304,7 +301,7 @@ function resolveVariable(
         else if (sigil === '@') qualityId = aliases[identifier];
         else if (sigil === '$') qualityId = identifier;
         else if (sigil === '#') qualityId = identifier;
-
+        
         if (!qualityId) return `[Unknown: ${fullMatch}]`;
         
         let definition = defs[qualityId];
@@ -317,17 +314,24 @@ function resolveVariable(
         }
         
         if (!state) {
-            // Safe ghost state
             state = { 
                 qualityId, type: definition?.type || QualityType.Pyramidal, level: 0, 
                 stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 
             } as any;
         }
 
+        // --- FIX: ROBUST LEVEL SPOOFING ---
         if (levelSpoof) {
-            const spoofedVal = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
-            if (typeof spoofedVal === 'number') state = { ...state, level: spoofedVal } as any;
+            if(logger) logger(`Expr: "${levelSpoof}"`, depth);
+            const spoofedValRaw = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
+            const spoofedVal = Number(spoofedValRaw); // Force cast
+            
+            if (!isNaN(spoofedVal)) {
+                // Create a shallow copy with overridden level
+                state = { ...state, level: spoofedVal } as any;
+            }
         }
+        // ----------------------------------
 
         const properties = propChain ? propChain.split('.').filter(Boolean) : [];
         let currentValue: any = state;
