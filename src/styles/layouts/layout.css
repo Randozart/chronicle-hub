@@ -15,7 +15,7 @@
 .layout-grid-nexus { display: grid; grid-template-columns: 320px 1fr; height: 100vh; overflow: hidden; }
 
 /* Tabletop: Character | Visual | Story */
-.layout-grid-tabletop { display: grid; grid-template-columns: 280px minmax(300px, 35%) 1fr; height: 100vh; overflow: hidden; background-color: #121212; color: #ccc; }
+/* .layout-grid-tabletop { display: grid; grid-template-columns: 280px minmax(300px, 35%) 1fr; height: 100vh; overflow: hidden; background-color: #121212; color: #ccc; } */
 .tabletop-visual-col { position: relative; overflow: hidden; border-right: 1px solid #333; background: #000; box-shadow: inset 0 0 50px rgba(0,0,0,0.8); z-index: 1; }
 .tabletop-visual-overlay { position: absolute; inset: 0; background: radial-gradient(circle, transparent 40%, #000 120%); pointer-events: none; }
 

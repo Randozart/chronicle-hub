@@ -408,7 +408,6 @@ html[data-theme='revolutionary']::before {
 /* 3. The Left Sidebar (The Dossier) */
 /* Give it a slight angle so it doesn't look like a UI element */
 [data-theme='detective-noir'] .layout-grid-tabletop .sidebar-panel {
-    transform: rotate(0.5deg) !important;
     margin-top: 3.5rem !important; /* Adjust gap to account for tilt */
     height: calc(100vh - 7rem) !important;
 }

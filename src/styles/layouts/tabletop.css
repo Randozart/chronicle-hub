@@ -4,34 +4,37 @@
 .layout-grid-tabletop {
     display: grid;
     grid-template-columns: 280px minmax(300px, 35%) 1fr;
-    height: 100vh;
-    overflow: hidden;
     
-    /* THEME HOOKS: Replaces inline styles */
+    /* FIX: Override layout.css to allow scrolling */
+    height: auto;
+    min-height: 100vh; 
+    overflow: visible; /* Allow child columns to manage their own overflow */
+
     background-color: var(--bg-main); 
     color: var(--text-primary);
 }
 
 /* --- Column 1: Sidebar --- */
-.tabletop-sidebar {
-    background-color: var(--bg-panel); /* Key fix for Noir theme */
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* Contains the scrollable area */
+.layout-grid-tabletop > .sidebar-panel {
+    position: sticky;
+    top: 0;
+    height: 100vh; 
+    overflow-y: auto; 
 }
 
 /* --- Column 2: Visual (Center) --- */
 .tabletop-visual-col {
-    position: relative;
+    position: sticky;
+    top: 0;
+    height: 100vh; 
     overflow: hidden;
     border-right: 1px solid var(--border-color);
-    background: #000; /* Viewports usually stay dark, or use var(--bg-black) */
+    background: #000;
     box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
     z-index: 1;
 }
 
-.tabletop-visual-inner {
+.visual-parallax-layer {
     position: absolute;
     top: -20px; bottom: -20px; left: -20px; right: -20px;
     transition: transform 0.1s ease-out;
@@ -44,7 +47,7 @@
     pointer-events: none;
 }
 
-.tabletop-nav-bar {
+.visual-nav-buttons {
     position: absolute;
     bottom: 2rem;
     left: 0;
@@ -56,15 +59,16 @@
 }
 
 /* --- Column 3: Main Content --- */
-.tabletop-content-col {
+.content-column {
     background: var(--bg-main);
     display: flex;
     flex-direction: column;
-    min-width: 0; /* Prevents flex items from blowing out width */
+    min-width: 0;
+    /* This column will now create the page's main scrollbar */
 }
 
-/* --- Buttons (Extracted) --- */
-.btn-tabletop-nav {
+/* --- Buttons --- */
+.nav-btn-primary {
     background: #000;
     border: 1px solid var(--accent-highlight);
     color: var(--accent-highlight);
@@ -76,12 +80,12 @@
     box-shadow: 0 0 15px rgba(0,0,0,0.8);
     transition: all 0.2s;
 }
-.btn-tabletop-nav:hover {
+.nav-btn-primary:hover {
     background: var(--accent-highlight);
     color: #000;
 }
 
-.btn-tabletop-market {
+.nav-btn-gold {
     background: #000;
     border: 1px solid #f1c40f;
     color: #f1c40f;
@@ -92,7 +96,7 @@
     letter-spacing: 1px;
     transition: all 0.2s;
 }
-.btn-tabletop-market:hover {
+.nav-btn-gold:hover {
     background: #f1c40f;
     color: #000;
 }
@@ -101,36 +105,36 @@
 @media (max-width: 1024px) {
     .layout-grid-tabletop {
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto 1fr; /* Visual, Sidebar, Content */
+        grid-template-rows: auto auto 1fr;
         height: auto;
-        overflow-y: auto; /* Enable page scrolling */
+        overflow-y: auto; 
     }
 
-    /* 1. Visuals become a banner on top */
     .tabletop-visual-col {
         height: 300px;
         order: 1;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
+        position: relative; /* Un-sticky on mobile */
     }
     
-    /* 2. Sidebar collapses below visual */
-    .tabletop-sidebar {
+    .sidebar-panel {
         height: auto;
-        max-height: 300px; /* Scrollable if too long */
+        max-height: 300px; 
         order: 2;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
+        position: relative; /* Un-sticky on mobile */
+        overflow-y: auto;
     }
 
-    /* 3. Main content flows naturally */
-    .tabletop-content-col {
+    .content-column {
         order: 3;
         height: auto;
         overflow: visible;
     }
     
     .content-area {
-        padding: 1.5rem !important; /* Reduce padding on mobile */
+        padding: 1.5rem !important;
     }
 }
