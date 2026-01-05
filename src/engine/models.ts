@@ -159,7 +159,19 @@ export interface WorldSettings {
 
 export interface DeckDefinition { id: string; saved: string; timer?: string; draw_cost?: string; hand_size: string; deck_size?: string; ordering?: number; }
 export interface MapRegion { id: string; name: string; image?: string; marketId?: string; }
-export interface LocationDefinition { id: string; name: string; image: string; deck: string; regionId?: string; tags?: string[]; coordinates: { x: number, y: number }; unlockCondition?: string; visibleCondition?: string; marketId?: string; }
+export interface LocationDefinition { 
+    id: string; 
+    name: string; 
+    description?: string;
+    image: string; 
+    deck: string; 
+    regionId?: string; 
+    tags?: string[]; 
+    coordinates: { x: number, y: number }; 
+    unlockCondition?: string; 
+    visibleCondition?: string; 
+    marketId?: string; 
+}
 export interface ImageDefinition { id: string; url: string; alt?: string; category?: ImageCategory; size?: number; focus?: { x: number; y: number }; }
 export interface CategoryDefinition { id: string; name?: string; color?: string; description?: string; }
 export interface ShopListing { id: string; qualityId: string; price: string; currencyId?: string; description?: string; visible_if?: string; unlock_if?: string; }

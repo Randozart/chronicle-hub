@@ -161,7 +161,16 @@ function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialDat
                 <label className="form-label">Name</label>
                 <input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" />
             </div>
-
+             <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea 
+                    value={form.description || ''} 
+                    onChange={e => handleChange('description', e.target.value)} 
+                    className="form-textarea" 
+                    rows={3}
+                    placeholder="A brief description of the location, shown to the player upon arrival. Only shows if anything is filled in, can be left blank."
+                />
+            </div>
             {/* Config */}
             <div className="form-row">
                 <div className="form-group">

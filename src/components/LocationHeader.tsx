@@ -54,6 +54,11 @@ export default function LocationHeader({
                 <div className="location-text">
                     <h2>You are in...</h2>
                     <h1>{location.name}</h1>
+                    {location.description && (
+                        <p className="location-description" style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic', maxWidth: '60ch' }}>
+                            {location.description}
+                        </p>
+                    )}
                 </div>
             </div>
 
