@@ -31,58 +31,82 @@ export default function FormattedText({ text }: { text: string | undefined | nul
     );
 }
 
+// A unique, unlikely-to-be-typed string for placeholders.
+const ESCAPE_PLACEHOLDER = '___PLACEHOLDER___';
+
 function parseInlineFormatting(line: string): React.ReactNode[] {
     if (!line) return [];
 
-    // Regex includes backticks as the first priority.
-    const formattingRegex = /(`(?:.+?)`|\*\*(?:.+?)\*\*|_(?:.+?)_|\*(?:.+?)\*|\[(?:[^\]]+)\])/g;
+    const escapes: string[] = [];
+
+    // 1. Pre-processing Step: Handle Escapes
+    // Find all backticked segments, store their raw inner content,
+    // and replace them with a unique placeholder.
+    const placeholderLine = line.replace(/`(.+?)`/g, (match, content) => {
+        escapes.push(content);
+        return `${ESCAPE_PLACEHOLDER}${escapes.length - 1}`;
+    });
+
+    // 2. Main Parsing Step (without backticks in the regex)
+    // This parser is now "blind" to the escaped content.
+    const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_|\*(?:.+?)\*|\[(?:[^\]]+)\])/g;
+
+    function recursiveParse(subLine: string): React.ReactNode[] {
+        const results: React.ReactNode[] = [];
+        let lastIndex = 0;
+        const matches = Array.from(subLine.matchAll(formattingRegex));
+
+        for (const match of matches) {
+            const segment = match[0];
+            const index = match.index!;
+
+            // Add plain text before this match
+            if (index > lastIndex) {
+                results.push(...substituteEscapes(subLine.slice(lastIndex, index), escapes));
+            }
+
+            // Process the formatted segment
+            if (segment.startsWith('**') && segment.endsWith('**')) {
+                results.push(<strong key={index}>{recursiveParse(segment.slice(2, -2))}</strong>);
+            } else if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith('*') && segment.endsWith('*'))) {
+                results.push(<em key={index}>{recursiveParse(segment.slice(1, -1))}</em>);
+            } else if (segment.startsWith('[') && segment.endsWith(']')) {
+                results.push(
+                    <span key={index} className="text-emphasis">
+                        {recursiveParse(segment.slice(1, -1))}
+                    </span>
+                );
+            }
+            lastIndex = index + segment.length;
+        }
+
+        // Add any remaining plain text after the last match
+        if (lastIndex < subLine.length) {
+            results.push(...substituteEscapes(subLine.slice(lastIndex), escapes));
+        }
+
+        return results;
+    }
+
+    return recursiveParse(placeholderLine);
+}
+
+/**
+ * Takes a string containing placeholders and substitutes the original
+ * escaped content back in.
+ */
+function substituteEscapes(text: string, escapes: string[]): React.ReactNode[] {
+    if (!text.includes(ESCAPE_PLACEHOLDER)) {
+        return [text];
+    }
     
-    const results: React.ReactNode[] = [];
-    let lastIndex = 0;
+    const parts = text.split(new RegExp(`(${ESCAPE_PLACEHOLDER}\\d+)`, 'g'));
 
-    const matches = Array.from(line.matchAll(formattingRegex));
-
-    for (const match of matches) {
-        const segment = match[0];
-        // The index will always be defined for `matchAll` results
-        const index = match.index!; 
-
-        // 1. Add the plain text that comes before this match.
-        if (index > lastIndex) {
-            results.push(line.slice(lastIndex, index));
+    return parts.map((part, i) => {
+        if (part.startsWith(ESCAPE_PLACEHOLDER)) {
+            const index = parseInt(part.replace(ESCAPE_PLACEHOLDER, ''), 10);
+            return escapes[index];
         }
-
-        // 2. Process the matched formatting segment.
-        
-        // ESCAPE with backticks: Renders inner content as a plain string, preventing recursion.
-        if (segment.startsWith('`') && segment.endsWith('`')) {
-            results.push(segment.slice(1, -1));
-        }
-        // BOLD
-        else if (segment.startsWith('**') && segment.endsWith('**')) {
-            results.push(<strong key={index}>{parseInlineFormatting(segment.slice(2, -2))}</strong>);
-        }
-        // ITALIC (handles both _ and *)
-        else if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith('*') && segment.endsWith('*'))) {
-            results.push(<em key={index}>{parseInlineFormatting(segment.slice(1, -1))}</em>);
-        }
-        // UNIVERSAL EMPHASIS [ ]
-        else if (segment.startsWith('[') && segment.endsWith(']')) {
-            results.push(
-                <span key={index} className="text-emphasis">
-                    {parseInlineFormatting(segment.slice(1, -1))}
-                </span>
-            );
-        }
-
-        // 3. Update our position in the string to the end of the current match.
-        lastIndex = index + segment.length;
-    }
-
-    // 4. Add any remaining plain text after the last match.
-    if (lastIndex < line.length) {
-        results.push(line.slice(lastIndex));
-    }
-
-    return results;
+        return part;
+    }).filter(part => part !== ''); // Filter out empty strings from splitting
 }
