@@ -3,6 +3,7 @@ import { PlayerQualities, QualityDefinition, WorldSettings, QualityType, Categor
 import { useMemo } from "react"; 
 import { evaluateText } from "@/engine/textProcessor"; 
 import { GameEngine } from "@/engine/gameEngine";
+import FormattedText from "./FormattedText"; // Import the FormattedText component
 
 interface CharacterSheetProps {
     qualities: PlayerQualities; // RAW State
@@ -108,14 +109,16 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
 
                     return (
                         <li key={q.id} className="quality-item">
-                            <p className="quality-header">
-                                <span className="quality-name">{displayName}</span>
-                                &nbsp;
+                            {/* The container is changed to a div to correctly host the block-level <p> from FormattedText */}
+                            <div className="quality-header">
+                                <div className="quality-name">
+                                    <FormattedText text={displayName} />
+                                </div>
                                 <span className="quality-level">
                                     {displayValue}
                                     {subText}
                                 </span>
-                            </p>
+                            </div>
                             {isPyramidal && (
                                 <div className="quality-cp-bar-background">
                                     <div 

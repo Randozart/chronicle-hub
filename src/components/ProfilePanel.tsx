@@ -5,6 +5,7 @@ import { useGroupedList } from "@/hooks/useGroupedList";
 import { evaluateText } from "@/engine/textProcessor";
 import GameImage from "./GameImage";
 import { GameEngine } from '@/engine/gameEngine';
+import FormattedText from "./FormattedText"; // Import the FormattedText component
 
 interface ProfilePanelProps {
     qualities: PlayerQualities;
@@ -93,9 +94,9 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                         </div>
                     )}
                     <div className="profile-identity">
-                        <h1 className="profile-name">{playerName}</h1>
+                        <h1 className="profile-name"><FormattedText text={playerName} /></h1>
                         {playerTitle && (
-                            <h3 className="profile-title">{playerTitle}</h3>
+                            <h3 className="profile-title"><FormattedText text={playerTitle} /></h3>
                         )}
                         <p className="profile-subtitle">A resident of this world.</p>
                     </div>
@@ -124,7 +125,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                     return (
                         <div key={cat} className="quality-category-card">
                             <h3 className="profile-category-header" style={{ '--category-color': headerColor } as React.CSSProperties}>
-                                {displayName}
+                                <FormattedText text={displayName} />
                             </h3>
                             <div className="quality-list">
                                 {grouped[cat].map((q: any) => (
@@ -137,10 +138,13 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                         )}
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                <span className="q-name">{q.name}</span> 
+                                                <span className="q-name"><FormattedText text={q.name} /></span> 
                                                 <span className="q-val">{q.type === 'S' ? q.stringValue : q.level}</span>
                                             </div>
-                                            <p className="q-desc">{q.description}</p>
+                                            {/* Use a div container for descriptions to avoid nested <p> tags */}
+                                            <div className="q-desc">
+                                                <FormattedText text={q.description} />
+                                            </div>
                                             {q.type === 'P' && (
                                                 <div className="mini-progress-bar">
                                                     <div className="fill" style={{ width: `${(q.changePoints / (q.level + 1)) * 100}%` }} />

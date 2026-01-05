@@ -2,6 +2,7 @@
 
 import { ImageDefinition, LocationDefinition } from "@/engine/models";
 import GameImage from "./GameImage";
+import FormattedText from "./FormattedText"; // Import the FormattedText component
 
 interface LocationHeaderProps {
     location: LocationDefinition;
@@ -53,11 +54,12 @@ export default function LocationHeader({
                 
                 <div className="location-text">
                     <h2>You are in...</h2>
-                    <h1>{location.name}</h1>
+                    <h1><FormattedText text={location.name} /></h1>
                     {location.description && (
-                        <p className="location-description" style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic', maxWidth: '60ch' }}>
-                            {location.description}
-                        </p>
+                        // Changed from <p> to <div> to prevent invalid nested <p> tags from FormattedText
+                        <div className="location-description" style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic', maxWidth: '60ch' }}>
+                            <FormattedText text={location.description} />
+                        </div>
                     )}
                 </div>
             </div>

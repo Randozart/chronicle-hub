@@ -6,6 +6,7 @@ import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
 import { evaluateText } from "@/engine/textProcessor";
 import { GameEngine } from '@/engine/gameEngine';
+import FormattedText from "./FormattedText"; // Import the FormattedText component
 
 interface PossessionsProps {
     qualities: PlayerQualities;
@@ -16,7 +17,7 @@ interface PossessionsProps {
     storyId: string;
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
-    engine: GameEngine; // <--- ADD THIS
+    engine: GameEngine;
 }
 
 const formatBonus = (bonusStr: string, qualityDefs: Record<string, QualityDefinition>, qualities: PlayerQualities) => {
@@ -43,21 +44,13 @@ export default function Possessions({
     storyId,
     imageLibrary,
     settings,
-    engine // <--- DESTUCTURE THIS
+    engine
 }: PossessionsProps) {
     
     const [isLoading, setIsLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category");
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
-
-    // 1. Instantiate Engine for Universal ScribeScript
-    // We create a minimal config since we only need qualities and settings for item rendering
-    // const engine = useMemo(() => new GameEngine(
-    //     qualities, 
-    //     { qualities: qualityDefs, settings } as any, 
-    //     equipment
-    // ), [qualities, qualityDefs, settings, equipment]);
 
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
@@ -82,7 +75,6 @@ export default function Possessions({
         }
     };
 
-    // 2. Prepare Data
     const inventoryItems = useMemo(() => {
         const equippedIds = new Set(Object.values(equipment).filter(Boolean));
 
@@ -100,15 +92,12 @@ export default function Possessions({
 
                 if (def.type !== 'I' && def.type !== 'E') return null;
                 
-                // RENDER ITEM (ScribeScript Support)
-                // This resolves dynamic names, descriptions, and images.
                 const merged = { ...def, ...state, level };
                 return engine.render(merged);
             })
             .filter(Boolean as any);
     }, [qualities, qualityDefs, equipment, currencyIds, engine]);
 
-    // 3. Group & Filter
     const grouped = useGroupedList(inventoryItems, groupBy, search);
     const groups = Object.keys(grouped).sort();
 
@@ -119,10 +108,8 @@ export default function Possessions({
             <div className="equipment-slots">
                 {equipCategories.map(slot => {
                     const equippedId = equipment[slot];
-                    // Render equipped item if it exists
                     let equippedItem = null;
                     if (equippedId && qualityDefs[equippedId]) {
-                        // Apply engine rendering here too for equipped items
                         equippedItem = engine.render({ ...qualityDefs[equippedId], ...qualities[equippedId] });
                     }
 
@@ -131,20 +118,32 @@ export default function Possessions({
 
                     return (
                         <div key={slot} className="equip-slot">
-                            <span className="slot-label">{slot}</span>
+                            <span className="slot-label"><FormattedText text={slot} /></span>
                             
                             {equippedItem ? (
                                 <div className="equipped-item">
                                     <div style={{ margin: '0.5rem auto', width: '60px' }}>
                                         <GameImage 
-                                            code={equippedItem.image || equippedItem.id} // Dynamic
+                                            code={equippedItem.image || equippedItem.id}
                                             imageLibrary={imageLibrary}
-                                            alt=""
+                                            alt={equippedItem.name}
                                             type="icon"
                                             className="option-image"
                                         />
                                     </div>
-                                    <strong>{equippedItem.name}</strong> {/* Dynamic */}
+                                    <div className="item-name" style={{fontWeight: 'bold', marginBottom: '0.5rem'}}>
+                                        <FormattedText text={equippedItem.name} />
+                                    </div>
+                                    {equippedItem.description && (
+                                        <div className="item-desc">
+                                            <FormattedText text={equippedItem.description} />
+                                        </div>
+                                    )}
+                                    {equippedItem.bonus && (
+                                        <div className="item-bonus">
+                                            <FormattedText text={formatBonus(equippedItem.bonus, qualityDefs, qualities)} />
+                                        </div>
+                                    )}
                                     {equippedId && (
                                         <button 
                                             className="unequip-btn"
@@ -190,15 +189,15 @@ export default function Possessions({
             {/* INVENTORY GRID */}
             {groups.map(group => (
                 <div key={group} style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--accent-highlight)', paddingLeft: '0.5rem' }}>{group}</h3>
+                    <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--accent-highlight)', paddingLeft: '0.5rem' }}>
+                        <FormattedText text={group} />
+                    </h3>
                     
                     <div className="inventory-grid">
                         {grouped[group].map((item: any) => {
                             const isEquipable = item.type === 'E';
                             const category = item.category || '';
                             const isEquipped = Object.values(equipment).includes(item.id);
-                            
-                            // Properties are already evaluated by engine.render() in the useMemo above!
                             
                             return (
                                 <div key={item.id} className="inventory-item card">
@@ -207,22 +206,26 @@ export default function Possessions({
                                             <GameImage 
                                                 code={item.image || item.id} 
                                                 imageLibrary={imageLibrary} 
-                                                alt="" 
+                                                alt={item.name} 
                                                 type="icon" 
                                                 className="option-image" 
                                             />
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div className="item-header">
-                                                <strong>{item.name}</strong>
+                                                <div className="item-name" style={{fontWeight: 'bold'}}>
+                                                   <FormattedText text={item.name} />
+                                                </div>
                                                 <span className="item-count">x{item.level}</span>
                                             </div>
-                                            <p className="item-desc">{item.description}</p>
+                                            <div className="item-desc">
+                                                <FormattedText text={item.description} />
+                                            </div>
                                             
                                             {item.bonus && (
-                                                <p className="item-bonus">
-                                                    {formatBonus(item.bonus, qualityDefs, qualities)}
-                                                </p>
+                                                <div className="item-bonus">
+                                                    <FormattedText text={formatBonus(item.bonus, qualityDefs, qualities)} />
+                                                </div>
                                             )}
                                         </div>
                                     </div>
