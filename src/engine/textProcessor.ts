@@ -70,7 +70,10 @@ export function evaluateText(
     if (selfContext) {
         console.log(`${indent}[Scribe_Entry] selfContext: { qid: '${selfContext.qid}' }`);
     } else {
-        console.warn(`${indent}[Scribe_Entry] ⚠️ No selfContext provided.`);
+        // Optional: Warn only if text actually contains self-reference to avoid log noise
+        if (rawText.includes('$.')) {
+            console.warn(`${indent}[Scribe_Entry] ⚠️ Text contains '$.' but No selfContext provided.`);
+        }
     }
     // Step 1: Sanitize
     const cleanText = sanitizeScribeScript(rawText);
@@ -228,11 +231,29 @@ function resolveComplexExpression(
     logger?: TraceLogger, 
     depth: number = 0
 ): string | number | boolean {
-        const indent = '  '.repeat(depth);
+    const indent = '  '.repeat(depth);
     console.log(`${indent}[Scribe_Expr] Evaluating: "${expr}"`);
 
     try {
-        const varReplacedExpr = expr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
+        // --- FIX: SMART PRE-SUBSTITUTION STRATEGY ---
+        // If '$.' is followed by a property identifier, we must ensure a dot remains.
+        // If it's standing alone (e.g. $. > 5), we substitute the ID directly.
+        let processedExpr = expr;
+        if (self && expr.includes('$.')) {
+            processedExpr = processedExpr.replace(/\$\./g, (match, offset, string) => {
+                const nextChar = string[offset + 2]; // The character immediately after "$."
+                // If the next char starts an identifier (e.g. 'i' in $.index), append a dot.
+                if (nextChar && /[a-zA-Z0-9_]/.test(nextChar)) {
+                    return `$${self.qid}.`;
+                }
+                // Otherwise (space, operator, brace), return the ID alone.
+                return `$${self.qid}`;
+            });
+            console.log(`${indent}[Scribe_Expr] Pre-substituted '$.' -> '$${self.qid}': "${processedExpr}"`);
+        }
+        // -------------------------------------
+
+        const varReplacedExpr = processedExpr.replace(/((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
             (match) => { 
                 const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
                 if (typeof resolved === 'string') return `"${resolved}"`;
@@ -260,9 +281,7 @@ function resolveVariable(
 ): string | number {
     const indent = '  '.repeat(depth);
     console.log(`${indent}[Scribe_Var] Resolving: "${fullMatch}"`);
-    if (self) {
-        console.log(`${indent}[Scribe_Var] selfContext is: '${self.qid}'`);
-    }
+    
     try {
         const match = fullMatch.match(/^((?:\$\.)|[@#\$][a-zA-Z0-9_]+)(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
@@ -292,8 +311,7 @@ function resolveVariable(
         }
         
         if (!state) {
-                        console.warn(`${indent}[Scribe_Var] ⚠️ No STATE found for '${qualityId}'. Creating ghost state.`);
-
+            console.warn(`${indent}[Scribe_Var] ⚠️ No STATE found for '${qualityId}'. Creating ghost state.`);
             state = { 
                 qualityId, type: definition?.type || QualityType.Pyramidal, level: 0, 
                 stringValue: "", changePoints: 0, sources: [], spentTowardsPrune: 0 
@@ -315,8 +333,17 @@ function resolveVariable(
         }
 
         for (const prop of properties) {
+            // --- FIX: CRASH GUARD ---
+            // If the previous iteration resulted in undefined (prop not found), stop immediately.
+            // This prevents "Cannot read properties of undefined" on the next loop iteration.
+            if (currentValue === undefined || currentValue === null) {
+                console.warn(`${indent}[Scribe_Var] 🛑 Lookup chain broken before '.${prop}'. Returning undefined.`);
+                break;
+            }
+            // ------------------------
+
             let processed = false;
-                        console.log(`${indent}[Scribe_Var] > Looping for property: ".${prop}"`);
+            console.log(`${indent}[Scribe_Var] > Looping for property: ".${prop}"`);
 
             if (typeof currentValue === 'string') {
                 if (prop === 'capital') { currentValue = currentValue.charAt(0).toUpperCase() + currentValue.slice(1); processed = true; }
@@ -324,7 +351,9 @@ function resolveVariable(
                 else if (prop === 'lower') { currentValue = currentValue.toLowerCase(); processed = true; }
             }
             if (processed) continue;
-            const currentQid = currentValue.qualityId || qualityId;
+            
+            // Check if currentValue is actually an object before reading .qualityId
+            const currentQid = (typeof currentValue === 'object') ? (currentValue.qualityId || qualityId) : qualityId;
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             const currentDef = defs[lookupId];
             
@@ -347,6 +376,11 @@ function resolveVariable(
             else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
                 foundIn = 'definition.text_variants';
                 foundValue = currentDef.text_variants[prop];
+            }
+            // Fallback: Check if the definition has this property directly (for custom macro props)
+            else if (currentDef && (currentDef as any)[prop] !== undefined) {
+                foundIn = 'definition.raw';
+                foundValue = (currentDef as any)[prop];
             }
 
             if (foundIn) {
@@ -377,15 +411,13 @@ function resolveVariable(
         
         if (typeof currentValue === 'object' && currentValue !== null) {
             if (currentValue.type === QualityType.String) {
-                console.log(`${indent}[Scribe_Var] Final value is an object, returning stringValue.`);
                 return (currentValue as any).stringValue;
             }
             if ('level' in currentValue) {
-                console.log(`${indent}[Scribe_Var] Final value is an object, returning level.`);
                 return (currentValue as any).level;
             }
         }
-     console.log(`${indent}[Scribe_Var] ✅ Final resolved value for "${fullMatch}":`, currentValue);
+        console.log(`${indent}[Scribe_Var] ✅ Final resolved value for "${fullMatch}":`, currentValue);
         return currentValue?.toString() || "";
     } catch (e: any) {
         console.error(`${indent}[Scribe_Var] ❌ FATAL ERROR in resolveVariable for "${fullMatch}":`, e);
