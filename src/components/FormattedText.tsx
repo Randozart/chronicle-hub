@@ -6,7 +6,7 @@ import React from 'react';
 export default function FormattedText({ text }: { text: string | undefined | null; }) {
     if (!text) return null;
 
-    // 1. Split the entire text block by one or more empty lines.
+    // Split the entire text block by one or more empty lines.
     const paragraphs = text.split(/\n\s*\n/);
 
     return (
@@ -47,8 +47,28 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
         return `${ESCAPE_PLACEHOLDER}${escapes.length - 1}`;
     });
 
+    // --- HELPER FUNCTION MOVED INSIDE ---
+    // Now has access to the 'escapes' array from its parent scope.
+    function substituteEscapes(text: string): React.ReactNode[] {
+        if (!text.includes(ESCAPE_PLACEHOLDER)) {
+            return [text];
+        }
+        
+        const parts = text.split(new RegExp(`(${ESCAPE_PLACEHOLDER}\\d+)`, 'g'));
+
+        return parts.map((part) => {
+            if (part.startsWith(ESCAPE_PLACEHOLDER)) {
+                const index = parseInt(part.replace(ESCAPE_PLACEHOLDER, ''), 10);
+                // Return the original content from the (now accessible) escapes array.
+                return escapes[index];
+            }
+            return part;
+        }).filter(part => part !== ''); // Filter out empty strings from splitting
+    }
+
+
     // 2. Main Parsing Step (without backticks in the regex)
-    // This parser is now "blind" to the escaped content.
+    // This parser is "blind" to the escaped content.
     const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_|\*(?:.+?)\*|\[(?:[^\]]+)\])/g;
 
     function recursiveParse(subLine: string): React.ReactNode[] {
@@ -60,9 +80,9 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
             const segment = match[0];
             const index = match.index!;
 
-            // Add plain text before this match
+            // Add plain text before this match (with escapes substituted back in)
             if (index > lastIndex) {
-                results.push(...substituteEscapes(subLine.slice(lastIndex, index), escapes));
+                results.push(...substituteEscapes(subLine.slice(lastIndex, index)));
             }
 
             // Process the formatted segment
@@ -80,33 +100,14 @@ function parseInlineFormatting(line: string): React.ReactNode[] {
             lastIndex = index + segment.length;
         }
 
-        // Add any remaining plain text after the last match
+        // Add any remaining plain text after the last match (with escapes substituted back in)
         if (lastIndex < subLine.length) {
-            results.push(...substituteEscapes(subLine.slice(lastIndex), escapes));
+            results.push(...substituteEscapes(subLine.slice(lastIndex)));
         }
 
         return results;
     }
 
+    // 3. Kick off the process
     return recursiveParse(placeholderLine);
-}
-
-/**
- * Takes a string containing placeholders and substitutes the original
- * escaped content back in.
- */
-function substituteEscapes(text: string, escapes: string[]): React.ReactNode[] {
-    if (!text.includes(ESCAPE_PLACEHOLDER)) {
-        return [text];
-    }
-    
-    const parts = text.split(new RegExp(`(${ESCAPE_PLACEHOLDER}\\d+)`, 'g'));
-
-    return parts.map((part, i) => {
-        if (part.startsWith(ESCAPE_PLACEHOLDER)) {
-            const index = parseInt(part.replace(ESCAPE_PLACEHOLDER, ''), 10);
-            return escapes[index];
-        }
-        return part;
-    }).filter(part => part !== ''); // Filter out empty strings from splitting
 }
