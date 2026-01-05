@@ -20,13 +20,13 @@ export default function ThemeControls({ vertical = false }: { vertical?: boolean
     const cycleTheme = () => {
         // Dark Block
         if (theme === 'dark') setTheme('soft-dark');
-        else if (theme === 'soft-dark') setTheme('storynexus');
+        else if (theme === 'soft-dark') setTheme('classic');
         
         // Transition to Light Block
-        else if (theme === 'storynexus') setTheme('storynexus-light');
+        else if (theme === 'classic') setTheme('classic-light');
         
         // Light Block
-        else if (theme === 'storynexus-light') setTheme('soft-light');
+        else if (theme === 'classic-light') setTheme('soft-light');
         else if (theme === 'soft-light') setTheme('light');
         
         // Loop back to start
@@ -37,9 +37,9 @@ export default function ThemeControls({ vertical = false }: { vertical?: boolean
         switch(theme) {
             case 'dark': return '☾';         // Moon
             case 'soft-dark': return '☁';    // Cloud (Soft)
-            case 'storynexus': return '⚙️';   // Gear (Industrial/Classic)
+            case 'classic': return '⚙️';   // Gear (Industrial/Classic)
             
-            case 'storynexus-light': return '🏛️'; // Column (Classic/Fog)
+            case 'classic-light': return '🏛️'; // Column (Classic/Fog)
             case 'soft-light': return '☕';       // Coffee (Sepia/Paper)
             case 'light': return '☀';             // Sun (Bright)
             

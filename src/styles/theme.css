@@ -247,7 +247,7 @@
 }
 
 /* --- 5. STORYNEXUS CLASSIC (Slate & Orange) --- */
-:root[data-global-theme='storynexus'] {
+:root[data-global-theme='classic'] {
     /* Base: Deep Slate Blue */
     --bg-main: #141e26;       /* Darkest slate (Background) */
     --bg-panel: #1c2e3d;      /* Panel slate (Cards/Headers) */
@@ -309,7 +309,7 @@
 }
 
 /* --- 6. STORYNEXUS LIGHT (Twilight / Dusk) --- */
-:root[data-global-theme='storynexus-light'] {
+:root[data-global-theme='classic-light'] {
     /* Base: Deeper, dusty blues */
     --bg-main: #d1dbe4;       /* Dusty Blue (The main background) */
     --bg-panel: #e4e9f0;      /* Lighter Slate (For cards/panels) */
