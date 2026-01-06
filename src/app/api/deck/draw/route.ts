@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
-import { getContent } from '@/engine/contentCache';
+import { getContent, getStorylets } from '@/engine/contentCache'; // Import getStorylets
 import { drawCards } from '@/engine/deckService';
 import { GameEngine } from '@/engine/gameEngine';
+import { Opportunity } from '@/engine/models';
 
 // DRAW CARD
-// POST: Draw Card
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
         if (!character) return NextResponse.json({ error: 'Character load failed' }, { status: 500 });
 
         const engine = new GameEngine(character.qualities, gameData, character.equipment);
-        
         let costExpr = deckDef.draw_cost || gameData.settings.defaultDrawCost || "1";
         const costVal = parseInt(engine.evaluateText(`{${costExpr}}`), 10) || 1;
 
@@ -60,20 +59,20 @@ export async function POST(request: NextRequest) {
         character = await drawCards(character, targetDeckId, gameData);
         await saveCharacterState(character);
         
-        const hand = character.opportunityHands[targetDeckId] || [];
-        
+        const handIds = character.opportunityHands[targetDeckId] || [];
+        const allEvents = await getStorylets(storyId);
+        const handDefinitions = handIds.map(id => allEvents.find(e => e.id === id)).filter(Boolean);
+
         return NextResponse.json({ 
             success: true, 
-            hand,
-            newQualities: character.qualities // <--- CRITICAL FOR UI UPDATE
+            hand: handDefinitions,
+            newQualities: character.qualities 
         });
     } catch (e: any) {
-        console.error("Draw Error:", e.message);
         return NextResponse.json({ message: e.message || "Failed to draw card" }, { status: 400 });
     }
 }
 
-// DELETE: Discard Card
 export async function DELETE(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -88,20 +87,16 @@ export async function DELETE(request: NextRequest) {
     const character = await getCharacter(userId, storyId, characterId);
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
-    if (!character.opportunityHands) character.opportunityHands = {};
-    if (!character.opportunityHands[deckId]) {
-        return NextResponse.json({ error: 'Deck not found in hand' }, { status: 404 });
+    if (!character.opportunityHands?.[deckId]) {
+        return NextResponse.json({ error: 'Deck not found on character' }, { status: 404 });
     }
 
-    const originalLength = character.opportunityHands[deckId].length;
-    character.opportunityHands[deckId] = character.opportunityHands[deckId].filter((id: string) => id !== cardId);
-
-    if (character.opportunityHands[deckId].length === originalLength) {
-        // Optimistic UI might have already hidden it, but good to know
-        return NextResponse.json({ error: 'Card not found in hand' }, { status: 404 });
-    }
-
+    character.opportunityHands[deckId] = character.opportunityHands[deckId].filter(id => id !== cardId);
     await saveCharacterState(character);
 
-    return NextResponse.json({ success: true, hand: character.opportunityHands[deckId] });
+    const handIds = character.opportunityHands[deckId] || [];
+    const allEvents = await getStorylets(storyId);
+    const handDefinitions = handIds.map(id => allEvents.find(e => e.id === id)).filter(Boolean);
+
+    return NextResponse.json({ success: true, hand: handDefinitions });
 }

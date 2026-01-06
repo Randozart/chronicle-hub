@@ -6,6 +6,7 @@ import { evaluateText, evaluateCondition, getChallengeDetails } from '@/engine/t
 import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
 import FormattedText from './FormattedText';
+import { GameEngine } from '@/engine/gameEngine';
 
 export type ResolutionState = {
     qualities: PlayerQualities; 
@@ -34,7 +35,6 @@ interface StoryletDisplayProps {
     onResolve: (res: ResolutionState) => void; 
     
     onFinish: (newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => void;
-    // FIX: Update Type
     onQualitiesUpdate: (newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>) => void;
     
     onCardPlayed?: (cardId: string) => void;
@@ -42,6 +42,7 @@ interface StoryletDisplayProps {
     categories: Record<string, CategoryDefinition>;
     storyId: string;
     characterId: string;
+    engine: GameEngine; 
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -61,7 +62,8 @@ export default function StoryletDisplay({
     imageLibrary,
     categories,
     storyId,
-    characterId
+    characterId,
+    engine, 
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
     
@@ -70,8 +72,8 @@ export default function StoryletDisplay({
     
     const storylet = eventData; 
     
-    const evalText = (text: string | undefined, context?: { qid: string, state: any } | null) => {
-        return evaluateText(text, qualities, qualityDefs, context, 0);
+    const evalText = (text: string | undefined) => {
+        return engine.evaluateText(text, { qid: storylet.id, state: qualities[storylet.id] });
     };
 
     const handleOptionClick = async (option: ResolveOption) => {
@@ -102,7 +104,6 @@ export default function StoryletDisplay({
                  return;
             }
 
-            // FIX: Pass newDefinitions to GameHub so ProfilePanel updates immediately
             onQualitiesUpdate(data.newQualities, data.newDefinitions); 
             
             if (onCardPlayed && 'deck' in eventData) {
@@ -156,23 +157,29 @@ export default function StoryletDisplay({
     if (resolution) {
         const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
         const postResolutionQualities = resolution.qualities;
+        const evalResultText = (text: string | undefined) => {
+            return evaluateText(text, postResolutionQualities, qualityDefs, null, 0);
+        };
+        
+        const imageCode = resolution.image_code || storylet.image_code || "";
 
         return (
             <div className="storylet-container">
                 <div className="storylet-main-content">
-                    {(resolution.image_code || storylet.image_code) && (
+                    {imageCode && ( 
                         <div className="storylet-image-frame storylet-image-container"> 
                             <GameImage 
-                                code={resolution.image_code || storylet.image_code || ""} 
+                                code={imageCode} 
                                 imageLibrary={imageLibrary} 
                                 type="storylet"
                                 alt={storylet.name}
                                 className="storylet-image"
+                                evaluateText={evalResultText} 
                             />
                         </div>
                     )}
                     <div className="storylet-text-content">
-                        <h1>{resolution.title}</h1> 
+                        <h1><FormattedText text={resolution.title} /></h1> 
                         <div className="storylet-text">
                             <FormattedText text={resolution.body} />
                         </div>
@@ -310,22 +317,25 @@ export default function StoryletDisplay({
             return { ...option, isLocked, lockReason, skillCheckText, chance };
         });
         
+    const imageCode = storylet.image_code || "";
+        
     return (
         <div className="storylet-container">
             <div className="storylet-main-content">
-                {storylet.image_code && (
+                {imageCode && ( 
                     <div className="storylet-image-frame storylet-image-container"> 
                         <GameImage 
-                            code={storylet.image_code || ""} 
+                            code={imageCode} 
                             imageLibrary={imageLibrary} 
                             type="storylet"
                             alt={storylet.name}
                             className="storylet-image"
+                            evaluateText={evalText}
                         />
                     </div>
                 )}
                 <div className="storylet-text-content">
-                    <h1>{evalText(storylet.name)}</h1>
+                    <h1><FormattedText text={evalText(storylet.name)} /></h1>
                     <div className="storylet-text">
                         <FormattedText text={evalText(storylet.text)} />
                     </div>
@@ -346,16 +356,18 @@ export default function StoryletDisplay({
                         const rawCost = option.computed_action_cost;
                         
                         if (typeof rawCost === 'number') {
-                             if (rawCost > 0) {
-                                 costDisplay = <span className="cost-badge cost-numeric">{rawCost} Actions</span>;
-                             } else {
-                                 costDisplay = <span className="cost-badge cost-free">Free</span>;
-                             }
+                            if (rawCost > 0) {
+                                costDisplay = <span className="cost-badge cost-numeric">{rawCost} Actions</span>;
+                            } else {
+                                costDisplay = <span className="cost-badge cost-free">Free</span>;
+                            }
                         } else if (typeof rawCost === 'string') {
                             const cleanLogic = rawCost.replace(/\$/g, '');
                             costDisplay = <span className="cost-badge cost-logic" title={rawCost}>{cleanLogic}</span>;
                         }
                     }
+
+                    const evaluatedName = evalText(option.name);
 
                     return (
                         <button 
@@ -369,18 +381,19 @@ export default function StoryletDisplay({
                                 {option.image_code && (
                                     <div className="option-image-container">
                                         <GameImage 
-                                            code={option.image_code || ""} 
+                                            code={option.image_code} 
                                             imageLibrary={imageLibrary} 
                                             type="icon" 
-                                            alt={option.name}
+                                            alt={evaluatedName} // Use evaluated name for alt text
                                             className="option-image"
+                                            evaluateText={evalText} // <-- Add this prop
                                         />
                                     </div>
                                 )}
                                 <div className="option-text-wrapper">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                         <h3 style={{ margin: 0, padding: 0 }}>
-                                            <FormattedText text={evalText(option.name)} />
+                                            <FormattedText text={evaluatedName} />
                                         </h3>
                                         {costDisplay}
                                     </div>

@@ -9,8 +9,6 @@ import TabletopLayout from './layouts/TabletopLayout';
 import MapModal from './MapModal';
 import { GameEngine } from '@/engine/gameEngine';
 import CharacterLobby from './CharacterLobby';
-
-// Component Imports
 import CharacterSheet from './CharacterSheet';
 import LocationHeader from './LocationHeader';
 import LocationStorylets from './LocationStorylets';
@@ -56,7 +54,6 @@ interface GameHubProps {
 }
 
 export default function GameHub(props: GameHubProps) {
-    // --- STATE ---
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
     const [location, setLocation] = useState<LocationDefinition | null>(props.initialLocation);
     const [hand, setHand] = useState<Opportunity[]>(props.initialHand);
@@ -66,11 +63,9 @@ export default function GameHub(props: GameHubProps) {
     const [showMarket, setShowMarket] = useState(false);
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
     const { playTrack } = useAudio(); 
-    
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
 
-    // Deck Parsing
     const deckIds = useMemo(() => 
         location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [],
         [location?.deck]
@@ -88,7 +83,6 @@ export default function GameHub(props: GameHubProps) {
 
     useEffect(() => {
         if (!character || !location) return;
-        
         if (character.currentLocationId !== location.id) {
             const newLoc = props.locations[character.currentLocationId];
             if (newLoc) {
@@ -101,8 +95,6 @@ export default function GameHub(props: GameHubProps) {
         }
     }, [character, location, props.locations]);
 
-
-    // --- HANDLERS ---
     const showEvent = useCallback(async (eventId: string | null) => {
         if (!eventId) { 
             setActiveEvent(null); 
@@ -123,7 +115,7 @@ export default function GameHub(props: GameHubProps) {
 
     useEffect(() => {
         const trackId = (location as any)?.musicTrackId; 
-        if (trackId && props.musicTracks && props.musicTracks[trackId]) {
+        if (trackId && props.musicTracks?.[trackId]) {
             const trackSource = props.musicTracks[trackId].source;
             const instrumentList = props.instruments ? Object.values(props.instruments) : [];
             playTrack(trackSource, instrumentList);
@@ -142,10 +134,7 @@ export default function GameHub(props: GameHubProps) {
     }, []);
     
     const handleCharacterUpdate = useCallback((newCharacterState: CharacterDocument) => {
-        setCharacter({
-            ...newCharacterState,
-            qualities: { ...newCharacterState.qualities }
-        });
+        setCharacter({ ...newCharacterState, qualities: { ...newCharacterState.qualities } });
     }, []);
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => {
@@ -153,9 +142,7 @@ export default function GameHub(props: GameHubProps) {
         setCharacter(prev => {
             if (!prev) return null;
             const newChar = { ...prev, qualities: { ...newQualities } };
-            if (moveToId) {
-                newChar.currentLocationId = moveToId;
-            }
+            if (moveToId) newChar.currentLocationId = moveToId;
             return newChar;
         });
         showEvent(redirectId ?? null);
@@ -165,9 +152,6 @@ export default function GameHub(props: GameHubProps) {
         setHand(prev => prev.filter(c => c.id !== cardId));
     }, []);
 
-    // --- DECK HANDLERS (Local State Updates) ---
-
-    // 1. Draw Handler
     const handleDrawForDeck = useCallback(async (deckId: string) => {
         if (isLoading || !character) return;
         setIsLoading(true);
@@ -179,85 +163,56 @@ export default function GameHub(props: GameHubProps) {
             const data = await response.json();
             
             if (data.success) {
-                // Determine new hand based on the Deck ID
-                const newCardIds = data.hand as string[];
+                const newCards = data.hand as Opportunity[];
                 
-                // Fetch definitions for new cards from the prop definitions (opportunityDefs)
-                const newCards = newCardIds.map(id => props.opportunityDefs[id]).filter(Boolean);
-
                 setHand(prev => {
-                    // Remove old cards from THIS deck, keep others
-                    const otherDecks = prev.filter(c => c.deck !== deckId);
-                    return [...otherDecks, ...newCards];
+                    const otherDecksCards = prev.filter(c => c.deck !== deckId);
+                    return [...otherDecksCards, ...newCards];
                 });
-
+                
                 setCharacter(prev => {
                     if (!prev) return null;
                     return {
                         ...prev,
                         opportunityHands: {
-                            ...prev.opportunityHands,
-                            [deckId]: newCardIds 
+                            ...(prev.opportunityHands || {}),
+                            [deckId]: newCards.map(c => c.id)
                         },
-                        qualities: data.newQualities || prev.qualities
+                        qualities: data.newQualities || prev.qualities,
+                        deckCharges: data.newCharges || prev.deckCharges 
                     };
                 });
             } else {
                 alert(data.message || "Failed to draw.");
             }
         } catch (e) { console.error(e); } finally { setIsLoading(false); }
-    }, [isLoading, character, props.storyId, props.opportunityDefs]);
+    }, [isLoading, character, props.storyId]);
 
-    // 2. Discard Handler
     const handleDiscard = useCallback(async (deckId: string, cardId: string) => {
         if (!character) return;
         try {
             const res = await fetch('/api/deck/draw', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    storyId: props.storyId, 
-                    characterId: character.characterId, 
-                    cardId, 
-                    deckId 
-                })
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, cardId, deckId })
             });
-            
             const data = await res.json();
             if (data.success) {
                 setHand(prev => prev.filter(c => c.id !== cardId));
-                
                 setCharacter(prev => {
                     if (!prev) return null;
                     return {
                         ...prev,
                         opportunityHands: {
-                            ...prev.opportunityHands,
-                            [deckId]: data.hand 
+                            ...(prev.opportunityHands || {}),
+                            [deckId]: data.hand.map((c: Opportunity) => c.id)
                         }
                     };
                 });
             }
         } catch (e) { console.error(e); }
     }, [character, props.storyId]);
-
-    // Legacy general draw handler (kept for compatibility if needed, but deck-specific is preferred)
-    const handleDrawCard = useCallback(async () => {
-       // This triggers a refresh, legacy behavior. 
-       // If you want full SPA feel, remove usage of this and use handleDrawForDeck instead.
-        if (isLoading || !character) return;
-        setIsLoading(true);
-        try {
-            const response = await fetch('/api/deck/draw', { 
-                method: 'POST',
-                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId }) 
-            });
-            const data = await response.json();
-            if (data.message) alert(data.message);
-            else window.location.reload(); 
-        } catch (e) { console.error(e); } finally { setIsLoading(false); }
-    }, [isLoading, character, props.storyId]);
-
+    
     const handleTravel = useCallback(async (targetId: string) => {
         if (!character) return;
         setIsLoading(true);
@@ -266,10 +221,8 @@ export default function GameHub(props: GameHubProps) {
                 method: 'POST', body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
             });
             const data = await res.json();
-            
-            if (data.success) {
-                window.location.reload();
-            } else {
+            if (data.success) window.location.reload();
+            else {
                 alert(data.error);
                 setIsLoading(false);
             }
@@ -283,14 +236,8 @@ export default function GameHub(props: GameHubProps) {
         window.location.href = `/play/${props.storyId}?menu=true`;
     }, [props.storyId]);
 
-
-    // --- LOBBY & LOADING ---
     if (!character) {
-        return (
-            <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper">
-                <CharacterLobby availableCharacters={props.availableCharacters} storyId={props.storyId} imageLibrary={props.imageLibrary || {}} locations={props.locations || {}} settings={props.settings} initialCharacter={props.initialCharacter} systemMessage={props.systemMessage} />
-            </div>
-        );
+        return <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper"><CharacterLobby {...props} /></div>;
     }
     if (!location) return <div>Loading location data...</div>;
 
@@ -504,7 +451,7 @@ export default function GameHub(props: GameHubProps) {
                     <MarketInterface market={props.markets[activeMarketId]!} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} onClose={() => setShowMarket(false)} onUpdate={handleQualitiesUpdate} storyId={props.storyId} characterId={character.characterId} worldState={props.worldState} />
                 </div>
             );
-        } else if (renderedActiveEvent) {
+        } else if (activeEvent) { 
              const showHeaderInStorylet = props.settings.showHeaderInStorylet === true;
 
             innerContent = (
@@ -512,7 +459,7 @@ export default function GameHub(props: GameHubProps) {
                     {showHeaderInStorylet && renderHeader()}
 
                     <StoryletDisplay 
-                        eventData={renderedActiveEvent} 
+                        eventData={activeEvent} 
                         qualities={character.qualities} 
                         
                         resolution={activeResolution}
@@ -529,6 +476,7 @@ export default function GameHub(props: GameHubProps) {
                         categories={props.categories} 
                         storyId={props.storyId} 
                         characterId={character.characterId} 
+                        engine={renderEngine} 
                     />
                 </div>
             );
@@ -551,45 +499,32 @@ export default function GameHub(props: GameHubProps) {
                         const deckDef = props.deckDefs[deckId];
                         if (!deckDef) return null;
 
-                        // Calculate stats for THIS specific deck
                         const handVal = renderEngine.evaluateText(`{${deckDef.hand_size || 3}}`);
                         const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
                         const stats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
                         
-                        // Header for the Deck (Custom Name)
                         const deckTitle = deckDef.name || "Opportunities";
 
                         return (
                             <div key={deckId} className="deck-feed" style={{ marginTop: '3rem' }}>
-                                {/* Deck Header */}
-                                <h3 style={{ 
-                                    borderBottom: '1px solid var(--border-color)', 
-                                    paddingBottom: '0.5rem', 
-                                    marginBottom: '1rem',
-                                    color: 'var(--text-highlight)',
-                                    textTransform: 'uppercase',
-                                    fontSize: '1.1rem',
-                                    letterSpacing: '1px'
-                                }}>
+                                <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--text-highlight)', textTransform: 'uppercase', fontSize: '1.1rem', letterSpacing: '1px' }}>
                                     {renderEngine.evaluateText(deckTitle)}
                                 </h3>
-
                                 <OpportunityHand 
-                                    hand={hand.filter(c => c.deck === deckId)} 
-                                    onCardClick={showEvent} 
-                                    
+                                    hand={hand.filter(c => c.deck === deckId)}
+                                    onCardClick={showEvent}
                                     onDrawClick={() => handleDrawForDeck(deckId)}
                                     onDiscard={(cardId) => handleDiscard(deckId, cardId)}
-                                    
-                                    isLoading={isLoading} 
-                                    qualities={character.qualities} 
-                                    qualityDefs={mergedQualityDefs} 
-                                    imageLibrary={props.imageLibrary} 
-                                    character={character} 
-                                    locationDeckId={deckId} 
-                                    deckDefs={props.deckDefs} 
-                                    settings={props.settings} 
-                                    currentDeckStats={stats} 
+                                    isLoading={isLoading}
+                                    qualities={character.qualities}
+                                    qualityDefs={mergedQualityDefs}
+                                    imageLibrary={props.imageLibrary}
+                                    character={character}
+                                    locationDeckId={deckId}
+                                    deckDefs={props.deckDefs}
+                                    settings={props.settings}
+                                    currentDeckStats={stats}
+                                    engine={renderEngine} 
                                 />
                             </div>
                         );

@@ -1,5 +1,5 @@
 import { ImageDefinition } from '@/engine/models';
-import React from 'react';
+import React, { useMemo } from 'react';
 
 interface GameImageProps {
     code: string;
@@ -9,13 +9,21 @@ interface GameImageProps {
 
     className?: string;
     priority?: boolean;
-    style?: React.CSSProperties; 
+    style?: React.CSSProperties;
+    evaluateText?: (text: string) => string;
 }
 
-export default function GameImage({ code, imageLibrary, alt, type, className, priority, style }: GameImageProps) {
-    const def = imageLibrary[code];
+export default function GameImage({ code, imageLibrary, alt, type, className, priority, style, evaluateText }: GameImageProps) {
+        const resolvedCode = useMemo(() => {
+        if (evaluateText && code && code.includes('{')) {
+            return evaluateText(code);
+        }
+        return code;
+    }, [code, evaluateText]);
+
+
+    const def = imageLibrary[resolvedCode];
     
-    // Fallback for missing images
     if (!def || !def.url) {
         return (
             <div 
@@ -52,21 +60,18 @@ export default function GameImage({ code, imageLibrary, alt, type, className, pr
             }}
         >
             <img
-                key={code} // TRIGGERS RE-MOUNT ANIMATION ON CHANGE
+                key={resolvedCode} // Re-renders if the resolved code changes
                 src={def.url}
-                alt={alt || def.alt || code}
-                className="fade-in-image" // Requires CSS
+                alt={alt || def.alt || resolvedCode}
+                className="fade-in-image"
                 style={{
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
                     objectPosition: objectPosition,
-                    animation: 'fadeIn 0.5s ease-out' // Inline animation if CSS unavailable
+                    animation: 'fadeIn 0.5s ease-out'
                 }}
             />
-            {/* Global CSS should define:
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-            */}
         </div>
     );
 }
