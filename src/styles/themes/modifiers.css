@@ -222,518 +222,344 @@ html[data-theme='revolutionary']::before {
     [data-theme='black-crown'] .action-timer span {
         color: #000 !important;
     }
+
 /* --- DETECTIVE NOIR --- */
-[data-theme='detective-noir'].theme-wrapper { background-color: #050505; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.07'/%3E%3C/svg%3E"), radial-gradient(circle at 50% 50%, #3a3a3a 0%, #050505 85%); background-attachment: fixed; background-repeat: repeat, no-repeat; background-size: auto, cover; }
+
+/* 1. GLOBAL THEME & BACKGROUNDS */
+[data-theme='detective-noir'].theme-wrapper {
+    background-color: #050505;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.07'/%3E%3C/svg%3E"), 
+                      radial-gradient(circle at 50% 50%, #3a3a3a 0%, #050505 85%);
+    background-attachment: fixed;
+    background-repeat: repeat, no-repeat;
+    background-size: auto, cover;
+}
+
+/* Clear default backgrounds to prevent layering issues */
+[data-theme='detective-noir'] .layout-grid-tabletop, 
+[data-theme='detective-noir'] .layout-grid-nexus, 
+[data-theme='detective-noir'] .layout-screen { 
+    background-color: transparent !important; 
+    background: transparent !important; 
+    color: #ffffff;
+}
+
+/* 2. THE GLASS PANELS (Sidebar & Content Wrappers) */
+
+/* Base Glass Style (Applied to Sidebar by default) */
 [data-theme='detective-noir'] .sidebar-panel {
-    /* Noir Glass Texture */
     background-color: rgba(28, 24, 22, 0.8) !important;
     backdrop-filter: blur(10px);
-    
-    /* Edges & Shadows */
     border-right: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
-    
-    /* Text */
     color: #e0e0e0 !important;
-    
-    /* Layout - STRAIGHT (No Rotation) */
     transform: none !important; 
     margin-top: 0 !important;
-    
-    /* Ensure it fills height but respects header/padding if needed */
     height: 100%;
     min-height: 100vh;
 }
 
-/* TABLETOP OVERRIDE (Keep this below the block above) */
-/* Ensure the sidebar flattens out correctly in Tabletop mode */
-[data-theme='detective-noir'] .layout-grid-tabletop .sidebar-panel {
-    transform: none;
-    
-    /* 1. Create the Gaps (Matching the right side's 3rem) */
-    margin-top: 3rem;
-    margin-bottom: 3rem;
-    
-    /* 2. Calculate Height (Viewport minus the top/bottom margins) */
-    height: calc(100vh - 6rem);
-    max-height: none; /* Remove previous constraint */
-    top: auto; /* Remove sticky pinning */
-    
-    /* 3. Visuals (Keep existing) */
-    border-radius: 0;
-    border-right: 1px solid rgba(255, 255, 255, 0.15);
-    /* box-shadow: none; <--- You might actually want a shadow on the right side now that it's floating? */
-    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5); /* Optional: Restore shadow for depth */
-}
-[data-theme='detective-noir'] .tab-bar { background: #d6d3cd; border-bottom: 1px solid var(--border-light); padding: 0.5rem; gap: 0.25rem; }
-[data-theme='detective-noir'] .tab-btn { background: transparent; color: var(--text-secondary); border: 1px solid transparent; border-radius: 2px; font-size: 0.8rem; text-transform: uppercase; font-weight: bold; }
-[data-theme='detective-noir'] .tab-btn.active { background: var(--bg-item-hover); color: var(--text-primary); border: 1px solid var(--border-light); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-[data-theme='detective-noir'] .location-header { background-color: var(--bg-panel); background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E"); border: 4px solid var(--text-primary); padding: 2.5rem; margin-bottom: 3rem; position: relative; text-align: center; box-shadow: var(--shadow-float); transform: rotate(0.3deg); }
-[data-theme='detective-noir'] .location-header:not(.mode-banner)::after { content: ''; position: absolute; top: 6px; left: 6px; right: 6px; bottom: 6px; border: 1px solid var(--text-primary); pointer-events: none; }
-[data-theme='detective-noir'] .location-header h1 { font-size: 2.2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.25rem; margin: 0; border: none; padding: 0; color: var(--text-primary); }
-[data-theme='detective-noir'] .location-header h2 { font-size: 0.9rem; color: var(--text-secondary); font-style: italic; border: none; margin-top: 0.75rem; font-family: serif; }
-[data-theme='detective-noir'] .storylet-container { background: var(--bg-item); padding: 3rem 4rem; border: 1px solid var(--border-light); box-shadow: var(--shadow-float); position: relative; max-width: 900px; margin: 0 auto 3rem auto; }
-[data-theme='detective-noir'] .storylet-container::before { content: ''; position: absolute; top: -15px; right: 40px; width: 20px; height: 60px; border: 4px solid var(--text-secondary); border-radius: 20px; background: transparent; z-index: 10; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
-[data-theme='detective-noir'] .option-button { background-color: var(--bg-item); border: 1px solid var(--border-light); padding: 1.5rem; margin-bottom: 1.5rem; position: relative; box-shadow: var(--shadow-paper); transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); }
-[data-theme='detective-noir'] .option-button:hover { transform: translateY(-3px) rotate(-0.5deg); box-shadow: 0 8px 15px rgba(0,0,0,0.15); background-color: var(--bg-item-hover); border-color: var(--text-secondary); }
-[data-theme='detective-noir'] .option-button h3 { font-weight: bold; text-decoration: underline; text-decoration-color: var(--border-light); margin-bottom: 0.5rem; }
-[data-theme='detective-noir'] .option-button:hover h3 { color: var(--accent-highlight); text-decoration-color: var(--accent-highlight); }
-
-[data-theme='detective-noir'] .storylet-image-container { background: #fff; padding: 0.5rem 0.5rem 2.5rem 0.5rem; box-shadow: 0 3px 6px rgba(0,0,0,0.2); border: 1px solid #ddd; transform: rotate(-1deg); width: 220px; position: relative; }
-[data-theme='detective-noir'] .storylet-image-container::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%); pointer-events: none; border: 1px solid rgba(255,255,255,0.4); }
-[data-theme='detective-noir'] .deck-button, [data-theme='detective-noir'] .return-button { background: var(--text-primary); color: #fff; border: 2px solid var(--text-primary); text-transform: uppercase; font-weight: bold; letter-spacing: 2px; padding: 1rem 2rem; border-radius: 0; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); transition: all 0.1s; cursor: pointer; }
-[data-theme='detective-noir'] .deck-button:hover, [data-theme='detective-noir'] .return-button:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px rgba(0,0,0,0.2); background: var(--accent-highlight); border-color: var(--accent-highlight); }
-[data-theme='detective-noir'] .storylet-container:not(.preview-card) { border-top: 1px solid rgba(0,0,0,0.1); }
-[data-theme='detective-noir'] .storylet-container::after { content: 'EVIDENCE'; position: absolute; bottom: 2rem; right: 2rem; font-size: 3rem; font-weight: 900; color: rgba(138, 3, 3, 0.08); border: 4px solid rgba(138, 3, 3, 0.08); padding: 0.2rem 1rem; transform: rotate(-25deg); pointer-events: none; font-family: sans-serif; letter-spacing: 10px; z-index: 0; mask-image: url("data:image/svg+xml,%3Csvg width='200' height='100' viewBox='0 0 200 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.6'/%3E%3C/svg%3E"); }
-[data-theme='detective-noir'] .tab-btn.active {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    position: relative;
-    color: var(--text-primary);
-    z-index: 1; /* Ensure text creates context */
-}
-
-[data-theme='detective-noir'] .tab-btn.active::before {
-    content: '';
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%) rotate(-2deg);
-    width: 60%;
-    height: 80%;
-    
-    border: 5px solid rgba(180, 20, 20, 0.8);
-    border-radius: 50% 60% 50% 40% / 60% 50% 60% 50%;
-    
-    /* THE FIX: Sit on top, but blend like ink */
-    z-index: 1; 
-    pointer-events: none; /* Click through to button */
-    mix-blend-mode: multiply; /* Darkens the text below it, like a real marker */
-    
-    box-shadow: inset 0 0 2px rgba(180, 20, 20, 0.3);
-}
-[data-theme='detective-noir'] .option-button { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-[data-theme='detective-noir'] .option-button:hover { transform: rotate(1deg) scale(1.02) translateY(-5px) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.3) !important; z-index: 10; border-color: #333; }
-[data-theme='detective-noir'] .option-button::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.05'/%3E%3C/svg%3E"); pointer-events: none; mix-blend-mode: multiply; }
-[data-theme='detective-noir'] .layout-grid-tabletop, [data-theme='detective-noir'] .layout-grid-nexus, [data-theme='detective-noir'] .layout-screen { background-color: transparent !important; background: transparent !important; color:#ffffff }
-[data-theme='detective-noir'] .storylet-container::after { 
-    content: 'EVIDENCE'; position: absolute; bottom: 2rem; right: 2rem; font-size: 3rem; font-weight: 900; 
-    color: rgba(141, 6, 6, 0.626); border: 4px solid rgba(138, 3, 3, 0.08); padding: 0.2rem 1rem; 
-    transform: rotate(-25deg); pointer-events: none; letter-spacing: 10px; z-index: 0; 
-}
-
-[data-theme='detective-noir'] .card h3 {
-    color: var(--bg-item-hover);
-}
-[data-theme='detective-noir'] .tab-bar {
-    justify-content: space-between;
-}
-[data-theme='detective-noir'] .tab-btn {
-    flex: 1; /* Force buttons to fill width */
-    text-align: center;
-}
-[data-theme='detective-noir'] .layout-grid-tabletop .layout-column.content-column {
-    background: transparent !important; /* Remove solid background */
-    padding-top: 3rem;
-    padding-bottom: 3rem;
-    padding-right: 3rem; /* Optional: Adds gap on the right edge too */
-    /* Padding-left is 0 to keep it attached to the visual line, or add if you want it floating */
-}
-
-/* 2. The Panel: Apply the Glass and Lit Edge */
+/* Also apply Glass Style to Content Areas in Tabletop/Elysium/London */
 [data-theme='detective-noir'] .layout-grid-tabletop .content-area,
 [data-theme='detective-noir'] .layout-main-grid,
 [data-theme='detective-noir'] .elysium-content-wrapper {
-    /* Noir Glass Texture */
     background-color: rgba(28, 24, 22, 0.8) !important;
     backdrop-filter: blur(10px);
-    
-    /* Lit Edge */
     border-left: 1px solid rgba(255, 255, 255, 0.15);
     border-top: 1px solid rgba(255, 255, 255, 0.05);
-    
-    /* Deep Shadow */
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-    
-    /* Text Color Override */
     color: #e0e0e0;
-    
-    /* Spacing for London/Elysium to float */
     border-radius: 4px;
     margin-bottom: 2rem;
 }
 
-/* 1. The Main Case File (Make it look tossed) */
+
+/* 3. LAYOUT SPECIFICS */
+
+/* --- Nexus Centered Mode (The Frame Effect) --- */
+/* The Main Content Area */
+[data-theme='detective-noir'] .layout-grid-nexus.mode-centered .content-area {
+    background-color: rgba(28, 24, 22, 0.8) !important;
+    backdrop-filter: blur(10px);
+    color: #e0e0e0 !important;
+    /* Outer Right Border */
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    /* Subtle inner seam (optional, but matches your previous code) */
+    border-left: 1px solid rgba(122, 122, 122, 0.15); 
+}
+
+/* The Sidebar */
+[data-theme='detective-noir'] .layout-grid-nexus.mode-centered .sidebar-panel {
+    /* Remove internal divider */
+    box-shadow: none !important;
+    border-right: 1px solid rgba(70, 70, 70, 0.15); /* Subtle seam */
+    /* Outer Left Border */
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* --- Tabletop Mode Overrides --- */
+[data-theme='detective-noir'] .layout-grid-tabletop .sidebar-panel {
+    transform: none;
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+    height: calc(100vh - 6rem);
+    max-height: none;
+    top: auto; 
+    border-radius: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
+}
+[data-theme='detective-noir'] .layout-grid-tabletop .layout-column.content-column {
+    background: transparent !important;
+    padding: 3rem 3rem 3rem 0;
+}
+
+
+/* 4. COMPONENTS: TABS & HEADER */
+
+/* Tabs */
+[data-theme='detective-noir'] .tab-bar { background: #d6d3cd; border-bottom: 1px solid var(--border-light); padding: 0.5rem; gap: 0.25rem; justify-content: space-between; }
+[data-theme='detective-noir'] .tab-btn { background: transparent; color: var(--text-secondary); border: 1px solid transparent; border-radius: 2px; font-size: 0.8rem; text-transform: uppercase; font-weight: bold; flex: 1; text-align: center; }
+
+/* Active Tab (Red Circle Marker) */
+[data-theme='detective-noir'] .tab-btn.active {
+    background: transparent !important; border: none !important; box-shadow: none !important;
+    position: relative; color: var(--text-primary); z-index: 1;
+}
+[data-theme='detective-noir'] .tab-btn.active::before {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-2deg);
+    width: 60%; height: 80%;
+    border: 5px solid rgba(180, 20, 20, 0.8);
+    border-radius: 50% 60% 50% 40% / 60% 50% 60% 50%;
+    z-index: 1; pointer-events: none; mix-blend-mode: multiply;
+    box-shadow: inset 0 0 2px rgba(180, 20, 20, 0.3);
+}
+
+/* Location Header */
+[data-theme='detective-noir'] .location-header {
+    background-color: var(--bg-panel);
+    background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+    border: 4px solid var(--text-primary); padding: 2.5rem; margin-bottom: 3rem;
+    position: relative; text-align: center; box-shadow: var(--shadow-float); transform: rotate(0.3deg);
+}
+[data-theme='detective-noir'] .location-header:not(.mode-banner)::after { content: ''; position: absolute; top: 6px; left: 6px; right: 6px; bottom: 6px; border: 1px solid var(--text-primary); pointer-events: none; }
+[data-theme='detective-noir'] .location-header h1 { font-size: 2.2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.25rem; margin: 0; color: var(--text-primary); }
+[data-theme='detective-noir'] .location-header h2 { font-size: 0.9rem; color: var(--text-secondary); font-style: italic; margin-top: 0.75rem; font-family: serif; }
+
+
+/* 5. THE CASE FILE (Storylet Container) */
+
 [data-theme='detective-noir'] .storylet-container {
     background: var(--bg-item);
     padding: 3rem 4rem;
     border: 1px solid var(--border-light);
-    
-    /* The "Toss" Effect */
-    transform: rotate(-0.5deg);
+    transform: rotate(-0.5deg); /* The "Toss" Effect */
     margin: 1rem auto 3rem auto;
     max-width: 900px;
-    
-    /* Realistic Shadow */
     box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.4);
     position: relative;
+    color: var(--text-primary);
     
-    /* FIX: Clip the Evidence Stamp so it doesn't bleed out */
-    overflow: hidden !important; 
+    overflow: visible !important;
     
-    /* Text color on paper */
-    color: var(--text-primary); 
+    clip-path: inset(-50px 0px 0px 0px);
 }
 
-[data-theme='detective-noir'] .quality-category-card {
-    /* Loosen the spacing */
-    width: 85%; /* vary width slightly so they don't align perfectly on sides */
-}
+[data-theme='detective-noir'] .storylet-container:not(.preview-card) { border-top: 1px solid rgba(0,0,0,0.1); }
 
-/* TILT LEFT */
-[data-theme='detective-noir'] .quality-category-card:nth-child(odd) { 
-    transform: rotate(1.2deg) translateX(-5px) !important; 
-}
-
-/* TILT RIGHT */
-[data-theme='detective-noir'] .quality-category-card:nth-child(even) { 
-    transform: rotate(-1.8deg) translateX(5px) !important; 
-}
-
-[data-theme='detective-noir'] .quality-category-card:nth-of-type(3n) {
-    transform: rotate(2.5deg) translateX(10px) !important;
-    background-color: #f7f4ec; /* Slightly different paper shade? */
-}
-
-/* 3. The Left Sidebar (The Dossier) */
-/* Give it a slight angle so it doesn't look like a UI element */
-[data-theme='detective-noir'] .layout-grid-tabletop .sidebar-panel {
-    margin-top: 3.5rem !important; /* Adjust gap to account for tilt */
-    height: calc(100vh - 7rem) !important;
-}
-
-/* 4. (Optional) The Paper Clip */
-/* Ensure the paper clip on the main file looks realistic */
+/* The Paperclip */
 [data-theme='detective-noir'] .storylet-container::before {
-    top: -20px;
-    right: 50px;
-    transform: rotate(5deg); /* Tilt the clip itself */
+    content: ''; position: absolute; top: -15px; right: 40px;
+    width: 20px; height: 60px;
+    border: 4px solid var(--text-secondary); border-radius: 20px;
+    background: transparent; z-index: 10;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
 }
 
-[data-theme='detective-noir'] .option-button:nth-of-type(3n) {
-    transform: rotate(2.5deg) translateX(10px) !important;
-    background-color: #f7f4ec; /* Slightly different paper shade? */
+[data-theme='detective-noir'] .storylet-container::after { 
+    content: 'EVIDENCE'; position: absolute; 
+    bottom: 2rem; right: 2rem; font-size: 3rem; 
+    font-weight: 900;     
+    color: rgba(141, 6, 6, 0.626); border: 4px solid rgba(138, 3, 3, 0.08); padding: 0.2rem 1rem; 
+    transform: rotate(-25deg); pointer-events: none; font-family: sans-serif; 
+    letter-spacing: 10px; z-index: 0; 
+    mask-image: url("data:image/svg+xml,%3Csvg width='200' height='100' viewBox='0 0 200 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.6'/%3E%3C/svg%3E"); 
+    z-index: 1;
 }
 
 
-[data-theme='detective-noir'] .profile-header {
-    /* Make it look like an ID card clipped to the folder */
-    background: #f0f0e8; /* Off-white ID card */
-    color: #111;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    border: 1px solid #ccc;
-    transform: rotate(-1deg);
+
+/* Storylet Image (Polaroid Style) */
+[data-theme='detective-noir'] .storylet-image-container {
+    background: #fff; padding: 0.5rem 0.5rem 2.5rem 0.5rem;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2); border: 1px solid #ddd;
+    transform: rotate(-1deg); width: 220px; position: relative;
+}
+[data-theme='detective-noir'] .storylet-image-container::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%);
+    pointer-events: none; border: 1px solid rgba(255,255,255,0.4);
 }
 
-[data-theme='detective-noir'] .profile-name,
-[data-theme='detective-noir'] .profile-subtitle {
-    color: #111 !important; /* Force dark text on the light ID card */
-}
+/* 6. BUTTONS & ACTIONS */
 
-[data-theme='detective-noir'] .quality-category-card::after {
-    content: '';
-    position: absolute;
-    top: 5px; /* Stick out the top */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 14px;
-    height: 14px;
+/* Option Buttons */
+[data-theme='detective-noir'] .option-button {
+    background-color: var(--bg-item); border: 1px solid var(--border-light);
+    padding: 1.5rem; margin-bottom: 1.5rem; position: relative;
+    box-shadow: var(--shadow-paper); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-family: var(--font-main);
     
-    /* Red Pin Style */
-    background: radial-gradient(circle at 30% 30%, #e74c3c, #922b21);
-    border-radius: 50%;
-    /* border: 1px solid #732d2d; */
-    z-index: 10;
-    
-    /* Make it look pushed in */
-    box-shadow: 0 2px 2px rgba(0,0,0,0.4);
+    /* FIX: Ensure button sits above stamp */
+    z-index: 2; 
+}
+[data-theme='detective-noir'] .option-button:hover {
+    transform: rotate(1deg) scale(1.02) translateY(-5px) !important;
+    box-shadow: 0 15px 25px rgba(0,0,0,0.3) !important;
+    z-index: 10; border-color: #333; background-color: var(--bg-item-hover);
+}
+[data-theme='detective-noir'] .option-button h3 { font-weight: bold; text-decoration: underline; text-decoration-color: var(--border-light); margin-bottom: 0.5rem; }
+[data-theme='detective-noir'] .option-button:hover h3 { color: var(--accent-highlight); text-decoration-color: var(--accent-highlight); }
+
+/* Paper Texture on Buttons */
+[data-theme='detective-noir'] .option-button::after {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none; mix-blend-mode: multiply;
+}
+/* Randomized Tilt */
+[data-theme='detective-noir'] .option-button:nth-of-type(3n) { transform: rotate(2.5deg) translateX(10px) !important; background-color: #f7f4ec; }
+
+/* Deck & Return Buttons */
+[data-theme='detective-noir'] .deck-button, [data-theme='detective-noir'] .return-button {
+    background: var(--text-primary); color: #fff; border: 2px solid var(--text-primary);
+    text-transform: uppercase; font-weight: bold; letter-spacing: 2px;
+    padding: 1rem 2rem; border-radius: 0; box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+    transition: all 0.1s; cursor: pointer;
+    z-index: 2; /* Sit above stamp */
+}
+[data-theme='detective-noir'] .deck-button:hover, [data-theme='detective-noir'] .return-button:hover {
+    transform: translate(2px, 2px); box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+    background: var(--accent-highlight); border-color: var(--accent-highlight);
+}
+[data-theme='detective-noir'] .continue-button { 
+    background-color: var(--bg-item); border: 1px dashed var(--border-light) !important; 
+    padding: 1.5rem; position: relative; box-shadow: none; 
+    transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); 
+    z-index: 0;
 }
 
-/* 2. The Pin Shadow (Cast on the paper) */
-[data-theme='detective-noir'] .quality-category-card::before {
-    content: '';
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    width: 14px;
-    height: 6px;
-    background: rgba(0,0,0,0.3);
-    border-radius: 50%;
-    transform: translateX(-40%) rotate(-45deg); /* Offset shadow */
-    z-index: 9;
-}
 
-/* 3. Improve the paper look for the cards */
+/* 7. SIDEBAR ITEMS (Cards, Profile, Pins) */
+
+/* Character Sheet Cards */
 [data-theme='detective-noir'] .quality-category-card {
-    background-color: #fcfbf8; /* Very clean paper */
-    border: 1px solid #dcdcdc;
+    background-color: #fcfbf8; border: 1px solid #dcdcdc;
     box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-    
-    /* Ensure padding for the pin */
-    padding-top: 1.5rem; 
-    
-    /* Positioning context for the pin */
-    position: relative; 
+    padding-top: 1.5rem; position: relative; width: 85%;
 }
+[data-theme='detective-noir'] .quality-category-card h3,
+[data-theme='detective-noir'] .quality-category-card p { opacity: 0.85; color: #111 !important; }
 
-/* --- POLAROID PROFILE PICTURE (Rect Only) --- */
+/* Card Tilts */
+[data-theme='detective-noir'] .quality-category-card:nth-child(odd) { transform: rotate(1.2deg) translateX(-5px) !important; }
+[data-theme='detective-noir'] .quality-category-card:nth-child(even) { transform: rotate(-1.8deg) translateX(5px) !important; }
+[data-theme='detective-noir'] .quality-category-card:nth-of-type(3n) { transform: rotate(2.5deg) translateX(10px) !important; background-color: #f7f4ec; }
+
+/* Pins (Red Pushpins) */
+[data-theme='detective-noir'] .quality-category-card::after {
+    content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+    width: 14px; height: 14px; background: radial-gradient(circle at 30% 30%, #e74c3c, #922b21);
+    border-radius: 50%; z-index: 10; box-shadow: 0 2px 2px rgba(0,0,0,0.4);
+}
+[data-theme='detective-noir'] .quality-category-card::before { /* Pin Shadow */
+    content: ''; position: absolute; top: 8px; left: 50%; width: 14px; height: 6px;
+    background: rgba(0,0,0,0.3); border-radius: 50%; transform: translateX(-40%) rotate(-45deg); z-index: 9;
+}
+/* Randomized Pin Positions */
+[data-theme='detective-noir'] .quality-category-card:nth-child(odd)::after, [data-theme='detective-noir'] .quality-category-card:nth-child(odd)::before { left: 45% !important; }
+[data-theme='detective-noir'] .quality-category-card:nth-child(3n)::after, [data-theme='detective-noir'] .quality-category-card:nth-child(3n)::before { left: 55% !important; }
+[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::after { left: 60% !important; top: -12px !important; }
+[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::before { left: 60% !important; top: -9px !important; }
+
+/* Profile & Footer */
+[data-theme='detective-noir'] .profile-header {
+    background: #f0f0e8; color: #111; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    border: 1px solid #ccc; transform: rotate(-1deg);
+}
+[data-theme='detective-noir'] .profile-name, [data-theme='detective-noir'] .profile-subtitle { color: #111 !important; }
+[data-theme='detective-noir'] .action-box, [data-theme='detective-noir'] .action-box h3, [data-theme='detective-noir'] .action-timer { color: #111 !important; }
+[data-theme='detective-noir'] .action-timer > span { color: #444 !important; }
+[data-theme='detective-noir'] .sidebar-footer { padding-bottom: 1rem; }
+[data-theme='detective-noir'] .switch-char-btn { margin-bottom: 4.5rem; }
+
+/* Profile Portrait (Polaroid) */
 [data-theme='detective-noir'] .profile-portrait[data-shape='rect'] {
-    /* 1. White Polaroid Paper Frame */
-    background-color: #fff !important;
-    border: 1px solid #d4d4d4 !important;
-    border-radius: 0 !important; /* Sharp corners */
-    
-    /* 2. The Chin (Thick bottom padding) */
-    padding: 6px 6px 25px 6px !important;
-    
-    /* 3. Sizing & Posture */
-    width: 100px !important;
-    height: 100px !important;
-    box-sizing: content-box !important; /* Ensure padding adds to width */
-    transform: rotate(-3deg);
-    box-shadow: 2px 4px 10px rgba(0,0,0,0.3) !important;
-    
-    position: relative; /* Context for the gloss overlay */
+    background-color: #fff !important; border: 1px solid #d4d4d4 !important; border-radius: 0 !important;
+    padding: 6px 6px 25px 6px !important; width: 100px !important; height: 100px !important;
+    box-sizing: content-box !important; transform: rotate(-3deg); box-shadow: 2px 4px 10px rgba(0,0,0,0.3) !important;
+    position: relative;
 }
-
-/* Fix the image inside the polaroid */
 [data-theme='detective-noir'] .profile-portrait[data-shape='rect'] img {
-    width: 100% !important;
-    height: auto !important;
-    aspect-ratio: 3/4;
-    border: 1px solid #eee; /* Faint border around the photo itself */
-    display: block;
+    width: 100% !important; height: auto !important; aspect-ratio: 3/4; border: 1px solid #eee; display: block;
 }
-
-/* The Glossy Reflection Overlay */
-[data-theme='detective-noir'] .profile-portrait[data-shape='rect']::after {
-    content: '';
-    position: absolute;
-    top: 6px; left: 6px; right: 6px; 
-    bottom: 25px; /* Stop exactly where the photo ends */
-    
+[data-theme='detective-noir'] .profile-portrait[data-shape='rect']::after { /* Gloss */
+    content: ''; position: absolute; top: 6px; left: 6px; right: 6px; bottom: 25px;
     background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.05) 100%);
-    border: 1px solid rgba(255,255,255,0.4);
-    pointer-events: none;
-    z-index: 10;
+    border: 1px solid rgba(255,255,255,0.4); pointer-events: none; z-index: 10;
 }
 
 
-/* --- RANDOMIZED PINS (Investigation Board) --- */
-/* By default, pins are centered (left: 50%). We override this for subsets of cards. */
-
-/* Variation 1: Pinned on the Left */
-[data-theme='detective-noir'] .quality-category-card:nth-child(odd)::after,
-[data-theme='detective-noir'] .quality-category-card:nth-child(odd)::before {
-    left: 45% !important;
-}
-
-/* Variation 2: Pinned on the Right (Every 3rd card) */
-[data-theme='detective-noir'] .quality-category-card:nth-child(3n)::after,
-[data-theme='detective-noir'] .quality-category-card:nth-child(3n)::before {
-    left: 55% !important;
-}
-
-/* Variation 3: Slightly Higher/Haphazard (Every 4th card) */
-[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::after {
-    left: 60% !important;
-    top: -12px !important; /* Stick out more */
-}
-[data-theme='detective-noir'] .quality-category-card:nth-child(4n)::before {
-    left: 60% !important;
-    top: -9px !important; /* Shadow moves with it */
-}
-[data-theme='detective-noir'] .continue-button { background-color: var(--bg-item); border: 1px dashed var(--border-light) !important; padding: 1.5rem; position: relative; box-shadow: none; transition: transform 0.2s, box-shadow 0.2s; font-family: var(--font-main); }
-
-.dashboard-grid [data-theme='detective-noir'].card h3,
-.dashboard-grid [data-theme='detective-noir'].card span,
-.dashboard-grid [data-theme='detective-noir'].card p { 
-        opacity: 0.85;
-
-    color: #ffffff !important;
-}
-
-/* Optional: Make the tags and summary slightly dimmer for hierarchy */
-.dashboard-grid [data-theme='detective-noir'].card span,
-.dashboard-grid [data-theme='detective-noir'].card p {
-    opacity: 0.5;
-}
-
-[data-theme='detective-noir'] .action-box,
-    [data-theme='detective-noir'] .action-box h3,
-    [data-theme='detective-noir'] .action-timer,
-    [data-theme='detective-noir'] .action-timer span {
-        color: #111 !important;
-    }
-    
-    /* Optional: Make the "Next action in:" label slightly lighter */
-    [data-theme='detective-noir'] .action-timer > span {
-        color: #444 !important;
-    }
-
-    [data-theme='detective-noir'] .sidebar-footer {
-    padding-bottom: 1rem;
-}
-
-/* Adds a bit of space below the button so it doesn't hug the bottom */
-[data-theme='detective-noir'] .switch-char-btn {
-    margin-bottom: 4.5rem;
-}
-
-
-/* --- MOBILE RESET FOR NOIR (Consolidated) --- */
+/* 8. MOBILE OVERRIDES */
 @media (max-width: 900px) {
-    
-    /* 1. Reset Grid Layouts */
+    /* Reset Grid */
     [data-theme='detective-noir'] .layout-grid-nexus,
     [data-theme='detective-noir'] .layout-grid-tabletop { 
-        grid-template-columns: 1fr; 
-        gap: 1rem; 
-        margin: 1rem auto; 
-        padding: 0.5rem; 
+        grid-template-columns: 1fr; gap: 1rem; margin: 1rem auto; padding: 0.5rem; 
     }
 
-    /* 2. Flatten Content (Remove "Toss" effect) */
+    /* Flatten Content */
     [data-theme='detective-noir'] .storylet-container {
-        transform: none !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 1.5rem;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+        transform: none !important; margin: 0 !important; width: 100% !important;
+        max-width: 100% !important; padding: 1.5rem;
+    }
+    [data-theme='detective-noir'] .option-button, [data-theme='detective-noir'] .option-button:nth-child(n) {
+        transform: none !important; width: 100% !important; margin-left: 0 !important;
     }
 
-    /* 3. Flatten Options (Remove Tilts) */
-    [data-theme='detective-noir'] .option-button,
-    [data-theme='detective-noir'] .option-button:nth-child(odd),
-    [data-theme='detective-noir'] .option-button:nth-child(even),
-    [data-theme='detective-noir'] .option-button:nth-of-type(3n) {
-        transform: none !important;
-        width: 100% !important;
-        margin-left: 0 !important;
+    /* Fullscreen Sidebar Overlay */
+    [data-theme='detective-noir'] .sidebar-panel, [data-theme='detective-noir'] .elysium-sidebar {
+        background-color: rgba(28, 24, 22, 0.98) !important; backdrop-filter: blur(15px);
+        box-shadow: none; border: none; position: fixed !important; 
+        top: 0; left: 0; right: 0; bottom: 0; width: 100vw !important; height: 100vh !important;
+        max-height: none !important; transform: none !important; z-index: 9999;
+        padding: 4rem 1.5rem 2rem 1.5rem !important; display: flex; flex-direction: column;
     }
 
-    /* 4. Fullscreen Sidebar Overlay (Both Sidebar Types) */
-    [data-theme='detective-noir'] .sidebar-panel,
-    [data-theme='detective-noir'] .elysium-sidebar {
-        /* Visuals: Solid dark glass to hide content behind */
-        background-color: rgba(28, 24, 22, 0.98) !important;
-        backdrop-filter: blur(15px);
-        box-shadow: none; 
-        border: none;
-        
-        /* Positioning: Fullscreen Fixed */
-        position: fixed !important; 
-        top: 0; left: 0; right: 0; bottom: 0;
-        width: 100vw !important; 
-        height: 100vh !important;
-        max-height: none !important;
-        transform: none !important;
-        z-index: 9999;
-        
-        /* Layout */
-        padding: 4rem 1.5rem 2rem 1.5rem !important; /* Top padding for Close Button */
-        display: flex;
-        flex-direction: column;
+    /* Force Colors on Mobile Sidebar */
+    [data-theme='detective-noir'] .sidebar-panel *, [data-theme='detective-noir'] .elysium-sidebar * {
+        color: #e0e0e0 !important; text-shadow: none !important;
     }
-
-    /* 5. FORCE Sidebar Text Colors (Global Reset) */
-    [data-theme='detective-noir'] .sidebar-panel,
-    [data-theme='detective-noir'] .elysium-sidebar,
-    [data-theme='detective-noir'] .sidebar-panel *,
-    [data-theme='detective-noir'] .elysium-sidebar * {
-        color: #e0e0e0 !important; /* Force light text everywhere */
-        text-shadow: none !important;
+    /* Exceptions: Action Box & Cards */
+    [data-theme='detective-noir'] .sidebar-panel .action-box, [data-theme='detective-noir'] .elysium-sidebar .action-box {
+        background-color: #e6e2d8 !important; border: 1px solid #8c857b !important;
+        margin: 1rem 0 2rem 0 !important;
     }
-
-    /* --- EXCEPTIONS --- */
+    [data-theme='detective-noir'] .sidebar-panel .action-box * { color: #111 !important; }
     
-    /* A. The Action Box (Beige Top Box) */
-    [data-theme='detective-noir'] .sidebar-panel .action-box,
-    [data-theme='detective-noir'] .elysium-sidebar .action-box {
-        background-color: #e6e2d8 !important; /* Light Paper */
-        border: 1px solid #8c857b !important;
-        margin-top: 1rem !important;
-        margin-bottom: 2rem !important;
-    }
-    
-    /* Force Dark Text INSIDE the Action Box (Overrides rule #5) */
-    [data-theme='detective-noir'] .sidebar-panel .action-box *,
-    [data-theme='detective-noir'] .elysium-sidebar .action-box * {
-        color: #111 !important; 
+    [data-theme='detective-noir'] .sidebar-panel .quality-category-card {
+        background-color: rgba(255, 255, 255, 0.1) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        transform: none !important; width: 100% !important;
     }
 
-    /* B. The Character Sheet Cards (Glassy Notes) */
-    [data-theme='detective-noir'] .sidebar-panel .quality-category-card,
-    [data-theme='detective-noir'] .elysium-sidebar .quality-category-card {
-        background-color: rgba(255, 255, 255, 0.1) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        transform: none !important; /* Remove rotation on mobile */
-        width: 100% !important;
-    }
-    
-    /* C. The Tab Bar */
-    [data-theme='detective-noir'] .sidebar-panel .tab-bar,
-    [data-theme='detective-noir'] .elysium-sidebar .tab-bar {
-        background-color: transparent !important;
-        border-bottom: 1px solid rgba(255,255,255,0.2) !important;
-        margin-bottom: 1rem !important;
-    }
-    [data-theme='detective-noir'] .sidebar-panel .tab-btn,
-    [data-theme='detective-noir'] .elysium-sidebar .tab-btn {
-        color: #aaa !important;
-    }
-    [data-theme='detective-noir'] .sidebar-panel .tab-btn.active,
-    [data-theme='detective-noir'] .elysium-sidebar .tab-btn.active {
-        color: #fff !important;
-        border-bottom: 2px solid var(--accent-highlight) !important;
-        background: transparent !important;
-        box-shadow: none !important;
-    }
-    /* Remove the red circle on mobile sidebar tabs */
-    [data-theme='detective-noir'] .sidebar-panel .tab-btn.active::before,
-    [data-theme='detective-noir'] .elysium-sidebar .tab-btn.active::before {
-        display: none !important;
-    }
-
-[data-theme='detective-noir'] .mobile-close-btn {
-        /* Visibility & Layout */
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        
-        /* Positioning (Pins to the screen) */
-        position: fixed !important; 
-        top: 1.5rem;
-        right: 1.5rem;
-        z-index: 10000 !important; /* Above the sidebar overlay */
-        
-        /* Visuals */
-        background-color: var(--accent-highlight) !important;
-        color: var(--bg-main) !important;
-        border: 2px solid rgba(255,255,255,0.2) !important;
-        border-radius: 50px;
-        padding: 0.8rem 1.2rem;
-        
-        font-size: 0.9rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        
-        cursor: pointer;
-        pointer-events: auto !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    /* Mobile Close Button */
+    [data-theme='detective-noir'] .mobile-close-btn {
+        display: flex !important; align-items: center; justify-content: center;
+        position: fixed !important; top: 1.5rem; right: 1.5rem; z-index: 10000 !important;
+        background-color: var(--accent-highlight) !important; color: var(--bg-main) !important;
+        border: 2px solid rgba(255,255,255,0.2) !important; border-radius: 50px;
+        padding: 0.8rem 1.2rem; font-size: 0.9rem; font-weight: 900;
+        cursor: pointer; pointer-events: auto !important;
     }
 }
-

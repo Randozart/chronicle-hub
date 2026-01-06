@@ -531,6 +531,19 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <option value="dark-parchment">Dark Parchment</option>
                             </select>
                         </div>
+                         {form.layoutStyle === 'nexus' && (
+                            <label className="toggle-label" style={{ marginTop: '5px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={form.nexusCenteredLayout || false} 
+                                    onChange={e => handleChange('nexusCenteredLayout', e.target.checked)} 
+                                />
+                                Center Layout (Narrower)
+                                <span className="special-desc" style={{ display: 'block', marginLeft: '1.5rem', marginTop: '0.2rem' }}>
+                                    Constrains layout width similar to the London layout.
+                                </span>
+                            </label>
+                        )}
                         <div className="form-group">
                             <label className="form-label">Location Header Style</label>
                             <select 

@@ -139,6 +139,7 @@ export interface WorldSettings {
     enableTitle?: boolean;
     titleQualityId?: string;
     layoutStyle: LayoutStyle;
+    nexusCenteredLayout?: boolean; 
     locationHeaderStyle?: 'standard' | 'banner' | 'hidden' | 'square' | 'circle' | 'title-card'; 
     showHeaderInStorylet?: boolean; 
     tabLocation?: 'main' | 'header' | 'sidebar';

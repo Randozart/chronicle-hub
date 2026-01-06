@@ -6,13 +6,53 @@
     flex: 1;
     overflow-y: auto;
     position: relative;
-    /* FIX 1: Restore the lost padding for desktop */
     padding: 3rem 4rem; 
 }
 .action-box { margin-bottom: 1rem; padding: 1rem; background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--border-radius); text-align: center; }
 
-/* Nexus: Fixed Left Sidebar + Fluid Content */
 .layout-grid-nexus { display: grid; grid-template-columns: 320px 1fr; height: 100vh; overflow: hidden; }
+
+.layout-grid-nexus.mode-centered {
+    max-width: 1500px;
+    width: 95%;
+    margin: 0 auto;
+
+    /* 1. Make the grid container itself transparent to reveal the theme's background */
+    background-color: transparent;
+
+    /* 2. The shadow is now cast by the container, giving the whole UI depth */
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+
+    /* 3. Define the wider sidebar column */
+    grid-template-columns: 400px 1fr;
+    
+    /* REMOVED border-left and border-right from here */
+}
+
+/* --- NEW RULES FOR CENTERED MODE PANELS --- */
+
+/* 4. Give the panels inside the centered layout their own solid background */
+.layout-grid-nexus.mode-centered .sidebar-panel,
+.layout-grid-nexus.mode-centered .content-area {
+    background-color: var(--bg-panel);
+}
+
+/* 5. Override the sidebar's fixed width to fill its new, wider grid column */
+.layout-grid-nexus.mode-centered .sidebar-panel {
+    width: auto;
+}
+
+
+/* Mobile responsive fix for centered mode (remains unchanged) */
+@media (max-width: 900px) {
+    .layout-grid-nexus.mode-centered {
+        display: block;
+        width: 100%;
+        border: none;
+        margin: 0;
+        box-shadow: none; /* No shadow needed on mobile */
+    }
+}
 
 /* Tabletop: Character | Visual | Story */
 /* .layout-grid-tabletop { display: grid; grid-template-columns: 280px minmax(300px, 35%) 1fr; height: 100vh; overflow: hidden; background-color: #121212; color: #ccc; } */
