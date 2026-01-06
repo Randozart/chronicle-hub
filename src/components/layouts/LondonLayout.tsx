@@ -14,7 +14,7 @@ interface LondonLayoutProps {
     onOpenMap: () => void;
     onOpenMarket: () => void;
     currentMarketId?: string;
-    isTransitioning?: boolean; // Added Prop
+    isTransitioning?: boolean;
 }
 
 export default function LondonLayout({ 
@@ -31,44 +31,40 @@ export default function LondonLayout({
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     return (
-        <div className="layout-column" style={{ height: '100vh' }}>
+        <div className="layout-column london-layout-container" style={{ height: '100vh' }}>
             
-            {/* --- BANNER --- */}
-            <div className="layout-banner">
-                <div className="banner-image-container">
-                    {/* GameImage handles its own cross-fade via key change */}
-                    <GameImage code={location.image} imageLibrary={imageLibrary} type="location" alt="" className="banner-bg-image" />
-                </div>
-                <div className="banner-gradient-overlay" />
-                
-                <div className="banner-top-controls">
-                    <button onClick={onExit} className="switch-char-btn-transparent">
-                        Switch Character
-                    </button>
-                </div>
 
-                <div className="banner-content">
-                    <h1 className="banner-title">{location.name}</h1>
+            <div className="content-area">
+                <div className="layout-banner">
+                    <div className="banner-image-container">
+                        <GameImage code={location.image} imageLibrary={imageLibrary} type="location" alt="" className="banner-bg-image" />
+                    </div>
+                    <div className="banner-gradient-overlay" />
                     
-                    <div className="banner-actions">
-                         {currentMarketId && (
-                            <button onClick={onOpenMarket} className="banner-btn-market">Market</button>
-                        )}
-                        <button onClick={onOpenMap} className="banner-btn-travel">Travel</button>
+                    <div className="banner-top-controls">
+                        <button onClick={onExit} className="switch-char-btn-transparent">
+                            Switch Character
+                        </button>
+                    </div>
+
+                    <div className="banner-content">
+                        <h1 className="banner-title">{location.name}</h1>
+                        
+                        <div className="banner-actions">
+                             {currentMarketId && (
+                                <button onClick={onOpenMarket} className="banner-btn-market">Market</button>
+                            )}
+                            <button onClick={onOpenMap} className="banner-btn-travel">Travel</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* --- MAIN AREA --- */}
-            <div className="content-area">
                 <div className="layout-main-grid">
-                    {/* Sidebar */}
                     <div className={`layout-sidebar-col layout-column ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
                         <div className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</div>
                         {sidebarContent}
                     </div>
                     
-                    {/* Content - Fades Out */}
                     <div 
                         className="layout-content-col layout-column"
                         style={{ 

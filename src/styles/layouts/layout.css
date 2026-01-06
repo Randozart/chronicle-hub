@@ -17,45 +17,34 @@
     width: 95%;
     margin: 0 auto;
 
-    /* 1. Make the grid container itself transparent to reveal the theme's background */
     background-color: transparent;
 
-    /* 2. The shadow is now cast by the container, giving the whole UI depth */
     box-shadow: 0 0 40px rgba(0,0,0,0.5);
 
-    /* 3. Define the wider sidebar column */
     grid-template-columns: 400px 1fr;
     
-    /* REMOVED border-left and border-right from here */
 }
 
-/* --- NEW RULES FOR CENTERED MODE PANELS --- */
 
-/* 4. Give the panels inside the centered layout their own solid background */
 .layout-grid-nexus.mode-centered .sidebar-panel,
 .layout-grid-nexus.mode-centered .content-area {
     background-color: var(--bg-panel);
 }
 
-/* 5. Override the sidebar's fixed width to fill its new, wider grid column */
 .layout-grid-nexus.mode-centered .sidebar-panel {
     width: auto;
 }
 
-
-/* Mobile responsive fix for centered mode (remains unchanged) */
 @media (max-width: 900px) {
     .layout-grid-nexus.mode-centered {
         display: block;
         width: 100%;
         border: none;
         margin: 0;
-        box-shadow: none; /* No shadow needed on mobile */
+        box-shadow: none;
     }
 }
 
-/* Tabletop: Character | Visual | Story */
-/* .layout-grid-tabletop { display: grid; grid-template-columns: 280px minmax(300px, 35%) 1fr; height: 100vh; overflow: hidden; background-color: #121212; color: #ccc; } */
 .tabletop-visual-col { position: relative; overflow: hidden; border-right: 1px solid #333; background: #000; box-shadow: inset 0 0 50px rgba(0,0,0,0.8); z-index: 1; }
 .tabletop-visual-overlay { position: absolute; inset: 0; background: radial-gradient(circle, transparent 40%, #000 120%); pointer-events: none; }
 
@@ -64,7 +53,6 @@
 .sidebar-column { width: 280px; }
 .main-content-column > .storylet-container { width: 100%; max-width: 800px; margin: 0 auto; }
 
-/* --- TABLETOP LAYOUT SPECIFICS --- */
 .visual-parallax-layer {
     position: absolute;
     top: -20px; bottom: -20px; left: -20px; right: -20px;
@@ -104,10 +92,9 @@
     letter-spacing: 1px;
 }
 
-/* --- LONDON / CINEMATIC LAYOUT SPECIFICS --- */
 .layout-banner {
     position: relative;
-    height: 300px; /* Taller banner */
+    height: 300px; 
     flex-shrink: 0;
     overflow: hidden;
     border-bottom: 1px solid var(--border-color);
@@ -204,7 +191,6 @@
     gap: 2rem;
 }
 
-/* --- DASHBOARD HEADER --- */
 .dashboard-header {
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border-color);
@@ -212,7 +198,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap; /* Allow wrapping on mobile */
+    flex-wrap: wrap; 
     gap: 1rem;
 }
 
@@ -267,7 +253,6 @@
 .logout-btn:hover { background: #333; color: white; }
 .login-link { color: var(--accent-highlight); text-decoration: none; font-weight: bold; }
 
-/* --- DASHBOARD CONTENT --- */
 .dashboard-content {
     flex: 1;
     padding: 3rem;
@@ -313,10 +298,8 @@
 
 .deck-button.compact { padding: 0.5rem 1rem; font-size: 0.9rem; }
 
-/* --- RESPONSIVE GRID --- */
 .dashboard-grid {
     display: grid;
-    /* Smart grid that fits 350px cards if possible, but shrinks to 100% on mobile */
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 2rem;
 }
@@ -339,29 +322,26 @@
 }
 
 .location-wrapper.mode-banner {
-    display: grid; /* Stack image and content */
+    display: grid; 
     grid-template-areas: "stack"; 
     
     width: 100%;
-    max-width: 1000px; /* Or your preferred max width */
-    margin: 0 auto 1.5rem auto; /* WAS: 3rem. Halves the gap below. */
+    /* max-width: 1000px; */
+    margin: 0 auto 1.5rem auto; 
     
     border: 4px solid var(--border-color);
     box-shadow: 0 10px 20px rgba(0,0,0,0.4);
-    background: var(--bg-item); /* Fallback bg */
-    overflow: hidden; /* CRITICAL: Clips the image */
+    background: var(--bg-item); 
+    overflow: hidden; 
     position: relative;
 }
 
-/* 1. The Background Image Layer */
 .banner-bg-layer {
     grid-area: stack;
     position: relative;
     width: 100%;
     
-    /* FIX: Force aspect ratio for consistent height */
-    /* aspect-ratio: 16 / 5;  */
-        height: 200px;
+    height: 200px;
 
     z-index: 0;
 }
@@ -371,22 +351,18 @@
     height: 100%;
     display: block;
     
-    /* FIX: This is the magic. It zooms and centers the image. */
     object-fit: cover; 
     
-    /* Optional: Control where it crops from (e.g., center, top) */
     object-position: center 25%;
     
-    /* Visual Filters */
     mask-image: linear-gradient(to top, transparent 0%, black 100%);
     -webkit-mask-image: linear-gradient(to top, transparent 0%, black 100%);
     filter: brightness(0.8) sepia(0.1);
 }
 
-/* 2. The Header Content (Floats on Top) */
 .location-wrapper.mode-banner .location-header {
     grid-area: stack; 
-    align-self: end; /* Sits at the bottom of the banner */
+    align-self: end;
     
     position: relative;
     z-index: 1;
@@ -395,7 +371,6 @@
     padding: 1rem 2rem;
     box-sizing: border-box; 
     
-    /* Make the container transparent so the image shows through */
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -403,18 +378,15 @@
     text-shadow: 0 2px 5px rgba(0,0,0,0.9);
 }
 
-/* Hide the icon inside the floating header, it's redundant */
 .location-wrapper.mode-banner .location-image-container {
     display: none !important;
 }
 
-/* Ensure text is readable */
 .location-wrapper.mode-banner .location-text h1,
 .location-wrapper.mode-banner .location-text h2 {
     color: #fff !important;
 }
 
-/* --- MOBILE BREAKPOINT --- */
 @media (max-width: 768px) {
     .dashboard-header {
         flex-direction: column;
@@ -432,14 +404,14 @@
         width: 100%;
     }
 
-    .user-email { display: none; } /* Hide email on mobile to save space */
+    .user-email { display: none; }
     
     .dashboard-content {
         padding: 1.5rem 1rem;
     }
     
     .dashboard-grid {
-        grid-template-columns: 1fr; /* Full width cards on mobile */
+        grid-template-columns: 1fr; 
         gap: 1.5rem;
     }
     
@@ -472,5 +444,13 @@
     .content-area {
         padding: 1.5rem;
     }
+}
+
+.london-layout-container .content-area {
+    padding: 0;
+}
+
+.london-layout-container .layout-main-grid {
+    padding: 3rem 4rem; 
 }
 

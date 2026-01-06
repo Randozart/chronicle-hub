@@ -271,11 +271,11 @@ export default function GameHub(props: GameHubProps) {
     );
 
     // --- CONTENT BUILDERS ---
+    const sidebarTab = props.settings.tabLocation === 'sidebar';
 
     const buildSidebar = () => {
-        const isBlackCrown = props.settings.visualTheme === 'black-crown';
         
-        if (isBlackCrown) {
+        if (sidebarTab) {
             return (
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div className="sidebar-content-scroll">
@@ -476,13 +476,20 @@ export default function GameHub(props: GameHubProps) {
                 </div>
             );
         }
-
-        return (
-            <div className="main-content-wrapper">
-                <div className="tab-container" style={{ marginBottom: '2rem' }}><TabBar /></div>
-                {innerContent}
-            </div>
-        );
+        if (!sidebarTab) {
+            return (
+                <div className="main-content-wrapper">
+                    <div className="tab-container" style={{ marginBottom: '2rem' }}><TabBar /></div>
+                    {innerContent}
+                </div>
+            );
+        } else {
+            return (
+                <div className="main-content-wrapper">
+                    {innerContent}
+                </div>
+            );
+        }
     };
 
     const renderLayout = () => {
@@ -506,8 +513,7 @@ export default function GameHub(props: GameHubProps) {
             default: return <NexusLayout {...layoutProps} />;
         }
     };
-
-    return (
+    return ( 
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             {renderLayout()}
             {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}

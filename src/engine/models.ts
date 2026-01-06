@@ -173,11 +173,42 @@ export interface LocationDefinition {
     visibleCondition?: string; 
     marketId?: string; 
 }
-export interface ImageDefinition { id: string; url: string; alt?: string; category?: ImageCategory; size?: number; focus?: { x: number; y: number }; }
-export interface CategoryDefinition { id: string; name?: string; color?: string; description?: string; }
-export interface ShopListing { id: string; qualityId: string; price: string; currencyId?: string; description?: string; visible_if?: string; unlock_if?: string; }
-export interface ShopStall { id: string; name: string; mode: 'buy' | 'sell'; source?: string; listings: ShopListing[]; }
-export interface MarketDefinition { id: string; name: string; image?: string; defaultCurrencyId: string; allowAllTypes?: boolean; stalls: ShopStall[]; }
+export interface ImageDefinition { 
+    id: string; 
+    url: string; 
+    alt?: string; 
+    category?: ImageCategory; 
+    size?: number; 
+    focus?: { x: number; y: number }; 
+}
+export interface CategoryDefinition { id: string; 
+    name?: string; 
+    color?: string; 
+    description?: string; 
+}
+export interface ShopListing { 
+    id: string; 
+    qualityId: string; 
+    price: string; 
+    currencyId?: string; 
+    description?: string; 
+    visible_if?: string; 
+    unlock_if?: string; 
+}
+export interface ShopStall { id: string; 
+    name: string; 
+    mode: 'buy' | 'sell'; 
+    source?: string; 
+    listings: ShopListing[]; 
+}
+export interface MarketDefinition { 
+    id: string; 
+    name: string; 
+    image?: string; 
+    defaultCurrencyId: string; 
+    allowAllTypes?: boolean; 
+    stalls: ShopStall[]; 
+}
 
 export interface WorldConfig {
     qualities: Record<string, QualityDefinition>;

@@ -102,15 +102,24 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     }
                 }
 
-                setForm(prev => ({ 
-                    ...prev, 
-                    ...sData,
-                    characterSheetCategories: sData.characterSheetCategories || [],
-                    equipCategories: sData.equipCategories || [],
-                    currencyQualities: sData.currencyQualities || [],
-                    char_create: normalizedCharCreate,
-                    challengeConfig: sData.challengeConfig || {}
-                }));
+                setForm(prev => {
+                    const newFormState = { 
+                        ...prev, 
+                        ...sData,
+                        characterSheetCategories: sData.characterSheetCategories || [],
+                        equipCategories: sData.equipCategories || [],
+                        currencyQualities: sData.currencyQualities || [],
+                        char_create: normalizedCharCreate,
+                        challengeConfig: sData.challengeConfig || {}
+                    };
+
+                    if (newFormState.visualTheme === 'black-crown') {
+                        newFormState.tabLocation = 'sidebar';
+                    }
+
+                    return newFormState;
+                });
+
             } catch (e) {
                 console.error("Failed to load settings", e);
             } finally {
@@ -529,6 +538,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 <option value="bayou">Bayou</option>
                                 <option value="starship">Starship</option>
                                 <option value="dark-parchment">Dark Parchment</option>
+                                <option value="black-crown">Paranoid Archive</option>
                             </select>
                         </div>
                          {form.layoutStyle === 'nexus' && (
@@ -607,6 +617,26 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         </label>
                         <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
                             When enabled, the location header/banner will appear above the storylet text.
+                        </p>
+                        <label 
+                            className="toggle-label" 
+                            style={{ 
+                                marginTop: '1rem', 
+                                opacity: form.visualTheme === 'black-crown' ? 0.6 : 1, // Visually fade the control when disabled
+                                cursor: form.visualTheme === 'black-crown' ? 'not-allowed' : 'pointer' // Change cursor
+                            }}
+                            title={form.visualTheme === 'black-crown' ? "This setting is required by the Black Crown theme." : ""} // Add a helpful tooltip
+                        >
+                            <input 
+                                type="checkbox" 
+                                checked={form.tabLocation === 'sidebar'} 
+                                onChange={e => handleChange('tabLocation', e.target.checked ? 'sidebar' : 'main')} 
+                                disabled={form.visualTheme === 'black-crown'} // --- THIS IS THE KEY CHANGE ---
+                            /> 
+                            Move Tabs to Sidebar
+                        </label>
+                        <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
+                            When enabled, the "Story, Possessions, Myself" tabs will be moved to the top of the sidebar.
                         </p>
 
                         <label className="toggle-label">
