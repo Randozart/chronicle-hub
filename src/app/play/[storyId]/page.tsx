@@ -32,8 +32,8 @@ export default async function PlayPage({ params, searchParams }: Props) {
     const gameData = await getContent(storyId);
     if (!gameData) return <div>Story not found.</div>;
 
-    // 2. Fetch Storylets
-    const storylets = await getStorylets(storyId);
+    // 2. Fetch All Events (Storylets + Opportunities)
+    const allContent = await getStorylets(storyId);
 
     // 3. Fetch Characters
     const availableCharacters = await getCharactersList(userId, storyId);
@@ -41,7 +41,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
     // Determine active character
     let character = null;
     let initialLocation = null;
-    let initialHand: any[] = [];
+    let initialHand: Opportunity[] = [];
     let activeEvent = null;
 
     if (resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
@@ -54,17 +54,23 @@ export default async function PlayPage({ params, searchParams }: Props) {
         const locDef = gameData.locations[character.currentLocationId];
         initialLocation = locDef || null;
 
-        if (initialLocation && initialLocation.deck) {
-            const handIds = character.opportunityHands?.[initialLocation.deck] || [];
+        // --- FIX: AGGREGATE CARDS FROM ALL DECKS ---
+        // The character might have cards in "deck_a" and "deck_b". 
+        // We collect ALL of them here. GameHub will filter them visually based on the location.
+        if (character.opportunityHands) {
+            const allCardIds = Object.values(character.opportunityHands).flat();
             
-            initialHand = handIds.map(id => 
-                storylets.find(s => s.id === id) as Opportunity
-            ).filter(Boolean);
+            initialHand = allCardIds.map(id => {
+                const def = allContent.find(s => s.id === id);
+                return def as Opportunity;
+            }).filter((item): item is Opportunity => !!item);
         }
         
+        // Active Event Hydration
         if (character.currentStoryletId) {
-             const evt = await getAutofireStorylets(storyId).then(list => list.find(s => s.id === character.currentStoryletId)) 
-                 || storylets.find(s => s.id === character.currentStoryletId);
+             const autofires = await getAutofireStorylets(storyId);
+             const evt = autofires.find(s => s.id === character.currentStoryletId) 
+                 || allContent.find(s => s.id === character.currentStoryletId);
              
              if (evt) activeEvent = evt;
         }
@@ -83,7 +89,13 @@ export default async function PlayPage({ params, searchParams }: Props) {
     const safeLocation = serialize(initialLocation);
     const safeHand = serialize(initialHand);
     const safeActiveEvent = serialize(activeEvent);
-    const safeStorylets = serialize(storylets);
+    
+    // Create Lookup Maps to avoid passing huge arrays if possible, or just pass the array
+    const storyletMap = allContent.reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {});
+    const opportunityMap = allContent
+        .filter((s: any) => 'deck' in s)
+        .reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {});
+
     const safeAvailableChars = serialize(availableCharacters);
 
     return (
@@ -96,14 +108,14 @@ export default async function PlayPage({ params, searchParams }: Props) {
             
             qualityDefs={serialize(mergedQualityDefs)} 
             
-            storyletDefs={safeStorylets.reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {})}
-            opportunityDefs={safeStorylets.filter((s: Storylet | Opportunity) => 'deck' in s).reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {})}
+            storyletDefs={storyletMap}
+            opportunityDefs={opportunityMap}
             deckDefs={serialize(gameData.decks)}
             
             settings={serialize(gameData.settings)}
             locations={serialize(gameData.locations)}
             regions={serialize(gameData.regions)}
-            locationStorylets={safeStorylets.filter((s: Storylet | Opportunity) => 'location' in s && s.location) as Storylet[]} 
+            locationStorylets={serialize(allContent.filter((s: any) => 'location' in s && s.location))} 
             
             imageLibrary={serialize(gameData.images)}
             categories={serialize(gameData.categories || {})}

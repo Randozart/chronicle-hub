@@ -31,7 +31,6 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
     if (!worldDoc || !worldDoc.content) throw new Error(`World ${worldId} not found`);
 
     return {
-        // Use the helper here:
         qualities: injectIds(worldDoc.content.qualities),
         locations: injectIds(worldDoc.content.locations),
         decks: injectIds(worldDoc.content.decks),
@@ -46,9 +45,9 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
     };
 });
 
-// Alias for backward compatibility (renaming it helps migration)
+// Alias for backward compatibility
 export const getContent = getWorldConfig; 
-export const getWorldContent = getWorldConfig; // Satisfies 'characterService' imports
+export const getWorldContent = getWorldConfig; 
 
 export const getSettings = async (worldId: string): Promise<WorldSettings> => {
     const config = await getWorldConfig(worldId);
@@ -60,10 +59,11 @@ export const getEvent = async (worldId: string, eventId: string): Promise<Storyl
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // Cast to unknown first to fix the "overlap" error
+    // Try Storylets first
     const storylet = await db.collection('storylets').findOne({ worldId, id: eventId });
     if (storylet) return storylet as unknown as Storylet;
 
+    // Then Opportunities
     const opportunity = await db.collection('opportunities').findOne({ worldId, id: eventId });
     if (opportunity) return opportunity as unknown as Opportunity;
 
@@ -82,14 +82,15 @@ export const getLocationStorylets = async (worldId: string, locationId: string):
 export const getAutofireStorylets = async (worldId: string): Promise<Storylet[]> => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+    // Autofires can technically be opportunities too if forced, but usually storylets
     const docs = await db.collection('storylets').find(
         { worldId, autofire_if: { $exists: true, $ne: null } },
-        { projection: { id: 1, autofire_if: 1 } }
+        { projection: { id: 1, autofire_if: 1, urgency: 1, location: 1 } }
     ).toArray();
     return docs as unknown as Storylet[];
 };
 
-// 5. Fetch Cards for a specific Deck
+// 5. Fetch Cards for a specific Deck (Direct DB access if needed)
 export const getOpportunitiesForDeck = async (worldId: string, deckId: string): Promise<Opportunity[]> => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
@@ -106,9 +107,10 @@ const injectIds = <T>(dict: Record<string, T> | undefined): Record<string, T> =>
     return newDict;
 };
 
+// 6. Update Configuration
 export const updateWorldConfigItem = async (
     worldId: string, 
-    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings' | 'char_create' | 'categories' | 'root' | 'instruments' | 'music', 
+    category: 'qualities' | 'locations' | 'decks' | 'images' | 'settings' | 'char_create' | 'categories' | 'root' | 'regions' | 'markets' | 'instruments' | 'music', 
     itemId: string, 
     data: any
 ): Promise<boolean> => {
@@ -116,10 +118,7 @@ export const updateWorldConfigItem = async (
     const db = client.db(DB_NAME);
 
     // 1. Handle Settings (Top level, no ID)
-    console.log(`[Config] Updating ${category} for ${worldId}`);
-    
     if (category === 'root') {
-        // itemId is the field name (e.g., "published")
         const result = await db.collection('worlds').updateOne(
             { worldId },
             { $set: { [itemId]: data } }
@@ -132,21 +131,18 @@ export const updateWorldConfigItem = async (
             { worldId },
             { $set: { settings: data } }
         );
-        console.log(`[Config] Match: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
         return result.acknowledged;
     }
 
     if (category === 'char_create') {
         const result = await db.collection('worlds').updateOne(
             { worldId },
-            { $set: { "content.char_create": data } } // Note: content.char_create path
+            { $set: { "content.char_create": data } }
         );
         return result.acknowledged;
     }
 
-    // 2. Handle Collections (Qualities, Locations, etc.)
-    // We use dot notation to target the specific key: "content.qualities.my_quality_id"
-    // WARNING: itemId cannot contain dots (.) or start with $. Ensure validation in UI.
+    // 2. Handle Collections
     const path = `content.${category}.${itemId}`;
 
     const result = await db.collection('worlds').updateOne(
@@ -160,14 +156,13 @@ export const updateWorldConfigItem = async (
 // Helper to DELETE an item
 export const deleteWorldConfigItem = async (
     worldId: string, 
-    category: 'qualities' | 'locations' | 'decks' | 'images', 
+    category: 'qualities' | 'locations' | 'decks' | 'images' | 'regions' | 'markets', 
     itemId: string
 ): Promise<boolean> => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const path = `content.${category}.${itemId}`;
 
-    // $unset removes the key entirely
     const result = await db.collection('worlds').updateOne(
         { worldId },
         { $unset: { [path]: "" } }

@@ -1,9 +1,8 @@
 import { CharacterDocument, DeckDefinition, WorldConfig, Opportunity } from './models';
 import { GameEngine } from './gameEngine';
+// We use require here to avoid circular dependency issues with contentCache if it imports models
+const { getStorylets } = require('@/engine/contentCache');
 
-/**
- * Regenerates deck charges based on time passed.
- */
 export const regenerateDeckCharges = (
     character: CharacterDocument, 
     deckDef: DeckDefinition, 
@@ -13,18 +12,17 @@ export const regenerateDeckCharges = (
     if (!deckDef.timer) return character;
 
     const deckId = deckDef.id;
-    // Create temp engine for logic evaluation
     const tempEngine = new GameEngine(character.qualities, gameData, character.equipment);
     
-    // 1. Resolve Deck Size (Cap)
+    // 1. Resolve Deck Size
     const deckSizeStr = tempEngine.evaluateText(`{${deckDef.deck_size || '0'}}`);
-    const deckSize = parseInt(deckSizeStr, 10);
+    const deckSize = parseInt(deckSizeStr, 10); // 0 = Unlimited
 
+    // If deck is unlimited, we don't need to regen charges
     if (isNaN(deckSize) || deckSize <= 0) return character;
     
     // 2. Resolve Timer
     let timerValue = 0;
-
     if (deckDef.timer === 'sync_actions') {
         timerValue = Number(gameData.settings.regenIntervalInMinutes) || 10;
     } else {
@@ -34,16 +32,24 @@ export const regenerateDeckCharges = (
 
     if (isNaN(timerValue) || timerValue <= 0) return character;
 
-    // Initialize state if missing
+    // Init state
     if (!character.deckCharges) character.deckCharges = {};
+    // If undefined, default to FULL deck (new deck logic)
     if (character.deckCharges[deckId] === undefined) character.deckCharges[deckId] = deckSize; 
     if (!character.lastDeckUpdate) character.lastDeckUpdate = {};
 
-    // 3. Calculate Regeneration
-    const lastUpdate = character.lastDeckUpdate[deckId] ? new Date(character.lastDeckUpdate[deckId]) : new Date(0);
+    // 3. Calculate Regen
+    const lastUpdate = character.lastDeckUpdate[deckId] ? new Date(character.lastDeckUpdate[deckId]) : new Date();
     const now = new Date();
 
     const minutesPassed = (now.getTime() - lastUpdate.getTime()) / (1000 * 60);
+    
+    // Logic check: if minutesPassed is negative or insanely high, reset
+    if (minutesPassed < 0) {
+        character.lastDeckUpdate[deckId] = now;
+        return character;
+    }
+
     const chargesEarned = Math.floor(minutesPassed / timerValue);
 
     if (chargesEarned > 0) {
@@ -57,9 +63,6 @@ export const regenerateDeckCharges = (
     return character;
 };
 
-/**
- * Draws a card from the specified deck into the character's hand.
- */
 export const drawCards = async (
     character: CharacterDocument,
     deckId: string,
@@ -67,10 +70,28 @@ export const drawCards = async (
 ): Promise<CharacterDocument> => {
     
     const deckDef = gameData.decks[deckId];
-    if (!deckDef) throw new Error("Deck definition not found.");
+    if (!deckDef) throw new Error(`Deck definition '${deckId}' not found.`);
 
-    // 1. Init Engine
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
+
+    // 1. Consume Charge (if finite)
+    const deckSizeStr = engine.evaluateText(`{${deckDef.deck_size || '0'}}`);
+    const deckSize = parseInt(deckSizeStr, 10); // 0 = Unlimited
+
+    if (deckSize > 0) {
+        const currentCharges = character.deckCharges?.[deckId] ?? 0;
+        if (currentCharges <= 0) throw new Error("Deck is empty (no charges).");
+        
+        // Decrement charge
+        if (!character.deckCharges) character.deckCharges = {};
+        character.deckCharges[deckId] = currentCharges - 1;
+        
+        // If we were at full cap, start the timer now
+        if (currentCharges === deckSize) {
+            if (!character.lastDeckUpdate) character.lastDeckUpdate = {};
+            character.lastDeckUpdate[deckId] = new Date();
+        }
+    }
 
     // 2. Check Hand Size
     const handSizeStr = engine.evaluateText(`{${deckDef.hand_size || 3}}`);
@@ -84,44 +105,37 @@ export const drawCards = async (
     }
 
     // 3. Filter Candidates
-    // Note: In a real database, this would be a query. Here we filter in memory (cached content).
-    // Candidates must: Belong to deck, Match criteria, Not be in hand (usually)
-    // IMPORTANT: We filter opportunities from the "storylets" logic, which are stored as Opportunities in `gameData.storylets`?
-    // Actually, `gameData` (WorldConfig) usually doesn't contain the raw list of opportunities in the type definition provided earlier.
-    // However, usually `getContent` returns them in a different way or we access them via `location`.
-    // *Assumption*: You have a way to access all opportunities. For now, we'll assume they are not in WorldConfig directly 
-    // but fetched. Since this function is sync/async and we have `gameData`...
-    // *Correction based on typical patterns*: `getContent` usually aggregates data. 
-    // If opportunities aren't in `gameData`, we might need to fetch them. 
-    // BUT, usually `drawCards` is called from a Route that has access. 
-    // Let's assume `gameData` implies access to content. 
-    // If `WorldConfig` doesn't have `opportunities`, we'll need to fetch them.
-    // To solve the "Cannot find name" error cleanly, I will assume we fetch them via a helper or pass them in.
-    // For this fix, I will mock the fetch from `getLocation` or assume passed. 
-    // *Actually, looking at your ContentCache, `getStorylets` returns everything.*
-    // I will import `getStorylets` here to be safe.
-    
-    const { getStorylets } = require('@/engine/contentCache'); 
     const allContent = await getStorylets(character.storyId);
     
     const candidates = allContent.filter((op: any) => {
+        // Must match Deck ID exactly
         if (!('deck' in op) || op.deck !== deckId) return false;
-        if (currentHand.includes(op.id)) return false; // Unique cards in hand
         
-        // Check Logic
-        if (op.draw_condition && !engine.evaluateCondition(op.draw_condition)) return false;
+        // Must not be in hand already
+        if (currentHand.includes(op.id)) return false; 
+        
+        // Must meet draw conditions
+        if (op.draw_condition) {
+            const meetsCondition = engine.evaluateCondition(op.draw_condition);
+            if (!meetsCondition) {
+                // console.log(`[Deck] Skipping ${op.id}: Condition '${op.draw_condition}' failed.`);
+                return false;
+            }
+        }
         
         return true;
     }) as Opportunity[];
 
+    console.log(`[Deck] Drawing from '${deckId}'. Found ${candidates.length} eligible cards.`);
+
     if (candidates.length === 0) {
-        throw new Error("No cards available.");
+        throw new Error("No eligible cards available in this deck.");
     }
 
     // 4. Weighted Random
     const weightedCandidates: Opportunity[] = [];
     const weights: Record<string, number> = {
-        "Always": 1000, // Should probably force draw, but for now high weight
+        "Always": 1000, 
         "Frequent": 20,
         "Standard": 10,
         "Infrequent": 5,
@@ -129,7 +143,7 @@ export const drawCards = async (
     };
 
     candidates.forEach(op => {
-        const w = weights[op.frequency] || 10;
+        const w = weights[op.frequency || "Standard"] || 10;
         for(let i=0; i<w; i++) weightedCandidates.push(op);
     });
 

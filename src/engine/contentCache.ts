@@ -12,14 +12,22 @@ const getCachedWorld = unstable_cache(
     { revalidate: 3600, tags: ['world'] }
 );
 
+// FIX: Fetch BOTH storylets and opportunities
 const getCachedStorylets = unstable_cache(
     async (storyId: string): Promise<(Storylet | Opportunity)[]> => {
         try {
             const client = await clientPromise;
             const db = client.db(DB_NAME);
-            const events = await db.collection('storylets').find({ worldId: storyId }).toArray();
             
-            return events.map(e => ({
+            // Parallel fetch for speed
+            const [storylets, opportunities] = await Promise.all([
+                db.collection('storylets').find({ worldId: storyId }).toArray(),
+                db.collection('opportunities').find({ worldId: storyId }).toArray()
+            ]);
+            
+            const allEvents = [...storylets, ...opportunities];
+
+            return allEvents.map(e => ({
                 ...e, 
                 _id: e._id.toString()
             })) as unknown as (Storylet | Opportunity)[]; 
@@ -38,6 +46,7 @@ export const getSettings = async (storyId: string) => {
     return data.settings;
 };
 
+// Now returns both Storylets AND Opportunities
 export const getStorylets = async (storyId: string) => {
     return getCachedStorylets(storyId);
 };

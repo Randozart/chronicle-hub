@@ -1,4 +1,3 @@
-// src/components/OpportunityHand.tsx
 'use client';
 
 import { Opportunity, PlayerQualities, QualityDefinition, ImageDefinition, CharacterDocument, DeckDefinition, WorldSettings } from "@/engine/models";
@@ -28,13 +27,19 @@ export default function OpportunityHand({
 }: OpportunityHandProps) {
     
     const deckDef = deckDefs[locationDeckId];
-    const deckSize = currentDeckStats?.deckSize ?? 0;
+    // Default to unlimited if undefined
+    const deckSize = currentDeckStats?.deckSize ?? 0; 
     const handSize = currentDeckStats?.handSize ?? 3;
-    const currentCharges = character.deckCharges?.[locationDeckId] ?? 0;
+    
+    const currentCharges = character.deckCharges?.[locationDeckId] ?? deckSize; // Default to full if unknown
     const lastUpdate = character.lastDeckUpdate?.[locationDeckId] || new Date();
     
     const isHandFull = hand.length >= handSize;
-    const isEmpty = deckSize > 0 && currentCharges <= 0;
+    
+    // Fix: Only empty if DeckSize is POSITIVE (finite) AND charges are 0.
+    const isFinite = deckSize > 0;
+    const isEmpty = isFinite && currentCharges <= 0;
+    
     const isDisabled = isLoading || isHandFull || isEmpty;
     
     let buttonText = "Draw a Card";
@@ -42,14 +47,7 @@ export default function OpportunityHand({
     else if (isHandFull) buttonText = `Hand Full (${hand.length}/${handSize})`;
     else if (isEmpty) buttonText = "Deck Empty";
 
-    // --- NEW: DISCARD HANDLER ---
-    // We need an API route for this, but for now let's assume we pass a handler or 
-    // we can just use onCardClick with a special flag? 
-    // Actually, we don't have a prop for onDiscard. 
-    // We should probably add one to LayoutProps, but to fix it right now without touching parents:
-    // We can allow clicking the 'X' to trigger a discard via a separate fetch here.
-    
-     const handleDiscard = async (cardId: string, e: React.MouseEvent) => {
+    const handleDiscard = async (cardId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm("Discard this card?")) return;
         
@@ -58,8 +56,7 @@ export default function OpportunityHand({
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    storyId: character.storyId, // You might need to pass storyId prop or get from context. 
-                                               // Actually, 'character' has storyId.
+                    storyId: character.storyId, 
                     characterId: character.characterId, 
                     cardId, 
                     deckId: locationDeckId 
@@ -67,7 +64,6 @@ export default function OpportunityHand({
             });
             
             if (res.ok) {
-                // Optimistically remove from UI or reload
                 window.location.reload(); 
             } else {
                 console.error("Failed to discard");
@@ -80,11 +76,18 @@ export default function OpportunityHand({
     return (
         <div className="opportunity-hand">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline'}}>
-                {deckDef && deckSize > 0 && (
+                {deckDef && isFinite && (
                     <div style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)' }}>
                         <span style={{ fontWeight: 'bold' }}>{currentCharges}</span> / {deckSize} Cards
                         {currentCharges < deckSize && (
-                            <DeckTimer deck={deckDef} settings={settings} lastUpdate={lastUpdate} currentCharges={currentCharges} maxCharges={deckSize} onRegen={() => window.location.reload()} />
+                            <DeckTimer 
+                                deck={deckDef} 
+                                settings={settings} 
+                                lastUpdate={lastUpdate} 
+                                currentCharges={currentCharges} 
+                                maxCharges={deckSize} 
+                                onRegen={() => window.location.reload()} 
+                            />
                         )}
                     </div>
                 )}
@@ -92,12 +95,9 @@ export default function OpportunityHand({
             <div className="card-container">
                 {hand.length > 0 ? (
                     hand.map(card => {
-                        // CHECK TRANSIENCE
-                        // If card is transient (keep_if_invalid is false/undefined) AND logic fails, hide/disable it
                         const isValid = evaluateCondition(card.draw_condition, qualities, qualityDefs, null, 0);
                         const isTransient = !card.keep_if_invalid;
                         
-                        // If it's transient and invalid, we shouldn't show it (or show it as dissolving)
                         if (isTransient && !isValid) return null; 
 
                         return (
@@ -125,7 +125,7 @@ export default function OpportunityHand({
                                             border: '1px solid #aaa', borderRadius: '50%',
                                             width: '24px', height: '24px', cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '0.8rem'
+                                            fontSize: '0.8rem', zIndex: 10
                                         }}
                                         title="Discard"
                                     >
