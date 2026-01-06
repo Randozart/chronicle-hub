@@ -3,7 +3,7 @@ import { PlayerQualities, QualityDefinition, WorldSettings, QualityType, Categor
 import { useMemo } from "react"; 
 import { evaluateText } from "@/engine/textProcessor"; 
 import { GameEngine } from "@/engine/gameEngine";
-import FormattedText from "./FormattedText"; // Import the FormattedText component
+import FormattedText from "./FormattedText"; 
 
 interface CharacterSheetProps {
     qualities: PlayerQualities; // RAW State
@@ -32,15 +32,13 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             const definition = qualityDefs[qid];
             if (!definition) return null;
 
-            // --- FIX: STRICT FILTERING LOGIC ---
-
             // 1. Check Category
             const cats = (definition.category ?? "").split(",").map(s => s.trim());
             const isInSidebarCategory = categoriesToDisplay.length > 0 && categoriesToDisplay.some(c => cats.includes(c));
             if (!isInSidebarCategory) return null;
 
             // 2. Check Hidden Tag
-            // FIX: Pass a valid object to render and ensure type safety
+            // We pass the ID to render so checks against `$.level` work if used in tags (rare but possible)
             const renderedObject = engine.render({ id: qid, tags: definition.tags || [] });
             const renderedTags = Array.isArray(renderedObject.tags) ? renderedObject.tags : [];
             if (renderedTags.includes('hidden')) return null;
@@ -53,11 +51,9 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             // 4. Hide if no value
             if (effectiveLevel <= 0 && definition.type !== QualityType.String) return null;
             
-            // ------------------------------------
-
             const mergedState = state || { qualityId: qid, type: definition.type };
 
-            return { ...definition, ...mergedState, baseLevel, effectiveLevel };
+            return { ...definition, ...mergedState, baseLevel, effectiveLevel, tags: renderedTags };
         })
         .filter(Boolean as any);
     }, [qualities, equipment, qualityDefs, categoriesToDisplay, engine]);
@@ -83,23 +79,30 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
 
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
                     
-                    let displayValue: React.ReactNode = q.baseLevel;
+                    // --- NEW LOGIC: HIDE LEVEL ---
+                    const hideLevel = q.tags?.includes('hide_level');
+
+                    let displayValue: React.ReactNode = null;
                     let subText: React.ReactNode = null;
 
-                    if (bonusDiff !== 0) {
-                        const sign = bonusDiff > 0 ? '+' : '';
-                        const colorVar = bonusDiff > 0 ? 'var(--success-color)' : 'var(--danger-color)';
+                    if (!hideLevel) {
+                        displayValue = q.baseLevel;
                         
-                        displayValue = <span>{q.baseLevel}</span>;
-                        
-                        subText = (
-                            <span 
-                                style={{ color: colorVar, marginLeft: '4px', fontWeight: 'bold' }} 
-                                title={`Effective Level: ${q.effectiveLevel}`}
-                            >
-                                {sign}{bonusDiff}
-                            </span>
-                        );
+                        if (bonusDiff !== 0) {
+                            const sign = bonusDiff > 0 ? '+' : '';
+                            const colorVar = bonusDiff > 0 ? 'var(--success-color)' : 'var(--danger-color)';
+                            
+                            displayValue = <span>{q.baseLevel}</span>;
+                            
+                            subText = (
+                                <span 
+                                    style={{ color: colorVar, marginLeft: '4px', fontWeight: 'bold' }} 
+                                    title={`Effective Level: ${q.effectiveLevel}`}
+                                >
+                                    {sign}{bonusDiff}
+                                </span>
+                            );
+                        }
                     }
                     
                     const displayName = evaluateText(q.name, qualities, qualityDefs, null, 0);
@@ -109,7 +112,6 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
 
                     return (
                         <li key={q.id} className="quality-item">
-                            {/* The container is changed to a div to correctly host the block-level <p> from FormattedText */}
                             <div className="quality-header">
                                 <div className="quality-name">
                                     <FormattedText text={displayName} />

@@ -19,8 +19,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category"); 
 
-    // Create a local engine instance to handle formatting and logic
-    // We depend on 'qualities' to recreate this when data changes.
     const engine = useMemo(() => new GameEngine(
         qualities, 
         { qualities: qualityDefs, settings } as any, 
@@ -67,13 +65,10 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 if (qid === settings.titleQualityId?.replace('$', '')) return null; 
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
                 
-                // Keep level 0 qualities if they have level 0 visibility OR if they provide bonuses to equipped items
-                // This logic matches how games often hide "0" stats unless meaningful
                 const hasEquippedBonus = Object.values(engine.equipment).some(id => id && qualityDefs[id]?.bonus?.includes(`$${qid}`));
                 
                 if (state.type !== 'S' && state.level === 0 && !hasEquippedBonus) return null;
                 
-                // Render via engine to process variable names in descriptions, etc.
                 const merged = { ...def, ...state };
                 return engine.render(merged);
             })
@@ -132,31 +127,38 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                 <FormattedText text={displayName} />
                             </h3>
                             <div className="quality-list">
-                                {grouped[cat].map((q: any) => (
-                                    <div key={q.id} className="profile-quality-item">
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                        {q.image && (
-                                            <div style={{ width: '30px', flexShrink: 0 }}>
-                                                <GameImage code={q.image} imageLibrary={imageLibrary} type="icon" alt={q.name} className="option-image" />
-                                            </div>
-                                        )}
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                <span className="q-name"><FormattedText text={q.name} /></span> 
-                                                <span className="q-val">{q.type === 'S' ? q.stringValue : q.level}</span>
-                                            </div>
-                                            <div className="q-desc">
-                                                <FormattedText text={q.description} />
-                                            </div>
-                                            {q.type === 'P' && (
-                                                <div className="mini-progress-bar">
-                                                    <div className="fill" style={{ width: `${(q.changePoints / (q.level + 1)) * 100}%` }} />
+                                {grouped[cat].map((q: any) => {
+                                    // --- NEW LOGIC: HIDE LEVEL ---
+                                    const hideLevel = q.tags?.includes('hide_level');
+                                    
+                                    return (
+                                        <div key={q.id} className="profile-quality-item">
+                                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                                {q.image && (
+                                                    <div style={{ width: '30px', flexShrink: 0 }}>
+                                                        <GameImage code={q.image} imageLibrary={imageLibrary} type="icon" alt={q.name} className="option-image" />
+                                                    </div>
+                                                )}
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                                        <span className="q-name"><FormattedText text={q.name} /></span> 
+                                                        {!hideLevel && (
+                                                            <span className="q-val">{q.type === 'S' ? q.stringValue : q.level}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="q-desc">
+                                                        <FormattedText text={q.description} />
+                                                    </div>
+                                                    {q.type === 'P' && (
+                                                        <div className="mini-progress-bar">
+                                                            <div className="fill" style={{ width: `${(q.changePoints / (q.level + 1)) * 100}%` }} />
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
-                                    </div>
-                                 </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     );
