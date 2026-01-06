@@ -92,8 +92,6 @@
 .deck-button { background-color: var(--accent-primary); color: var(--text-primary); border: none; padding: 1rem 2rem; border-radius: var(--border-radius); font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
 .deck-button:hover { background-color: var(--accent-hover); }
 
-/* --- THEME WRAPPER OVERRIDES --- */
-/* Strictly target Dashboard Cards to prevent bleeding into Game UI */
 
 /* Only apply these overrides if it's explicitly a Dashboard World Card */
 .card.theme-wrapper {
@@ -144,4 +142,18 @@
     background: var(--accent-primary);
     color: #fff;
     border-color: var(--accent-primary);
+}
+
+/* Special override to ensure WorldCards in the dashboard behave even inside themes */
+.card.theme-wrapper, .preview-card.theme-wrapper {
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    background-attachment: scroll !important;
+    background-size: cover !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    border: 1px solid var(--border-color) !important;
 }
