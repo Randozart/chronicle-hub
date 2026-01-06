@@ -202,7 +202,7 @@ export default function QualitiesDocs() {
                             <td>(Rude) Automatically equips the item, <strong>replacing</strong> whatever the player was wearing. Useful for cursed items or mandatory quest gear.</td>
                         </tr>
                         <tr>
-                            <td><strong>cursed</strong></td>
+                            <td><strong>bound</strong></td>
                             <td>Prevents the player from unequipping the item via the UI. It must be removed through a story event (e.g., an effect that sets <code>$cursed_sword = 0</code>).</td>
                         </tr>
                     </tbody>

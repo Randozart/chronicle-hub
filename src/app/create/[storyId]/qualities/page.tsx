@@ -467,10 +467,11 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handleTagToggle('hidden')} label="Hidden" desc="Do not show on profile." />
                     <BehaviorCard checked={hasProperty(form.tags, 'hide_level')} onChange={() => handleTagToggle('hide_level')} label="Hide Level" desc="Hide the numeric value in UI." />
 
-                    {(form.type === 'E' || form.type === 'I') && (
+                    {(form.type === 'E') && (
                         <>
-                            <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />
-                            <BehaviorCard checked={hasProperty(form.tags, 'cursed')} onChange={() => handleTagToggle('cursed')} label="Locked" desc="Cannot be unequipped (tagged as cursed)." />
+                            <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain if nothing else is equipped." />
+                            <BehaviorCard checked={hasProperty(form.tags, 'force_equip')} onChange={() => handleTagToggle('force_equip')} label="Force-Equip" desc="Equip immediately on gain, unequipping whatever is in that slot." />
+                            <BehaviorCard checked={hasProperty(form.tags, 'bound')} onChange={() => handleTagToggle('bound')} label="Bind-on-Equip" desc="Cannot be unequipped." />
                         </>
                     )}
                 </div>
@@ -513,7 +514,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     {/* NEW: Lock Message */}
                     <div className="form-group">
                         <SmartArea 
-                            label="Lock Message (if Locked/Cursed)" 
+                            label="Lock Message (if Bound-on-Equip)" 
                             value={form.lock_message || ''} 
                             onChange={v => handleChange('lock_message', v)} 
                             storyId={storyId} 

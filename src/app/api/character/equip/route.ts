@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         
         if (currentItem) {
             const currentDef = gameData.qualities[currentItem];
-            if (currentDef?.tags?.includes('cursed')) {
+            if (currentDef?.tags?.includes('bound')) {
                  const msg = currentDef.lock_message || 'You cannot unequip this item.';
                  return NextResponse.json({ success: false, error: msg, isLocked: true });
             }

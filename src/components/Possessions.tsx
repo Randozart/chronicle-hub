@@ -83,7 +83,7 @@ const ItemDisplay = ({
 }) => {
     const [expanded, setExpanded] = useState(false);
     
-    const isCursed = item.tags?.includes('cursed');
+    const isCursed = item.tags?.includes('bound');
     const hasStorylet = !!item.storylet;
     const isEquipable = item.type === 'E';
     

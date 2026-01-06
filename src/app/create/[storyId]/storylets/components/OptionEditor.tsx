@@ -68,6 +68,13 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                     <BehaviorCard checked={hasProperty(data.tags, 'dangerous')} onChange={() => handleTagToggle('dangerous')} label="Dangerous" desc="Red border." />
                     <BehaviorCard checked={hasProperty(data.tags, 'clear_hand')} onChange={() => handleTagToggle('clear_hand')} label="Clear Hand" desc="Removes all cards." />
                     <BehaviorCard checked={hasDifficulty} onChange={() => handleChange('challenge', hasDifficulty ? undefined : '{%chance[$stat >> 50]}')} label="Difficulty" desc="Skill check." />
+                    <BehaviorCard 
+                        checked={hasProperty(data.tags, 'post_effects_eval')} 
+                        onChange={() => handleTagToggle('post_effects_eval')} 
+                        label="Delayed Text Eval" 
+                        desc="Evaluate narrative text AFTER effects are applied." 
+                    />
+
                 </div>
 
                 {/* DYNAMIC TAGS */}

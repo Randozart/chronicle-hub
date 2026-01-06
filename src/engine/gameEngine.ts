@@ -208,20 +208,25 @@ export class GameEngine implements EngineContext {
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
         
-        const body = isSuccess ? option.pass_long : option.fail_long || "";
-        const evaluatedBody = this.evaluateText(body); 
+        const bodyTemplate = isSuccess ? option.pass_long : option.fail_long || "";
         
         const changeString = isSuccess ? option.pass_quality_change : option.fail_quality_change;
         const redirectId = isSuccess ? option.pass_redirect : option.fail_redirect;
         const moveToId = isSuccess ? option.pass_move_to : option.fail_move_to;
         
+        let finalBody = this.evaluateText(bodyTemplate);
+
         if (changeString) {
             this.applyEffects(changeString);
+        }
+
+        if (option.tags?.includes('post_effects_eval')) {
+            finalBody = this.evaluateText(bodyTemplate);
         }
         
         return { 
             wasSuccess: isSuccess, 
-            body: evaluatedBody, 
+            body: finalBody, 
             redirectId, 
             moveToId, 
             qualityChanges: this.changes, 
