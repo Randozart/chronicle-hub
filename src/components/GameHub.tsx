@@ -411,6 +411,7 @@ export default function GameHub(props: GameHubProps) {
                     />
                 </div>
             );
+        
         } else if (activeTab === 'possessions') {
             innerContent = (
                 <div className="content-panel">
@@ -420,6 +421,11 @@ export default function GameHub(props: GameHubProps) {
                         qualityDefs={mergedQualityDefs} 
                         equipCategories={props.settings.equipCategories || []} 
                         onUpdateCharacter={handleCharacterUpdate} 
+                        
+                        // Pass handlers
+                        onUseItem={showEvent} 
+                        onRequestTabChange={(tab) => setActiveTab(tab)} 
+
                         storyId={props.storyId} 
                         imageLibrary={props.imageLibrary} 
                         settings={props.settings} 

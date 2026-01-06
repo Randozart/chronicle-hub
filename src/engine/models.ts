@@ -93,6 +93,7 @@ export interface QualityDefinition {
     tags?: string[];
     bonus?: string;
     storylet?: string;
+    lock_message?: string;   
     [key: string]: any;
 }
 
