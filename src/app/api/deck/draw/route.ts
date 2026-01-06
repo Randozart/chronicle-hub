@@ -7,6 +7,7 @@ import { drawCards } from '@/engine/deckService';
 import { GameEngine } from '@/engine/gameEngine';
 
 // DRAW CARD
+// POST: Draw Card
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,10 +35,9 @@ export async function POST(request: NextRequest) {
 
     const deckDef = gameData.decks[targetDeckId];
 
-    // 2. Action Cost
+    // 2. Action Cost Logic
     if (gameData.settings.deckDrawCostsAction !== false && gameData.settings.useActionEconomy) {
         character = await regenerateActions(character);
-        // Safety check if regenerate returned null (rare but possible in error states)
         if (!character) return NextResponse.json({ error: 'Character load failed' }, { status: 500 });
 
         const engine = new GameEngine(character.qualities, gameData, character.equipment);
@@ -61,14 +61,19 @@ export async function POST(request: NextRequest) {
         await saveCharacterState(character);
         
         const hand = character.opportunityHands[targetDeckId] || [];
-        return NextResponse.json({ success: true, hand });
+        
+        return NextResponse.json({ 
+            success: true, 
+            hand,
+            newQualities: character.qualities // <--- CRITICAL FOR UI UPDATE
+        });
     } catch (e: any) {
         console.error("Draw Error:", e.message);
         return NextResponse.json({ message: e.message || "Failed to draw card" }, { status: 400 });
     }
 }
 
-// DISCARD CARD
+// DELETE: Discard Card
 export async function DELETE(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -92,6 +97,7 @@ export async function DELETE(request: NextRequest) {
     character.opportunityHands[deckId] = character.opportunityHands[deckId].filter((id: string) => id !== cardId);
 
     if (character.opportunityHands[deckId].length === originalLength) {
+        // Optimistic UI might have already hidden it, but good to know
         return NextResponse.json({ error: 'Card not found in hand' }, { status: 404 });
     }
 

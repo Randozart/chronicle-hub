@@ -10,6 +10,10 @@ interface OpportunityHandProps {
     onCardClick: (opportunityId: string) => void;
     qualities: PlayerQualities;
     onDrawClick: () => void;
+    
+    // NEW PROP
+    onDiscard?: (cardId: string) => void;
+
     isLoading: boolean;
     qualityDefs: Record<string, QualityDefinition>;
     imageLibrary: Record<string, ImageDefinition>;
@@ -21,25 +25,21 @@ interface OpportunityHandProps {
 }
 
 export default function OpportunityHand({ 
-    hand, onCardClick, qualities, onDrawClick, isLoading, 
+    hand, onCardClick, qualities, onDrawClick, onDiscard, isLoading, 
     qualityDefs, imageLibrary, 
     character, locationDeckId, deckDefs, settings, currentDeckStats,
 }: OpportunityHandProps) {
     
     const deckDef = deckDefs[locationDeckId];
-    // Default to unlimited if undefined
-    const deckSize = currentDeckStats?.deckSize ?? 0; 
+    const deckSize = currentDeckStats?.deckSize ?? 0;
     const handSize = currentDeckStats?.handSize ?? 3;
     
-    const currentCharges = character.deckCharges?.[locationDeckId] ?? deckSize; // Default to full if unknown
+    const currentCharges = character.deckCharges?.[locationDeckId] ?? deckSize;
     const lastUpdate = character.lastDeckUpdate?.[locationDeckId] || new Date();
     
     const isHandFull = hand.length >= handSize;
-    
-    // Fix: Only empty if DeckSize is POSITIVE (finite) AND charges are 0.
     const isFinite = deckSize > 0;
     const isEmpty = isFinite && currentCharges <= 0;
-    
     const isDisabled = isLoading || isHandFull || isEmpty;
     
     let buttonText = "Draw a Card";
@@ -47,30 +47,11 @@ export default function OpportunityHand({
     else if (isHandFull) buttonText = `Hand Full (${hand.length}/${handSize})`;
     else if (isEmpty) buttonText = "Deck Empty";
 
-    const handleDiscard = async (cardId: string, e: React.MouseEvent) => {
+    // Local handler to confirm before calling prop
+    const handleDiscardClick = (cardId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm("Discard this card?")) return;
-        
-        try {
-            const res = await fetch('/api/deck/draw', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    storyId: character.storyId, 
-                    characterId: character.characterId, 
-                    cardId, 
-                    deckId: locationDeckId 
-                })
-            });
-            
-            if (res.ok) {
-                window.location.reload(); 
-            } else {
-                console.error("Failed to discard");
-            }
-        } catch (e) {
-            console.error(e);
-        }
+        if (onDiscard) onDiscard(cardId);
     };
 
     return (
@@ -86,7 +67,7 @@ export default function OpportunityHand({
                                 lastUpdate={lastUpdate} 
                                 currentCharges={currentCharges} 
                                 maxCharges={deckSize} 
-                                onRegen={() => window.location.reload()} 
+                                onRegen={() => window.location.reload()} // Could optimize this too, but timer usually fine
                             />
                         )}
                     </div>
@@ -97,7 +78,6 @@ export default function OpportunityHand({
                     hand.map(card => {
                         const isValid = evaluateCondition(card.draw_condition, qualities, qualityDefs, null, 0);
                         const isTransient = !card.keep_if_invalid;
-                        
                         if (isTransient && !isValid) return null; 
 
                         return (
@@ -105,8 +85,8 @@ export default function OpportunityHand({
                                 <button 
                                     className="card-content-btn"
                                     onClick={() => onCardClick(card.id)}
-                                    style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, color: 'inherit' }}
                                 >
+                                    {/* Only render image if code exists */}
                                     {card.image_code && (
                                         <GameImage code={card.image_code} imageLibrary={imageLibrary} type="storylet" alt={card.name} className="card-image" />
                                     )}
@@ -116,18 +96,21 @@ export default function OpportunityHand({
                                     </div>
                                 </button>
                                 
-                                {card.can_discard !== false && (
+                                {card.can_discard !== false && onDiscard && (
                                     <button 
-                                        onClick={(e) => handleDiscard(card.id, e)}
+                                        onClick={(e) => handleDiscardClick(card.id, e)}
                                         style={{
                                             position: 'absolute', top: 5, right: 5,
-                                            background: 'rgba(0,0,0,0.6)', color: 'var(--text-primary)',
-                                            border: '1px solid #aaa', borderRadius: '50%',
+                                            background: 'rgba(0,0,0,0.6)', color: '#fff',
+                                            border: '1px solid rgba(255,255,255,0.5)', borderRadius: '50%',
                                             width: '24px', height: '24px', cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '0.8rem', zIndex: 10
+                                            fontSize: '0.9rem', zIndex: 10,
+                                            transition: 'background 0.2s'
                                         }}
                                         title="Discard"
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(231, 76, 60, 0.8)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.6)'}
                                     >
                                         ✕
                                     </button>

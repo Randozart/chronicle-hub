@@ -67,13 +67,14 @@ export default function GameHub(props: GameHubProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
     const { playTrack } = useAudio(); 
     
-    // NEW STATE: Lifted from StoryletDisplay to persist across tab switches
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
-
     const [isTransitioning, setIsTransitioning] = useState(false);
 
-    const deckIds = location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [];
-
+    // Deck Parsing
+    const deckIds = useMemo(() => 
+        location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [],
+        [location?.deck]
+    );
 
     useEffect(() => {
         setCharacter(props.initialCharacter);
@@ -130,20 +131,11 @@ export default function GameHub(props: GameHubProps) {
     }, [location, props.musicTracks, props.instruments, playTrack]);
 
     const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>) => {
-        // FIX: Merge new definitions into dynamicQualities
         setCharacter(prev => {
             if (!prev) return null;
-            
-            const updated = { 
-                ...prev, 
-                qualities: { ...newQualities } 
-            };
-            
+            const updated = { ...prev, qualities: { ...newQualities } };
             if (newDefinitions) {
-                updated.dynamicQualities = {
-                    ...(prev.dynamicQualities || {}),
-                    ...newDefinitions
-                };
+                updated.dynamicQualities = { ...(prev.dynamicQualities || {}), ...newDefinitions };
             }
             return updated;
         });
@@ -158,7 +150,6 @@ export default function GameHub(props: GameHubProps) {
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => {
         setActiveResolution(null);
-        
         setCharacter(prev => {
             if (!prev) return null;
             const newChar = { ...prev, qualities: { ...newQualities } };
@@ -174,7 +165,86 @@ export default function GameHub(props: GameHubProps) {
         setHand(prev => prev.filter(c => c.id !== cardId));
     }, []);
 
+    // --- DECK HANDLERS (Local State Updates) ---
+
+    // 1. Draw Handler
+    const handleDrawForDeck = useCallback(async (deckId: string) => {
+        if (isLoading || !character) return;
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/deck/draw', { 
+                method: 'POST',
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, deckId }) 
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                // Determine new hand based on the Deck ID
+                const newCardIds = data.hand as string[];
+                
+                // Fetch definitions for new cards from the prop definitions (opportunityDefs)
+                const newCards = newCardIds.map(id => props.opportunityDefs[id]).filter(Boolean);
+
+                setHand(prev => {
+                    // Remove old cards from THIS deck, keep others
+                    const otherDecks = prev.filter(c => c.deck !== deckId);
+                    return [...otherDecks, ...newCards];
+                });
+
+                setCharacter(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        opportunityHands: {
+                            ...prev.opportunityHands,
+                            [deckId]: newCardIds 
+                        },
+                        qualities: data.newQualities || prev.qualities
+                    };
+                });
+            } else {
+                alert(data.message || "Failed to draw.");
+            }
+        } catch (e) { console.error(e); } finally { setIsLoading(false); }
+    }, [isLoading, character, props.storyId, props.opportunityDefs]);
+
+    // 2. Discard Handler
+    const handleDiscard = useCallback(async (deckId: string, cardId: string) => {
+        if (!character) return;
+        try {
+            const res = await fetch('/api/deck/draw', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    storyId: props.storyId, 
+                    characterId: character.characterId, 
+                    cardId, 
+                    deckId 
+                })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                setHand(prev => prev.filter(c => c.id !== cardId));
+                
+                setCharacter(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        opportunityHands: {
+                            ...prev.opportunityHands,
+                            [deckId]: data.hand 
+                        }
+                    };
+                });
+            }
+        } catch (e) { console.error(e); }
+    }, [character, props.storyId]);
+
+    // Legacy general draw handler (kept for compatibility if needed, but deck-specific is preferred)
     const handleDrawCard = useCallback(async () => {
+       // This triggers a refresh, legacy behavior. 
+       // If you want full SPA feel, remove usage of this and use handleDrawForDeck instead.
         if (isLoading || !character) return;
         setIsLoading(true);
         try {
@@ -225,7 +295,6 @@ export default function GameHub(props: GameHubProps) {
     if (!location) return <div>Loading location data...</div>;
 
     // --- ENGINE INIT ---
-    // Note: This useMemo will now re-run when character.dynamicQualities changes
     const mergedQualityDefs = useMemo(() => ({
         ...props.qualityDefs,
         ...(character.dynamicQualities || {})
@@ -272,15 +341,6 @@ export default function GameHub(props: GameHubProps) {
                 return renderEngine.evaluateCondition(opt.visible_if);
             })
         };
-    }
-
-    const deckDef = location?.deck ? props.deckDefs[location.deck] : null;
-    const shouldShowDeck = !!deckDef;
-    let currentDeckStats = undefined;
-    if (deckDef) {
-        const handVal = renderEngine.evaluateText(`{${deckDef.hand_size || 3}}`);
-        const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
-        currentDeckStats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
     }
 
     const locationMarket = location?.marketId;
@@ -518,21 +578,8 @@ export default function GameHub(props: GameHubProps) {
                                     hand={hand.filter(c => c.deck === deckId)} 
                                     onCardClick={showEvent} 
                                     
-                                    // FIX: Wrap the handler to pass the specific deckId
-                                    onDrawClick={async () => {
-                                        if (isLoading || !character) return;
-                                        setIsLoading(true);
-                                        try {
-                                            const response = await fetch('/api/deck/draw', { 
-                                                method: 'POST',
-                                                // Pass deckId here!
-                                                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, deckId: deckId }) 
-                                            });
-                                            const data = await response.json();
-                                            if (data.message) alert(data.message);
-                                            else window.location.reload(); 
-                                        } catch (e) { console.error(e); } finally { setIsLoading(false); }
-                                    }}
+                                    onDrawClick={() => handleDrawForDeck(deckId)}
+                                    onDiscard={(cardId) => handleDiscard(deckId, cardId)}
                                     
                                     isLoading={isLoading} 
                                     qualities={character.qualities} 
