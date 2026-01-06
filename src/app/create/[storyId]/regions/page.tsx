@@ -18,13 +18,12 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
         fetch(`/api/admin/regions?storyId=${storyId}`)
             .then(r => r.json())
             .then(data => {
-                // Handle both object (standard) and array formats safely
                 const list = Array.isArray(data) ? data : Object.values(data);
                 setRegions(list as MapRegion[]);
             })
             .catch(e => console.error(e))
             .finally(() => setIsLoading(false));
-    }, [storyId]); // <--- CRITICAL FIX: Depend on storyId
+    }, [storyId]); 
 
     const handleCreate = () => {
         const newId = prompt("Region ID (e.g. 'london'):");

@@ -1,27 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/engine/database';
 import { verifyWorldAccess } from '@/engine/accessControl';
-import { getWorldConfig } from '@/engine/worldService';
+import { ObjectId } from 'mongodb';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
-// GET: List collaborators
+// GET: List collaborators with emails
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
 
-    // FIX 1: Change 'owner' to 'writer' so collaborators can load this list without 403
+    // Allow writers to see who else is collaborating
     if (!await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+
+    // 1. Fetch the world document
     const world = await db.collection('worlds').findOne({ worldId: storyId }, { projection: { collaborators: 1 } });
     
-    return NextResponse.json(world?.collaborators || []);
+    if (!world || !world.collaborators || world.collaborators.length === 0) {
+        return NextResponse.json([]);
+    }
+
+    // 2. Fetch User Emails
+    // We need to map the string IDs back to ObjectIds for the lookup
+    const userIds = world.collaborators.map((c: any) => new ObjectId(c.userId));
+    
+    const users = await db.collection('users').find(
+        { _id: { $in: userIds } },
+        { projection: { email: 1, name: 1 } } // Only fetch safe fields
+    ).toArray();
+
+    // 3. Merge Data
+    const enrichedList = world.collaborators.map((c: any) => {
+        const user = users.find(u => u._id.toString() === c.userId);
+        return {
+            userId: c.userId,
+            role: c.role,
+            email: user?.email || "Unknown User",
+            name: user?.name
+        };
+    });
+    
+    return NextResponse.json(enrichedList);
 }
 
 // POST: Add collaborator
@@ -34,10 +60,13 @@ export async function POST(request: NextRequest) {
     const db = client.db(DB_NAME);
 
     // 1. Find User by Email
-    const user = await db.collection('users').findOne({ email });
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    // Case-insensitive search is safer for invites
+    const user = await db.collection('users').findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+    
+    if (!user) return NextResponse.json({ error: 'User not found. They must sign up first.' }, { status: 404 });
 
     // 2. Add to World
+    // Use $addToSet to prevent duplicates
     await db.collection('worlds').updateOne(
         { worldId: storyId },
         { 
@@ -47,7 +76,16 @@ export async function POST(request: NextRequest) {
         }
     );
 
-    return NextResponse.json({ success: true, user: { email: user.email, id: user._id } });
+    // Return the enriched object so the frontend can display it immediately
+    return NextResponse.json({ 
+        success: true, 
+        collaborator: { 
+            userId: user._id.toString(), 
+            role, 
+            email: user.email,
+            name: user.name 
+        } 
+    });
 }
 
 // DELETE: Remove collaborator
@@ -56,7 +94,6 @@ export async function DELETE(request: NextRequest) {
     const storyId = searchParams.get('storyId');
     const userId = searchParams.get('userId');
 
-    // 1. Validate Params (Fixes 'string | null' error)
     if (!storyId || !userId) {
         return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
@@ -66,13 +103,11 @@ export async function DELETE(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 2. Fix $pull type error by using 'any' or specific type
-    // The official MongoDB driver types for $pull on arrays can be finicky.
     await db.collection('worlds').updateOne(
         { worldId: storyId },
         { 
             $pull: { 
-                collaborators: { userId: userId } as any // Force cast to satisfy TS
+                collaborators: { userId: userId } as any 
             } 
         }
     );

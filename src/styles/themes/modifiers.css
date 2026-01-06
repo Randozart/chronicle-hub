@@ -601,6 +601,16 @@ html[data-theme='revolutionary']::before {
     border: 1px solid rgba(255,255,255,0.4); pointer-events: none; z-index: 10;
 }
 
+.dashboard-grid [data-theme='detective-noir'].card h3 { 
+    opacity: 0.85;
+    color: #ffffff !important;
+}
+.dashboard-grid [data-theme='detective-noir'].card span { 
+    font-weight: bold;
+    background-color: var(--bg-item) !important;
+}
+
+
 
 /* 8. MOBILE OVERRIDES */
 @media (max-width: 900px) {

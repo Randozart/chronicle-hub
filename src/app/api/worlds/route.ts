@@ -81,7 +81,10 @@ export async function GET(request: NextRequest) {
     }));
 
     const playedWorlds = await db.collection('worlds')
-        .find({ /* ... */ })
+        .find({ 
+            worldId: { $in: playedIds, $nin: myWorldIds },
+            published: true
+        })
         .project({ 
             worldId: 1, title: 1, summary: 1, coverImage: 1, 
             'settings.visualTheme': 1,

@@ -208,7 +208,6 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                     </h3>
                 </div>
 
-                {/* RESTORED: Tags */}
                 {w.tags && w.tags.length > 0 && (
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1rem' }}>
                         {w.tags.slice(0, 3).map((tag: string) => (

@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/settings/components/CollaboratorManager.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -46,16 +45,23 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
                 body: JSON.stringify({ storyId, email, role: 'writer' })
             });
             
+            const data = await res.json();
+
             if (res.ok) {
                 setEmail("");
-                fetchList(); 
+                // Optimistically add to list or re-fetch
+                // Since the API now returns the full object, we can append it directly
+                if (data.collaborator) {
+                    setList(prev => [...prev, data.collaborator]);
+                } else {
+                    fetchList();
+                }
                 showToast("Invitation sent.", "success");
             } else {
                 if (res.status === 403) {
                     showToast("Only the Owner can invite collaborators.", "error");
                 } else {
-                    const err = await res.json();
-                    showToast(err.error || "Failed to invite", "error");
+                    showToast(data.error || "Failed to invite", "error");
                 }
             }
         } catch (e) {
@@ -71,7 +77,8 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
         const res = await fetch(`/api/admin/collaborators?storyId=${storyId}&userId=${userId}`, { method: 'DELETE' });
         
         if (res.ok) {
-            fetchList();
+            // Optimistic update
+            setList(prev => prev.filter(c => c.userId !== userId));
             showToast("Collaborator removed.", "info");
         } else if (res.status === 403) {
             showToast("Only the Owner can remove collaborators.", "error");
@@ -104,7 +111,11 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
                 {Array.isArray(list) && list.map((colab: any) => (
                     <div key={colab.userId} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--tool-bg-input)', padding: '0.5rem', borderRadius: '4px' }}>
                         <div style={{ flex: 1, color: 'var(--tool-text-main)' }}>
-                            {colab.userId.substring(0, 10)}... <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem' }}>({colab.role})</span>
+                            {/* FIX: Use Email if available, fallback to ID */}
+                            <span style={{ fontWeight: 'bold' }}>{colab.email || colab.userId.substring(0, 8)}</span>
+                            <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', marginLeft: '8px' }}>
+                                ({colab.role})
+                            </span>
                         </div>
                         <button 
                             onClick={() => handleRemove(colab.userId)} 

@@ -15,6 +15,7 @@ interface SettingsForm extends WorldSettings {
     coverImage?: string;
     tags?: string[];
     deckDrawCostsAction?: boolean; 
+    summary?: string;
 }
 
 export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
@@ -43,6 +44,10 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         enableTitle: false,
         allowScribeScriptInInputs: false,
         hideProfileIdentity: false,
+        summary: "", 
+        coverImage: "",
+        tags: [],
+        isPublished: false
     });
     
     const [existingQIDs, setExistingQIDs] = useState<string[]>([]); 
@@ -222,6 +227,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
             // Save Root Fields
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'published', data: form.isPublished }) });
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'coverImage', data: form.coverImage }) });
+            await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'summary', data: form.summary }) });
             await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, category: 'root', itemId: 'tags', data: form.tags }) });
 
             showToast("Settings saved!", "success");
@@ -296,6 +302,16 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         <label className="form-label">Tags</label>
                         <input defaultValue={form.tags?.join(', ')} onBlur={e => handleArrayChange('tags', e.target.value)} className="form-input" placeholder="fantasy, sci-fi" />
                     </div>
+                </div>
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label className="form-label">World Summary</label>
+                    <textarea 
+                        value={form.summary || ''} 
+                        onChange={e => handleChange('summary', e.target.value)} 
+                        className="form-textarea" 
+                        rows={3} 
+                        placeholder="A brief description of your world shown on the main menu card." 
+                    />
                 </div>
             </div>
 
