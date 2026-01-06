@@ -470,7 +470,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     {(form.type === 'E' || form.type === 'I') && (
                         <>
                             <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip immediately on gain." />
-                            <BehaviorCard checked={hasProperty(form.tags, 'cursed')} onChange={() => handleTagToggle('cursed')} label="Cursed" desc="Cannot be unequipped." />
+                            <BehaviorCard checked={hasProperty(form.tags, 'cursed')} onChange={() => handleTagToggle('cursed')} label="Locked" desc="Cannot be unequipped (tagged as cursed)." />
                         </>
                     )}
                 </div>
@@ -513,7 +513,7 @@ function QualityEditor({ initialData, settings, onSave, onDelete, onDuplicate, s
                     {/* NEW: Lock Message */}
                     <div className="form-group">
                         <SmartArea 
-                            label="Lock Message (if Cursed)" 
+                            label="Lock Message (if Locked/Cursed)" 
                             value={form.lock_message || ''} 
                             onChange={v => handleChange('lock_message', v)} 
                             storyId={storyId} 

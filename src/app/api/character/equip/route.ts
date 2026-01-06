@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
     // 1. CHECK LOCATION LOCK
     const locationDef = gameData.locations[character.currentLocationId];
     if (locationDef?.tags?.includes('lock_equipment')) {
-         // Return specific flag to trigger the Modal instead of an Alert
          return NextResponse.json({ 
              success: false, 
              isLocked: true, 
@@ -62,8 +61,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'This item cannot be equipped.' }, { status: 400 });
     }
 
+    // Validation: Does the item fit in this slot?
+    // FIX: Support "Ring_1", "Ring_2" matching category "Ring"
     const allowedSlots = itemDef.category?.split(',').map(s => s.trim()) || [];
-    if (!allowedSlots.includes(slot)) {
+    
+    // Check if the target slot starts with any allowed category followed by end-of-string or '_'
+    const isValidSlot = allowedSlots.some(cat => {
+        if (slot === cat) return true;
+        if (slot.startsWith(`${cat}_`)) return true;
+        return false;
+    });
+
+    if (!isValidSlot) {
         return NextResponse.json({ error: `This item does not go in the ${slot} slot.` }, { status: 400 });
     }
 

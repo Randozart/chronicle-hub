@@ -72,6 +72,9 @@ export default function GameHub(props: GameHubProps) {
 
     const [isTransitioning, setIsTransitioning] = useState(false);
 
+    const deckIds = location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+
     useEffect(() => {
         setCharacter(props.initialCharacter);
         setLocation(props.initialLocation);
@@ -484,24 +487,66 @@ export default function GameHub(props: GameHubProps) {
                             />
                         </div>
                     )}
-                    {shouldShowDeck && (
-                        <div className="deck-feed" style={{ marginTop: '3rem' }}>
-                            <OpportunityHand 
-                                hand={hand} 
-                                onCardClick={showEvent} 
-                                onDrawClick={handleDrawCard} 
-                                isLoading={isLoading} 
-                                qualities={character.qualities} 
-                                qualityDefs={mergedQualityDefs} 
-                                imageLibrary={props.imageLibrary} 
-                                character={character} 
-                                locationDeckId={location!.deck} 
-                                deckDefs={props.deckDefs} 
-                                settings={props.settings} 
-                                currentDeckStats={currentDeckStats} 
-                            />
-                        </div>
-                    )}
+                    {deckIds.map(deckId => {
+                        const deckDef = props.deckDefs[deckId];
+                        if (!deckDef) return null;
+
+                        // Calculate stats for THIS specific deck
+                        const handVal = renderEngine.evaluateText(`{${deckDef.hand_size || 3}}`);
+                        const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
+                        const stats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
+                        
+                        // Header for the Deck (Custom Name)
+                        const deckTitle = deckDef.name || "Opportunities";
+
+                        return (
+                            <div key={deckId} className="deck-feed" style={{ marginTop: '3rem' }}>
+                                {/* Deck Header */}
+                                <h3 style={{ 
+                                    borderBottom: '1px solid var(--border-color)', 
+                                    paddingBottom: '0.5rem', 
+                                    marginBottom: '1rem',
+                                    color: 'var(--text-highlight)',
+                                    textTransform: 'uppercase',
+                                    fontSize: '1.1rem',
+                                    letterSpacing: '1px'
+                                }}>
+                                    {renderEngine.evaluateText(deckTitle)}
+                                </h3>
+
+                                <OpportunityHand 
+                                    hand={hand.filter(c => c.deck === deckId)} 
+                                    onCardClick={showEvent} 
+                                    
+                                    // FIX: Wrap the handler to pass the specific deckId
+                                    onDrawClick={async () => {
+                                        if (isLoading || !character) return;
+                                        setIsLoading(true);
+                                        try {
+                                            const response = await fetch('/api/deck/draw', { 
+                                                method: 'POST',
+                                                // Pass deckId here!
+                                                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, deckId: deckId }) 
+                                            });
+                                            const data = await response.json();
+                                            if (data.message) alert(data.message);
+                                            else window.location.reload(); 
+                                        } catch (e) { console.error(e); } finally { setIsLoading(false); }
+                                    }}
+                                    
+                                    isLoading={isLoading} 
+                                    qualities={character.qualities} 
+                                    qualityDefs={mergedQualityDefs} 
+                                    imageLibrary={props.imageLibrary} 
+                                    character={character} 
+                                    locationDeckId={deckId} 
+                                    deckDefs={props.deckDefs} 
+                                    settings={props.settings} 
+                                    currentDeckStats={stats} 
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
             );
         }

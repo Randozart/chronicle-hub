@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/decks/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -6,12 +5,14 @@ import { DeckDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
+import { useToast } from '@/providers/ToastProvider';
 
 export default function DecksAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const [decks, setDecks] = useState<DeckDefinition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const { showToast } = useToast();
 
     useEffect(() => {
         fetch(`/api/admin/decks?storyId=${storyId}`)
@@ -26,32 +27,50 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
     const handleCreate = () => {
         const newId = prompt("Enter Deck ID (e.g. 'london_deck'):");
         if (!newId) return;
-        if (decks.find(d => d.id === newId)) { alert("Exists"); return; }
+        
+        const cleanId = newId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (decks.find(d => d.id === cleanId)) { alert("Exists"); return; }
 
         const newDeck: DeckDefinition = {
-            id: newId,
+            id: cleanId,
+            name: "Opportunities", // Default name
             saved: "True",
             hand_size: "3",
-            deck_size: "Unlimited"
+            deck_size: "0" // 0 = Unlimited
         };
         setDecks(prev => [...prev, newDeck]);
-        setSelectedId(newId);
+        setSelectedId(cleanId);
+        showToast("Deck created. Don't forget to save.", "success");
     };
 
     const handleSaveSuccess = (updated: DeckDefinition) => {
         setDecks(prev => prev.map(d => d.id === updated.id ? updated : d));
+        showToast("Deck saved.", "success");
     };
 
     const handleDeleteSuccess = (id: string) => {
         setDecks(prev => prev.filter(d => d.id !== id));
         setSelectedId(null);
+        showToast("Deck deleted.", "info");
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     return (
         <div className="admin-split-view">
-            <AdminListSidebar title="Decks" items={decks} selectedId={selectedId} onSelect={setSelectedId} onCreate={handleCreate} />
+            <AdminListSidebar 
+                title="Decks" 
+                items={decks} 
+                selectedId={selectedId} 
+                onSelect={setSelectedId} 
+                onCreate={handleCreate} 
+                renderItem={(d) => (
+                    <div style={{display:'flex', flexDirection:'column'}}>
+                        <span className="item-title">{d.name || "Opportunities"}</span>
+                        <span className="item-subtitle">{d.id}</span>
+                    </div>
+                )}
+            />
             <div className="admin-editor-col">
                 {selectedId ? (
                     <DeckEditor 
@@ -118,6 +137,18 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
             </div>
 
+            {/* NEW: Display Name Field */}
+            <div className="form-group">
+                <label className="form-label">Display Name</label>
+                <input 
+                    value={form.name || ''} 
+                    onChange={e => handleChange('name', e.target.value)} 
+                    className="form-input" 
+                    placeholder="Opportunities"
+                />
+                <p className="special-desc">The title shown above the cards in the main story view.</p>
+            </div>
+
             <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <label className="form-label">Regeneration Timer</label>
                 <select 
@@ -136,7 +167,7 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 {!isSynced && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <input 
-                            type="text" // Changed from number to text to allow logic
+                            type="text" 
                             value={form.timer || ''} 
                             onChange={e => handleChange('timer', e.target.value)} 
                             className="form-input" 
@@ -146,9 +177,6 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                         <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.9rem' }}>minutes</span>
                     </div>
                 )}
-                <p className="special-desc">
-                    How often a card is drawn automatically. Can be a number or ScribeScript logic.
-                </p>
             </div>
 
             <div className="form-row">
@@ -169,7 +197,7 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                         onChange={v => handleChange('deck_size', v)} 
                         storyId={storyId} 
                         minHeight="38px" 
-                        placeholder="Unlimited"
+                        placeholder="0 = Unlimited"
                     />
                 </div>
             </div>
@@ -189,8 +217,8 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
             <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
                 <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
                 <BehaviorCard 
-                    checked={form.saved === "True"} 
-                    onChange={() => handleChange('saved', form.saved === "True" ? "False" : "True")} 
+                    checked={form.saved !== "False"} 
+                    onChange={() => handleChange('saved', form.saved === "False" ? "True" : "False")} 
                     label="Persistent (Saved)" 
                     desc="Cards stay in hand when leaving the location." 
                 />

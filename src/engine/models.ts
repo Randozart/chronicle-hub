@@ -129,6 +129,7 @@ export interface WorldSettings {
     regenAmount: number | string;
     defaultActionCost?: number | string;
     defaultDrawCost?: string;
+    deckDrawCostsAction?: boolean; 
     startLocation?: string;
     characterSheetCategories: string[];
     equipCategories: string[];
@@ -156,11 +157,23 @@ export interface WorldSettings {
     allowScribeScriptInInputs?: boolean;
     storynexusMode?: boolean; 
     hideProfileIdentity?: boolean;
-
+    attributions?: string; 
+    aiDisclaimer?: string; 
 }
 
-export interface DeckDefinition { id: string; saved: string; timer?: string; draw_cost?: string; hand_size: string; deck_size?: string; ordering?: number; }
-export interface MapRegion { id: string; name: string; image?: string; marketId?: string; }
+export interface DeckDefinition { 
+    id: string; 
+    name?: string; 
+    saved: string; 
+    timer?: string; 
+    draw_cost?: string; 
+    hand_size: string; 
+    deck_size?: string; 
+    ordering?: number; 
+}
+
+export interface MapRegion { 
+    id: string; name: string; image?: string; marketId?: string; }
 export interface LocationDefinition { 
     id: string; 
     name: string; 

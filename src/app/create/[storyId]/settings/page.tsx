@@ -196,7 +196,10 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     const addCategory = (category: string, targetList: 'equip' | 'sheet' = 'sheet') => {
         const listName = targetList === 'equip' ? 'equipCategories' : 'characterSheetCategories';
         const current = form[listName] || [];
-        if (!current.includes(category)) {
+        
+        const alreadyExists = current.some(c => c === category || c.startsWith(`${category}*`) || c.startsWith(`${category}_`));
+        
+        if (!alreadyExists) {
             handleChange(listName, [...current, category]);
         }
     };
@@ -651,6 +654,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                  
             </div>
 
+
             {/* 8. CHARACTER INITIALIZATION */}
             <div style={{ marginBottom: '3rem' }}>
                 <CharCreateEditor 
@@ -670,6 +674,33 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                     }}
                 />
             </div>
+
+             <div className="special-field-group" style={{ borderColor: '#95a5a6', marginBottom: '2rem' }}>
+                <label className="special-label" style={{ color: '#95a5a6' }}>Credits & Legal</label>
+                
+                <div className="form-group">
+                    <label className="form-label">Attributions & Acknowledgements</label>
+                    <textarea 
+                        value={form.attributions || ''} 
+                        onChange={e => handleChange('attributions', e.target.value)} 
+                        className="form-textarea" 
+                        rows={4}
+                        placeholder="Credits for art, writing, music, or third-party assets."
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">AI Usage Disclaimer</label>
+                    <textarea 
+                        value={form.aiDisclaimer || ''} 
+                        onChange={e => handleChange('aiDisclaimer', e.target.value)} 
+                        className="form-textarea" 
+                        rows={3}
+                        placeholder="If your world uses AI generated content, disclose it here. This will be shown on the world card."
+                    />
+                </div>
+            </div>
+
             <DataManagement storyId={storyId} />
             <CollaboratorManager storyId={storyId} />
             <div className="admin-form-footer" style={{ justifyContent: 'flex-end' }}><button onClick={handleSave} disabled={isSaving} className="save-btn">{isSaving ? 'Saving...' : 'Save All Settings'}</button></div>
@@ -677,7 +708,6 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
     );
 }
 
-// --- SUB-COMPONENT: CharCreateEditor (Refactored) ---
 
 interface CharCreateProps {
     rules: Record<string, CharCreateRule>;

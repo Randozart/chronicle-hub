@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/regions/page.tsx
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -12,19 +11,31 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
     const { showToast } = useToast();
     const [regions, setRegions] = useState<MapRegion[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        setIsLoading(true);
         fetch(`/api/admin/regions?storyId=${storyId}`)
             .then(r => r.json())
-            .then(data => setRegions(Object.values(data).map((r: any) => r)));
-    }, []);
+            .then(data => {
+                // Handle both object (standard) and array formats safely
+                const list = Array.isArray(data) ? data : Object.values(data);
+                setRegions(list as MapRegion[]);
+            })
+            .catch(e => console.error(e))
+            .finally(() => setIsLoading(false));
+    }, [storyId]); // <--- CRITICAL FIX: Depend on storyId
 
     const handleCreate = () => {
         const newId = prompt("Region ID (e.g. 'london'):");
         if (!newId) return;
-        if (regions.find(r => r.id === newId)) return alert("Exists");
-        setRegions(prev => [...prev, { id: newId, name: "New Region" }]);
-        setSelectedId(newId);
+        
+        // Clean ID
+        const cleanId = newId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (regions.find(r => r.id === cleanId)) return alert("Exists");
+        
+        setRegions(prev => [...prev, { id: cleanId, name: "New Region" }]);
+        setSelectedId(cleanId);
     };
 
     const handleSaveSuccess = (updated: MapRegion) => {
@@ -38,6 +49,8 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
         showToast("Region deleted.", "info");
     };
 
+    if (isLoading) return <div className="loading-container">Loading...</div>;
+
     return (
         <div className="admin-split-view">
             <AdminListSidebar 
@@ -46,10 +59,17 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
                 selectedId={selectedId} 
                 onSelect={setSelectedId} 
                 onCreate={handleCreate} 
+                renderItem={(r) => (
+                    <div style={{display:'flex', flexDirection:'column'}}>
+                        <span className="item-title">{r.name}</span>
+                        <span className="item-subtitle">{r.id}</span>
+                    </div>
+                )}
             />
             <div className="admin-editor-col">
                 {selectedId ? (
                     <RegionEditor 
+                        key={selectedId}
                         initialData={regions.find(r => r.id === selectedId)!} 
                         onSave={handleSaveSuccess}
                         onDelete={handleDeleteSuccess}
@@ -81,6 +101,7 @@ function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData:
         try {
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, category: 'regions', itemId: form.id, data: form })
             });
             if (res.ok) { onSave(form); }

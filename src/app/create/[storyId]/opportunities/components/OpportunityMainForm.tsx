@@ -1,4 +1,3 @@
-// src/app/create/[storyId]/opportunities/components/OpportunityMainForm.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,7 +11,7 @@ interface Props {
     initialData: Opportunity;
     onSave: (data: Opportunity) => void;
     onDelete: (id: string) => void;
-    qualityDefs: QualityDefinition[]; // Required Prop
+    qualityDefs: QualityDefinition[]; 
 }
 
 export default function OpportunityMainForm({ initialData, onSave, onDelete, qualityDefs }: Props) {
@@ -27,7 +26,6 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, qua
         setForm(prev => ({ ...prev, [field]: val }));
     };
 
-    // GLOBAL SAVE TRIGGER
     useEffect(() => {
         const handleGlobalSave = () => onSave(form);
         window.addEventListener('global-save-trigger', handleGlobalSave);
@@ -35,14 +33,23 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, qua
     }, [form]);
 
     return (
-        <div className="h-full flex flex-col relative">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #444' }}>
+        <div className="h-full flex flex-col relative" style={{ color: 'var(--tool-text-main)' }}>
+            
+            {/* HEADER */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--tool-border)' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
                     <select 
                         value={form.status || 'draft'} 
                         onChange={e => handleChange('status', e.target.value)}
-                        style={{ background: form.status === 'published' ? '#2ecc71' : '#f1c40f', color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px' }}
+                        style={{ 
+                            background: form.status === 'published' ? 'var(--success-color)' : 'var(--warning-color)', 
+                            color: '#000', 
+                            fontWeight: 'bold', 
+                            border: 'none', 
+                            padding: '0.3rem', 
+                            borderRadius: '4px' 
+                        }}
                     >
                         <option value="draft">DRAFT</option>
                         <option value="published">PUBLISHED</option>
@@ -58,14 +65,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, qua
                 
                 <div className="form-row">
                     <div style={{ flex: 2 }}>
-                        <SmartArea 
-                            label="Title" 
-                            value={form.name} 
-                            onChange={v => handleChange('name', v)} 
-                            storyId={storyId} 
-                            minHeight="38px" 
-                            qualityDefs={qualityDefs} // PASS
-                        />
+                        <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Sort Order</label>
@@ -77,55 +77,21 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, qua
                     <div className="form-group"><label className="form-label">Deck ID</label><input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" /></div>
                     <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
                     <div className="form-group" style={{ flex: 1 }}>
-                        <SmartArea 
-                            label="Image Code" 
-                            value={form.image_code || ''} 
-                            onChange={v => handleChange('image_code', v)} 
-                            storyId={storyId} 
-                            minHeight="38px" 
-                            placeholder="image_id or { $logic }"
-                            subLabel="Supports ScribeScript"
-                            qualityDefs={qualityDefs} // PASS
-                        />
+                        <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" placeholder="image_id or { $logic }" qualityDefs={qualityDefs} />
                     </div>
                 </div>
 
-                <SmartArea 
-                    label="Teaser Text" 
-                    subLabel="Shown on the card face."
-                    value={form.short || ''} 
-                    onChange={v => handleChange('short', v)} 
-                    storyId={storyId} 
-                    minHeight="60px"
-                    qualityDefs={qualityDefs} // PASS
-                />
+                <SmartArea label="Teaser Text" subLabel="Shown on the card face." value={form.short || ''} onChange={v => handleChange('short', v)} storyId={storyId} minHeight="60px" qualityDefs={qualityDefs} />
 
-                <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333', marginTop: '1rem' }}>
-                    <label className="special-label" style={{ color: '#61afef', marginBottom: '0.5rem' }}>Card Logic</label>
+                {/* CARD LOGIC BOX */}
+                <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
+                    <label className="special-label" style={{ color: 'var(--tool-accent)', marginBottom: '0.5rem' }}>Card Logic</label>
                     <div className="form-row">
                         <div style={{ flex: 1 }}>
-                            <SmartArea 
-                                label="Draw Condition" 
-                                value={form.draw_condition || ''} 
-                                onChange={v => handleChange('draw_condition', v)} 
-                                storyId={storyId} 
-                                mode="condition" 
-                                placeholder="$gold > 10"
-                                subLabel="Requirements to enter hand"
-                                qualityDefs={qualityDefs} // PASS
-                            />
+                            <SmartArea label="Draw Condition" value={form.draw_condition || ''} onChange={v => handleChange('draw_condition', v)} storyId={storyId} mode="condition" placeholder="$gold > 10" subLabel="Requirements to enter hand" qualityDefs={qualityDefs} />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <SmartArea 
-                                label="Unlock If (Playable)" 
-                                value={form.unlock_if || ''} 
-                                onChange={v => handleChange('unlock_if', v)} 
-                                storyId={storyId} 
-                                mode="condition" 
-                                placeholder="$energy > 5"
-                                subLabel="Requirements to play from hand"
-                                qualityDefs={qualityDefs} // PASS
-                            />
+                            <SmartArea label="Unlock If (Playable)" value={form.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$energy > 5" subLabel="Requirements to play from hand" qualityDefs={qualityDefs} />
                         </div>
                     </div>
                     <div className="form-row" style={{ marginTop: '1rem' }}>
@@ -143,42 +109,21 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, qua
                 </div>
 
                 <div style={{ marginTop: '1rem' }}>
-                    <SmartArea 
-                        label="Card Body Text" 
-                        value={form.text} 
-                        onChange={v => handleChange('text', v)} 
-                        storyId={storyId} 
-                        minHeight="150px" 
-                        qualityDefs={qualityDefs} // PASS
-                    />
+                    <SmartArea label="Card Body Text" value={form.text} onChange={v => handleChange('text', v)} storyId={storyId} minHeight="150px" qualityDefs={qualityDefs} />
                 </div>
 
-                <div className="special-field-group" style={{ borderColor: '#c678dd', marginTop: '1rem' }}>
-                    <label className="special-label" style={{ color: '#c678dd' }}>Card Behavior</label>
+                {/* BEHAVIOR */}
+                <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
+                    <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Card Behavior</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <BehaviorCard 
-                            checked={form.can_discard !== false} 
-                            onChange={() => handleChange('can_discard', !form.can_discard)} 
-                            label="Discardable" 
-                            desc="Player can remove this card." 
-                        />
-                        <BehaviorCard 
-                            checked={!!form.keep_if_invalid} 
-                            onChange={() => handleChange('keep_if_invalid', !form.keep_if_invalid)} 
-                            label="Sticky" 
-                            desc="Keep in hand even if invalid." 
-                        />
+                        <BehaviorCard checked={form.can_discard !== false} onChange={() => handleChange('can_discard', !form.can_discard)} label="Discardable" desc="Player can remove this card." />
+                        <BehaviorCard checked={!!form.keep_if_invalid} onChange={() => handleChange('keep_if_invalid', !form.keep_if_invalid)} label="Sticky" desc="Keep in hand even if invalid." />
                     </div>
                 </div>
 
-                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: '#98c379', marginBottom: '1rem' }}>Options</h3>
-                    <OptionList 
-                        options={form.options || []} 
-                        onChange={(newOpts) => handleChange('options', newOpts)} 
-                        storyId={storyId} 
-                        qualityDefs={qualityDefs} // FIX: Pass qualityDefs here
-                    />
+                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--tool-border)', paddingTop: '1rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', color: 'var(--success-color)', marginBottom: '1rem' }}>Options</h3>
+                    <OptionList options={form.options || []} onChange={(newOpts) => handleChange('options', newOpts)} storyId={storyId} qualityDefs={qualityDefs} />
                 </div>
             </div>
         </div>

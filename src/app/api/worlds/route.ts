@@ -27,7 +27,12 @@ export async function GET(request: NextRequest) {
             .find({ published: true })
             .sort({ playerCount: -1, createdAt: -1 })
             .limit(20)
-            .project({ worldId: 1, title: 1, summary: 1, coverImage: 1, tags: 1, 'settings.visualTheme': 1 })
+            .project({ 
+                worldId: 1, title: 1, summary: 1, coverImage: 1, tags: 1, 
+                'settings.visualTheme': 1,
+                'settings.aiDisclaimer': 1, 
+                'settings.attributions': 1 
+            })
             .toArray();
         return NextResponse.json(worlds);
     }
@@ -39,21 +44,13 @@ export async function GET(request: NextRequest) {
 
     // --- CHANGE 1: Update Query to include Collaborations ---
     const myWorlds = await db.collection('worlds')
-        .find({ 
-            $or: [
-                { ownerId: userId },
-                { "collaborators.userId": userId } 
-            ]
-        })
+        .find({ /* ... */ })
         .project({ 
-            worldId: 1, 
-            title: 1, 
-            summary: 1, 
-            published: 1, 
-            coverImage: 1, 
-            tags: 1, 
-            'settings.visualTheme': 1,
-            ownerId: 1 // Fetch ownerId so UI can optionally show "Shared with you" badge
+            worldId: 1, title: 1, summary: 1, published: 1, coverImage: 1, tags: 1, 
+            'settings.visualTheme': 1, ownerId: 1,
+            // ADD THESE TWO LINES:
+            'settings.aiDisclaimer': 1, 
+            'settings.attributions': 1 
         })
         .toArray();
 
@@ -84,11 +81,13 @@ export async function GET(request: NextRequest) {
     }));
 
     const playedWorlds = await db.collection('worlds')
-        .find({ 
-            worldId: { $in: playedIds, $nin: myWorldIds },
-            published: true
+        .find({ /* ... */ })
+        .project({ 
+            worldId: 1, title: 1, summary: 1, coverImage: 1, 
+            'settings.visualTheme': 1,
+            'settings.aiDisclaimer': 1, 
+            'settings.attributions': 1 
         })
-        .project({ worldId: 1, title: 1, summary: 1, coverImage: 1, 'settings.visualTheme': 1 })
         .toArray();
 
     const enrichedPlayedWorlds = playedWorlds.map(w => ({

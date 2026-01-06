@@ -79,8 +79,7 @@ export default function OpportunityHand({
 
     return (
         <div className="opportunity-hand">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem', paddingBottom: '0.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', border: 'none', padding: 0 }}>Opportunities</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline'}}>
                 {deckDef && deckSize > 0 && (
                     <div style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)' }}>
                         <span style={{ fontWeight: 'bold' }}>{currentCharges}</span> / {deckSize} Cards

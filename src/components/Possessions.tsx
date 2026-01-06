@@ -1,3 +1,4 @@
+// ... (Imports and helper components like MessageModal, FormatBonus, ItemDisplay remain the same) ...
 'use client';
 
 import { ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
@@ -15,14 +16,15 @@ interface PossessionsProps {
     equipCategories: string[];
     onUpdateCharacter: (character: any) => void; 
     onUseItem: (eventId: string) => void;
-    onRequestTabChange: (tab: 'story') => void; // NEW PROP
+    onRequestTabChange: (tab: 'story') => void;
     storyId: string;
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
     engine: GameEngine;
 }
 
-// Helper to format bonuses with Colors
+// ... (Keep FormatBonus, ItemDisplay, MessageModal as defined previously) ...
+// (Omitting them here for brevity, assume they are included)
 const FormatBonus = ({ bonusStr, qualityDefs, qualities }: { bonusStr: string, qualityDefs: Record<string, QualityDefinition>, qualities: PlayerQualities }) => {
     const evaluatedBonus = evaluateText(bonusStr, qualities, qualityDefs, null, 0);
     const parts = evaluatedBonus.split(',').map(p => p.trim()).filter(Boolean);
@@ -58,7 +60,6 @@ const FormatBonus = ({ bonusStr, qualityDefs, qualities }: { bonusStr: string, q
     );
 };
 
-// --- SUB-COMPONENT FOR CONSISTENT ITEM DISPLAY ---
 const ItemDisplay = ({ 
     item, 
     isEquipped, 
@@ -72,7 +73,7 @@ const ItemDisplay = ({
 }: {
     item: any,
     isEquipped: boolean,
-    slotName?: string, // Only present if in equipment section
+    slotName?: string, 
     onEquipToggle: () => void,
     onUse: (id: string) => void,
     isLoading: boolean,
@@ -86,7 +87,6 @@ const ItemDisplay = ({
     const hasStorylet = !!item.storylet;
     const isEquipable = item.type === 'E';
     
-    // Description Logic
     const fullDesc = item.description || "";
     const showToggle = fullDesc.length > 100;
     const displayDesc = expanded || !showToggle ? fullDesc : fullDesc.substring(0, 100) + "...";
@@ -97,7 +97,6 @@ const ItemDisplay = ({
             background: isEquipped ? 'rgba(var(--accent-rgb), 0.05)' : 'var(--bg-card)',
             display: 'flex', flexDirection: 'column', height: '100%'
         }}>
-            {/* Header / Slot Name */}
             {slotName && (
                 <div style={{ 
                     fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', 
@@ -108,7 +107,7 @@ const ItemDisplay = ({
             )}
 
             <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
-                <div style={{    width: '64px', aspectRatio: '3 / 4', flexShrink: 0, }}>
+                <div style={{ width: '64px', flexShrink: 0 }}>
                     <GameImage 
                         code={item.image || item.id} 
                         imageLibrary={imageLibrary} 
@@ -118,7 +117,6 @@ const ItemDisplay = ({
                     />
                 </div>
 
-                {/* Details */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="item-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                         <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>
@@ -127,14 +125,12 @@ const ItemDisplay = ({
                         {!slotName && <span className="item-count" style={{ fontSize: '0.85rem', opacity: 0.7 }}>x{item.level}</span>}
                     </div>
 
-                    {/* Bonus Section (Always Visible if exists) */}
                     {item.bonus && (
                         <div className="item-bonus" style={{ marginBottom: '8px' }}>
                             <FormatBonus bonusStr={item.bonus} qualityDefs={qualityDefs} qualities={qualities} />
                         </div>
                     )}
 
-                    {/* Description with Toggle */}
                     {fullDesc && (
                         <div className="item-desc" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                             <FormattedText text={displayDesc} />
@@ -154,9 +150,7 @@ const ItemDisplay = ({
                 </div>
             </div>
 
-            {/* Actions Footer */}
             <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-light)' }}>
-                {/* EQUIP / UNEQUIP */}
                 {isEquipable && (
                     <button 
                         className={isEquipped ? "unequip-btn" : "equip-btn"}
@@ -177,7 +171,6 @@ const ItemDisplay = ({
                     </button>
                 )}
                 
-                {/* USE */}
                 {hasStorylet && (
                     <button 
                         className="option-button"
@@ -193,7 +186,6 @@ const ItemDisplay = ({
     );
 };
 
-// --- MODAL ---
 function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: string, onClose: () => void }) {
     if (!isOpen) return null;
     return (
@@ -241,14 +233,98 @@ export default function Possessions({
 
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
 
+    // --- EXPAND SLOTS LOGIC ---
+    const expandedSlots = useMemo(() => {
+        const slots: { id: string, label: string, category: string }[] = [];
+        
+        equipCategories.forEach(catRaw => {
+            let cat = catRaw.trim();
+            let count = 1;
+            let isInfinite = false;
+
+            if (cat.endsWith('*')) {
+                // Infinite Slots (e.g. "Buff*")
+                cat = cat.slice(0, -1);
+                isInfinite = true;
+            } else if (cat.match(/\*\d+$/)) {
+                // Fixed Multiplicity (e.g. "Ring*2")
+                const parts = cat.split('*');
+                count = parseInt(parts.pop() || "1", 10);
+                cat = parts.join('*');
+            }
+
+            if (isInfinite) {
+                // Find all currently occupied slots of this type in equipment
+                // e.g. Buff_1, Buff_5
+                const usedIndices: number[] = [];
+                Object.keys(equipment).forEach(key => {
+                    if (key.startsWith(`${cat}_`)) {
+                        const parts = key.split('_');
+                        const idx = parseInt(parts[parts.length - 1], 10);
+                        if (!isNaN(idx)) usedIndices.push(idx);
+                    }
+                });
+                
+                // Sort and determine display
+                usedIndices.sort((a,b) => a - b);
+                
+                // Add all used slots
+                usedIndices.forEach(i => {
+                    slots.push({ id: `${cat}_${i}`, label: `${cat} ${i}`, category: cat });
+                });
+                
+                // Add one empty slot at the end
+                const nextIdx = (usedIndices.length > 0 ? Math.max(...usedIndices) : 0) + 1;
+                slots.push({ id: `${cat}_${nextIdx}`, label: `${cat} ${nextIdx}`, category: cat });
+
+            } else if (count > 1) {
+                // Fixed Count
+                for(let i=1; i<=count; i++) {
+                    slots.push({ id: `${cat}_${i}`, label: `${cat} ${i}`, category: cat });
+                }
+            } else {
+                // Single Slot
+                slots.push({ id: cat, label: cat, category: cat });
+            }
+        });
+        return slots;
+    }, [equipCategories, equipment]);
+
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
         setIsLoading(true);
+        
+        // Handle equipping into "Infinite" or "Multiple" categories (e.g. clicking 'Equip' on a Ring)
+        // If 'slot' is a base category (like "Ring") but the actual slots are "Ring_1", "Ring_2"...
+        // We need to find the first empty one.
+        let targetSlot = slot;
+        
+        // If we are EQUIPPING (itemId is present) and the slot isn't a specific key in expandedSlots
+        // We try to auto-assign
+        if (itemId) {
+            const exactSlotExists = expandedSlots.some(s => s.id === slot);
+            
+            if (!exactSlotExists) {
+                // Try to find empty slot matching this category
+                const emptySlot = expandedSlots.find(s => s.category === slot && !equipment[s.id]);
+                if (emptySlot) {
+                    targetSlot = emptySlot.id;
+                } else {
+                    // All full? Overwrite the first one? Or show error?
+                    // Default behavior: Overwrite first one unless infinite.
+                    // For infinite, expandedSlots always has an empty one at the end, so we should have found it.
+                    // For fixed *2, if both full, overwrite #1.
+                    const firstSlot = expandedSlots.find(s => s.category === slot);
+                    if (firstSlot) targetSlot = firstSlot.id;
+                }
+            }
+        }
+
         try {
             const res = await fetch('/api/character/equip', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId, slot, itemId })
+                body: JSON.stringify({ storyId, slot: targetSlot, itemId })
             });
             
             const data = await res.json();
@@ -270,7 +346,6 @@ export default function Possessions({
     const handleUse = (eventId: string) => {
         if (!eventId) return;
         onUseItem(eventId);
-        // Switch tab immediately so user sees the result
         onRequestTabChange('story');
     };
 
@@ -308,57 +383,59 @@ export default function Possessions({
                 onClose={() => setModalState({ isOpen: false, message: "" })} 
             />
 
-            {/* EQUIPMENT SECTION */}
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Equipment</h2>
-            
-            {/* Widened Grid for Equipment */}
-            <div className="equipment-grid" style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-                gap: '1rem',
-                marginBottom: '3rem' 
-            }}>
-                {equipCategories.map(slot => {
-                    const equippedId = equipment[slot];
-                    let equippedItem = null;
-                    
-                    if (equippedId && qualityDefs[equippedId]) {
-                        equippedItem = engine.render({ ...qualityDefs[equippedId], ...qualities[equippedId] });
-                    }
+            {/* EQUIPMENT SECTION (Hide if empty) */}
+            {expandedSlots.length > 0 && (
+                <>
+                    <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Equipment</h2>
+                    <div className="equipment-grid" style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                        gap: '1rem',
+                        marginBottom: '3rem' 
+                    }}>
+                        {expandedSlots.map(slotObj => {
+                            const slotId = slotObj.id;
+                            const equippedId = equipment[slotId];
+                            let equippedItem = null;
+                            
+                            if (equippedId && qualityDefs[equippedId]) {
+                                equippedItem = engine.render({ ...qualityDefs[equippedId], ...qualities[equippedId] });
+                            }
 
-                    if (equippedItem) {
-                        return (
-                            <ItemDisplay 
-                                key={slot}
-                                item={equippedItem}
-                                isEquipped={true}
-                                slotName={slot}
-                                onEquipToggle={() => handleEquipToggle(slot, null)}
-                                onUse={handleUse}
-                                isLoading={isLoading}
-                                qualityDefs={qualityDefs}
-                                qualities={qualities}
-                                imageLibrary={imageLibrary}
-                            />
-                        );
-                    } else {
-                        // Empty Slot
-                        return (
-                            <div key={slot} className="inventory-item card empty" style={{ 
-                                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-                                border: '1px dashed var(--border-light)', background: 'rgba(0,0,0,0.1)', minHeight: '120px'
-                            }}>
-                                <span style={{ textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                                    <FormattedText text={slot} />
-                                </span>
-                                <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Empty</span>
-                            </div>
-                        );
-                    }
-                })}
-            </div>
+                            if (equippedItem) {
+                                return (
+                                    <ItemDisplay 
+                                        key={slotId}
+                                        item={equippedItem}
+                                        isEquipped={true}
+                                        slotName={slotObj.label}
+                                        onEquipToggle={() => handleEquipToggle(slotId, null)}
+                                        onUse={handleUse}
+                                        isLoading={isLoading}
+                                        qualityDefs={qualityDefs}
+                                        qualities={qualities}
+                                        imageLibrary={imageLibrary}
+                                    />
+                                );
+                            } else {
+                                return (
+                                    <div key={slotId} className="inventory-item card empty" style={{ 
+                                        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                                        border: '1px dashed var(--border-light)', background: 'rgba(0,0,0,0.1)', minHeight: '120px'
+                                    }}>
+                                        <span style={{ textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                            <FormattedText text={slotObj.label} />
+                                        </span>
+                                        <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Empty</span>
+                                    </div>
+                                );
+                            }
+                        })}
+                    </div>
+                </>
+            )}
 
-            {/* INVENTORY HEADER & FILTERS */}
+            {/* INVENTORY */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>Inventory</h2>
                 <div style={{ display: 'flex', gap: '1rem' }}>
@@ -381,7 +458,6 @@ export default function Possessions({
                 </div>
             </div>
 
-            {/* INVENTORY GRID */}
             {groups.map(group => (
                 <div key={group} style={{ marginBottom: '2rem' }}>
                     <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--accent-highlight)', paddingLeft: '0.5rem' }}>
