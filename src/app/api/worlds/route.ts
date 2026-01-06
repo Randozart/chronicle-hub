@@ -44,11 +44,21 @@ export async function GET(request: NextRequest) {
 
     // --- CHANGE 1: Update Query to include Collaborations ---
     const myWorlds = await db.collection('worlds')
-        .find({ /* ... */ })
+        .find({ 
+            $or: [
+                { ownerId: userId },
+                { "collaborators.userId": userId } 
+            ]
+        })
         .project({ 
-            worldId: 1, title: 1, summary: 1, published: 1, coverImage: 1, tags: 1, 
-            'settings.visualTheme': 1, ownerId: 1,
-            // ADD THESE TWO LINES:
+            worldId: 1, 
+            title: 1, 
+            summary: 1, 
+            published: 1, 
+            coverImage: 1, 
+            tags: 1, 
+            'settings.visualTheme': 1, 
+            ownerId: 1,
             'settings.aiDisclaimer': 1, 
             'settings.attributions': 1 
         })
