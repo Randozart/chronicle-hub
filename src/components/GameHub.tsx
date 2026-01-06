@@ -15,7 +15,7 @@ import CharacterSheet from './CharacterSheet';
 import LocationHeader from './LocationHeader';
 import LocationStorylets from './LocationStorylets';
 import OpportunityHand from './OpportunityHand';
-import StoryletDisplay from './StoryletDisplay';
+import StoryletDisplay, { ResolutionState } from './StoryletDisplay'; 
 import ProfilePanel from './ProfilePanel';
 import Possessions from './Possessions';
 import ActionTimer from './ActionTimer';
@@ -67,6 +67,9 @@ export default function GameHub(props: GameHubProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
     const { playTrack } = useAudio(); 
     
+    // NEW STATE: Lifted from StoryletDisplay to persist across tab switches
+    const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
+
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     useEffect(() => {
@@ -74,6 +77,7 @@ export default function GameHub(props: GameHubProps) {
         setLocation(props.initialLocation);
         setHand(props.initialHand);
         setActiveEvent(props.activeEvent || null); 
+        setActiveResolution(null); 
         setShowMap(false);
         setShowMarket(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
@@ -96,10 +100,16 @@ export default function GameHub(props: GameHubProps) {
 
     // --- HANDLERS ---
     const showEvent = useCallback(async (eventId: string | null) => {
-        if (!eventId) { setActiveEvent(null); return; }
+        if (!eventId) { 
+            setActiveEvent(null); 
+            setActiveResolution(null); 
+            return; 
+        }
         setIsLoading(true);
         try {
             if (!character) return;
+            setActiveResolution(null);
+            
             const response = await fetch(`/api/storylet/${eventId}?storyId=${props.storyId}&characterId=${character.characterId}`);
             if (!response.ok) throw new Error(`Event ${eventId} not found.`);
             const rawEventData = await response.json();
@@ -116,18 +126,39 @@ export default function GameHub(props: GameHubProps) {
         }
     }, [location, props.musicTracks, props.instruments, playTrack]);
 
-    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities) => {
-        setCharacter(prev => prev ? { ...prev, qualities: newQualities } : null);
+    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>) => {
+        // FIX: Merge new definitions into dynamicQualities
+        setCharacter(prev => {
+            if (!prev) return null;
+            
+            const updated = { 
+                ...prev, 
+                qualities: { ...newQualities } 
+            };
+            
+            if (newDefinitions) {
+                updated.dynamicQualities = {
+                    ...(prev.dynamicQualities || {}),
+                    ...newDefinitions
+                };
+            }
+            return updated;
+        });
     }, []);
     
     const handleCharacterUpdate = useCallback((newCharacterState: CharacterDocument) => {
-        setCharacter(newCharacterState);
+        setCharacter({
+            ...newCharacterState,
+            qualities: { ...newCharacterState.qualities }
+        });
     }, []);
 
     const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => {
+        setActiveResolution(null);
+        
         setCharacter(prev => {
             if (!prev) return null;
-            const newChar = { ...prev, qualities: newQualities };
+            const newChar = { ...prev, qualities: { ...newQualities } };
             if (moveToId) {
                 newChar.currentLocationId = moveToId;
             }
@@ -191,12 +222,13 @@ export default function GameHub(props: GameHubProps) {
     if (!location) return <div>Loading location data...</div>;
 
     // --- ENGINE INIT ---
-    const mergedQualityDefs = {
+    // Note: This useMemo will now re-run when character.dynamicQualities changes
+    const mergedQualityDefs = useMemo(() => ({
         ...props.qualityDefs,
         ...(character.dynamicQualities || {})
-    };
+    }), [props.qualityDefs, character.dynamicQualities]);
 
-    const worldConfig: WorldConfig = {
+    const worldConfig: WorldConfig = useMemo(() => ({
         settings: props.settings, 
         qualities: mergedQualityDefs, 
         decks: props.deckDefs,
@@ -208,25 +240,25 @@ export default function GameHub(props: GameHubProps) {
         markets: props.markets,
         instruments: props.instruments || {},
         music: props.musicTracks || {},
-    };
+    }), [props.settings, mergedQualityDefs, props.deckDefs, props.locations, props.regions, props.imageLibrary, props.categories, props.markets, props.instruments, props.musicTracks]);
     
-    // Engine instance
-    const renderEngine = new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState);
+    const renderEngine = useMemo(() => 
+        new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState),
+        [character.qualities, worldConfig, character.equipment, props.worldState]
+    );
+
     const displayQualities = renderEngine.getDisplayState();
 
     const visibleStorylets = useMemo(() => {
         if (!character || !location) return [];
-        
         return Object.values(props.storyletDefs)
             .filter(s => {
                 if (s.location !== character.currentLocationId) return false;
                 return renderEngine.evaluateCondition(s.visible_if);
             })
             .sort((a, b) => (a.ordering || 0) - (b.ordering || 0));
-            
     }, [character, location, props.storyletDefs, renderEngine]);
 
-    // Render Data
     const renderedLocation = renderEngine.render(location);
     let renderedActiveEvent = activeEvent ? renderEngine.renderStorylet(activeEvent) : null;
     
@@ -239,7 +271,6 @@ export default function GameHub(props: GameHubProps) {
         };
     }
 
-    // Deck Logic
     const deckDef = location?.deck ? props.deckDefs[location.deck] : null;
     const shouldShowDeck = !!deckDef;
     let currentDeckStats = undefined;
@@ -249,13 +280,10 @@ export default function GameHub(props: GameHubProps) {
         currentDeckStats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
     }
 
-    // Market Data
     const locationMarket = location?.marketId;
     const regionMarket = (location?.regionId && props.regions[location.regionId]) ? props.regions[location.regionId].marketId : null;
     const activeMarketId = locationMarket || regionMarket || undefined;
-    const activeMarketDefinition = activeMarketId && props.markets[activeMarketId] ? props.markets[activeMarketId] : null;
-
-    // Action Points
+    
     const actionQid = props.settings.actionId.replace('$', '');
     const actionState = character.qualities[actionQid];
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
@@ -274,7 +302,6 @@ export default function GameHub(props: GameHubProps) {
     const sidebarTab = props.settings.tabLocation === 'sidebar';
 
     const buildSidebar = () => {
-        
         if (sidebarTab) {
             return (
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -299,7 +326,6 @@ export default function GameHub(props: GameHubProps) {
                 </div>
             );
         }
-
         return (
             <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div className="sidebar-header">
@@ -330,15 +356,13 @@ export default function GameHub(props: GameHubProps) {
         const headerStyle = props.settings.locationHeaderStyle || 'standard';
         const isBannerMode = headerStyle === 'banner';
         
-        // @ts-ignore - Engine renders generic objects
+        // @ts-ignore
         const imageCode = renderedLocation?.imageId || renderedLocation?.image;
 
         let innerContent = null;
 
-        // --- Reusable Header Rendering Logic ---
         const renderHeader = () => {
             if (headerStyle === 'hidden') return null;
-            
             if (isBannerMode) {
                 return (
                     <div className={`location-wrapper mode-banner`}>
@@ -362,7 +386,6 @@ export default function GameHub(props: GameHubProps) {
                     </div>
                 );
             }
-
             return (
                 <div className="location-header-wrapper">
                     <LocationHeader 
@@ -422,6 +445,10 @@ export default function GameHub(props: GameHubProps) {
                     <StoryletDisplay 
                         eventData={renderedActiveEvent} 
                         qualities={character.qualities} 
+                        
+                        resolution={activeResolution}
+                        onResolve={setActiveResolution}
+                        
                         onFinish={handleEventFinish} 
                         onQualitiesUpdate={handleQualitiesUpdate} 
                         onCardPlayed={handleCardPlayed} 
@@ -440,8 +467,6 @@ export default function GameHub(props: GameHubProps) {
             innerContent = (
                 <div className="hub-view">
                     {renderHeader()}
-
-                    {/* --- FIX: HIDE ACTIONS IF NO STORYLETS --- */}
                     {visibleStorylets.length > 0 && (
                         <div className="storylet-feed" style={{ marginTop: '2rem' }}>
                             <LocationStorylets 
@@ -453,8 +478,6 @@ export default function GameHub(props: GameHubProps) {
                             />
                         </div>
                     )}
-
-                    {/* --- FIX: HIDE OPPORTUNITIES IF NO DECK --- */}
                     {shouldShowDeck && (
                         <div className="deck-feed" style={{ marginTop: '3rem' }}>
                             <OpportunityHand 

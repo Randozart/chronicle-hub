@@ -7,6 +7,21 @@ import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
 import FormattedText from './FormattedText';
 
+export type ResolutionState = {
+    qualities: PlayerQualities; 
+    title: string; 
+    body: string; 
+    redirectId?: string; 
+    moveToId?: string; 
+    image_code?: string;
+    wasSuccess?: boolean; 
+    skillCheckDetails?: { description: string; };
+    qualityChanges: QualityChangeInfo[];
+    errors?: string[]; 
+    rawEffects?: string;
+    resolvedEffects?: string[];
+};
+
 interface StoryletDisplayProps {
     eventData: Storylet | Opportunity;
     qualities: PlayerQualities;
@@ -14,8 +29,14 @@ interface StoryletDisplayProps {
     storyletDefs: Record<string, Storylet>;
     opportunityDefs: Record<string, Opportunity>;
     settings: WorldSettings;
+    
+    resolution: ResolutionState | null; 
+    onResolve: (res: ResolutionState) => void; 
+    
     onFinish: (newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => void;
-    onQualitiesUpdate: (newQualities: PlayerQualities) => void;
+    // FIX: Update Type
+    onQualitiesUpdate: (newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>) => void;
+    
     onCardPlayed?: (cardId: string) => void;
     imageLibrary: Record<string, ImageDefinition>; 
     categories: Record<string, CategoryDefinition>;
@@ -25,19 +46,11 @@ interface StoryletDisplayProps {
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
 
-type ResolutionState = {
-    qualities: PlayerQualities;
-    title: string; body: string; redirectId?: string; moveToId?: string; image_code?: string;
-    wasSuccess?: boolean; skillCheckDetails?: { description: string; };
-    qualityChanges: QualityChangeInfo[];
-    errors?: string[]; 
-    rawEffects?: string;
-    resolvedEffects?: string[];
-};
-
 export default function StoryletDisplay({ 
     eventData, 
     qualities, 
+    resolution, 
+    onResolve,  
     onFinish,
     onQualitiesUpdate,
     qualityDefs,
@@ -50,7 +63,6 @@ export default function StoryletDisplay({
     storyId,
     characterId
 }: StoryletDisplayProps) {
-    const [resolution, setResolution] = useState<ResolutionState | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     
     const [showDebug, setShowDebug] = useState(false);
@@ -58,7 +70,6 @@ export default function StoryletDisplay({
     
     const storylet = eventData; 
     
-    // Helper for pre-resolution text evaluation
     const evalText = (text: string | undefined, context?: { qid: string, state: any } | null) => {
         return evaluateText(text, qualities, qualityDefs, context, 0);
     };
@@ -91,7 +102,8 @@ export default function StoryletDisplay({
                  return;
             }
 
-            onQualitiesUpdate(data.newQualities); 
+            // FIX: Pass newDefinitions to GameHub so ProfilePanel updates immediately
+            onQualitiesUpdate(data.newQualities, data.newDefinitions); 
             
             if (onCardPlayed && 'deck' in eventData) {
                 onCardPlayed(eventData.id);
@@ -102,13 +114,17 @@ export default function StoryletDisplay({
             if (isInstant) {
                 onFinish(data.newQualities, data.result.redirectId, data.result.moveToId);
             } else {
-                setResolution({ ...data.result, image_code: option.image_code, qualities: data.newQualities });
+                onResolve({ 
+                    ...data.result, 
+                    image_code: option.image_code, 
+                    qualities: data.newQualities 
+                });
             }
         } catch (error) {
             console.error("API Error:", error);
             alert("Network or Server Error occurred.");
         } finally {
-            if (!resolution) setIsLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -137,7 +153,7 @@ export default function StoryletDisplay({
     const returnTargetId = getReturnTarget();
     const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
-     if (resolution) {
+    if (resolution) {
         const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
         const postResolutionQualities = resolution.qualities;
 
@@ -168,7 +184,6 @@ export default function StoryletDisplay({
                         {resolution.qualityChanges.map((change) => {
                             if (change.hidden && !showHidden) return null;
 
-                            // FIX: Evaluate change text here with post-resolution state
                             const resolvedChangeText = evaluateText(change.changeText, postResolutionQualities, qualityDefs, null, 0);
                             const finalChange = {...change, changeText: resolvedChangeText};
 

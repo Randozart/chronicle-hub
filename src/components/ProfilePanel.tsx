@@ -5,7 +5,7 @@ import { useGroupedList } from "@/hooks/useGroupedList";
 import { evaluateText } from "@/engine/textProcessor";
 import GameImage from "./GameImage";
 import { GameEngine } from '@/engine/gameEngine';
-import FormattedText from "./FormattedText"; // Import the FormattedText component
+import FormattedText from "./FormattedText"; 
 
 interface ProfilePanelProps {
     qualities: PlayerQualities;
@@ -19,6 +19,8 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category"); 
 
+    // Create a local engine instance to handle formatting and logic
+    // We depend on 'qualities' to recreate this when data changes.
     const engine = useMemo(() => new GameEngine(
         qualities, 
         { qualities: qualityDefs, settings } as any, 
@@ -28,13 +30,13 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     // Check Anonymous Setting
     const hideIdentity = settings.hideProfileIdentity === true;
     
-    // Extract Identity (only if needed)
+    // Extract Identity
     const nameState = qualities['player_name'];
     const portraitState = qualities['player_portrait'];
     const playerName = !hideIdentity && (nameState?.type === 'S') ? nameState.stringValue : "Unknown Drifter";
     const portraitCode = !hideIdentity && (portraitState?.type === 'S') ? portraitState.stringValue : "default_avatar";
 
-    // Extract Title (only if needed)
+    // Extract Title
     let playerTitle = "";
     if (!hideIdentity && settings.enableTitle && settings.titleQualityId) {
         const qid = settings.titleQualityId.replace('$', '');
@@ -54,7 +56,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     const showPortrait = !hideIdentity && settings.enablePortrait !== false;
     const shape = settings.portraitStyle || 'circle';
 
-    // 5. Prepare List
+    // Prepare List
     const flatList = useMemo(() => {
         return Object.keys(qualities)
             .map(qid => {
@@ -64,9 +66,14 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 if (def.tags?.includes('hidden')) return null;
                 if (qid === settings.titleQualityId?.replace('$', '')) return null; 
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
-                // Keep level 0 qualities for the profile page
-                if (state.type !== 'S' && state.level === 0 && !Object.values(engine.equipment).some(id => id && qualityDefs[id]?.bonus?.includes(`$${qid}`))) return null;
                 
+                // Keep level 0 qualities if they have level 0 visibility OR if they provide bonuses to equipped items
+                // This logic matches how games often hide "0" stats unless meaningful
+                const hasEquippedBonus = Object.values(engine.equipment).some(id => id && qualityDefs[id]?.bonus?.includes(`$${qid}`));
+                
+                if (state.type !== 'S' && state.level === 0 && !hasEquippedBonus) return null;
+                
+                // Render via engine to process variable names in descriptions, etc.
                 const merged = { ...def, ...state };
                 return engine.render(merged);
             })
@@ -78,8 +85,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
 
     return (
         <div className="profile-container">
-            
-            {/* CONDITIONAL PASSPORT HEADER */}
             {!hideIdentity ? (
                 <div className="profile-header">
                     {showPortrait && (
@@ -107,7 +112,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                  </h1>
             )}
 
-            {/* CONTROLS */}
             <div className="profile-controls">
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search qualities..." className="form-input profile-search" />
                 <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className="form-select profile-sort">
@@ -141,7 +145,6 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                                                 <span className="q-name"><FormattedText text={q.name} /></span> 
                                                 <span className="q-val">{q.type === 'S' ? q.stringValue : q.level}</span>
                                             </div>
-                                            {/* Use a div container for descriptions to avoid nested <p> tags */}
                                             <div className="q-desc">
                                                 <FormattedText text={q.description} />
                                             </div>
