@@ -1,7 +1,7 @@
 'use client';
 
 import { Opportunity, PlayerQualities, QualityDefinition, ImageDefinition, CharacterDocument, DeckDefinition, WorldSettings } from "@/engine/models";
-import { evaluateText, evaluateCondition } from "@/engine/textProcessor";
+import { evaluateCondition } from "@/engine/textProcessor";
 import GameImage from "./GameImage";
 import DeckTimer from "./DeckTimer";
 import FormattedText from "./FormattedText";
@@ -26,11 +26,10 @@ interface OpportunityHandProps {
 
 export default function OpportunityHand({ 
     hand, onCardClick, qualities, onDrawClick, onDiscard, isLoading, 
-    qualityDefs, imageLibrary, 
-    character, locationDeckId, deckDefs, settings, currentDeckStats,
-    engine 
+    qualityDefs, imageLibrary, character, locationDeckId, deckDefs, settings, currentDeckStats, engine 
 }: OpportunityHandProps) {
-    
+    console.log("[OpportunityHand] Component is rendering. Received hand prop:", JSON.parse(JSON.stringify(hand)));
+
     const deckDef = deckDefs[locationDeckId];
     const deckSize = currentDeckStats?.deckSize ?? 0;
     const handSize = currentDeckStats?.handSize ?? 3;
@@ -40,36 +39,14 @@ export default function OpportunityHand({
     const isFinite = deckSize > 0;
     const isEmpty = isFinite && currentCharges <= 0;
     const isDisabled = isLoading || isHandFull || isEmpty;
-    
     let buttonText = isLoading ? "Drawing..." : isHandFull ? `Hand Full (${hand.length}/${handSize})` : isEmpty ? "Deck Empty" : "Draw a Card";
 
-    // --- CONFIG ---
-    // @ts-ignore
-    const layoutStyle = (deckDef?.card_style && deckDef.card_style !== 'default') 
+    const layoutStyle = (deckDef?.card_style) 
         ? deckDef.card_style 
-        // @ts-ignore
         : (settings.componentConfig?.handStyle || 'cards');
 
-    const isRow = layoutStyle === 'rows';
-    const isImagesOnly = layoutStyle === 'images-only';
-    const isTarot = layoutStyle === 'tarot';
-
-    // Image shape handling
-    // @ts-ignore
-    const globalImageShape = settings.imageConfig?.storylet || 'default';
-    
-    // In Tarot or Images-Only mode, we force specific shapes regardless of global setting
-    let shapeOverride = undefined;
-    if (isImagesOnly) shapeOverride = 'square';
-    if (isTarot) shapeOverride = 'default'; // Let CSS ratio handle it
-    if (isRow && globalImageShape === 'circle') shapeOverride = 'circle';
-
-    // Dynamic Container Style
-    const containerStyle: React.CSSProperties = isRow 
-        ? { display: 'flex', flexDirection: 'column', gap: '1rem' }
-        : layoutStyle === 'scrolling'
-            ? { display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }
-            : { /* Grid handled by CSS classes */ };
+    const useCardStructure = ['cards', 'polaroid', 'images-only', 'tarot', 'scrolling'].includes(layoutStyle);
+    const containerClass = useCardStructure ? `card-container mode-${layoutStyle} list-constraint-full` : `storylet-list-container mode-${layoutStyle}`;
 
     return (
         <div className="opportunity-hand">
@@ -84,95 +61,207 @@ export default function OpportunityHand({
                 )}
             </div>
 
-            <div className={`card-container mode-${layoutStyle}`} style={containerStyle}>
+            <div className={containerClass}>
                 {hand.length > 0 ? (
                     hand.map(card => {
+                        console.group(`[OpportunityHand] Processing Card: ${card.id}`);
+                        console.log("Input Card Object:", JSON.parse(JSON.stringify(card)));
+                        console.log("Input Name to Evaluate:", card.name);
+
+                        console.log("Engine state BEFORE eval (tempAliases):", { ...engine.tempAliases });
                         const evaluatedName = engine.evaluateText(card.name, { qid: card.id, state: qualities[card.id] });
+                        console.log("Output (evaluatedName):", evaluatedName);
+                        console.groupEnd();
+
                         const evaluatedShort = card.short ? engine.evaluateText(card.short, { qid: card.id, state: qualities[card.id] }) : "";
+                        
                         const isValid = evaluateCondition(card.draw_condition, qualities, qualityDefs, null, 0);
                         const isTransient = !card.keep_if_invalid;
-                        
-                        if (isTransient && !isValid) return null; 
 
-                        return (
-                            <div 
-                                key={card.id} 
-                                className="card" 
-                                style={layoutStyle === 'scrolling' ? { minWidth: '250px' } : { position: 'relative' }}
-                                title={isImagesOnly ? evaluatedName : undefined}
-                            >
-                                <button 
-                                    className="card-content-btn" 
-                                    onClick={() => onCardClick(card.id)}
-                                    // Switch flex direction for Rows
-                                    style={isRow ? { display: 'flex', flexDirection: 'row', alignItems: 'flex-start', textAlign: 'left', width: '100%' } : {}}
+                        if (isTransient && !isValid) return null;
+
+                        // Inside your hand.map(...) callback in OpportunityHand.tsx
+
+                        if (layoutStyle === 'polaroid') {
+                            return (
+                                // --- CHANGE 1: Change the root element to a div and add position: 'relative' ---
+                                <div 
+                                    key={card.id}
+                                    className="option-button card-mode" 
+                                    style={{ 
+                                        position: 'relative', // Necessary for absolute positioning the discard button
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        height: '100%',
+                                        alignItems: 'stretch'
+                                    }}
                                 >
-                                    {card.image_code && (
-                                        <div style={isRow ? { width: '80px', flexShrink: 0, marginRight: '1rem' } : {}}>
+                                    {/* --- CHANGE 2: Wrap the main content in its own button --- */}
+                                    <button
+                                        onClick={() => onCardClick(card.id)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            padding: 0,
+                                            margin: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'stretch'
+                                        }}
+                                    >
+                                        <div
+                                            className="option-content-wrapper"
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                flex: 1,
+                                                padding: 0
+                                            }}
+                                        >
+                                            {card.image_code && (
+                                                <div
+                                                    className="option-image-container"
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '160px',
+                                                        marginBottom: '0.5rem',
+                                                        marginRight: 0
+                                                    }}
+                                                >
+                                                    <GameImage
+                                                        code={card.image_code}
+                                                        imageLibrary={imageLibrary}
+                                                        type="storylet"
+                                                        alt={evaluatedName}
+                                                        className="option-image"
+                                                        settings={settings}
+                                                        evaluateText={(text) =>
+                                                            engine.evaluateText(text, {
+                                                                qid: card.id,
+                                                                state: qualities[card.id]
+                                                            })
+                                                        }
+                                                        style={{
+                                                            borderBottomLeftRadius: 0,
+                                                            borderBottomRightRadius: 0
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            <div
+                                                className="option-text-wrapper"
+                                                style={{ padding: '0 1rem 1rem', textAlign: 'left' }}
+                                            >
+                                                <h3><FormattedText text={evaluatedName} /></h3>
+                                                {evaluatedShort && <div className="option-short-desc"><FormattedText text={evaluatedShort} /></div>}
+                                            </div>
+                                        </div>
+                                    </button>
+                                    
+                                    {/* --- CHANGE 3: Add the discard button, just like in your other card layout --- */}
+                                    {card.can_discard !== false && onDiscard && (
+                                        <button 
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); // Prevent any other clicks
+                                                if (confirm("Discard?")) {
+                                                    onDiscard(card.id); 
+                                                }
+                                            }} 
+                                            style={{ 
+                                                position: 'absolute', 
+                                                top: 5, 
+                                                right: 5,
+                                                background: 'rgba(0,0,0,0.6)', 
+                                                color: 'var(--text-primary)',
+                                                border: '1px solid #aaa', 
+                                                borderRadius: '50%',
+                                                width: '24px', 
+                                                height: '24px', 
+                                                cursor: 'pointer',
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                fontSize: '0.8rem', 
+                                                zIndex: 10 // Ensure it's on top
+                                            }} 
+                                            title="Discard"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                                                
+                        if (layoutStyle === 'rows' || layoutStyle === 'compact') {
+                            return (
+                                <button
+                                    key={card.id}
+                                    className="option-button"
+                                    onClick={() => onCardClick(card.id)}
+                                >
+                                    <div className="option-content-wrapper">
+                                        {card.image_code && (
+                                            <div className="option-image-container">
+                                                <GameImage
+                                                    code={card.image_code}
+                                                    imageLibrary={imageLibrary}
+                                                    type="storylet"
+                                                    alt={evaluatedName}
+                                                    className="option-image"
+                                                    settings={settings}
+                                                    evaluateText={(text) =>
+                                                        engine.evaluateText(text, {
+                                                            qid: card.id,
+                                                            state: qualities[card.id]
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="option-text-wrapper">
+                                            <h3><FormattedText text={evaluatedName} /></h3>
+                                            {evaluatedShort && (
+                                                <div><FormattedText text={evaluatedShort} /></div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        }
+
+                        
+                        return (
+                            <div key={card.id} className="card" title={layoutStyle === 'images-only' ? evaluatedName : undefined}>
+                                <button className="card-content-btn" onClick={() => onCardClick(card.id)}>
+                                        {card.image_code && (
                                             <GameImage 
                                                 code={card.image_code} 
                                                 imageLibrary={imageLibrary} 
                                                 type="storylet" 
                                                 alt={evaluatedName} 
-                                                className="card-image"
-                                                settings={settings}
-                                                shapeOverride={shapeOverride}
+                                                className="card-image" 
+                                                settings={settings} 
                                                 evaluateText={(text) => engine.evaluateText(text, { qid: card.id, state: qualities[card.id] })}
                                             />
-                                        </div>
-                                    )}
-                                    
-                                    {/* Hide text in Images-Only mode */}
-                                    {!isImagesOnly && (
-                                        <div className="card-text">
-                                            <h3><FormattedText text={evaluatedName} /></h3>
-                                            {/* Hide body text in Tarot mode too (CSS handles it, but explicit check is safer) */}
-                                            {evaluatedShort && !isTarot && <p><FormattedText text={evaluatedShort} /></p>}
-                                        </div>
-                                    )}
-
-                                    {/* Overlay for Images Only */}
-                                    {isImagesOnly && (
-                                        <div style={{
-                                            position: 'absolute', bottom: 0, left: 0, right: 0,
-                                            background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
-                                            padding: '2rem 0.5rem 0.5rem 0.5rem',
-                                            color: '#fff', fontSize: '0.75rem', fontWeight: 'bold',
-                                            textAlign: 'center', pointerEvents: 'none'
-                                        }}>
-                                            <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                                <FormattedText text={evaluatedName} />
-                                            </span>
-                                        </div>
-                                    )}
+                                        )}                                       <div className="card-text"><h3><FormattedText text={evaluatedName} /></h3>{evaluatedShort && layoutStyle !== 'tarot' && <div><FormattedText text={evaluatedShort} /></div>}</div>
+                                    {layoutStyle === 'images-only' && <div className="image-only-overlay"><FormattedText text={evaluatedName} /></div>}
                                 </button>
-                                
-                                {card.can_discard !== false && onDiscard && (
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); if (confirm("Discard?")) onDiscard(card.id); }}
-                                        style={{
-                                            position: 'absolute', top: 5, right: 5,
-                                            background: 'rgba(0,0,0,0.6)', color: 'var(--text-primary)',
-                                            border: '1px solid #aaa', borderRadius: '50%',
-                                            width: '24px', height: '24px', cursor: 'pointer',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '0.8rem', zIndex: 10
-                                        }}
-                                        title="Discard"
-                                    >✕</button>
-                                )}
+                                {card.can_discard !== false && onDiscard && <button onClick={(e) => { e.stopPropagation(); if (confirm("Discard?")) onDiscard(card.id); }} style={{ position: 'absolute', top: 5, right: 5, /* ... */ }} title="Discard">✕</button>}
                             </div>
                         );
                     })
-                ) : (
-                    <p className="no-cards-text">Your hand is empty.</p>
-                )}
+                ) : ( <div className="no-cards-text">Your hand is empty.</div> )}
             </div>
             
             <div className="deck-actions">
-                <button className="deck-button" onClick={onDrawClick} disabled={isDisabled} style={isDisabled ? { opacity: 0.5, cursor: 'not-allowed', background: '#444' } : {}}>
-                    {buttonText}
-                </button>
+                <button className="deck-button" onClick={onDrawClick} disabled={isDisabled} style={isDisabled ? { opacity: 0.5, cursor: 'not-allowed', background: '#444' } : {}}>{buttonText}</button>
             </div>
         </div>
     );

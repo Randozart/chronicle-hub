@@ -124,14 +124,20 @@ export function parseAndApplyEffects(
             const newMatch = command.match(/^%new\[(.*?)(?:;\s*(.*))?\](?:\s*(=)\s*(.*))?$/);
             if (newMatch) {
                 const [, idExpr, argsStr, op, valStr] = newMatch;
-                const newId = idExpr.trim(); // Resolved in Step 1
+                const newId = idExpr.trim(); 
 
-                let numVal: string | number = 1;
+                let finalVal: string | number = 1; 
                 if (op && valStr) {
-                    numVal = isNaN(Number(valStr)) ? valStr : Number(valStr);
+                    const trimmedValStr = valStr.trim();
+                    if (!isNaN(Number(trimmedValStr)) && trimmedValStr !== "") {
+                        finalVal = Number(trimmedValStr);
+                    } else {
+                        finalVal = trimmedValStr.replace(/^['"]|['"]$/g, "");
+                    }
                 }
 
-                ctx.executedEffectsLog.push(`[EXECUTE] New: ${newId} = ${numVal}`);
+                ctx.executedEffectsLog.push(`[EXECUTE] New: ${newId} = ${finalVal}`);
+
 
                 const props: Record<string, any> = {};
                 let templateId = null;
@@ -153,9 +159,9 @@ export function parseAndApplyEffects(
                 }
 
                 if (ctx.createNewQuality) {
-                    ctx.createNewQuality(newId, numVal, templateId, props);
+                    ctx.createNewQuality(newId, finalVal, templateId, props);
                 } else {
-                    createNewQuality(ctx, newId, numVal, templateId, props);
+                    createNewQuality(ctx, newId, finalVal, templateId, props);
                 }
             }
         }

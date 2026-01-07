@@ -85,7 +85,8 @@ export default function GameHub(props: GameHubProps) {
         setShowMarket(false);
         setIsTransitioning(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
-
+    
+    
     useEffect(() => {
         if (!character || !location) return;
         if (character.currentLocationId !== location.id) {
@@ -236,9 +237,6 @@ export default function GameHub(props: GameHubProps) {
 
             if (data.success) {
                 setShowMap(false);
-                // --- FIX: Refresh server components to get new location data ---
-                // This is the key change. It tells Next.js to re-run the page's
-                // data fetching on the server and send the new props down.
                 router.refresh();
             } else {
                 alert(data.error);
@@ -260,7 +258,6 @@ export default function GameHub(props: GameHubProps) {
     }
     if (!location) return <div>Loading location data...</div>;
 
-    // --- ENGINE INIT ---
     const mergedQualityDefs = useMemo(() => ({
         ...props.qualityDefs,
         ...(character.dynamicQualities || {})
@@ -285,6 +282,7 @@ export default function GameHub(props: GameHubProps) {
         [character.qualities, worldConfig, character.equipment, props.worldState]
     );
 
+    
     const displayQualities = renderEngine.getDisplayState();
 
     const visibleStorylets = useMemo(() => {
@@ -534,7 +532,7 @@ export default function GameHub(props: GameHubProps) {
                         const deckTitle = deckDef.name || "Opportunities";
 
                         return (
-                            <div key={deckId} className="deck-feed" style={{ marginTop: '3rem' }}>
+                            <div key={deckId} className="storylet-feed" style={{ marginTop: '3rem' }}>
                                 <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--text-highlight)', textTransform: 'uppercase', fontSize: '1.1rem', letterSpacing: '1px' }}>
                                     {renderEngine.evaluateText(deckTitle)}
                                 </h3>

@@ -278,6 +278,16 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
         }
     }
 
+    const layoutOptions = [
+        { value: 'rows', label: 'Detailed Rows' },
+        { value: 'compact', label: 'Compact Text' },
+        { value: 'cards', label: 'Card Style 1' },
+        { value: 'polaroid', label: 'Card Style 2' }, 
+        { value: 'images-only', label: 'Images-Only Grid' },
+        { value: 'tarot', label: 'Tall Cards)' },
+        // { value: 'scrolling', label: 'Horizontal Scroll' }, Dysfunctional, removed
+    ];
+
     return (
         <div className="admin-editor-col" style={{ maxWidth: '900px', margin: '0 auto' }}>            
             
@@ -692,28 +702,23 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </div>
                  
             </div>
+
              {/* 7. COMPONENT & IMAGE CONFIGURATION */}
             <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
                 <label className="special-label" style={{ color: '#e5c07b' }}>Interface Customization</label>
                 
-                {/* 
-                   LAYOUT STRATEGY: 
-                   Row 1: Controls (Left) | Global Preview (Right, Fixed 300px)
-                   Row 2: Resolution Preview (Full Width)
-                */}
-
                 <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                     
-                    {/* === TOP LEFT: CONTROLS === */}
+                    {/* LEFT COLUMN: CONTROLS */}
                     <div style={{ flex: 1, minWidth: '300px' }}>
                         
-                        {/* --- LAYOUT STRUCTURE --- */}
                         <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
                             Layout Structure
                         </h4>
                         
+                        {/* --- UNIFIED DROPDOWNS --- */}
                         <div className="form-group">
-                            <label className="form-label">Storylet Layout</label>
+                            <label className="form-label">Action Layout</label>
                             <select 
                                 // @ts-ignore
                                 value={form.componentConfig?.storyletListStyle || 'rows'} 
@@ -721,9 +726,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 onChange={e => handleChange('componentConfig', { ...form.componentConfig, storyletListStyle: e.target.value })} 
                                 className="form-select"
                             >
-                                <option value="rows">Classic Rows (List)</option>
-                                <option value="cards">Grid Cards</option>
-                                <option value="compact">Compact Text</option>
+                                {layoutOptions.map(opt => <option key={`storylet-${opt.value}`} value={opt.value}>{opt.label}</option>)}
                             </select>
                         </div>
 
@@ -736,14 +739,9 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                                 onChange={e => handleChange('componentConfig', { ...form.componentConfig, handStyle: e.target.value })} 
                                 className="form-select"
                             >
-                                <option value="cards">Standard Cards (4:3)</option>
-                                <option value="tarot">Tarot Cards (Tall)</option>
-                                <option value="images-only">Images Only (Grid)</option>
-                                <option value="rows">Detailed Rows</option>
-                                <option value="scrolling">Horizontal Scroll</option>
+                                {layoutOptions.map(opt => <option key={`hand-${opt.value}`} value={opt.value}>{opt.label}</option>)}
                             </select>
                         </div>
-
                         <div className="form-group">
                             <label className="form-label">Inventory Layout</label>
                             <select 

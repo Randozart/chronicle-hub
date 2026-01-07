@@ -156,14 +156,10 @@ export default function StoryletDisplay({
 
    if (resolution) {
         const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
-        
-        // Pass result state to eval to handle changes immediately in text
         const postResolutionQualities = resolution.qualities;
         const evalResultText = (text: string | undefined) => {
             return evaluateText(text, postResolutionQualities, qualityDefs, null, 0);
         };
-        
-        // Image for Result: Use option image (if exists) or fallback to storylet image
         const imageCode = resolution.image_code || storylet.image_code || "";
 
         return (
@@ -174,11 +170,11 @@ export default function StoryletDisplay({
                             <GameImage 
                                 code={imageCode} 
                                 imageLibrary={imageLibrary} 
-                                type="storylet" // Use Storylet shape settings
+                                type="storylet"
                                 alt={storylet.name}
                                 className="storylet-image"
                                 evaluateText={evalResultText} 
-                                settings={settings} // PASS SETTINGS FOR SHAPE
+                                settings={settings}
                             />
                         </div>
                     )}
@@ -195,25 +191,32 @@ export default function StoryletDisplay({
                         {resolution.qualityChanges.map((change) => {
                             if (change.hidden && !showHidden) return null;
 
-                            // We need to resolve text here again for dynamic descriptions
                             const resolvedChangeText = evaluateText(change.changeText, postResolutionQualities, qualityDefs, null, 0);
                             const finalChange = {...change, changeText: resolvedChangeText};
-
-                            // Look up category for color
                             const catDef = categories[change.category || ""] || categories['default'];
+
+                            // --- FIX: Check if an icon exists before rendering its container ---
+                            const qualityDef = qualityDefs[change.qid];
+                            const iconCode = qualityDef?.image || change.qid;
+                            const hasIcon = !!(imageLibrary[iconCode] || (iconCode && iconCode.startsWith('http')));
 
                             return (
                                 <div key={change.qid} style={{ opacity: change.hidden ? 0.6 : 1, display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                    {/* ADDED: QUALITY ICON */}
-                                    <div style={{ width: '40px', flexShrink: 0, marginTop: '2px' }}>
-                                        <GameImage 
-                                            code={change.qid} // Use QID to lookup icon
-                                            imageLibrary={imageLibrary}
-                                            type="icon" 
-                                            settings={settings}
-                                            className="option-image" // Re-use option image class for styling
-                                        />
-                                    </div>
+                                    {/* Conditionally render the icon container */}
+                                    {hasIcon ? (
+                                        <div style={{ width: '40px', height: '40px', flexShrink: 0, marginTop: '2px' }}>
+                                            <GameImage 
+                                                code={iconCode}
+                                                imageLibrary={imageLibrary}
+                                                type="icon" 
+                                                settings={settings}
+                                                className="option-image"
+                                            />
+                                        </div>
+                                    ) : (
+                                        // If no icon, render a spacer to maintain alignment but keep it empty
+                                        <div style={{ width: '40px', flexShrink: 0 }}></div>
+                                    )}
                                     <div style={{ flex: 1 }}>
                                         <QualityChangeBar 
                                             change={finalChange} 
@@ -226,7 +229,6 @@ export default function StoryletDisplay({
                     </div>
                 }
 
-                {/* DEBUG CONSOLE */}
                 {canDebug && (
                     <div style={{ marginTop: '20px', border: '1px solid #7f8c8d', borderRadius: '4px', overflow: 'hidden' }}>
                         <div 
@@ -242,63 +244,28 @@ export default function StoryletDisplay({
                             </span>
                             <span>{showDebug ? '▼' : '▶'}</span>
                         </div>
-                        
                         {showDebug && (
                             <div style={{ 
-                                background: '#2c3e50', 
-                                color: '#ecf0f1', 
-                                padding: '12px', 
-                                fontFamily: 'monospace', 
-                                fontSize: '0.85rem',
-                                maxHeight: '400px',
-                                overflowY: 'auto'
+                                background: '#2c3e50', color: '#ecf0f1', padding: '12px', fontFamily: 'monospace', 
+                                fontSize: '0.85rem', maxHeight: '400px', overflowY: 'auto'
                             }}>
-                                
-                                <div style={{ marginBottom: '10px' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={showHidden} 
-                                            onChange={(e) => setShowHidden(e.target.checked)}
-                                            style={{ marginRight: '8px' }}
-                                        />
-                                        Show Hidden Effects
-                                    </label>
-                                </div>
-
+                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: '10px' }}>
+                                    <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} style={{ marginRight: '8px' }}/>
+                                    Show Hidden Effects
+                                </label>
                                 {resolution.errors && resolution.errors.length > 0 && (
                                     <div style={{ marginBottom: '15px', borderBottom: '1px solid #95a5a6', paddingBottom: '10px' }}>
                                         <strong style={{ color: '#e74c3c' }}>Errors:</strong>
                                         <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                                            {resolution.errors.map((err, idx) => (
-                                                <li key={idx} style={{ marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{err}</li>
-                                            ))}
+                                            {resolution.errors.map((err, idx) => <li key={idx} style={{ marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{err}</li>)}
                                         </ul>
                                     </div>
                                 )}
-
                                 {resolution.rawEffects && (
-                                    <div style={{ marginBottom: '15px' }}>
-                                        <strong style={{ color: '#95a5a6' }}>Raw ScribeScript:</strong>
-                                        <pre style={{ 
-                                            background: '#000', padding: '8px', marginTop: '5px', 
-                                            whiteSpace: 'pre-wrap', borderRadius: '4px', color: '#95a5a6', opacity: 0.8 
-                                        }}>
-                                            {resolution.rawEffects}
-                                        </pre>
-                                    </div>
+                                    <div style={{ marginBottom: '15px' }}><strong style={{ color: '#95a5a6' }}>Raw ScribeScript:</strong><pre style={{ background: '#000', padding: '8px', marginTop: '5px', whiteSpace: 'pre-wrap', borderRadius: '4px', color: '#95a5a6', opacity: 0.8 }}>{resolution.rawEffects}</pre></div>
                                 )}
-                                
                                 {resolution.resolvedEffects && resolution.resolvedEffects.length > 0 && (
-                                    <div>
-                                        <strong style={{ color: '#2ecc71' }}>Final Execution Trace:</strong>
-                                        <pre style={{ 
-                                            background: '#000', padding: '8px', marginTop: '5px', 
-                                            whiteSpace: 'pre-wrap', borderRadius: '4px', color: '#f1c40f' 
-                                        }}>
-                                            {resolution.resolvedEffects.join('\n')}
-                                        </pre>
-                                    </div>
+                                    <div><strong style={{ color: '#2ecc71' }}>Final Execution Trace:</strong><pre style={{ background: '#000', padding: '8px', marginTop: '5px', whiteSpace: 'pre-wrap', borderRadius: '4px', color: '#f1c40f' }}>{resolution.resolvedEffects.join('\n')}</pre></div>
                                 )}
                             </div>
                         )}
@@ -313,7 +280,6 @@ export default function StoryletDisplay({
     const getLockReason = (condition: string): string => {
         const match = condition.match(/\$([a-zA-Z0-9_]+)\s*(>=|<=|==|>|<)\s*(\d+)/);
         if (!match) return `A requirement is not met.`;
-        
         const [, qid, op, val] = match;
         const qualityName = qualityDefs[qid]?.name ?? qid; 
         const state = qualities[qid];
@@ -326,13 +292,7 @@ export default function StoryletDisplay({
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, null, 0);
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
-            
-            const { chance, text } = getChallengeDetails(
-                option.challenge, 
-                qualities, 
-                qualityDefs
-            );
-            
+            const { chance, text } = getChallengeDetails(option.challenge, qualities, qualityDefs);
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}%]` : '';
             return { ...option, isLocked, lockReason, skillCheckText, chance };
         });
@@ -370,23 +330,17 @@ export default function StoryletDisplay({
             <div className="options-container">
                 {optionsToDisplay.map((option) => {
                     const showCost = settings.useActionEconomy;
-                    
                     let costDisplay = null;
                     if (showCost) {
                         const rawCost = option.computed_action_cost;
-                        
                         if (typeof rawCost === 'number') {
-                            if (rawCost > 0) {
-                                costDisplay = <span className="cost-badge cost-numeric">{rawCost} Actions</span>;
-                            } else {
-                                costDisplay = <span className="cost-badge cost-free">Free</span>;
-                            }
+                            if (rawCost > 0) costDisplay = <span className="cost-badge cost-numeric">{rawCost} Actions</span>;
+                            else costDisplay = <span className="cost-badge cost-free">Free</span>;
                         } else if (typeof rawCost === 'string') {
                             const cleanLogic = rawCost.replace(/\$/g, '');
                             costDisplay = <span className="cost-badge cost-logic" title={rawCost}>{cleanLogic}</span>;
                         }
                     }
-
                     const evaluatedName = evalText(option.name);
 
                     return (
@@ -404,9 +358,9 @@ export default function StoryletDisplay({
                                             code={option.image_code} 
                                             imageLibrary={imageLibrary} 
                                             type="icon" 
-                                            alt={evaluatedName} // Use evaluated name for alt text
+                                            alt={evaluatedName}
                                             className="option-image"
-                                            evaluateText={evalText} // <-- Add this prop
+                                            evaluateText={evalText}
                                         />
                                     </div>
                                 )}

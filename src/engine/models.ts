@@ -154,20 +154,13 @@ export interface WorldSettings {
         inventory?: 'default' | 'square' | 'portrait' | 'landscape' | 'circle' | 'wide'; 
     };
     componentConfig?: {
-        storyletListStyle?: 'rows' | 'cards' | 'compact'; // Layout structure
-        storyletWidth?: 'full' | 'narrow' | 'centered';   // Container width constraint
-        storyletImageStyle?: 'default' | 'square-small' | 'square-large' | 'landscape' | 'portrait' | 'circle'; // Specific image look
+        storyletListStyle?: 'rows' | 'cards' | 'compact' | 'polaroid' | 'scrolling' | 'images-only' | 'tarot';
+        handStyle?: 'rows' | 'cards' | 'compact' | 'polaroid' | 'scrolling' | 'images-only' | 'tarot';
 
-        handStyle?: 'cards' | 'rows' | 'scrolling' | 'images-only' | 'tarot';
-        handImageStyle?: 'default' | 'square-small' | 'landscape'; 
-
-        equipmentLayout?: 'grid' | 'list'; 
+        storyletWidth?: 'full' | 'narrow' | 'centered';  
         inventoryCardSize?: 'small' | 'medium' | 'large'; 
-
         inventoryStyle?: 'standard' | 'portrait' | 'icon-grid' | 'list';
-        inventoryItemWidth?: number; // Pixel value for card width
         inventoryPortraitMode?: 'cover' | 'icon'; 
-        inventoryListSize?: 'small' | 'medium' | 'large';
     };
     visualTheme?: string;
     enableParallax?: boolean;

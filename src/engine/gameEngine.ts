@@ -53,36 +53,42 @@ export class GameEngine implements EngineContext {
 
     // === PUBLIC EVALUATION API ===
     private getEffectiveQualitiesProxy(): PlayerQualities {
-        return new Proxy(this.qualities, {
-            get: (target, prop) => {
-                if (typeof prop !== 'string') return Reflect.get(target, prop);
-                const qid = prop;
-                const baseState = target[qid];
-                const effectiveLevel = this.getEffectiveLevel(qid);
-                if (baseState) {
-                    if (baseState.type === QualityType.String) return baseState;
-                    if ('level' in baseState && baseState.level === effectiveLevel) return baseState;
-                    return { ...baseState, level: effectiveLevel };
-                }
-                if (effectiveLevel !== 0 || this.worldQualities[qid]) {
-                    if (this.worldQualities[qid]) {
-                        const wq = this.worldQualities[qid];
-                        if (wq.type === QualityType.String) return wq;
-                        return { ...wq, level: effectiveLevel };
-                    }
-                    const def = this.worldContent.qualities[qid];
-                    return {
-                        qualityId: qid,
-                        type: def?.type || QualityType.Counter,
-                        level: effectiveLevel,
-                        stringValue: "",
-                        changePoints: 0
-                    } as QualityState;
-                }
-                return undefined;
+    return new Proxy(this.qualities, {
+        get: (target, prop) => {
+            if (typeof prop !== 'string') return Reflect.get(target, prop);
+            const qid = prop;
+            const baseState = target[qid];
+            const effectiveLevel = this.getEffectiveLevel(qid);
+            
+            if (baseState) {
+                if (baseState.type === QualityType.String) return baseState;
+                if ('level' in baseState && baseState.level === effectiveLevel) return baseState;
+                return { ...baseState, level: effectiveLevel };
             }
-        });
-    }
+
+
+            const def = this.worldContent.qualities[qid];
+            if (def || effectiveLevel !== 0 || this.worldQualities[qid]) {
+                if (this.worldQualities[qid]) {
+                    const wq = this.worldQualities[qid];
+                    if (wq.type === QualityType.String) return wq;
+                    return { ...wq, level: effectiveLevel };
+                }
+                
+                // Synthesize a temporary state for the text processor to use
+                return {
+                    qualityId: qid,
+                    type: def?.type || QualityType.Counter,
+                    level: effectiveLevel,
+                    stringValue: "",
+                    changePoints: 0
+                } as QualityState;
+            }
+
+            return undefined;
+        }
+    });
+}
 
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
         return evaluateScribeText(
@@ -236,6 +242,11 @@ export class GameEngine implements EngineContext {
             resolvedEffects: this.executedEffectsLog,
             dynamicQualities: this.dynamicQualities 
         };
+    }
+    
+    public resetEvaluationContext(): void {
+        this.tempAliases = {};
+        this.errors = [];
     }
 
     public applyEffects(effectsString: string): void {
