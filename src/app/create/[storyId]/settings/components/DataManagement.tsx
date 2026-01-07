@@ -48,12 +48,12 @@ export function DataManagement({ storyId }: { storyId: string }) {
     };
 
     return (
-        <div className="special-field-group" style={{ borderColor: 'var(--tool-accent)', marginBottom: '2rem' }}>
+        <div className="special-field-group" style={{ borderColor: 'var(--tool-accent)'}}>
             <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Data Management</label>
             <p className="special-desc">Backup your world or import data from another source.</p>
             
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
-                <button onClick={handleExport} className="save-btn" style={{ background: 'var(--tool-bg-header)', border: '1px solid var(--tool-border)' }}>
+                <button onClick={handleExport} className="save-btn" >
                     ⬇ Export Backup
                 </button>
                 

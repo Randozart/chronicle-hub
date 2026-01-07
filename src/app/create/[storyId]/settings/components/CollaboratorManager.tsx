@@ -101,7 +101,7 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
                     onClick={handleInvite} 
                     disabled={isLoading}
                     className="save-btn" 
-                    style={{ padding: '0.5rem 1rem', backgroundColor: '#2a3e5c' }}
+                    style={{ padding: '0.5rem 1rem'}}
                 >
                     {isLoading ? "..." : "Invite"}
                 </button>

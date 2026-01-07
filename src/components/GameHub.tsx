@@ -523,6 +523,8 @@ export default function GameHub(props: GameHubProps) {
                                 qualities={character.qualities} 
                                 qualityDefs={mergedQualityDefs} 
                                 imageLibrary={props.imageLibrary} 
+                                settings={props.settings}
+
                             />
                         </div>
                     )}

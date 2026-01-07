@@ -597,13 +597,24 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             <p className="special-desc" style={{ marginLeft: '1.5rem' }}>If checked, name, title, and portrait are hidden in the Profile tab and Lobby.</p>
                         </div>
                         
-                        <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem', opacity: form.hideProfileIdentity ? 0.5 : 1 }}>
-                            <label className="toggle-label">
-                                <input type="checkbox" checked={form.enablePortrait !== false} onChange={e => handleChange('enablePortrait', e.target.checked)} disabled={form.hideProfileIdentity} /> 
+                        <div
+                        style={{
+                            marginTop: '1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2rem',
+                            opacity: form.hideProfileIdentity ? 0.5 : 1,
+                        }}
+                        >                           
+                        <label
+                        className="toggle-label"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 2}}
+                        >
+                            <input type="checkbox" checked={form.enablePortrait !== false} onChange={e => handleChange('enablePortrait', e.target.checked)} disabled={form.hideProfileIdentity} /> 
                                 Show Portrait
                             </label>
                             {form.enablePortrait !== false && (
-                                <div className="form-group" style={{ marginTop: '0' }}>
+                                <div className="form-group" style={{ margin: 0, alignItems: 'center'}}>
                                     <select value={form.portraitStyle || 'circle'} onChange={e => handleChange('portraitStyle', e.target.value as any)} className="form-select" style={{ fontSize: '0.8rem', padding: '2px 8px' }}>
                                         <option value="circle">Circle</option>
                                         <option value="square">Square</option>
@@ -614,7 +625,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                         </div>
                         
                         <div style={{ opacity: form.hideProfileIdentity ? 0.5 : 1 }}>
-                            <label className="toggle-label">
+                            <label className="toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 2}}>
                                 <input type="checkbox" checked={form.enableTitle || false} onChange={e => handleChange('enableTitle', e.target.checked)} disabled={form.hideProfileIdentity} /> 
                                 Show Title
                             </label>
@@ -626,7 +637,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             )}
                         </div>
                     <div>
-                        <label className="toggle-label">
+                        <label className="toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 2}}>
                             <input 
                                 type="checkbox" 
                                 checked={form.showHeaderInStorylet || false} 
@@ -658,9 +669,19 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             When enabled, the "Story, Possessions, Myself" tabs will be moved to the top of the sidebar.
                         </p>
 
-                        <label className="toggle-label">
-                            <input type="checkbox" checked={form.enableParallax !== false} onChange={e => handleChange('enableParallax', e.target.checked)} /> Parallax
-                        </label>
+                        {(form.layoutStyle === 'elysium' || form.layoutStyle === 'tabletop') && (
+                        <div style={{ marginTop: '1rem' }}>
+                            <label className="toggle-label">
+                                <input 
+                                    type="checkbox" 
+                                    checked={form.enableParallax !== false} // Default true if undefined
+                                    onChange={e => handleChange('enableParallax', e.target.checked)}
+                                />
+                                Enable Parallax Effect
+                            </label>
+                        <p className="special-desc">Moves background image with mouse cursor.</p>
+                    </div>
+                )}
                     </div>
                     </div>
                     <div style={{ flex: 1, minWidth: '300px' }}>
@@ -669,10 +690,122 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </div>
                  
             </div>
+            <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
+                <label className="special-label" style={{ color: '#e5c07b' }}>Interface Customization</label>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    
+                    {/* LEFT COL: LAYOUT STRUCTURE */}
+                    <div>
+                        <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
+                            Layout Structure
+                        </h4>
+                        
+                        <div className="form-group">
+                            <label className="form-label">Storylet Layout</label>
+                            <select 
+                                // @ts-ignore
+                                value={form.componentConfig?.storyletListStyle || 'rows'} 
+                                // @ts-ignore
+                                onChange={e => handleChange('componentConfig', { ...form.componentConfig, storyletListStyle: e.target.value })} 
+                                className="form-select"
+                            >
+                                <option value="rows">Classic Rows (List)</option>
+                                <option value="cards">Grid Cards</option>
+                                <option value="compact">Compact Text</option>
+                            </select>
+                        </div>
 
+                        <div className="form-group">
+                            <label className="form-label">Deck / Hand Layout</label>
+                            <select 
+                                // @ts-ignore
+                                value={form.componentConfig?.handStyle || 'cards'} 
+                                // @ts-ignore
+                                onChange={e => handleChange('componentConfig', { ...form.componentConfig, handStyle: e.target.value })} 
+                                className="form-select"
+                            >
+                                <option value="cards">Standard Cards (4:3)</option>
+                                <option value="tarot">Tarot Cards (Tall)</option>
+                                <option value="images-only">Images Only (Grid)</option>
+                                <option value="rows">Detailed Rows</option>
+                                <option value="scrolling">Horizontal Scroll</option>
+                            </select>
+                        </div>
 
+                        <div className="form-group">
+                            <label className="form-label">Inventory Layout</label>
+                            <select 
+                                // @ts-ignore
+                                value={form.componentConfig?.equipmentLayout || 'grid'} 
+                                // @ts-ignore
+                                onChange={e => handleChange('componentConfig', { ...form.componentConfig, equipmentLayout: e.target.value })} 
+                                className="form-select"
+                            >
+                                <option value="grid">Card Grid (Default)</option>
+                                <option value="list">Slim List</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COL: IMAGE SHAPES */}
+                    <div>
+                        <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
+                            Image Shapes
+                        </h4>
+
+                        <div className="form-group">
+                            <label className="form-label">Storylet / Card Images</label>
+                            <select 
+                                // @ts-ignore
+                                value={form.imageConfig?.storylet || 'default'} 
+                                // @ts-ignore
+                                onChange={e => handleChange('imageConfig', { ...form.imageConfig, storylet: e.target.value })} 
+                                className="form-select"
+                            >
+                                <option value="default">Default (4:3)</option>
+                                <option value="landscape">Landscape (16:9)</option>
+                                <option value="portrait">Portrait (3:4)</option>
+                                <option value="square">Square</option>
+                                <option value="circle">Circle</option>
+                            </select>
+                            <p className="special-desc">Does not apply to "Images Only" mode.</p>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Item / Quality Icons</label>
+                            <select 
+                                // @ts-ignore
+                                value={form.imageConfig?.icon || 'default'} 
+                                // @ts-ignore
+                                onChange={e => handleChange('imageConfig', { ...form.imageConfig, icon: e.target.value })} 
+                                className="form-select"
+                            >
+                                <option value="default">Default (Square)</option>
+                                <option value="rounded">Rounded Corners</option>
+                                <option value="circle">Circle</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Location Headers</label>
+                            <select 
+                                // @ts-ignore
+                                value={form.imageConfig?.location || 'default'} 
+                                // @ts-ignore
+                                onChange={e => handleChange('imageConfig', { ...form.imageConfig, location: e.target.value })} 
+                                className="form-select"
+                            >
+                                <option value="default">Default (Square)</option>
+                                <option value="circle">Circle</option>
+                                <option value="wide">Wide Banner</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
             {/* 8. CHARACTER INITIALIZATION */}
-            <div style={{ marginBottom: '3rem' }}>
+            <div style={{  }}>
                 <CharCreateEditor 
                     rules={form.char_create || {}} 
                     onChange={r => handleChange('char_create', r)} 
@@ -691,7 +824,7 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 />
             </div>
 
-             <div className="special-field-group" style={{ borderColor: '#95a5a6', marginBottom: '2rem' }}>
+             <div className="special-field-group" style={{ borderColor: '#95a5a6' }}>
                 <label className="special-label" style={{ color: '#95a5a6' }}>Credits & Legal</label>
                 
                 <div className="form-group">
@@ -1056,7 +1189,6 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
 
                             {/* FLAGS ROW */}
                             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '0.5rem' }}>
-                                {/* ... Visible / ReadOnly ... */}
                                 <label className="toggle-label">
                                     <input type="checkbox" checked={rule.visible} onChange={e => handleUpdate(key, 'visible', e.target.checked)} /> Visible
                                 </label>
@@ -1064,7 +1196,6 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
                                     <input type="checkbox" checked={rule.readOnly} onChange={e => handleUpdate(key, 'readOnly', e.target.checked)} /> Read-Only
                                 </label>
 
-                                {/* NEW: Show On Card (Only if NOT a header) */}
                                 {rule.type !== 'header' && (
                                      <label className="toggle-label" title="If inside a Modal Section, check this to ALSO show it on the main card.">
                                         <input type="checkbox" checked={!!rule.showOnCard} onChange={e => handleUpdate(key, 'showOnCard', e.target.checked)} /> 

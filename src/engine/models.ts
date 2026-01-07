@@ -57,6 +57,7 @@ interface ContentCommon {
     return?: string;
     ordering?: number;
     urgency?: 'Must' | 'High' | 'Normal'; 
+    image_style?: 'default' | 'square' | 'landscape' | 'portrait' | 'circle' | 'wide'; 
 }
 
 export interface Storylet extends ContentCommon, LogicGates {
@@ -145,6 +146,21 @@ export interface WorldSettings {
     locationHeaderStyle?: 'standard' | 'banner' | 'hidden' | 'square' | 'circle' | 'title-card'; 
     showHeaderInStorylet?: boolean; 
     tabLocation?: 'main' | 'header' | 'sidebar';
+    imageConfig?: {
+        storylet?: 'default' | 'square' | 'landscape' | 'circle' | 'portrait';
+        icon?: 'default' | 'circle' | 'rounded';
+        location?: 'default' | 'circle' | 'wide';
+    };
+    componentConfig?: {
+        storyletListStyle?: 'rows' | 'cards' | 'compact'; // Layout structure
+        storyletWidth?: 'full' | 'narrow' | 'centered';   // Container width constraint
+        storyletImageStyle?: 'default' | 'square-small' | 'square-large' | 'landscape' | 'portrait' | 'circle'; // Specific image look
+
+        handStyle?: 'cards' | 'rows' | 'scrolling' | 'images-only' | 'tarot';
+        handImageStyle?: 'default' | 'square-small' | 'landscape'; 
+
+        equipmentLayout?: 'grid' | 'list'; 
+    };
     visualTheme?: string;
     enableParallax?: boolean;
     challengeConfig?: {
@@ -170,6 +186,7 @@ export interface DeckDefinition {
     hand_size: string; 
     deck_size?: string; 
     ordering?: number; 
+    card_style?: 'default' | 'cards' | 'rows' | 'scrolling';
 }
 
 export interface MapRegion { 

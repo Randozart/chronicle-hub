@@ -149,6 +149,21 @@ function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: D
                 <p className="special-desc">The title shown above the cards in the main story view.</p>
             </div>
 
+            <div className="form-group">
+                <label className="form-label">Visual Style</label>
+                <select 
+                    value={form.card_style || 'default'} 
+                    onChange={e => handleChange('card_style', e.target.value)} 
+                    className="form-select"
+                >
+                    <option value="default">Use Global Setting</option>
+                    <option value="cards">Standard Cards</option>
+                    <option value="rows">List Rows</option>
+                    <option value="scrolling">Horizontal Scroll</option>
+                </select>
+                <p className="special-desc">Overrides the global Opportunity Hand style for this specific deck.</p>
+            </div>
+
             <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
                 <label className="form-label">Regeneration Timer</label>
                 <select 

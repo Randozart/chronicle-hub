@@ -91,16 +91,25 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, qualit
                     </div>
                     <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
                     <div className="form-group" style={{ flex: 1 }}>
-                        <SmartArea 
-                            label="Image Code" 
-                            value={form.image_code || ''} 
-                            onChange={v => handleChange('image_code', v)} 
-                            storyId={storyId} 
-                            minHeight="38px" 
-                            placeholder="image_id or { $logic }"
-                            subLabel="Supports ScribeScript"
-                            qualityDefs={qualityDefs}
-                        />
+                        <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" />
+                        
+                        {/* NEW OVERRIDE CONTROL */}
+                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>Shape:</label>
+                            <select 
+                                value={form.image_style || 'default'} 
+                                onChange={e => handleChange('image_style', e.target.value)} 
+                                className="form-select"
+                                style={{ fontSize: '0.75rem', padding: '2px', width: 'auto' }}
+                            >
+                                <option value="default">Global Default</option>
+                                <option value="square">Square</option>
+                                <option value="landscape">Landscape</option>
+                                <option value="portrait">Portrait</option>
+                                <option value="circle">Circle</option>
+                                <option value="wide">Wide</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 

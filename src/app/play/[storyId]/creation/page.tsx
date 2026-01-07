@@ -32,7 +32,7 @@ export default async function CreationPage({ params }: Props) {
     }
 
     const imageLibrary = gameData.images || {};
-    const qualityDefs = gameData.qualities || {}; // <--- GET DEFINITIONS
+    const qualityDefs = gameData.qualities || {}; 
     const allowScribeScript = gameData.settings.allowScribeScriptInInputs || false;
     
     return (

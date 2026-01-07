@@ -85,7 +85,6 @@ export default function ImagesAdmin({ params }: { params: Promise<{ storyId: str
 
     return (
         <div className="admin-split-view">
-            {/* LEFT SIDEBAR (Mobile Drawer) */}
             <AdminListSidebar 
                 title="Assets"
                 items={images}

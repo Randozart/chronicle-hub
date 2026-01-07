@@ -157,3 +157,206 @@
     margin: 0 !important;
     border: 1px solid var(--border-color) !important;
 }
+
+.list-constraint-narrow {
+    max-width: 700px; /* Classic text-game width */
+    margin: 0 auto;   /* Center it */
+}
+
+.list-constraint-full {
+    width: 100%;
+}
+
+/* 2. Row Mode Adjustments */
+.mode-rows .option-button {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
+    min-height: auto; /* Allow shrinking */
+}
+
+/* Fallen London Style: Small Square Left */
+.img-style-square-small {
+    width: 60px !important;
+    height: 60px !important;
+    flex-shrink: 0;
+    margin-right: 1rem;
+    border-radius: 4px;
+}
+
+/* Big Square Left */
+.img-style-square-large {
+    width: 120px !important;
+    height: 120px !important;
+    flex-shrink: 0;
+    margin-right: 1.5rem;
+}
+
+/* Circle Left */
+.img-style-circle {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0;
+    margin-right: 1.5rem;
+    border: 2px solid var(--border-light);
+}
+
+/* 3. Equipment List Mode */
+.inventory-grid.mode-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inventory-grid.mode-list .inventory-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.5rem 1rem;
+}
+
+.inventory-grid.mode-list .item-desc {
+    display: none; /* Hide description in dense list mode, or truncate heavily */
+}
+
+.card-container.mode-images-only {
+    display: grid;
+    /* Smaller minimum width for dense packing */
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
+    gap: 0.8rem;
+}
+
+.card.image-only-card {
+    min-height: 0; /* Remove default min-height */
+    aspect-ratio: 4/5; /* Fixed aspect ratio for uniform grid */
+    border: 2px solid var(--border-color); /* Thicker border */
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.card.image-only-card:hover {
+    transform: scale(1.05);
+    border-color: var(--accent-highlight);
+    z-index: 5;
+}
+
+.card.image-only-card .card-image {
+    height: 100%;
+    width: 100%;
+    border-bottom: none; /* Full image */
+}
+
+/* Discard button tweak for small cards */
+.card.image-only-card button[title="Discard"] {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.card.image-only-card:hover button[title="Discard"] {
+    opacity: 1;
+}
+
+/* src/styles/components/cards.css */
+
+/* --- OPPORTUNITY HAND VARIANTS --- */
+
+/* 1. IMAGES ONLY (Dense Grid) */
+.card-container.mode-images-only {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.8rem;
+}
+
+.card-container.mode-images-only .card {
+    aspect-ratio: 1 / 1; /* Square by default */
+    min-height: 0;
+}
+
+.card-container.mode-images-only .card-content-btn {
+    height: 100%;
+}
+
+/* 2. TAROT (Tall Cards) */
+.card-container.mode-tarot {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.card-container.mode-tarot .card {
+    aspect-ratio: 2 / 3.5; /* Classic Tarot Ratio */
+    min-height: 0;
+}
+
+.card-container.mode-tarot .card-image {
+    height: 75%; /* Image takes up most of the card */
+    object-fit: cover;
+}
+
+.card-container.mode-tarot .card-text {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.card-container.mode-tarot .card-text p {
+    display: none; /* Hide body text in tarot mode, show only title */
+}
+
+/* --- INVENTORY LIST MODE --- */
+
+.inventory-grid.mode-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inventory-grid.mode-list .inventory-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.5rem;
+    min-height: auto;
+    height: auto;
+}
+
+/* Adjust inner layout for list mode */
+.inventory-grid.mode-list .inventory-item > div:first-child {
+    /* Image Container */
+    width: 40px !important;
+    height: 40px !important;
+}
+
+.inventory-grid.mode-list .item-header {
+    margin-bottom: 0;
+}
+
+.inventory-grid.mode-list .item-name {
+    font-size: 0.95rem !important;
+}
+
+.inventory-grid.mode-list .item-desc {
+    display: none; /* Hide description in list mode for compactness */
+}
+
+.inventory-grid.mode-list .item-bonus {
+    margin-bottom: 0 !important;
+    margin-left: 1rem;
+}
+
+/* Move buttons to the right in list mode */
+.inventory-grid.mode-list .inventory-item > div:last-child {
+    margin-top: 0 !important;
+    border-top: none !important;
+    margin-left: auto;
+    width: auto;
+}
+
+.inventory-grid.mode-list .equip-btn,
+.inventory-grid.mode-list .unequip-btn,
+.inventory-grid.mode-list .option-button {
+    padding: 2px 8px !important;
+    font-size: 0.75rem !important;
+    width: auto !important;
+}

@@ -54,31 +54,26 @@ export default function ElysiumLayout({
     const bgDef = imageLibrary[location.image];
     const bgSrc = bgDef ? bgDef.url : `/images/locations/${location.image}.png`;
 
-    // THE FIX: Conditionally choose the correct class name
     const sidebarClassName = isMobile ? 'sidebar-panel' : 'elysium-sidebar';
 
     return (
         <div className="elysium-wrapper" onMouseMove={handleMouseMove}>
             
-            {/* BACKGROUND LAYER (Parallax) */}
             <div className="elysium-bg-layer" style={{ transform: `translate3d(${-moveX}px, ${-moveY}px, 0)` }}>
-                {/* Note: We don't fade this out with isTransitioning, creating a stable background feel */}
                 <img 
-                    key={location.id} // Force image swap animation
+                    key={location.id} 
                     src={bgSrc} 
                     alt="" 
-                    className="elysium-bg-img fade-in-image" // Add fade class
+                    className="elysium-bg-img fade-in-image" 
                     onError={(e) => e.currentTarget.style.display = 'none'} 
                 />
                 <div className="elysium-vignette" />
             </div>
 
-            {/* --- SIDEBAR --- */}
             <div className={`${sidebarClassName} ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
                 {sidebarContent}
             </div>
 
-            {/* --- MAIN CONTENT AREA --- */}
             <div className="elysium-content">
                 <div 
                     className="elysium-container"
@@ -100,7 +95,6 @@ export default function ElysiumLayout({
                 </div>
             </div>
 
-            {/* --- CLOSE BUTTON (as sibling) --- */}
             {mobileSidebarOpen && (
                 <button 
                     className="mobile-close-btn" 
