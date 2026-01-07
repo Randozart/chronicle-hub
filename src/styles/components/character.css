@@ -15,8 +15,7 @@
 .slot-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; }
 .equipped-item { text-align: center; display: flex; flex-direction: column; gap: 0.5rem; }
 
-.inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-.inventory-item { padding: 1rem; background: var(--bg-item); border: 1px solid var(--border-light); border-radius: var(--border-radius); }
+
 .item-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
 .item-count { background: var(--bg-main); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
 .item-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem; }

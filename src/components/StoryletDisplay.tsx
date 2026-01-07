@@ -154,13 +154,16 @@ export default function StoryletDisplay({
     const returnTargetId = getReturnTarget();
     const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
-    if (resolution) {
+   if (resolution) {
         const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
+        
+        // Pass result state to eval to handle changes immediately in text
         const postResolutionQualities = resolution.qualities;
         const evalResultText = (text: string | undefined) => {
             return evaluateText(text, postResolutionQualities, qualityDefs, null, 0);
         };
         
+        // Image for Result: Use option image (if exists) or fallback to storylet image
         const imageCode = resolution.image_code || storylet.image_code || "";
 
         return (
@@ -171,10 +174,11 @@ export default function StoryletDisplay({
                             <GameImage 
                                 code={imageCode} 
                                 imageLibrary={imageLibrary} 
-                                type="storylet"
+                                type="storylet" // Use Storylet shape settings
                                 alt={storylet.name}
                                 className="storylet-image"
                                 evaluateText={evalResultText} 
+                                settings={settings} // PASS SETTINGS FOR SHAPE
                             />
                         </div>
                     )}
@@ -191,15 +195,31 @@ export default function StoryletDisplay({
                         {resolution.qualityChanges.map((change) => {
                             if (change.hidden && !showHidden) return null;
 
+                            // We need to resolve text here again for dynamic descriptions
                             const resolvedChangeText = evaluateText(change.changeText, postResolutionQualities, qualityDefs, null, 0);
                             const finalChange = {...change, changeText: resolvedChangeText};
 
+                            // Look up category for color
+                            const catDef = categories[change.category || ""] || categories['default'];
+
                             return (
-                                <div key={change.qid} style={{ opacity: change.hidden ? 0.6 : 1 }}>
-                                    <QualityChangeBar 
-                                        change={finalChange} 
-                                        categoryDef={categories[change.category || ""]} 
-                                    />
+                                <div key={change.qid} style={{ opacity: change.hidden ? 0.6 : 1, display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                    {/* ADDED: QUALITY ICON */}
+                                    <div style={{ width: '40px', flexShrink: 0, marginTop: '2px' }}>
+                                        <GameImage 
+                                            code={change.qid} // Use QID to lookup icon
+                                            imageLibrary={imageLibrary}
+                                            type="icon" 
+                                            settings={settings}
+                                            className="option-image" // Re-use option image class for styling
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <QualityChangeBar 
+                                            change={finalChange} 
+                                            categoryDef={catDef} 
+                                        />
+                                    </div>
                                 </div>
                             );
                         })}

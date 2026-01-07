@@ -26,7 +26,10 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
 
     // Container Styles
     const isGrid = layoutStyle === 'cards';
-    const containerClass = `storylet-container mode-${layoutStyle} list-constraint-${widthConstraint}`;
+    
+    // CHANGED: Removed 'storylet-container' to remove the visual box/border.
+    // Kept mode-* and list-constraint-* classes for spacing/layout helpers if needed by CSS.
+    const containerClass = `storylet-list mode-${layoutStyle} list-constraint-${widthConstraint}`;
     
     // Grid Override
     const gridStyle: React.CSSProperties = isGrid 
@@ -64,6 +67,8 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                         settings={settings}
                                         // If using specific styles like circle/square-small, pass specific override to GameImage to ensure radius calculations
                                         shapeOverride={imageStyle === 'circle' ? 'circle' : undefined}
+                                        // Fix for React Style Error: Explicitly handle corners if needed, or let CSS handle it.
+                                        // For grid cards, we often want flat bottoms on images.
                                         style={isGrid ? { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 } : {}}
                                     />
                                 </div>

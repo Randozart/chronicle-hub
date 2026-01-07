@@ -204,23 +204,6 @@
     border: 2px solid var(--border-light);
 }
 
-/* 3. Equipment List Mode */
-.inventory-grid.mode-list {
-    display: flex !important;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.inventory-grid.mode-list .inventory-item {
-    flex-direction: row;
-    align-items: center;
-    padding: 0.5rem 1rem;
-}
-
-.inventory-grid.mode-list .item-desc {
-    display: none; /* Hide description in dense list mode, or truncate heavily */
-}
-
 .card-container.mode-images-only {
     display: grid;
     /* Smaller minimum width for dense packing */
@@ -305,58 +288,271 @@
     display: none; /* Hide body text in tarot mode, show only title */
 }
 
-/* --- INVENTORY LIST MODE --- */
+/* src/styles/components/cards.css */
 
-.inventory-grid.mode-list {
+/* --- DYNAMIC GRID --- */
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--inv-item-width, 220px), 1fr));
+    gap: 1rem;
+}
+
+/* LIST OVERRIDE */
+.inventory-grid.inv-mode-list {
     display: flex !important;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.inventory-grid.mode-list .inventory-item {
+/* --- BASE CARD STYLES --- */
+.inventory-item {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius);
+    position: relative;
+    overflow: visible; 
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.inventory-item:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    border-color: var(--accent-highlight);
+    transform: translateY(-2px);
+    z-index: 5;
+}
+
+/* --- 1. STANDARD (The Classic Sidebar Look) --- */
+.inventory-item.style-standard {
+    padding: 1rem; /* Padding on the card itself */
+    min-height: 100%;
+}
+
+/* Slot Header */
+.inventory-item .slot-header {
+    font-size: 0.75rem;
+    text-transform: uppercase; /* Forces CLOAK */
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-light);
+    background: rgba(0,0,0,0.1);
+    width: 100%;
+    margin: 0;
+}
+
+
+.inventory-item.style-standard .slot-header {
+    color: var(--accent-highlight);
+        padding-bottom: 4px;
+        margin-bottom: 0.5rem;
+
+}
+/* Body Container (Image + Text) */
+.inventory-item.style-standard .item-main-body {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+}
+
+/* Image Column */
+.inventory-item.style-standard .item-image-container {
+    width: 64px;
+    flex-shrink: 0;
+    /* Aspect Ratio logic: Default to 3/4 (Portrait) or settings */
+    /* Use align-self: flex-start to prevent stretching if text is long */
+    /* align-self: flex-start;  */
+}
+
+/* Text Column */
+.inventory-item.style-standard .item-text {
+    flex: 1;
+    min-width: 0; /* Prevent flex overflow */
+    display: flex;
+    flex-direction: column;
+    /* gap: 0.5rem; */
+}
+
+.inventory-item.style-standard .item-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Actions Footer */
+.inventory-item.style-standard .item-actions {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--border-light);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+
+/* --- 2. PORTRAIT (Card Style - Image Top) --- */
+.inventory-item.style-portrait {
+    padding: 0; 
+}
+
+.inventory-item.style-portrait .item-image-container {
+    width: 100%;
+    aspect-ratio: 4/3; 
+    border-bottom: 1px solid var(--border-light);
+}
+
+.inventory-item.style-portrait .item-text {
+    padding: 1rem;
+    flex: 1;
+}
+
+.inventory-item.style-portrait .item-actions {
+    padding: 0.5rem 1rem 1rem 1rem;
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.inventory-item.style-portrait.variant-cover .item-image-container {
+    width: 100%;
+    aspect-ratio: 16/9; /* Cinematic ratio */
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+}
+.inventory-item.style-portrait.variant-icon {
+    align-items: center; /* Centers the content */
+}
+.inventory-item.style-portrait.variant-icon .item-image-container {
+    width: 120px;
+    height: 120px;
+    margin-top: 2rem; /* Push down from top */
+    border: 1px solid var(--border-light);
+    background: #000; /* Background for transparency */
+    border-radius: 4px; /* Or use 50% for circle */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    position: relative;
+    flex-shrink: 0;
+}
+.inventory-item.style-portrait.variant-icon .item-image-container .game-image-wrapper {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+}
+.inventory-item.style-portrait.variant-icon .item-text {
+    text-align: center;
+}
+
+.inventory-item.style-portrait.variant-icon .item-header {
+    justify-content: center;
+}
+/* --- 3. ICON GRID (Minimalist) --- */
+.inventory-item.style-icon-grid {
+    aspect-ratio: 1 / 1;
+    border: 2px solid var(--border-color);
+    padding: 0;
+}
+
+.inventory-item.style-icon-grid .item-image-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.inventory-item.style-icon-grid .slot-header-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    padding: 2px;
+    text-align: center;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.inventory-item.style-icon-grid .item-overlay-title {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 1.5rem 0.25rem 0.25rem 0.25rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* --- 4. LIST (Slim) --- */
+.inventory-item.style-list {
     flex-direction: row;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
     min-height: auto;
-    height: auto;
 }
 
-/* Adjust inner layout for list mode */
-.inventory-grid.mode-list .inventory-item > div:first-child {
-    /* Image Container */
-    width: 40px !important;
-    height: 40px !important;
+.inventory-item.style-list .item-main-body {
+    display: flex;
+    align-items: center;
+    width: 100%;
 }
 
-.inventory-grid.mode-list .item-header {
-    margin-bottom: 0;
+.inventory-item.style-list .item-image-container {
+    width: 40px; 
+    height: 40px; 
+    margin-right: 1rem;
+    flex-shrink: 0;
 }
 
-.inventory-grid.mode-list .item-name {
-    font-size: 0.95rem !important;
+.inventory-item.style-list .item-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.inventory-grid.mode-list .item-desc {
-    display: none; /* Hide description in list mode for compactness */
-}
+.inventory-item.style-list .item-desc { display: none; }
 
-.inventory-grid.mode-list .item-bonus {
-    margin-bottom: 0 !important;
+.inventory-item.style-list .item-actions {
     margin-left: 1rem;
+    padding: 0;
+    border: none;
+    width: auto;
+    margin-top: 0;
 }
 
-/* Move buttons to the right in list mode */
-.inventory-grid.mode-list .inventory-item > div:last-child {
-    margin-top: 0 !important;
-    border-top: none !important;
-    margin-left: auto;
+.inventory-item.style-list .equip-btn,
+.inventory-item.style-list .unequip-btn,
+.inventory-item.style-list .option-button {
+    padding: 4px 10px;
+    font-size: 0.75rem;
     width: auto;
 }
 
-.inventory-grid.mode-list .equip-btn,
-.inventory-grid.mode-list .unequip-btn,
-.inventory-grid.mode-list .option-button {
-    padding: 2px 8px !important;
-    font-size: 0.75rem !important;
-    width: auto !important;
+/* POPUP MENU */
+.interaction-menu {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 20;
+    border-radius: var(--border-radius);
 }
+.menu-btn {
+    width: 80%;
+    padding: 0.5rem;
+    cursor: pointer;
+    background: var(--bg-item);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+}
+.menu-btn:hover { background: var(--accent-primary); }

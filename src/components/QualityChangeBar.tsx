@@ -1,9 +1,9 @@
-// src/components/QualityChangeBar.tsx
 'use client';
 
 import { CategoryDefinition, QualityChangeInfo, QualityType } from "@/engine/models";
 import { useEffect, useState } from "react";
 
+// Standard Formula: Next Level = Current Level + 1
 const getCPforNextLevel = (level: number): number => level + 1;
 
 interface Props {
@@ -15,7 +15,6 @@ export default function QualityChangeBar({ change, categoryDef }: Props) {
     const [fillWidth, setFillWidth] = useState('0%');
 
     // 1. Determine Display Text
-    // Priority: Dynamic Override ([desc:...]) > Default Change Text (increase_description)
     const displayText = change.overrideDescription || change.changeText;
 
     // 2. Determine Color
@@ -39,33 +38,67 @@ export default function QualityChangeBar({ change, categoryDef }: Props) {
     const leveledUp = change.levelAfter > change.levelBefore;
     const leveledDown = change.levelAfter < change.levelBefore;
     
-    // Animation Logic
-    const startPercent = leveledDown ? 100 : (change.cpBefore / getCPforNextLevel(change.levelBefore)) * 100;
-    const endPercent = leveledUp ? 100 : (change.cpAfter / getCPforNextLevel(change.levelAfter)) * 100;
+    // START STATE: 
+    // If leveled UP, we start at 100% of previous level (visually full), then jump to 0 of new.
+    // If leveled DOWN, we start at 0 of previous, then jump to full of new.
+    // But for a simple animation, let's just animate the CURRENT level's progress.
+    
+    const cpNeededBefore = getCPforNextLevel(change.levelBefore);
+    const cpNeededAfter = getCPforNextLevel(change.levelAfter);
+
+    let startPercent = 0;
+    let endPercent = 0;
+
+    if (leveledUp) {
+        // We only show the progress filling up the NEW level
+        startPercent = 0;
+        endPercent = (change.cpAfter / cpNeededAfter) * 100;
+    } else if (leveledDown) {
+        // We show the drop in the NEW level
+        startPercent = 100;
+        endPercent = (change.cpAfter / cpNeededAfter) * 100;
+    } else {
+        // Same Level: Just animate the bar
+        startPercent = (change.cpBefore / cpNeededBefore) * 100;
+        endPercent = (change.cpAfter / cpNeededAfter) * 100;
+    }
     
     useEffect(() => {
+        // Reset to start position immediately
         setFillWidth(`${startPercent}%`);
-        const timer = setTimeout(() => setFillWidth(`${endPercent}%`), 100);
+        
+        // Then animate to end position
+        const timer = setTimeout(() => setFillWidth(`${endPercent}%`), 50);
         return () => clearTimeout(timer);
     }, [startPercent, endPercent]);
 
     return (
         <div className="quality-change-item">
-            {/* Use the resolved display text */}
-            <p className="quality-change-text" style={{ color: barColor }}>{displayText}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+                <p className="quality-change-text" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 'bold' }}>{displayText}</p>
+                {/* Optional: Show "+1 CP" text here if desired */}
+            </div>
             
-            <div className="bar-wrapper">
-                <span className="bar-level-label left">{leveledDown ? change.levelAfter : change.levelBefore}</span>
-                <div className="quality-bar-background">
+            <div className="bar-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="bar-level-label left" style={{ minWidth: '20px', textAlign: 'right' }}>
+                    {change.levelAfter}
+                </span>
+                
+                <div className="quality-bar-background" style={{ flex: 1, height: '8px', background: 'var(--bg-item)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
                     <div 
                         className="quality-bar-fill"
                         style={{ 
                             width: fillWidth,
-                            backgroundColor: barColor
+                            height: '100%',
+                            backgroundColor: barColor,
+                            transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                     />
                 </div>
-                <span className="bar-level-label right">{leveledDown ? change.levelAfter + 1 : change.levelBefore + 1}</span>
+                
+                <span className="bar-level-label right" style={{ minWidth: '20px', textAlign: 'left', opacity: 0.5 }}>
+                    {change.levelAfter + 1}
+                </span>
             </div>
         </div>
     );

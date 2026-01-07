@@ -7,6 +7,8 @@ import CollaboratorManager from './components/CollaboratorManager';
 import ThemePreview from './components/ThemePreview';
 import SmartArea from '@/components/admin/SmartArea';
 import { DataManagement } from './components/DataManagement';
+import GlobalStylePreview from '@/components/admin/GlobalStylePreview';
+import StoryletStylePreview from '@/components/admin/StoryletStylePreview';
 
 // --- TYPES ---
 interface SettingsForm extends WorldSettings {
@@ -690,13 +692,22 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                 </div>
                  
             </div>
+             {/* 7. COMPONENT & IMAGE CONFIGURATION */}
             <div className="special-field-group" style={{ borderColor: '#e5c07b' }}>
                 <label className="special-label" style={{ color: '#e5c07b' }}>Interface Customization</label>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                {/* 
+                   LAYOUT STRATEGY: 
+                   Row 1: Controls (Left) | Global Preview (Right, Fixed 300px)
+                   Row 2: Resolution Preview (Full Width)
+                */}
+
+                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                     
-                    {/* LEFT COL: LAYOUT STRUCTURE */}
-                    <div>
+                    {/* === TOP LEFT: CONTROLS === */}
+                    <div style={{ flex: 1, minWidth: '300px' }}>
+                        
+                        {/* --- LAYOUT STRUCTURE --- */}
                         <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
                             Layout Structure
                         </h4>
@@ -737,72 +748,124 @@ export default function SettingsAdmin ({ params }: { params: Promise<{ storyId: 
                             <label className="form-label">Inventory Layout</label>
                             <select 
                                 // @ts-ignore
-                                value={form.componentConfig?.equipmentLayout || 'grid'} 
+                                value={form.componentConfig?.inventoryStyle || 'standard'} 
                                 // @ts-ignore
-                                onChange={e => handleChange('componentConfig', { ...form.componentConfig, equipmentLayout: e.target.value })} 
+                                onChange={e => handleChange('componentConfig', { ...form.componentConfig, inventoryStyle: e.target.value })} 
                                 className="form-select"
                             >
-                                <option value="grid">Card Grid (Default)</option>
-                                <option value="list">Slim List</option>
+                                <option value="standard">Standard (Side Image)</option>
+                                <option value="portrait">Portrait (Top Image)</option>
+                                <option value="icon-grid">Icon Grid (Minimal)</option>
+                                <option value="list">Compact List</option>
                             </select>
                         </div>
-                    </div>
 
-                    {/* RIGHT COL: IMAGE SHAPES */}
-                    <div>
-                        <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
-                            Image Shapes
+                        {/* --- CONDITIONAL INVENTORY SETTINGS --- */}
+                        {form.componentConfig?.inventoryStyle === 'portrait' && (
+                            <div className="form-group" style={{ marginLeft: '1rem', borderLeft: '2px solid #444', paddingLeft: '1rem' }}>
+                                <label className="form-label">Portrait Mode Variant</label>
+                                <select 
+                                    // @ts-ignore
+                                    value={form.componentConfig?.inventoryPortraitMode || 'cover'} 
+                                    // @ts-ignore
+                                    onChange={e => handleChange('componentConfig', { ...form.componentConfig, inventoryPortraitMode: e.target.value })} 
+                                    className="form-select"
+                                >
+                                    <option value="cover">Cover (Full Width Top)</option>
+                                    <option value="icon">Icon (Centered Top)</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {form.componentConfig?.inventoryStyle !== 'list' && (
+                            <div className="form-group" style={{ marginLeft: '1rem', borderLeft: '2px solid #444', paddingLeft: '1rem' }}>
+                                <label className="form-label">Card Size</label>
+                                <select 
+                                    // @ts-ignore
+                                    value={form.componentConfig?.inventoryCardSize || 'medium'} 
+                                    // @ts-ignore
+                                    onChange={e => handleChange('componentConfig', { ...form.componentConfig, inventoryCardSize: e.target.value })} 
+                                    className="form-select"
+                                >
+                                    <option value="small">Small (Compact Grid)</option>
+                                    <option value="medium">Medium (Default)</option>
+                                    <option value="large">Large (Wide Cards)</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* --- IMAGE SHAPES --- */}
+                        <h4 style={{ margin: '1.5rem 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
+                            Global Image Shapes
                         </h4>
 
-                        <div className="form-group">
-                            <label className="form-label">Storylet / Card Images</label>
-                            <select 
-                                // @ts-ignore
-                                value={form.imageConfig?.storylet || 'default'} 
-                                // @ts-ignore
-                                onChange={e => handleChange('imageConfig', { ...form.imageConfig, storylet: e.target.value })} 
-                                className="form-select"
-                            >
-                                <option value="default">Default (4:3)</option>
-                                <option value="landscape">Landscape (16:9)</option>
-                                <option value="portrait">Portrait (3:4)</option>
-                                <option value="square">Square</option>
-                                <option value="circle">Circle</option>
-                            </select>
-                            <p className="special-desc">Does not apply to "Images Only" mode.</p>
-                        </div>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Storylet / Card</label>
+                                <select 
+                                    // @ts-ignore
+                                    value={form.imageConfig?.storylet || 'default'} 
+                                    // @ts-ignore
+                                    onChange={e => handleChange('imageConfig', { ...form.imageConfig, storylet: e.target.value })} 
+                                    className="form-select"
+                                >
+                                    <option value="default">Default</option>
+                                    <option value="landscape">Landscape (16:9)</option>
+                                    <option value="portrait">Portrait (3:4)</option>
+                                    <option value="square">Square</option>
+                                    <option value="circle">Circle</option>
+                                </select>
+                            </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Item / Quality Icons</label>
-                            <select 
-                                // @ts-ignore
-                                value={form.imageConfig?.icon || 'default'} 
-                                // @ts-ignore
-                                onChange={e => handleChange('imageConfig', { ...form.imageConfig, icon: e.target.value })} 
-                                className="form-select"
-                            >
-                                <option value="default">Default (Square)</option>
-                                <option value="rounded">Rounded Corners</option>
-                                <option value="circle">Circle</option>
-                            </select>
-                        </div>
+                            <div className="form-group">
+                                <label className="form-label">Quality Icon</label>
+                                <select 
+                                    // @ts-ignore
+                                    value={form.imageConfig?.icon || 'default'} 
+                                    // @ts-ignore
+                                    onChange={e => handleChange('imageConfig', { ...form.imageConfig, icon: e.target.value })} 
+                                    className="form-select"
+                                >
+                                    <option value="default">Default</option>
+                                    <option value="rounded">Rounded</option>
+                                    <option value="circle">Circle</option>
+                                </select>
+                            </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Location Headers</label>
-                            <select 
-                                // @ts-ignore
-                                value={form.imageConfig?.location || 'default'} 
-                                // @ts-ignore
-                                onChange={e => handleChange('imageConfig', { ...form.imageConfig, location: e.target.value })} 
-                                className="form-select"
-                            >
-                                <option value="default">Default (Square)</option>
-                                <option value="circle">Circle</option>
-                                <option value="wide">Wide Banner</option>
-                            </select>
+                            <div className="form-group">
+                                <label className="form-label">Inventory</label>
+                                <select 
+                                    // @ts-ignore
+                                    value={form.imageConfig?.inventory || 'default'} 
+                                    // @ts-ignore
+                                    onChange={e => handleChange('imageConfig', { ...form.imageConfig, inventory: e.target.value })} 
+                                    className="form-select"
+                                >
+                                    <option value="default">Default</option>
+                                    <option value="square">Square</option>
+                                    <option value="rounded">Rounded</option>
+                                    <option value="circle">Circle</option>
+                                    <option value="portrait">Portrait</option>
+                                    <option value="landscape">Landscape</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
+
+                    {/* === TOP RIGHT: GLOBAL SIDEBARS PREVIEW === */}
+                    <div style={{ width: '320px', flexShrink: 0 }}>
+                        <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
+                            Live Preview
+                        </h4>
+                        <GlobalStylePreview settings={form} theme={form.visualTheme || 'default'} />
+                    </div>
                 </div>
+
+                {/* === BOTTOM ROW: RESOLUTION PREVIEW (Full Width) === */}
+                <div style={{ marginTop: '2rem', borderTop: '1px dashed #444', paddingTop: '1rem' }}>
+                     <StoryletStylePreview settings={form} theme={form.visualTheme || 'default'} />
+                </div>
+
             </div>
             {/* 8. CHARACTER INITIALIZATION */}
             <div style={{  }}>

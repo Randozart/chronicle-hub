@@ -147,9 +147,11 @@ export interface WorldSettings {
     showHeaderInStorylet?: boolean; 
     tabLocation?: 'main' | 'header' | 'sidebar';
     imageConfig?: {
-        storylet?: 'default' | 'square' | 'landscape' | 'circle' | 'portrait';
+        storylet?: 'default' | 'square' | 'landscape' | 'portrait' | 'circle';
         icon?: 'default' | 'circle' | 'rounded';
         location?: 'default' | 'circle' | 'wide';
+        
+        inventory?: 'default' | 'square' | 'portrait' | 'landscape' | 'circle' | 'wide'; 
     };
     componentConfig?: {
         storyletListStyle?: 'rows' | 'cards' | 'compact'; // Layout structure
@@ -160,6 +162,12 @@ export interface WorldSettings {
         handImageStyle?: 'default' | 'square-small' | 'landscape'; 
 
         equipmentLayout?: 'grid' | 'list'; 
+        inventoryCardSize?: 'small' | 'medium' | 'large'; 
+
+        inventoryStyle?: 'standard' | 'portrait' | 'icon-grid' | 'list';
+        inventoryItemWidth?: number; // Pixel value for card width
+        inventoryPortraitMode?: 'cover' | 'icon'; 
+        inventoryListSize?: 'small' | 'medium' | 'large';
     };
     visualTheme?: string;
     enableParallax?: boolean;
