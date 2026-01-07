@@ -77,7 +77,7 @@
 .option-button.locked:hover { background-color: var(--bg-panel); }
 
 .option-content-wrapper { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem 1.5rem; }
-.option-image-container { flex-shrink: 0; width: 60px; }
+.option-image-container { flex-shrink: 0; width: 80px; }
 .option-image { width: 100%; display: block; aspect-ratio: 3 / 4; object-fit: cover; border-radius: calc(var(--border-radius) / 2); border: 1px solid var(--border-light); }
 .option-text-wrapper { flex-grow: 1; display: flex; flex-direction: column; }
 .option-text-wrapper > h3, .option-text-wrapper > p { margin-top: 0; }

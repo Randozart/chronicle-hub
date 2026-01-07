@@ -28,7 +28,7 @@ export default function OpportunityHand({
     hand, onCardClick, qualities, onDrawClick, onDiscard, isLoading, 
     qualityDefs, imageLibrary, character, locationDeckId, deckDefs, settings, currentDeckStats, engine 
 }: OpportunityHandProps) {
-    console.log("[OpportunityHand] Component is rendering. Received hand prop:", JSON.parse(JSON.stringify(hand)));
+    //console.log("[OpportunityHand] Component is rendering. Received hand prop:", JSON.parse(JSON.stringify(hand)));
 
     const deckDef = deckDefs[locationDeckId];
     const deckSize = currentDeckStats?.deckSize ?? 0;
@@ -64,14 +64,14 @@ export default function OpportunityHand({
             <div className={containerClass}>
                 {hand.length > 0 ? (
                     hand.map(card => {
-                        console.group(`[OpportunityHand] Processing Card: ${card.id}`);
-                        console.log("Input Card Object:", JSON.parse(JSON.stringify(card)));
-                        console.log("Input Name to Evaluate:", card.name);
+                        //console.group(`[OpportunityHand] Processing Card: ${card.id}`);
+                        //console.log("Input Card Object:", JSON.parse(JSON.stringify(card)));
+                        //console.log("Input Name to Evaluate:", card.name);
 
-                        console.log("Engine state BEFORE eval (tempAliases):", { ...engine.tempAliases });
+                        //console.log("Engine state BEFORE eval (tempAliases):", { ...engine.tempAliases });
                         const evaluatedName = engine.evaluateText(card.name, { qid: card.id, state: qualities[card.id] });
-                        console.log("Output (evaluatedName):", evaluatedName);
-                        console.groupEnd();
+                        //console.log("Output (evaluatedName):", evaluatedName);
+                        //console.groupEnd();
 
                         const evaluatedShort = card.short ? engine.evaluateText(card.short, { qid: card.id, state: qualities[card.id] }) : "";
                         
