@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
 
         const userId = (session.user as any).id;
         const { storyletId, optionId, storyId, characterId } = await request.json();
-
+        console.log(`[API: POST /resolve] User ${userId} (Char: ${characterId}) resolving option '${optionId}' on storylet '${storyletId}' in story '${storyId}'.`);
+        
         // Check debug permissions
         const canDebug = await verifyWorldAccess(storyId, 'writer');
 

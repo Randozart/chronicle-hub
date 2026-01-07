@@ -15,7 +15,7 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
 
     useEffect(() => {
         setIsLoading(true);
-        fetch(`/api/admin/regions?storyId=${storyId}`)
+        fetch(`/api/regions?storyId=${storyId}`, { cache: 'no-store' })
             .then(r => r.json())
             .then(data => {
                 const list = Array.isArray(data) ? data : Object.values(data);
@@ -97,6 +97,8 @@ function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData:
 
     const handleSave = async () => {
         setIsSaving(true);
+        const payload = { storyId: storyId, category: 'regions', itemId: form.id, data: form };
+        console.log('[RegionEditor] Attempting to save:', payload); 
         try {
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
@@ -109,6 +111,8 @@ function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData:
 
     const handleDelete = async () => {
         if (!confirm("Delete?")) return;
+        const deleteUrl = `/api/admin/config?storyId=${storyId}&category=regions&itemId=${form.id}`;
+        console.log('[RegionEditor] Attempting to delete via URL:', deleteUrl); // <--- ADD THIS LINE
         try {
             await fetch(`/api/admin/config?storyId=${storyId}&category=regions&itemId=${form.id}`, { method: 'DELETE' });
             onDelete(form.id);

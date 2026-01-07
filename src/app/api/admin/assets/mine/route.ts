@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
         const session = await getServerSession(authOptions);
         if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const userId = (session.user as any).id;
+        console.log(`[API: GET /admin/assets/mine] User ${userId} fetching their assets.`);
 
         const client = await clientPromise;
         const db = client.db(DB_NAME);

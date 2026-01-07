@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
     if (process.env.NODE_ENV !== 'development') {
         return NextResponse.json({ error: 'Dev mode only' }, { status: 403 });
     }
+    console.log(`[API: GET /admin/usage/recalc] Triggering storage usage recalculation.`);
 
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');

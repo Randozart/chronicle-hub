@@ -11,7 +11,7 @@ interface LondonLayoutProps {
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
     onExit: () => void;
-    onOpenMap: () => void;
+    onOpenMap?: () => void;
     onOpenMarket: () => void;
     currentMarketId?: string;
     isTransitioning?: boolean;

@@ -54,7 +54,7 @@ function decodeCString(buffer: Uint8Array): string {
 }
 
 export function parseItFile(buffer: ArrayBuffer): ItSong {
-    console.log("--- STARTING IT PARSE ---");
+    //console.log("--- STARTING IT PARSE ---");
     const dv = new DataView(buffer);
     const u8 = new Uint8Array(buffer);
     let p = 0;
@@ -63,7 +63,7 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     if (magic !== 'IMPM') throw new Error("Not an Impulse Tracker file");
 
     const title = decodeCString(u8.slice(4, 30));
-    console.log(`Song Title: ${title}`);
+    //console.log(`Song Title: ${title}`);
     
     p = 32;
     const ordNum = dv.getUint16(p, true); p += 2;
@@ -71,7 +71,7 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     const smpNum = dv.getUint16(p, true); p += 2;
     const patNum = dv.getUint16(p, true); p += 2;
     
-    console.log(`Counts -> Orders: ${ordNum}, Instruments: ${insNum}, Samples: ${smpNum}, Patterns: ${patNum}`);
+    //console.log(`Counts -> Orders: ${ordNum}, Instruments: ${insNum}, Samples: ${smpNum}, Patterns: ${patNum}`);
 
     p += 4; // Cwt/Cmwt
     const flags = dv.getUint16(p, true); p += 2;
@@ -81,14 +81,14 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     const mixVol = dv.getUint8(p); p += 1;
     const initialSpeed = dv.getUint8(p); p += 1;
     const initialTempo = dv.getUint8(p); p += 1;
-    console.log(`Globals -> Vol: ${globalVol}, Mix: ${mixVol}, Speed: ${initialSpeed}, Tempo: ${initialTempo}`);
+    //console.log(`Globals -> Vol: ${globalVol}, Mix: ${mixVol}, Speed: ${initialSpeed}, Tempo: ${initialTempo}`);
 
     const orders: number[] = [];
     p = 192;
     for(let i=0; i<ordNum; i++) {
         orders.push(u8[p + i]);
     }
-    console.log(`Orders parsed: ${orders.length}`);
+    //console.log(`Orders parsed: ${orders.length}`);
     
     p = 192 + ordNum;
     
@@ -105,7 +105,7 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     for(let i=0; i<smpOffsets.length; i++) {
         samples.push(parseSample(dv, smpOffsets[i]));
     }
-    console.log(`Samples parsed: ${samples.length}`);
+    //console.log(`Samples parsed: ${samples.length}`);
 
     const patterns: ItPattern[] = [];
     for(let i=0; i<patOffsets.length; i++) {
@@ -116,7 +116,7 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
             patterns.push(parsePattern(dv, offset));
         }
     }
-    console.log(`Patterns parsed: ${patterns.length}`);
+    //console.log(`Patterns parsed: ${patterns.length}`);
 
     return {
         title, globalVol, mixVol, initialSpeed, initialTempo, orders, samples, patterns

@@ -14,9 +14,7 @@ export async function POST(request: NextRequest) {
     if (!storyId || !choices) {
         return NextResponse.json({ error: 'Missing storyId or choices' }, { status: 400 });
     }
-
-    // PREVIOUSLY: We checked for existingCharacter here and returned 409.
-    // NOW: We skip that check to allow multiple characters.
+    console.log(`[API: POST /character/create] User ${userId} creating new character in story '${storyId}'.`);
 
     try {
         // This always creates a NEW document with a unique characterId

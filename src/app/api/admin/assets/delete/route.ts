@@ -16,6 +16,7 @@ export async function DELETE(request: NextRequest) {
 
         const { url } = await request.json();
         if (!url) return NextResponse.json({ error: 'Missing URL' }, { status: 400 });
+        console.log(`[API: DELETE /admin/assets] User ${userId} attempting to delete asset URL: ${url}`);
 
         const client = await clientPromise;
         const db = client.db(DB_NAME);

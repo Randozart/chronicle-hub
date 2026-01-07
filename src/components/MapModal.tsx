@@ -17,7 +17,7 @@ export default function MapModal({
 }: MapModalProps) {
     
     const currentLoc = locations[currentLocationId];
-    // If location has no region assigned, use "default" or handle gracefully
+    // Resolve Region
     const regionId = currentLoc?.regionId || (currentLoc as any)?.map || 'default';
     const region = regions[regionId];
 
@@ -26,62 +26,134 @@ export default function MapModal({
         (l.regionId === regionId) || ((l as any).map === regionId)
     );
 
-    // Decide Mode
+    // Decide Mode: Visual Map if region has image, otherwise List
     const hasVisualMap = region && region.image;
 
     return (
-        // OVERLAY
+        // OVERLAY: Use theme variable
         <div style={{ 
             position: 'fixed', 
             inset: 0, 
-            backgroundColor: 'rgba(0, 0, 0, 0.9)', 
+            backgroundColor: 'var(--bg-overlay)', // FIXED: Uses theme dimming
+            backdropFilter: 'blur(2px)',
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
-            zIndex: 9999, // Ensure it's on top of everything
+            zIndex: 9999,
             padding: '1rem'
         }}>
             
             {/* MODAL BOX */}
             <div style={{ 
-                backgroundColor: 'var(--bg-panel)', 
+                backgroundColor: 'var(--bg-panel)', // FIXED: Theme background
                 border: '1px solid var(--border-color)', 
                 borderRadius: 'var(--border-radius)', 
+                boxShadow: 'var(--shadow-modal)',
                 width: '100%', 
                 maxWidth: '900px', 
                 display: 'flex', 
                 flexDirection: 'column', 
-                maxHeight: '90vh' 
+                maxHeight: '90vh',
+                color: 'var(--text-primary)' 
             }}>
                 
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
-                        Travel: <span style={{ color: 'var(--success-color)' }}>{region?.name || "Local Area"}</span>
+                <div style={{ 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    padding: '1rem', borderBottom: '1px solid var(--border-color)' 
+                }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)' }}>
+                        Travel: <span style={{ color: 'var(--accent-highlight)' }}>{region?.name || "Local Area"}</span>
                     </h2>
                     <button 
                         onClick={onClose} 
-                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
+                        style={{ 
+                            background: 'none', border: 'none', 
+                            color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' 
+                        }}
+                        className="hover-text-primary"
                     >✕</button>
                 </div>
 
-                {/* Content */}
-                <div style={{ flex: 1, overflow: 'auto', position: 'relative', backgroundColor: '#111' }}>
+                {/* Content Area */}
+                <div style={{ 
+                    flex: 1, overflow: 'auto', position: 'relative', 
+                    backgroundColor: 'var(--bg-main)' // FIXED: Matches game background
+                }}>
                     
                     {hasVisualMap ? (
                         /* VISUAL MAP */
-                        <div style={{ position: 'relative', width: '100%', minHeight: '500px' }}>
+                        <div style={{ position: 'relative', width: '100%', minHeight: '400px' }}>
+                            {/* The Map Background */}
                             <GameImage 
                                 code={region.image || ""} 
                                 imageLibrary={imageLibrary} 
                                 type="map"
                                 alt="Map"
-                                className="w-full h-auto block" // Ensure this class exists or use style={{ width: '100%', display: 'block' }}
+                                className="w-full h-auto block" 
+                                style={{ width: '100%', display: 'block', userSelect: 'none' }}
                             />
-                            {/* ... Pins logic ... */}
+                            
+                            {/* --- ADDED: PINS LOGIC --- */}
+                            {visibleLocations.map(loc => {
+                                // Default to 50/50 if coordinates missing, prevents hidden buttons
+                                const x = loc.coordinates?.x ?? 50;
+                                const y = loc.coordinates?.y ?? 50;
+                                const isCurrent = loc.id === currentLocationId;
+
+                                return (
+                                    <div
+                                        key={loc.id}
+                                        style={{
+                                            position: 'absolute',
+                                            left: `${x}%`,
+                                            top: `${y}%`,
+                                            transform: 'translate(-50%, -50%)',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                            zIndex: 10,
+                                            cursor: isCurrent ? 'default' : 'pointer'
+                                        }}
+                                        onClick={() => !isCurrent && onTravel(loc.id)}
+                                        title={loc.name}
+                                    >
+                                        {/* Pin Icon */}
+                                        <div style={{
+                                            width: '40px', height: '40px',
+                                            borderRadius: '50%',
+                                            border: `2px solid ${isCurrent ? 'var(--success-color)' : 'var(--border-color)'}`,
+                                            backgroundColor: isCurrent ? 'var(--bg-panel)' : 'var(--bg-item)',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.5)',
+                                            overflow: 'hidden',
+                                            transition: 'transform 0.2s',
+                                        }}
+                                        className={!isCurrent ? "hover-scale" : ""}
+                                        >
+                                            <GameImage 
+                                                code={loc.image} 
+                                                imageLibrary={imageLibrary} 
+                                                type="icon" 
+                                                alt={loc.name}
+                                            />
+                                        </div>
+                                        {/* Label */}
+                                        <div style={{
+                                            marginTop: '4px',
+                                            backgroundColor: 'rgba(0,0,0,0.8)', // Keep labels dark for readability over maps
+                                            color: '#fff',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            fontSize: '0.75rem',
+                                            whiteSpace: 'nowrap',
+                                            pointerEvents: 'none'
+                                        }}>
+                                            {loc.name}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
-                        /* LIST FALLBACK */
+                        /* LIST FALLBACK (Themed) */
                         <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
                             {visibleLocations.map(loc => {
                                 const isCurrent = loc.id === currentLocationId;
@@ -92,12 +164,13 @@ export default function MapModal({
                                         onClick={() => onTravel(loc.id)}
                                         style={{
                                             padding: '1rem', 
-                                            borderRadius: '4px', 
-                                            border: `1px solid ${isCurrent ? '#2ecc71' : 'var(--border-light)'}`,
-                                            backgroundColor: isCurrent ? 'rgba(46, 204, 113, 0.1)' : 'var(--bg-main)',
+                                            borderRadius: 'var(--border-radius)', 
+                                            border: `1px solid ${isCurrent ? 'var(--success-color)' : 'var(--border-light)'}`,
+                                            backgroundColor: isCurrent ? 'var(--success-bg)' : 'var(--bg-item)',
                                             display: 'flex', alignItems: 'center', gap: '1rem',
                                             cursor: isCurrent ? 'default' : 'pointer',
-                                            textAlign: 'left'
+                                            textAlign: 'left',
+                                            color: 'var(--text-primary)'
                                         }}
                                         className={!isCurrent ? "hover-bg-lighter" : ""}
                                     >
@@ -111,8 +184,8 @@ export default function MapModal({
                                             />
                                         </div>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{loc.name}</div>
-                                            {isCurrent && <div style={{ fontSize: '0.75rem', color: '#2ecc71', textTransform: 'uppercase', fontWeight: 'bold' }}>Current Location</div>}
+                                            <div style={{ fontWeight: 'bold' }}>{loc.name}</div>
+                                            {isCurrent && <div style={{ fontSize: '0.75rem', color: 'var(--success-text)', textTransform: 'uppercase', fontWeight: 'bold' }}>Current Location</div>}
                                         </div>
                                     </button>
                                 );

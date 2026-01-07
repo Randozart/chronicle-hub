@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
         // 1. Read Body ONCE
         const body = await request.json();
         const { storyId, category, itemId, data } = body;
+        console.log(`[API: POST /admin/config] Updating config for story '${storyId}': Category='${category}', ItemID='${itemId}'.`);
 
         // 2. Validation (Allow data to be boolean false)
         if (!storyId || !category || !itemId || data === undefined) {
@@ -44,7 +45,8 @@ export async function DELETE(request: NextRequest) {
         const storyId = searchParams.get('storyId');
         const category = searchParams.get('category') as any;
         const itemId = searchParams.get('itemId');
-
+        console.log(`[API: DELETE /admin/config] Deleting config from story '${storyId}': Category='${category}', ItemID='${itemId}'.`);
+        
         if (!storyId || !category || !itemId) {
             return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
         }

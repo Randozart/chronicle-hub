@@ -20,7 +20,7 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
     
     if (eventsToFire.length === 0) return character;
 
-    console.log(`[LivingStory] Processing ${eventsToFire.length} events for ${character.characterId}`);
+    //console.log(`[LivingStory] Processing ${eventsToFire.length} events for ${character.characterId}`);
 
     const gameData = await getWorldConfig(character.storyId);
     
@@ -44,7 +44,7 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
                 .filter(q => q.category?.split(',').map(c => c.trim()).includes(categoryName))
                 .map(q => q.id);
 
-            console.log(`[LivingStory] Batch executing on category '${categoryName}'. Qualities: ${affectedQids.join(', ')}`);
+            //console.log(`[LivingStory] Batch executing on category '${categoryName}'. Qualities: ${affectedQids.join(', ')}`);
 
             for (const qid of affectedQids) {
                 // Construct effect string: "$quality += 1"
@@ -69,7 +69,7 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
                 triggerTime: nextTriggerTime,
                 // recurring: true // (Implicitly copied via ...event)
             });
-            console.log(`[LivingStory] Re-scheduling recurring event...`);
+            //console.log(`[LivingStory] Re-scheduling recurring event...`);
         }
     }
 
@@ -83,7 +83,7 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
             ...(character.dynamicQualities || {}),
             ...newDefinitions
         };
-        console.log(`[LivingStory] Persisting ${Object.keys(newDefinitions).length} dynamic qualities.`);
+        //console.log(`[LivingStory] Persisting ${Object.keys(newDefinitions).length} dynamic qualities.`);
     }
     
     // Remove fired events
@@ -235,7 +235,7 @@ export const getOrCreateCharacter = async (
     storyId: string,
     choices?: Record<string, string>
 ): Promise<CharacterDocument> => {
-    console.log(`[CharCreate] Starting for ${storyId}`);
+    //console.log(`[CharCreate] Starting for ${storyId}`);
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
@@ -361,7 +361,7 @@ export const getOrCreateCharacter = async (
     }
 
     if (initialChanges.length > 0) {
-        console.log(`[CharCreate] Found ${initialChanges.length} equippable items. Checking for auto-equip.`);
+        //console.log(`[CharCreate] Found ${initialChanges.length} equippable items. Checking for auto-equip.`);
         processAutoEquip(newCharacter, initialChanges, worldContent);
     }
 

@@ -32,7 +32,7 @@ export interface LayoutProps {
     onEventFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
     onQualitiesUpdate: (newQualities: PlayerQualities) => void;
     onCardPlayed: (cardId: string) => void;
-    onOpenMap: () => void; // New Handler
+    onOpenMap?: () => void; // New Handler
     onExit: () => void;
     onOpenMarket: () => void; // The function to open the UI
 

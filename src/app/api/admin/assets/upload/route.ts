@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
         const category = formData.get('category') as string || 'uncategorized';
         const altText = formData.get('alt') as string || '';
         const qualityRaw = formData.get('quality'); // Get quality string
-
+        console.log(`[API: POST /admin/assets/upload] User ${userId} uploading file '${file.name}' to story '${storyId}' in category '${category}'.`);
+        
         // 2. Validation
         if (!file || !storyId) {
             return NextResponse.json({ error: 'Missing file or storyId' }, { status: 400 });

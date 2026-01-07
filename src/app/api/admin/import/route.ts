@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const targetStoryId = formData.get('storyId') as string;
-
+        console.log(`[API: POST /admin/import] User ${currentUserId} attempting to import file '${file.name}' into story '${targetStoryId}'.`);
+        
         if (!file || !targetStoryId) {
             return NextResponse.json({ error: 'Missing file or storyId' }, { status: 400 });
         }

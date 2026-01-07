@@ -9,6 +9,9 @@ interface Props {
     onStorageUpdate?: (newUsage: number) => void;
 }
 
+// --- CONFIGURATION ---
+const PREVIEW_SIZE = 600; // Large preview area
+
 const OUTPUT_WIDTHS: Record<string, number> = {
     'icon': 512,
     'location': 1024,
@@ -148,7 +151,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
     };
 
     const calculateAutoFit = (img: HTMLImageElement, cat: string) => {
-        const CANVAS_SIZE = 400;
+        const CANVAS_SIZE = PREVIEW_SIZE;
         const ratio = ASPECT_RATIOS[cat] || 1;
         
         let maskW = CANVAS_SIZE - 40; 
@@ -171,7 +174,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         if (originalImage) calculateAutoFit(originalImage, category);
     }, [category]);
 
-    // SIZE ESTIMATOR (Skipped for SVG)
+    // SIZE ESTIMATOR
     useEffect(() => {
         if (!originalImage || originalFileType === 'image/svg+xml') {
             setEstimatedSize(null);
@@ -188,9 +191,6 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
             osc.height = targetH;
             const ctx = osc.getContext('2d');
             if(!ctx) return;
-
-            const renderRatio = targetW / (400 - 40); // Approx scaling
-            // (Keeping the logic simple for estimation, reuse actual render logic if precise needed)
 
             osc.toBlob((blob) => {
                 if (blob) setEstimatedSize(blob.size);
@@ -210,7 +210,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const CANVAS_SIZE = 400;
+        const CANVAS_SIZE = PREVIEW_SIZE;
         canvas.width = CANVAS_SIZE;
         canvas.height = CANVAS_SIZE;
 
@@ -220,7 +220,6 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         ctx.save();
         ctx.translate(canvas.width / 2 + pan.x, canvas.height / 2 + pan.y);
         ctx.scale(scale, scale);
-        // Don't smooth if scaling up significantly to avoid blur perception during crop
         ctx.imageSmoothingEnabled = true; 
         ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
         ctx.restore();
@@ -255,6 +254,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
 
     }, [originalImage, scale, pan, category]);
 
+    // --- HANDLERS ---
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -266,10 +266,23 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
     };
 
     const handleMouseUp = () => setIsDragging(false);
+    
     const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault();
-        const delta = -e.deltaY * 0.001;
+        const delta = -e.deltaY * 0.0005; 
         setScale(prev => Math.min(Math.max(0.1, prev + delta), maxZoom));
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setIsDragging(true);
+        const touch = e.touches[0];
+        setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y });
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isDragging) return;
+        const touch = e.touches[0];
+        setPan({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
     };
 
     // --- MAIN UPLOAD HANDLER ---
@@ -294,7 +307,6 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
             formData.append('storyId', storyId);
             formData.append('category', category);
             formData.append('alt', imageKey);
-            // No quality needed for SVG
 
             const res = await fetch('/api/admin/assets/upload', {
                 method: 'POST',
@@ -328,7 +340,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
             const ratio = ASPECT_RATIOS[category] || 1;
             const targetH = targetW / ratio;
 
-            const CANVAS_SIZE = 400;
+            const CANVAS_SIZE = PREVIEW_SIZE;
             let maskW = CANVAS_SIZE - 40;
             let maskH = maskW / ratio;
             if (maskH > CANVAS_SIZE - 40) {
@@ -377,7 +389,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                     setError(data.error || 'Upload failed');
                 }
                 setIsUploading(false);
-            }, 'image/png'); // Send PNG to server, server converts to WebP
+            }, 'image/png');
 
         } catch (e) {
             console.error(e);
@@ -425,7 +437,8 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                             />
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                            {/* LEFT COLUMN: Controls */}
                             <div style={{ flex: 1, minWidth: '250px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                  <div className="form-group">
                                     <label className="form-label">Asset Key (ID)</label>
@@ -448,7 +461,6 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                     </p>
                                 </div>
 
-                                {/* QUALITY SLIDER (Hide for SVG) */}
                                 {originalFileType !== 'image/svg+xml' ? (
                                     <div className="form-group">
                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -491,20 +503,65 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                 {error && <p style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</p>}
                             </div>
 
-                            <div style={{ flex: 1, minWidth: '300px' }}>
-                                 <canvas 
+                            {/* RIGHT COLUMN: Canvas + Vertical Slider */}
+                            <div style={{ flex: 0, minWidth: 'fit-content', display: 'flex', gap: '15px' }}>
+                                
+                                {/* 1. The Slider Container */}
+                                <div style={{ 
+                                    position: 'relative', 
+                                    width: '30px', 
+                                    height: `${PREVIEW_SIZE}px`,
+                                    background: '#1a1a1a',
+                                    borderRadius: '15px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '1px solid #333'
+                                }}>
+                                    {/* 2. The Input: Rotated & Centered absolutely */}
+                                    <input 
+                                        type="range"
+                                        min="0.1"
+                                        max={maxZoom}
+                                        step="0.01"
+                                        value={scale}
+                                        onChange={(e) => setScale(parseFloat(e.target.value))}
+                                        title="Zoom"
+                                        style={{
+                                            position: 'absolute',
+                                            top: '50%',
+                                            left: '50%',
+                                            transform: 'translate(-50%, -50%) rotate(-90deg)', // Magic centering
+                                            width: `${PREVIEW_SIZE - 40}px`, // 20px padding top/bottom
+                                            height: '40px', // Hit area width
+                                            cursor: 'pointer',
+                                            accentColor: '#61afef',
+                                            margin: 0,
+                                            // Ensure styles override any global resets
+                                            maxWidth: 'none',
+                                            maxHeight: 'none',
+                                        }}
+                                    />
+                                </div>
+
+                                <canvas 
                                     ref={canvasRef}
                                     onMouseDown={handleMouseDown}
                                     onMouseMove={handleMouseMove}
                                     onMouseUp={handleMouseUp}
                                     onMouseLeave={handleMouseUp}
+                                    onTouchStart={handleTouchStart}
+                                    onTouchMove={handleTouchMove}
+                                    onTouchEnd={handleMouseUp}
                                     onWheel={handleWheel}
                                     style={{ 
                                         cursor: isDragging ? 'grabbing' : 'grab', 
                                         border: '1px solid #444',
                                         borderRadius: '4px',
-                                        width: '100%',
-                                        boxShadow: '0 0 20px rgba(0,0,0,0.5)'
+                                        width: `${PREVIEW_SIZE}px`,
+                                        height: `${PREVIEW_SIZE}px`,
+                                        boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+                                        touchAction: 'none'
                                     }}
                                 />
                             </div>
@@ -513,6 +570,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                 </>
             )}
 
+            {/* Library Tab (unchanged) */}
             {activeTab === 'library' && (
                 <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                     {isLoadingLibrary ? (
@@ -538,14 +596,10 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                         />
-                                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: -1, background: '#222' }}>
-                                            <span style={{ fontSize: '2rem', color: '#444' }}>?</span>
-                                        </div>
                                     </div>
                                     <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--tool-text-main)' }}>
                                         {asset.id}
                                     </div>
-                                    
                                     <button
                                         onClick={(e) => handleDeleteFromLibrary(asset, e)}
                                         style={{

@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
     const id = searchParams.get('id');
+    console.log(`[API: GET /admin/opportunities] Fetching opportunities for story '${storyId}'. ID: ${id || 'all'}.`);
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
 
@@ -30,16 +31,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     const body = await request.json();
-    const { storyId, data } = body; // We need storyId before anything else
+    const { storyId, data } = body;
+    console.log(`[API: POST /admin/opportunities] User saving opportunity '${data.id}' for story '${storyId}'.`);
 
     // SECURITY CHECK
     if (!await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }    
-    
+
     if (!storyId || !data.id) return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
 
-    // NEW: Auto-generate IDs for options
     if (data.options && Array.isArray(data.options)) {
         data.options.forEach((opt: any, index: number) => {
             if (!opt.id || opt.id.trim() === '') {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     await db.collection('opportunities').updateOne(
         { worldId: storyId, id: data.id },
-        { $set: { ...cleanData, worldId: storyId } }, // Use cleanData
+        { $set: { ...cleanData, worldId: storyId } }, 
         { upsert: true }
     );
     return NextResponse.json({ success: true });
@@ -65,6 +66,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
     const id = searchParams.get('id');
+    console.log(`[API: DELETE /admin/opportunities] Deleting opportunity '${id}' from story '${storyId}'.`);
 
     // SECURITY CHECK
     if (!storyId || !await verifyWorldAccess(storyId, 'writer')) {

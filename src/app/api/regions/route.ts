@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
 
     try {
         const config = await getWorldConfig(storyId);
-        // Return regions, defaulting to empty object if none exist
         return NextResponse.json(config.regions || {});
     } catch (e) {
         console.error("Error fetching regions:", e);

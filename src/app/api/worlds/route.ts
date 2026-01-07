@@ -121,7 +121,8 @@ export async function POST(request: NextRequest) {
     const userId = (session.user as any).id;
 
     const { title, worldId } = await request.json();
-    
+    console.log(`[API: POST /worlds] User ${userId} creating new world. Title: '${title}', ID: '${worldId}'.`);
+
     if (!/^[a-z0-9_-]+$/.test(worldId)) {
         return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }

@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const storyId = searchParams.get('storyId');
     const id = searchParams.get('id');
     const full = searchParams.get('full');
+    console.log(`[API: GET /admin/storylets] Fetching storylets for story '${storyId}'. Mode: ${id ? `single (id: ${id})` : (full ? 'full' : 'summary')}.`);
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
 
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
     
     // Validation
     if (!storyId || !data.id) return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+    console.log(`[API: POST /admin/storylets] User saving storylet '${data.id}' for story '${storyId}'.`);
 
     // NEW: Auto-generate IDs for options that are missing them
     if (data.options && Array.isArray(data.options)) {
@@ -63,10 +65,9 @@ export async function POST(request: NextRequest) {
         
     const { _id, ...cleanData } = data;
 
-    // Upsert (Update if exists, Insert if new)
     const result = await db.collection('storylets').updateOne(
         { worldId: storyId, id: data.id },
-        { $set: { ...cleanData, worldId: storyId } }, // Ensure worldId is set
+        { $set: { ...cleanData, worldId: storyId } }, 
         { upsert: true }
     );
 
@@ -74,9 +75,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
     const id = searchParams.get('id');
+    console.log(`[API: DELETE /admin/storylets] Deleting storylet '${id}' from story '${storyId}'.`);
 
     if (!storyId || !await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

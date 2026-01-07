@@ -52,7 +52,6 @@ export class GameEngine implements EngineContext {
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
 
     // === PUBLIC EVALUATION API ===
-
     private getEffectiveQualitiesProxy(): PlayerQualities {
         return new Proxy(this.qualities, {
             get: (target, prop) => {
@@ -187,7 +186,7 @@ export class GameEngine implements EngineContext {
                         type: def.type,
                         level: effective,
                         stringValue: "",
-                        changePoints: 0
+                        changePoints: (displayState[qid] && 'changePoints' in displayState[qid]) ? displayState[qid].changePoints : 0
                     } as any;
                 }
             }

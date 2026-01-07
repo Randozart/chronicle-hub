@@ -9,7 +9,7 @@ export function changeQuality(
     value: number | string, 
     metadata: { desc?: string; source?: string; hidden?: boolean }
 ): void {
-        console.log(`[Scribe_Op] Change Action: QID='${qid}', OP='${op}', VALUE='${value}'`);
+        //console.log(`[Scribe_Op] Change Action: QID='${qid}', OP='${op}', VALUE='${value}'`);
 
     const def = ctx.worldContent.qualities[qid];
     if (!def) {
@@ -35,7 +35,7 @@ export function changeQuality(
     }
 
     const qState = targetState[effectiveQid] as any;
-        console.log(`[Scribe_Op] State BEFORE:`, JSON.parse(JSON.stringify(qState)));
+        //console.log(`[Scribe_Op] State BEFORE:`, JSON.parse(JSON.stringify(qState)));
 
     const levelBefore = qState.level || 0;
 
@@ -104,7 +104,7 @@ export function changeQuality(
         qState.level = Math.floor(qState.level);
         if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
     }
-    console.log(`[Scribe_Op] State AFTER:`, JSON.parse(JSON.stringify(targetState[effectiveQid])));
+    //console.log(`[Scribe_Op] State AFTER:`, JSON.parse(JSON.stringify(targetState[effectiveQid])));
 
     const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
     
@@ -171,7 +171,7 @@ export function createNewQuality(
         if (typeof value === 'string') dynamicState.stringValue = value;
     }
 
-    console.log(`[GameEngine] Created/Updated ${id} with type ${qualityType}. Template: ${templateId}`, ctx.qualities[id]);
+    //console.log(`[GameEngine] Created/Updated ${id} with type ${qualityType}. Template: ${templateId}`, ctx.qualities[id]);
 }
 
 

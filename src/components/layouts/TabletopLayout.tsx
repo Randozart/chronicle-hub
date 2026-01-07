@@ -10,7 +10,7 @@ interface TabletopLayoutProps {
     location: LocationDefinition;
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
-    onOpenMap: () => void;
+    onOpenMap?: () => void;
     onOpenMarket: () => void;
     currentMarketId?: string;
     onExit: () => void;

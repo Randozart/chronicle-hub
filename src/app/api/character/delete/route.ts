@@ -9,6 +9,7 @@ export async function DELETE(request: NextRequest) {
 
     const { storyId, characterId } = await request.json();
     const userId = (session.user as any).id;
+    console.log(`[API: DELETE /character/delete] User ${userId} deleting character '${characterId}' from story '${storyId}'.`);
 
     if (!storyId || !characterId) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
 

@@ -5,7 +5,7 @@ import { WorldConfig } from '@/engine/models'; // Changed from WorldContent to W
 import clientPromise from '@/engine/database';
 
 export const loadGameData = cache(async (worldId: string = 'trader_johns_world'): Promise<WorldConfig> => {
-    console.log(`[Data Loader] Loading config for world '${worldId}'...`);
+    //console.log(`[Data Loader] Loading config for world '${worldId}'...`);
 
     try {
         const client = await clientPromise;
@@ -68,7 +68,7 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
             }
         }
         
-        console.log(`[Data Loader] Config successfully processed from DB.`);
+        //console.log(`[Data Loader] Config successfully processed from DB.`);
         return processedContent;
 
     } catch (error) {

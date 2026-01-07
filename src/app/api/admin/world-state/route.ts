@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     const body = await request.json();
     const { storyId, updates } = body; // updates: { "season": { type: "S", stringValue: "Winter" } }
+    console.log(`[API: POST /admin/world-state] Owner updating global state for '${storyId}'. Keys: ${Object.keys(updates).join(', ')}`);
 
     if (!await verifyWorldAccess(storyId, 'owner')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -53,6 +54,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
     const key = searchParams.get('key');
+    console.log(`[API: DELETE /admin/world-state] Owner deleting global state key '${key}' from '${storyId}'.`);
 
     if (!storyId || !key) return NextResponse.json({ error: 'Missing params' }, { status: 400 });
     if (!await verifyWorldAccess(storyId, 'owner')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

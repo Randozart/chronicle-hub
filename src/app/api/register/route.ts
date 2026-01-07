@@ -9,6 +9,7 @@ import { sendVerificationEmail } from '@/lib/email'; // <--- IMPORT THIS
 export async function POST(request: NextRequest) {
     try {
         const { username, email, password } = await request.json();
+        console.log(`[API: POST /register] Registration attempt for email: ${email}, username: ${username}.`);
 
         if (!username || !email || !password) {
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });

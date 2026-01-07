@@ -214,14 +214,39 @@ export default function GameHub(props: GameHubProps) {
     }, [character, props.storyId]);
     
     const handleTravel = useCallback(async (targetId: string) => {
+        // 1. Guard: Prevent travel if inside a storylet
+        if (activeEvent) {
+            alert("You must finish the current event before travelling.");
+            return;
+        }
+
         if (!character) return;
         setIsLoading(true);
         try {
             const res = await fetch('/api/travel', { 
-                method: 'POST', body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
             });
             const data = await res.json();
-            if (data.success) window.location.reload();
+            if (data.success) {
+                // SPA Update logic (from previous step)
+                setShowMap(false);
+                setIsTransitioning(true);
+                setCharacter(prev => prev ? ({ ...prev, currentLocationId: targetId }) : null);
+                
+                const newLocDef = props.locations[targetId];
+                if (newLocDef) {
+                    setTimeout(() => {
+                        setLocation(newLocDef);
+                        setIsTransitioning(false);
+                        setActiveEvent(null);
+                        setActiveResolution(null);
+                    }, 150);
+                } else {
+                    window.location.reload();
+                }
+            }
             else {
                 alert(data.error);
                 setIsLoading(false);
@@ -230,7 +255,7 @@ export default function GameHub(props: GameHubProps) {
             console.error(e); 
             setIsLoading(false);
         } 
-    }, [character, props.storyId]);
+    }, [character, props.storyId, props.locations, activeEvent]);
 
     const handleExit = useCallback(() => {
         window.location.href = `/play/${props.storyId}?menu=true`;
@@ -373,6 +398,10 @@ export default function GameHub(props: GameHubProps) {
 
         const renderHeader = () => {
             if (headerStyle === 'hidden') return null;
+            
+            // Logic: Only allow opening map if NO active event
+            const canTravel = !activeEvent;
+
             if (isBannerMode) {
                 return (
                     <div className={`location-wrapper mode-banner`}>
@@ -389,7 +418,8 @@ export default function GameHub(props: GameHubProps) {
                         <LocationHeader 
                             location={renderedLocation!} 
                             imageLibrary={props.imageLibrary} 
-                            onOpenMap={() => setShowMap(true)} 
+                            // Disable Map button if in event
+                            onOpenMap={canTravel ? () => setShowMap(true) : undefined} 
                             onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
                             styleMode={headerStyle} 
                         />
@@ -401,7 +431,8 @@ export default function GameHub(props: GameHubProps) {
                     <LocationHeader 
                         location={renderedLocation!} 
                         imageLibrary={props.imageLibrary} 
-                        onOpenMap={() => setShowMap(true)} 
+                        // Disable Map button if in event
+                        onOpenMap={canTravel ? () => setShowMap(true) : undefined} 
                         onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
                         styleMode={headerStyle}
                     />
@@ -549,6 +580,8 @@ export default function GameHub(props: GameHubProps) {
     };
 
     const renderLayout = () => {
+        const canTravel = !activeEvent;
+
         const layoutProps = {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
@@ -556,7 +589,7 @@ export default function GameHub(props: GameHubProps) {
             location: renderedLocation!,
             imageLibrary: props.imageLibrary,
             onExit: handleExit,
-            onOpenMap: () => setShowMap(true),
+            onOpenMap: canTravel ? () => setShowMap(true) : undefined, // Check activeEvent
             onOpenMarket: () => setShowMarket(true),
             currentMarketId: activeMarketId,
             isTransitioning: isTransitioning

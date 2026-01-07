@@ -118,7 +118,7 @@ export const drawCards = async (
         if (op.draw_condition) {
             const meetsCondition = engine.evaluateCondition(op.draw_condition);
             if (!meetsCondition) {
-                // console.log(`[Deck] Skipping ${op.id}: Condition '${op.draw_condition}' failed.`);
+                // //console.log(`[Deck] Skipping ${op.id}: Condition '${op.draw_condition}' failed.`);
                 return false;
             }
         }
@@ -126,7 +126,7 @@ export const drawCards = async (
         return true;
     }) as Opportunity[];
 
-    console.log(`[Deck] Drawing from '${deckId}'. Found ${candidates.length} eligible cards.`);
+    //console.log(`[Deck] Drawing from '${deckId}'. Found ${candidates.length} eligible cards.`);
 
     if (candidates.length === 0) {
         throw new Error("No eligible cards available in this deck.");

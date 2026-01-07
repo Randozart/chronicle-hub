@@ -40,7 +40,7 @@ export async function initializeAudioGraph() {
     AudioGraph.busses.delay.connect(AudioGraph.masterGain);
 
     AudioGraph.isInitialized = true;
-    console.log("Audio Graph Initialized: Master + Sends Ready");
+    //console.log("Audio Graph Initialized: Master + Sends Ready");
 }
 
 export function setMasterVolume(db: number) {

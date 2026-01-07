@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
 // POST: Add collaborator
 export async function POST(request: NextRequest) {
     const { storyId, email, role } = await request.json();
-    
+    console.log(`[API: POST /admin/collaborators] User adding collaborator '${email}' as '${role}' to story '${storyId}'.`);
+
     if (!await verifyWorldAccess(storyId, 'owner')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const client = await clientPromise;
@@ -93,6 +94,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
     const userId = searchParams.get('userId');
+    console.log(`[API: DELETE /admin/collaborators] User removing collaborator '${userId}' from story '${storyId}'.`);
 
     if (!storyId || !userId) {
         return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });

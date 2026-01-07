@@ -7,7 +7,7 @@ import FormattedText from "./FormattedText"; // Import the FormattedText compone
 interface LocationHeaderProps {
     location: LocationDefinition;
     imageLibrary: Record<string, ImageDefinition>;
-    onOpenMap: () => void; 
+    onOpenMap?: () => void; 
     onOpenMarket?: () => void;
     styleMode?: 'standard' | 'banner' | 'square' | 'circle' | 'title-card' | 'hidden'; 
 }

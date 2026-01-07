@@ -217,7 +217,7 @@ function formatBar(slots: string[], perBar: number): string {
 // --- MAIN CONVERTER ---
 
 export function convertItToLigature(buffer: ArrayBuffer, opts: ConverterOptions) {
-    console.log("--- STARTING CONVERTER ---");
+    //console.log("--- STARTING CONVERTER ---");
     const song = parseItFile(buffer);
     
     const zip = new SimpleZip();
