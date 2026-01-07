@@ -1,4 +1,3 @@
-// src/engine/mechanics/qualityOperations.ts
 import { QualityDefinition, QualityType, QualityState } from '../models';
 import { EngineContext } from './types';
 
@@ -9,8 +8,6 @@ export function changeQuality(
     value: number | string, 
     metadata: { desc?: string; source?: string; hidden?: boolean }
 ): void {
-        //console.log(`[Scribe_Op] Change Action: QID='${qid}', OP='${op}', VALUE='${value}'`);
-
     const def = ctx.worldContent.qualities[qid];
     if (!def) {
         const msg = `[GameEngine] Unknown quality '${qid}'. Skipping.`;
@@ -35,9 +32,17 @@ export function changeQuality(
     }
 
     const qState = targetState[effectiveQid] as any;
-        //console.log(`[Scribe_Op] State BEFORE:`, JSON.parse(JSON.stringify(qState)));
-
+    
+    // --- FIX 1: Capture state BEFORE modification ---
     const levelBefore = qState.level || 0;
+    const cpBefore = qState.changePoints || 0;
+
+    // --- FIX 2: Ensure State Type matches Definition Type ---
+    // This fixes issues where existing qualities don't switch to Pyramidal logic
+    // even if you changed them in the editor.
+    if (qState.type !== def.type) {
+        qState.type = def.type;
+    }
 
     if (qState.type === QualityType.String) {
         if (typeof value === 'string' && op === '=') qState.stringValue = value;
@@ -56,16 +61,20 @@ export function changeQuality(
                         if (!isNaN(cap) && qState.level >= cap) return; 
                     }
                 }
+                
+                // Pyramidal Logic: Manipulate CP, then calculate level
                 if (op === '++') qState.changePoints += 1;
                 else if (op === '--') qState.changePoints -= 1;
                 else if (op === '+=') qState.changePoints += numValue;
                 else if (op === '-=') qState.changePoints -= numValue;
+                
                 updatePyramidalLevel(ctx, qState, def);
             } else if (op === '=') { 
                 qState.level = numValue; 
                 qState.changePoints = 0; 
             }
         } else {
+            // Discrete/Counter Logic
             if (isIncremental) {
                 const isAdd = op === '++' || op === '+=';
                 const qty = (op === '++' || op === '--') ? 1 : numValue;
@@ -94,17 +103,17 @@ export function changeQuality(
             }
         }
         
+        // Cap Checks
         if (def.max) {
             const max = Number(ctx.evaluateText(`{${def.max}}`)) || Infinity;
             if (qState.level > max) { 
                 qState.level = max; 
-                if (qState.type === 'P') qState.changePoints = 0; 
+                if (qState.type === QualityType.Pyramidal) qState.changePoints = 0; 
             }
         }
         qState.level = Math.floor(qState.level);
-        if ((def.type === 'C' || isItem) && qState.level < 0) qState.level = 0;
+        if ((def.type === QualityType.Counter || isItem) && qState.level < 0) qState.level = 0;
     }
-    //console.log(`[Scribe_Op] State AFTER:`, JSON.parse(JSON.stringify(targetState[effectiveQid])));
 
     const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
     
@@ -117,7 +126,15 @@ export function changeQuality(
 
     if (qState.level > levelBefore) changeText = increaseDesc || `${displayName} increased.`;
     else if (qState.level < levelBefore) changeText = decreaseDesc || `${displayName} decreased.`;
-    else if (qState.type === 'S') changeText = `${displayName} is now ${qState.stringValue}`;
+    else if (qState.type === QualityType.String) changeText = `${displayName} is now ${qState.stringValue}`;
+
+    // For Pyramidal, if level didn't change but CP did, we still want to notify
+    if (!changeText && qState.type === QualityType.Pyramidal && qState.changePoints !== cpBefore) {
+         // Optionally suppress text for minor CP gains if no description exists, 
+         // but we need the object in the list for the Bar to render.
+         // We set changeText to displayName so the Bar has a label.
+         changeText = displayName;
+    }
 
     if (metadata.desc) {
         changeText = ctx.evaluateText(metadata.desc, context);
@@ -125,9 +142,17 @@ export function changeQuality(
 
     if (changeText) {
         ctx.changes.push({
-            qid: effectiveQid, qualityName: displayName, type: def.type, category: def.category,
-            levelBefore, cpBefore: 0, levelAfter: qState.level, cpAfter: qState.changePoints,
-            stringValue: qState.stringValue, changeText, scope: qid.startsWith('world.') ? 'world' : 'character',
+            qid: effectiveQid, 
+            qualityName: displayName, 
+            type: def.type, 
+            category: def.category,
+            levelBefore: levelBefore, 
+            cpBefore: cpBefore, // --- FIX 3: Pass the actual CP before ---
+            levelAfter: qState.level, 
+            cpAfter: qState.changePoints,
+            stringValue: qState.stringValue, 
+            changeText, 
+            scope: qid.startsWith('world.') ? 'world' : 'character',
             overrideDescription: metadata.desc ? changeText : undefined,
             hidden: isHidden 
         });
@@ -143,7 +168,6 @@ export function createNewQuality(
 ) {
     const templateDef = templateId ? ctx.worldContent.qualities[templateId] : null;
 
-    // Determine the final set of variants for the new state.
     const finalVariants = {
         ...(templateDef?.text_variants || {}),
         ...props
@@ -152,7 +176,6 @@ export function createNewQuality(
     const qualityType = templateDef ? templateDef.type : (typeof value === 'string' ? QualityType.String : QualityType.Pyramidal);
 
     if (!ctx.qualities[id]) {
-        // Create a new state object from scratch.
         ctx.qualities[id] = {
             qualityId: id,
             type: qualityType,
@@ -162,7 +185,6 @@ export function createNewQuality(
             text_variants: finalVariants
         } as any;
     } else {
-        // If the state already exists, update it.
         const dynamicState = ctx.qualities[id] as any;
         if (!dynamicState.text_variants) dynamicState.text_variants = {};
         Object.assign(dynamicState.text_variants, finalVariants);
@@ -170,8 +192,6 @@ export function createNewQuality(
         if (typeof value === 'number') dynamicState.level = value;
         if (typeof value === 'string') dynamicState.stringValue = value;
     }
-
-    //console.log(`[GameEngine] Created/Updated ${id} with type ${qualityType}. Template: ${templateId}`, ctx.qualities[id]);
 }
 
 
@@ -200,14 +220,19 @@ export function batchChangeQuality(
 
 export function updatePyramidalLevel(ctx: EngineContext, qState: any, def: QualityDefinition): void {
     const cpCap = def.cp_cap ? Number(ctx.evaluateText(`{${def.cp_cap}}`)) || Infinity : Infinity;
+    // Formula: Level N requires N+1 CP. 
+    // e.g. Level 1 needs 2 CP to reach Level 2.
     let cpNeeded = Math.min(qState.level + 1, cpCap);
+    
     while (qState.changePoints >= cpNeeded && cpNeeded > 0) {
-        qState.level++; qState.changePoints -= cpNeeded;
+        qState.level++; 
+        qState.changePoints -= cpNeeded;
         cpNeeded = Math.min(qState.level + 1, cpCap);
     }
     while (qState.changePoints < 0 && qState.level > 0) {
         const prevCp = Math.min(qState.level, cpCap);
-        qState.level--; qState.changePoints += prevCp;
+        qState.level--; 
+        qState.changePoints += prevCp;
     }
 }
 

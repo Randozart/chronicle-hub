@@ -22,6 +22,8 @@ import MarketInterface from './MarketInterface';
 import GameImage from '@/components/GameImage';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
+import { useRouter } from 'next/navigation';
+
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -54,6 +56,8 @@ interface GameHubProps {
 }
 
 export default function GameHub(props: GameHubProps) {
+    const router = useRouter();
+
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
     const [location, setLocation] = useState<LocationDefinition | null>(props.initialLocation);
     const [hand, setHand] = useState<Opportunity[]>(props.initialHand);
@@ -71,7 +75,7 @@ export default function GameHub(props: GameHubProps) {
         [location?.deck]
     );
 
-    useEffect(() => {
+        useEffect(() => {
         setCharacter(props.initialCharacter);
         setLocation(props.initialLocation);
         setHand(props.initialHand);
@@ -79,6 +83,7 @@ export default function GameHub(props: GameHubProps) {
         setActiveResolution(null); 
         setShowMap(false);
         setShowMarket(false);
+        setIsTransitioning(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
 
     useEffect(() => {
@@ -213,15 +218,14 @@ export default function GameHub(props: GameHubProps) {
         } catch (e) { console.error(e); }
     }, [character, props.storyId]);
     
-    const handleTravel = useCallback(async (targetId: string) => {
-        // 1. Guard: Prevent travel if inside a storylet
+        const handleTravel = useCallback(async (targetId: string) => {
         if (activeEvent) {
             alert("You must finish the current event before travelling.");
             return;
         }
-
         if (!character) return;
-        setIsLoading(true);
+
+        setIsTransitioning(true); // Show visual feedback
         try {
             const res = await fetch('/api/travel', { 
                 method: 'POST', 
@@ -229,33 +233,23 @@ export default function GameHub(props: GameHubProps) {
                 body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) 
             });
             const data = await res.json();
+
             if (data.success) {
-                // SPA Update logic (from previous step)
                 setShowMap(false);
-                setIsTransitioning(true);
-                setCharacter(prev => prev ? ({ ...prev, currentLocationId: targetId }) : null);
-                
-                const newLocDef = props.locations[targetId];
-                if (newLocDef) {
-                    setTimeout(() => {
-                        setLocation(newLocDef);
-                        setIsTransitioning(false);
-                        setActiveEvent(null);
-                        setActiveResolution(null);
-                    }, 150);
-                } else {
-                    window.location.reload();
-                }
-            }
-            else {
+                // --- FIX: Refresh server components to get new location data ---
+                // This is the key change. It tells Next.js to re-run the page's
+                // data fetching on the server and send the new props down.
+                router.refresh();
+            } else {
                 alert(data.error);
-                setIsLoading(false);
+                setIsTransitioning(false); // Only stop transition on failure
             }
         } catch(e) { 
-            console.error(e); 
-            setIsLoading(false);
+            console.error("Travel failed:", e); 
+            setIsTransitioning(false); // Stop transition on network error
         } 
-    }, [character, props.storyId, props.locations, activeEvent]);
+    }, [character, props.storyId, activeEvent, router]);
+
 
     const handleExit = useCallback(() => {
         window.location.href = `/play/${props.storyId}?menu=true`;
@@ -386,6 +380,7 @@ export default function GameHub(props: GameHubProps) {
             </div>
         );
     };
+
 
     const buildMainContent = () => {
         const headerStyle = props.settings.locationHeaderStyle || 'standard';
