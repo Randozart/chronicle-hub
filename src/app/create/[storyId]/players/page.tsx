@@ -131,7 +131,7 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
 
     return (
         <div className="admin-editor-col" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid #444', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '1rem' }}>
                 <div>
                     <h2 style={{ margin: 0 }}>Player Monitor</h2>
                     <p style={{ margin: '5px 0 0 0', color: 'var(--tool-text-dim)', fontSize: '0.9rem' }}>
@@ -142,8 +142,8 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                     background: 'var(--tool-bg-header)', 
                     padding: '5px 10px', 
                     borderRadius: '4px', 
-                    border: '1px solid #444',
-                    color: 'var(--tool-text-highlight)' 
+                    border: '1px solid var(--tool-border)',
+                    color: 'var(--tool-accent)' 
                 }}>
                     {players.length} Active Characters
                 </span>
@@ -156,21 +156,21 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                     <p>No souls have entered this world yet.</p>
                 </div>
             ) : (
-                <div style={{ background: 'var(--tool-bg-input)', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                <div style={{ background: 'var(--tool-bg-input)', border: '1px solid var(--tool-border)', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: 'var(--tool-bg-header)', textAlign: 'left', borderBottom: '1px solid #333' }}>
+                        <thead style={{ background: 'var(--tool-bg-header)', textAlign: 'left', borderBottom: '1px solid var(--tool-border)' }}>
                             <tr>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>Character Name</th>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>User Account</th>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>Location</th>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>Actions</th>
-                                <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>Last Active</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Character Name</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.8rem', textTransform: 'uppercase' }}>User Account</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Location</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Actions</th>
+                                <th style={{ padding: '1rem', color: 'var(--tool-text-dim)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Last Active</th>
                                 <th style={{ padding: '1rem', textAlign: 'right' }}>Admin</th>
                             </tr>
                         </thead>
                         <tbody>
                             {players.map((p, index) => (
-                                <tr key={p.characterId || `p-${index}`} style={{ borderBottom: '1px solid #2c313a', transition: 'background 0.2s' }} className="hover:bg-white/5">
+                                <tr key={p.characterId || `p-${index}`} style={{ borderBottom: '1px solid var(--bg-item)', transition: 'background 0.2s' }} className="hover:bg-white/5">
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ fontWeight: 'bold', color: 'var(--tool-text-header)', fontSize: '1rem' }}>{p.characterName}</div>
                                     </td>
@@ -179,7 +179,7 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{ 
-                                            background: '#2a3e5c', color: '#61afef', 
+                                            background: 'var(--accent-primary)', color: 'var(--accent-highlight)', 
                                             padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500'
                                         }}>
                                             {p.location}
@@ -192,9 +192,9 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <div style={{ 
                                                 width: '8px', height: '8px', borderRadius: '50%', 
-                                                background: p.lastActive && new Date(p.lastActive).getTime() > Date.now() - 300000 ? '#2ecc71' : '#555' 
+                                                background: p.lastActive && new Date(p.lastActive).getTime() > Date.now() - 300000 ? 'var(--success-color)' : 'var(--border-light)' 
                                             }} />
-                                            <span style={{ color: '#aaa', fontSize: '0.9rem' }}>{formatTimeAgo(p.lastActive)}</span>
+                                            <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.9rem' }}>{formatTimeAgo(p.lastActive)}</span>
                                         </div>
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
@@ -208,7 +208,7 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                                                 }
                                             }}
                                             style={{
-                                                background: 'transparent', border: '1px solid #555', color: '#ccc',
+                                                background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--tool-text-main)',
                                                 padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
                                             }}
                                             className="hover:bg-white/10 hover:border-white hover:text-white"
@@ -237,7 +237,6 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
 }
 
 // --- SUB-COMPONENT: REDESIGNED INSPECTOR MODAL ---
-
 export function CharacterInspector({ characterId, storyId, worldQualities, settings, onClose }: { 
     characterId: string, 
     storyId: string, 
@@ -280,10 +279,8 @@ export function CharacterInspector({ characterId, storyId, worldQualities, setti
                     if(!prev) return null;
                     const next = { ...prev, qualities: { ...prev.qualities } };
                     if(next.qualities[qid]) {
-                         // @ts-ignore
-                        if(typeof newVal === 'string') next.qualities[qid].stringValue = newVal;
-                         // @ts-ignore
-                        else next.qualities[qid].level = Number(newVal);
+                        if(typeof newVal === 'string') (next.qualities[qid] as any).stringValue = newVal;
+                        else (next.qualities[qid] as any).level = Number(newVal);
                     }
                     return next;
                 });
@@ -295,10 +292,8 @@ export function CharacterInspector({ characterId, storyId, worldQualities, setti
 
     if (!char && !loading) return null;
 
-    // --- DATA PREP ---
     const getActionCount = () => {
         const q = Object.values(char?.qualities || {}).find(q => q.qualityId === '$actions' || q.qualityId.endsWith('actions'));
-        // @ts-ignore
         if (q && 'level' in q) return q.level;
         return 0;
     };
@@ -310,27 +305,22 @@ export function CharacterInspector({ characterId, storyId, worldQualities, setti
             const cleanId = rawId.replace('$', '');
             const qState = char?.qualities[cleanId] || char?.qualities[rawId];
             if (qState) {
-                // @ts-ignore
                 if ((qState.type as string) === 'S' || qState.type === QualityType.String) {
-                    // @ts-ignore
-                    return qState.stringValue;
+                    return (qState as any).stringValue;
                 }
             }
         }
         return "Unknown Character";
     };
 
-    // --- CATEGORIZATION LOGIC ---
     const categories = useMemo(() => {
         if (!char) return [];
         const cats = new Set<string>();
         cats.add("All");
-        cats.add("Living Stories"); // Special Category for Events
-
-        Object.entries(char.qualities).forEach(([qid, state]) => {
-            const def = char.dynamicQualities?.[qid] || worldQualities[qid] || {};
+        cats.add("Living Stories");
+        Object.values(char.qualities).forEach(state => {
+            const def = char.dynamicQualities?.[state.qualityId] || worldQualities[state.qualityId] || {};
             const catStr = def.category || "Uncategorized";
-            // Split comma separated categories and take the first one for grouping
             const primary = catStr.split(',')[0].trim();
             cats.add(primary);
         });
@@ -344,106 +334,79 @@ export function CharacterInspector({ characterId, storyId, worldQualities, setti
             .filter(([qid, state]) => {
                 const def = char.dynamicQualities?.[qid] || worldQualities[qid] || {};
                 
-                // Search Filter
                 if (searchTerm && !qid.toLowerCase().includes(searchTerm.toLowerCase()) && !def.name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-
-                // Category Filter
+                
                 if (selectedCategory !== "All") {
                     const catStr = def.category || "Uncategorized";
                     const cats = catStr.split(',').map(c => c.trim());
                     if (!cats.includes(selectedCategory)) return false;
                 }
-                
                 return true;
             })
             .sort((a, b) => a[0].localeCompare(b[0]));
     }, [char, selectedCategory, searchTerm, worldQualities]);
 
     return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-overlay)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ 
-                width: '90vw', height: '90vh', background: '#1e2125', 
-                borderRadius: '8px', border: '1px solid #444',
+                width: '90vw', maxWidth: '1400px', height: '90vh', background: 'var(--bg-panel)', 
+                borderRadius: 'var(--border-radius)', border: '1px solid var(--tool-border)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+                boxShadow: 'var(--shadow-modal)'
             }}>
                 {loading ? (
-                    <div style={{ padding: '2rem' }}>Loading character data...</div>
+                    <div style={{ padding: '2rem', color: 'var(--tool-text-main)' }}>Loading character data...</div>
                 ) : char && (
                     <>
                         {/* 1. TOP HEADER */}
-                        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #333', background: '#282c34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--bg-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                <div>
-                                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem' }}>{resolveInspectorName()}</h2>
-                                </div>
+                                <div><h2 style={{ margin: 0, color: 'var(--tool-text-header)', fontSize: '1.4rem' }}>{resolveInspectorName()}</h2></div>
                                 <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem' }}>
-                                    <div style={{ background: '#21252b', padding: '4px 10px', borderRadius: '4px', border: '1px solid #444' }}>
-                                        <span style={{color:'#61afef'}}>{worldQualities[char.currentLocationId]?.name || char.currentLocationId}</span>
+                                    <div style={{ background: 'var(--tool-bg-input)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
+                                        <span style={{color:'var(--accent-highlight)'}}>{worldQualities[char.currentLocationId]?.name || char.currentLocationId}</span>
                                     </div>
-                                    <div style={{ background: '#21252b', padding: '4px 10px', borderRadius: '4px', border: '1px solid #444' }}>
-                                        <span style={{color:'#e5c07b'}}>{getActionCount()} Actions</span>
+                                    <div style={{ background: 'var(--tool-bg-input)', padding: '4px 10px', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
+                                        <span style={{color:'var(--warning-color)'}}>{getActionCount()} Actions</span>
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }} className="hover:opacity-100">✕</button>
+                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--tool-text-header)', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }} className="hover:opacity-100">✕</button>
                         </div>
 
                         {/* 2. MAIN BODY (Split View) */}
                         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                            
                             {/* LEFT SIDEBAR (Categories) */}
-                            <div style={{ width: '250px', background: '#21252b', borderRight: '1px solid #333', overflowY: 'auto' }}>
-                                <div style={{ padding: '1rem', borderBottom: '1px solid #333' }}>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Search qualities..." 
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        style={{ width: '100%', background: '#111', border: '1px solid #444', color: 'white', padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem' }}
-                                    />
+                            <div style={{ width: '250px', background: 'var(--tool-bg-header)', borderRight: '1px solid var(--tool-border)', overflowY: 'auto' }}>
+                                <div style={{ padding: '1rem', borderBottom: '1px solid var(--tool-border)' }}>
+                                    <input type="text" placeholder="Search qualities..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--tool-border)', color: 'var(--tool-text-main)', padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem' }}/>
                                 </div>
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                                     {categories.map(cat => (
-                                        <li 
-                                            key={cat}
-                                            onClick={() => setSelectedCategory(cat)}
-                                            style={{ 
-                                                padding: '10px 1.5rem', cursor: 'pointer', 
-                                                background: selectedCategory === cat ? '#2c313a' : 'transparent',
-                                                borderLeft: selectedCategory === cat ? '3px solid #61afef' : '3px solid transparent',
-                                                color: selectedCategory === cat ? '#fff' : '#aaa',
-                                                fontSize: '0.9rem', fontWeight: selectedCategory === cat ? 'bold' : 'normal'
-                                            }}
-                                            className="hover:bg-white/5"
-                                        >
-                                            {cat}
-                                        </li>
+                                        <li key={cat} onClick={() => setSelectedCategory(cat)} style={{ padding: '10px 1.5rem', cursor: 'pointer', background: selectedCategory === cat ? 'var(--bg-item)' : 'transparent', borderLeft: selectedCategory === cat ? '3px solid var(--tool-accent)' : '3px solid transparent', color: selectedCategory === cat ? 'var(--tool-text-header)' : 'var(--tool-text-dim)', fontSize: '0.9rem', fontWeight: selectedCategory === cat ? 'bold' : 'normal' }} className="hover:bg-white/5">{cat}</li>
                                     ))}
                                 </ul>
                             </div>
 
                             {/* RIGHT CONTENT AREA */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
-                                
+                            <div style={{ flex: 1, overflowY: 'auto' }}>
                                 {selectedCategory === "Living Stories" ? (
                                     <div style={{ padding: '2rem' }}>
-                                        <h3 style={{ marginTop: 0, color: '#e5c07b', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Living Stories Queue</h3>
-                                        
+                                        <h3 style={{ marginTop: 0, color: 'var(--warning-color)', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>Living Stories Queue</h3>
                                         {!char.pendingEvents || char.pendingEvents.length === 0 ? (
-                                            <p style={{ fontStyle: 'italic', color: '#666' }}>No events queued.</p>
+                                            <p style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>No events queued.</p>
                                         ) : (
                                             <div style={{ display: 'grid', gap: '1rem' }}>
                                                 {char.pendingEvents.map((evt: PendingEvent, idx: number) => (
-                                                    <div key={idx} style={{ background: '#2c313a', padding: '1rem', borderRadius: '4px', borderLeft: '4px solid #e5c07b' }}>
+                                                    <div key={idx} style={{ background: 'var(--bg-item)', padding: '1rem', borderRadius: '4px', borderLeft: '4px solid var(--warning-color)' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                            <strong style={{ color: '#e5c07b', fontSize: '1.1rem' }}>{evt.targetId}</strong>
-                                                            <span style={{ fontSize: '0.9rem', color: '#aaa' }}>Due: {new Date(evt.triggerTime).toLocaleString()}</span>
+                                                            <strong style={{ color: 'var(--warning-color)', fontSize: '1.1rem' }}>{evt.targetId}</strong>
+                                                            <span style={{ fontSize: '0.9rem', color: 'var(--tool-text-dim)' }}>Due: {new Date(evt.triggerTime).toLocaleString()}</span>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#ccc' }}>
+                                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: 'var(--tool-text-main)' }}>
                                                             <span>Op: <code>{evt.op} {evt.value}</code></span>
                                                             <span>Scope: <code>{evt.scope}</code></span>
-                                                            {evt.recurring && <span style={{ color: '#98c379' }}>↻ Recurring ({evt.intervalMs}ms)</span>}
+                                                            {evt.recurring && <span style={{ color: 'var(--success-color)' }}>↻ Recurring ({evt.intervalMs}ms)</span>}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -451,69 +414,48 @@ export function CharacterInspector({ characterId, storyId, worldQualities, setti
                                         )}
                                     </div>
                                 ) : (
-                                    <div style={{ padding: '0' }}>
-                                        {/* HEADER FOR LIST */}
-                                        <div style={{ padding: '1rem 2rem', background: '#282c34', borderBottom: '1px solid #333', position: 'sticky', top: 0, zIndex: 10 }}>
-                                            <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>
+                                    <div>
+                                        <div style={{ padding: '1rem 2rem', background: 'var(--bg-main)', borderBottom: '1px solid var(--tool-border)', position: 'sticky', top: 0, zIndex: 10 }}>
+                                            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--tool-text-header)' }}>
                                                 {selectedCategory === "All" ? "All Qualities" : selectedCategory} 
-                                                <span style={{ marginLeft: '10px', fontSize: '0.8rem', color: '#666', fontWeight: 'normal' }}>({filteredQualities.length})</span>
+                                                <span style={{ marginLeft: '10px', fontSize: '0.8rem', color: 'var(--tool-text-dim)', fontWeight: 'normal' }}>({filteredQualities.length})</span>
                                             </h3>
-                                            <p style={{ margin: '0.5rem 0 1rem 0', fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
-                                                Dynamic qualities (marked <span style={{ background: 'var(--tool-accent-mauve)', color: 'white', padding: '1px 4px', borderRadius: '3px', fontSize: '0.7rem' }}>DYN</span>) were created by game logic for this specific character.
+                                            <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
+                                                Dynamic qualities (marked <span style={{ background: 'var(--tool-accent-mauve)', color: 'var(--tool-text-header)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.7rem' }}>DYN</span>) were created by game logic for this specific character.
                                             </p>
                                         </div>
-
                                         <div style={{ padding: '1rem 2rem' }}>
                                             {filteredQualities.length === 0 ? (
-                                                <p style={{ color: '#666', fontStyle: 'italic' }}>No qualities found in this category.</p>
+                                                <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No qualities found in this category.</p>
                                             ) : (
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                                                     {filteredQualities.map(([qid, state]) => {
                                                         const isDynamic = !!char.dynamicQualities?.[qid] || !worldQualities[qid];
                                                         const def = char.dynamicQualities?.[qid] || worldQualities[qid] || {};
                                                         
-                                                        // @ts-ignore
                                                         const isString = (state.type as string) === 'S' || state.type === QualityType.String; 
                                                         const hasLevel = 'level' in state;
                                                         const hasCP = 'changePoints' in state;
                                                         
                                                         return (
-                                                            <div key={qid} style={{ background: '#2c313a', padding: '1rem', borderRadius: '6px', border: '1px solid #3e4451' }}>
+                                                            <div key={qid} style={{ background: 'var(--bg-item)', padding: '1rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                                                     <div style={{ overflow: 'hidden' }}>
-                                                                        <div style={{ fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={def.name || qid}>
+                                                                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={def.name || qid}>
                                                                             {def.name || qid}
                                                                         </div>
-                                                                        <div style={{ fontSize: '0.75rem', color: '#777', fontFamily: 'monospace' }}>{qid}</div>
+                                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{qid}</div>
                                                                     </div>
-                                                                    {isDynamic && <span style={{ fontSize: '0.6rem', background: '#c678dd', color: '#fff', padding: '2px 4px', borderRadius: '2px', height: 'fit-content' }}>DYN</span>}
+                                                                    {isDynamic && <span style={{ fontSize: '0.6rem', background: 'var(--tool-accent-mauve)', color: 'var(--tool-text-header)', padding: '2px 4px', borderRadius: '2px', height: 'fit-content' }}>DYN</span>}
                                                                 </div>
 
                                                                 <div style={{ marginTop: '0.5rem' }}>
                                                                     {isString ? (
-                                                                         <input 
-                                                                            // @ts-ignore
-                                                                            defaultValue={state.stringValue} 
-                                                                            onBlur={(e) => {
-                                                                                // @ts-ignore
-                                                                                if (e.target.value !== state.stringValue) handleUpdateQuality(qid, e.target.value);
-                                                                            }}
-                                                                            style={{ width: '100%', background: '#181a1f', border: '1px solid #444', color: '#e5c07b', padding: '6px', borderRadius: '4px' }}
-                                                                         />
+                                                                         <input defaultValue={(state as any).stringValue} onBlur={(e) => { if (e.target.value !== (state as any).stringValue) handleUpdateQuality(qid, e.target.value); }} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--tool-border)', color: 'var(--warning-color)', padding: '6px', borderRadius: '4px' }}/>
                                                                     ) : (
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                                            <input 
-                                                                                type="number"
-                                                                                defaultValue={hasLevel ? state.level : 0} 
-                                                                                onBlur={(e) => {
-                                                                                    const val = parseFloat(e.target.value);
-                                                                                    // @ts-ignore
-                                                                                    if (!isNaN(val) && val !== state.level) handleUpdateQuality(qid, val);
-                                                                                }}
-                                                                                style={{ width: '80px', background: '#181a1f', border: '1px solid #444', color: '#98c379', padding: '6px', borderRadius: '4px', textAlign: 'right', fontWeight: 'bold' }}
-                                                                            />
-                                                                            {/* @ts-ignore */}
-                                                                            {state.type === 'P' && hasCP && <span style={{ fontSize: '0.8rem', color: '#777' }}>CP: {state.changePoints}</span>}
+                                                                            <input type="number" defaultValue={hasLevel ? state.level : 0} onBlur={(e) => { const val = parseFloat(e.target.value); if (!isNaN(val) && val !== (state as any).level) handleUpdateQuality(qid, val); }} style={{ width: '80px', background: 'var(--bg-input)', border: '1px solid var(--tool-border)', color: 'var(--success-color)', padding: '6px', borderRadius: '4px', textAlign: 'right', fontWeight: 'bold' }}/>
+                                                                            {(state as any).type === 'P' && hasCP && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CP: {(state as any).changePoints}</span>}
                                                                         </div>
                                                                     )}
                                                                 </div>

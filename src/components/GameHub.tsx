@@ -25,7 +25,7 @@ import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
 import ScribeDebugger from './admin/ScribeDebugger';
 import { CharacterInspector } from '@/app/create/[storyId]/players/page';
-// --- FIX: Correct Import Path (Assuming it is in components/ScribeDebugger.tsx based on context) ---
+import { createPortal } from 'react-dom';
 
 
 interface GameHubProps {
@@ -76,7 +76,12 @@ export default function GameHub(props: GameHubProps) {
     
     // Playtest State
     const [showHiddenQualities, setShowHiddenQualities] = useState(false);
-    const [showInspector, setShowInspector] = useState(false); 
+    const [showInspector, setShowInspector] = useState(false);
+    const [isMounted, setIsMounted] = useState(false); // Add this state
+
+    useEffect(() => {
+        setIsMounted(true); // This runs only on the client
+    }, []);
 
     const deckIds = useMemo(() => 
         location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -325,7 +330,6 @@ export default function GameHub(props: GameHubProps) {
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
     const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
 
-    // --- HELPER COMPONENT: TAB BAR ---
     const TabBar = () => (
         <div className="tab-bar">
             <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
@@ -334,7 +338,6 @@ export default function GameHub(props: GameHubProps) {
         </div>
     );
 
-    // --- CONTENT BUILDERS ---
     const sidebarTab = props.settings.tabLocation === 'sidebar';
 
     const buildSidebar = () => {
@@ -655,16 +658,18 @@ export default function GameHub(props: GameHubProps) {
     return ( 
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             {renderLayout()}
+            
             {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
             
-            {props.isPlaytesting && showInspector && character && (
+            {isMounted && props.isPlaytesting && showInspector && character && createPortal(
                 <CharacterInspector 
                     characterId={character.characterId}
                     storyId={props.storyId}
                     worldQualities={mergedQualityDefs}
                     settings={props.settings}
                     onClose={() => setShowInspector(false)}
-                />
+                />,
+                document.body 
             )}
         </div>
     );

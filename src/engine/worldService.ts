@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { revalidateTag } from 'next/cache'; 
 import clientPromise from '@/engine/database';
-import { WorldConfig, Storylet, Opportunity, LocationDefinition, QualityDefinition, WorldSettings, PlayerQualities } from './models';
+import { WorldConfig, Storylet, Opportunity, WorldSettings, PlayerQualities } from './models';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
@@ -44,9 +44,8 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
     };
 });
 
-// --- RESTORED ALIASES ---
-export const getWorldContent = getWorldConfig; 
 export const getContent = getWorldConfig; 
+export const getWorldContent = getWorldConfig; 
 
 export const getSettings = async (worldId: string): Promise<WorldSettings> => {
     const config = await getWorldConfig(worldId);
@@ -58,11 +57,9 @@ export const getEvent = async (worldId: string, eventId: string): Promise<Storyl
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // Try Storylets first
     const storylet = await db.collection('storylets').findOne({ worldId, id: eventId });
     if (storylet) return storylet as unknown as Storylet;
 
-    // Then Opportunities
     const opportunity = await db.collection('opportunities').findOne({ worldId, id: eventId });
     if (opportunity) return opportunity as unknown as Opportunity;
 
@@ -118,32 +115,20 @@ export const updateWorldConfigItem = async (
     let result;
 
     if (category === 'root') {
-        result = await db.collection('worlds').updateOne(
-            { worldId },
-            { $set: { [itemId]: data } }
-        );
+        result = await db.collection('worlds').updateOne({ worldId }, { $set: { [itemId]: data } });
     } else if (category === 'settings') {
-        result = await db.collection('worlds').updateOne(
-            { worldId },
-            { $set: { settings: data } }
-        );
+        result = await db.collection('worlds').updateOne({ worldId }, { $set: { settings: data } });
     } else if (category === 'char_create') {
-        result = await db.collection('worlds').updateOne(
-            { worldId },
-            { $set: { "content.char_create": data } }
-        );
+        result = await db.collection('worlds').updateOne({ worldId }, { $set: { "content.char_create": data } });
     } else {
         const path = `content.${category}.${itemId}`;
-        result = await db.collection('worlds').updateOne(
-            { worldId },
-            { $set: { [path]: data } }
-        );
+        result = await db.collection('worlds').updateOne({ worldId }, { $set: { [path]: data } });
     }
 
     if (result.acknowledged) {
-        console.log(`[Cache] Invalidating 'world' tag due to update in ${category}`);
-        // @ts-ignore - The type definition for revalidateTag can be flaky in some Next.js versions
-        revalidateTag('world'); 
+        const tag = `world-${worldId}`;
+        console.log(`[Cache] Invalidating tag '${tag}' due to update in ${category}`);
+        revalidateTag(tag, ''); 
     }
 
     return result.acknowledged;
@@ -165,9 +150,9 @@ export const deleteWorldConfigItem = async (
     );
 
     if (result.acknowledged) {
-        console.log(`[Cache] Invalidating 'world' tag due to deletion in ${category}`);
-        // @ts-ignore
-        revalidateTag('world');
+        const tag = `world-${worldId}`;
+        console.log(`[Cache] Invalidating tag '${tag}' due to deletion in ${category}`);
+        revalidateTag(tag, ''); 
     }
 
     return result.acknowledged;
@@ -190,9 +175,9 @@ export const updateStoryletOrCard = async (
     );
 
     if (result.acknowledged) {
-        console.log(`[Cache] Invalidating 'storylets' tag due to update on ${id}`);
-        // @ts-ignore
-        revalidateTag('storylets');
+        const tag = `storylets-${worldId}`;
+        console.log(`[Cache] Invalidating tag '${tag}' due to update on ${id}`);
+        revalidateTag(tag, ''); 
     }
 
     return result.acknowledged;
