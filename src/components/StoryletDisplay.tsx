@@ -43,6 +43,7 @@ interface StoryletDisplayProps {
     storyId: string;
     characterId: string;
     engine: GameEngine; 
+    isPlaytesting?: boolean;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -64,6 +65,8 @@ export default function StoryletDisplay({
     storyId,
     characterId,
     engine, 
+    isPlaytesting
+    
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
     
@@ -155,7 +158,7 @@ export default function StoryletDisplay({
     const returnTargetName = returnTargetId ? (storyletDefs[returnTargetId]?.name || opportunityDefs[returnTargetId]?.name) : null;
 
    if (resolution) {
-        const canDebug = (resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined;
+        const canDebug = isPlaytesting && ((resolution.errors && resolution.errors.length > 0) || resolution.rawEffects !== undefined);
         const postResolutionQualities = resolution.qualities;
         const evalResultText = (text: string | undefined) => {
             return evaluateText(text, postResolutionQualities, qualityDefs, null, 0);

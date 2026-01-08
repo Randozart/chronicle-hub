@@ -20,6 +20,7 @@ interface PossessionsProps {
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
     engine: GameEngine;
+    showHidden?: boolean; 
 }
 
 const FormatBonus = ({ bonusStr, qualityDefs, qualities }: { bonusStr: string, qualityDefs: Record<string, QualityDefinition>, qualities: PlayerQualities }) => {
@@ -44,8 +45,6 @@ const FormatBonus = ({ bonusStr, qualityDefs, qualities }: { bonusStr: string, q
     );
 };
 
-// --- ITEM DISPLAY ---
-// --- ITEM DISPLAY ---
 const ItemDisplay = ({ 
     item, isEquipped, slotName, onEquipToggle, onUse, isLoading, qualityDefs, qualities, imageLibrary, 
     styleMode, shapeConfig, portraitMode
@@ -104,7 +103,6 @@ const ItemDisplay = ({
             // backgroundColor: isEquipped ? 'rgba(var(--accent-rgb), 0.05)' : undefined, Adopts equipment slot color
         }}>
             
-            {/* --- ICON GRID MODE --- */}
             {isIconGrid && (
                 <>
                     <div className="item-image-container">
@@ -239,7 +237,7 @@ function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: 
 
 // --- MAIN COMPONENT ---
 export default function Possessions({ 
-    qualities, equipment, qualityDefs, equipCategories, onUpdateCharacter, onUseItem, onRequestTabChange, storyId, imageLibrary, settings, engine
+    qualities, equipment, qualityDefs, equipCategories, onUpdateCharacter, onUseItem, onRequestTabChange, storyId, imageLibrary, settings, engine, showHidden
 }: PossessionsProps) {
     
     const [isLoading, setIsLoading] = useState(false);
@@ -248,7 +246,6 @@ export default function Possessions({
     const [modalState, setModalState] = useState({ isOpen: false, message: "" });
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
 
-    // --- CONFIGURATION ---
     // @ts-ignore
     const invStyle = settings.componentConfig?.inventoryStyle || 'standard';
     // @ts-ignore
@@ -258,17 +255,14 @@ export default function Possessions({
     // @ts-ignore
     const invShape = settings.imageConfig?.inventory || 'default';
 
-    // Map Size string to Pixel value
     const sizeMap: Record<string, string> = { 'small': '160px', 'medium': '220px', 'large': '340px' };
     const itemWidth = sizeMap[sizeSetting] || '220px';
     const isList = invStyle === 'list';
     
-    // CSS Variables
     const styleVariables = { 
         '--inv-item-width': itemWidth,
     } as React.CSSProperties;
 
-    // ... (Keep existing expandedSlots logic) ...
     const expandedSlots = useMemo(() => {
         const slots: { id: string, label: string, category: string }[] = [];
         equipCategories.forEach(catRaw => {
@@ -300,7 +294,6 @@ export default function Possessions({
         return slots;
     }, [equipCategories, equipment]);
 
-    // ... handleEquipToggle and handleUse ...
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
         setIsLoading(true);
@@ -335,13 +328,16 @@ export default function Possessions({
             const def = qualityDefs[qid];
             const state = qualities[qid];
             if (!def || !state) return null;
+
+            if (def.tags?.includes('hidden') && !showHidden) return null;
+
             const level = ('level' in state) ? state.level : 0;
             if (level <= 0) return null;
             if (def.type !== 'I' && def.type !== 'E') return null;
             const merged = { ...def, ...state, level };
             return engine.render(merged);
         }).filter(Boolean as any);
-    }, [qualities, qualityDefs, equipment, currencyIds, engine]);
+    }, [qualities, qualityDefs, equipment, currencyIds, engine, showHidden]); 
 
     const grouped = useGroupedList(inventoryItems, groupBy, search);
     const groups = Object.keys(grouped).sort();

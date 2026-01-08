@@ -13,9 +13,10 @@ interface ProfilePanelProps {
     imageLibrary: Record<string, ImageDefinition>;
     categories: Record<string, CategoryDefinition>;
     settings: WorldSettings; 
+    showHidden?: boolean; 
 }
 
-export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, categories, settings }: ProfilePanelProps) {
+export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, categories, settings, showHidden }: ProfilePanelProps) {
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category"); 
 
@@ -70,7 +71,10 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 const def = qualityDefs[qid];
                 const state = qualities[qid];
                 if (!def || !state) return null;
-                if (def.tags?.includes('hidden')) return null;
+
+                // 3. UPDATE LOGIC: Only filter hidden if showHidden is false
+                if (def.tags?.includes('hidden') && !showHidden) return null;
+
                 if (qid === settings.titleQualityId?.replace('$', '')) return null; 
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
                 
@@ -82,7 +86,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 return engine.render(merged);
             })
             .filter(Boolean as any);
-    }, [qualities, qualityDefs, settings.titleQualityId, engine]);
+    }, [qualities, qualityDefs, settings.titleQualityId, engine, showHidden]);
 
     const grouped = useGroupedList(flatList, groupBy, search);
     const groups = Object.keys(grouped).sort();

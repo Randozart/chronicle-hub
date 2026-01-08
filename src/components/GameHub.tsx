@@ -23,6 +23,9 @@ import GameImage from '@/components/GameImage';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
+import ScribeDebugger from './admin/ScribeDebugger';
+import { CharacterInspector } from '@/app/create/[storyId]/players/page';
+// --- FIX: Correct Import Path (Assuming it is in components/ScribeDebugger.tsx based on context) ---
 
 
 interface GameHubProps {
@@ -53,6 +56,7 @@ interface GameHubProps {
     activeEvent?: Storylet | Opportunity | null;
     instruments?: Record<string, InstrumentDefinition>;
     musicTracks?: Record<string, LigatureTrack>;
+    isPlaytesting?: boolean;
 }
 
 export default function GameHub(props: GameHubProps) {
@@ -69,13 +73,17 @@ export default function GameHub(props: GameHubProps) {
     const { playTrack } = useAudio(); 
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    
+    // Playtest State
+    const [showHiddenQualities, setShowHiddenQualities] = useState(false);
+    const [showInspector, setShowInspector] = useState(false); 
 
     const deckIds = useMemo(() => 
         location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [],
         [location?.deck]
     );
 
-        useEffect(() => {
+    useEffect(() => {
         setCharacter(props.initialCharacter);
         setLocation(props.initialLocation);
         setHand(props.initialHand);
@@ -86,7 +94,8 @@ export default function GameHub(props: GameHubProps) {
         setIsTransitioning(false);
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
     
-    
+
+
     useEffect(() => {
         if (!character || !location) return;
         if (character.currentLocationId !== location.id) {
@@ -226,7 +235,7 @@ export default function GameHub(props: GameHubProps) {
         }
         if (!character) return;
 
-        setIsTransitioning(true); // Show visual feedback
+        setIsTransitioning(true); 
         try {
             const res = await fetch('/api/travel', { 
                 method: 'POST', 
@@ -240,11 +249,11 @@ export default function GameHub(props: GameHubProps) {
                 router.refresh();
             } else {
                 alert(data.error);
-                setIsTransitioning(false); // Only stop transition on failure
+                setIsTransitioning(false); 
             }
         } catch(e) { 
             console.error("Travel failed:", e); 
-            setIsTransitioning(false); // Stop transition on network error
+            setIsTransitioning(false); 
         } 
     }, [character, props.storyId, activeEvent, router]);
 
@@ -329,36 +338,11 @@ export default function GameHub(props: GameHubProps) {
     const sidebarTab = props.settings.tabLocation === 'sidebar';
 
     const buildSidebar = () => {
-        if (sidebarTab) {
-            return (
-                <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div className="sidebar-content-scroll">
-                        <TabBar /> 
-                        <div className="action-box">
-                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
-                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
-                        </div>
-                        <CharacterSheet 
-                            qualities={character.qualities} 
-                            equipment={character.equipment} 
-                            qualityDefs={mergedQualityDefs} 
-                            settings={props.settings} 
-                            categories={props.categories}
-                            engine={renderEngine} 
-                        />                    
-                    </div>
-                    <div className="sidebar-footer">
-                        <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
-                    </div>
-                </div>
-            );
-        }
+    if (sidebarTab) {
         return (
             <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div className="sidebar-header">
-                    <WalletHeader qualities={character.qualities} qualityDefs={mergedQualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
-                </div>
-                <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                <div className="sidebar-content-scroll">
+                    <TabBar /> 
                     <div className="action-box">
                         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
@@ -369,15 +353,91 @@ export default function GameHub(props: GameHubProps) {
                         qualityDefs={mergedQualityDefs} 
                         settings={props.settings} 
                         categories={props.categories}
-                        engine={renderEngine}
-                    />
+                        engine={renderEngine} 
+                        showHidden={showHiddenQualities}
+                    />                    
+                    {props.isPlaytesting && (
+                        <div style={{ marginTop: '2rem', borderTop: '1px dashed #666', paddingTop: '1rem', paddingBottom: '2rem' }}>
+                            <h4 style={{ color: '#e5c07b', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: '#aaa' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={showHiddenQualities} 
+                                        onChange={e => setShowHiddenQualities(e.target.checked)} 
+                                    />
+                                    Show Hidden Qualities
+                                </label>
+                                <button 
+                                    onClick={() => setShowInspector(true)}
+                                    style={{ 
+                                        background: '#2c313a', color: '#61afef', border: '1px solid #444', 
+                                        padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
+                                    }}
+                                >
+                                    Open Character Inspector
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                
+                <div className="sidebar-footer">
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
                 </div>
             </div>
         );
-    };
+    }
+    return (
+        <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className="sidebar-header">
+                <WalletHeader qualities={character.qualities} qualityDefs={mergedQualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
+            </div>
+            <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                <div className="action-box">
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
+                    <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                </div>
+                <CharacterSheet 
+                    qualities={character.qualities} 
+                    equipment={character.equipment} 
+                    qualityDefs={mergedQualityDefs} 
+                    settings={props.settings} 
+                    categories={props.categories}
+                    engine={renderEngine}
+                    showHidden={showHiddenQualities}
+                />
+                {props.isPlaytesting && (
+                    <div style={{ marginTop: '2rem', borderTop: '1px dashed #666', paddingTop: '1rem', paddingBottom: '2rem' }}>
+                        <h4 style={{ color: '#e5c07b', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: '#aaa' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={showHiddenQualities} 
+                                    onChange={e => setShowHiddenQualities(e.target.checked)} 
+                                />
+                                Show Hidden Qualities
+                            </label>
+                            <button 
+                                onClick={() => setShowInspector(true)}
+                                style={{ 
+                                    background: '#2c313a', color: '#61afef', border: '1px solid #444', 
+                                    padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
+                                }}
+                            >
+                                Open Character Inspector
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+            <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
+            </div>
+        </div>
+    );
+};
 
 
     const buildMainContent = () => {
@@ -392,7 +452,6 @@ export default function GameHub(props: GameHubProps) {
         const renderHeader = () => {
             if (headerStyle === 'hidden') return null;
             
-            // Logic: Only allow opening map if NO active event
             const canTravel = !activeEvent;
 
             if (isBannerMode) {
@@ -411,7 +470,6 @@ export default function GameHub(props: GameHubProps) {
                         <LocationHeader 
                             location={renderedLocation!} 
                             imageLibrary={props.imageLibrary} 
-                            // Disable Map button if in event
                             onOpenMap={canTravel ? () => setShowMap(true) : undefined} 
                             onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
                             styleMode={headerStyle} 
@@ -424,7 +482,6 @@ export default function GameHub(props: GameHubProps) {
                     <LocationHeader 
                         location={renderedLocation!} 
                         imageLibrary={props.imageLibrary} 
-                        // Disable Map button if in event
                         onOpenMap={canTravel ? () => setShowMap(true) : undefined} 
                         onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} 
                         styleMode={headerStyle}
@@ -442,6 +499,7 @@ export default function GameHub(props: GameHubProps) {
                         imageLibrary={props.imageLibrary} 
                         categories={props.categories} 
                         settings={props.settings} 
+                        showHidden={showHiddenQualities}
                     />
                 </div>
             );
@@ -455,15 +513,13 @@ export default function GameHub(props: GameHubProps) {
                         qualityDefs={mergedQualityDefs} 
                         equipCategories={props.settings.equipCategories || []} 
                         onUpdateCharacter={handleCharacterUpdate} 
-                        
-                        // Pass handlers
                         onUseItem={showEvent} 
                         onRequestTabChange={(tab) => setActiveTab(tab)} 
-
                         storyId={props.storyId} 
                         imageLibrary={props.imageLibrary} 
                         settings={props.settings} 
                         engine={renderEngine} 
+                        showHidden={showHiddenQualities}
                     />
                 </div>
             );
@@ -476,7 +532,7 @@ export default function GameHub(props: GameHubProps) {
                 </div>
             );
         } else if (activeEvent) { 
-             const showHeaderInStorylet = props.settings.showHeaderInStorylet === true;
+            const showHeaderInStorylet = props.settings.showHeaderInStorylet === true;
 
             innerContent = (
                 <div className="event-view">
@@ -485,10 +541,8 @@ export default function GameHub(props: GameHubProps) {
                     <StoryletDisplay 
                         eventData={activeEvent} 
                         qualities={character.qualities} 
-                        
                         resolution={activeResolution}
                         onResolve={setActiveResolution}
-                        
                         onFinish={handleEventFinish} 
                         onQualitiesUpdate={handleQualitiesUpdate} 
                         onCardPlayed={handleCardPlayed} 
@@ -501,6 +555,7 @@ export default function GameHub(props: GameHubProps) {
                         storyId={props.storyId} 
                         characterId={character.characterId} 
                         engine={renderEngine} 
+                        isPlaytesting={props.isPlaytesting}
                     />
                 </div>
             );
@@ -584,7 +639,7 @@ export default function GameHub(props: GameHubProps) {
             location: renderedLocation!,
             imageLibrary: props.imageLibrary,
             onExit: handleExit,
-            onOpenMap: canTravel ? () => setShowMap(true) : undefined, // Check activeEvent
+            onOpenMap: canTravel ? () => setShowMap(true) : undefined,
             onOpenMarket: () => setShowMarket(true),
             currentMarketId: activeMarketId,
             isTransitioning: isTransitioning
@@ -601,6 +656,16 @@ export default function GameHub(props: GameHubProps) {
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             {renderLayout()}
             {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
+            
+            {props.isPlaytesting && showInspector && character && (
+                <CharacterInspector 
+                    characterId={character.characterId}
+                    storyId={props.storyId}
+                    worldQualities={mergedQualityDefs}
+                    settings={props.settings}
+                    onClose={() => setShowInspector(false)}
+                />
+            )}
         </div>
     );
 }

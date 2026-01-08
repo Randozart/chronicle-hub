@@ -12,11 +12,12 @@ interface CharacterSheetProps {
     settings: WorldSettings;
     categories: Record<string, CategoryDefinition>;
     engine: GameEngine; 
+    showHidden?: boolean;
 }
 
 const getCPforNextLevel = (level: number): number => level + 1;
 
-export default function CharacterSheet({ qualities, equipment, qualityDefs, settings, categories, engine }: CharacterSheetProps) {
+export default function CharacterSheet({ qualities, equipment, qualityDefs, settings, categories, engine, showHidden }: CharacterSheetProps) {
     
     const categoriesToDisplay = settings.characterSheetCategories || [];
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
@@ -41,7 +42,9 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             // We pass the ID to render so checks against `$.level` work if used in tags (rare but possible)
             const renderedObject = engine.render({ id: qid, tags: definition.tags || [] });
             const renderedTags = Array.isArray(renderedObject.tags) ? renderedObject.tags : [];
-            if (renderedTags.includes('hidden')) return null;
+            
+            // ALLOW IF showHidden IS TRUE
+            if (renderedTags.includes('hidden') && !showHidden) return null;
 
             // 3. Get Levels
             const state = qualities[qid];

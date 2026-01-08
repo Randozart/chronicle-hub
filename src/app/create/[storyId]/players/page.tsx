@@ -67,7 +67,6 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                 .then(data => {
                     if (Array.isArray(data)) {
                         setPlayers(data.map((p: any) => {
-                            // Helper: Aggressive ID finding
                             const getSafeId = (obj: any): string => {
                                 if (obj.characterId) return String(obj.characterId);
                                 if (obj._id) {
@@ -80,14 +79,11 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
 
                             const safeId = getSafeId(p);
 
-                            // Helper: Name Resolution
                             let resolvedName = p.name;
-                            
                             if ((!resolvedName || resolvedName === 'Unknown') && settings?.playerName && p.qualities) {
                                 const rawId = settings.playerName;
                                 const cleanId = rawId.replace('$', '');
                                 const qState = p.qualities[cleanId] || p.qualities[rawId];
-                                
                                 if (qState) {
                                     if ((qState.type as string) === 'S' || qState.type === QualityType.String) {
                                         resolvedName = qState.stringValue;
@@ -169,7 +165,7 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                                 <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>Location</th>
                                 <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>Actions</th>
                                 <th style={{ padding: '1rem', color: '#aaa', fontSize: '0.8rem', textTransform: 'uppercase' }}>Last Active</th>
-                                <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
+                                <th style={{ padding: '1rem', textAlign: 'right' }}>Admin</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -177,7 +173,6 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
                                 <tr key={p.characterId || `p-${index}`} style={{ borderBottom: '1px solid #2c313a', transition: 'background 0.2s' }} className="hover:bg-white/5">
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ fontWeight: 'bold', color: 'var(--tool-text-header)', fontSize: '1rem' }}>{p.characterName}</div>
-                                        {/* HIDE ID FROM LIST HERE */}
                                     </td>
                                     <td style={{ padding: '1rem', color: 'var(--tool-text-dim)' }}>
                                         {p.username}
@@ -241,9 +236,9 @@ export default function PlayerMonitor({ params }: { params: Promise<{ storyId: s
     );
 }
 
-// --- SUB-COMPONENT: INSPECTOR MODAL ---
+// --- SUB-COMPONENT: REDESIGNED INSPECTOR MODAL ---
 
-function CharacterInspector({ characterId, storyId, worldQualities, settings, onClose }: { 
+export function CharacterInspector({ characterId, storyId, worldQualities, settings, onClose }: { 
     characterId: string, 
     storyId: string, 
     worldQualities: Record<string, QualityDefinition>,
@@ -252,23 +247,23 @@ function CharacterInspector({ characterId, storyId, worldQualities, settings, on
 }) {
     const [char, setChar] = useState<CharacterDocument | null>(null);
     const [loading, setLoading] = useState(true);
-    const [filterMode, setFilterMode] = useState<'all' | 'dynamic' | 'static'>('dynamic');
+    
+    // UI State
+    const [selectedCategory, setSelectedCategory] = useState<string>("All");
     const [searchTerm, setSearchTerm] = useState("");
 
+    // Fetch full detail
     useEffect(() => {
         setLoading(true);
         fetch(`/api/admin/character/${characterId}?storyId=${storyId}`)
             .then(async r => {
-                if (!r.ok) {
-                    const text = await r.text();
-                    throw new Error(`API Error ${r.status}: ${text}`);
-                }
+                if (!r.ok) throw new Error("API Error");
                 return r.json();
             })
             .then(setChar)
             .catch(err => {
                 console.error(err);
-                alert("Failed to fetch character details. Ensure the API route /api/admin/character/[id] exists.");
+                alert("Failed to fetch character details.");
             })
             .finally(() => setLoading(false));
     }, [characterId, storyId]);
@@ -281,7 +276,6 @@ function CharacterInspector({ characterId, storyId, worldQualities, settings, on
                 body: JSON.stringify({ storyId, characterId, qualityId: qid, value: newVal })
             });
             if(res.ok) {
-                // Optimistic update
                 setChar(prev => {
                     if(!prev) return null;
                     const next = { ...prev, qualities: { ...prev.qualities } };
@@ -301,19 +295,7 @@ function CharacterInspector({ characterId, storyId, worldQualities, settings, on
 
     if (!char && !loading) return null;
 
-    const displayedQualities = useMemo(() => {
-        if (!char) return [];
-        return Object.entries(char.qualities)
-            .filter(([qid, state]) => {
-                const isDynamic = !!char.dynamicQualities?.[qid] || !worldQualities[qid];
-                if (searchTerm && !qid.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-                if (filterMode === 'dynamic') return isDynamic;
-                if (filterMode === 'static') return !isDynamic;
-                return true;
-            })
-            .sort((a, b) => a[0].localeCompare(b[0]));
-    }, [char, filterMode, worldQualities, searchTerm]);
-
+    // --- DATA PREP ---
     const getActionCount = () => {
         const q = Object.values(char?.qualities || {}).find(q => q.qualityId === '$actions' || q.qualityId.endsWith('actions'));
         // @ts-ignore
@@ -338,139 +320,209 @@ function CharacterInspector({ characterId, storyId, worldQualities, settings, on
         return "Unknown Character";
     };
 
+    // --- CATEGORIZATION LOGIC ---
+    const categories = useMemo(() => {
+        if (!char) return [];
+        const cats = new Set<string>();
+        cats.add("All");
+        cats.add("Living Stories"); // Special Category for Events
+
+        Object.entries(char.qualities).forEach(([qid, state]) => {
+            const def = char.dynamicQualities?.[qid] || worldQualities[qid] || {};
+            const catStr = def.category || "Uncategorized";
+            // Split comma separated categories and take the first one for grouping
+            const primary = catStr.split(',')[0].trim();
+            cats.add(primary);
+        });
+        return Array.from(cats).sort();
+    }, [char, worldQualities]);
+
+    const filteredQualities = useMemo(() => {
+        if (!char || selectedCategory === "Living Stories") return [];
+        
+        return Object.entries(char.qualities)
+            .filter(([qid, state]) => {
+                const def = char.dynamicQualities?.[qid] || worldQualities[qid] || {};
+                
+                // Search Filter
+                if (searchTerm && !qid.toLowerCase().includes(searchTerm.toLowerCase()) && !def.name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+
+                // Category Filter
+                if (selectedCategory !== "All") {
+                    const catStr = def.category || "Uncategorized";
+                    const cats = catStr.split(',').map(c => c.trim());
+                    if (!cats.includes(selectedCategory)) return false;
+                }
+                
+                return true;
+            })
+            .sort((a, b) => a[0].localeCompare(b[0]));
+    }, [char, selectedCategory, searchTerm, worldQualities]);
+
     return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'end' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ 
-                width: '600px', maxWidth: '100%', background: '#1e2125', 
-                borderLeft: '1px solid #444', height: '100%', overflowY: 'auto',
-                display: 'flex', flexDirection: 'column'
+                width: '90vw', height: '90vh', background: '#1e2125', 
+                borderRadius: '8px', border: '1px solid #444',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
             }}>
                 {loading ? (
                     <div style={{ padding: '2rem' }}>Loading character data...</div>
                 ) : char && (
                     <>
-                        {/* HEADER */}
-                        <div style={{ padding: '1.5rem', borderBottom: '1px solid #333', background: '#282c34' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        {/* 1. TOP HEADER */}
+                        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #333', background: '#282c34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                                 <div>
-                                    <h2 style={{ margin: 0, color: '#fff' }}>{resolveInspectorName()}</h2>
-                                    {/* HIDE ID FROM INSPECTOR HERE */}
+                                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem' }}>{resolveInspectorName()}</h2>
                                 </div>
-                                <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
-                            </div>
-                            <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', fontSize: '0.9rem' }}>
-                                <div style={{ background: '#21252b', padding: '5px 10px', borderRadius: '4px' }}>
-                                    📍 <strong>{worldQualities[char.currentLocationId]?.name || char.currentLocationId}</strong>
-                                </div>
-                                <div style={{ background: '#21252b', padding: '5px 10px', borderRadius: '4px' }}>
-                                    ⚡ <strong>{getActionCount()} Actions</strong>
+                                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem' }}>
+                                    <div style={{ background: '#21252b', padding: '4px 10px', borderRadius: '4px', border: '1px solid #444' }}>
+                                        <span style={{color:'#61afef'}}>{worldQualities[char.currentLocationId]?.name || char.currentLocationId}</span>
+                                    </div>
+                                    <div style={{ background: '#21252b', padding: '4px 10px', borderRadius: '4px', border: '1px solid #444' }}>
+                                        <span style={{color:'#e5c07b'}}>{getActionCount()} Actions</span>
+                                    </div>
                                 </div>
                             </div>
+                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }} className="hover:opacity-100">✕</button>
                         </div>
 
-                        <div style={{ padding: '1.5rem', flex: 1 }}>
-                            {/* ... Rest of Inspector Content (Pending Events, Qualities List) ... */}
-                            <h3 style={{ color: '#e5c07b', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
-                                Living Stories (Queue)
-                            </h3>
+                        {/* 2. MAIN BODY (Split View) */}
+                        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                             
-                            {!char.pendingEvents || char.pendingEvents.length === 0 ? (
-                                <p style={{ fontSize: '0.85rem', color: '#666', fontStyle: 'italic', marginBottom: '2rem' }}>No pending events queued.</p>
-                            ) : (
-                                <div style={{ display: 'grid', gap: '10px', marginBottom: '2rem' }}>
-                                    {char.pendingEvents.map((evt: PendingEvent, idx: number) => (
-                                        <div key={idx} style={{ background: '#2c313a', padding: '0.8rem', borderRadius: '4px', borderLeft: '3px solid #e5c07b' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                <strong style={{ color: '#e5c07b' }}>{evt.targetId}</strong>
-                                                <span style={{ fontSize: '0.8rem', color: '#aaa' }}>{new Date(evt.triggerTime).toLocaleString()}</span>
-                                            </div>
-                                            <div style={{ fontSize: '0.85rem', color: '#ccc' }}>
-                                                Operation: <code>{evt.op} {evt.value}</code>
-                                                {evt.recurring && <span style={{ marginLeft: '10px', background: '#98c379', color: '#000', padding: '1px 4px', borderRadius: '2px', fontSize: '0.7rem' }}>Recurring</span>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* QUALITIES INSPECTOR */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
-                                <h3 style={{ color: '#61afef', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>
-                                    Qualities
-                                </h3>
-                                <div style={{ display: 'flex', gap: '10px' }}>
+                            {/* LEFT SIDEBAR (Categories) */}
+                            <div style={{ width: '250px', background: '#21252b', borderRight: '1px solid #333', overflowY: 'auto' }}>
+                                <div style={{ padding: '1rem', borderBottom: '1px solid #333' }}>
                                     <input 
                                         type="text" 
-                                        placeholder="Search..." 
+                                        placeholder="Search qualities..." 
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        style={{ background: '#111', border: '1px solid #444', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}
+                                        style={{ width: '100%', background: '#111', border: '1px solid #444', color: 'white', padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem' }}
                                     />
-                                    <select 
-                                        value={filterMode} 
-                                        onChange={e => setFilterMode(e.target.value as any)}
-                                        style={{ background: '#111', border: '1px solid #444', color: 'white', padding: '4px', borderRadius: '4px', fontSize: '0.8rem' }}
-                                    >
-                                        <option value="dynamic">Dynamic Only</option>
-                                        <option value="static">Static Only</option>
-                                        <option value="all">Show All</option>
-                                    </select>
                                 </div>
+                                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                    {categories.map(cat => (
+                                        <li 
+                                            key={cat}
+                                            onClick={() => setSelectedCategory(cat)}
+                                            style={{ 
+                                                padding: '10px 1.5rem', cursor: 'pointer', 
+                                                background: selectedCategory === cat ? '#2c313a' : 'transparent',
+                                                borderLeft: selectedCategory === cat ? '3px solid #61afef' : '3px solid transparent',
+                                                color: selectedCategory === cat ? '#fff' : '#aaa',
+                                                fontSize: '0.9rem', fontWeight: selectedCategory === cat ? 'bold' : 'normal'
+                                            }}
+                                            className="hover:bg-white/5"
+                                        >
+                                            {cat}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
 
-                            <div style={{ display: 'grid', gap: '1px', background: '#333', border: '1px solid #333' }}>
-                                {displayedQualities.map(([qid, state]) => {
-                                    const isDynamic = !!char.dynamicQualities?.[qid] || !worldQualities[qid];
-                                    const def = char.dynamicQualities?.[qid] || worldQualities[qid] || {};
-                                    
-                                    // @ts-ignore
-                                    const isString = (state.type as string) === 'S' || state.type === QualityType.String; 
-                                    const hasLevel = 'level' in state;
-                                    const hasCP = 'changePoints' in state;
-                                    
-                                    return (
-                                        <div key={qid} style={{ background: '#1e2125', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <div style={{ flex: 1, overflow: 'hidden' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span style={{ fontWeight: 'bold', color: '#ddd' }}>{def.name || qid}</span>
-                                                    {isDynamic && <span style={{ fontSize: '0.65rem', background: '#c678dd', color: 'white', padding: '1px 4px', borderRadius: '2px' }}>DYN</span>}
-                                                </div>
-                                                <div style={{ fontSize: '0.75rem', color: '#666', fontFamily: 'monospace' }}>{qid}</div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                {isString ? (
-                                                     <input 
-                                                        // @ts-ignore
-                                                        defaultValue={state.stringValue} 
-                                                        onBlur={(e) => {
-                                                            // @ts-ignore
-                                                            if (e.target.value !== state.stringValue) handleUpdateQuality(qid, e.target.value);
-                                                        }}
-                                                        style={{ background: '#111', border: '1px solid #444', color: '#e5c07b', padding: '4px 8px', borderRadius: '4px', width: '120px' }}
-                                                     />
-                                                ) : (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                        <input 
-                                                            type="number"
-                                                            defaultValue={hasLevel ? state.level : 0} 
-                                                            onBlur={(e) => {
-                                                                const val = parseFloat(e.target.value);
-                                                                // @ts-ignore
-                                                                if (!isNaN(val) && val !== state.level) handleUpdateQuality(qid, val);
-                                                            }}
-                                                            style={{ background: '#111', border: '1px solid #444', color: '#98c379', padding: '4px 8px', borderRadius: '4px', width: '80px', textAlign: 'right' }}
-                                                        />
-                                                        {state.type === 'P' && hasCP && <span style={{ fontSize: '0.7rem', color: '#555' }}>(CP: {state.changePoints})</span>}
+                            {/* RIGHT CONTENT AREA */}
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+                                
+                                {selectedCategory === "Living Stories" ? (
+                                    <div style={{ padding: '2rem' }}>
+                                        <h3 style={{ marginTop: 0, color: '#e5c07b', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Living Stories Queue</h3>
+                                        
+                                        {!char.pendingEvents || char.pendingEvents.length === 0 ? (
+                                            <p style={{ fontStyle: 'italic', color: '#666' }}>No events queued.</p>
+                                        ) : (
+                                            <div style={{ display: 'grid', gap: '1rem' }}>
+                                                {char.pendingEvents.map((evt: PendingEvent, idx: number) => (
+                                                    <div key={idx} style={{ background: '#2c313a', padding: '1rem', borderRadius: '4px', borderLeft: '4px solid #e5c07b' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                            <strong style={{ color: '#e5c07b', fontSize: '1.1rem' }}>{evt.targetId}</strong>
+                                                            <span style={{ fontSize: '0.9rem', color: '#aaa' }}>Due: {new Date(evt.triggerTime).toLocaleString()}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#ccc' }}>
+                                                            <span>Op: <code>{evt.op} {evt.value}</code></span>
+                                                            <span>Scope: <code>{evt.scope}</code></span>
+                                                            {evt.recurring && <span style={{ color: '#98c379' }}>↻ Recurring ({evt.intervalMs}ms)</span>}
+                                                        </div>
                                                     </div>
-                                                )}
+                                                ))}
                                             </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: '0' }}>
+                                        {/* HEADER FOR LIST */}
+                                        <div style={{ padding: '1rem 2rem', background: '#282c34', borderBottom: '1px solid #333', position: 'sticky', top: 0, zIndex: 10 }}>
+                                            <h3 style={{ margin: 0, fontSize: '1rem', color: '#fff' }}>
+                                                {selectedCategory === "All" ? "All Qualities" : selectedCategory} 
+                                                <span style={{ marginLeft: '10px', fontSize: '0.8rem', color: '#666', fontWeight: 'normal' }}>({filteredQualities.length})</span>
+                                            </h3>
+                                            <p style={{ margin: '0.5rem 0 1rem 0', fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
+                                                Dynamic qualities (marked <span style={{ background: 'var(--tool-accent-mauve)', color: 'white', padding: '1px 4px', borderRadius: '3px', fontSize: '0.7rem' }}>DYN</span>) were created by game logic for this specific character.
+                                            </p>
                                         </div>
-                                    );
-                                })}
-                                {displayedQualities.length === 0 && (
-                                    <div style={{ padding: '2rem', textAlign: 'center', color: '#666', background: '#1e2125' }}>
-                                        No qualities found matching filter.
+
+                                        <div style={{ padding: '1rem 2rem' }}>
+                                            {filteredQualities.length === 0 ? (
+                                                <p style={{ color: '#666', fontStyle: 'italic' }}>No qualities found in this category.</p>
+                                            ) : (
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                                                    {filteredQualities.map(([qid, state]) => {
+                                                        const isDynamic = !!char.dynamicQualities?.[qid] || !worldQualities[qid];
+                                                        const def = char.dynamicQualities?.[qid] || worldQualities[qid] || {};
+                                                        
+                                                        // @ts-ignore
+                                                        const isString = (state.type as string) === 'S' || state.type === QualityType.String; 
+                                                        const hasLevel = 'level' in state;
+                                                        const hasCP = 'changePoints' in state;
+                                                        
+                                                        return (
+                                                            <div key={qid} style={{ background: '#2c313a', padding: '1rem', borderRadius: '6px', border: '1px solid #3e4451' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                                    <div style={{ overflow: 'hidden' }}>
+                                                                        <div style={{ fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={def.name || qid}>
+                                                                            {def.name || qid}
+                                                                        </div>
+                                                                        <div style={{ fontSize: '0.75rem', color: '#777', fontFamily: 'monospace' }}>{qid}</div>
+                                                                    </div>
+                                                                    {isDynamic && <span style={{ fontSize: '0.6rem', background: '#c678dd', color: '#fff', padding: '2px 4px', borderRadius: '2px', height: 'fit-content' }}>DYN</span>}
+                                                                </div>
+
+                                                                <div style={{ marginTop: '0.5rem' }}>
+                                                                    {isString ? (
+                                                                         <input 
+                                                                            // @ts-ignore
+                                                                            defaultValue={state.stringValue} 
+                                                                            onBlur={(e) => {
+                                                                                // @ts-ignore
+                                                                                if (e.target.value !== state.stringValue) handleUpdateQuality(qid, e.target.value);
+                                                                            }}
+                                                                            style={{ width: '100%', background: '#181a1f', border: '1px solid #444', color: '#e5c07b', padding: '6px', borderRadius: '4px' }}
+                                                                         />
+                                                                    ) : (
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                            <input 
+                                                                                type="number"
+                                                                                defaultValue={hasLevel ? state.level : 0} 
+                                                                                onBlur={(e) => {
+                                                                                    const val = parseFloat(e.target.value);
+                                                                                    // @ts-ignore
+                                                                                    if (!isNaN(val) && val !== state.level) handleUpdateQuality(qid, val);
+                                                                                }}
+                                                                                style={{ width: '80px', background: '#181a1f', border: '1px solid #444', color: '#98c379', padding: '6px', borderRadius: '4px', textAlign: 'right', fontWeight: 'bold' }}
+                                                                            />
+                                                                            {/* @ts-ignore */}
+                                                                            {state.type === 'P' && hasCP && <span style={{ fontSize: '0.8rem', color: '#777' }}>CP: {state.changePoints}</span>}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

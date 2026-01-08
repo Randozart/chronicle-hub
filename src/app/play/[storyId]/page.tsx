@@ -25,6 +25,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
 
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
+    const isPlaytest = resolvedSearchParams.playtest === 'true'; 
     const storyId = resolvedParams.storyId;
     const userId = (session.user as any).id;
     
@@ -125,6 +126,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
             musicTracks={serialize(gameData.music)}
             
             activeEvent={safeActiveEvent}
+            isPlaytesting={isPlaytest}
         />
     );
 }

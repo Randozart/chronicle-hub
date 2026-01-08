@@ -73,10 +73,9 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                     <nav className="admin-nav">
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                             
-                            {/* --- NEW: PLAYTEST BUTTON --- */}
                             <li style={{ marginBottom: '1.5rem', padding: '0 1rem' }}>
                                 <Link 
-                                    href={`/play/${storyId}`} 
+                                    href={`/play/${storyId}?playtest=true`} // <--- ADD ?playtest=true
                                     target="_blank"
                                     className="admin-link"
                                     style={{

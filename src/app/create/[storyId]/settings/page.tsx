@@ -1129,23 +1129,23 @@ function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCate
         onCreateQuality('pronouns', QualityType.String, { 
             tags: ['is_pronoun_set'], 
             text_variants: {
-                "subject": "{ $.stringValue == he/him : he | $.stringValue == she/her : she | $.stringValue == they/them : they | {$prn_subj} }",
-                "object": "{ $.stringValue == he/him : him | $.stringValue == she/her : her | $.stringValue == they/them : them | {$prn_obj} }",
-                "possessive": "{ $.stringValue == he/him : his | $.stringValue == she/her : her | $.stringValue == they/them : their | {$prn_poss} }"
+                "subject": "{ $.stringValue == he/him : he | $.stringValue == she/her : she | $.stringValue == they/them : they | {$pronoun_subject} }",
+                "object": "{ $.stringValue == he/him : him | $.stringValue == she/her : her | $.stringValue == they/them : them | {$pronoun_object} }",
+                "possessive": "{ $.stringValue == he/him : his | $.stringValue == she/her : her | $.stringValue == they/them : their | {$pronoun_possessive} }"
             }
         });
         const newRules = { ...rules };
         newRules['$pronouns_header'] = { type: 'header', rule: "Pronouns", visible: true, readOnly: true, visible_if: '', ordering: baseOrder };
         newRules['$pronouns'] = { type: 'label_select', rule: "he/him:He/Him | she/her:She/Her | they/them:They/Them | Custom:Custom", visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 1 };
-        newRules['$prn_subj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 2 };
-        newRules['$prn_obj'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 3 };
-        newRules['$prn_poss'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 4 };
+        newRules['$pronoun_subject'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 2 };
+        newRules['$pronoun_object'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 3 };
+        newRules['$pronoun_possessive'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: "$pronouns == Custom", ordering: baseOrder + 4 };
         onChange(newRules);
     };
     
     const removePronounSystem = () => {
         const next = { ...rules };
-        ['$pronouns_header','$pronouns','$prn_subj','$prn_obj','$prn_poss'].forEach(k => delete next[k]);
+        ['$pronouns_header','$pronouns','$pronoun_subject','$pronoun_object','$pronoun_possessive'].forEach(k => delete next[k]);
         onChange(next);
     };
 
