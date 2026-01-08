@@ -43,6 +43,13 @@
         margin: 0;
         box-shadow: none;
     }
+
+    .layout-grid-nexus {
+        grid-template-columns: 1fr;
+        height: 100vh;
+        display: grid;
+        overflow: hidden;
+    }
 }
 
 .tabletop-visual-col { position: relative; overflow: hidden; border-right: 1px solid #333; background: #000; box-shadow: inset 0 0 50px rgba(0,0,0,0.8); z-index: 1; }
@@ -182,14 +189,28 @@
     backdrop-filter: blur(5px);
 }
 
+/* Update the Grid Definition */
 .layout-main-grid {
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
     display: grid;
-    grid-template-columns: 300px 1fr;
+    /* Desktop: Sidebar (300px) + Content (Rest) */
+    grid-template-columns: 300px 1fr; 
     gap: 2rem;
+    /* Ensure height fits in viewport minus banner */
+    height: calc(100vh - 300px); 
+    overflow: hidden;
 }
+
+/* Ensure content column scrolls independently */
+.layout-content-col {
+    overflow-y: auto;
+    height: 100%;
+    padding-right: 1rem; /* Space for scrollbar */
+}
+
+
 
 .dashboard-header {
     background: var(--bg-panel);
@@ -440,11 +461,11 @@
     .layout-main-grid { grid-template-columns: 1fr; padding: 1rem; }
 }
 
-@media (max-width: 900px) {
+/* @media (max-width: 900px) {
     .content-area {
         padding: 1.5rem;
     }
-}
+} */
 
 .london-layout-container .content-area {
     padding: 0;
@@ -453,4 +474,38 @@
 .london-layout-container .layout-main-grid {
     padding: 3rem 4rem; 
 }
+/* --- MOBILE OVERRIDES --- */
+@media (max-width: 900px) {
+    .layout-banner { height: 200px; }
+    
+    .layout-main-grid {
+        display: block; /* Stack/Block instead of Grid */
+        grid-template-columns: 1fr;
+        padding: 0rem !important;
+        height: auto; /* Let it grow naturally */
+        overflow: visible;
+    }
 
+    /* Hide Sidebar in the grid flow (it becomes a fixed drawer via .sidebar-panel class) */
+    .london-layout-container .sidebar-panel {
+        display: none; 
+        /* The common responsive.css handles .mobile-visible to make it fixed/visible */
+    }
+
+    /* Reset content column height/overflow for natural scrolling */
+    .layout-content-col {
+        height: auto;
+        overflow: visible;
+        padding-right: 0;
+    }
+
+    /* Adjust Banner Content */
+    .banner-content { 
+        flex-direction: column; 
+        align-items: center; 
+        gap: 1rem; 
+        padding: 1rem;
+    }
+    .banner-title { font-size: 2rem; text-align: center; }
+    
+}

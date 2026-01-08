@@ -36,7 +36,6 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
     } else if (resolvedCode?.toLowerCase().startsWith('http')) {
         initialSrc = resolvedCode;
     } else if (resolvedCode) {
-        // --- RESTORED FALLBACK ---
         initialSrc = `/images/uploads/${resolvedCode}.png`;
     }
 
@@ -93,6 +92,7 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
             shapeStyles.aspectRatio = '1 / 1'; 
             shapeStyles.borderRadius = 'var(--border-radius)';
             break;
+        case 'rect':
         case 'portrait': 
             shapeStyles.aspectRatio = '3 / 4'; 
             shapeStyles.borderRadius = 'var(--border-radius)';
@@ -139,6 +139,7 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
                     objectPosition: objectPosition,
                     animation: 'fadeIn 0.5s ease-out'
                 }}
+
             />
         </div>
     );

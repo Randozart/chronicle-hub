@@ -27,6 +27,10 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
     
     // Check for anonymous setting
     const hideIdentity = props.settings.hideProfileIdentity === true;
+    
+    const portraitStyle = props.settings.portraitStyle || 'circle';
+    const borderRadius = portraitStyle === 'circle' ? '50%' : (portraitStyle === 'rounded' ? '8px' : '0px');
+    const aspectRatio = portraitStyle === 'rect' ? '3/4' : '1/1';
 
     const handleDismissMessage = async () => {
         if (!props.systemMessage || !character) return;
@@ -97,58 +101,77 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 </h1>
                 
                 <div style={{ display: 'grid', gap: '1rem' }}>
-                    {props.availableCharacters.map((c, index) => (
-                        <button 
-                            key={c.characterId || index} 
-                            onClick={() => window.location.href = `/play/${props.storyId}?charId=${c.characterId}`}
-                            className="option-button"
-                            style={{ 
-                                padding: '1rem', 
-                                display: 'flex', alignItems: 'center', gap: '1rem',
-                                textAlign: 'left', width: '100%'
-                            }}
-                        >
-                            {/* CONDITIONAL PORTRAIT */}
-                            {!hideIdentity && (
-                                <div style={{ 
-                                    width: '60px', height: '60px', borderRadius: '50%', 
-                                    overflow: 'hidden', border: '2px solid var(--accent-primary)',
-                                    flexShrink: 0, background: '#000'
-                                }}>
-                                    <GameImage 
-                                        code={c.portrait || "default_avatar"} 
-                                        imageLibrary={props.imageLibrary} 
-                                        type="portrait" 
-                                        className="w-full h-full object-cover"
-                                        alt=""
-                                    />
-                                </div>
-                            )}
+                    {props.availableCharacters.map((c, index) => {
+                        // SIZE LOGIC
+                        const sizeSetting = props.settings.portraitSize || 'medium';
+                        const sizeMap: Record<string, string> = {
+                            small: '50px',
+                            medium: '70px',
+                            large: '100px'
+                        };
+                        const width = sizeMap[sizeSetting] || '70px';
+                        
+                        // SHAPE LOGIC
+                        // Ensure we use the setting, defaulting to circle if unset
+                        const effectiveShape = props.settings.portraitStyle || 'circle';
 
-                            <div style={{ flex: 1 }}>
-                                <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)', fontSize: '1.1rem' }}>
-                                    {/* CONDITIONAL NAME */}
-                                    {hideIdentity ? `Save Slot ${index + 1}` : c.name}
-                                </h3>
-                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                    {props.locations[c.currentLocationId]?.name || "Unknown Location"}
-                                </p>
-                            </div>
-                            
-                            {/* DELETE BUTTON */}
-                            <div 
-                                onClick={(e) => handleDeleteChar(c.characterId, e)}
+                        return (
+                            <button 
+                                key={c.characterId || index} 
+                                onClick={() => window.location.href = `/play/${props.storyId}?charId=${c.characterId}`}
+                                className="option-button"
                                 style={{ 
-                                    color: 'var(--danger-color)', padding: '0.5rem', 
-                                    cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6
+                                    padding: '1rem', 
+                                    display: 'flex', alignItems: 'center', gap: '1rem',
+                                    textAlign: 'left', width: '100%'
                                 }}
-                                title="Delete Save"
-                                className="hover:opacity-100"
                             >
-                                ✕
-                            </div>
-                        </button>
-                    ))}
+                                {!hideIdentity && (
+                                    <div style={{ 
+                                        width: width,
+                                        // Use aspectRatio based on the shape setting
+                                        aspectRatio: effectiveShape === 'rect' ? '3/4' : '1/1',
+                                        borderRadius: borderRadius,
+                                        overflow: 'hidden', 
+                                        border: '2px solid var(--accent-primary)',
+                                        flexShrink: 0, background: '#000'
+                                    }}
+                                    >
+                                        <GameImage 
+                                            code={c.portrait || "default_avatar"} 
+                                            imageLibrary={props.imageLibrary} 
+                                            type="portrait" 
+                                            settings={props.settings}
+                                            shapeOverride={effectiveShape} // <--- PASSED EXPLICITLY
+                                            className="w-full h-full object-cover"
+                                            alt=""
+                                        />
+                                    </div>
+                                )}
+
+                                <div style={{ flex: 1 }}>
+                                    <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)', fontSize: '1.1rem' }}>
+                                        {hideIdentity ? `Save Slot ${index + 1}` : c.name}
+                                    </h3>
+                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        {props.locations[c.currentLocationId]?.name || "Unknown Location"}
+                                    </p>
+                                </div>
+                                
+                                <div 
+                                    onClick={(e) => handleDeleteChar(c.characterId, e)}
+                                    style={{ 
+                                        color: 'var(--danger-color)', padding: '0.5rem', 
+                                        cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6
+                                    }}
+                                    title="Delete Save"
+                                    className="hover:opacity-100"
+                                >
+                                    ✕
+                                </div>
+                            </button>
+                        );
+                    })}
                     
                     <button 
                         onClick={() => window.location.href = `/play/${props.storyId}/creation`}

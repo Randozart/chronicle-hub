@@ -103,7 +103,9 @@ export interface CharCreateRule {
     rule: string;
     visible: boolean;
     readOnly: boolean;
+    required?: boolean; 
     visible_if?: string;
+    hideIfZero?: boolean; 
     input_transform?: 'none' | 'lowercase' | 'uppercase' | 'capitalize';
     displayMode?: 'inline' | 'modal';
     ordering?: number;
@@ -138,7 +140,9 @@ export interface WorldSettings {
     playerName: string;
     playerImage: string;
     enablePortrait?: boolean;
-    portraitStyle?: 'circle' | 'square' | 'rect';
+    portraitStyle?: 'circle' | 'square' | 'rect' | 'rounded';
+    portraitSize?: 'small' | 'medium' | 'large'; // <--- ADDED
+    modalImageSize?: 'small' | 'medium' | 'large'; // <--- ADDED
     enableTitle?: boolean;
     titleQualityId?: string;
     layoutStyle: LayoutStyle;

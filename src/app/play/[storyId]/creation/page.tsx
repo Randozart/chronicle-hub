@@ -44,9 +44,10 @@ export default async function CreationPage({ params }: Props) {
                 <CreationForm 
                     storyId={storyId} 
                     rules={rules} 
-                    qualityDefs={qualityDefs} // <--- PASS DOWN
+                    qualityDefs={qualityDefs} 
                     imageLibrary={imageLibrary} 
                     allowScribeScript={allowScribeScript}
+                    settings={gameData.settings}
                 />
             </div>
         </div>

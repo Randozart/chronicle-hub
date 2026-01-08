@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ImageDefinition, CharCreateRule, QualityType, PlayerQualities, QualityDefinition } from '@/engine/models';
+import { ImageDefinition, CharCreateRule, QualityType, PlayerQualities, QualityDefinition, WorldSettings } from '@/engine/models';
 import GameImage from '@/components/GameImage';
 import { evaluateText, evaluateCondition } from '@/engine/textProcessor';
 
@@ -14,9 +14,10 @@ interface CreationFormProps {
     qualityDefs: Record<string, QualityDefinition>;
     imageLibrary: Record<string, ImageDefinition>;
     allowScribeScript: boolean;
+    settings: WorldSettings;
 }
 
-export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary, allowScribeScript }: CreationFormProps) {
+export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary, allowScribeScript, settings }: CreationFormProps) {
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => setIsMounted(true), []);
 
@@ -173,7 +174,32 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (Object.keys(inputErrors).length > 0) return;
+        
+        // 1. Validation Logic
+        const errors: Record<string, string> = {};
+        let hasError = false;
+
+        sortedKeys.forEach(key => {
+            const rule = rules[key];
+            // Validate if: Marked Required AND Not ReadOnly AND Not Header AND Visible
+            if (rule.required && !rule.readOnly && rule.type !== 'header' && isVisible(rule)) {
+                const qid = key.replace('$', '');
+                const val = choices[qid];
+                // Check if empty
+                if (!val || val.trim() === '') {
+                    errors[qid] = "This field is required.";
+                    hasError = true;
+                }
+            }
+        });
+
+        if (hasError) {
+            setInputErrors(prev => ({ ...prev, ...errors }));
+            setError("Please fill in all required fields marked with *.");
+            return;
+        }
+
+        // 2. Submit Logic
         setIsSubmitting(true);
         const finalPayload = { ...choices, ...derivedValues }; 
         const res = await fetch('/api/character/create', { 
@@ -202,10 +228,24 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
             return { val, label: lbl };
         });
 
+        // Determine aspect ratio from settings
+        const isPortrait = settings?.portraitStyle === 'rect';
+        const aspectRatio = isPortrait ? '3/4' : '1/1';
+        
+        // MODAL GRID SIZE LOGIC
+        const sizeSetting = settings?.modalImageSize || 'small';
+        const sizeMap: Record<string, string> = {
+            small: '100px',
+            medium: '150px',
+            large: '220px'
+        };
+        const minColWidth = sizeMap[sizeSetting] || '100px';
+
         return (
             <div style={{ 
                 display: 'grid', 
-                gridTemplateColumns: ruleObj.type === 'label_select' ? 'repeat(auto-fill, minmax(120px, 1fr))' : 'repeat(auto-fill, minmax(100px, 1fr))', 
+                // Use dynamic minColWidth based on settings
+                gridTemplateColumns: `repeat(auto-fill, minmax(${minColWidth}, 1fr))`, 
                 gap: '1rem' 
             }}>
                 {options.map(opt => {
@@ -225,7 +265,7 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
                         >
                             {hasImage ? (
                                 <div style={{ padding: '0.5rem' }}>
-                                    <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem' }}>
+                                    <div style={{ width: '100%', aspectRatio: aspectRatio, borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem' }}>
                                         <GameImage code={opt.val} imageLibrary={imageLibrary} type="icon" className="w-full h-full object-cover" />
                                     </div>
                                     {ruleObj.type === 'labeled_image_select' && (
@@ -245,37 +285,111 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
     const renderField = (key: string, ruleObj: CharCreateRule) => {
         const qid = key.replace('$', '');
         const label = qid.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
+        
         if (!isVisible(ruleObj)) return null;
 
-        // Static / ReadOnly
+        const isRequired = ruleObj.required && !ruleObj.readOnly;
+        const requiredMark = isRequired ? <span style={{color:'var(--danger-color)', marginLeft:'4px'}}>*</span> : null;
+
+        // 1. Static / ReadOnly Fields
         if (ruleObj.readOnly || ruleObj.type === 'static') {
+            const val = derivedValues[qid] || ruleObj.rule;
+
+            // NEW: Hide if Zero Logic
+            if (ruleObj.hideIfZero) {
+                const num = parseFloat(val);
+                if (val === '0' || val === '0.0' || (!isNaN(num) && num === 0)) return null;
+            }
+            
+            // Check if result is an image code
+            const looksLikeImage = imageLibrary[val];
+            const aspectRatio = settings.portraitStyle === 'rect' ? '3/4' : '1/1';
+
             return (
-                <div key={key} style={{ marginBottom: '1.5rem', opacity: 0.8 }}>
+                <div key={key} style={{ marginBottom: '1.5rem', opacity: 0.9 }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontWeight: 'bold', fontSize: '0.9rem', textTransform: 'uppercase' }}>{label}</label>
                     <div style={{ padding: '0.8rem', background: 'var(--bg-item)', borderRadius: '4px', border: '1px solid var(--border-light)', color: 'var(--accent-highlight)', fontWeight: 'bold' }}>
-                        {derivedValues[qid] || ruleObj.rule}
+                        {looksLikeImage ? (
+                            <div style={{ width: '100px', aspectRatio: aspectRatio, overflow: 'hidden', borderRadius:'4px' }}>
+                                <GameImage code={val} imageLibrary={imageLibrary} type="icon" className="w-full h-full object-cover" />
+                            </div>
+                        ) : (
+                            val
+                        )}
                     </div>
                 </div>
             );
         }
 
-        // Selectors
+        // 2. Selectors (Images / Labels)
         if (['label_select', 'image_select', 'labeled_image_select'].includes(ruleObj.type)) {
+            
+            // MODAL MODE: Show a preview button that opens the modal
             if (ruleObj.displayMode === 'modal') {
-                const currentSelection = choices[qid] ? (ruleObj.rule.split('|').find(o => o.startsWith(choices[qid]))?.split(':')[1] || choices[qid]) : "Select...";
+                // Find current selection details
+                const currentVal = choices[qid];
+                let displayLabel = "Select...";
+                let displayImage = null;
+
+                if (currentVal) {
+                    // Parse options to find label
+                    const options = ruleObj.rule.split('|').map(o => {
+                        const [v, l] = o.split(':');
+                        return { val: v.trim(), label: l ? l.trim() : v.trim() };
+                    });
+                    const selectedOpt = options.find(o => o.val === currentVal);
+                    
+                    displayLabel = selectedOpt ? selectedOpt.label : currentVal;
+                    // Check if the value itself is an image key in the library
+                    if (imageLibrary[currentVal]) displayImage = currentVal;
+                }
+
                 return (
                     <div key={key} style={{ marginBottom: '2rem' }}>
-                        <label style={{ display: 'block', marginBottom: '1rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{label}</label>
-                        <button type="button" onClick={() => setActiveSelectModal(qid)} style={{ width: '100%', padding: '1rem', textAlign: 'left', background: 'var(--bg-item)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>{currentSelection}</span><span>▼</span>
-                        </button>
+                        <label style={{ display: 'block', marginBottom: '1rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                            {label} {requiredMark}
+                        </label>
+                        
+                        {/* THE PREVIEW BUTTON */}
+                        <div 
+                            onClick={() => setActiveSelectModal(qid)}
+                            style={{ 
+                                background: 'var(--bg-item)', 
+                                border: `1px solid ${inputErrors[qid] ? 'var(--danger-color)' : 'var(--border-color)'}`,
+                                borderRadius: '8px', 
+                                padding: '10px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px',
+                                transition: 'all 0.2s'
+                            }}
+                            className="hover:border-highlight"
+                        >
+                            {/* Preview Image if selected */}
+                            {displayImage && (
+                                <div style={{ width: '60px', aspectRatio: settings.portraitStyle === 'rect' ? '3/4' : '1/1', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
+                                    <GameImage code={displayImage} imageLibrary={imageLibrary} type="icon" className="w-full h-full object-cover" />
+                                </div>
+                            )}
+                            
+                            {/* Preview Text */}
+                            <div style={{ flex: 1, fontWeight: displayImage ? 'bold' : 'normal', color: currentVal ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                                {currentVal ? displayLabel : `Choose ${label}...`}
+                            </div>
+
+                            <span style={{ color: 'var(--text-muted)' }}>▼</span>
+                        </div>
+
+                        {inputErrors[qid] && <p style={{color: 'var(--danger-color)', fontSize: '0.8rem', marginTop: '0.3rem'}}>{inputErrors[qid]}</p>}
+                        
+                        {/* THE MODAL POPUP */}
                         {activeSelectModal === qid && (
-                            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-                                <div style={{ background: 'var(--bg-panel)', padding: '2rem', borderRadius: '8px', border: '1px solid var(--border-color)', width: '100%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                                <div style={{ background: 'var(--bg-panel)', padding: '2rem', borderRadius: '8px', border: '1px solid var(--border-color)', width: '100%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 0 50px rgba(0,0,0,0.5)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
                                         <h3 style={{ margin: 0 }}>Select {label}</h3>
-                                        <button type="button" onClick={() => setActiveSelectModal(null)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
+                                        <button type="button" onClick={() => setActiveSelectModal(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
                                     </div>
                                     {renderChoiceGrid(ruleObj, qid)}
                                 </div>
@@ -284,18 +398,25 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
                     </div>
                 );
             }
+
+            // INLINE MODE (Grid)
             return (
                 <div key={key} style={{ marginBottom: '2rem' }}>
-                    <label style={{ display: 'block', marginBottom: '1rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{label}</label>
+                    <label style={{ display: 'block', marginBottom: '1rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                         {label} {requiredMark}
+                    </label>
                     {renderChoiceGrid(ruleObj, qid)}
+                    {inputErrors[qid] && <p style={{color: 'var(--danger-color)', fontSize: '0.8rem', marginTop: '0.3rem'}}>{inputErrors[qid]}</p>}
                 </div>
             );
         }
 
-        // String Input
+        // 3. String Input (Fallback)
         return (
             <div key={key} style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>{label}</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>
+                     {label} {requiredMark}
+                </label>
                 <input type="text" className="form-input" value={choices[qid] || ''} onChange={(e) => handleChoice(qid, e.target.value, ruleObj.input_transform)} style={{ width: '100%', padding: '0.8rem', borderColor: inputErrors[qid] ? 'var(--danger-color)' : 'var(--border-color)' }} />
                 {inputErrors[qid] && <p style={{color: 'var(--danger-color)', fontSize: '0.8rem', marginTop: '0.3rem'}}>{inputErrors[qid]}</p>}
             </div>
@@ -378,7 +499,27 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
             
             {error && <p style={{ color: 'var(--danger-color)', marginBottom: '1rem' }}>{error}</p>}
             
-            <button type="submit" disabled={isSubmitting || Object.keys(inputErrors).length > 0} className="save-btn" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }}>
+                        <button 
+                type="submit" 
+                disabled={isSubmitting} 
+                style={{ 
+                    width: '100%', 
+                    padding: '1.2rem', 
+                    fontSize: '1.2rem', 
+                    marginTop: '2rem',
+                    background: 'var(--accent-primary)', // Uses theme color
+                    color: 'var(--accent-text, #fff)',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isSubmitting ? 'default' : 'pointer',
+                    opacity: isSubmitting ? 0.7 : 1,
+                    fontFamily: 'var(--font-main)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                }}
+            >
                 {isSubmitting ? 'Building World...' : 'Begin Your Journey'}
             </button>
         </form>

@@ -53,6 +53,15 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
 
     const showPortrait = !hideIdentity && settings.enablePortrait !== false;
     const shape = settings.portraitStyle || 'circle';
+    
+    // SIZE LOGIC
+    const sizeSetting = settings.portraitSize || 'medium';
+    const sizeMap: Record<string, string> = {
+        small: '80px',
+        medium: '150px',
+        large: '250px'
+    };
+    const portraitWidth = sizeMap[sizeSetting] || '150px';
 
     // Prepare List
     const flatList = useMemo(() => {
@@ -80,14 +89,24 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
 
     return (
         <div className="profile-container">
-            {!hideIdentity ? (
+           {!hideIdentity ? (
                 <div className="profile-header">
                     {showPortrait && (
-                        <div className="profile-portrait" data-shape={shape}>
+                        <div 
+                            className="profile-portrait" 
+                            data-shape={shape}
+                            style={{ 
+                                width: portraitWidth, // From settings.portraitSize
+                                aspectRatio: shape === 'rect' ? '3/4' : '1/1',
+                                flexShrink: 0
+                            }} 
+                        >
                             <GameImage 
                                 code={portraitCode} 
                                 imageLibrary={imageLibrary} 
                                 type="portrait" 
+                                settings={settings}
+                                shapeOverride={shape} // <--- THIS WAS MISSING
                                 alt="Portrait" 
                                 className="w-full h-full object-cover" 
                             />
@@ -128,9 +147,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                             </h3>
                             <div className="quality-list">
                                 {grouped[cat].map((q: any) => {
-                                    // --- NEW LOGIC: HIDE LEVEL ---
                                     const hideLevel = q.tags?.includes('hide_level');
-                                    
                                     return (
                                         <div key={q.id} className="profile-quality-item">
                                             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>

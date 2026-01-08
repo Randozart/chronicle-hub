@@ -101,7 +101,7 @@ const ItemDisplay = ({
     return (
         <div className={`inventory-item style-${activeStyle} ${capabilityClass} ${portraitVariantClass}`} style={{ 
             borderColor: isEquipped ? 'var(--accent-highlight)' : undefined,
-            backgroundColor: isEquipped ? 'rgba(var(--accent-rgb), 0.05)' : undefined,
+            // backgroundColor: isEquipped ? 'rgba(var(--accent-rgb), 0.05)' : undefined, Adopts equipment slot color
         }}>
             
             {/* --- ICON GRID MODE --- */}

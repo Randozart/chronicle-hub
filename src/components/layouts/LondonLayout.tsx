@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WorldSettings, LocationDefinition, ImageDefinition } from '@/engine/models';
 import GameImage from '../GameImage';
 
@@ -29,12 +29,15 @@ export default function LondonLayout({
     isTransitioning
 }: LondonLayoutProps) {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
+    
+    // Check mobile state for rendering logic if needed, 
+    // though CSS usually handles the heavy lifting.
+    
     return (
-        <div className="layout-column london-layout-container" style={{ height: '100vh' }}>
+        <div className="layout-column london-layout-container" style={{ height: '100vh', overflow: 'hidden' }}>
             
-
-            <div className="content-area">
+            <div className="content-area" style={{ padding: 0 }}>
+                {/* BANNER SECTION */}
                 <div className="layout-banner">
                     <div className="banner-image-container">
                         <GameImage code={location.image} imageLibrary={imageLibrary} type="location" alt="" className="banner-bg-image" />
@@ -59,29 +62,36 @@ export default function LondonLayout({
                     </div>
                 </div>
 
+                {/* MAIN GRID */}
                 <div className="layout-main-grid">
-                    <div className={`layout-sidebar-col layout-column ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
-                        <div className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</div>
+                    
+                    {/* SIDEBAR - Uses common .sidebar-panel class for mobile drawer behavior */}
+                    <div className={`sidebar-panel ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
+                        <button className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</button>
                         {sidebarContent}
                     </div>
                     
+                    {/* CONTENT COLUMN */}
                     <div 
                         className="layout-content-col layout-column"
                         style={{ 
                             opacity: isTransitioning ? 0 : 1, 
-                            transition: 'opacity 0.2s ease-in-out' 
+                            transition: 'opacity 0.2s ease-in-out',
+                            width: '100%' 
                         }}
                     >
                         {mainContent}
                         
+              
+                    </div>
+                </div>
+                          {/* MOBILE FAB */}
                         <button 
                             className="mobile-sidebar-toggle"
                             onClick={() => setMobileSidebarOpen(true)}
                         >
-                            View Character
+                            Character Sheet
                         </button>
-                    </div>
-                </div>
             </div>
         </div>
     );

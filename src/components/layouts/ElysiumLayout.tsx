@@ -90,7 +90,7 @@ export default function ElysiumLayout({
                         className="mobile-sidebar-toggle"
                         onClick={() => setMobileSidebarOpen(true)}
                     >
-                        Open HUD
+                        Character Sheet
                     </button>
                 </div>
             </div>

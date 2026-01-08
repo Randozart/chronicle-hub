@@ -32,13 +32,14 @@ export default function NexusLayout({ sidebarContent, mainContent, settings, isT
             >
                 {mainContent}
                 
-                <button 
+
+            </div>
+                            <button 
                     className="mobile-sidebar-toggle"
                     onClick={() => setMobileSidebarOpen(true)}
                 >
-                    Character Info
+                    Character Sheet
                 </button>
-            </div>
         </div>
     );
 }
