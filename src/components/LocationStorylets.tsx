@@ -1,7 +1,7 @@
 'use client';
 
 import { Storylet, PlayerQualities, QualityDefinition, ImageDefinition, WorldSettings } from "@/engine/models";
-import { evaluateText, evaluateCondition } from "@/engine/textProcessor";
+import { evaluateText } from "@/engine/textProcessor"; // BUG FIX: Removed unused/harmful evaluateCondition import
 import GameImage from "./GameImage";
 import FormattedText from "./FormattedText";
 
@@ -15,7 +15,11 @@ interface LocationStoryletsProps {
 }
 
 export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs, imageLibrary, settings }: LocationStoryletsProps) {
-    const visibleStorylets = storylets.filter(s => evaluateCondition(s.visible_if, qualities, qualityDefs, null, 0));
+    // BUG FIX: Removed the redundant .filter() here. 
+    // GameHub has already filtered the storylets using the authoritative GameEngine (which has access to dynamic qualities).
+    // Re-filtering here with the raw `evaluateCondition` often fails because it lacks the full context of the Engine.
+    const visibleStorylets = storylets; 
+
     if (visibleStorylets.length === 0) return null;
 
     const cfg = settings.componentConfig || {};
@@ -93,8 +97,6 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                         );
                     }
 
-                    
-                    // For 'rows' and 'compact', use the non-grid .option-button.
                     if (layoutStyle === 'rows' || layoutStyle === 'compact') {
                          return (
                             <button key={storylet.id} className="option-button" onClick={() => onStoryletClick(storylet.id)}>
@@ -123,7 +125,7 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                         type="storylet" 
                                         alt={evaluatedName} 
                                         className="card-image" 
-                                        settings={settings} // PROP RESTORED
+                                        settings={settings}
                                     />
                                  )}                                 
                                  <div className="card-text">

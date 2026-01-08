@@ -1,6 +1,5 @@
-// src/engine/worldService.ts
-
 import { cache } from 'react';
+import { revalidateTag } from 'next/cache'; 
 import clientPromise from '@/engine/database';
 import { WorldConfig, Storylet, Opportunity, LocationDefinition, QualityDefinition, WorldSettings, PlayerQualities } from './models';
 
@@ -45,9 +44,9 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
     };
 });
 
-// Alias for backward compatibility
-export const getContent = getWorldConfig; 
+// --- RESTORED ALIASES ---
 export const getWorldContent = getWorldConfig; 
+export const getContent = getWorldConfig; 
 
 export const getSettings = async (worldId: string): Promise<WorldSettings> => {
     const config = await getWorldConfig(worldId);
@@ -82,7 +81,6 @@ export const getLocationStorylets = async (worldId: string, locationId: string):
 export const getAutofireStorylets = async (worldId: string): Promise<Storylet[]> => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
-    // Autofires can technically be opportunities too if forced, but usually storylets
     const docs = await db.collection('storylets').find(
         { worldId, autofire_if: { $exists: true, $ne: null } },
         { projection: { id: 1, autofire_if: 1, urgency: 1, location: 1 } }
@@ -90,7 +88,7 @@ export const getAutofireStorylets = async (worldId: string): Promise<Storylet[]>
     return docs as unknown as Storylet[];
 };
 
-// 5. Fetch Cards for a specific Deck (Direct DB access if needed)
+// 5. Fetch Cards for a specific Deck
 export const getOpportunitiesForDeck = async (worldId: string, deckId: string): Promise<Opportunity[]> => {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
@@ -117,38 +115,36 @@ export const updateWorldConfigItem = async (
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 1. Handle Settings (Top level, no ID)
+    let result;
+
     if (category === 'root') {
-        const result = await db.collection('worlds').updateOne(
+        result = await db.collection('worlds').updateOne(
             { worldId },
             { $set: { [itemId]: data } }
         );
-        return result.acknowledged;
-    }
-
-    if (category === 'settings') {
-        const result = await db.collection('worlds').updateOne(
+    } else if (category === 'settings') {
+        result = await db.collection('worlds').updateOne(
             { worldId },
             { $set: { settings: data } }
         );
-        return result.acknowledged;
-    }
-
-    if (category === 'char_create') {
-        const result = await db.collection('worlds').updateOne(
+    } else if (category === 'char_create') {
+        result = await db.collection('worlds').updateOne(
             { worldId },
             { $set: { "content.char_create": data } }
         );
-        return result.acknowledged;
+    } else {
+        const path = `content.${category}.${itemId}`;
+        result = await db.collection('worlds').updateOne(
+            { worldId },
+            { $set: { [path]: data } }
+        );
     }
 
-    // 2. Handle Collections
-    const path = `content.${category}.${itemId}`;
-
-    const result = await db.collection('worlds').updateOne(
-        { worldId },
-        { $set: { [path]: data } }
-    );
+    if (result.acknowledged) {
+        console.log(`[Cache] Invalidating 'world' tag due to update in ${category}`);
+        // @ts-ignore - The type definition for revalidateTag can be flaky in some Next.js versions
+        revalidateTag('world'); 
+    }
 
     return result.acknowledged;
 };
@@ -167,6 +163,37 @@ export const deleteWorldConfigItem = async (
         { worldId },
         { $unset: { [path]: "" } }
     );
+
+    if (result.acknowledged) {
+        console.log(`[Cache] Invalidating 'world' tag due to deletion in ${category}`);
+        // @ts-ignore
+        revalidateTag('world');
+    }
+
+    return result.acknowledged;
+};
+
+// Helper to update Storylets/Cards
+export const updateStoryletOrCard = async (
+    worldId: string,
+    collection: 'storylets' | 'opportunities',
+    id: string,
+    data: any
+): Promise<boolean> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+
+    const result = await db.collection(collection).updateOne(
+        { worldId, id },
+        { $set: data },
+        { upsert: true }
+    );
+
+    if (result.acknowledged) {
+        console.log(`[Cache] Invalidating 'storylets' tag due to update on ${id}`);
+        // @ts-ignore
+        revalidateTag('storylets');
+    }
 
     return result.acknowledged;
 };

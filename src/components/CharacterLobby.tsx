@@ -30,7 +30,6 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
     
     const portraitStyle = props.settings.portraitStyle || 'circle';
     const borderRadius = portraitStyle === 'circle' ? '50%' : (portraitStyle === 'rounded' ? '8px' : '0px');
-    const aspectRatio = portraitStyle === 'rect' ? '3/4' : '1/1';
 
     const handleDismissMessage = async () => {
         if (!props.systemMessage || !character) return;
@@ -112,13 +111,13 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                         const width = sizeMap[sizeSetting] || '70px';
                         
                         // SHAPE LOGIC
-                        // Ensure we use the setting, defaulting to circle if unset
                         const effectiveShape = props.settings.portraitStyle || 'circle';
 
                         return (
                             <button 
                                 key={c.characterId || index} 
-                                onClick={() => window.location.href = `/play/${props.storyId}?charId=${c.characterId}`}
+                                // BUG FIX: Changed 'charId=' to 'char=' to match PlayPage logic
+                                onClick={() => window.location.href = `/play/${props.storyId}?char=${c.characterId}`}
                                 className="option-button"
                                 style={{ 
                                     padding: '1rem', 
@@ -129,7 +128,6 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                                 {!hideIdentity && (
                                     <div style={{ 
                                         width: width,
-                                        // Use aspectRatio based on the shape setting
                                         aspectRatio: effectiveShape === 'rect' ? '3/4' : '1/1',
                                         borderRadius: borderRadius,
                                         overflow: 'hidden', 
@@ -142,7 +140,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                                             imageLibrary={props.imageLibrary} 
                                             type="portrait" 
                                             settings={props.settings}
-                                            shapeOverride={effectiveShape} // <--- PASSED EXPLICITLY
+                                            shapeOverride={effectiveShape}
                                             className="w-full h-full object-cover"
                                             alt=""
                                         />

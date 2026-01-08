@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
         const db = client.db(DB_NAME);
 
         // 2. Aggregation Pipeline
-        // We grab characters for this story, then look up their human User details
         const players = await db.collection('characters').aggregate([
             { 
                 $match: { storyId: storyId } 
@@ -38,25 +37,39 @@ export async function GET(request: NextRequest) {
                 }
             },
             { 
-                $unwind: '$userInfo' 
+                $unwind: {
+                    path: '$userInfo',
+                    preserveNullAndEmptyArrays: true // Keep characters even if user is deleted/missing
+                }
             },
             {
                 $project: {
-                    _id: 0, // Hide internal DB ID
+                    // IDs
+                    _id: { $toString: "$_id" }, // Convert ObjectId to string
+                    characterId: 1,
                     userId: 1,
-                    username: '$userInfo.username',
-                    email: '$userInfo.email',
+                    
+                    // User Info
+                    username: { $ifNull: ['$userInfo.username', 'Unknown User'] },
+                    email: { $ifNull: ['$userInfo.email', ''] },
+                    
+                    // Character Data (CRITICAL FIXES HERE)
+                    name: 1,          // Ensure character name is sent
+                    qualities: 1,     // Ensure qualities are sent for resolution
+                    
+                    // Status
                     location: '$currentLocationId',
                     lastActive: '$lastActionTimestamp',
-                    // We can verify "Online" status by checking lastActive vs Now
-                    actions: { $ifNull: ['$qualities.actions.level', 0] } // Extract actions if they exist
+                    
+                    // Computed
+                    actions: { $ifNull: ['$qualities.actions.level', 0] } 
                 }
             },
             { 
-                $sort: { lastActive: -1 } // Most recent players first
+                $sort: { lastActive: -1 } 
             },
             { 
-                $limit: 100 // Safety limit
+                $limit: 100 
             }
         ]).toArray();
 
