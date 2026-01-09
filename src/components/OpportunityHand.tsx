@@ -84,19 +84,17 @@ export default function OpportunityHand({
 
                         if (layoutStyle === 'polaroid') {
                             return (
-                                // --- CHANGE 1: Change the root element to a div and add position: 'relative' ---
                                 <div 
                                     key={card.id}
                                     className="option-button card-mode" 
                                     style={{ 
-                                        position: 'relative', // Necessary for absolute positioning the discard button
+                                        position: 'relative', 
                                         display: 'flex', 
                                         flexDirection: 'column', 
                                         height: '100%',
                                         alignItems: 'stretch'
                                     }}
                                 >
-                                    {/* --- CHANGE 2: Wrap the main content in its own button --- */}
                                     <button
                                         onClick={() => onCardClick(card.id)}
                                         style={{
@@ -156,13 +154,12 @@ export default function OpportunityHand({
                                                 className="option-text-wrapper"
                                                 style={{ padding: '0 1rem 1rem', textAlign: 'left' }}
                                             >
-                                                <h3><FormattedText text={evaluatedName} /></h3>
+                                                <h3><FormattedText text={evaluatedName} inline/></h3>
                                                 {evaluatedShort && <div className="option-short-desc"><FormattedText text={evaluatedShort} /></div>}
                                             </div>
                                         </div>
                                     </button>
                                     
-                                    {/* --- CHANGE 3: Add the discard button, just like in your other card layout --- */}
                                     {card.can_discard !== false && onDiscard && (
                                         <button 
                                             onClick={(e) => { 
@@ -226,7 +223,7 @@ export default function OpportunityHand({
                                         )}
 
                                         <div className="option-text-wrapper">
-                                            <h3><FormattedText text={evaluatedName} /></h3>
+                                            <h3><FormattedText text={evaluatedName} inline/></h3>
                                             {evaluatedShort && (
                                                 <div><FormattedText text={evaluatedShort} /></div>
                                             )}
@@ -250,7 +247,7 @@ export default function OpportunityHand({
                                                 settings={settings} 
                                                 evaluateText={(text) => engine.evaluateText(text, { qid: card.id, state: qualities[card.id] })}
                                             />
-                                        )}                                       <div className="card-text"><h3><FormattedText text={evaluatedName} /></h3>{evaluatedShort && layoutStyle !== 'tarot' && <div><FormattedText text={evaluatedShort} /></div>}</div>
+                                        )}                                       <div className="card-text"><h3><FormattedText text={evaluatedName} inline/></h3>{evaluatedShort && layoutStyle !== 'tarot' && <div><FormattedText text={evaluatedShort} /></div>}</div>
                                     {layoutStyle === 'images-only' && <div className="image-only-overlay"><FormattedText text={evaluatedName} /></div>}
                                 </button>
                                 {card.can_discard !== false && onDiscard && <button onClick={(e) => { e.stopPropagation(); if (confirm("Discard?")) onDiscard(card.id); }} style={{ position: 'absolute', top: 5, right: 5, /* ... */ }} title="Discard">✕</button>}

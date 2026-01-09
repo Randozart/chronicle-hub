@@ -107,7 +107,7 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                         </div>
                                     )}
                                     <div className="option-text-wrapper">
-                                        <h3><FormattedText text={evaluatedName} /></h3>
+                                        <h3><FormattedText text={evaluatedName} inline /></h3>
                                         {evaluatedShort && layoutStyle !== 'compact' && <div className="option-short-desc"><FormattedText text={evaluatedShort} /></div>}
                                     </div>
                                 </div>
@@ -129,7 +129,7 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                     />
                                  )}                                 
                                  <div className="card-text">
-                                     <h3><FormattedText text={evaluatedName} /></h3>
+                                     <h3><FormattedText text={evaluatedName} inline /></h3>
                                      {evaluatedShort && layoutStyle !== 'tarot' && <div><FormattedText text={evaluatedShort} /></div>}
                                  </div>
                                  {layoutStyle === 'images-only' && <div className="image-only-overlay"><FormattedText text={evaluatedName} /></div>}

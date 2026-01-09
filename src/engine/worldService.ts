@@ -168,16 +168,18 @@ export const updateStoryletOrCard = async (
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
+    const { _id, ...cleanData } = data;
+
     const result = await db.collection(collection).updateOne(
         { worldId, id },
-        { $set: data },
+        { $set: cleanData }, 
         { upsert: true }
     );
 
     if (result.acknowledged) {
         const tag = `storylets-${worldId}`;
         console.log(`[Cache] Invalidating tag '${tag}' due to update on ${id}`);
-        revalidateTag(tag, ''); 
+        revalidateTag(tag, '');
     }
 
     return result.acknowledged;
