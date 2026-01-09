@@ -44,6 +44,7 @@ interface StoryletDisplayProps {
     characterId: string;
     engine: GameEngine; 
     isPlaytesting?: boolean;
+    onLog?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void; // <--- NEW PROP
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -65,8 +66,8 @@ export default function StoryletDisplay({
     storyId,
     characterId,
     engine, 
-    isPlaytesting
-    
+    isPlaytesting,
+    onLog
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
     
@@ -105,6 +106,20 @@ export default function StoryletDisplay({
                  alert(`Critical Error: ${data.error}\n${data.details}`);
                  setIsLoading(false);
                  return;
+            }
+
+            if (onLog && data.result) {
+                if (data.result.resolvedEffects && Array.isArray(data.result.resolvedEffects)) {
+                    data.result.resolvedEffects.forEach((logLine: string) => {
+                        onLog(`[SERVER] ${logLine}`, 'FX');
+                    });
+                }
+                
+                if (data.result.errors && Array.isArray(data.result.errors)) {
+                    data.result.errors.forEach((err: string) => {
+                        onLog(`[SERVER ERROR] ${err}`, 'FX');
+                    });
+                }
             }
 
             onQualitiesUpdate(data.newQualities, data.newDefinitions); 

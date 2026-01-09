@@ -421,7 +421,7 @@ export function CharacterInspector({ characterId, storyId, worldQualities, setti
                                                 <span style={{ marginLeft: '10px', fontSize: '0.8rem', color: 'var(--tool-text-dim)', fontWeight: 'normal' }}>({filteredQualities.length})</span>
                                             </h3>
                                             <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
-                                                Dynamic qualities (marked <span style={{ background: 'var(--tool-accent-mauve)', color: 'var(--tool-text-header)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.7rem' }}>DYN</span>) were created by game logic for this specific character.
+                                                Dynamic qualities (marked <span style={{ background: 'var(--tool-accent-mauve)', color: 'var(--tool-text-header)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.7rem' }}>DYN</span>) are not updated by central quality definitions.
                                             </p>
                                         </div>
                                         <div style={{ padding: '1rem 2rem' }}>

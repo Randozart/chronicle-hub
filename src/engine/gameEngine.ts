@@ -19,6 +19,8 @@ type ScheduleInstruction = any;
 
 export class GameEngine implements EngineContext {
     // === STATE (EngineContext Implementation) ===
+    public _logger?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void;
+
     public qualities: PlayerQualities;
     public worldQualities: PlayerQualities;
     public worldContent: WorldConfig;
@@ -37,13 +39,15 @@ export class GameEngine implements EngineContext {
         initialQualities: PlayerQualities,
         worldContent: WorldConfig,
         currentEquipment: Record<string, string | null> = {},
-        worldQualities: PlayerQualities = {}
+        worldQualities: PlayerQualities = {},
+        logger?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void 
     ) {
         this.qualities = JSON.parse(JSON.stringify(initialQualities));
         this.worldContent = worldContent;
         this.equipment = currentEquipment;
         this.worldQualities = worldQualities;
         this.resolutionRoll = Math.random() * 100;
+        this._logger = logger; 
     }
 
     public setQualities(newQualities: PlayerQualities): void { this.qualities = JSON.parse(JSON.stringify(newQualities)); }
@@ -91,6 +95,9 @@ export class GameEngine implements EngineContext {
 }
 
     public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
+         if (this._logger && rawText) {
+            this._logger(rawText, 'EVAL');
+        }
         return evaluateScribeText(
             rawText, 
             this.getEffectiveQualitiesProxy(),
@@ -105,6 +112,9 @@ export class GameEngine implements EngineContext {
     }
 
     public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
+        if (this._logger && expression) {
+            this._logger(expression, 'COND');
+        }
         return evaluateScribeCondition(
             expression, 
             this.getEffectiveQualitiesProxy(),
@@ -254,7 +264,6 @@ export class GameEngine implements EngineContext {
     }
 
     // === UTILS ===
-
     private traceLog(message: string, depth: number, type?: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR') {
         let prefix = depth > 0 ? '|-- ' : '';
         if (depth > 1) {
@@ -265,7 +274,13 @@ export class GameEngine implements EngineContext {
         if (type === 'ERROR') icon = '❌ ';
         if (type === 'WARN') icon = '⚠ ';
 
-        this.executedEffectsLog.push(`${prefix}${icon}${message}`);
+        const fullMessage = `${prefix}${icon}${message}`;
+        this.executedEffectsLog.push(fullMessage);
+        
+        // Also send to the live UI logger
+        if (this._logger) {
+            this._logger(fullMessage, 'FX');
+        }
     }
 
     private evaluateChallenge(challengeString?: string): SkillCheckResult {

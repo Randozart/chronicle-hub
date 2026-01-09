@@ -12,7 +12,12 @@ export function changeQuality(
     if (!def) {
         const msg = `[GameEngine] Unknown quality '${qid}'. Skipping.`;
         console.warn(msg);
+        
         ctx.errors.push(msg);
+        
+        if (ctx._logger) {
+            ctx._logger(msg, 'FX'); 
+        }
         return;
     }
 
@@ -32,14 +37,9 @@ export function changeQuality(
     }
 
     const qState = targetState[effectiveQid] as any;
-    
-    // --- FIX 1: Capture state BEFORE modification ---
     const levelBefore = qState.level || 0;
     const cpBefore = qState.changePoints || 0;
 
-    // --- FIX 2: Ensure State Type matches Definition Type ---
-    // This fixes issues where existing qualities don't switch to Pyramidal logic
-    // even if you changed them in the editor.
     if (qState.type !== def.type) {
         qState.type = def.type;
     }
@@ -62,7 +62,6 @@ export function changeQuality(
                     }
                 }
                 
-                // Pyramidal Logic: Manipulate CP, then calculate level
                 if (op === '++') qState.changePoints += 1;
                 else if (op === '--') qState.changePoints -= 1;
                 else if (op === '+=') qState.changePoints += numValue;
@@ -74,7 +73,6 @@ export function changeQuality(
                 qState.changePoints = 0; 
             }
         } else {
-            // Discrete/Counter Logic
             if (isIncremental) {
                 const isAdd = op === '++' || op === '+=';
                 const qty = (op === '++' || op === '--') ? 1 : numValue;
@@ -103,7 +101,6 @@ export function changeQuality(
             }
         }
         
-        // Cap Checks
         if (def.max) {
             const max = Number(ctx.evaluateText(`{${def.max}}`)) || Infinity;
             if (qState.level > max) { 
@@ -116,7 +113,6 @@ export function changeQuality(
     }
 
     const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
-    
     const context = { qid: effectiveQid, state: qState };
     const displayName = ctx.evaluateText(def.name || effectiveQid, context); 
     
@@ -128,11 +124,7 @@ export function changeQuality(
     else if (qState.level < levelBefore) changeText = decreaseDesc || `${displayName} decreased.`;
     else if (qState.type === QualityType.String) changeText = `${displayName} is now ${qState.stringValue}`;
 
-    // For Pyramidal, if level didn't change but CP did, we still want to notify
     if (!changeText && qState.type === QualityType.Pyramidal && qState.changePoints !== cpBefore) {
-         // Optionally suppress text for minor CP gains if no description exists, 
-         // but we need the object in the list for the Bar to render.
-         // We set changeText to displayName so the Bar has a label.
          changeText = displayName;
     }
 
@@ -147,7 +139,7 @@ export function changeQuality(
             type: def.type, 
             category: def.category,
             levelBefore: levelBefore, 
-            cpBefore: cpBefore, // --- FIX 3: Pass the actual CP before ---
+            cpBefore: cpBefore,
             levelAfter: qState.level, 
             cpAfter: qState.changePoints,
             stringValue: qState.stringValue, 
@@ -220,8 +212,6 @@ export function batchChangeQuality(
 
 export function updatePyramidalLevel(ctx: EngineContext, qState: any, def: QualityDefinition): void {
     const cpCap = def.cp_cap ? Number(ctx.evaluateText(`{${def.cp_cap}}`)) || Infinity : Infinity;
-    // Formula: Level N requires N+1 CP. 
-    // e.g. Level 1 needs 2 CP to reach Level 2.
     let cpNeeded = Math.min(qState.level + 1, cpCap);
     
     while (qState.changePoints >= cpNeeded && cpNeeded > 0) {

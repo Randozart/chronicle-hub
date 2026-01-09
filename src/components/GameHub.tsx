@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage, WorldConfig } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
@@ -59,6 +59,45 @@ interface GameHubProps {
     isPlaytesting?: boolean;
 }
 
+const PlaytestLogger = ({ logs, onClear }: { logs: { message: string, type: string }[], onClear: () => void }) => {
+    const logContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        // Auto-scroll to bottom
+        if (logContainerRef.current) {
+            logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+        }
+    }, [logs]);
+
+    const typeColor: Record<string, string> = {
+        'EVAL': 'var(--accent-highlight)',
+        'COND': 'var(--warning-color)',
+        'FX': 'var(--success-color)'
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', bottom: 20, left: 20, width: '450px', height: '300px',
+            background: 'var(--bg-panel)', border: '1px solid var(--tool-border)',
+            borderRadius: 'var(--border-radius)', boxShadow: 'var(--shadow-modal)',
+            zIndex: 10000, display: 'flex', flexDirection: 'column'
+        }}>
+            <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--tool-border)'}}>
+                <h4 style={{ margin: 0, color: 'var(--tool-text-header)'}}>ScribeScript Live Log</h4>
+                <button onClick={onClear} style={{ background: 'var(--bg-item)', border: '1px solid var(--tool-border)', color: 'var(--tool-text-dim)', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>Clear</button>
+            </div>
+            <div ref={logContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                {logs.map((log, index) => (
+                    <div key={index} style={{ display: 'flex', borderBottom: '1px solid var(--tool-bg-header)' }}>
+                        <span style={{ color: typeColor[log.type] || 'var(--tool-text-dim)', padding: '4px 8px', flexShrink: 0 }}>[{log.type}]</span>
+                        <pre style={{ margin: 0, padding: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: 'var(--tool-text-main)' }}>{log.message}</pre>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 export default function GameHub(props: GameHubProps) {
     const router = useRouter();
 
@@ -78,10 +117,24 @@ export default function GameHub(props: GameHubProps) {
     const [showHiddenQualities, setShowHiddenQualities] = useState(false);
     const [showInspector, setShowInspector] = useState(false);
     const [isMounted, setIsMounted] = useState(false); // Add this state
+    const [logs, setLogs] = useState<{ message: string, type: 'EVAL' | 'COND' | 'FX', timestamp: number }[]>([]);
+    const [showLogger, setShowLogger] = useState(false);
+    const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
+
+    const handleLog = useCallback((message: string, type: 'EVAL' | 'COND' | 'FX') => {
+        logQueue.current.push({ message, type });
+    }, []);
 
     useEffect(() => {
-        setIsMounted(true); // This runs only on the client
+        setIsMounted(true); 
     }, []);
+
+    useEffect(() => {
+        if (logQueue.current.length > 0) {
+            setLogs(prev => [...prev, ...logQueue.current.map(log => ({ ...log, timestamp: Date.now() }))]);
+            logQueue.current = [];
+        }
+    }, [character, location, activeEvent, activeResolution]);
 
     const deckIds = useMemo(() => 
         location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -292,8 +345,8 @@ export default function GameHub(props: GameHubProps) {
     }), [props.settings, mergedQualityDefs, props.deckDefs, props.locations, props.regions, props.imageLibrary, props.categories, props.markets, props.instruments, props.musicTracks]);
     
     const renderEngine = useMemo(() => 
-        new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState),
-        [character.qualities, worldConfig, character.equipment, props.worldState]
+        new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState, props.isPlaytesting ? handleLog : undefined),
+        [character.qualities, worldConfig, character.equipment, props.worldState, props.isPlaytesting, handleLog]
     );
 
     
@@ -341,11 +394,57 @@ export default function GameHub(props: GameHubProps) {
     const sidebarTab = props.settings.tabLocation === 'sidebar';
 
     const buildSidebar = () => {
-    if (sidebarTab) {
+        // This is the version for themes like "Parchment" where tabs are in the sidebar
+        if (sidebarTab) {
+            return (
+                <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div className="sidebar-content-scroll">
+                        <TabBar /> 
+                        <div className="action-box">
+                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
+                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                        </div>
+                        <CharacterSheet 
+                            qualities={character.qualities} 
+                            equipment={character.equipment} 
+                            qualityDefs={mergedQualityDefs} 
+                            settings={props.settings} 
+                            categories={props.categories}
+                            engine={renderEngine} 
+                            showHidden={showHiddenQualities}
+                        />                    
+                        {props.isPlaytesting && (
+                            <div style={{ marginTop: '2rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
+                                <h4 style={{ color: 'var(--warning-color)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--tool-text-dim)' }}>
+                                        <input type="checkbox" checked={showHiddenQualities} onChange={e => setShowHiddenQualities(e.target.checked)} />
+                                        Show Hidden Qualities
+                                    </label>
+                                    <button onClick={() => setShowInspector(true)} style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                        Open Character Inspector
+                                    </button>
+                                    <button onClick={() => setShowLogger(prev => !prev)} style={{ background: showLogger ? 'var(--tool-accent)' : 'var(--tool-bg-input)', color: showLogger ? 'var(--tool-text-header)' : 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                        {showLogger ? 'Hide Live Log' : 'Show Live Log'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="sidebar-footer">
+                        <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
+                    </div>
+                </div>
+            );
+        }
+        // This is the version for themes like "Detective Noir" where tabs are in the main content area
         return (
             <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div className="sidebar-content-scroll">
-                    <TabBar /> 
+                <div className="sidebar-header">
+                    <WalletHeader qualities={character.qualities} qualityDefs={mergedQualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
+                </div>
+                <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
                     <div className="action-box">
                         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
@@ -356,91 +455,33 @@ export default function GameHub(props: GameHubProps) {
                         qualityDefs={mergedQualityDefs} 
                         settings={props.settings} 
                         categories={props.categories}
-                        engine={renderEngine} 
+                        engine={renderEngine}
                         showHidden={showHiddenQualities}
-                    />                    
+                    />
                     {props.isPlaytesting && (
-                        <div style={{ marginTop: '2rem', borderTop: '1px dashed #666', paddingTop: '1rem', paddingBottom: '2rem' }}>
-                            <h4 style={{ color: '#e5c07b', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
+                        <div style={{ marginTop: '2rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
+                            <h4 style={{ color: 'var(--warning-color)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: '#aaa' }}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={showHiddenQualities} 
-                                        onChange={e => setShowHiddenQualities(e.target.checked)} 
-                                    />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--tool-text-dim)' }}>
+                                    <input type="checkbox" checked={showHiddenQualities} onChange={e => setShowHiddenQualities(e.target.checked)} />
                                     Show Hidden Qualities
                                 </label>
-                                <button 
-                                    onClick={() => setShowInspector(true)}
-                                    style={{ 
-                                        background: '#2c313a', color: '#61afef', border: '1px solid #444', 
-                                        padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
-                                    }}
-                                >
+                                <button onClick={() => setShowInspector(true)} style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
                                     Open Character Inspector
                                 </button>
+                                {/* <button onClick={() => setShowLogger(prev => !prev)} style={{ background: showLogger ? 'var(--tool-accent)' : 'var(--tool-bg-input)', color: showLogger ? 'var(--tool-text-header)' : 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                    {showLogger ? 'Hide Live Log' : 'Show Live Log'}
+                                </button> */}
                             </div>
                         </div>
                     )}
                 </div>
-                
-                <div className="sidebar-footer">
+                <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
                 </div>
             </div>
         );
-    }
-    return (
-        <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div className="sidebar-header">
-                <WalletHeader qualities={character.qualities} qualityDefs={mergedQualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
-            </div>
-            <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
-                <div className="action-box">
-                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
-                    <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
-                </div>
-                <CharacterSheet 
-                    qualities={character.qualities} 
-                    equipment={character.equipment} 
-                    qualityDefs={mergedQualityDefs} 
-                    settings={props.settings} 
-                    categories={props.categories}
-                    engine={renderEngine}
-                    showHidden={showHiddenQualities}
-                />
-                {props.isPlaytesting && (
-                    <div style={{ marginTop: '2rem', borderTop: '1px dashed #666', paddingTop: '1rem', paddingBottom: '2rem' }}>
-                        <h4 style={{ color: '#e5c07b', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: '#aaa' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={showHiddenQualities} 
-                                    onChange={e => setShowHiddenQualities(e.target.checked)} 
-                                />
-                                Show Hidden Qualities
-                            </label>
-                            <button 
-                                onClick={() => setShowInspector(true)}
-                                style={{ 
-                                    background: '#2c313a', color: '#61afef', border: '1px solid #444', 
-                                    padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
-                                }}
-                            >
-                                Open Character Inspector
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-            <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
-            </div>
-        </div>
-    );
-};
+    };
 
 
     const buildMainContent = () => {
@@ -559,6 +600,7 @@ export default function GameHub(props: GameHubProps) {
                         characterId={character.characterId} 
                         engine={renderEngine} 
                         isPlaytesting={props.isPlaytesting}
+                        onLog={props.isPlaytesting ? handleLog : undefined} 
                     />
                 </div>
             );
@@ -671,6 +713,12 @@ export default function GameHub(props: GameHubProps) {
                 />,
                 document.body 
             )}
+             {isMounted && props.isPlaytesting && showLogger && createPortal(
+            <div data-theme="default">
+                <PlaytestLogger logs={logs} onClear={() => setLogs([])} />
+            </div>,
+            document.body
+        )}
         </div>
     );
 }

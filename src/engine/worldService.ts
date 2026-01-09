@@ -182,3 +182,29 @@ export const updateStoryletOrCard = async (
 
     return result.acknowledged;
 };
+
+export const deleteStoryletOrCard = async (
+    worldId: string,
+    collection: 'storylets' | 'opportunities',
+    id: string
+): Promise<boolean> => {
+    try {
+        const client = await clientPromise;
+        const db = client.db(DB_NAME);
+
+        const result = await db.collection(collection).deleteOne({ worldId, id });
+
+        if (result.acknowledged && result.deletedCount > 0) {
+            const tag = `storylets-${worldId}`;
+            console.log(`[Cache] Invalidating tag '${tag}' due to deletion of ${id}`);
+            
+            revalidateTag(tag, ''); 
+        }
+
+        return result.acknowledged;
+
+    } catch (e) {
+        console.error(`Error deleting ${collection}:`, e);
+        return false;
+    }
+};
