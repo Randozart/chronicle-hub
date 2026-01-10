@@ -188,7 +188,7 @@ export interface WorldSettings {
     aiDisclaimer?: string; 
 }
 
-export interface DeckDefinition { 
+export interface DeckDefinition extends VersionedEntity { 
     id: string; 
     name?: string; 
     saved: string; 

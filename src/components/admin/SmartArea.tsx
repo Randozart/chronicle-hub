@@ -23,14 +23,14 @@ const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), {
 });
 
 interface Props {
-    label?: string;
+    label?: React.ReactNode;
     value: string;
     onChange: (val: string) => void;
     storyId: string;
     placeholder?: string;
     minHeight?: string;
     mode?: 'text' | 'condition' | 'effect';
-    subLabel?: string;
+    subLabel?: React.ReactNode; 
     initialTab?: 'variable' | 'conditional' | 'challenge' | 'random' | 'effect' | 'timer';
     contextQualityId?: string; 
     qualityDefs?: QualityDefinition[];

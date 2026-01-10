@@ -21,6 +21,23 @@ interface Props {
     guardRef: { current: FormGuard | null };
 }
 
+// Helper for ScribeScript Accessor Hints
+const Accessor = ({ code }: { code: string }) => (
+    <span style={{ 
+        fontFamily: 'monospace', 
+        fontSize: '0.75em', 
+        color: 'var(--tool-accent)', 
+        background: 'var(--tool-bg-sidebar)', 
+        padding: '1px 4px', 
+        borderRadius: '3px', 
+        border: '1px solid var(--tool-border)',
+        marginLeft: '8px',
+        fontWeight: 'normal'
+    }}>
+        {code}
+    </span>
+);
+
 export default function QualityMainForm({ initialData, settings, onSave, onDelete, onDuplicate, storyId, qualityDefs, guardRef }: Props) {
     
     // 1. Hook Initialization
@@ -104,7 +121,12 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         </span>
                     )}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)', fontFamily: 'monospace' }}>v{form.version || 1}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)', fontFamily: 'monospace' }}>
+                        Accessor: <span style={{ color: 'var(--tool-accent)' }}>${form.id}</span>
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)', fontFamily: 'monospace' }}>v{form.version || 1}</span>
+                </div>
             </div>
 
             {/* Scrollable Body */}
@@ -113,10 +135,18 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                 {/* 1. Core Info */}
                 <div className="form-row">
                     <div className="form-group" style={{ flex: 2 }}>
-                        <SmartArea label="Name" value={form.name || ''} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" contextQualityId={form.id} qualityDefs={qualityDefs} />
+                        <SmartArea 
+                            label={<span>Display Name <Accessor code="$.name" /></span>}
+                            value={form.name || ''} 
+                            onChange={v => handleChange('name', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            contextQualityId={form.id} 
+                            qualityDefs={qualityDefs} 
+                        />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
-                        <label className="form-label">Type</label>
+                        <label className="form-label">Type <Accessor code="$.type" /></label>
                         <select value={form.type} onChange={e => handleChange('type', e.target.value as any)} className="form-select">
                             <option value="P">Pyramidal</option>
                             <option value="C">Counter</option>
@@ -134,7 +164,7 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         <input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" placeholder="Items.Weapons" />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
-                        <label className="form-label">Sort Order</label>
+                        <label className="form-label">Sort Order <Accessor code="$.ordering" /></label>
                         <input type="number" value={form.ordering || 0} onChange={e => handleChange('ordering', parseInt(e.target.value))} className="form-input" />
                     </div>
                 </div>
@@ -142,10 +172,17 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                 {/* 2. Display & Image */}
                 <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
-                        <SmartArea label="Category (Logic)" value={form.category || ''} onChange={v => handleChange('category', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
+                        <SmartArea 
+                            label={<span>Category <Accessor code="$.category" /></span>}
+                            value={form.category || ''} 
+                            onChange={v => handleChange('category', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            qualityDefs={qualityDefs} 
+                        />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
-                        <label className="form-label">Image Code</label>
+                        <label className="form-label">Image Code <Accessor code="$.image" /></label>
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <div style={{ flex: 1 }}>
                                 <SmartArea value={form.image || ''} onChange={v => handleChange('image', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
@@ -155,9 +192,16 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     </div>
                 </div>
 
-                <SmartArea label="Description" value={form.description || ''} onChange={v => handleChange('description', v)} storyId={storyId} minHeight="80px" qualityDefs={qualityDefs} />
+                <SmartArea 
+                    label={<span>Description <Accessor code="$.description" /></span>}
+                    value={form.description || ''} 
+                    onChange={v => handleChange('description', v)} 
+                    storyId={storyId} 
+                    minHeight="80px" 
+                    qualityDefs={qualityDefs} 
+                />
 
-                {/* 3. Progression Logic - Replaced hex #e5c07b with var(--warning-color) */}
+                {/* 3. Progression Logic */}
                 {(form.type === 'P' || form.type === 'C' || form.type === 'T') && (
                     <div className="special-field-group" style={{ borderColor: 'var(--warning-color)', marginTop: '1rem' }}>
                         <label className="special-label" style={{ color: 'var(--warning-color)' }}>Progression Limits</label>
@@ -177,15 +221,18 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     </div>
                 )}
 
-                {/* 4. Text Variants - Replaced hex #c678dd with var(--tool-accent-mauve) */}
+                {/* 4. Text Variants */}
                 <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Text Variants</label>
-                    <p className="special-desc">Access via <code>$quality.property</code></p>
+                    <p className="special-desc">Custom properties accessed via accessor syntax.</p>
                     
                     <div style={{ display: 'grid', gap: '10px', marginTop: '1rem' }}>
                         {Object.entries(form.text_variants || {}).map(([key, val]) => (
                             <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                <div style={{ width: '100px', paddingTop: '8px', fontWeight: 'bold', textAlign: 'right', fontSize:'0.8rem', color: 'var(--tool-text-main)' }}>.{key}</div>
+                                <div style={{ width: '140px', paddingTop: '8px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-main)', fontWeight: 'bold' }}>{key}</span>
+                                    <Accessor code={`$.${key}`} />
+                                </div>
                                 <div style={{ flex: 1 }}>
                                     <SmartArea value={val as string} onChange={v => updateVariant(key, v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
                                 </div>
@@ -194,12 +241,12 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         ))}
                     </div>
                     <div style={{ display: 'flex', gap: '10px', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--tool-border)' }}>
-                        <input value={newVariantKey} onChange={e => setNewVariantKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="new_key" className="form-input" />
+                        <input value={newVariantKey} onChange={e => setNewVariantKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="new_property_key" className="form-input" />
                         <button onClick={addVariant} className="save-btn" style={{ width: 'auto', padding: '0.4rem 1rem' }}>+ Add</button>
                     </div>
                 </div>
 
-                {/* 5. Behavior Tags - Replaced hex #98c379 with var(--success-color) */}
+                {/* 5. Behavior Tags */}
                 <div className="special-field-group" style={{ borderColor: 'var(--success-color)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--success-color)' }}>Behavior</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -213,12 +260,19 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         )}
                     </div>
                     <div style={{ marginTop: '1rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Tags</label>
-                        <input value={form.tags?.join(', ') || ''} onChange={e => handleRawTagsChange(e.target.value)} className="form-input" />
+                        <SmartArea
+                            label="Raw Tags (Comma Separated)"
+                            value={form.tags?.join(', ') || ''} 
+                            onChange={handleRawTagsChange}
+                            storyId={storyId}
+                            minHeight="38px"
+                            qualityDefs={qualityDefs}
+                            placeholder="tag1, tag2"
+                        />
                     </div>
                 </div>
 
-                {/* 6. Item Specifics - Replaced hex #61afef with var(--tool-accent) */}
+                {/* 6. Item Specifics */}
                 {(form.type === 'E' || form.type === 'I') && (
                     <div className="form-group" style={{ borderTop: '1px solid var(--tool-border)', paddingTop: '1rem', marginTop: '1rem' }}>
                         <label className="special-label" style={{color: 'var(--tool-accent)'}}>Item Logic</label>

@@ -65,14 +65,14 @@ export default function ScribeEditor({
         <div 
             className={`scribe-editor-wrapper ${scopeClass}`}
             style={{
-                // UPDATED: Use the specific code editor background variable
                 background: 'var(--tool-bg-code-editor)', 
                 fontSize: '0.9rem',
                 lineHeight: '1.5',
                 position: 'relative',
                 display: 'flex', 
-                overflow: 'hidden',
-                minHeight: minHeight
+                overflow: 'hidden', // Contain floats/margins
+                minHeight: minHeight,
+                width: '100%', // Ensure it respects parent width
             }}
         >
             {/* LINE NUMBER GUTTER */}
@@ -106,10 +106,13 @@ export default function ScribeEditor({
             {/* EDITOR AREA */}
             <div style={{ 
                 flex: 1, 
+                // CRITICAL FIX: ScribeScript wraps (hidden X), Ligature scrolls (auto X)
                 overflowX: isLigature ? 'auto' : 'hidden', 
-                position: 'relative'
+                position: 'relative',
+                width: isLigature ? 'auto' : '0', // Hack to force flex child to respect container width for wrapping
+                minWidth: '100%'
             }}>
-                {/* Error Underlines / Backgrounds */}
+                {/* Error Underlines */}
                 {errors.length > 0 && (
                     <div style={{ position: 'absolute', top: '10px', left: 0, width: '100%', pointerEvents: 'none', zIndex: 0 }}>
                          {errors.map((err, i) => (
@@ -119,7 +122,6 @@ export default function ScribeEditor({
                                  left: 0,
                                  width: '100%',
                                  height: '21px',
-                                 // UPDATED: Use the theme's bg variables for better legibility in light mode
                                  background: err.severity === 'error' 
                                     ? 'linear-gradient(90deg, var(--danger-bg) 0%, transparent 100%)' 
                                     : 'linear-gradient(90deg, var(--warning-bg) 0%, transparent 100%)',
@@ -148,7 +150,12 @@ export default function ScribeEditor({
                         minHeight: minHeight,
                         color: 'var(--tool-text-main)',
                         background: 'transparent',
+                        
+                        // CRITICAL WRAP SETTINGS
                         whiteSpace: isLigature ? 'pre' : 'pre-wrap', 
+                        wordBreak: isLigature ? 'normal' : 'break-word',
+                        overflowWrap: isLigature ? 'normal' : 'anywhere',
+                        
                         minWidth: isLigature ? 'max-content' : '100%',
                         lineHeight: '21px',
                         zIndex: 1
