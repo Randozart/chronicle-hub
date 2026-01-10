@@ -20,12 +20,9 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
     
     if (eventsToFire.length === 0) return character;
 
-    //console.log(`[LivingStory] Processing ${eventsToFire.length} events for ${character.characterId}`);
-
     const gameData = await getWorldConfig(character.storyId);
     
     // Instantiate Engine to apply effects
-    // We pass the character's current state. The engine will mutate a copy, so we need to grab it back.
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
 
     // Keep track of events to remove or re-schedule
@@ -37,17 +34,12 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
 
         // 1. APPLY EFFECT
         if (event.scope === 'category') {
-            // Batch Operation: Find all qualities in this category
-            const categoryName = event.targetId; // targetId holds category name for scope='category'
-            
+            const categoryName = event.targetId;
             const affectedQids = Object.values(gameData.qualities)
                 .filter(q => q.category?.split(',').map(c => c.trim()).includes(categoryName))
                 .map(q => q.id);
 
-            //console.log(`[LivingStory] Batch executing on category '${categoryName}'. Qualities: ${affectedQids.join(', ')}`);
-
             for (const qid of affectedQids) {
-                // Construct effect string: "$quality += 1"
                 const effectString = `$${qid} ${event.op} ${event.value}`;
                 engine.applyEffects(effectString);
             }
@@ -59,7 +51,6 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
 
         // 2. HANDLE RECURRENCE
         if (event.recurring && event.intervalMs && event.intervalMs > 0) {
-            
             const oldTriggerTime = new Date(event.triggerTime).getTime();
             const nextTriggerTime = new Date(oldTriggerTime + event.intervalMs);
             
@@ -67,29 +58,22 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
                 ...event,
                 instanceId: uuidv4(),
                 triggerTime: nextTriggerTime,
-                // recurring: true // (Implicitly copied via ...event)
             });
-            //console.log(`[LivingStory] Re-scheduling recurring event...`);
         }
     }
 
     // 3. UPDATE CHARACTER STATE
     character.qualities = engine.getQualities();
 
-    // NEW: Capture dynamic qualities (e.g., from %new) and merge them into character doc
     const newDefinitions = engine.getDynamicQualities();
     if (Object.keys(newDefinitions).length > 0) {
         character.dynamicQualities = {
             ...(character.dynamicQualities || {}),
             ...newDefinitions
         };
-        //console.log(`[LivingStory] Persisting ${Object.keys(newDefinitions).length} dynamic qualities.`);
     }
     
-    // Remove fired events
     character.pendingEvents = character.pendingEvents.filter(e => !eventsToRemoveIds.has(e.instanceId));
-    
-    // Add recurrences
     character.pendingEvents.push(...newRecurrences);
     
     // 4. SAVE
@@ -113,7 +97,6 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
     for (const instr of removals) {
         const { scope, targetId, target } = instr; 
         
-        // FIX: Explicitly type 'e' as PendingEvent
         let matches: PendingEvent[] = character.pendingEvents.filter((e: PendingEvent) => 
             e.scope === scope && e.targetId === targetId
         );
@@ -122,30 +105,23 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
 
         // Sort based on target type
         if (target.type === 'first') {
-            // FIX: Explicitly type 'a' and 'b'
             matches.sort((a: PendingEvent, b: PendingEvent) => new Date(a.triggerTime).getTime() - new Date(b.triggerTime).getTime());
         } else if (target.type === 'last') {
             matches.sort((a: PendingEvent, b: PendingEvent) => new Date(b.triggerTime).getTime() - new Date(a.triggerTime).getTime());
         }
 
-        // Slice the count
         const count = target.count || (target.type === 'all' ? Infinity : 1);
-        
-        // FIX: Explicitly type 'toRemove'
         const toRemove: PendingEvent[] = matches.slice(0, count);
-        
-        // FIX: Explicitly type 'e' inside map
         const toRemoveIds = new Set(toRemove.map((e: PendingEvent) => e.instanceId));
 
         // Remove them
         character.pendingEvents = character.pendingEvents.filter((e: PendingEvent) => !toRemoveIds.has(e.instanceId));
     }
 
-    // 2. PROCESS ADDITIONS (This part was fine, but including context)
+    // 2. PROCESS ADDITIONS
     for (const instr of additions) {
         if (instr.op && instr.intervalMs) {
             
-            // CHANGED: Check 'unique' boolean flag
             if (instr.unique) {
                 const exists = character.pendingEvents.some(e => 
                     e.scope === instr.scope && 
@@ -163,10 +139,7 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
                 op: instr.op,
                 value: instr.value,
                 triggerTime: new Date(Date.now() + instr.intervalMs),
-                
-                // CHANGED: Map instruction flag to event property
                 recurring: !!instr.recurring,
-                
                 intervalMs: instr.intervalMs,
                 description: instr.description
             };
@@ -218,7 +191,7 @@ export const getCharactersList = async (userId: string, storyId: string) => {
 
     return chars.map(c => {
         const portraitQ = c.qualities?.['player_portrait'];
-        const portraitCode = (portraitQ && portraitQ.type === 'S') ? portraitQ.stringValue : null;
+        const portraitCode = (portraitQ && portraitQ.type === 'S') ? (portraitQ as any).stringValue : null;
 
         return {
             characterId: c.characterId || c._id.toString(),
@@ -235,7 +208,6 @@ export const getOrCreateCharacter = async (
     storyId: string,
     choices?: Record<string, string>
 ): Promise<CharacterDocument> => {
-    //console.log(`[CharCreate] Starting for ${storyId}`);
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
@@ -245,21 +217,24 @@ export const getOrCreateCharacter = async (
     
     // PHASE 1: Direct Values
     for (const key in rules) {
-        // ... (standard logic)
         const qid = key.replace('$', '');
-        const ruleObj = rules[key]; // Now an object or string
-        let rule = typeof ruleObj === 'string' ? ruleObj : ruleObj.rule;
+        const ruleObj = rules[key];
 
+        // --- FIX: Safety check for corrupt data ---
+        if (!ruleObj || typeof ruleObj.rule === 'undefined' || ruleObj.rule === null) {
+            console.warn(`[CharCreate] Corrupt rule for key "${key}" in story "${storyId}". Skipping.`);
+            continue;
+        }
+
+        let rule = ruleObj.rule;
         const def = worldContent.qualities[qid];
         let type = def?.type || inferType(rule);
-        
         let value: string | number | null = null;
 
         if (choices && choices[qid] !== undefined) {
              value = choices[qid];
         } else if (rule.includes('|')) {
              // Default to first option logic if needed
-             // ...
         } else if (!isNaN(Number(rule))) {
              value = Number(rule);
         } else if (rule === 'string') {
@@ -283,11 +258,17 @@ export const getOrCreateCharacter = async (
         if (initialQualities[qid]) continue;
         
         const ruleObj = rules[key];
-        const rule = typeof ruleObj === 'string' ? ruleObj : ruleObj.rule;
+        
+        // --- FIX: Safety check for corrupt data ---
+        if (!ruleObj || typeof ruleObj.rule === 'undefined' || ruleObj.rule === null) {
+            console.warn(`[CharCreate] Corrupt rule for key "${key}" in story "${storyId}". Skipping.`);
+            continue;
+        }
+
+        const rule = ruleObj.rule;
 
         if (rule.includes('$') || rule.includes('+') || rule.includes('*') || rule.includes('{')) {
             try {
-                // Use evaluateText for robustness
                 const result = tempEngine.evaluateText(`{${rule}}`);
                 const def = worldContent.qualities[qid];
                 const isNumber = !isNaN(Number(result)) && result.trim() !== "";
@@ -345,23 +326,21 @@ export const getOrCreateCharacter = async (
         const qualityState = newCharacter.qualities[qid];
         const qualityDef = worldContent.qualities[qid];
 
-        // We only care about equippable items that the character is starting with.
         if (qualityDef?.type === QualityType.Equipable && 'level' in qualityState && qualityState.level > 0) {
             initialChanges.push({
                 qid: qid,
                 qualityName: qualityDef?.name || qid,
                 type: QualityType.Equipable,
-                levelBefore: 0, // It came from nothing
+                levelBefore: 0,
                 cpBefore: 0,
-                levelAfter: qualityState.level, // The level it was created with
+                levelAfter: qualityState.level,
                 cpAfter: 0,
-                changeText: "Character started with this item." // A descriptive text
+                changeText: "Character started with this item."
             });
         }
     }
 
     if (initialChanges.length > 0) {
-        //console.log(`[CharCreate] Found ${initialChanges.length} equippable items. Checking for auto-equip.`);
         processAutoEquip(newCharacter, initialChanges, worldContent);
     }
 
