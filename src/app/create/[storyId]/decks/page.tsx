@@ -1,57 +1,187 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { DeckDefinition } from '@/engine/models';
+import { useState, useEffect, use, useRef } from 'react';
+import { DeckDefinition, QualityDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
-import SmartArea from '@/components/admin/SmartArea';
-import BehaviorCard from '@/components/admin/BehaviorCard';
+import DeckMainForm from './components/DeckMainForm'; // New Import
+import InputModal from '@/components/admin/InputModal';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
+import { FormGuard } from '@/hooks/useCreatorForm';
 
 export default function DecksAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
-    const [decks, setDecks] = useState<DeckDefinition[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
     const { showToast } = useToast();
+    
+    // Data State
+    const [decks, setDecks] = useState<DeckDefinition[]>([]);
+    const [qualities, setQualities] = useState<QualityDefinition[]>([]);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
+    // Guard & Navigation State
+    const guardRef = useRef<FormGuard | null>(null);
+    const [pendingId, setPendingId] = useState<string | null>(null);
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+    // Modal State
+    const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        mode: 'create' | 'duplicate';
+        sourceItem?: DeckDefinition;
+    }>({ isOpen: false, mode: 'create' });
+
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        itemToDelete?: string;
+    }>({ isOpen: false, title: '', message: '' });
+
+    // 1. Fetch Data
     useEffect(() => {
-        fetch(`/api/admin/decks?storyId=${storyId}`)
-            .then(res => res.json())
-            .then(data => {
-                const arr = Object.values(data).map((q: any) => q);
-                setDecks(arr);
-            })
-            .finally(() => setIsLoading(false));
+        setIsLoading(true);
+        Promise.all([
+            fetch(`/api/admin/decks?storyId=${storyId}`),
+            fetch(`/api/admin/qualities?storyId=${storyId}`)
+        ]).then(async ([deckRes, qualRes]) => {
+            if (deckRes.ok) {
+                const data = await deckRes.json();
+                const list = Array.isArray(data) ? data : Object.values(data);
+                setDecks(list as DeckDefinition[]);
+            }
+            if (qualRes.ok) {
+                const qData = await qualRes.json();
+                setQualities(Object.values(qData));
+            }
+        }).finally(() => setIsLoading(false));
     }, [storyId]);
 
-    const handleCreate = () => {
-        const newId = prompt("Enter Deck ID (e.g. 'london_deck'):");
-        if (!newId) return;
-        
-        const cleanId = newId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        if (decks.find(d => d.id === cleanId)) { alert("Exists"); return; }
+    // --- NAVIGATION GUARD ---
+    const handleSelectAttempt = (newId: string) => {
+        if (newId === selectedId) return;
+        if (guardRef.current && guardRef.current.isDirty) {
+            setPendingId(newId);
+            setShowUnsavedModal(true);
+        } else {
+            setSelectedId(newId);
+        }
+    };
 
+    const handleConfirmSwitch = async () => {
+        if (guardRef.current) {
+            const success = await guardRef.current.save();
+            if (success) {
+                setShowUnsavedModal(false);
+                if (pendingId) setSelectedId(pendingId);
+                setPendingId(null);
+            }
+        }
+    };
+
+    const handleDiscardSwitch = () => {
+        setShowUnsavedModal(false);
+        if (pendingId) setSelectedId(pendingId);
+        setPendingId(null);
+    };
+
+    // --- CRUD ACTIONS ---
+    const openCreateModal = () => setModalConfig({ isOpen: true, mode: 'create' });
+    const openDuplicateModal = (source: DeckDefinition) => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: source });
+
+    const handleDeleteRequest = (id: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Deck?",
+            message: `Are you sure you want to delete "${id}"? Cards linked to this deck may become inaccessible.`,
+            itemToDelete: id
+        });
+    };
+
+    const handleModalSubmit = async (inputValue: string) => {
+        const cleanId = inputValue.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (decks.find(d => d.id === cleanId)) {
+            showToast("ID already exists.", "error");
+            return;
+        }
+
+        if (modalConfig.mode === 'create') {
+            await performCreate(cleanId);
+        } else if (modalConfig.mode === 'duplicate' && modalConfig.sourceItem) {
+            await performDuplicate(cleanId, modalConfig.sourceItem);
+        }
+    };
+
+    const performCreate = async (newId: string) => {
         const newDeck: DeckDefinition = {
-            id: cleanId,
-            name: "Opportunities", // Default name
+            id: newId,
+            name: "New Deck",
             saved: "True",
             hand_size: "3",
-            deck_size: "0" // 0 = Unlimited
+            deck_size: "0", // 0 = Unlimited
+            version: 1
         };
+        
         setDecks(prev => [...prev, newDeck]);
-        setSelectedId(cleanId);
-        showToast("Deck created. Don't forget to save.", "success");
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'decks', itemId: newId, data: newDeck })
+            });
+            guardRef.current = null;
+            setSelectedId(newId);
+            showToast("Deck created.", "success");
+        } catch(e) {
+            showToast("Failed to create.", "error");
+        }
     };
 
-    const handleSaveSuccess = (updated: DeckDefinition) => {
-        setDecks(prev => prev.map(d => d.id === updated.id ? updated : d));
-        showToast("Deck saved.", "success");
+    const performDuplicate = async (newId: string, source: DeckDefinition) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { _id, ...rest } = source as any; 
+        
+        const newDeck: DeckDefinition = {
+            ...rest,
+            id: newId,
+            name: `${source.name} (Copy)`,
+            version: 1
+        };
+
+        setDecks(prev => [...prev, newDeck]);
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'decks', itemId: newId, data: newDeck })
+            });
+            guardRef.current = null;
+            setSelectedId(newId);
+            showToast("Duplicated successfully.", "success");
+        } catch(e) {
+            showToast("Failed to duplicate.", "error");
+        }
     };
 
-    const handleDeleteSuccess = (id: string) => {
-        setDecks(prev => prev.filter(d => d.id !== id));
-        setSelectedId(null);
-        showToast("Deck deleted.", "info");
+    const performDelete = async () => {
+        const id = confirmModal.itemToDelete;
+        if (!id) return;
+        setConfirmModal({ ...confirmModal, isOpen: false });
+
+        try {
+            await fetch(`/api/admin/config?storyId=${storyId}&category=decks&itemId=${id}`, { method: 'DELETE' });
+            setDecks(prev => prev.filter(d => d.id !== id));
+            if (selectedId === id) setSelectedId(null);
+            showToast("Deleted successfully.", "info");
+        } catch (e) {
+            showToast("Delete failed.", "error");
+        }
+    };
+
+    // List Update
+    const handleListUpdate = (data: DeckDefinition) => {
+        setDecks(prev => prev.map(d => d.id === data.id ? data : d));
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
@@ -59,190 +189,63 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
     return (
         <div className="admin-split-view">
             <AdminListSidebar 
-                title="Decks" 
-                items={decks} 
-                selectedId={selectedId} 
-                onSelect={setSelectedId} 
-                onCreate={handleCreate} 
+                title="Decks"
+                items={decks}
+                selectedId={selectedId}
+                onSelect={handleSelectAttempt}
+                onCreate={openCreateModal}
                 renderItem={(d) => (
                     <div style={{display:'flex', flexDirection:'column'}}>
-                        <span className="item-title">{d.name || "Opportunities"}</span>
+                        <span className="item-title">{d.name || "Unnamed Deck"}</span>
                         <span className="item-subtitle">{d.id}</span>
                     </div>
                 )}
             />
-            <div className="admin-editor-col">
-                {selectedId ? (
-                    <DeckEditor 
-                        key={selectedId} 
+            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {selectedId && decks.find(d => d.id === selectedId) ? (
+                    <DeckMainForm 
                         initialData={decks.find(d => d.id === selectedId)!} 
-                        onSave={handleSaveSuccess}
-                        onDelete={handleDeleteSuccess}
+                        onSave={handleListUpdate}
+                        onDelete={handleDeleteRequest}
+                        onDuplicate={openDuplicateModal}
                         storyId={storyId}
+                        qualityDefs={qualities}
+                        guardRef={guardRef}
                     />
-                ) : <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>Select a deck</div>}
-            </div>
-        </div>
-    );
-}
-
-function DeckEditor({ initialData, onSave, onDelete, storyId }: { initialData: DeckDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
-    const [form, setForm] = useState(initialData);
-    const [isSaving, setIsSaving] = useState(false);
-
-    useEffect(() => setForm(initialData), [initialData]);
-
-    // CTRL+S Handler
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                handleSave();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [form]);
-
-    const isSynced = form.timer === 'sync_actions';
-
-    const handleChange = (field: string, val: any) => setForm(prev => ({ ...prev, [field]: val }));
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        try {
-            const res = await fetch('/api/admin/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: storyId, category: 'decks', itemId: form.id, data: form })
-            });
-            if (res.ok) { onSave(form); } 
-            else { alert("Failed."); }
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
-    };
-
-    const handleDelete = async () => {
-        if (!confirm(`Delete "${form.id}"?`)) return;
-        setIsSaving(true);
-        try {
-            const res = await fetch(`/api/admin/config?storyId=${storyId}&category=decks&itemId=${form.id}`, { method: 'DELETE' });
-            if (res.ok) onDelete(form.id);
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="form-group">
-                <label className="form-label">Deck ID</label>
-                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
-            </div>
-
-            {/* NEW: Display Name Field */}
-            <div className="form-group">
-                <label className="form-label">Display Name</label>
-                <input 
-                    value={form.name || ''} 
-                    onChange={e => handleChange('name', e.target.value)} 
-                    className="form-input" 
-                    placeholder="Opportunities"
-                />
-                <p className="special-desc">The title shown above the cards in the main story view.</p>
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">Visual Style</label>
-                <select 
-                    value={form.card_style || 'default'} 
-                    onChange={e => handleChange('card_style', e.target.value)} 
-                    className="form-select"
-                >
-                    <option value="default">Use Global Setting</option>
-                    <option value="cards">Standard Cards</option>
-                    <option value="rows">List Rows</option>
-                    <option value="scrolling">Horizontal Scroll</option>
-                </select>
-                <p className="special-desc">Overrides the global Opportunity Hand style for this specific deck.</p>
-            </div>
-
-            <div className="form-group" style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
-                <label className="form-label">Regeneration Timer</label>
-                <select 
-                    value={isSynced ? 'sync_actions' : 'custom'}
-                    onChange={(e) => {
-                        if (e.target.value === 'sync_actions') handleChange('timer', 'sync_actions');
-                        else handleChange('timer', '10');
-                    }}
-                    className="form-select"
-                    style={{ marginBottom: '0.5rem' }}
-                >
-                    <option value="sync_actions">Sync with Global Actions</option>
-                    <option value="custom">Custom Duration</option>
-                </select>
-
-                {!isSynced && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input 
-                            type="text" 
-                            value={form.timer || ''} 
-                            onChange={e => handleChange('timer', e.target.value)} 
-                            className="form-input" 
-                            style={{ width: '200px' }}
-                            placeholder="10 or { $speed * 2 }"
-                        />
-                        <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.9rem' }}>minutes</span>
-                    </div>
+                ) : (
+                    <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a deck</div>
                 )}
             </div>
 
-            <div className="form-row">
-                <div className="form-group" style={{ flex: 1 }}>
-                    <SmartArea 
-                        label="Hand Size" 
-                        value={form.hand_size} 
-                        onChange={v => handleChange('hand_size', v)} 
-                        storyId={storyId} 
-                        minHeight="38px" 
-                        placeholder="3"
-                    />
-                </div>
-                <div className="form-group" style={{ flex: 1 }}>
-                    <SmartArea 
-                        label="Deck Size (Cap)" 
-                        value={form.deck_size || ''} 
-                        onChange={v => handleChange('deck_size', v)} 
-                        storyId={storyId} 
-                        minHeight="38px" 
-                        placeholder="0 = Unlimited"
-                    />
-                </div>
-            </div>
-            
-            <div className="form-group">
-                <SmartArea 
-                    label="Draw Cost (Logic)" 
-                    value={form.draw_cost || ''} 
-                    onChange={v => handleChange('draw_cost', v)} 
-                    storyId={storyId} 
-                    minHeight="38px" 
-                    placeholder="optional (e.g. $gold >= 1)"
-                    mode="condition"
-                />
-            </div>
+            {/* Modals */}
+            <InputModal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                onSubmit={handleModalSubmit}
+                title={modalConfig.mode === 'create' ? "Create Deck" : "Duplicate Deck"}
+                description="Unique ID required (e.g. london_deck)."
+                label="Deck ID"
+                placeholder="e.g. intro_deck"
+                defaultValue={modalConfig.mode === 'duplicate' ? `${modalConfig.sourceItem?.id}_copy` : ""}
+                confirmLabel={modalConfig.mode === 'create' ? "Create" : "Duplicate"}
+            />
 
-            <div className="special-field-group" style={{ borderColor: '#c678dd' }}>
-                <label className="special-label" style={{ color: '#c678dd' }}>Behavior</label>
-                <BehaviorCard 
-                    checked={form.saved !== "False"} 
-                    onChange={() => handleChange('saved', form.saved === "False" ? "True" : "False")} 
-                    label="Persistent (Saved)" 
-                    desc="Cards stay in hand when leaving the location." 
-                />
-            </div>
+            <ConfirmationModal 
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant="danger"
+                confirmLabel="Delete"
+                onConfirm={performDelete}
+                onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+            />
 
-            <div className="admin-form-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <button onClick={handleDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete Deck</button>
-                <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
-            </div>
+            <UnsavedChangesModal 
+                isOpen={showUnsavedModal}
+                onSaveAndContinue={handleConfirmSwitch}
+                onDiscard={handleDiscardSwitch}
+                onCancel={() => { setShowUnsavedModal(false); setPendingId(null); }}
+            />
         </div>
     );
 }

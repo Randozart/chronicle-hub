@@ -1,41 +1,58 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Opportunity, QualityDefinition } from '@/engine/models';
 import OptionList from '../../storylets/components/OptionList';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
-import { useToast } from '@/providers/ToastProvider';
+import CommandCenter from '@/components/admin/CommandCenter';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 
 interface Props {
     initialData: Opportunity;
     onSave: (data: Opportunity) => void;
     onDelete: (id: string) => void;
+    onDuplicate: (data: Opportunity) => void;
     qualityDefs: QualityDefinition[]; 
+    guardRef: { current: FormGuard | null };
 }
 
-export default function OpportunityMainForm({ initialData, onSave, onDelete, qualityDefs }: Props) {
-    const [form, setForm] = useState(initialData);
-    const { showToast } = useToast();
+export default function OpportunityMainForm({ initialData, onSave, onDelete, onDuplicate, qualityDefs, guardRef }: Props) {
     
+    // Safety check for storyId (though form assumes it exists)
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
-    useEffect(() => setForm(initialData), [initialData]);
+    // 1. Hook Initialization
+    const { 
+        data: form, 
+        handleChange, 
+        handleSave, 
+        revertChanges,
+        isDirty, 
+        isSaving, 
+        lastSaved 
+    } = useCreatorForm<Opportunity>(
+        initialData, 
+        '/api/admin/opportunities', 
+        { storyId },
+        guardRef
+    );
 
-    const handleChange = (field: keyof Opportunity, val: any) => {
-        setForm(prev => ({ ...prev, [field]: val }));
+    const [showRevertModal, setShowRevertModal] = useState(false);
+
+    if (!form) return <div className="loading-container">Loading...</div>;
+
+    // Helper to update sidebar list after successful save
+    const onSaveClick = async () => {
+        const success = await handleSave();
+        if (success && form) onSave(form);
     };
 
-    useEffect(() => {
-        const handleGlobalSave = () => onSave(form);
-        window.addEventListener('global-save-trigger', handleGlobalSave);
-        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
-    }, [form]);
-
     return (
-        <div className="h-full flex flex-col relative" style={{ color: 'var(--tool-text-main)' }}>
+        <div className="h-full flex flex-col relative" style={{ color: 'var(--tool-text-main)', paddingBottom: '80px' }}>
             
-            {/* HEADER */}
+            {/* HEADER (Cleaned up) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--tool-border)' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
@@ -44,24 +61,18 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, qua
                         onChange={e => handleChange('status', e.target.value)}
                         style={{ 
                             background: form.status === 'published' ? 'var(--success-color)' : 'var(--warning-color)', 
-                            color: '#000', 
-                            fontWeight: 'bold', 
-                            border: 'none', 
-                            padding: '0.3rem', 
-                            borderRadius: '4px' 
+                            color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px' 
                         }}
                     >
                         <option value="draft">DRAFT</option>
                         <option value="published">PUBLISHED</option>
                     </select>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button onClick={() => onDelete(form.id)} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete</button>
-                    <button onClick={() => onSave(form)} className="save-btn" style={{ padding: '0.5rem 1rem' }}>Save</button>
-                </div>
+                <div style={{ fontSize: '0.8rem', color: '#666', fontFamily: 'monospace' }}>v{form.version || 1}</div>
             </div>
             
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem', paddingBottom: '2rem' }}>
+            {/* FORM BODY */}
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem' }}>
                 
                 <div className="form-row">
                     <div style={{ flex: 2 }}>
@@ -126,6 +137,29 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, qua
                     <OptionList options={form.options || []} onChange={(newOpts) => handleChange('options', newOpts)} storyId={storyId} qualityDefs={qualityDefs} />
                 </div>
             </div>
+
+            {/* COMMAND CENTER FOOTER */}
+            <CommandCenter 
+                isDirty={isDirty} 
+                isSaving={isSaving} 
+                lastSaved={lastSaved} 
+                onSave={onSaveClick} 
+                onRevert={() => setShowRevertModal(true)} 
+                onDelete={() => onDelete(form.id)}
+                onDuplicate={() => onDuplicate(form)}
+                itemType="Card"
+            />
+
+            {/* REVERT CONFIRMATION */}
+            <ConfirmationModal
+                isOpen={showRevertModal}
+                title="Discard Changes?"
+                message="Are you sure you want to revert to the last saved state? All unsaved changes will be permanently lost."
+                confirmLabel="Discard Changes"
+                variant="danger"
+                onConfirm={() => { revertChanges(); setShowRevertModal(false); }}
+                onCancel={() => setShowRevertModal(false)}
+            />
         </div>
     );
 }

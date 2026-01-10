@@ -69,6 +69,9 @@
     --bg-overlay: rgba(0, 0, 0, 0.85); /* Dark dimming for modals */
     --bg-input: #111;                  /* Dark input background */
     --shadow-modal: 0 5px 15px rgba(0,0,0,0.5);
+
+    --tool-bg-code-editor: #0d0d0d; 
+    --warning-bg: rgba(229, 192, 123, 0.15); 
 }
 
 
@@ -139,6 +142,11 @@
     --bg-overlay: rgba(255, 255, 255, 0.85); /* Light/Blurry dimming */
     --bg-input: #ffffff;
     --shadow-modal: 0 5px 15px rgba(0,0,0,0.1);
+    
+    --tool-bg-code-editor: #ffffff; 
+
+    --warning-bg: rgba(245, 158, 11, 0.15);
+
 }
 
 :root[data-global-theme='soft-dark'] {
@@ -191,6 +199,9 @@
     --docs-accent-blue: #61afef;
     --docs-accent-green: #98c379;
     --docs-accent-gold: #e5c07b;
+
+    --tool-bg-code-editor: #1e222a; /* Slightly darker than panel */
+    --warning-bg: rgba(209, 154, 102, 0.15);
 }
 
 
@@ -244,6 +255,9 @@
     --docs-accent-blue: #2980b9;
     --docs-accent-green: #27ae60;
     --docs-accent-gold: #d35400;
+
+     --tool-bg-code-editor: #fffefc; /* Warm paper white */
+    --warning-bg: rgba(245, 127, 23, 0.1);
 }
 
 /* --- 5. STORYNEXUS CLASSIC (Slate & Orange) --- */
@@ -306,6 +320,9 @@
     
     /* Fonts: StoryNexus used a Serif for headers */
     --font-main: "Georgia", "Times New Roman", serif;
+
+     --tool-bg-code-editor: #0b1014; /* Deepest Navy/Black */
+    --warning-bg: rgba(243, 156, 18, 0.15);
 }
 
 /* --- 6. STORYNEXUS LIGHT (Twilight / Dusk) --- */
@@ -368,6 +385,9 @@
     
     /* Fonts: The Literary Feel */
     --font-main: "Georgia", "Times New Roman", serif;
+
+     --tool-bg-code-editor: #ffffff;
+    --warning-bg: rgba(221, 107, 32, 0.1);
 }
 
 /* --- THEME PALETTES --- */

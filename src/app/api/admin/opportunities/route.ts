@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWorldAccess } from '@/engine/accessControl';
-import { updateStoryletOrCard, deleteStoryletOrCard } from '@/engine/worldService'; // <-- IMPORT SERVICE FUNCTIONS
+import { updateStoryletOrCard, deleteStoryletOrCard } from '@/engine/worldService';
 import clientPromise from '@/engine/database';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
-// --- GET Request (No changes needed, it's for reading) ---
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
@@ -32,12 +31,10 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// --- POST Request (UPDATED) ---
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const { storyId, data } = body;
-        console.log(`[API: POST /admin/opportunities] Saving opportunity '${data.id}' for story '${storyId}'.`);
 
         // 1. Security & Validation
         if (!await verifyWorldAccess(storyId, 'writer')) {
@@ -46,6 +43,8 @@ export async function POST(request: NextRequest) {
         if (!storyId || !data || !data.id) {
             return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
         }
+        
+        console.log(`[API: POST /admin/opportunities] Saving '${data.id}' (v${data.version || 0})`);
 
         // 2. Data Sanitization (Auto-generate option IDs if missing)
         if (data.options && Array.isArray(data.options)) {
@@ -56,11 +55,14 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // 3. Call Service Layer to Update DB and Invalidate Cache
-        const success = await updateStoryletOrCard(storyId, 'opportunities', data.id, data);
+        // 3. Call Service Layer (Handles Optimistic Locking)
+        const result = await updateStoryletOrCard(storyId, 'opportunities', data.id, data);
         
-        if (success) {
-            return NextResponse.json({ success: true });
+        // 4. Handle Response
+        if (result.success) {
+            return NextResponse.json({ success: true, newVersion: result.newVersion });
+        } else if (result.error === 'CONFLICT') {
+            return NextResponse.json({ error: 'Conflict: Data has changed on server.' }, { status: 409 });
         } else {
             return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
         }
@@ -71,7 +73,6 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// --- DELETE Request (UPDATED) ---
 export async function DELETE(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);

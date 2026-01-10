@@ -86,8 +86,8 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
     };
 
     return (
-        <div className="special-field-group" style={{ borderColor: '#61afef' }}>
-            <label className="special-label" style={{ color: '#61afef' }}>Collaborators</label>
+        <div className="special-field-group" style={{ borderColor: '#555' }}>
+            <label className="special-label" style={{ color: 'var(--tool-text-main' }}>Collaborators</label>
             <p className="special-desc">Invite other users to help write this world.</p>
             
             <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem', marginTop: '1rem' }}>

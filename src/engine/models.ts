@@ -42,7 +42,13 @@ export interface ResolveOption extends LogicGates {
 
 export type PublishStatus = 'draft' | 'published' | 'archived';
 
-interface ContentCommon {
+export interface VersionedEntity {
+    version?: number;
+    lastModifiedBy?: string;
+    lastModifiedAt?: Date;
+}
+
+interface ContentCommon extends VersionedEntity {
     id: string;
     name: string;
     image_code?: string;
@@ -73,7 +79,7 @@ export interface Opportunity extends ContentCommon {
     unlock_if?: string;
 }
 
-export interface QualityDefinition {
+export interface QualityDefinition extends VersionedEntity {
     id: string;
     name?: string;
     description?: string;
@@ -180,9 +186,13 @@ export interface WorldSettings {
     hideProfileIdentity?: boolean;
     attributions?: string; 
     aiDisclaimer?: string; 
+    isPublished?: boolean; 
+    coverImage?: string;
+    summary?: string;
+    tags?: string[];
 }
 
-export interface DeckDefinition { 
+export interface DeckDefinition extends VersionedEntity { 
     id: string; 
     name?: string; 
     saved: string; 
@@ -194,9 +204,14 @@ export interface DeckDefinition {
     card_style?: 'default' | 'cards' | 'rows' | 'scrolling';
 }
 
-export interface MapRegion { 
-    id: string; name: string; image?: string; marketId?: string; }
-export interface LocationDefinition { 
+export interface MapRegion extends VersionedEntity{ 
+    id: string; 
+    name: string; 
+    image?: string; 
+    marketId?: string; 
+}
+
+export interface LocationDefinition extends VersionedEntity {
     id: string; 
     name: string; 
     description?: string;
@@ -237,7 +252,7 @@ export interface ShopStall { id: string;
     source?: string; 
     listings: ShopListing[]; 
 }
-export interface MarketDefinition { 
+export interface MarketDefinition extends VersionedEntity { 
     id: string; 
     name: string; 
     image?: string; 
@@ -259,8 +274,6 @@ export interface WorldConfig {
     instruments: Record<string, InstrumentDefinition>;
     music: Record<string, LigatureTrack>;
 }
-
-// --- RUNTIME STATE ---
 
 export interface BaseQualityState {
     qualityId: string;

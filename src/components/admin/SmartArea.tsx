@@ -5,32 +5,32 @@ import SparkleIcon from '@/components/icons/SparkleIcon';
 import ScribeAssistant from '@/components/admin/ScribeAssistant';
 import dynamic from 'next/dynamic';
 import { LintError, lintScribeScript } from '@/engine/audio/linter';
-import { QualityDefinition, PlayerQualities, QualityType, WorldConfig } from '@/engine/models';
+import { QualityDefinition, PlayerQualities, WorldConfig } from '@/engine/models';
 import { evaluateText } from '@/engine/textProcessor';
 import { GameEngine } from '@/engine/gameEngine';
 
-// FIX 1: Use CSS Variables for Loading State
+// FIX 1: Use CSS Variables for Loading State & Unified Look
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
     loading: () => (
         <div style={{ 
-            minHeight: '38px', 
-            background: 'var(--tool-bg-dark)', 
-            borderRadius: '4px', 
+            height: '100%', minHeight: '38px', 
+            background: 'var(--tool-bg-input)', 
+            borderRadius: 'var(--border-radius)', 
             border: '1px solid var(--tool-border)' 
         }} />
     )
 });
 
 interface Props {
-    label?: string;
+    label?: React.ReactNode;
     value: string;
     onChange: (val: string) => void;
     storyId: string;
     placeholder?: string;
     minHeight?: string;
     mode?: 'text' | 'condition' | 'effect';
-    subLabel?: string;
+    subLabel?: React.ReactNode; 
     initialTab?: 'variable' | 'conditional' | 'challenge' | 'random' | 'effect' | 'timer';
     contextQualityId?: string; 
     qualityDefs?: QualityDefinition[];
@@ -132,19 +132,21 @@ export default function SmartArea({
         onChange(value + prefix + text);
     };
 
+    const hasErrors = errors.length > 0;
+
     return (
         <div className="form-group" ref={containerRef} style={{ position: 'relative', zIndex: showAssistant ? 50 : 1 }}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.25rem', minHeight: '20px' }}>
                 {(label || subLabel) ? (
                     <div>
-                        {label && <label className="form-label" style={{ margin: 0 }}>{label}</label>}
+                        {label && <label className="form-label" style={{ margin: 0, color: 'var(--tool-text-main)'}}>{label}</label>}
                         {subLabel && <p style={{ fontSize: '0.7rem', color: 'var(--tool-text-dim)', margin: 0 }}>{subLabel}</p>}
                     </div>
                 ) : <div />}
                 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto' }}>
-                    {errors.length > 0 && (
+                    {hasErrors && (
                         <span style={{ color: 'var(--danger-color)', fontSize: '0.7rem', fontWeight: 'bold' }}>
                             {errors.length} Issue{errors.length > 1 ? 's' : ''}
                         </span>
@@ -195,7 +197,16 @@ export default function SmartArea({
                 />
             )}
 
-            <div style={{ border: '1px solid var(--tool-border)', borderRadius: '4px', overflow: 'hidden' }}>
+            {/* THE EDITOR CONTAINER */}
+            <div 
+                className={hasErrors ? 'editor-has-errors' : ''}
+                style={{ 
+                    border: hasErrors ? '1px solid var(--danger-color)' : '1px solid var(--tool-border)', 
+                    borderRadius: 'var(--border-radius)', 
+                    overflow: 'hidden',
+                    background: 'var(--tool-bg-input)'
+                }}
+            >
                 <ScribeEditor 
                     value={value} 
                     onChange={onChange} 
@@ -204,15 +215,16 @@ export default function SmartArea({
                     language="scribescript"
                     errors={errors}
                     mode={mode} 
+                    showLineNumbers={hasErrors} 
                 />
             </div>
             
             {showPreview && (
                 <div style={{ 
                     marginTop: '5px', padding: '8px', 
-                    background: 'var(--tool-bg-sidebar)', /* Was #21252b */
+                    background: 'var(--tool-bg-sidebar)', 
                     borderLeft: '3px solid var(--success-color)', borderRadius: '0 4px 4px 0',
-                    color: 'var(--tool-text-main)', /* Was #abb2bf */
+                    color: 'var(--tool-text-main)', 
                     fontSize: '0.85rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap'
                 }}>
                     <strong style={{ color: 'var(--success-color)', fontSize: '0.7rem', textTransform: 'uppercase' }}>
@@ -222,7 +234,7 @@ export default function SmartArea({
                 </div>
             )}
 
-            {errors.length > 0 && !showPreview && (
+            {hasErrors && !showPreview && (
                 <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--danger-color)', fontFamily: 'monospace' }}>
                     <div>Line {errors[0].line}: {errors[0].message}</div>
                     {errors.length > 1 && (
