@@ -8,14 +8,14 @@ import CreateWorldModal from '@/components/dashboard/CreateWorldModal';
 import { signOut } from 'next-auth/react';
 import SystemMessageBanner from '@/components/SystemMessageBanner';
 import { useTheme } from '@/providers/ThemeProvider';
-import MainLogo from '@/components/icons/MainLogo'; // Ensure you have this from previous steps
+import MainLogo from '@/components/icons/MainLogo';
 import ThemeControls from '@/components/ui/ThemeControls';
 
 export default function Dashboard() {
     const { data: session, status } = useSession();
     const { theme } = useTheme();
     
-    const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | any[] | null>(null);
+    const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [activeTab, setActiveTab] = useState<'my' | 'discover'>('my');
     const [platformMsg, setPlatformMsg] = useState<any>(null);
@@ -48,7 +48,42 @@ export default function Dashboard() {
 
     if (status === 'loading') return <div className="loading-container">Loading Studio...</div>;
 
-    const displayList = Array.isArray(data) ? data : (activeTab === 'my' ? (data?.myWorlds || []) : (data?.playedWorlds || []));
+    // --- THE FIX ---
+    // The raw 'data' from the API can be messy. We will create a clean, reliable list here.
+    const getCleanDisplayList = () => {
+        if (!data) return [];
+        
+        // Determine which list to use based on the active tab
+        const sourceList = Array.isArray(data) 
+            ? data 
+            : (activeTab === 'my' ? data.myWorlds : data.playedWorlds);
+
+        if (!Array.isArray(sourceList)) return [];
+
+        // Map over the source list and sanitize each item before it gets to WorldCard
+        return sourceList.map(w => {
+            // Helper to safely convert array-like objects back to arrays
+            const getTagsArray = (tags: any): string[] => {
+                if (Array.isArray(tags)) return tags;
+                if (tags && typeof tags === 'object') {
+                    return Object.values(tags).filter(val => typeof val === 'string') as string[];
+                }
+                return [];
+            };
+
+            return {
+                ...w,
+                // Ensure tags is always a real array
+                tags: getTagsArray(w.tags),
+                // Ensure summary is always a string
+                summary: (w.summary && typeof w.summary === 'object') ? JSON.stringify(w.summary) : (w.summary || ""),
+                // Ensure title is always a string
+                title: (w.title && typeof w.title === 'object') ? JSON.stringify(w.title) : (w.title || "Untitled World")
+            };
+        });
+    };
+
+    const displayList = getCleanDisplayList();
     const isGuest = status === 'unauthenticated';
 
     return (
@@ -63,9 +98,7 @@ export default function Dashboard() {
                 
                 <div className="header-controls">
                     <ThemeControls />
-
                     <Link href="/docs" className="header-link">Docs</Link>
-                    
                     <div className="user-menu">
                         {isGuest ? (
                             <Link href="/login" className="login-link">Login</Link>
@@ -126,7 +159,7 @@ export default function Dashboard() {
                         )}
                     </div>
                     
-                    {activeTab === 'my' && data && 'playedWorlds' in data && data.playedWorlds.length > 0 && (
+                    {activeTab === 'my' && data && 'playedWorlds' in data && (data.playedWorlds || []).length > 0 && (
                         <>
                             <h2 className="section-title">Recent Adventures</h2>
                             <div className="dashboard-grid">
