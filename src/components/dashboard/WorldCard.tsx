@@ -10,7 +10,7 @@ interface WorldCardProps {
 }
 
 export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProps) {
-    // FIX: Safely access settings
+    // Safely access settings
     const settings = w.settings || {}; 
     const theme = settings.visualTheme || 'default';
     
@@ -27,6 +27,20 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
         e.stopPropagation();
         setActiveView(null);
     };
+
+    // --- FIX: Helper to safely normalize the tags property ---
+    const getTagsArray = (tags: any): string[] => {
+        if (Array.isArray(tags)) {
+            return tags; // It's already a correct array
+        }
+        if (tags && typeof tags === 'object') {
+            // It's the corrupted object, convert it back to a string array
+            return Object.values(tags).filter(val => typeof val === 'string') as string[];
+        }
+        return []; // It's something else or null, return an empty array to prevent crash
+    };
+
+    const tags = getTagsArray(w.tags);
 
     return (
         <div 
@@ -70,7 +84,6 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                     justifyContent: 'center',
                     color: '#fff', 
                     backdropFilter: 'blur(5px)',
-                    // Animation: Slide up from bottom
                     transition: 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
                     opacity: activeView ? 1 : 0,
                     transform: activeView ? 'translateY(0)' : 'translateY(100%)', 
@@ -122,7 +135,6 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                         alt={w.title} 
                     />
                 ) : (
-                    // RESTORED: Placeholder Letter
                     <div style={{ 
                         width: '100%', height: '100%', 
                         background: 'linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-main) 100%)', 
@@ -135,7 +147,6 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                     </div>
                 )}
                 
-                {/* RESTORED: Collab Badge */}
                 {isOwner && w.ownerId && w.currentUserId && w.ownerId !== w.currentUserId && (
                     <div style={{ 
                         position: 'absolute', top: 10, right: 10, 
@@ -149,7 +160,6 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                     </div>
                 )}
 
-                {/* INFO BUTTON BAR */}
                 {hasInfo && (
                     <div style={{ 
                         position: 'absolute', bottom: 0, left: 0, right: 0, 
@@ -208,9 +218,9 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                     </h3>
                 </div>
 
-                {w.tags && w.tags.length > 0 && (
+                {tags.length > 0 && (
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                        {w.tags.slice(0, 3).map((tag: string) => (
+                        {tags.slice(0, 3).map((tag: string) => (
                             <span key={tag} style={{ 
                                 fontSize: '0.65rem', background: 'var(--bg-subtle)', padding: '2px 8px', 
                                 borderRadius: '12px', color: 'var(--text-secondary)', border: '1px solid var(--border-light)',
