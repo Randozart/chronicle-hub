@@ -1,289 +1,249 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { LocationDefinition } from '@/engine/models';
-import AdminListSidebar from '../storylets/components/AdminListSidebar'; // Ensure this path is correct
-import GameImage from '@/components/GameImage';
-import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
-import SparkleIcon from '@/components/icons/SparkleIcon';
-import BehaviorCard from '../../../../components/admin/BehaviorCard';
-import ScribeAssistant from '../../../../components/admin/ScribeAssistant';
+import { useState, useEffect, use, useRef } from 'react';
+import { LocationDefinition, QualityDefinition } from '@/engine/models';
+import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import LocationMainForm from './components/LocationMainForm'; // Updated Import
+import InputModal from '@/components/admin/InputModal';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
+import { FormGuard } from '@/hooks/useCreatorForm';
 
 export default function LocationsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const { showToast } = useToast();
+    
+    // Data State
     const [locations, setLocations] = useState<LocationDefinition[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
+    // Guard & Navigation State
+    const guardRef = useRef<FormGuard | null>(null);
+    const [pendingId, setPendingId] = useState<string | null>(null);
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+    // Modal State
+    const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        mode: 'create' | 'duplicate';
+        sourceItem?: LocationDefinition;
+    }>({ isOpen: false, mode: 'create' });
+
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        itemToDelete?: string;
+    }>({ isOpen: false, title: '', message: '' });
+
+    // 1. Fetch Data
     useEffect(() => {
-        fetch(`/api/admin/locations?storyId=${storyId}`)
-            .then(res => res.json())
-            .then(data => {
-                const arr = Object.values(data).map((q: any) => q);
-                setLocations(arr);
-            })
-            .finally(() => setIsLoading(false));
+        setIsLoading(true);
+        Promise.all([
+            fetch(`/api/admin/locations?storyId=${storyId}`),
+            fetch(`/api/admin/qualities?storyId=${storyId}`)
+        ]).then(async ([locRes, qualRes]) => {
+            if (locRes.ok) {
+                const data = await locRes.json();
+                // Ensure array format
+                const list = Array.isArray(data) ? data : Object.values(data);
+                setLocations(list as LocationDefinition[]);
+            }
+            if (qualRes.ok) {
+                const qData = await qualRes.json();
+                setQualities(Object.values(qData));
+            }
+        }).finally(() => setIsLoading(false));
     }, [storyId]);
 
-    const handleCreate = () => {
-        const newId = prompt("Enter Location ID (e.g. 'village_square'):");
-        if (!newId) return;
-        if (locations.find(l => l.id === newId)) { alert("Exists"); return; }
+    // --- NAVIGATION GUARD ---
+    const handleSelectAttempt = (newId: string) => {
+        if (newId === selectedId) return;
+        if (guardRef.current && guardRef.current.isDirty) {
+            setPendingId(newId);
+            setShowUnsavedModal(true);
+        } else {
+            setSelectedId(newId);
+        }
+    };
 
+    const handleConfirmSwitch = async () => {
+        if (guardRef.current) {
+            const success = await guardRef.current.save();
+            if (success) {
+                setShowUnsavedModal(false);
+                if (pendingId) setSelectedId(pendingId);
+                setPendingId(null);
+            }
+        }
+    };
+
+    const handleDiscardSwitch = () => {
+        setShowUnsavedModal(false);
+        if (pendingId) setSelectedId(pendingId);
+        setPendingId(null);
+    };
+
+    // --- CRUD ACTIONS ---
+    const openCreateModal = () => setModalConfig({ isOpen: true, mode: 'create' });
+    const openDuplicateModal = (source: LocationDefinition) => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: source });
+
+    const handleDeleteRequest = (id: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Location?",
+            message: `Are you sure you want to delete "${id}"?`,
+            itemToDelete: id
+        });
+    };
+
+    const handleModalSubmit = async (inputValue: string) => {
+        const cleanId = inputValue.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (locations.find(l => l.id === cleanId)) {
+            showToast("ID already exists.", "error");
+            return;
+        }
+
+        if (modalConfig.mode === 'create') {
+            await performCreate(cleanId);
+        } else if (modalConfig.mode === 'duplicate' && modalConfig.sourceItem) {
+            await performDuplicate(cleanId, modalConfig.sourceItem);
+        }
+    };
+
+    const performCreate = async (newId: string) => {
         const newLoc: LocationDefinition = {
             id: newId,
             name: "New Location",
             image: "",
-            deck: "village_deck",
+            deck: "default_deck",
             regionId: "default", 
-            coordinates: { x: 0, y: 0 } 
+            coordinates: { x: 0, y: 0 },
+            version: 1
         };
+        
         setLocations(prev => [...prev, newLoc]);
-        setSelectedId(newId);
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'locations', itemId: newId, data: newLoc })
+            });
+            guardRef.current = null;
+            setSelectedId(newId);
+            showToast("Location created.", "success");
+        } catch(e) {
+            showToast("Failed to create.", "error");
+        }
     };
 
-    const handleSaveSuccess = (updated: LocationDefinition) => {
-        setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
-        showToast("Location saved.", "success");
+    const performDuplicate = async (newId: string, source: LocationDefinition) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { _id, ...rest } = source as any; 
+        
+        const newLoc: LocationDefinition = {
+            ...rest,
+            id: newId,
+            name: `${source.name} (Copy)`,
+            version: 1
+        };
+
+        setLocations(prev => [...prev, newLoc]);
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'locations', itemId: newId, data: newLoc })
+            });
+            guardRef.current = null;
+            setSelectedId(newId);
+            showToast("Duplicated successfully.", "success");
+        } catch(e) {
+            showToast("Failed to duplicate.", "error");
+        }
     };
 
-    const handleDeleteSuccess = (id: string) => {
-        setLocations(prev => prev.filter(l => l.id !== id));
-        setSelectedId(null);
-        showToast("Location deleted.", "info");
+    const performDelete = async () => {
+        const id = confirmModal.itemToDelete;
+        if (!id) return;
+        setConfirmModal({ ...confirmModal, isOpen: false });
+
+        try {
+            await fetch(`/api/admin/config?storyId=${storyId}&category=locations&itemId=${id}`, { method: 'DELETE' });
+            setLocations(prev => prev.filter(l => l.id !== id));
+            if (selectedId === id) setSelectedId(null);
+            showToast("Deleted successfully.", "info");
+        } catch (e) {
+            showToast("Delete failed.", "error");
+        }
+    };
+
+    // List Update
+    const handleListUpdate = (data: LocationDefinition) => {
+        setLocations(prev => prev.map(l => l.id === data.id ? data : l));
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     return (
         <div className="admin-split-view">
-            {/* 1. SIDEBAR (Mobile Compatible) */}
             <AdminListSidebar 
                 title="Locations"
                 items={locations}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
-                onCreate={handleCreate}
+                onSelect={handleSelectAttempt}
+                onCreate={openCreateModal}
                 groupOptions={[{ label: "Region", key: "regionId" }]}
                 defaultGroupByKey="regionId"
-                renderItem={(loc) => (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="item-title">{loc.name}</span>
-                        <span className="item-subtitle">{loc.id}</span>
-                    </div>
-                )}
             />
-
-            {/* 2. MAIN EDITOR */}
-            <div className="admin-editor-col">
-                {selectedId ? (
-                    <LocationEditor 
-                        key={selectedId} // Force remount
+            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {selectedId && locations.find(l => l.id === selectedId) ? (
+                    <LocationMainForm 
                         initialData={locations.find(l => l.id === selectedId)!} 
-                        onSave={handleSaveSuccess}
-                        onDelete={handleDeleteSuccess}
+                        onSave={handleListUpdate}
+                        onDelete={handleDeleteRequest}
+                        onDuplicate={openDuplicateModal}
                         storyId={storyId}
+                        qualityDefs={qualities}
+                        guardRef={guardRef}
                     />
                 ) : (
-                    <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>
-                        Select a location to edit.
-                    </div>
+                    <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a location</div>
                 )}
             </div>
-        </div>
-    );
-}
 
-function LocationEditor({ initialData, onSave, onDelete, storyId }: { initialData: LocationDefinition, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
-    const [form, setForm] = useState(initialData);
-    const [isSaving, setIsSaving] = useState(false);
-    
-    // Assistant State
-    const [activeField, setActiveField] = useState<'visible' | 'unlock' | null>(null);
+            {/* Modals */}
+            <InputModal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                onSubmit={handleModalSubmit}
+                title={modalConfig.mode === 'create' ? "Create Location" : "Duplicate Location"}
+                description="Unique ID required (e.g. village_square)."
+                label="Location ID"
+                placeholder="e.g. iron_republic"
+                defaultValue={modalConfig.mode === 'duplicate' ? `${modalConfig.sourceItem?.id}_copy` : ""}
+                confirmLabel={modalConfig.mode === 'create' ? "Create" : "Duplicate"}
+            />
 
-    useEffect(() => setForm(initialData), [initialData]);
+            <ConfirmationModal 
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant="danger"
+                confirmLabel="Delete"
+                onConfirm={performDelete}
+                onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+            />
 
-    const handleChange = (field: string, val: any) => {
-        setForm(prev => ({ ...prev, [field]: val }));
-    };
-
-    const handleTagToggle = (tag: string) => {
-        const newTags = toggleProperty(form.tags, tag);
-        handleChange('tags', newTags);
-    };
-    
-    const handleAssistantInsert = (text: string) => {
-        if (activeField === 'visible') handleChange('visibleCondition', (form.visibleCondition || "") + text);
-        if (activeField === 'unlock') handleChange('unlockCondition', (form.unlockCondition || "") + text);
-    };
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        try {
-            await fetch('/api/admin/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId, category: 'locations', itemId: form.id, data: form })
-            });
-            onSave(form);
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
-    };
-
-    const handleDelete = async () => {
-        if (!confirm(`Delete ${form.id}?`)) return;
-        await fetch(`/api/admin/config?storyId=${storyId}&category=locations&itemId=${form.id}`, { method: 'DELETE' });
-        onDelete(form.id);
-    };
-
-    return (
-        <div className="space-y-4" style={{ position: 'relative' }}>
-            
-            {/* ASSISTANT POPUP */}
-            {activeField && (
-                <div style={{ position: 'absolute', top: '200px', right: 0, zIndex: 50 }}>
-                    <ScribeAssistant 
-                        storyId={storyId} 
-                        mode="condition" 
-                        onInsert={handleAssistantInsert} 
-                        onClose={() => setActiveField(null)} 
-                    />
-                </div>
-            )}
-
-            {/* ID & Name */}
-            <div className="form-group">
-                <label className="form-label">ID</label>
-                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
-            </div>
-            <div className="form-group">
-                <label className="form-label">Name</label>
-                <input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" />
-            </div>
-             <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea 
-                    value={form.description || ''} 
-                    onChange={e => handleChange('description', e.target.value)} 
-                    className="form-textarea" 
-                    rows={3}
-                    placeholder="A brief description of the location, shown to the player upon arrival. Only shows if anything is filled in, can be left blank."
-                />
-            </div>
-            {/* Config */}
-            <div className="form-row">
-                <div className="form-group">
-                    <label className="form-label">Deck ID</label>
-                    <input value={form.deck} onChange={e => handleChange('deck', e.target.value)} className="form-input" />
-                </div>
-
-                <div className="form-group">
-                    <label className="form-label">Market ID</label>
-                    <input 
-                        value={form.marketId || ''} 
-                        onChange={e => handleChange('marketId', e.target.value)} 
-                        className="form-input" 
-                        placeholder="grand_bazaar"
-                    />
-                </div>
-                
-                <div className="form-group">
-                    <label className="form-label">Image Code</label>
-                    <input value={form.image} onChange={e => handleChange('image', e.target.value)} className="form-input" />
-                </div>
-            </div>
-
-            {/* CONDITIONS (Updated to use CSS Class instead of hardcoded background) */}
-            <div className="admin-panel-box">
-                <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Access Control</label>
-                
-                <div className="form-group" style={{ position: 'relative' }}>
-                    <label className="form-label">Visible Condition</label>
-                    <div style={{ position: 'relative' }}>
-                        <input 
-                            value={form.visibleCondition || ''} 
-                            onChange={e => handleChange('visibleCondition', e.target.value)} 
-                            className="form-input" 
-                            placeholder="$discovered_map >= 1"
-                            style={{ paddingRight: '40px' }}
-                        />
-                        <button 
-                            onClick={() => setActiveField('visible')} 
-                            style={{ 
-                                position: 'absolute', right: 5, top: 5, background: 'none', 
-                                border: 'none', cursor: 'pointer', color: 'var(--tool-accent)' 
-                            }}
-                        >
-                            <SparkleIcon />
-                        </button>
-                    </div>
-                    <p className="special-desc">If empty, it is always visible. If condition fails, it's hidden from the map.</p>
-                </div>
-
-                <div className="form-group" style={{ position: 'relative' }}>
-                    <label className="form-label">Unlock Condition (Lock)</label>
-                    <div style={{ position: 'relative' }}>
-                        <input 
-                            value={form.unlockCondition || ''} 
-                            onChange={e => handleChange('unlockCondition', e.target.value)} 
-                            className="form-input" 
-                            placeholder="$route_to_town >= 1"
-                            style={{ paddingRight: '40px' }}
-                        />
-                         <button 
-                            onClick={() => setActiveField('unlock')} 
-                            style={{ 
-                                position: 'absolute', right: 5, top: 5, background: 'none', 
-                                border: 'none', cursor: 'pointer', color: 'var(--tool-accent)' 
-                            }}
-                        >
-                            <SparkleIcon />
-                        </button>
-                    </div>
-                    <p className="special-desc">If empty, it is unlocked. If condition fails, icon is greyed out.</p>
-                </div>
-            </div>
-
-            {/* BEHAVIOR TAGS */}
-            <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)' }}>
-                <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Behavior</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <BehaviorCard 
-                        checked={hasProperty(form.tags, 'lock_equipment')} 
-                        onChange={() => handleTagToggle('lock_equipment')} 
-                        label="Lock Equipment" 
-                        desc="Disable inventory here." 
-                    />
-                     <BehaviorCard 
-                        checked={hasProperty(form.tags, 'safe_zone')} 
-                        onChange={() => handleTagToggle('safe_zone')} 
-                        label="Safe Zone" 
-                        desc="Disable Menace Autofire." 
-                    />
-                </div>
-            </div>
-
-            {/* Coordinates */}
-            <div className="form-row" style={{ borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', marginTop: '1rem' }}>
-                <div className="form-group">
-                    <label className="form-label">Map Region ID</label>
-                    <input value={form.regionId || ''} onChange={e => handleChange('regionId', e.target.value)} className="form-input" />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Coords (X, Y)</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <input type="number" value={form.coordinates?.x || 0} onChange={e => handleChange('coordinates', { ...form.coordinates, x: parseInt(e.target.value) })} className="form-input" placeholder="X" />
-                        <input type="number" value={form.coordinates?.y || 0} onChange={e => handleChange('coordinates', { ...form.coordinates, y: parseInt(e.target.value) })} className="form-input" placeholder="Y" />
-                    </div>
-                </div>
-            </div>
-
-            {/* DELETE BUTTON */}
-            <div className="admin-form-footer">
-                <button onClick={handleDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>Delete Location</button>
-                <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
-            </div>
+            <UnsavedChangesModal 
+                isOpen={showUnsavedModal}
+                onSaveAndContinue={handleConfirmSwitch}
+                onDiscard={handleDiscardSwitch}
+                onCancel={() => { setShowUnsavedModal(false); setPendingId(null); }}
+            />
         </div>
     );
 }
