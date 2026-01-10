@@ -42,7 +42,13 @@ export interface ResolveOption extends LogicGates {
 
 export type PublishStatus = 'draft' | 'published' | 'archived';
 
-interface ContentCommon {
+export interface VersionedEntity {
+    version?: number;
+    lastModifiedBy?: string;
+    lastModifiedAt?: Date;
+}
+
+interface ContentCommon extends VersionedEntity {
     id: string;
     name: string;
     image_code?: string;
@@ -73,7 +79,7 @@ export interface Opportunity extends ContentCommon {
     unlock_if?: string;
 }
 
-export interface QualityDefinition {
+export interface QualityDefinition extends VersionedEntity {
     id: string;
     name?: string;
     description?: string;
@@ -195,8 +201,10 @@ export interface DeckDefinition {
 }
 
 export interface MapRegion { 
-    id: string; name: string; image?: string; marketId?: string; }
-export interface LocationDefinition { 
+    id: string; name: string; image?: string; marketId?: string; 
+}
+
+export interface LocationDefinition extends VersionedEntity {
     id: string; 
     name: string; 
     description?: string;

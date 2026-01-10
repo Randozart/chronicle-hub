@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/engine/database';
 import { ObjectId } from 'mongodb';
 import { verifyWorldAccess } from '@/engine/accessControl';
+import { updateStoryletOrCard } from '@/engine/worldService';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
@@ -39,39 +40,40 @@ export async function GET(request: NextRequest) {
 }
 // POST: Create or Update a Storylet
 export async function POST(request: NextRequest) {
-    const body = await request.json();
-    const { storyId, data } = body; // We need storyId before anything else
+    try {
+        const body = await request.json();
+        const { storyId, data } = body; 
 
-    // SECURITY CHECK
-    if (!await verifyWorldAccess(storyId, 'writer')) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    
-    // Validation
-    if (!storyId || !data.id) return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
-    console.log(`[API: POST /admin/storylets] User saving storylet '${data.id}' for story '${storyId}'.`);
-
-    // NEW: Auto-generate IDs for options that are missing them
-    if (data.options && Array.isArray(data.options)) {
-        data.options.forEach((opt: any, index: number) => {
-            if (!opt.id || opt.id.trim() === '') {
-                opt.id = `${data.id}_${index}`;
-            }
-        });
-    }
-
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
+        // 1. Security Check
+        if (!await verifyWorldAccess(storyId, 'writer')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         
-    const { _id, ...cleanData } = data;
+        // 2. Validation
+        if (!storyId || !data.id) {
+            return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+        }
+        
+        console.log(`[API: POST /admin/storylets] Saving '${data.id}' (Client v${data.version || 0})`);
 
-    const result = await db.collection('storylets').updateOne(
-        { worldId: storyId, id: data.id },
-        { $set: { ...cleanData, worldId: storyId } }, 
-        { upsert: true }
-    );
+        // 3. Service Layer Update (Handles Optimistic Locking)
+        const result = await updateStoryletOrCard(storyId, 'storylets', data.id, data);
 
-    return NextResponse.json({ success: true });
+        // 4. Handle Responses
+        if (result.success) {
+            // Return the new version number so the client can update its local state
+            return NextResponse.json({ success: true, newVersion: result.newVersion });
+        } else if (result.error === 'CONFLICT') {
+            // 409 Conflict triggers the toast in useCreatorForm
+            return NextResponse.json({ error: 'Conflict: Data has changed on server.' }, { status: 409 });
+        } else {
+            return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+        }
+
+    } catch (e) {
+        console.error("Storylet Save Error:", e);
+        return NextResponse.json({ error: 'Server Error' }, { status: 500 });
+    }
 }
 
 export async function DELETE(request: NextRequest) {

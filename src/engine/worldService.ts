@@ -158,31 +158,92 @@ export const deleteWorldConfigItem = async (
     return result.acknowledged;
 };
 
-// Helper to update Storylets/Cards
-export const updateStoryletOrCard = async (
-    worldId: string,
-    collection: 'storylets' | 'opportunities',
-    id: string,
-    data: any
-): Promise<boolean> => {
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
+// Helper to handle optimistic locking update
+async function performVersionedUpdate(
+    collection: any, 
+    filter: any, 
+    data: any, 
+    clientVersion: number = 0
+): Promise<{ success: boolean; versionMismatch: boolean; newVersion?: number }> {
+    
+    // 1. Prepare Update Operation
+    // We increment version automatically.
+    // We set lastModified timestamp.
+    const { _id, version, ...cleanData } = data; // Strip _id and version from payload to prevent overwrite
+    
+    const updateOp = {
+        $set: {
+            ...cleanData,
+            lastModifiedAt: new Date()
+        },
+        $inc: { version: 1 }
+    };
 
-    const { _id, ...cleanData } = data;
-
-    const result = await db.collection(collection).updateOne(
-        { worldId, id },
-        { $set: cleanData }, 
-        { upsert: true }
-    );
-
-    if (result.acknowledged) {
-        const tag = `storylets-${worldId}`;
-        console.log(`[Cache] Invalidating tag '${tag}' due to update on ${id}`);
-        revalidateTag(tag, '');
+    // 2. Attempt Atomic Update
+    // If clientVersion is provided, we strictly match it. 
+    // If it's 0 or undefined, we treat it as a new insert OR an overwrite if the doc has no version yet.
+    
+    let query = { ...filter };
+    if (clientVersion > 0) {
+        query.version = clientVersion;
     }
 
-    return result.acknowledged;
+    const result = await collection.updateOne(query, updateOp, { upsert: false });
+
+    // 3. Handle Success
+    if (result.modifiedCount > 0) {
+        return { success: true, versionMismatch: false, newVersion: clientVersion + 1 };
+    }
+
+    // 4. Handle Failure (Analyze why)
+    // Check if document exists at all
+    const existing = await collection.findOne(filter);
+    
+    if (!existing) {
+        const initialData = {
+            ...cleanData,
+            ...filter, 
+            version: 1,
+            lastModifiedAt: new Date()
+        };
+        await collection.insertOne(initialData);
+        return { success: true, versionMismatch: false, newVersion: 1 };
+    }
+
+    return { success: false, versionMismatch: true };
+}
+
+export const updateStoryletOrCard = async (
+    worldId: string,
+    collectionName: 'storylets' | 'opportunities',
+    id: string,
+    data: any
+): Promise<{ success: boolean; error?: string; newVersion?: number }> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const collection = db.collection(collectionName);
+
+    const clientVersion = data.version || 0;
+
+    const result = await performVersionedUpdate(
+        collection, 
+        { worldId, id }, 
+        data, 
+        clientVersion
+    );
+
+    if (result.success) {
+        // Cache Invalidation
+        if (process.env.NODE_ENV !== 'production') console.log(`[Cache] Invalidating ${collectionName}-${worldId}`);
+        revalidateTag(`${collectionName}-${worldId}`,"");
+        return { success: true, newVersion: result.newVersion };
+    }
+
+    if (result.versionMismatch) {
+        return { success: false, error: 'CONFLICT' };
+    }
+
+    return { success: false, error: 'DB_ERROR' };
 };
 
 export const deleteStoryletOrCard = async (
