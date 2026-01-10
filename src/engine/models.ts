@@ -245,7 +245,7 @@ export interface ShopStall { id: string;
     source?: string; 
     listings: ShopListing[]; 
 }
-export interface MarketDefinition { 
+export interface MarketDefinition extends VersionedEntity { 
     id: string; 
     name: string; 
     image?: string; 

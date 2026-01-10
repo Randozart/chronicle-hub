@@ -229,9 +229,18 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     <div style={{ display: 'grid', gap: '10px', marginTop: '1rem' }}>
                         {Object.entries(form.text_variants || {}).map(([key, val]) => (
                             <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                <div style={{ width: '140px', paddingTop: '8px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-main)', fontWeight: 'bold' }}>{key}</span>
-                                    <Accessor code={`$.${key}`} />
+                                <div style={{ 
+                                    minWidth: '120px', 
+                                    maxWidth: '150px',
+                                    paddingTop: '10px', 
+                                    textAlign: 'right', 
+                                    display: 'flex', 
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-end',
+                                    wordBreak: 'break-word'
+                                }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-main)', fontWeight: 'bold', lineHeight: '1.2' }}>{key}</span>
+                                    <div style={{ marginTop: '2px' }}><Accessor code={`$.${key}`} /></div>
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <SmartArea value={val as string} onChange={v => updateVariant(key, v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
