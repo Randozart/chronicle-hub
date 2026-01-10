@@ -76,9 +76,7 @@ export default function StoryletStylePreview({ settings, theme }: Props) {
 
     return (
         <div data-theme={theme} className="theme-wrapper" style={{ height: '100%' }}>
-            <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>
-                Resolution Screen Preview
-            </h4>
+
 
             <div className="storylet-container" style={{ position: 'relative', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '2rem', background: 'var(--bg-panel)', height: '100%' }}>
                 

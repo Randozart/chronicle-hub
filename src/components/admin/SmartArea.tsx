@@ -140,7 +140,7 @@ export default function SmartArea({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.25rem', minHeight: '20px' }}>
                 {(label || subLabel) ? (
                     <div>
-                        {label && <label className="form-label" style={{ margin: 0 }}>{label}</label>}
+                        {label && <label className="form-label" style={{ margin: 0, color: 'var(--tool-text-main)'}}>{label}</label>}
                         {subLabel && <p style={{ fontSize: '0.7rem', color: 'var(--tool-text-dim)', margin: 0 }}>{subLabel}</p>}
                     </div>
                 ) : <div />}

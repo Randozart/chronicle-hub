@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useToast } from "@/providers/ToastProvider";
 
-export function DataManagement({ storyId }: { storyId: string }) {
+export default function DataManagement({ storyId }: { storyId: string }) {
     const [isImporting, setIsImporting] = useState(false);
     const { showToast } = useToast();
 
@@ -48,8 +48,8 @@ export function DataManagement({ storyId }: { storyId: string }) {
     };
 
     return (
-        <div className="special-field-group" style={{ borderColor: 'var(--tool-accent)'}}>
-            <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Data Management</label>
+        <div className="special-field-group" style={{ borderColor: '#555'}}>
+            <label className="special-label" style={{ color: 'var(--tool-text-main)' }}>Data Management</label>
             <p className="special-desc">Backup your world or import data from another source.</p>
             
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>

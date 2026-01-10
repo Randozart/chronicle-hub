@@ -35,7 +35,7 @@
 
 /* FORMS */
 .form-group { margin-bottom: 1rem; }
-.form-label { display: block; font-size: 0.85rem; color: var(--tool-text-dim); margin-bottom: 0.25rem; }
+.form-label { display: block; font-size: 0.85rem; color: var(--tool-text-main); margin-bottom: 0.25rem; }
 .form-input, .form-select, .form-textarea { width: 100%; background-color: var(--tool-bg-dark); border: 1px solid var(--tool-border); color: var(--tool-text-main); padding: 0.5rem; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
 .form-textarea { resize: vertical; }
 .form-input:focus, .form-textarea:focus { border-color: var(--tool-accent); outline: none; }

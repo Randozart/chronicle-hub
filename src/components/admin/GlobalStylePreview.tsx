@@ -42,47 +42,49 @@ export default function GlobalStylePreview({ settings, theme }: Props) {
     return (
         <div data-theme={theme} className="theme-wrapper" style={{ padding: '1rem', border: '1px solid #444', borderRadius: '8px', background: 'var(--bg-main)', ...previewStyle }}>
             
-            {/* 1. ACTION PREVIEW */}
             <div style={{ marginBottom: '2rem' }}>
                 <h5 style={{ margin: '0 0 0.5rem 0', color: 'var(--accent-highlight)', fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                    Action Style ({slStyle})
+                    Action Style
                 </h5>
-                <div className={useSlOptionButton ? `storylet-list-container mode-${slStyle}` : `card-container mode-${slStyle}`}>
-                    {useSlOptionButton ? (
-                        <button 
-                            className={`option-button ${slStyle === 'polaroid' ? 'card-mode' : ''}`}
-                            // --- FIX: Restored inline styles for polaroid mode ---
-                            style={slStyle === 'polaroid' ? { display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'stretch' } : {}}
-                        >
-                            <div className="option-content-wrapper" style={slStyle === 'polaroid' ? { flexDirection: 'column', padding: 0 } : {}}>
-                                <div className="option-image-container" style={slStyle === 'polaroid' ? { width: '100%', height: '160px', marginBottom: '1rem', marginRight: 0 } : {}}>
-                                    <MockImage className="option-image" style={slStyle === 'polaroid' ? { borderRadius: 0 } : {}} />
+                <div style={{ flex: slStyle === 'polaroid' ? '0 1 250px' : '1', maxWidth: slStyle === 'polaroid' ? '250px' : '100%' }}>
+                    <div className={useSlOptionButton ? `storylet-list-container mode-${slStyle}` : `card-container mode-${slStyle}`}>
+                        {useSlOptionButton ? (
+                            <button 
+                                className={`option-button ${slStyle === 'polaroid' ? 'card-mode' : ''}`}
+                                style={slStyle === 'polaroid' ? { display: 'flex', flexDirection: 'column', height: '100%' } : {}}
+
+                            >
+                                <div className="option-content-wrapper" style={slStyle === 'polaroid' ? { flexDirection: 'column', padding: 0 } : {}}>
+                                    <div className="option-image-container" style={slStyle === 'polaroid' ? { width: '100%', height: '160px', marginBottom: '1rem', marginRight: 0 } : {}}>
+                                        <MockImage className="option-image" style={slStyle === 'polaroid' ? { borderRadius: 0 } : {}} />
+                                    </div>
+                                    <div className="option-text-wrapper" style={slStyle === 'polaroid' ? { padding: '0 1rem 1rem' } : {}}>
+                                        <h3>Enter the shadows</h3>
+                                        {slStyle !== 'compact' && <p className="option-short-desc">The path is dark...</p>}
+                                    </div>
                                 </div>
-                                <div className="option-text-wrapper" style={slStyle === 'polaroid' ? { padding: '0 1rem 1rem' } : {}}>
-                                    <h3>Enter the shadows</h3>
-                                    {slStyle !== 'compact' && <p className="option-short-desc">The path is dark...</p>}
-                                </div>
-                            </div>
-                        </button>
-                    ) : (
-                        <div className="card"><button className="card-content-btn"><MockImage className="card-image" /><div className="card-text"><h3>Enter the shadows</h3>{slStyle !== 'tarot' && <p>The path is dark...</p>}</div>{slStyle === 'images-only' && <div className="image-only-overlay"><span>Enter the shadows</span></div>}</button></div>
-                    )}
+                            </button>
+                        ) : (
+                            <div className="card"><button className="card-content-btn"><MockImage className="card-image" /><div className="card-text"><h3>Enter the shadows</h3>{slStyle !== 'tarot' && <p>The path is dark...</p>}</div>{slStyle === 'images-only' && <div className="image-only-overlay"><span>Enter the shadows</span></div>}</button></div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* 2. HAND PREVIEW */}
             <div style={{ marginBottom: '2rem' }}>
                 <h5 style={{ margin: '0 0 0.5rem 0', color: 'var(--accent-highlight)', fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                    Hand Style ({handStyle})
+                    Hand Style
                 </h5>
-                <div className={useHandOptionButton ? `storylet-list-container mode-${handStyle}` : `card-container mode-${handStyle}`}>
-                     {useHandOptionButton ? (
-                        <button className={`option-button ${handStyle === 'polaroid' ? 'card-mode' : ''}`} style={handStyle === 'polaroid' ? { display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'stretch' } : {}}>
-                            <div className="option-content-wrapper" style={handStyle === 'polaroid' ? { flexDirection: 'column', padding: 0 } : {}}><div className="option-image-container" style={handStyle === 'polaroid' ? { width: '100%', height: '160px', marginBottom: '1rem', marginRight: 0 } : {}}><MockImage className="option-image" style={handStyle === 'polaroid' ? { borderRadius: 0 } : {}}/></div><div className="option-text-wrapper" style={handStyle === 'polaroid' ? { padding: '0 1rem 1rem' } : {}}><h3>A Favorable Omen</h3>{handStyle !== 'compact' && <p className="option-short-desc">Luck is with you.</p>}</div></div>
-                        </button>
-                    ) : (
-                        <div className="card"><button className="card-content-btn"><MockImage className="card-image" /><div className="card-text"><h3>A Favorable Omen</h3>{handStyle !== 'tarot' && <p>Luck is with you.</p>}</div>{handStyle === 'images-only' && <div className="image-only-overlay"><span>A Favorable Omen</span></div>}</button></div>
-                    )}
+                <div style={{ flex: handStyle === 'polaroid' ? '0 1 250px' : '1', maxWidth: handStyle === 'polaroid' ? '250px' : '100%' }}>
+                    <div className={useHandOptionButton ? `storylet-list-container mode-${handStyle}` : `card-container mode-${handStyle}`}>
+                        {useHandOptionButton ? (
+                            <button className={`option-button ${handStyle === 'polaroid' ? 'option-button card-mode' : ''}`} style={handStyle === 'polaroid' ? { display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'stretch' } : {}}>
+                                <div className="option-content-wrapper" style={handStyle === 'polaroid' ? { flexDirection: 'column', padding: 0 } : {}}><div className="option-image-container" style={handStyle === 'polaroid' ? { width: '100%', height: '160px', marginBottom: '1rem', marginRight: 0 } : {}}><MockImage className="option-image" style={handStyle === 'polaroid' ? { borderRadius: 0 } : {}}/></div><div className="option-text-wrapper" style={handStyle === 'polaroid' ? { padding: '0 1rem 1rem' } : {}}><h3>A Favorable Omen</h3>{handStyle !== 'compact' && <p className="option-short-desc">Luck is with you.</p>}</div></div>
+                            </button>
+                        ) : (
+                            <div className="card"><button className="card-content-btn"><MockImage className="card-image" /><div className="card-text"><h3>A Favorable Omen</h3>{handStyle !== 'tarot' && <p>Luck is with you.</p>}</div>{handStyle === 'images-only' && <div className="image-only-overlay"><span>A Favorable Omen</span></div>}</button></div>
+                        )}
+                    </div>
                 </div>
             </div>
 

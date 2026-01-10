@@ -11,7 +11,8 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
     initialData: T | null,
     saveEndpoint: string,
     extraBodyParams: Record<string, any> = {},
-    guardRef?: { current: FormGuard | null } 
+    guardRef?: { current: FormGuard | null }, 
+    customSave?: () => Promise<any> 
 ) {
     const [data, setData] = useState<T | null>(initialData);
     const [originalData, setOriginalData] = useState<T | null>(initialData);
@@ -76,6 +77,14 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         }
     }, [data, extraBodyParams, saveEndpoint, showToast]);
 
+    const resetState = useCallback(() => {
+        if (data) {
+            setOriginalData(JSON.parse(JSON.stringify(data)));
+            setIsDirty(false);
+            setLastSaved(new Date());
+        }
+    }, [data]);
+
     const revertChanges = useCallback(() => {
         if (originalData) {
             setData(JSON.parse(JSON.stringify(originalData)));
@@ -106,17 +115,24 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         }
     }, [isDirty, handleSave, guardRef]);
 
-    // Hotkey Support
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                if (isDirty) handleSave();
+                if (isDirty) {
+
+                    if (customSave) {
+                        customSave();
+                    } else {
+                        handleSave();
+                    }
+                }
             }
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [isDirty, handleSave]);
+    }, [isDirty, handleSave, customSave]); 
+
 
     return {
         data,
@@ -124,6 +140,7 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         handleChange,
         handleSave,
         revertChanges,
+        resetState, 
         isDirty,
         isSaving,
         lastSaved

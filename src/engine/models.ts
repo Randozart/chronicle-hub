@@ -186,6 +186,10 @@ export interface WorldSettings {
     hideProfileIdentity?: boolean;
     attributions?: string; 
     aiDisclaimer?: string; 
+    isPublished?: boolean; 
+    coverImage?: string;
+    summary?: string;
+    tags?: string[];
 }
 
 export interface DeckDefinition extends VersionedEntity { 
@@ -270,8 +274,6 @@ export interface WorldConfig {
     instruments: Record<string, InstrumentDefinition>;
     music: Record<string, LigatureTrack>;
 }
-
-// --- RUNTIME STATE ---
 
 export interface BaseQualityState {
     qualityId: string;
