@@ -200,8 +200,11 @@ export interface DeckDefinition extends VersionedEntity {
     card_style?: 'default' | 'cards' | 'rows' | 'scrolling';
 }
 
-export interface MapRegion { 
-    id: string; name: string; image?: string; marketId?: string; 
+export interface MapRegion extends VersionedEntity{ 
+    id: string; 
+    name: string; 
+    image?: string; 
+    marketId?: string; 
 }
 
 export interface LocationDefinition extends VersionedEntity {

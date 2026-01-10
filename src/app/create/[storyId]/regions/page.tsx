@@ -1,51 +1,180 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { MapRegion } from '@/engine/models';
-import GameImage from '@/components/GameImage';
+import { useState, useEffect, use, useRef } from 'react';
+import { MapRegion, QualityDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
+import RegionMainForm from './components/RegionMainForm'; // New Import
+import InputModal from '@/components/admin/InputModal';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
+import { FormGuard } from '@/hooks/useCreatorForm';
 
 export default function RegionsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const { showToast } = useToast();
+    
+    // Data State
     const [regions, setRegions] = useState<MapRegion[]>([]);
+    const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Guard & Navigation State
+    const guardRef = useRef<FormGuard | null>(null);
+    const [pendingId, setPendingId] = useState<string | null>(null);
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+    // Modal State
+    const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        mode: 'create' | 'duplicate';
+        sourceItem?: MapRegion;
+    }>({ isOpen: false, mode: 'create' });
+
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        itemToDelete?: string;
+    }>({ isOpen: false, title: '', message: '' });
+
+    // 1. Fetch Data
     useEffect(() => {
         setIsLoading(true);
-        fetch(`/api/regions?storyId=${storyId}`, { cache: 'no-store' })
-            .then(r => r.json())
-            .then(data => {
+        Promise.all([
+            fetch(`/api/admin/regions?storyId=${storyId}`, { cache: 'no-store' }),
+            fetch(`/api/admin/qualities?storyId=${storyId}`)
+        ]).then(async ([regRes, qualRes]) => {
+            if (regRes.ok) {
+                const data = await regRes.json();
                 const list = Array.isArray(data) ? data : Object.values(data);
                 setRegions(list as MapRegion[]);
-            })
-            .catch(e => console.error(e))
-            .finally(() => setIsLoading(false));
-    }, [storyId]); 
+            }
+            if (qualRes.ok) {
+                const qData = await qualRes.json();
+                setQualities(Object.values(qData));
+            }
+        }).finally(() => setIsLoading(false));
+    }, [storyId]);
 
-    const handleCreate = () => {
-        const newId = prompt("Region ID (e.g. 'london'):");
-        if (!newId) return;
-        
-        // Clean ID
-        const cleanId = newId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        if (regions.find(r => r.id === cleanId)) return alert("Exists");
-        
-        setRegions(prev => [...prev, { id: cleanId, name: "New Region" }]);
-        setSelectedId(cleanId);
+    // --- NAVIGATION GUARD ---
+    const handleSelectAttempt = (newId: string) => {
+        if (newId === selectedId) return;
+        if (guardRef.current && guardRef.current.isDirty) {
+            setPendingId(newId);
+            setShowUnsavedModal(true);
+        } else {
+            setSelectedId(newId);
+        }
     };
 
-    const handleSaveSuccess = (updated: MapRegion) => {
-        setRegions(prev => prev.map(r => r.id === updated.id ? updated : r));
-        showToast("Region saved.", "success");
+    const handleConfirmSwitch = async () => {
+        if (guardRef.current) {
+            const success = await guardRef.current.save();
+            if (success) {
+                setShowUnsavedModal(false);
+                if (pendingId) setSelectedId(pendingId);
+                setPendingId(null);
+            }
+        }
     };
 
-    const handleDeleteSuccess = (id: string) => {
-        setRegions(prev => prev.filter(r => r.id !== id));
-        setSelectedId(null);
-        showToast("Region deleted.", "info");
+    const handleDiscardSwitch = () => {
+        setShowUnsavedModal(false);
+        if (pendingId) setSelectedId(pendingId);
+        setPendingId(null);
+    };
+
+    // --- CRUD ACTIONS ---
+    const openCreateModal = () => setModalConfig({ isOpen: true, mode: 'create' });
+    const openDuplicateModal = (source: MapRegion) => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: source });
+
+    const handleDeleteRequest = (id: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Region?",
+            message: `Are you sure you want to delete "${id}"? Locations in this region will lose their assignment.`,
+            itemToDelete: id
+        });
+    };
+
+    const handleModalSubmit = async (inputValue: string) => {
+        const cleanId = inputValue.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (regions.find(r => r.id === cleanId)) {
+            showToast("ID already exists.", "error");
+            return;
+        }
+
+        if (modalConfig.mode === 'create') {
+            await performCreate(cleanId);
+        } else if (modalConfig.mode === 'duplicate' && modalConfig.sourceItem) {
+            await performDuplicate(cleanId, modalConfig.sourceItem);
+        }
+    };
+
+    const performCreate = async (newId: string) => {
+        const newReg: MapRegion = { id: newId, name: "New Region", version: 1 };
+        
+        setRegions(prev => [...prev, newReg]);
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'regions', itemId: newId, data: newReg })
+            });
+            guardRef.current = null;
+            setSelectedId(newId);
+            showToast("Region created.", "success");
+        } catch(e) {
+            showToast("Failed to create.", "error");
+        }
+    };
+
+    const performDuplicate = async (newId: string, source: MapRegion) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { _id, ...rest } = source as any; 
+        
+        const newReg: MapRegion = {
+            ...rest,
+            id: newId,
+            name: `${source.name} (Copy)`,
+            version: 1
+        };
+
+        setRegions(prev => [...prev, newReg]);
+        try {
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: 'regions', itemId: newId, data: newReg })
+            });
+            guardRef.current = null;
+            setSelectedId(newId);
+            showToast("Duplicated successfully.", "success");
+        } catch(e) {
+            showToast("Failed to duplicate.", "error");
+        }
+    };
+
+    const performDelete = async () => {
+        const id = confirmModal.itemToDelete;
+        if (!id) return;
+        setConfirmModal({ ...confirmModal, isOpen: false });
+
+        try {
+            await fetch(`/api/admin/config?storyId=${storyId}&category=regions&itemId=${id}`, { method: 'DELETE' });
+            setRegions(prev => prev.filter(r => r.id !== id));
+            if (selectedId === id) setSelectedId(null);
+            showToast("Deleted successfully.", "info");
+        } catch (e) {
+            showToast("Delete failed.", "error");
+        }
+    };
+
+    // List Update
+    const handleListUpdate = (data: MapRegion) => {
+        setRegions(prev => prev.map(r => r.id === data.id ? data : r));
     };
 
     if (isLoading) return <div className="loading-container">Loading...</div>;
@@ -56,8 +185,8 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
                 title="Map Regions" 
                 items={regions} 
                 selectedId={selectedId} 
-                onSelect={setSelectedId} 
-                onCreate={handleCreate} 
+                onSelect={handleSelectAttempt}
+                onCreate={openCreateModal}
                 renderItem={(r) => (
                     <div style={{display:'flex', flexDirection:'column'}}>
                         <span className="item-title">{r.name}</span>
@@ -65,107 +194,51 @@ export default function RegionsAdmin({ params }: { params: Promise<{ storyId: st
                     </div>
                 )}
             />
-            <div className="admin-editor-col">
-                {selectedId ? (
-                    <RegionEditor 
-                        key={selectedId}
+            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {selectedId && regions.find(r => r.id === selectedId) ? (
+                    <RegionMainForm 
                         initialData={regions.find(r => r.id === selectedId)!} 
-                        onSave={handleSaveSuccess}
-                        onDelete={handleDeleteSuccess}
+                        onSave={handleListUpdate}
+                        onDelete={handleDeleteRequest}
+                        onDuplicate={openDuplicateModal}
                         storyId={storyId}
+                        qualityDefs={qualities}
+                        guardRef={guardRef}
                     />
-                ) : <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '20%' }}>Select a region</div>}
-            </div>
-        </div>
-    );
-}
-
-function RegionEditor({ initialData, onSave, onDelete, storyId }: { initialData: MapRegion, onSave: (d: any) => void, onDelete: (id: string) => void, storyId: string }) {
-    const [form, setForm] = useState(initialData);
-    const [isSaving, setIsSaving] = useState(false);
-    const { showToast } = useToast();
-
-    useEffect(() => setForm(initialData), [initialData]);
-    const handleChange = (field: string, val: any) => setForm(prev => ({ ...prev, [field]: val }));
-
-    // GLOBAL SAVE TRIGGER
-    useEffect(() => {
-        const handleGlobalSave = () => handleSave();
-        window.addEventListener('global-save-trigger', handleGlobalSave);
-        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
-    }, [form]);
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        const payload = { storyId: storyId, category: 'regions', itemId: form.id, data: form };
-        console.log('[RegionEditor] Attempting to save:', payload); 
-        try {
-            const res = await fetch('/api/admin/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: storyId, category: 'regions', itemId: form.id, data: form })
-            });
-            if (res.ok) { onSave(form); }
-        } catch (e) { console.error(e); } finally { setIsSaving(false); }
-    };
-
-    const handleDelete = async () => {
-        if (!confirm("Delete?")) return;
-        const deleteUrl = `/api/admin/config?storyId=${storyId}&category=regions&itemId=${form.id}`;
-        console.log('[RegionEditor] Attempting to delete via URL:', deleteUrl); // <--- ADD THIS LINE
-        try {
-            await fetch(`/api/admin/config?storyId=${storyId}&category=regions&itemId=${form.id}`, { method: 'DELETE' });
-            onDelete(form.id);
-        } catch (e) { console.error(e); }
-    };
-
-    return (
-        <div>
-            <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Edit: {form.name}</h2>
-            
-            <div className="form-group">
-                <label className="form-label">ID</label>
-                <input value={form.id} disabled className="form-input" style={{ opacity: 0.5 }} />
+                ) : (
+                    <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a region</div>
+                )}
             </div>
 
-            <div className="form-group">
-                <label className="form-label">Name</label>
-                <input value={form.name} onChange={e => handleChange('name', e.target.value)} className="form-input" />
-            </div>
-            
-            <div className="form-group">
-                <label className="form-label">Default Market ID</label>
-                <input 
-                    value={form.marketId || ''} 
-                    onChange={e => handleChange('marketId', e.target.value)} 
-                    className="form-input" 
-                    placeholder="region_market"
-                />
-                <p className="special-desc">Used if a specific Location doesn't have its own market.</p>
-            </div>
+            {/* Modals */}
+            <InputModal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                onSubmit={handleModalSubmit}
+                title={modalConfig.mode === 'create' ? "Create Region" : "Duplicate Region"}
+                description="Unique ID required (e.g. london)."
+                label="Region ID"
+                placeholder="e.g. wilderness"
+                defaultValue={modalConfig.mode === 'duplicate' ? `${modalConfig.sourceItem?.id}_copy` : ""}
+                confirmLabel={modalConfig.mode === 'create' ? "Create" : "Duplicate"}
+            />
 
-            <div className="form-group">
-                <label className="form-label">Map Image Code</label>
-                <input value={form.image || ''} onChange={e => handleChange('image', e.target.value)} className="form-input" placeholder="london_map" />
-                <p className="special-desc">If left empty, Travel will use a simple List View instead of a Visual Map.</p>
-            </div>
+            <ConfirmationModal 
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant="danger"
+                confirmLabel="Delete"
+                onConfirm={performDelete}
+                onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+            />
 
-            {form.image && (
-                <div style={{ marginTop: '1rem', border: '1px solid #444', height: '200px', position: 'relative' }}>
-                    <GameImage 
-                        code={form.image} 
-                        imageLibrary={{}} 
-                        type="map"
-                        alt="Map Preview"
-                        className="w-full h-full object-cover"
-                    />
-                </div>
-            )}
-
-            <div className="admin-form-footer">
-                <button onClick={handleDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem' }}>Delete</button>
-                <button onClick={handleSave} disabled={isSaving} className="save-btn">Save Changes</button>
-            </div>
+            <UnsavedChangesModal 
+                isOpen={showUnsavedModal}
+                onSaveAndContinue={handleConfirmSwitch}
+                onDiscard={handleDiscardSwitch}
+                onCancel={() => { setShowUnsavedModal(false); setPendingId(null); }}
+            />
         </div>
     );
 }
