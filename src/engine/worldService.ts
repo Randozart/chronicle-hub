@@ -17,6 +17,32 @@ export const getWorldState = async (worldId: string): Promise<PlayerQualities> =
     return (world?.worldState as PlayerQualities) || {};
 };
 
+// --- FIX IS HERE ---
+// This helper is now robust and handles both Objects and Arrays from the database.
+const injectIds = <T>(data: Record<string, T> | T[] | undefined): Record<string, T> | T[] => {
+    if (!data) {
+        // If data is null or undefined, return an empty object as a safe default.
+        return {}; 
+    }
+
+    // If the data is already an array, do not process it further.
+    // This prevents the bug where arrays like ['a', 'b'] were being
+    // converted to objects like { '0': 'a', '1': 'b' }.
+    if (Array.isArray(data)) {
+        return data;
+    }
+
+    // If it's a dictionary/object, proceed with injecting IDs into each value.
+    const newDict: Record<string, any> = {};
+    for (const key in data) {
+        // Ensure we only process own properties, not inherited ones
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            newDict[key] = { ...(data[key] as object), id: key };
+        }
+    }
+    return newDict;
+};
+
 // 1. Get "Hot" Config (Qualities, Decks, Locations)
 export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig> => {
     const client = await clientPromise;
@@ -29,18 +55,19 @@ export const getWorldConfig = cache(async (worldId: string): Promise<WorldConfig
 
     if (!worldDoc || !worldDoc.content) throw new Error(`World ${worldId} not found`);
 
+    // Cast the results of injectIds to satisfy TypeScript
     return {
-        qualities: injectIds(worldDoc.content.qualities),
-        locations: injectIds(worldDoc.content.locations),
-        decks: injectIds(worldDoc.content.decks),
+        qualities: injectIds(worldDoc.content.qualities) as Record<string, any>,
+        locations: injectIds(worldDoc.content.locations) as Record<string, any>,
+        decks: injectIds(worldDoc.content.decks) as Record<string, any>,
         settings: worldDoc.settings,
         char_create: worldDoc.content.char_create || {},
-        images: injectIds(worldDoc.content.images) || {},
-        categories: injectIds(worldDoc.content.categories) || {},
-        regions: injectIds(worldDoc.content.regions) || {},
-        markets: injectIds(worldDoc.content.markets) || {},
-        instruments: injectIds(worldDoc.content.instruments) || {},
-        music: injectIds(worldDoc.content.music) || {}
+        images: injectIds(worldDoc.content.images) as Record<string, any> || {},
+        categories: injectIds(worldDoc.content.categories) as Record<string, any> || {},
+        regions: injectIds(worldDoc.content.regions) as Record<string, any> || {},
+        markets: injectIds(worldDoc.content.markets) as Record<string, any> || {},
+        instruments: injectIds(worldDoc.content.instruments) as Record<string, any> || {},
+        music: injectIds(worldDoc.content.music) as Record<string, any> || {}
     };
 });
 
@@ -91,15 +118,6 @@ export const getOpportunitiesForDeck = async (worldId: string, deckId: string): 
     const db = client.db(DB_NAME);
     const docs = await db.collection('opportunities').find({ worldId, deck: deckId, status: 'published' }).toArray();
     return docs as unknown as Opportunity[];
-};
-
-const injectIds = <T>(dict: Record<string, T> | undefined): Record<string, T> => {
-    if (!dict) return {};
-    const newDict: Record<string, any> = {};
-    for (const key in dict) {
-        newDict[key] = { ...dict[key], id: key };
-    }
-    return newDict;
 };
 
 // 6. Update Configuration
@@ -166,10 +184,7 @@ async function performVersionedUpdate(
     clientVersion: number = 0
 ): Promise<{ success: boolean; versionMismatch: boolean; newVersion?: number }> {
     
-    // 1. Prepare Update Operation
-    // We increment version automatically.
-    // We set lastModified timestamp.
-    const { _id, version, ...cleanData } = data; // Strip _id and version from payload to prevent overwrite
+    const { _id, version, ...cleanData } = data;
     
     const updateOp = {
         $set: {
@@ -179,10 +194,6 @@ async function performVersionedUpdate(
         $inc: { version: 1 }
     };
 
-    // 2. Attempt Atomic Update
-    // If clientVersion is provided, we strictly match it. 
-    // If it's 0 or undefined, we treat it as a new insert OR an overwrite if the doc has no version yet.
-    
     let query = { ...filter };
     if (clientVersion > 0) {
         query.version = clientVersion;
@@ -190,13 +201,10 @@ async function performVersionedUpdate(
 
     const result = await collection.updateOne(query, updateOp, { upsert: false });
 
-    // 3. Handle Success
     if (result.modifiedCount > 0) {
         return { success: true, versionMismatch: false, newVersion: clientVersion + 1 };
     }
 
-    // 4. Handle Failure (Analyze why)
-    // Check if document exists at all
     const existing = await collection.findOne(filter);
     
     if (!existing) {
@@ -233,7 +241,6 @@ export const updateStoryletOrCard = async (
     );
 
     if (result.success) {
-        // Cache Invalidation
         if (process.env.NODE_ENV !== 'production') console.log(`[Cache] Invalidating ${collectionName}-${worldId}`);
         revalidateTag(`${collectionName}-${worldId}`,"");
         return { success: true, newVersion: result.newVersion };
