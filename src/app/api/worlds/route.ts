@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import clientPromise from '@/engine/database';
+import { ObjectId } from 'mongodb'; // Assuming ObjectId might be needed for user lookups
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
@@ -12,7 +13,6 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     
     // SECURITY: Only block if trying to fetch private data ('my' worlds)
-    // If accessing public API, allow through (middleware handles page protection)
     if (!session?.user && mode !== 'discover') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
                 'settings.attributions': 1 
             })
             .toArray();
-        return NextResponse.json(worlds);
+        // FIX: Ensure an array is always returned
+        return NextResponse.json(worlds || []);
     }
 
     // 2. MY WORLDS & PLAYED WORLDS (Private)
@@ -42,76 +43,75 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ myWorlds: [], playedWorlds: [] });
     }
 
-    // --- CHANGE 1: Update Query to include Collaborations ---
-    const myWorlds = await db.collection('worlds')
-        .find({ 
-            $or: [
-                { ownerId: userId },
-                { "collaborators.userId": userId } 
-            ]
-        })
-        .project({ 
-            worldId: 1, 
-            title: 1, 
-            summary: 1, 
-            published: 1, 
-            coverImage: 1, 
-            tags: 1, 
-            'settings.visualTheme': 1, 
-            ownerId: 1,
-            'settings.aiDisclaimer': 1, 
-            'settings.attributions': 1 
-        })
-        .toArray();
+    try {
+        const myWorlds = await db.collection('worlds')
+            .find({ 
+                $or: [
+                    { ownerId: userId },
+                    { "collaborators.userId": userId } 
+                ]
+            })
+            .project({ 
+                worldId: 1, title: 1, summary: 1, published: 1, coverImage: 1, tags: 1, 
+                'settings.visualTheme': 1, ownerId: 1,
+                'settings.aiDisclaimer': 1, 'settings.attributions': 1 
+            })
+            .toArray();
 
-    const playChars = await db.collection('characters')
-        .find({ userId: userId })
-        .project({ storyId: 1, qualities: 1 }) 
-        .toArray();
+        const playChars = await db.collection('characters')
+            .find({ userId: userId })
+            .project({ storyId: 1, qualities: 1 }) 
+            .toArray();
 
-    const charMap: Record<string, string> = {};
-    playChars.forEach(c => {
-        if (!c.qualities) return;
-        const nameState = c.qualities['player_name'] || c.qualities['name'];
-        if (nameState && 'stringValue' in nameState) {
-            charMap[c.storyId] = nameState.stringValue;
-        } else {
-            charMap[c.storyId] = "Unknown Drifter";
-        }
-    });
+        const charMap: Record<string, string> = {};
+        (playChars || []).forEach(c => {
+            if (!c.qualities) return;
+            const nameState = c.qualities['player_name'] || c.qualities['name'];
+            if (nameState && 'stringValue' in nameState) {
+                charMap[c.storyId] = (nameState as any).stringValue;
+            } else {
+                charMap[c.storyId] = "Unknown Drifter";
+            }
+        });
 
-    const playedIds = Array.from(new Set(playChars.map(c => c.storyId)));
-    
-    // Exclude worlds we own or collab on from the "Played" list
-    const myWorldIds = myWorlds.map(w => w.worldId);
-    
-    const myWorldsWithUser = myWorlds.map(w => ({
-        ...w,
-        currentUserId: userId // Add this field
-    }));
+        const playedIds = Array.from(new Set((playChars || []).map(c => c.storyId)));
+        
+        const myWorldIds = (myWorlds || []).map(w => w.worldId);
+        
+        const myWorldsWithUser = (myWorlds || []).map(w => ({
+            ...w,
+            currentUserId: userId
+        }));
 
-    const playedWorlds = await db.collection('worlds')
-        .find({ 
-            worldId: { $in: playedIds, $nin: myWorldIds },
-            published: true
-        })
-        .project({ 
-            worldId: 1, title: 1, summary: 1, coverImage: 1, 
-            'settings.visualTheme': 1,
-            'settings.aiDisclaimer': 1, 
-            'settings.attributions': 1 
-        })
-        .toArray();
+        const playedWorlds = await db.collection('worlds')
+            .find({ 
+                worldId: { $in: playedIds, $nin: myWorldIds },
+                published: true
+            })
+            .project({ 
+                worldId: 1, title: 1, summary: 1, coverImage: 1, 
+                'settings.visualTheme': 1,
+                'settings.aiDisclaimer': 1, 'settings.attributions': 1 
+            })
+            .toArray();
 
-    const enrichedPlayedWorlds = playedWorlds.map(w => ({
-        ...w,
-        characterName: charMap[w.worldId]
-    }));
+        const enrichedPlayedWorlds = (playedWorlds || []).map(w => ({
+            ...w,
+            characterName: charMap[w.worldId]
+        }));
+        
+        // --- THE FIX ---
+        // Ensure that even if DB calls return null/undefined, we always send an empty array.
+        // This prevents the client from crashing with "Cannot read properties of undefined (reading 'map')"
+        return NextResponse.json({ 
+            myWorlds: myWorldsWithUser || [], 
+            playedWorlds: enrichedPlayedWorlds || [] 
+        });
 
-    return NextResponse.json({ 
-        myWorlds: myWorldsWithUser, 
-        playedWorlds: enrichedPlayedWorlds 
-    });
+    } catch (error) {
+        console.error("Error fetching worlds:", error);
+        return NextResponse.json({ myWorlds: [], playedWorlds: [] }, { status: 500 });
+    }
 }
 
 // CREATE NEW WORLD
@@ -133,7 +133,6 @@ export async function POST(request: NextRequest) {
     const existing = await db.collection('worlds').findOne({ worldId });
     if (existing) return NextResponse.json({ error: 'World ID taken' }, { status: 409 });
 
-    // --- CHANGE 2: Add Default Settings for new schema ---
     const newWorld = {
         worldId,
         ownerId: userId,
@@ -144,8 +143,8 @@ export async function POST(request: NextRequest) {
             useActionEconomy: true,
             maxActions: 20,
             actionId: "$actions",
-            defaultActionCost: 1,     // <--- NEW DEFAULT
-            currencyQualities: [],    // <--- NEW DEFAULT
+            defaultActionCost: 1,
+            currencyQualities: [],
         },
         content: {
             qualities: {},
@@ -155,8 +154,8 @@ export async function POST(request: NextRequest) {
             images: {},
             char_create: {}
         },
-        collaborators: [], // <--- Initialize array
-        worldState: {}, // <--- Init empty
+        collaborators: [],
+        worldState: {},
     };
 
     await db.collection('worlds').insertOne(newWorld);
