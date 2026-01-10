@@ -164,6 +164,18 @@ interface ScopeState {
     hasSeenColon: boolean;
 }
 
+export interface LintError {
+    line: number;
+    message: string;
+    severity: 'error' | 'warning';
+    context?: string;
+}
+
+interface ScopeState {
+    type: 'brace';
+    hasSeenColon: boolean;
+}
+
 export function lintScribeScript(
     source: string, 
     mode: ScribeContext,
@@ -174,7 +186,7 @@ export function lintScribeScript(
 
     let braceDepth = 0;
     let bracketDepth = 0;
-    let commentDepth = 0; // NEW: Track comments across lines
+    let commentDepth = 0; // Tracks block comments { // ... } across lines
 
     const scopeStack: ScopeState[] = []; 
 
@@ -182,9 +194,9 @@ export function lintScribeScript(
     const localVars = new Set<string>();
 
     // --- PASS 1: Discovery (Find local assignments) ---
+    // We scan the whole text first to find variables defined locally (e.g. @alias = ...)
     lines.forEach(line => {
         // Regex to find @var =, $var =, #var = 
-        // Handles: {@alias = ...}, $var[desc:...] = ...
         const assignmentMatches = [...line.matchAll(/(?:^|[^@])([\$#@])([a-zA-Z0-9_]+)(?:\[[\s\S]*?\])?\s*=/g)];
         for (const m of assignmentMatches) {
             localVars.add(m[2]);
@@ -202,7 +214,7 @@ export function lintScribeScript(
             for (const m of varMatches) {
                 const varName = m[2];
                 
-                if (varName === 'level') continue;
+                if (varName === 'level') continue; // Special property, ignore
 
                 const isGlobal = validIds.has(varName);
                 const isLocal = localVars.has(varName);
@@ -268,11 +280,16 @@ export function lintScribeScript(
             }
 
             // D. Logic Checks (Assignments)
+            // Check for single '=' that isn't part of '==' '!=' '>=' '<='
             if (char === '=' && nextChar !== '=' && prevChar !== '!' && prevChar !== '>' && prevChar !== '<' && prevChar !== '=') {
                 
                 // CASE 1: Inside { ... }
+                // Inside logic blocks, '=' is assignment. We want to check if assignment is valid here.
                 if (braceDepth > 0 && bracketDepth === 0) {
                     const currentScope = scopeStack[scopeStack.length - 1];
+                    
+                    // Simple check: Assignments are only allowed in Effect Scope (after colon) 
+                    // OR if defining an alias/variable at start of block.
                     
                     // Look backwards to see what's being assigned
                     const textBefore = line.substring(0, i).trimEnd();
@@ -285,6 +302,7 @@ export function lintScribeScript(
 
                     const isAllowed = isEffectInBranch || isAliasDef || isWorldDef || isVarDef;
 
+                    // If not allowed context, it might be a typo for '=='
                     if (!isAllowed) {
                          errors.push({ 
                             line: lineNumber, 
@@ -295,6 +313,7 @@ export function lintScribeScript(
                 }
                 
                 // CASE 2: Outside logic (Condition fields)
+                // If we are in 'condition' mode and NOT inside any braces, '=' is almost certainly wrong.
                 if (braceDepth === 0 && mode === 'condition') {
                      errors.push({ 
                         line: lineNumber, 
@@ -311,3 +330,4 @@ export function lintScribeScript(
 
     return errors;
 }
+

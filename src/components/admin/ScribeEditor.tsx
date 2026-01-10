@@ -19,6 +19,7 @@ interface Props {
     language?: 'scribescript' | 'ligature';
     errors?: LintError[]; 
     mode?: 'text' | 'condition' | 'effect'; 
+    showLineNumbers?: boolean; 
 }
 
 export default function ScribeEditor({ 
@@ -28,7 +29,8 @@ export default function ScribeEditor({
     minHeight = "100px", 
     language = 'scribescript',
     errors = [],
-    mode = 'text'
+    mode = 'text',
+    showLineNumbers = false 
 }: Props) {
     
     useEffect(() => {
@@ -60,45 +62,49 @@ export default function ScribeEditor({
 
     const scopeClass = isLigature ? 'lang-ligature' : 'lang-scribescript';
 
+    // Only show gutter if explicit prop is true OR we have active errors
+    const displayGutter = showLineNumbers || errors.length > 0;
+
     return (
         <div 
             className={`scribe-editor-wrapper ${scopeClass}`}
             style={{
                 background: 'var(--tool-bg-input)', 
-                border: '1px solid var(--tool-border)',
-                borderRadius: '4px',
                 fontSize: '0.9rem',
                 lineHeight: '1.5',
                 position: 'relative',
                 display: 'flex', 
-                overflow: 'hidden'
+                overflow: 'hidden',
+                minHeight: minHeight
             }}
         >
-            {/* LINE NUMBER GUTTER */}
-            <div style={{
-                flexShrink: 0,
-                width: '40px',
-                textAlign: 'right',
-                padding: '10px 8px 10px 0',
-                background: 'var(--tool-bg-sidebar)', // UPDATED
-                borderRight: '1px solid var(--tool-border)', // UPDATED
-                color: 'var(--tool-text-dim)', // UPDATED
-                fontFamily: '"Fira Code", "Fira Mono", monospace',
-                userSelect: 'none'
-            }}>
-                {lineNumbers.map(n => {
-                    const status = errorMap.get(n);
-                    const color = status === 'error' ? 'var(--danger-color)' : status === 'warning' ? 'var(--warning-color)' : 'inherit';
-                    const weight = status ? 'bold' : 'normal';
-                    const marker = status === 'error' ? '!' : status === 'warning' ? '?' : n;
-                    
-                    return (
-                        <div key={n} style={{ height: '21px', lineHeight: '21px', color, fontWeight: weight }}>
-                            {marker}
-                        </div>
-                    );
-                })}
-            </div>
+            {/* LINE NUMBER GUTTER (Only renders if needed) */}
+            {displayGutter && (
+                <div style={{
+                    flexShrink: 0,
+                    width: '40px',
+                    textAlign: 'right',
+                    padding: '10px 8px 10px 0',
+                    background: 'var(--tool-bg-sidebar)',
+                    borderRight: '1px solid var(--tool-border)',
+                    color: 'var(--tool-text-dim)',
+                    fontFamily: '"Fira Code", "Fira Mono", monospace',
+                    userSelect: 'none'
+                }}>
+                    {lineNumbers.map(n => {
+                        const status = errorMap.get(n);
+                        const color = status === 'error' ? 'var(--danger-color)' : status === 'warning' ? 'var(--warning-color)' : 'inherit';
+                        const weight = status ? 'bold' : 'normal';
+                        const marker = status === 'error' ? '!' : status === 'warning' ? '?' : n;
+                        
+                        return (
+                            <div key={n} style={{ height: '21px', lineHeight: '21px', color, fontWeight: weight }}>
+                                {marker}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* EDITOR AREA */}
             <div style={{ 
@@ -107,21 +113,24 @@ export default function ScribeEditor({
                 position: 'relative'
             }}>
                 {/* Error Underlines */}
-                <div style={{ position: 'absolute', top: '10px', left: 0, width: '100%', pointerEvents: 'none', zIndex: 0 }}>
-                     {errors.map((err, i) => (
-                         <div key={i} style={{
-                             position: 'absolute',
-                             top: `${(err.line - 1) * 21}px`,
-                             left: 0,
-                             width: '100%',
-                             height: '21px',
-                             background: err.severity === 'error' 
-                                ? 'linear-gradient(90deg, rgba(224, 108, 117, 0.1) 0%, transparent 100%)' 
-                                : 'linear-gradient(90deg, rgba(229, 192, 123, 0.1) 0%, transparent 100%)',
-                             borderBottom: err.severity === 'error' ? '1px dashed var(--danger-color)' : '1px dashed var(--warning-color)'
-                         }} />
-                     ))}
-                </div>
+                {errors.length > 0 && (
+                    <div style={{ position: 'absolute', top: '10px', left: 0, width: '100%', pointerEvents: 'none', zIndex: 0 }}>
+                         {errors.map((err, i) => (
+                             <div key={i} style={{
+                                 position: 'absolute',
+                                 top: `${(err.line - 1) * 21}px`, // Matches line-height
+                                 left: 0,
+                                 width: '100%',
+                                 height: '21px',
+                                 background: err.severity === 'error' 
+                                    ? 'linear-gradient(90deg, var(--danger-bg) 0%, transparent 100%)' 
+                                    : 'linear-gradient(90deg, var(--warning-color) 0%, transparent 100%)',
+                                 opacity: 0.4,
+                                 borderBottom: err.severity === 'error' ? '1px dashed var(--danger-color)' : '1px dashed var(--warning-color)'
+                             }} />
+                         ))}
+                    </div>
+                )}
 
                 <Editor
                     value={value || ""}
@@ -141,7 +150,7 @@ export default function ScribeEditor({
                         fontFamily: '"Fira Code", "Fira Mono", monospace',
                         minHeight: minHeight,
                         color: 'var(--tool-text-main)',
-                        background: 'var(--tool-bg-dark)',
+                        background: 'transparent',
                         whiteSpace: isLigature ? 'pre' : 'pre-wrap', 
                         minWidth: isLigature ? 'max-content' : '100%',
                         lineHeight: '21px',
@@ -153,89 +162,59 @@ export default function ScribeEditor({
             </div>
             
             <style jsx global>{`
-                /* === SCRIBESCRIPT THEME (Dark Default) === */
-                .ss-text-raw { color: #bec0c5; } 
-                .ss-md-bold { font-weight: bold; }
-                .ss-md-italic { font-style: italic; }
-                .ss-brace { font-weight: bold; }
-                .ss-brace-odd { color: #e5c07b; } /* Gold */
-                .ss-brace-even { color: #df8749; } /* Copper */
-
-                .ss-var-local { color: #61afef; font-weight: bold; } 
-                .ss-var-alias { color: #98c379;  font-weight: bold;} 
-                .ss-var-world { color: #ff3b90;  font-weight: bold;} 
+                /* === SCRIBESCRIPT THEME === */
                 
-                .ss-dynamic-marker { color: #9ba1ad; } 
+                /* 1. Base Text */
+                .ss-text-raw { color: var(--tool-text-dim); } 
+                
+                /* 2. Logic Containers (Braces) - GOLD */
+                .ss-brace { font-weight: bold; color: var(--warning-color); }
+                .ss-brace-odd { color: var(--warning-color); } 
+                .ss-brace-even { color: var(--warning-color); opacity: 0.8; } 
 
-                .ss-macro { color: #6361ff; font-weight: bold;} 
-                .ss-bracket { color: #5646ff; } 
+                /* 3. Logic Contents - BLUE (Unified) */
+                /* Variables */
+                .ss-var-local { color: var(--tool-accent); font-weight: normal; } 
+                
+                /* Keywords/Macros - Same Blue, but BOLD */
+                .ss-macro { color: var(--tool-accent); font-weight: bold; } 
+                
+                /* Brackets - Same Blue, but DIMMED/THIN to act as structure for the keyword */
+                .ss-bracket { color: var(--tool-accent); font-weight: normal; opacity: 0.7; } 
 
-                .ss-number { color: #7cee7a; } 
-                .ss-math { color: #bec0c5; font-weight: bold; }
-                .ss-operator { color: #9ba1ad; }    
-                .ss-flow-op { color: #f77e6e; font-weight: bold; } 
+                /* 4. Special Types */
+                .ss-var-alias { color: var(--success-color); } /* Green */
+                .ss-var-world { color: var(--danger-color);  font-weight: bold; } /* Red */
+                
+                .ss-number { color: var(--tool-accent-mauve); } /* Purple */
+                .ss-math { color: var(--tool-text-main); font-weight: bold; }
+                .ss-operator { color: var(--tool-text-dim); }    
+                .ss-flow-op { color: var(--danger-color); font-weight: bold; } 
 
-                .ss-metadata { color: #617382; font-style: italic; }
-                .ss-js-keyword { color: #ff79c6; font-style: italic; font-weight: bold; text-shadow: 0 0 2px rgba(255, 121, 198, 0.2); }
+                /* 5. Meta */
+                .ss-comment, .ss-brace-comment { color: var(--success-color); font-style: italic; opacity: 0.8; font-family: "Fira Code", monospace; }
+                .ss-metadata { color: var(--text-muted); font-style: italic; }
 
-                .ss-comment, .ss-brace-comment { color: #6A9955; font-style: italic; font-family: "Fira Code", monospace; }
-
+                /* Bracket Matching Highlight */
                 .ss-brace-match {
-                    background-color: rgba(228, 222, 211, 0.15);
+                    background-color: var(--tool-accent-fade);
                     border-radius: 2px;
-                    outline: 1px solid rgba(230, 225, 217, 0.4);
-                    box-shadow: 0 0 4px rgba(224, 221, 215, 0.2);
+                    outline: 1px solid var(--tool-accent);
+                    box-shadow: 0 0 4px var(--tool-accent-fade);
                 }
 
-                /* === LIGHT MODE OVERRIDES (Atom One Light Inspired) === */
-                :root[data-global-theme='light'] .ss-text-raw { color: #383a42; }
-                :root[data-global-theme='light'] .ss-brace-odd { color: #c18401; } /* Dark Gold */
-                :root[data-global-theme='light'] .ss-brace-even { color: #986801; } /* Dark Copper */
-                
-                :root[data-global-theme='light'] .ss-var-local { color: #4078f2; } /* Dark Blue */
-                :root[data-global-theme='light'] .ss-var-alias { color: #50a14f; } /* Green */
-                :root[data-global-theme='light'] .ss-var-world { color: #e45649; } /* Red */
-                :root[data-global-theme='light'] .ss-dynamic-marker { color: #4c4d50ff;; }
-
-                :root[data-global-theme='light'] .ss-macro { color: #a626a4; } /* Purple */
-                :root[data-global-theme='light'] .ss-bracket { color: #4078f2; }
-                
-                :root[data-global-theme='light'] .ss-number { color: #986801; } /* Orange/Brown */
-                :root[data-global-theme='light'] .ss-math { color: #383a42; }
-                :root[data-global-theme='light'] .ss-operator { color: #4c4d50ff; }
-                :root[data-global-theme='light'] .ss-flow-op { color: #e45649; }
-
-                :root[data-global-theme='light'] .ss-metadata { color: #a0a1a7; }
-                :root[data-global-theme='light'] .ss-brace-match {
-                    background-color: rgba(0, 0, 0, 0.1);
-                    outline: 1px solid rgba(0, 0, 0, 0.2);
-                }
-
-                /* === LIGATURE THEME (Dark Default) === */
-                .lang-ligature .token.comment { color: #5c6370; font-style: italic; }
-                .lang-ligature .token.punctuation { color: #abb2bf; } 
-                .lang-ligature .token.keyword { color: #ee3fee; }  
-                .lang-ligature .token.attr-name { color: #dd9b5d; }  
-                .lang-ligature .token.string { color: #98c379; } 
-                .lang-ligature .token.attr-value { color: #63c9d6; }
-                .lang-ligature .token.function { color: #61afef; }  
-                .lang-ligature .token.operator { color: #ca4e59; font-weight: bold; } 
-                .lang-ligature .token.number { color: #e7a263; } 
-                .lang-ligature .token.important { color: #56b6c2; font-weight: bold; } 
-                .lang-ligature .token.builtin { color: #ead363; } 
-                .lang-ligature .token.sustain { color: #e2e6ee; font-weight: bold;}
-                .lang-ligature .token.effect-block { color: #a678dd; } 
-                .lang-ligature .token.variable { color: #95df61; } 
-                .lang-ligature .token.class-name { color: #e4d233; }
-
-                /* === LIGATURE LIGHT MODE === */
-                :root[data-global-theme='light'] .lang-ligature .token.comment { color: #a0a1a7; }
-                :root[data-global-theme='light'] .lang-ligature .token.punctuation { color: #383a42; }
-                :root[data-global-theme='light'] .lang-ligature .token.keyword { color: #a626a4; } /* Purple */
-                :root[data-global-theme='light'] .lang-ligature .token.attr-name { color: #986801; } /* Orange */
-                :root[data-global-theme='light'] .lang-ligature .token.string { color: #50a14f; } /* Green */
-                :root[data-global-theme='light'] .lang-ligature .token.function { color: #4078f2; } /* Blue */
-                :root[data-global-theme='light'] .lang-ligature .token.number { color: #986801; }
+                /* === LIGATURE THEME (Audio) === */
+                .lang-ligature .token.comment { color: var(--text-muted); font-style: italic; }
+                .lang-ligature .token.punctuation { color: var(--tool-text-dim); } 
+                .lang-ligature .token.keyword { color: var(--tool-accent-mauve); }  
+                .lang-ligature .token.attr-name { color: var(--warning-color); }  
+                .lang-ligature .token.string { color: var(--success-color); } 
+                .lang-ligature .token.attr-value { color: var(--tool-accent); }
+                .lang-ligature .token.function { color: var(--tool-accent); }  
+                .lang-ligature .token.operator { color: var(--danger-color); font-weight: bold; } 
+                .lang-ligature .token.number { color: var(--warning-color); } 
+                .lang-ligature .token.important { color: var(--info-color); font-weight: bold; } 
+                .lang-ligature .token.variable { color: var(--success-color); } 
 
                 /* SCROLLBARS */
                 .scribe-editor-wrapper div::-webkit-scrollbar { height: 8px; width: 8px; }
