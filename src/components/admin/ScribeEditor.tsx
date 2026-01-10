@@ -7,7 +7,6 @@ import { highlightScribeScript } from '@/utils/scribeHighlighter';
 import { ligatureGrammar } from '@/utils/prism-ligature'; 
 import { LintError } from '@/engine/audio/linter'; 
 
-// Import Prism base styles
 import 'prismjs/components/prism-clike';
 import 'prismjs/themes/prism-dark.css'; 
 
@@ -42,7 +41,6 @@ export default function ScribeEditor({
     const [cursorOffset, setCursorOffset] = useState<number | null>(null);
     const isLigature = language === 'ligature';
 
-    // --- HIGHLIGHTER STRATEGY ---
     const highlightCode = (code: string) => {
         if (isLigature) {
             return highlight(code, languages.ligature || ligatureGrammar, 'ligature'); 
@@ -61,15 +59,14 @@ export default function ScribeEditor({
     }, [errors]);
 
     const scopeClass = isLigature ? 'lang-ligature' : 'lang-scribescript';
-
-    // Only show gutter if explicit prop is true OR we have active errors
     const displayGutter = showLineNumbers || errors.length > 0;
 
     return (
         <div 
             className={`scribe-editor-wrapper ${scopeClass}`}
             style={{
-                background: 'var(--tool-bg-input)', 
+                // UPDATED: Use the specific code editor background variable
+                background: 'var(--tool-bg-code-editor)', 
                 fontSize: '0.9rem',
                 lineHeight: '1.5',
                 position: 'relative',
@@ -78,7 +75,7 @@ export default function ScribeEditor({
                 minHeight: minHeight
             }}
         >
-            {/* LINE NUMBER GUTTER (Only renders if needed) */}
+            {/* LINE NUMBER GUTTER */}
             {displayGutter && (
                 <div style={{
                     flexShrink: 0,
@@ -112,20 +109,20 @@ export default function ScribeEditor({
                 overflowX: isLigature ? 'auto' : 'hidden', 
                 position: 'relative'
             }}>
-                {/* Error Underlines */}
+                {/* Error Underlines / Backgrounds */}
                 {errors.length > 0 && (
                     <div style={{ position: 'absolute', top: '10px', left: 0, width: '100%', pointerEvents: 'none', zIndex: 0 }}>
                          {errors.map((err, i) => (
                              <div key={i} style={{
                                  position: 'absolute',
-                                 top: `${(err.line - 1) * 21}px`, // Matches line-height
+                                 top: `${(err.line - 1) * 21}px`, 
                                  left: 0,
                                  width: '100%',
                                  height: '21px',
+                                 // UPDATED: Use the theme's bg variables for better legibility in light mode
                                  background: err.severity === 'error' 
                                     ? 'linear-gradient(90deg, var(--danger-bg) 0%, transparent 100%)' 
-                                    : 'linear-gradient(90deg, var(--warning-color) 0%, transparent 100%)',
-                                 opacity: 0.4,
+                                    : 'linear-gradient(90deg, var(--warning-bg) 0%, transparent 100%)',
                                  borderBottom: err.severity === 'error' ? '1px dashed var(--danger-color)' : '1px dashed var(--warning-color)'
                              }} />
                          ))}
@@ -163,39 +160,30 @@ export default function ScribeEditor({
             
             <style jsx global>{`
                 /* === SCRIBESCRIPT THEME === */
+                .ss-text-raw { color: var(--text-primary); } 
                 
-                /* 1. Base Text */
-                .ss-text-raw { color: var(--tool-text-dim); } 
-                
-                /* 2. Logic Containers (Braces) - GOLD */
+                /* Braces: Gold/Warning color across themes */
                 .ss-brace { font-weight: bold; color: var(--warning-color); }
                 .ss-brace-odd { color: var(--warning-color); } 
                 .ss-brace-even { color: var(--warning-color); opacity: 0.8; } 
 
-                /* 3. Logic Contents - BLUE (Unified) */
-                /* Variables */
+                /* Logic Content: Unified Blue */
                 .ss-var-local { color: var(--tool-accent); font-weight: normal; } 
-                
-                /* Keywords/Macros - Same Blue, but BOLD */
                 .ss-macro { color: var(--tool-accent); font-weight: bold; } 
-                
-                /* Brackets - Same Blue, but DIMMED/THIN to act as structure for the keyword */
                 .ss-bracket { color: var(--tool-accent); font-weight: normal; opacity: 0.7; } 
 
-                /* 4. Special Types */
-                .ss-var-alias { color: var(--success-color); } /* Green */
-                .ss-var-world { color: var(--danger-color);  font-weight: bold; } /* Red */
+                /* Special Types */
+                .ss-var-alias { color: var(--success-color); font-weight: bold; } 
+                .ss-var-world { color: var(--danger-color);  font-weight: bold; } 
                 
-                .ss-number { color: var(--tool-accent-mauve); } /* Purple */
+                .ss-number { color: var(--tool-accent-mauve); } 
                 .ss-math { color: var(--tool-text-main); font-weight: bold; }
-                .ss-operator { color: var(--tool-text-dim); }    
+                .ss-operator { color: var(--text-secondary); }    
                 .ss-flow-op { color: var(--danger-color); font-weight: bold; } 
 
-                /* 5. Meta */
                 .ss-comment, .ss-brace-comment { color: var(--success-color); font-style: italic; opacity: 0.8; font-family: "Fira Code", monospace; }
                 .ss-metadata { color: var(--text-muted); font-style: italic; }
 
-                /* Bracket Matching Highlight */
                 .ss-brace-match {
                     background-color: var(--tool-accent-fade);
                     border-radius: 2px;
@@ -203,7 +191,7 @@ export default function ScribeEditor({
                     box-shadow: 0 0 4px var(--tool-accent-fade);
                 }
 
-                /* === LIGATURE THEME (Audio) === */
+                /* === LIGATURE THEME === */
                 .lang-ligature .token.comment { color: var(--text-muted); font-style: italic; }
                 .lang-ligature .token.punctuation { color: var(--tool-text-dim); } 
                 .lang-ligature .token.keyword { color: var(--tool-accent-mauve); }  
@@ -214,9 +202,12 @@ export default function ScribeEditor({
                 .lang-ligature .token.operator { color: var(--danger-color); font-weight: bold; } 
                 .lang-ligature .token.number { color: var(--warning-color); } 
                 .lang-ligature .token.important { color: var(--info-color); font-weight: bold; } 
+                .lang-ligature .token.builtin { color: var(--warning-color); } 
+                .lang-ligature .token.sustain { color: var(--tool-text-header); font-weight: bold;}
+                .lang-ligature .token.effect-block { color: var(--tool-accent-mauve); } 
                 .lang-ligature .token.variable { color: var(--success-color); } 
+                .lang-ligature .token.class-name { color: var(--warning-color); }
 
-                /* SCROLLBARS */
                 .scribe-editor-wrapper div::-webkit-scrollbar { height: 8px; width: 8px; }
                 .scribe-editor-wrapper div::-webkit-scrollbar-track { background: var(--tool-bg-sidebar); }
                 .scribe-editor-wrapper div::-webkit-scrollbar-thumb { background: var(--tool-border-highlight); border-radius: 4px; }
