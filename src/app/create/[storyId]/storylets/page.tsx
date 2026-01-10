@@ -1,14 +1,16 @@
 // src/app/create/[storyId]/storylets/page.tsx
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useRef } from 'react';
 import { Storylet, QualityDefinition } from '@/engine/models';
 import StoryletMainForm from './components/StoryletMainForm';
 import AdminListSidebar from './components/AdminListSidebar';
 import InputModal from '@/components/admin/InputModal';
-import ConfirmationModal from '@/components/admin/ConfirmationModal'; // <--- NEW IMPORT
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal'; // New Modal Component
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/providers/ToastProvider';
+import { FormGuard } from '@/hooks/useCreatorForm';
 
 export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -23,8 +25,13 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
     const [isLoadingList, setIsLoadingList] = useState(true);
     const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
-    // --- MODAL STATES ---
-    const [inputModal, setInputModal] = useState<{
+    // Guard Ref for Unsaved Changes Logic
+    const guardRef = useRef<FormGuard | null>(null);
+    const [pendingId, setPendingId] = useState<string | null>(null);
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+    // Modal State
+    const [modalConfig, setModalConfig] = useState<{
         isOpen: boolean;
         mode: 'create' | 'duplicate';
         sourceItem?: Storylet;
@@ -67,6 +74,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
             setActiveStorylet(null);
             return;
         }
+        // If we are loading detail, ensure we aren't blocked by previous guard state
         setIsLoadingDetail(true);
         fetch(`/api/admin/storylets?storyId=${storyId}&id=${selectedId}`)
             .then(res => res.json())
@@ -75,13 +83,46 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
             .finally(() => setIsLoadingDetail(false));
     }, [selectedId]);
 
-    // --- ACTIONS ---
+    // --- NAVIGATION INTERCEPTOR ---
+    const handleSelectAttempt = (newId: string) => {
+        if (newId === selectedId) return;
 
-    // Open Input Modals
-    const openCreateModal = () => setInputModal({ isOpen: true, mode: 'create' });
-    const openDuplicateModal = (source: Storylet) => setInputModal({ isOpen: true, mode: 'duplicate', sourceItem: source });
+        // Check Child Form Status via Ref
+        if (guardRef.current && guardRef.current.isDirty) {
+            setPendingId(newId);
+            setShowUnsavedModal(true);
+        } else {
+            setSelectedId(newId);
+        }
+    };
 
-    // Open Delete Modal
+    const handleConfirmSwitch = async () => {
+        if (guardRef.current) {
+            const success = await guardRef.current.save();
+            if (success) {
+                setShowUnsavedModal(false);
+                if (pendingId) setSelectedId(pendingId);
+                setPendingId(null);
+            }
+        }
+    };
+
+    const handleDiscardSwitch = () => {
+        setShowUnsavedModal(false);
+        if (pendingId) setSelectedId(pendingId);
+        setPendingId(null);
+    };
+
+    const handleCancelSwitch = () => {
+        setShowUnsavedModal(false);
+        setPendingId(null);
+    };
+
+    // --- CRUD ACTIONS ---
+
+    const openCreateModal = () => setModalConfig({ isOpen: true, mode: 'create' });
+    const openDuplicateModal = (source: Storylet) => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: source });
+
     const handleDeleteRequest = (id: string) => {
         setConfirmModal({
             isOpen: true,
@@ -91,8 +132,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
         });
     };
 
-    // Input Modal Submit
-    const handleInputSubmit = async (inputValue: string) => {
+    const handleModalSubmit = async (inputValue: string) => {
         const cleanId = inputValue.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         
         if (storylets.find(s => s.id === cleanId)) {
@@ -100,14 +140,13 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
             return;
         }
 
-        if (inputModal.mode === 'create') {
+        if (modalConfig.mode === 'create') {
             await performCreate(cleanId);
-        } else if (inputModal.mode === 'duplicate' && inputModal.sourceItem) {
-            await performDuplicate(cleanId, inputModal.sourceItem);
+        } else if (modalConfig.mode === 'duplicate' && modalConfig.sourceItem) {
+            await performDuplicate(cleanId, modalConfig.sourceItem);
         }
     };
 
-    // 3. Perform Create
     const performCreate = async (newId: string) => {
         const newStorylet: Storylet = {
             id: newId,
@@ -119,7 +158,6 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
             version: 1
         };
         
-        // Optimistic Update
         setStorylets(prev => [...prev, { id: newId, name: newStorylet.name }]);
         
         try {
@@ -128,6 +166,8 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId: storyId, data: newStorylet })
             });
+            // Force selection update even if dirty check might trigger (create is clean)
+            guardRef.current = null; 
             setSelectedId(newId);
             setActiveStorylet(newStorylet);
             showToast("Storylet created!", "success");
@@ -137,7 +177,6 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
         }
     };
 
-    // 4. Perform Duplicate
     const performDuplicate = async (newId: string, source: Storylet) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { _id, ...rest } = source as any; 
@@ -159,6 +198,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
 
             if (res.ok) {
                 setStorylets(prev => [...prev, { id: newId, name: newStorylet.name, folder: newStorylet.folder }]);
+                guardRef.current = null;
                 setSelectedId(newId);
                 setActiveStorylet(newStorylet);
                 showToast("Duplicated successfully.", "success");
@@ -171,17 +211,16 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
         }
     };
 
-    // 5. Perform Delete (Triggered by Confirmation Modal)
     const performDelete = async () => {
         const id = confirmModal.itemToDelete;
         if (!id) return;
 
-        setConfirmModal({ ...confirmModal, isOpen: false }); // Close modal immediately
+        setConfirmModal({ ...confirmModal, isOpen: false });
 
         try {
             await fetch(`/api/admin/storylets?storyId=${storyId}&id=${id}`, { method: 'DELETE' });
             setStorylets(prev => prev.filter(s => s.id !== id));
-            setSelectedId(null);
+            if (selectedId === id) setSelectedId(null);
             showToast("Deleted successfully.", "info");
         } catch (e) {
             console.error(e);
@@ -189,7 +228,6 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
         }
     };
 
-    // 6. Save Handler (Updates Sidebar List State Only)
     const handleSave = (data: Storylet) => {
         setStorylets(prev => prev.map(s => 
             s.id === data.id 
@@ -206,7 +244,7 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                 title="Storylets"
                 items={storylets as any}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={handleSelectAttempt} // Intercept selection
                 onCreate={openCreateModal}
                 groupOptions={[
                     { label: "Folder", key: "folder" },
@@ -221,30 +259,31 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                     <StoryletMainForm 
                         initialData={activeStorylet} 
                         onSave={handleSave}
-                        onDelete={handleDeleteRequest} // Calls Modal logic
-                        onDuplicate={openDuplicateModal}
+                        onDelete={handleDeleteRequest} 
+                        onDuplicate={openDuplicateModal} 
                         qualityDefs={qualities}
                         storyId={storyId}
+                        guardRef={guardRef} // Pass Ref to Child
                     />
                 ) : (
                     <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a storylet</div>
                 )}
             </div>
 
-            {/* MODAL: Input (Create / Duplicate) */}
+            {/* Input Modal */}
             <InputModal
-                isOpen={inputModal.isOpen}
-                onClose={() => setInputModal({ ...inputModal, isOpen: false })}
-                onSubmit={handleInputSubmit}
-                title={inputModal.mode === 'create' ? "Create Storylet" : "Duplicate Storylet"}
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                onSubmit={handleModalSubmit}
+                title={modalConfig.mode === 'create' ? "Create Storylet" : "Duplicate Storylet"}
                 description="Enter a unique ID for this item. IDs should be lowercase and use underscores."
                 label="Storylet ID"
                 placeholder="e.g. intro_event_01"
-                defaultValue={inputModal.mode === 'duplicate' ? `${inputModal.sourceItem?.id}_copy` : ""}
-                confirmLabel={inputModal.mode === 'create' ? "Create" : "Duplicate"}
+                defaultValue={modalConfig.mode === 'duplicate' ? `${modalConfig.sourceItem?.id}_copy` : ""}
+                confirmLabel={modalConfig.mode === 'create' ? "Create" : "Duplicate"}
             />
 
-            {/* MODAL: Confirmation (Delete) */}
+            {/* Delete Confirmation */}
             <ConfirmationModal 
                 isOpen={confirmModal.isOpen}
                 title={confirmModal.title}
@@ -253,6 +292,14 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                 confirmLabel="Delete"
                 onConfirm={performDelete}
                 onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+            />
+
+            {/* Unsaved Changes Guard */}
+            <UnsavedChangesModal 
+                isOpen={showUnsavedModal}
+                onSaveAndContinue={handleConfirmSwitch}
+                onDiscard={handleDiscardSwitch}
+                onCancel={handleCancelSwitch}
             />
         </div>
     );

@@ -7,21 +7,21 @@ import SmartArea from '@/components/admin/SmartArea';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import CommandCenter from '@/components/admin/CommandCenter';
-import { useCreatorForm } from '@/hooks/useCreatorForm';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 
 interface Props {
     initialData: Storylet;
-    onSave: (data: Storylet) => void; // <--- Restored this prop
+    onSave: (data: Storylet) => void; 
     onDelete: (id: string) => void;
     onDuplicate: (data: Storylet) => void;
     qualityDefs: QualityDefinition[];
     storyId: string;
+    guardRef: { current: FormGuard | null }; 
 }
 
-export default function StoryletMainForm({ initialData, onSave, onDelete, onDuplicate, qualityDefs, storyId }: Props) {
+export default function StoryletMainForm({ initialData, onSave, onDelete, onDuplicate, qualityDefs, storyId, guardRef }: Props) {
     
-    // 1. Hook State
     const { 
         data: form, 
         handleChange, 
@@ -33,7 +33,8 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
     } = useCreatorForm<Storylet>(
         initialData, 
         '/api/admin/storylets', 
-        { storyId }
+        { storyId },
+        guardRef // <--- PASS REF HERE
     );
 
     // 2. Local UI State for Modal

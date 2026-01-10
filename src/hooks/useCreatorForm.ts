@@ -1,10 +1,17 @@
+// src/hooks/useCreatorForm.ts
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/providers/ToastProvider';
+
+export interface FormGuard {
+    isDirty: boolean;
+    save: () => Promise<boolean>;
+}
 
 export function useCreatorForm<T extends { id: string; version?: number }>(
     initialData: T | null,
     saveEndpoint: string,
-    extraBodyParams: Record<string, any> = {}
+    extraBodyParams: Record<string, any> = {},
+    guardRef?: { current: FormGuard | null } 
 ) {
     const [data, setData] = useState<T | null>(initialData);
     const [originalData, setOriginalData] = useState<T | null>(initialData);
@@ -31,8 +38,7 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
     }, [originalData]);
 
     const handleSave = useCallback(async () => {
-        // ... (Save logic remains identical to previous step) ...
-        if (!data) return;
+        if (!data) return false;
         setIsSaving(true);
         try {
             const res = await fetch(saveEndpoint, {
@@ -42,7 +48,7 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
             });
 
             if (res.status === 409) {
-                showToast("Conflict: This item has been modified elsewhere. Please reload.", "error");
+                showToast("Conflict: Data changed on server. Please reload.", "error");
                 setIsSaving(false);
                 return false;
             }
@@ -70,7 +76,6 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         }
     }, [data, extraBodyParams, saveEndpoint, showToast]);
 
-    // UPDATED: Logic only, no UI confirmation here
     const revertChanges = useCallback(() => {
         if (originalData) {
             setData(JSON.parse(JSON.stringify(originalData)));
@@ -79,7 +84,29 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         }
     }, [originalData, showToast]);
 
-    // Hotkey Support (Ctrl+S)
+    // 1. BROWSER PROTECTION (Refresh/Close Tab)
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = ''; // Chrome requires this
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
+
+    // 2. PARENT PROTECTION (Switching Items)
+    useEffect(() => {
+        if (guardRef) {
+            guardRef.current = {
+                isDirty,
+                save: handleSave
+            };
+        }
+    }, [isDirty, handleSave, guardRef]);
+
+    // Hotkey Support
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -96,7 +123,7 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         setData,
         handleChange,
         handleSave,
-        revertChanges, // Renamed from handleRevert
+        revertChanges,
         isDirty,
         isSaving,
         lastSaved
