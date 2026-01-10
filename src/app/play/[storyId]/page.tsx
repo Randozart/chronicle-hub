@@ -4,9 +4,10 @@ import { redirect } from 'next/navigation';
 import { getContent, getAutofireStorylets, getStorylets } from '@/engine/contentCache';
 import { getCharacter, getCharactersList } from '@/engine/characterService';
 import { getWorldState } from '@/engine/worldService';
-import { Storylet, Opportunity } from '@/engine/models';
+import { Storylet, Opportunity, LocationDefinition } from '@/engine/models'; // Added LocationDefinition
 import GameHub from '@/components/GameHub';
 
+// Helper to prevent passing complex server-only objects to client
 function serialize<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
 }
@@ -41,9 +42,9 @@ export default async function PlayPage({ params, searchParams }: Props) {
     
     // Determine active character
     let character = null;
-    let initialLocation = null;
+    let initialLocation: LocationDefinition | null = null; // Use the interface
     let initialHand: Opportunity[] = [];
-    let activeEvent = null;
+    let activeEvent: Storylet | Opportunity | null = null; // Use the interfaces
 
     if (resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
         const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
@@ -52,12 +53,13 @@ export default async function PlayPage({ params, searchParams }: Props) {
 
     // Hydration Logic
     if (character) {
+        // --- FIX: Ensure we are handling the full object correctly ---
+        // The locDef is the full LocationDefinition object including version, etc.
         const locDef = gameData.locations[character.currentLocationId];
+        // We assign the full object here, and the client component GameHub will be responsible
+        // for picking the properties it needs (like .name, .image).
         initialLocation = locDef || null;
 
-        // --- FIX: AGGREGATE CARDS FROM ALL DECKS ---
-        // The character might have cards in "deck_a" and "deck_b". 
-        // We collect ALL of them here. GameHub will filter them visually based on the location.
         if (character.opportunityHands) {
             const allCardIds = Object.values(character.opportunityHands).flat();
             
@@ -67,7 +69,6 @@ export default async function PlayPage({ params, searchParams }: Props) {
             }).filter((item): item is Opportunity => !!item);
         }
         
-        // Active Event Hydration
         if (character.currentStoryletId) {
              const autofires = await getAutofireStorylets(storyId);
              const evt = autofires.find(s => s.id === character.currentStoryletId) 
@@ -91,7 +92,6 @@ export default async function PlayPage({ params, searchParams }: Props) {
     const safeHand = serialize(initialHand);
     const safeActiveEvent = serialize(activeEvent);
     
-    // Create Lookup Maps to avoid passing huge arrays if possible, or just pass the array
     const storyletMap = allContent.reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {});
     const opportunityMap = allContent
         .filter((s: any) => 'deck' in s)
