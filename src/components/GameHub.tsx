@@ -24,8 +24,8 @@ import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
 import ScribeDebugger from './admin/ScribeDebugger';
-import { CharacterInspector } from '@/app/create/[storyId]/players/page';
 import { createPortal } from 'react-dom';
+import CharacterInspector from '@/app/create/[storyId]/players/components/CharacterInspector';
 
 
 interface GameHubProps {
