@@ -1,4 +1,3 @@
-// src/app/play/[storyId]/creation/page.tsx
 import { getWorldContent } from '@/engine/worldService';
 import CreationForm from '@/components/CreationForm';
 
@@ -13,11 +12,16 @@ export default async function CreationPage({ params }: Props) {
 
     const gameData = await getWorldContent(storyId);
     
-    // Normalize rules (Handle old string format migration)
     const rawRules = gameData.char_create || {};
     const rules: any = {};
+    
     for (const key in rawRules) {
+        if (['version', 'lastModified', 'lastModifiedBy', 'itemId', '_id'].includes(key)) {
+            continue;
+        }
+
         const val = rawRules[key] as any;
+        
         if (typeof val === 'string') {
              rules[key] = {
                 type: val.includes('|') ? 'label_select' : (val === 'string' ? 'string' : 'static'),

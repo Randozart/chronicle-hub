@@ -12,12 +12,24 @@ interface CharCreateProps {
     onAddCategory: (cat: string, type: 'equip' | 'sheet') => void;
     qualityDefs: Record<string, QualityDefinition>;
     imageLibrary: Record<string, ImageDefinition>; 
+    skipCreation: boolean;
+    onToggleSkip: (val: boolean) => void;
+
 }
 
-export default function CharCreateEditor({ rules, onChange, storyId, onCreateQuality, onAddCategory, imageLibrary }: CharCreateProps) {
+export default function CharCreateEditor({ 
+    rules, 
+    onChange, 
+    storyId, 
+    onCreateQuality, 
+    onAddCategory, 
+    imageLibrary,
+    skipCreation, 
+    onToggleSkip 
+}: CharCreateProps) {
     const [newKey, setNewKey] = useState("");
     const [draggedKey, setDraggedKey] = useState<string | null>(null);
-    const [pickingFor, setPickingFor] = useState<string | null>(null); // State for picker
+    const [pickingFor, setPickingFor] = useState<string | null>(null); 
 
     const sortedKeys = useMemo(() => {
         return Object.keys(rules).sort((a, b) => (rules[a].ordering || 0) - (rules[b].ordering || 0));
@@ -53,7 +65,6 @@ export default function CharCreateEditor({ rules, onChange, storyId, onCreateQua
         setDraggedKey(null);
     };
     
-    // --- PRESETS (Keep existing logic exactly as provided) ---
     const addSimpleIdentity = () => {
         const baseOrder = sortedKeys.length;
         const newRules = { ...rules };
@@ -198,201 +209,239 @@ export default function CharCreateEditor({ rules, onChange, storyId, onCreateQua
 
     return (
         <div className="special-field-group" style={{ borderColor: 'var(--warning-color)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <label className="special-label" style={{ color: 'var(--warning-color)', margin: 0 }}>Character Initialization</label>
-                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <PresetToggle label="Simple Name" has={hasRule('$player_name') && !hasRule('$first_name')} onAdd={addSimpleIdentity} onRemove={removeSimpleIdentity} />
-                    <PresetToggle label="Complex Name" has={hasRule('$first_name')} onAdd={addComplexIdentity} onRemove={removeComplexIdentity} />
-                    <PresetToggle label="Stats" has={hasRule('$body')} onAdd={addSimpleStats} onRemove={removeSimpleStats} />
-                    <PresetToggle label="Class System" has={hasRule('$class')} onAdd={addClassSystem} onRemove={removeClassSystem} />
-                    <PresetToggle label="Pronouns" has={hasRule('$pronouns')} onAdd={addPronounSystem} onRemove={removePronounSystem} />
-                    <PresetToggle label="Location" has={hasRule('$location')} onAdd={addVariableLocation} onRemove={removeVariableLocation} />
-                </div>
+            
+            {/* Skip Toggle Section */}
+            <div style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--tool-border)' }}>
+                <label className="toggle-label" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--tool-text-header)' }}>
+                    <input 
+                        type="checkbox" 
+                        checked={skipCreation} 
+                        onChange={e => onToggleSkip(e.target.checked)} 
+                    />
+                    Skip Character Creation Screen
+                </label>
+                <p className="special-desc" style={{ marginTop: '0.5rem' }}>
+                    If enabled, players click &quot;Start New Game&quot; and skip the form. 
+                    <br/>
+                    <strong>Static/Calculated</strong> rules will still run to set up the character. 
+                    <strong>Interactive</strong> fields (Inputs, Selects) will simply default to empty/zero since the player cannot interact with them.
+                </p>
             </div>
 
-            <div style={{ background: 'var(--tool-bg-dark)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--tool-text-main)' }}>
-                <p style={{ margin: '0 0 0.5rem 0' }}><strong>How to use:</strong> Define the starting qualities. Drag to reorder.</p>
-                <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.4' }}>
-                    <li><strong>Headers:</strong> Create sections. Can be set as "Modal Root" to group subsequent fields into a popup.</li>
-                    <li><strong>Static/Calc:</strong> A fixed value or formula. Now supports <code>Visible If</code> conditions.</li>
-                    <li><strong>Inputs/Selects:</strong> Player choices.</li>
-                </ul>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {/* List Container (Removed opacity/grayscale style) */}
+            <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <label className="special-label" style={{ color: 'var(--warning-color)', margin: 0 }}>Character Initialization Rules</label>
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <PresetToggle label="Simple Name" has={hasRule('$player_name') && !hasRule('$first_name')} onAdd={addSimpleIdentity} onRemove={removeSimpleIdentity} />
+                        <PresetToggle label="Complex Name" has={hasRule('$first_name')} onAdd={addComplexIdentity} onRemove={removeComplexIdentity} />
+                        <PresetToggle label="Stats" has={hasRule('$body')} onAdd={addSimpleStats} onRemove={removeSimpleStats} />
+                        <PresetToggle label="Class System" has={hasRule('$class')} onAdd={addClassSystem} onRemove={removeClassSystem} />
+                        <PresetToggle label="Pronouns" has={hasRule('$pronouns')} onAdd={addPronounSystem} onRemove={removePronounSystem} />
+                        <PresetToggle label="Location" has={hasRule('$location')} onAdd={addVariableLocation} onRemove={removeVariableLocation} />
+                    </div>
+                </div>
                 
-                {/* IMAGE PICKER MODAL */}
-                {pickingFor && (
-                    <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-overlay)', zIndex: 9999, padding: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <div style={{ background: 'var(--bg-panel)', padding: '1rem', borderRadius: '8px', width: '100%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', border: '1px solid var(--tool-border)' }}>
-                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'1rem'}}>
-                                <h3 style={{color: 'var(--tool-text-header)'}}>Pick Image for {pickingFor}</h3>
-                                <button onClick={() => setPickingFor(null)} className="unequip-btn">Close</button>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px' }}>
-                                {Object.values(imageLibrary).map(img => (
-                                    <div key={img.id} onClick={() => {
-                                        const oldRule = rules[pickingFor!].rule || "";
-                                        const append = `${img.id}:${img.id}`;
-                                        const newRule = oldRule ? `${oldRule} | ${append}` : append;
-                                        handleUpdate(pickingFor!, 'rule', newRule);
-                                        setPickingFor(null);
-                                    }} style={{ cursor: 'pointer', border: '1px solid var(--tool-border)', padding: '4px', borderRadius: '4px' }}>
-                                        <div style={{width:'100%', aspectRatio:'1/1', overflow:'hidden', borderRadius:'4px'}}>
-                                            <img src={img.url} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                {/* Rules List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    
+                    {/* Image Picker Modal */}
+                    {pickingFor && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-overlay)', zIndex: 9999, padding: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <div style={{ background: 'var(--bg-panel)', padding: '1rem', borderRadius: '8px', width: '100%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', border: '1px solid var(--tool-border)' }}>
+                                <div style={{display:'flex', justifyContent:'space-between', marginBottom:'1rem'}}>
+                                    <h3 style={{color: 'var(--tool-text-header)'}}>Pick Image for {pickingFor}</h3>
+                                    <button onClick={() => setPickingFor(null)} className="unequip-btn">Close</button>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px' }}>
+                                    {Object.values(imageLibrary).map(img => (
+                                        <div key={img.id} onClick={() => {
+                                            const oldRule = rules[pickingFor!].rule || "";
+                                            const append = `${img.id}:${img.id}`;
+                                            const newRule = oldRule ? `${oldRule} | ${append}` : append;
+                                            handleUpdate(pickingFor!, 'rule', newRule);
+                                            setPickingFor(null);
+                                        }} style={{ cursor: 'pointer', border: '1px solid var(--tool-border)', padding: '4px', borderRadius: '4px' }}>
+                                            <div style={{width:'100%', aspectRatio:'1/1', overflow:'hidden', borderRadius:'4px'}}>
+                                                <img src={img.url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt={img.alt} />
+                                            </div>
+                                            <div style={{fontSize:'0.7rem', marginTop:'2px', overflow:'hidden', textOverflow:'ellipsis', color: 'var(--tool-text-main)'}}>{img.id}</div>
                                         </div>
-                                        <div style={{fontSize:'0.7rem', marginTop:'2px', overflow:'hidden', textOverflow:'ellipsis', color: 'var(--tool-text-main)'}}>{img.id}</div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {sortedKeys.map(key => {
-                    const rule = rules[key];
-                    if (!rule || typeof rule.rule === 'undefined') return null;
-                    const isDerived = rule.rule.includes('$') || rule.rule.includes('@');
-                    const isConditional = !!rule.visible_if;
-                    
-                    let rulePlaceholder = "Value";
-                    if (rule.type === 'label_select') rulePlaceholder = "1:Sir | 2:Dame";
-                    if (rule.type === 'image_select') rulePlaceholder = "img_1:Label | img_2:Label";
-                    if (rule.type === 'static') rulePlaceholder = "10 or { $other * 2 }";
+                    {sortedKeys.map(key => {
+                        const rule = rules[key];
+                        if (!rule || typeof rule.rule === 'undefined') return null;
+                        const isDerived = rule.rule.includes('$') || rule.rule.includes('@');
+                        const isConditional = !!rule.visible_if;
+                        
+                        // Check for Warning Condition
+                        const isInteractive = ['string', 'label_select', 'image_select', 'labeled_image_select'].includes(rule.type);
+                        const showSkippedWarning = skipCreation && isInteractive;
 
-                    return (
-                        <div 
-                            key={key} 
-                            draggable
-                            onDragStart={(e) => onDragStart(e, key)}
-                            onDragOver={(e) => onDragOver(e, key)}
-                            onDrop={(e) => onDrop(e, key)}
-                            style={{ 
-                                background: 'var(--tool-bg-header)', padding: '0.75rem', borderRadius: '4px', 
-                                borderLeft: `4px solid ${rule.type === 'header' ? 'var(--tool-accent-mauve)' : 'var(--success-color)'}`,
-                                border: '1px solid var(--tool-border)',
-                                borderLeftWidth: '4px',
-                                cursor: 'move',
-                                opacity: draggedKey === key ? 0.5 : 1
-                            }}
-                        >
-                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <div style={{ fontFamily: 'monospace', color: rule.type === 'header' ? 'var(--tool-accent-mauve)' : 'var(--success-color)', flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span style={{ cursor: 'grab', marginRight: '5px', opacity: 0.5 }}>☰</span>
-                                    {isConditional && <span title={`Visible If: ${rule.visible_if}`}>👁️</span>}
-                                    {key}
-                                    {isDerived && <span title="Derived/Calculated Value" style={{ color: 'var(--tool-accent-mauve)' }}>ƒ</span>}
-                                    {rule.type === 'header' && rule.displayMode === 'modal' && <span style={{fontSize:'0.7rem', border:'1px solid var(--tool-accent-mauve)', color: 'var(--tool-accent-mauve)', padding:'0 4px', borderRadius:'4px'}}>MODAL</span>}
+                        let rulePlaceholder = "Value";
+                        if (rule.type === 'label_select') rulePlaceholder = "1:Sir | 2:Dame";
+                        if (rule.type === 'image_select') rulePlaceholder = "img_1:Label | img_2:Label";
+                        if (rule.type === 'static') rulePlaceholder = "10 or { $other * 2 }";
+
+                        return (
+                            <div 
+                                key={key} 
+                                draggable
+                                onDragStart={(e) => onDragStart(e, key)}
+                                onDragOver={(e) => onDragOver(e, key)}
+                                onDrop={(e) => onDrop(e, key)}
+                                style={{ 
+                                    background: 'var(--tool-bg-header)', padding: '0.75rem', borderRadius: '4px', 
+                                    borderLeft: `4px solid ${rule.type === 'header' ? 'var(--tool-accent-mauve)' : 'var(--success-color)'}`,
+                                    border: '1px solid var(--tool-border)',
+                                    borderLeftWidth: '4px',
+                                    cursor: 'move',
+                                    opacity: draggedKey === key ? 0.5 : 1
+                                }}
+                            >
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <div style={{ fontFamily: 'monospace', color: rule.type === 'header' ? 'var(--tool-accent-mauve)' : 'var(--success-color)', flex: 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <span style={{ cursor: 'grab', marginRight: '5px', opacity: 0.5 }}>☰</span>
+                                        {isConditional && <span title={`Visible If: ${rule.visible_if}`}>👁️</span>}
+                                        {key}
+                                        {isDerived && <span title="Derived/Calculated Value" style={{ color: 'var(--tool-accent-mauve)' }}>ƒ</span>}
+                                        {rule.type === 'header' && rule.displayMode === 'modal' && <span style={{fontSize:'0.7rem', border:'1px solid var(--tool-accent-mauve)', color: 'var(--tool-accent-mauve)', padding:'0 4px', borderRadius:'4px'}}>MODAL</span>}
+                                    </div>
+                                    <select 
+                                        value={rule.type} 
+                                        onChange={e => handleUpdate(key, 'type', e.target.value as any)} 
+                                        className="form-select" 
+                                        style={{ width: '120px', padding: '2px' }}
+                                    >
+                                        <option value="header">-- Header --</option>
+                                        <option value="string">Text Input</option>
+                                        <option value="static">Static/Calc</option>
+                                        <option value="label_select">Buttons</option>
+                                        <option value="image_select">Images</option>
+                                        <option value="labeled_image_select">Img+Label</option>
+                                    </select>
+                                    <button onClick={() => handleDelete(key)} style={{color: 'var(--danger-color)', background: 'none', border: 'none', cursor: 'pointer'}}>✕</button>
                                 </div>
-                                <select 
-                                    value={rule.type} 
-                                    onChange={e => handleUpdate(key, 'type', e.target.value as any)} 
-                                    className="form-select" 
-                                    style={{ width: '120px', padding: '2px' }}
-                                >
-                                    <option value="header">-- Header --</option>
-                                    <option value="string">Text Input</option>
-                                    <option value="static">Static/Calc</option>
-                                    <option value="label_select">Buttons</option>
-                                    <option value="image_select">Images</option>
-                                    <option value="labeled_image_select">Img+Label</option>
-                                </select>
-                                <button onClick={() => handleDelete(key)} style={{color: 'var(--danger-color)', background: 'none', border: 'none', cursor: 'pointer'}}>✕</button>
-                            </div>
 
-                            {/* CONTROLS ROW */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                <div style={{position:'relative'}}>
-                                    <input 
-                                        value={rule.rule} 
-                                        onChange={e => handleUpdate(key, 'rule', e.target.value)} 
-                                        className="form-input" 
-                                        placeholder={rulePlaceholder}
-                                        style={rule.type === 'header' ? { fontWeight: 'bold', color: 'var(--tool-text-header)' } : {}}
-                                    />
-                                    {(rule.type === 'image_select' || rule.type === 'labeled_image_select') && (
-                                        <button onClick={() => setPickingFor(key)} style={{position:'absolute', right:5, top:5, padding:'2px 5px', fontSize:'0.7rem', background:'var(--tool-bg-dark)', border:'1px solid var(--tool-border)', color:'var(--tool-text-main)', borderRadius:'3px', cursor:'pointer'}}>+ Pick</button>
-                                    )}
-                                    <span className="property-hint" style={{marginLeft: 0}}>
-                                        {rule.type === 'header' ? 'Section Title' : 'Rule / Data'}
-                                    </span>
-                                </div>
-                                <div>
-                                    <input 
-                                        value={rule.visible_if || ''} 
-                                        onChange={e => handleUpdate(key, 'visible_if', e.target.value)} 
-                                        className="form-input" 
-                                        placeholder="Visible If (e.g. $q == 1)"
-                                    />
-                                    <span className="property-hint" style={{marginLeft: 0}}>Condition</span>
-                                </div>
-                            </div>
-
-                            {/* FLAGS ROW */}
-                            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '0.5rem', flexWrap: 'wrap' }}>
-                                <label className="toggle-label">
-                                    <input type="checkbox" checked={rule.visible} onChange={e => handleUpdate(key, 'visible', e.target.checked)} /> Visible
-                                </label>
-                                
-                                {rule.type !== 'header' && !rule.readOnly && (
-                                    <label className="toggle-label" style={{ color: rule.required ? 'var(--warning-color)' : 'inherit' }}>
-                                        <input type="checkbox" checked={!!rule.required} onChange={e => handleUpdate(key, 'required', e.target.checked)} /> 
-                                        Required
-                                    </label>
-                                )}
-
-                                <label className="toggle-label">
-                                    <input type="checkbox" checked={rule.readOnly} onChange={e => handleUpdate(key, 'readOnly', e.target.checked)} /> Read-Only
-                                </label>
-
-                                {(rule.type === 'static' || rule.readOnly) && (
-                                    <label className="toggle-label" title="Hide this field if the value is 0">
-                                        <input type="checkbox" checked={!!rule.hideIfZero} onChange={e => handleUpdate(key, 'hideIfZero', e.target.checked)} /> 
-                                        Hide if 0
-                                    </label>
-                                )}
-
-                                {rule.type !== 'header' && (
-                                    <label className="toggle-label" title="If inside a Modal Section, check this to ALSO show it on the main card.">
-                                        <input type="checkbox" checked={!!rule.showOnCard} onChange={e => handleUpdate(key, 'showOnCard', e.target.checked)} /> 
-                                        Show on Card
-                                    </label>
-                                )}
-                                
-                                {rule.type === 'header' && (
-                                    <div style={{ marginLeft: 'auto' }}>
-                                        <label className="toggle-label" title="If checked, this header becomes a button that opens a popup for the settings below it.">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={rule.displayMode === 'modal'} 
-                                            onChange={e => handleUpdate(key, 'displayMode', e.target.checked ? 'modal' : 'inline')} 
-                                        /> 
-                                        As Modal Button
-                                        </label>
+                                {/* WARNING MESSAGE */}
+                                {showSkippedWarning && (
+                                    <div style={{ 
+                                        background: 'rgba(255, 200, 0, 0.1)', 
+                                        border: '1px solid #eebb00', 
+                                        color: '#eebb00', 
+                                        padding: '0.5rem', 
+                                        fontSize: '0.8rem', 
+                                        borderRadius: '4px', 
+                                        marginBottom: '0.75rem', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.5rem' 
+                                    }}>
+                                        <span>⚠️</span>
+                                        <span>Player cannot interact with this. Value will remain empty. Change to <strong>Static</strong> to force a starting value.</span>
                                     </div>
                                 )}
 
-                                {['label_select', 'image_select', 'labeled_image_select'].includes(rule.type) && (
-                                    <div style={{ marginLeft: 'auto' }}>
-                                        <label className="toggle-label">
+                                {/* CONTROLS ROW */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    <div style={{position:'relative'}}>
+                                        <input 
+                                            value={rule.rule} 
+                                            onChange={e => handleUpdate(key, 'rule', e.target.value)} 
+                                            className="form-input" 
+                                            placeholder={rulePlaceholder}
+                                            style={rule.type === 'header' ? { fontWeight: 'bold', color: 'var(--tool-text-header)' } : {}}
+                                        />
+                                        {(rule.type === 'image_select' || rule.type === 'labeled_image_select') && (
+                                            <button onClick={() => setPickingFor(key)} style={{position:'absolute', right:5, top:5, padding:'2px 5px', fontSize:'0.7rem', background:'var(--tool-bg-dark)', border:'1px solid var(--tool-border)', color:'var(--tool-text-main)', borderRadius:'3px', cursor:'pointer'}}>+ Pick</button>
+                                        )}
+                                        <span className="property-hint" style={{marginLeft: 0}}>
+                                            {rule.type === 'header' ? 'Section Title' : 'Rule / Data'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <input 
+                                            value={rule.visible_if || ''} 
+                                            onChange={e => handleUpdate(key, 'visible_if', e.target.value)} 
+                                            className="form-input" 
+                                            placeholder="Visible If (e.g. $q == 1)"
+                                        />
+                                        <span className="property-hint" style={{marginLeft: 0}}>Condition</span>
+                                    </div>
+                                </div>
+
+                                {/* FLAGS ROW */}
+                                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '0.5rem', flexWrap: 'wrap' }}>
+                                    <label className="toggle-label">
+                                        <input type="checkbox" checked={rule.visible} onChange={e => handleUpdate(key, 'visible', e.target.checked)} /> Visible
+                                    </label>
+                                    
+                                    {rule.type !== 'header' && !rule.readOnly && (
+                                        <label className="toggle-label" style={{ color: rule.required ? 'var(--warning-color)' : 'inherit' }}>
+                                            <input type="checkbox" checked={!!rule.required} onChange={e => handleUpdate(key, 'required', e.target.checked)} /> 
+                                            Required
+                                        </label>
+                                    )}
+                                    
+                                    <label className="toggle-label">
+                                        <input type="checkbox" checked={rule.readOnly} onChange={e => handleUpdate(key, 'readOnly', e.target.checked)} /> Read-Only
+                                    </label>
+                                    
+                                    {(rule.type === 'static' || rule.readOnly) && (
+                                        <label className="toggle-label" title="Hide this field if the value is 0">
+                                            <input type="checkbox" checked={!!rule.hideIfZero} onChange={e => handleUpdate(key, 'hideIfZero', e.target.checked)} /> 
+                                            Hide if 0
+                                        </label>
+                                    )}
+                                    
+                                    {rule.type !== 'header' && (
+                                        <label className="toggle-label" title="If inside a Modal Section, check this to ALSO show it on the main card.">
+                                            <input type="checkbox" checked={!!rule.showOnCard} onChange={e => handleUpdate(key, 'showOnCard', e.target.checked)} /> 
+                                            Show on Card
+                                        </label>
+                                    )}
+                                    
+                                    {rule.type === 'header' && (
+                                        <div style={{ marginLeft: 'auto' }}>
+                                            <label className="toggle-label" title="If checked, this header becomes a button that opens a popup for the settings below it.">
                                             <input 
                                                 type="checkbox" 
                                                 checked={rule.displayMode === 'modal'} 
                                                 onChange={e => handleUpdate(key, 'displayMode', e.target.checked ? 'modal' : 'inline')} 
                                             /> 
-                                            Use Modal
-                                        </label>
-                                    </div>
-                                )}
-                            </div>  
-                        </div>
-                    );
-                })}
-            </div>
-             <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--tool-border)' }}>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <input value={newKey} onChange={e => setNewKey(e.target.value)} placeholder="$quality_id" className="form-input" style={{ flex: 1 }} />
-                    <button onClick={handleAdd} className="save-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem', height: 'fit-content' }}>Add Rule</button>
+                                            As Modal Button
+                                            </label>
+                                        </div>
+                                    )}
+                                    
+                                    {['label_select', 'image_select', 'labeled_image_select'].includes(rule.type) && (
+                                        <div style={{ marginLeft: 'auto' }}>
+                                            <label className="toggle-label">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={rule.displayMode === 'modal'} 
+                                                    onChange={e => handleUpdate(key, 'displayMode', e.target.checked ? 'modal' : 'inline')} 
+                                                /> 
+                                                Use Modal
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>  
+                            </div>
+                        );
+                    })}
+                </div>
+                
+                 <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--tool-border)' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <input value={newKey} onChange={e => setNewKey(e.target.value)} placeholder="$quality_id" className="form-input" style={{ flex: 1 }} />
+                        <button onClick={handleAdd} className="save-btn" style={{ width: 'auto', padding: '0.5rem 1.5rem', height: 'fit-content' }}>Add Rule</button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -24,12 +24,37 @@ interface CharacterLobbyProps {
 export default function CharacterLobby (props: CharacterLobbyProps) {
     const theme = props.settings.visualTheme || 'default';
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
-    
-    // Check for anonymous setting
+    const [isCreating, setIsCreating] = useState(false); 
+    const skipCreation = props.settings.skipCharacterCreation === true;
+
     const hideIdentity = props.settings.hideProfileIdentity === true;
     
     const portraitStyle = props.settings.portraitStyle || 'circle';
     const borderRadius = portraitStyle === 'circle' ? '50%' : (portraitStyle === 'rounded' ? '8px' : '0px');
+    
+    const handleStartGame = async () => {
+        setIsCreating(true);
+        try {
+            const response = await fetch('/api/character/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Send empty choices to use defaults
+                body: JSON.stringify({ storyId: props.storyId, choices: {} }) 
+            });
+            
+            const data = await response.json();
+            if (data.success && data.character) {
+                window.location.href = `/play/${props.storyId}?char=${data.character.characterId}`;
+            } else {
+                alert("Failed to create character: " + (data.error || "Unknown Error"));
+                setIsCreating(false);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Network error occurred.");
+            setIsCreating(false);
+        }
+    };
 
     const handleDismissMessage = async () => {
         if (!props.systemMessage || !character) return;
@@ -116,7 +141,6 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                         return (
                             <button 
                                 key={c.characterId || index} 
-                                // BUG FIX: Changed 'charId=' to 'char=' to match PlayPage logic
                                 onClick={() => window.location.href = `/play/${props.storyId}?char=${c.characterId}`}
                                 className="option-button"
                                 style={{ 
@@ -172,17 +196,22 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                     })}
                     
                     <button 
-                        onClick={() => window.location.href = `/play/${props.storyId}/creation`}
+                        onClick={skipCreation ? handleStartGame : () => window.location.href = `/play/${props.storyId}/creation`}
                         className="option-button"
+                        disabled={isCreating}
                         style={{ 
                             border: '2px dashed var(--border-color)', 
                             background: 'transparent', 
                             color: 'var(--text-muted)', 
                             textAlign: 'center', justifyContent: 'center',
-                            padding: '1rem'
+                            padding: '1rem',
+                            cursor: isCreating ? 'wait' : 'pointer'
                         }}
                     >
-                        + Create New Character
+                        {isCreating 
+                            ? "Creating..." 
+                            : (skipCreation ? "+ Start New Game" : "+ Create New Character")
+                        }
                     </button>
                 </div>
 

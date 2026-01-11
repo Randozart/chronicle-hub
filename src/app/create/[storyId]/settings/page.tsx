@@ -209,6 +209,9 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
                          const current = form[field] || [];
                          if (!current.includes(cat)) handleChange(field, [...current, cat]);
                     }}
+                    skipCreation={form.skipCharacterCreation || false}
+                    onToggleSkip={(val) => handleChange('skipCharacterCreation', val)}
+
                 />
             </SettingsSection>
 

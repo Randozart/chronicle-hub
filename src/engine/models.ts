@@ -147,8 +147,8 @@ export interface WorldSettings {
     playerImage: string;
     enablePortrait?: boolean;
     portraitStyle?: 'circle' | 'square' | 'rect' | 'rounded';
-    portraitSize?: 'small' | 'medium' | 'large'; // <--- ADDED
-    modalImageSize?: 'small' | 'medium' | 'large'; // <--- ADDED
+    portraitSize?: 'small' | 'medium' | 'large'; 
+    modalImageSize?: 'small' | 'medium' | 'large'; 
     enableTitle?: boolean;
     titleQualityId?: string;
     layoutStyle: LayoutStyle;
@@ -190,6 +190,7 @@ export interface WorldSettings {
     coverImage?: string;
     summary?: string;
     tags?: string[];
+    skipCharacterCreation?: boolean;
 }
 
 export interface DeckDefinition extends VersionedEntity { 

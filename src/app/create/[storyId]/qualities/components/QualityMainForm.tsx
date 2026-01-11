@@ -264,6 +264,7 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         {(form.type === 'E') && (
                             <>
                                 <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip on gain." />
+                                <BehaviorCard checked={hasProperty(form.tags, 'force_equip')} onChange={() => handleTagToggle('force_equip')} label="Force-Equip" desc="Equip on gain, unequip whatever is in the equipment slot." />
                                 <BehaviorCard checked={hasProperty(form.tags, 'bound')} onChange={() => handleTagToggle('bound')} label="Bind-on-Equip" desc="Cannot unequip." />
                             </>
                         )}
