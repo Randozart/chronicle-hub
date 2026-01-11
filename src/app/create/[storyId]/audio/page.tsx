@@ -1,8 +1,8 @@
-// src/app/create/[storyId]/audio/page.tsx
 'use client';
 
 import { useState, useEffect, use, useRef } from 'react';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
+import { AUDIO_PRESETS } from '@/engine/audio/presets'; // System Presets
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import InstrumentMainForm from './components/InstrumentMainForm';
 import TrackMainForm from './components/TrackMainForm';
@@ -48,26 +48,35 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         itemToDelete?: string;
     }>({ isOpen: false, title: '', message: '' });
 
-    // 1. Fetch Data
+    // 1. Fetch Data (Project Assets Only)
     const fetchData = () => {
         setIsLoading(true);
         fetch(`/api/admin/audio?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => {
                 const combined: AudioItem[] = [];
+
+                // NOTE: We do NOT inject AUDIO_PRESETS here anymore. 
+                // The sidebar should only show user-created/imported assets.
+
+                // 1. Project Instruments
                 if (data.instruments) {
                     Object.values(data.instruments).forEach((i: any) => 
                         combined.push({ ...i, category: 'instrument', scope: 'local', folder: 'Project Instruments' })
                     );
                 }
+                
+                // 2. Project Tracks
                 if (data.music) {
                     Object.values(data.music).forEach((t: any) => 
                         combined.push({ ...t, category: 'track', scope: 'local', folder: 'Project Tracks' })
                     );
                 }
+
+                // 3. Global User Assets (Optional, depends if you want them in the list)
                 if (data.global) {
                      data.global.forEach((g: any) => {
-                        combined.push({ ...g.data, id: g.id, category: g.type, scope: 'global', folder: 'Global Library' });
+                        combined.push({ ...g.data, id: g.id, category: g.type, scope: 'global', folder: 'Global Assets' });
                      });
                 }
                 setItems(combined);
@@ -125,8 +134,15 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
 
     const handleModalSubmit = async (val: string) => {
         const cleanId = val.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        
+        // Check conflicts with Project Items
         if (items.find(i => i.id === cleanId)) {
-            showToast("ID Exists", "error");
+            showToast("ID Exists in Project", "error");
+            return;
+        }
+        // Check conflicts with System Presets (Prevent overwriting system names in local scope to avoid confusion)
+        if (AUDIO_PRESETS[cleanId]) {
+            showToast("ID is a reserved System Preset name.", "error");
             return;
         }
 
@@ -149,6 +165,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 source: "[CONFIG]\nBPM: 120\nGrid: 4\n" 
               };
         
+        // Optimistic add
         setItems(prev => [...prev, newItem]);
         const cat = type === 'instrument' ? 'instruments' : 'music';
         
@@ -171,26 +188,25 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
          // eslint-disable-next-line @typescript-eslint/no-unused-vars
          const { _id, ...rest } = source as any;
          
-         const newItem = { ...rest, id: newId, name: `${source.name} (Copy)`, version: 1 };
+         const newItem = { 
+             ...rest, 
+             id: newId, 
+             name: `${source.name} (Copy)`, 
+             version: 1,
+             scope: 'local', // Duplicates always become local
+             folder: source.category === 'instrument' ? 'Project Instruments' : 'Project Tracks'
+         };
          
          setItems(prev => [...prev, newItem]);
-         const endpoint = source.scope === 'global' ? '/api/assets/audio' : '/api/admin/config';
-         
+         const endpoint = '/api/admin/config';
+         const cat = source.category === 'instrument' ? 'instruments' : 'music';
+
          try {
-             if (source.scope === 'global') {
-                 await fetch(endpoint, { 
-                     method: 'POST', 
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ id: newId, type: source.category, data: newItem }) 
-                 });
-             } else {
-                 const cat = source.category === 'instrument' ? 'instruments' : 'music';
-                 await fetch(endpoint, { 
-                     method: 'POST', 
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ storyId, category: cat, itemId: newId, data: newItem }) 
-                 });
-             }
+             await fetch(endpoint, { 
+                 method: 'POST', 
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ storyId, category: cat, itemId: newId, data: newItem }) 
+             });
              
              guardRef.current = null;
              setSelectedId(newId);
@@ -230,6 +246,15 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
 
     const selectedItem = items.find(i => i.id === selectedId);
 
+    // Combine Project Instruments + System Presets for the Track Editor
+    const projectInstruments = items.filter(i => i.category === 'instrument') as InstrumentDefinition[];
+    const systemInstruments = Object.values(AUDIO_PRESETS).map(p => ({
+        ...p,
+        scope: 'system' // Tag them so we know they can't be edited directly
+    })) as InstrumentDefinition[];
+    
+    const allAvailableInstruments = [...projectInstruments, ...systemInstruments];
+
     return (
         <div className="admin-split-view">
             <AdminListSidebar 
@@ -252,7 +277,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     selectedItem.category === 'instrument' ? (
                         <InstrumentMainForm 
                             initialData={selectedItem as InstrumentDefinition}
-                            // FIX: Cast handlers to specific type expected by child
                             onSave={handleListUpdate as (d: InstrumentDefinition) => void}
                             onDelete={handleDeleteRequest}
                             onDuplicate={openDuplicateModal as (d: InstrumentDefinition) => void}
@@ -262,12 +286,11 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                     ) : (
                         <TrackMainForm 
                             initialData={selectedItem as LigatureTrack}
-                            // FIX: Cast handlers to specific type expected by child
                             onSave={handleListUpdate as (d: LigatureTrack) => void}
                             onDelete={handleDeleteRequest}
                             onDuplicate={openDuplicateModal as (d: LigatureTrack) => void}
                             storyId={storyId}
-                            availableInstruments={items.filter(i => i.category === 'instrument') as InstrumentDefinition[]}
+                            availableInstruments={allAvailableInstruments} // Pass merged list
                             guardRef={guardRef}
                         />
                     )

@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/audio/components/TrackEditor.tsx
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -26,6 +27,7 @@ const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUME
 
 interface Props {
     data: LigatureTrack;
+    onChange?: (source: string) => void; // Controlled Input
     onSave: (d: any) => void;
     onDelete: () => void;
     availableInstruments: InstrumentDefinition[];
@@ -36,11 +38,14 @@ interface Props {
 }
 
 export default function TrackEditor({ 
-    data, onSave, onDelete, availableInstruments, onUpdateInstrument,
+    data, onChange, onSave, onDelete, availableInstruments, onUpdateInstrument,
     enableDownload = false, isPlayground = false, hideCategories = []
 }: Props) {
-    const [source, setSource] = useState(data.source || "");
+    
+    // Controlled Source
+    const source = data.source || "";
     const debouncedSource = useDebounce(source, 600);
+    
     const [parsedTrack, setParsedTrack] = useState<ParsedTrack | null>(null);
     const [isParsing, setIsParsing] = useState(false);
 
@@ -51,7 +56,6 @@ export default function TrackEditor({
     const [noteEditorMode, setNoteEditorMode] = useState<'piano' | 'tracker'>('piano');
     const [showMasterSettings, setShowMasterSettings] = useState(false);
     
-    // Default closed on mobile, open on desktop
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); 
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
     
@@ -70,22 +74,12 @@ export default function TrackEditor({
     // Initial Load & Mobile Check
     useEffect(() => { 
         setIsClient(true); 
-        setSource(data.source);
-        
-        // Auto-open sidebars only on wide screens
         if (typeof window !== 'undefined' && window.innerWidth > 900) {
             setLeftSidebarOpen(true);
             setRightSidebarOpen(true);
         }
-    }, [data]);
+    }, []);
     
-    // Save Trigger
-    useEffect(() => {
-        const handleGlobalSave = () => handleSaveClick();
-        window.addEventListener('global-save-trigger', handleGlobalSave);
-        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
-    }, [source, data.id]);
-
     // Parsing Logic
     useEffect(() => {
         setIsParsing(true);
@@ -105,9 +99,15 @@ export default function TrackEditor({
         setMockQualities(q => JSON.stringify(q) === JSON.stringify(qualities) ? q : qualities);
         setMockDefs(d => JSON.stringify(d) === JSON.stringify(defs) ? d : defs);
     }, []);
-    const handleSourceChange = (newSource: string) => setSource(newSource);
-    const handleVisualUpdate = (newSource: string) => setSource(newSource);
-    
+
+    // Controlled Update
+    const handleSourceChange = (newSource: string) => {
+        if (onChange) onChange(newSource);
+    };
+
+    // Derived Updates
+    const handleVisualUpdate = (newSource: string) => handleSourceChange(newSource);
+
     const handleConfigUpdate = (key: string, val: any) => {
         if (!parsedTrack) return;
         const newTrack = JSON.parse(JSON.stringify(parsedTrack));
@@ -122,7 +122,7 @@ export default function TrackEditor({
                 newTrack.config.grid = newGrid;
             }
         } else { newTrack.config[key] = val; }
-        setSource(serializeParsedTrack(newTrack));
+        handleSourceChange(serializeParsedTrack(newTrack));
     };
 
     const handlePatternAction = (action: string, patternId: string) => {
@@ -137,14 +137,13 @@ export default function TrackEditor({
             pattern.duration *= 2;
             Object.values(pattern.tracks).forEach((events: any) => { events.forEach((e: any) => { e.time *= 2; e.duration *= 2; }); });
         }
-        setSource(serializeParsedTrack(newTrack));
+        handleSourceChange(serializeParsedTrack(newTrack));
     };
 
-    const handleImportClick = () => fileInputRef.current?.click();
     const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]; if (!file) return;
         const reader = new FileReader();
-        reader.onload = (e) => { if (typeof e.target?.result === 'string') setSource(e.target.result); };
+        reader.onload = (e) => { if (typeof e.target?.result === 'string') handleSourceChange(e.target.result); };
         reader.readAsText(file);
         event.target.value = '';
     };
@@ -154,19 +153,15 @@ export default function TrackEditor({
         catch (e: any) { setStatus("Error: " + e.message); stop(); setPlaybackMode('stopped'); }
     };
     const handleStop = () => { stop(); setPlaybackMode('stopped'); setStatus("Stopped"); };    
-    const handleClear = () => { if (confirm("Clear track?")) setSource(EMPTY_TEMPLATE); };
-    const handleFormat = () => setSource(formatLigatureSource(source));
+    const handleClear = () => { if (confirm("Clear track?")) handleSourceChange(EMPTY_TEMPLATE); };
+    const handleFormat = () => handleSourceChange(formatLigatureSource(source));
     const handleSaveClick = async () => { onSave({ id: data.id, name: data.name, source, category: 'track' }); };
-    const handleDownload = () => {
-        const blob = new Blob([source], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `${data.id || 'track'}.lig`; a.click(); URL.revokeObjectURL(url);
-    };
+    
     const handleEditInstrument = (id: string) => setEditingInstrument(availableInstruments.find(i => i.id === id) || null);
     const handleInsertInstrumentToTrack = (instrumentId: string, presetId: string) => {
         const snippet = `[INSTRUMENTS]\n${instrumentId}: ${presetId}`;
         const newSource = mergeLigatureSnippet(source, snippet);
-        setSource(newSource);
+        handleSourceChange(newSource);
     };
 
     return (
@@ -228,7 +223,9 @@ export default function TrackEditor({
                             ? <button onClick={handleStop} className="tool-btn tool-btn-stop">■</button> 
                             : <button onClick={handlePlay} className="tool-btn tool-btn-play">▶</button>
                         }
-                        {!isPlayground && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
+                        
+                        {/* Playground Specific Controls (Only show internal save if playground mode) */}
+                        {isPlayground && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
                     </div>
                 </div>
 
@@ -336,8 +333,7 @@ export default function TrackEditor({
             {editingInstrument && (
                 <InstrumentEditor 
                     data={editingInstrument} 
-                    onSave={(updated) => { onUpdateInstrument(updated); setEditingInstrument(null); }} 
-                    onClose={() => setEditingInstrument(null)} 
+                    onChange={(updated) => { onUpdateInstrument(updated); setEditingInstrument(null); }} 
                     onInsertIntoTrack={handleInsertInstrumentToTrack} 
                 />
             )}

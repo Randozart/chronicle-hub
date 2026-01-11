@@ -49,23 +49,18 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
         if (success && form) onSave(form);
     };
 
-    // TrackEditor Wrapper
-    // Note: TrackEditor previously managed its own state. 
-    // It must accept `data={form}` and call `onUpdate={(newSource) => handleChange('source', newSource)}`
-    // Ensure TrackEditor.tsx has been updated to be a controlled component via these props.
-    
     return (
-        <div className="h-full flex flex-col relative">
+        <div className="h-full flex flex-col relative" style={{ paddingBottom: '80px' }}>
             <div style={{ flex: 1, overflow: 'hidden' }}>
                 <TrackEditor 
                     data={form} 
-                    onSave={() => { /* Handled by CommandCenter */ }} 
-                    onDelete={() => { /* Handled by CommandCenter */ }}
+                    onSave={() => {}} // Disabled
+                    onDelete={() => {}} // Disabled
                     availableInstruments={availableInstruments}
                     onUpdateInstrument={() => {}} 
-                    // This prop pipes the editor changes back to our form state
-                    // @ts-ignore - Assuming TrackEditor has been updated to accept onChange or onSourceChange
-                    onChange={(newSource: string) => handleChange('source', newSource)}
+                    // This prop hooks the editor source back to the form state
+                    // The TrackEditor must be updated to call this when its internal source changes
+                    onChange={(newSource) => handleChange('source', newSource)}
                 />
             </div>
 

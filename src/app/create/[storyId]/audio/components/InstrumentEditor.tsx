@@ -1,159 +1,110 @@
-// src/app/create/[storyId]/audio/components/InstrumentEditor.tsx
 'use client';
-import { useState, useEffect, useRef } from 'react';
-import { InstrumentDefinition, EmbellishmentDef } from '@/engine/audio/models';
-import { AUDIO_PRESETS } from '@/engine/audio/presets';
-import * as Tone from 'tone';
-import { getOrMakeInstrument, AnySoundSource } from '@/engine/audio/synth';
-import { useAudio } from '@/providers/AudioProvider';
-import { Note } from 'tonal';
 
-// ... [WaveformDisplay & Slider sub-components remain unchanged] ...
-function WaveformDisplay({ 
-    peaks, loopStart, loopEnd, duration 
-}: { 
-    peaks: number[], loopStart?: number, loopEnd?: number, duration: number 
-}) {
+import { useState, useEffect, useRef } from 'react';
+import { InstrumentDefinition, LFODef } from '@/engine/audio/models';
+import { AUDIO_PRESETS } from '@/engine/audio/presets';
+import { useAudio } from '@/providers/AudioProvider';
+
+// --- SUBCOMPONENTS ---
+function WaveformDisplay({ url, loopStart, loopEnd }: { url: string | null, loopStart?: number, loopEnd?: number }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [peaks, setPeaks] = useState<number[]>([]);
+    const [duration, setDuration] = useState(0);
+
+    useEffect(() => {
+        if (!url) return;
+        let active = true;
+        const fetchWav = async () => {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const ctx = new window.AudioContext(); 
+                const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+                if (!active) return;
+                setDuration(audioBuffer.duration);
+                const data = audioBuffer.getChannelData(0);
+                const width = 600;
+                const step = Math.ceil(data.length / width);
+                const newPeaks: number[] = [];
+                for (let i = 0; i < width; i++) {
+                    let max = 0;
+                    for (let j = 0; j < step; j++) {
+                        const val = Math.abs(data[(i * step) + j] || 0);
+                        if (val > max) max = val;
+                    }
+                    newPeaks.push(max);
+                }
+                setPeaks(newPeaks);
+            } catch(e) { console.error("Waveform load error", e); }
+        };
+        fetchWav();
+        return () => { active = false; };
+    }, [url]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-
-        const width = canvas.width;
-        const height = canvas.height;
-
-        ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = '#111';
-        ctx.fillRect(0, 0, width, height);
+        const w = canvas.width; const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#111'; ctx.fillRect(0, 0, w, h);
         
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(224, 108, 117, 0.7)'; 
+        if(peaks.length === 0) {
+            ctx.fillStyle = '#333'; ctx.fillText("No Audio", 10, 20); return;
+        }
         
-        peaks.forEach((peak, i) => {
-            const h = peak * height;
-            ctx.beginPath();
-            ctx.moveTo(i, height / 2 - h / 2);
-            ctx.lineTo(i, height / 2 + h / 2);
-            ctx.stroke();
-        });
+        ctx.strokeStyle = '#61afef'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let i = 0; i < peaks.length; i++) {
+            const x = (i / peaks.length) * w;
+            const y = peaks[i] * (h / 2);
+            ctx.moveTo(x, (h / 2) - y); ctx.lineTo(x, (h / 2) + y);
+        }
+        ctx.stroke();
 
-        if (duration > 0) {
-            ctx.lineWidth = 2; 
-            if (loopStart !== undefined) {
-                const startX = (loopStart / duration) * width;
-                ctx.strokeStyle = '#98c379'; 
-                ctx.beginPath();
-                ctx.moveTo(startX, 0);
-                ctx.lineTo(startX, height);
-                ctx.stroke();
-            }
-            if (loopEnd !== undefined) {
-                const endX = (loopEnd / duration) * width;
-                ctx.strokeStyle = '#e06c75'; 
-                ctx.beginPath();
-                ctx.moveTo(endX, 0);
-                ctx.lineTo(endX, height);
-                ctx.stroke();
-            }
+        if (duration > 0 && loopStart !== undefined) {
+             const x = (loopStart / duration) * w;
+             ctx.strokeStyle = '#98c379'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        if (duration > 0 && loopEnd !== undefined && loopEnd > 0) {
+             const x = (loopEnd / duration) * w;
+             ctx.strokeStyle = '#e06c75'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
         }
     }, [peaks, loopStart, loopEnd, duration]);
 
-    return <canvas ref={canvasRef} width="600" height="150" style={{ width: '100%', height: '150px', background: '#000', borderRadius: '4px' }} />;
+    return <canvas ref={canvasRef} width={600} height={100} style={{ width: '100%', height: '100px', borderRadius: '4px', border:'1px solid #333' }} />;
 }
 
-interface SliderProps {
-    label: string; val?: number; onChange: (val: number) => void;
-    min?: number; max?: number; step?: number; disabled?: boolean;
-}
-
-function Slider({ label, val, onChange, min = 0, max = 1, step = 0.01, disabled = false }: SliderProps) {
-    const displayVal = Number(val || 0).toFixed(3);
+function Slider({ label, val, onChange, min = 0, max = 1, step = 0.01 }: any) {
     return (
-        <div>
-            <label className="form-label" style={{ fontSize: '0.8rem', color: disabled ? '#555' : '#aaa', textTransform: 'uppercase' }}>{label} ({displayVal})</label>
+        <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                <label style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase' }}>{label}</label>
+                <span style={{ fontSize: '0.75rem', color: '#ccc', fontFamily: 'monospace' }}>{Number(val || 0).toFixed(2)}</span>
+            </div>
             <input 
                 type="range" min={min} max={max} step={step} 
                 value={val || 0} 
                 onChange={e => onChange(parseFloat(e.target.value))} 
-                style={{ width: '100%' }}
-                disabled={disabled}
+                style={{ width: '100%', accentColor: '#61afef' }}
             />
         </div>
     );
 }
 
+// --- MAIN COMPONENT ---
 export default function InstrumentEditor({ 
-    data, onSave, onClose, onInsertIntoTrack, onDelete
+    data, onChange, onInsertIntoTrack 
 }: { 
     data: InstrumentDefinition, 
-    onSave: (d: InstrumentDefinition) => void, 
-    onClose?: () => void,
-    onDelete?: () => void,
+    onChange: (d: InstrumentDefinition) => void,
     onInsertIntoTrack?: (id: string, presetId: string) => void
 }) {
-    const [form, setForm] = useState(data);
-    const [isPreviewing, setIsPreviewing] = useState(false);
-    const [sampleDuration, setSampleDuration] = useState(0);
-    const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
     const { playPreviewNote, startPreviewNote, stopPreviewNote } = useAudio();
 
-    useEffect(() => setForm(data), [data]);
-    
-    // GLOBAL SAVE TRIGGER
-    useEffect(() => {
-        const handleGlobalSave = () => { onSave(form); if (onClose) onClose(); };
-        window.addEventListener('global-save-trigger', handleGlobalSave);
-        return () => window.removeEventListener('global-save-trigger', handleGlobalSave);
-    }, [form]);
-
-    useEffect(() => {
-        return () => stopPreviewNote();
-    }, [stopPreviewNote]);
-
-    useEffect(() => {
-        if (form.type === 'sampler' && form.config.urls && Object.values(form.config.urls)[0]) {
-            const url = `${form.config.baseUrl}${Object.values(form.config.urls)[0]}`;
-            let isActive = true;
-            const audioContext = Tone.getContext().rawContext;
-            
-            fetch(url)
-                .then(response => response.arrayBuffer())
-                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-                .then(audioBuffer => {
-                    if (!isActive) return;
-                    setSampleDuration(audioBuffer.duration);
-
-                    const data = audioBuffer.getChannelData(0);
-                    const width = 600;
-                    const step = Math.ceil(data.length / width);
-                    const peaks: number[] = [];
-                    for (let i = 0; i < width; i++) {
-                        let max = 0;
-                        for (let j = i * step; j < (i * step) + step; j++) {
-                            if (Math.abs(data[j]) > max) max = Math.abs(data[j]);
-                        }
-                        peaks.push(max);
-                    }
-                    setWaveformPeaks(peaks);
-                })
-                .catch(err => {
-                    console.error("Error loading sample data:", err);
-                    setSampleDuration(0);
-                    setWaveformPeaks([]);
-                });
-            
-            return () => { isActive = false; };
-        } else {
-            setSampleDuration(0);
-            setWaveformPeaks([]);
-        }
-    }, [form.config.baseUrl, form.config.urls, form.type]);
-
+    // Helper: Deep Update
     const handleChange = (path: string, val: any) => {
-        const next = JSON.parse(JSON.stringify(form));
+        const next = JSON.parse(JSON.stringify(data)); 
         const keys = path.split('.');
         let curr: any = next;
         for (let i = 0; i < keys.length - 1; i++) {
@@ -161,49 +112,36 @@ export default function InstrumentEditor({
             curr = curr[keys[i]];
         }
         curr[keys[keys.length - 1]] = val;
-        setForm(next);
+        onChange(next); 
     };
+
+    const handleLoadPreset = (presetId: string) => {
+        const preset = AUDIO_PRESETS[presetId];
+        if (preset) {
+            onChange({
+                ...data,
+                type: preset.type,
+                config: JSON.parse(JSON.stringify(preset.config))
+            });
+        }
+    };
+
+    // Playback
+    const previewOneShot = () => playPreviewNote(data, "C4", "8n");
+    const handleHoldStart = () => startPreviewNote(data, 'C4');
+    const handleHoldStop = () => stopPreviewNote('C4');
+
+    const getSampleUrl = () => {
+        if (data.type !== 'sampler' || !data.config.urls) return null;
+        const key = Object.keys(data.config.urls)[0];
+        return key ? (data.config.baseUrl || "") + data.config.urls[key] : null;
+    };
+
+    // Derived values
+    const c = data.config as any; 
+    const isSampler = data.type === 'sampler';
     
-    const togglePolyMode = (mode: string) => {
-        const next = JSON.parse(JSON.stringify(form));
-        if (!next.config) next.config = {};
-
-        if (mode === 'poly') {
-            next.config.noteCut = false;
-            next.config.portamento = 0;
-        } else if (mode === 'mono_cut') {
-            next.config.noteCut = true;
-            next.config.portamento = 0;
-        } else if (mode === 'mono_glide') {
-            next.config.noteCut = false;
-            next.config.portamento = 0.1; 
-        }
-        setForm(next);
-    };
-
-    const addEmbellishment = () => {
-        const next = JSON.parse(JSON.stringify(form));
-        if (!next.config.embellishments) next.config.embellishments = [];
-        next.config.embellishments.push({ url: '', probability: 0.1, volume: 0 });
-        setForm(next);
-    };
-
-    const updateEmbellishment = (index: number, field: keyof EmbellishmentDef, val: any) => {
-        const next = JSON.parse(JSON.stringify(form));
-        if (next.config.embellishments) {
-            next.config.embellishments[index][field] = val;
-            setForm(next);
-        }
-    };
-
-    const removeEmbellishment = (index: number) => {
-        const next = JSON.parse(JSON.stringify(form));
-        if (next.config.embellishments) {
-            next.config.embellishments.splice(index, 1);
-            setForm(next);
-        }
-    };
-
+    // Group Presets
     const groupedPresets = Object.values(AUDIO_PRESETS).reduce((acc, curr) => {
         const cat = curr.category || 'Uncategorized';
         if (!acc[cat]) acc[cat] = [];
@@ -211,353 +149,148 @@ export default function InstrumentEditor({
         return acc;
     }, {} as Record<string, InstrumentDefinition[]>);
 
-    const handleLoadPreset = (presetId: string) => {
-        const preset = AUDIO_PRESETS[presetId];
-        if (preset) {
-            setForm(prev => ({
-                ...prev,
-                config: JSON.parse(JSON.stringify(preset.config)),
-                type: preset.type
-            }));
-        }
-    };
-
-    const previewOneShot = () => playPreviewNote(form, "C4", "8n");
-    const handlePreviewStart = () => startPreviewNote(form, 'C4');
-    const handlePreviewStop = () => stopPreviewNote('C4');
-    const handleSaveClick = () => { onSave(form); if (onClose) onClose(); };
-    const handleInsertClick = () => {
-        if (onInsertIntoTrack) {
-            const originalPreset = Object.values(AUDIO_PRESETS).find(p => JSON.stringify(p.config) === JSON.stringify(form.config));
-            onInsertIntoTrack(form.id, originalPreset ? originalPreset.id : form.id);
-            if (onClose) onClose();
-        }
-    };
-    
-    const c = form.config as any; 
-    const handleFilterChange = (key: string, v: any) => handleChange(`config.filter.${key}`, v);
-    const handleEqChange = (key: string, v: any) => handleChange(`config.eq.${key}`, v);
-    const handleHumanizeChange = (key: string, v: any) => {
-        if (!c.humanize) handleChange('config.humanize', { enabled: true, [key]: v });
-        else handleChange(`config.humanize.${key}`, v);
-    };
-    const handleVibratoChange = (key: string, v: any) => handleChange(`config.vibrato.${key}`, v);
-
-    const isSampler = form.type === 'sampler';
-    
-    const portamentoVal = form.config.portamento ?? 0;
-    const noteCutVal = !!form.config.noteCut;
-
-    let currentMode = 'poly';
-    if (noteCutVal) currentMode = 'mono_cut';
-    else if (portamentoVal > 0 && !isSampler) currentMode = 'mono_glide';
-    else if (portamentoVal > 0 && isSampler) currentMode = 'mono_glide'; 
-    
-    const editorContent = (
+    return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '1rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                <h2 style={{margin: 0}}>Instrument: {form.name}</h2>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {onInsertIntoTrack && (
-                        <button onClick={handleInsertClick} style={{ background: '#98c379', color: '#000', fontWeight: 'bold', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}>
-                           + Insert into Track
+            {/* Toolbar Area */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid #333', paddingBottom: '1rem', alignItems: 'center' }}>
+                <h2 style={{margin: 0, color:'#fff'}}>{data.name}</h2>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ display: 'flex', borderRadius: '4px', overflow: 'hidden', border: '1px solid #61afef' }}>
+                        <button onClick={previewOneShot} style={{ background: '#21252b', color: '#61afef', border: 'none', padding: '0.4rem 1rem', cursor: 'pointer', borderRight:'1px solid #333' }}>
+                            ▶ Tap
                         </button>
-                    )}
-                    <div style={{ display: 'flex', borderRadius: '4px', overflow: 'hidden' }}>
-                        <button onClick={previewOneShot} disabled={isPreviewing} style={{ background: '#56B6C2', color: 'black', border: 'none', padding: '0.5rem 1rem', cursor: 'pointer', fontWeight: 'bold', borderRight: '1px solid rgba(0,0,0,0.2)' }}>
-                            ▶ Play Once
-                        </button>
-                        <button onMouseDown={handlePreviewStart} onMouseUp={handlePreviewStop} onMouseLeave={handlePreviewStop} disabled={isPreviewing} style={{ background: '#56B6C2', color: 'black', border: 'none', padding: '0.5rem 1rem', cursor: 'pointer', fontWeight: 'bold' }}>
-                            Hold to Play
+                        <button 
+                            onMouseDown={handleHoldStart} onMouseUp={handleHoldStop} onMouseLeave={handleHoldStop}
+                            style={{ background: '#21252b', color: '#61afef', border: 'none', padding: '0.4rem 1rem', cursor: 'pointer' }}
+                        >
+                            Hold
                         </button>
                     </div>
-                    <button onClick={handleSaveClick} className="save-btn">
-                        {onClose ? 'Save & Close' : 'Save'}
-                    </button>
-                    {onClose && (
-                        <button onClick={onClose} style={{background: 'transparent', border: 'none', color: '#888', fontSize: '1.5rem', cursor: 'pointer', padding: '0 0.5rem'}}>&times;</button>
+                    {onInsertIntoTrack && (
+                         <button onClick={() => onInsertIntoTrack(data.id, data.id)} style={{ background: '#98c379', color: '#000', border: 'none', padding: '0.4rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight:'bold' }}>
+                            + Insert
+                        </button>
                     )}
                 </div>
             </div>
-            
-            <div style={{ background: '#111', padding: '1rem', borderRadius: '4px', border: '1px dashed #444', marginBottom: '1.5rem' }}>
-                <label className="form-label" style={{ color: '#98c379' }}>Load Sound Preset</label>
-                <select className="form-select" onChange={(e) => handleLoadPreset(e.target.value)} value="">
-                    <option value="" disabled>-- Select a Sound --</option>
-                    {Object.keys(groupedPresets).sort().map(cat => (
-                        <optgroup key={cat} label={cat}>
-                            {groupedPresets[cat].sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </optgroup>
-                    ))}
-                </select>
-            </div>
 
-            {form.type === 'sampler' && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <label className="form-label" style={{ color: 'var(--tool-text-dim)', textTransform: 'uppercase' }}>Sample Waveform</label>
-                    <WaveformDisplay 
-                        peaks={waveformPeaks}
-                        duration={sampleDuration}
-                        loopStart={form.config.loop?.start}
-                        loopEnd={form.config.loop?.end}
-                    />
-                </div>
-            )}
-            
-            {/* GRID LAYOUT FIX FOR MOBILE: auto-fit columns */}
-            <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-                gap: '2rem' 
-            }}>
+            {/* Core Settings */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
                 
-                {/* COLUMN 1: CORE */}
+                {/* COLUMN 1 */}
                 <div>
-                    <h3 style={{marginTop: 0, color: 'var(--tool-text-header)'}}>Core</h3>
-                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <Slider label="Volume (dB)" val={form.config.volume} onChange={(v: number) => handleChange('config.volume', v)} min={-60} max={6} step={1} />
-                        <Slider label="Octave Offset" val={form.config.octaveOffset} onChange={(v: number) => handleChange('config.octaveOffset', v)} min={-3} max={3} step={1} />
-                        
-                        {/* VOICING MODE TOGGLES */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                            <label style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', fontWeight: 'bold' }}>VOICING MODE</label>
-                            
-                            <div style={{ display: 'flex', gap: '4px', background: '#111', padding: '2px', borderRadius: '4px' }}>
-                                <button 
-                                    onClick={() => togglePolyMode('poly')}
-                                    style={{
-                                        flex: 1, border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '2px',
-                                        background: currentMode === 'poly' ? '#61afef' : 'transparent',
-                                        color: currentMode === 'poly' ? '#000' : '#888',
-                                        fontWeight: 'bold', fontSize: '0.7rem'
-                                    }}
-                                >
-                                    Poly
-                                </button>
-                                <button 
-                                    onClick={() => togglePolyMode('mono_cut')}
-                                    style={{
-                                        flex: 1, border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '2px',
-                                        background: currentMode === 'mono_cut' ? '#e06c75' : 'transparent',
-                                        color: currentMode === 'mono_cut' ? '#000' : '#888',
-                                        fontWeight: 'bold', fontSize: '0.7rem'
-                                    }}
-                                >
-                                    Mono (Cut)
-                                </button>
-                                <button 
-                                    onClick={() => togglePolyMode('mono_glide')}
-                                    style={{
-                                        flex: 1, border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '2px',
-                                        background: currentMode === 'mono_glide' ? '#98c379' : 'transparent',
-                                        color: currentMode === 'mono_glide' ? '#000' : '#888',
-                                        fontWeight: 'bold', fontSize: '0.7rem'
-                                    }}
-                                >
-                                    Glide
-                                </button>
-                            </div>
-                            
-                            <p style={{fontSize: '0.65rem', color: '#666', margin: 0, marginTop: '4px'}}>
-                                {currentMode === 'poly' && "Chords allowed. Overlapping notes ring out (Natural)."}
-                                {currentMode === 'mono_cut' && "One note at a time. New notes abruptly cut off old ones."}
-                                {currentMode === 'mono_glide' && "Slides pitch between overlapping notes. (Now supports Samplers!)"}
-                            </p>
-                        </div>
-
-                        {currentMode === 'mono_cut' && (
-                            <div style={{ marginTop: '0.5rem', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
-                                <Slider label="Cut Bleed (s)" val={c.noteCutBleed ?? 0.05} onChange={(v: number) => handleChange('config.noteCutBleed', v)} max={0.5} step={0.01} />
-                                <p style={{fontSize:'0.65rem', color:'#777', margin:0}}>Fade time for hard cuts.</p>
-                            </div>
-                        )}
-
-                        {currentMode === 'mono_glide' && (
-                            <div style={{ marginTop: '0.5rem', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
-                                <Slider label="Glide Time (s)" val={c.portamento ?? 0.1} onChange={(v: number) => handleChange('config.portamento', v)} max={1} step={0.01} />
-                            </div>
-                        )}
+                    <div className="form-group">
+                        <label className="form-label">Name</label>
+                        <input className="form-input" value={data.name} onChange={e => handleChange('name', e.target.value)} />
                     </div>
                     
-                    <h3 style={{ marginTop: '1.5rem', color: 'var(--tool-text-header)' }}>Envelope</h3>
-                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <Slider label="Attack" val={form.config.envelope?.attack} onChange={(v: number) => handleChange('config.envelope.attack', v)} max={2} />
-                        <Slider label="Decay" val={form.config.envelope?.decay} onChange={(v: number) => handleChange('config.envelope.decay', v)} max={2} />
-                        <Slider label="Sustain" val={form.config.envelope?.sustain} onChange={(v: number) => handleChange('config.envelope.sustain', v)} max={1} />
-                        <Slider label="Release" val={form.config.envelope?.release} onChange={(v: number) => handleChange('config.envelope.release', v)} max={5} />
+                    <div style={{ marginBottom: '1.5rem', background: '#21252b', padding: '1rem', borderRadius: '4px' }}>
+                        <label className="form-label" style={{color: '#61afef'}}>Load Preset</label>
+                        <select className="form-select" onChange={e => handleLoadPreset(e.target.value)} value="">
+                            <option value="" disabled>-- Overwrite Settings --</option>
+                            {Object.keys(groupedPresets).sort().map(cat => (
+                                <optgroup key={cat} label={cat}>
+                                    {groupedPresets[cat].map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </optgroup>
+                            ))}
+                        </select>
                     </div>
-                </div>
 
-                {/* COLUMN 2: LOOP & HUMANIZATION */}
-                <div>
-                    <h3 style={{ marginTop: 0, color: 'var(--tool-text-header)' }}>Loop & Pan</h3>
-                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={form.config.loop?.enabled || false} onChange={e => handleChange('config.loop.enabled', e.target.checked)} />
-                            Loop Enabled
-                        </label>
-                        <div style={{ opacity: form.config.loop?.enabled ? 1 : 0.5, display: 'grid', gap: '1rem' }}>
-                            <div>
-                                <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)'}}>Type</label>
-                                <select 
-                                    value={form.config.loop?.type || 'forward'} 
-                                    onChange={e => handleChange('config.loop.type', e.target.value)} 
-                                    style={{width: '100%', background: '#111', border: '1px solid #444', color: 'var(--tool-text-main)', padding: '6px', borderRadius: '4px'}}
-                                    disabled={!form.config.loop?.enabled}
-                                >
-                                    <option value="forward">Forward</option>
-                                    <option value="pingpong">Ping-Pong</option>
+                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px' }}>
+                        <h4 style={{marginTop:0, color:'#ccc', borderBottom:'1px solid #444', paddingBottom:'5px'}}>Source</h4>
+                        <div className="form-group">
+                            <label className="form-label">Engine</label>
+                            <select className="form-select" value={data.type} onChange={e => handleChange('type', e.target.value)}>
+                                <option value="synth">Synth</option>
+                                <option value="sampler">Sampler</option>
+                            </select>
+                        </div>
+                        
+                        {isSampler ? (
+                            <>
+                                <div className="form-group">
+                                    <label className="form-label">Base URL</label>
+                                    <input className="form-input" value={c.baseUrl || ''} onChange={e => handleChange('config.baseUrl', e.target.value)} />
+                                </div>
+                                <WaveformDisplay url={getSampleUrl()} loopStart={c.loop?.start} loopEnd={c.loop?.end} />
+                            </>
+                        ) : (
+                            <div className="form-group">
+                                <label className="form-label">Oscillator</label>
+                                <select className="form-select" value={c.oscillator?.type || 'triangle'} onChange={e => handleChange('config.oscillator.type', e.target.value)}>
+                                    <option value="triangle">Triangle</option>
+                                    <option value="sine">Sine</option>
+                                    <option value="square">Square</option>
+                                    <option value="sawtooth">Sawtooth</option>
+                                    <option value="fmsine">FM Sine</option>
                                 </select>
                             </div>
-                            <Slider label="Start (s)" val={form.config.loop?.start} onChange={(v: number) => handleChange('config.loop.start', v)} max={sampleDuration || 1} disabled={!form.config.loop?.enabled} />
-                            <Slider label="End (s)" val={form.config.loop?.end} onChange={(v: number) => handleChange('config.loop.end', v)} max={sampleDuration || 1} disabled={!form.config.loop?.enabled} />
-                            <Slider label="X-Fade (s)" val={form.config.loop?.crossfade} onChange={(v: number) => handleChange('config.loop.crossfade', v)} max={0.1} disabled={!form.config.loop?.enabled} />
-                        </div>
-                    </div>
-                    
-                    <h3 style={{ marginTop: '1.5rem', color: '#98c379' }}>Humanization</h3>
-                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={c.humanize?.enabled || false} onChange={e => handleHumanizeChange('enabled', e.target.checked)} />
-                            Enable Jitter
-                        </label>
-                        <div style={{ opacity: c.humanize?.enabled ? 1 : 0.5 }}>
-                            <Slider label="Velocity Var" val={c.humanize?.velocity ?? 0.1} onChange={(v: number) => handleHumanizeChange('velocity', v)} max={1} />
-                        </div>
+                        )}
+
+                        <Slider label="Volume" val={c.volume} onChange={(v:number) => handleChange('config.volume', v)} min={-60} max={6} step={1} />
                         
-                        {/* VIBRATO (New) */}
-                        <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '0.5rem' }}>
-                            <label style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', fontWeight: 'bold', marginBottom: '4px', display: 'block' }}>VIBRATO</label>
-                            <Slider label="Depth (Cents)" val={c.vibrato?.depth ?? 0} onChange={v => handleVibratoChange('depth', v)} max={100} step={1} />
-                            {c.vibrato?.depth > 0 && (
+                        <div style={{ marginTop: '1rem', borderTop: '1px dashed #444', paddingTop: '1rem' }}>
+                            <label className="form-label">Loop</label>
+                            <div style={{display:'flex', gap:'10px', alignItems:'center', marginBottom:'10px'}}>
+                                <input type="checkbox" checked={c.loop?.enabled || false} onChange={e => handleChange('config.loop.enabled', e.target.checked)} />
+                                <span style={{fontSize:'0.8rem', color:'#ccc'}}>Enabled</span>
+                            </div>
+                            {c.loop?.enabled && (
                                 <>
-                                    <Slider label="Rate (Hz)" val={c.vibrato?.rate ?? 5} onChange={v => handleVibratoChange('rate', v)} min={0.1} max={10} />
-                                    <Slider label="Delay (s)" val={c.vibrato?.delay ?? 0} onChange={v => handleVibratoChange('delay', v)} max={2} />
-                                    <Slider label="Rise (s)" val={c.vibrato?.rise ?? 0} onChange={v => handleVibratoChange('rise', v)} max={2} />
+                                    <Slider label="Start" val={c.loop?.start} onChange={(v:number) => handleChange('config.loop.start', v)} max={10} />
+                                    <Slider label="End" val={c.loop?.end} onChange={(v:number) => handleChange('config.loop.end', v)} max={10} />
                                 </>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* COLUMN 3: TONE SHAPING */}
+                {/* COLUMN 2 */}
                 <div>
-                    <h3 style={{ marginTop: 0, color: '#98c379' }}>Tone Shaping</h3>
+                     <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                        <h4 style={{marginTop:0, color:'#ccc', borderBottom:'1px solid #444', paddingBottom:'5px'}}>Envelope</h4>
+                        <Slider label="Attack" val={c.envelope?.attack} onChange={(v:number) => handleChange('config.envelope.attack', v)} max={2} />
+                        <Slider label="Decay" val={c.envelope?.decay} onChange={(v:number) => handleChange('config.envelope.decay', v)} max={2} />
+                        <Slider label="Sustain" val={c.envelope?.sustain} onChange={(v:number) => handleChange('config.envelope.sustain', v)} max={1} />
+                        <Slider label="Release" val={c.envelope?.release} onChange={(v:number) => handleChange('config.envelope.release', v)} max={5} />
+                    </div>
+
+                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                        <h4 style={{marginTop:0, color:'#ccc', borderBottom:'1px solid #444', paddingBottom:'5px'}}>Effects</h4>
+                        <Slider label="Filter Freq" val={c.filter?.frequency || 20000} onChange={(v:number) => handleChange('config.filter.frequency', v)} min={20} max={20000} step={100} />
+                        <Slider label="Resonance" val={c.filter?.Q || 1} onChange={(v:number) => handleChange('config.filter.Q', v)} min={0.1} max={10} />
+                        <div style={{marginTop:'1rem'}}></div>
+                        <Slider label="Reverb" val={c.reverb} onChange={(v:number) => handleChange('config.reverb', v)} max={100} step={1} />
+                        <Slider label="Delay" val={c.delay} onChange={(v:number) => handleChange('config.delay', v)} max={100} step={1} />
+                        <Slider label="Distortion" val={c.distortion} onChange={(v:number) => handleChange('config.distortion', v)} max={100} step={1} />
+                    </div>
                     
-                    {/* Filter */}
-                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
-                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
-                            <label style={{fontWeight:'bold', color: 'var(--tool-text-main)'}}>Filter</label>
-                            <select 
-                                value={c.filter?.type || 'lowpass'} 
-                                onChange={e => handleFilterChange('type', e.target.value)}
-                                style={{background:'#111', color:'#ccc', border:'none', fontSize:'0.8rem', padding:'2px', borderRadius:'2px'}}
-                            >
-                                <option value="lowpass">Low Pass</option>
-                                <option value="highpass">High Pass</option>
-                                <option value="bandpass">Band Pass</option>
-                            </select>
-                        </div>
-                        <Slider label="Freq (Hz)" val={c.filter?.frequency ?? 20000} onChange={(v: number) => handleFilterChange('frequency', v)} min={20} max={20000} step={10} />
-                        <Slider label="Resonance (Q)" val={c.filter?.Q ?? 1} onChange={(v: number) => handleFilterChange('Q', v)} min={0.1} max={10} />
-                        
-                        <div style={{ marginTop: '0.5rem', borderTop: '1px dashed #444', paddingTop: '0.5rem' }}>
-                             <Slider label="Vel → Freq" val={c.filter?.velocitySens ?? 0} onChange={(v: number) => handleFilterChange('velocitySens', v)} max={1} />
-                             <p style={{fontSize:'0.65rem', color:'#777', margin:0}}>Lower velocity closes filter.</p>
-                        </div>
-                    </div>
-
-                    {/* EQ */}
-                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px' }}>
-                        <div style={{fontWeight:'bold', marginBottom:'0.5rem', color: 'var(--tool-text-main)'}}>3-Band EQ</div>
-                        <Slider label="Low (dB)" val={c.eq?.low ?? 0} onChange={(v: number) => handleEqChange('low', v)} min={-20} max={10} step={1} />
-                        <Slider label="Mid (dB)" val={c.eq?.mid ?? 0} onChange={(v: number) => handleEqChange('mid', v)} min={-20} max={10} step={1} />
-                        <Slider label="High (dB)" val={c.eq?.high ?? 0} onChange={(v: number) => handleEqChange('high', v)} min={-20} max={10} step={1} />
-                    </div>
-                </div>
-
-                {/* COLUMN 4: FX & EMBELLISHMENTS */}
-                <div>
-                    <h3 style={{ marginTop: 0, color: '#61afef' }}>Effects Rack</h3>
-                    <div style={{ background: '#1c1e24', padding: '1rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1.5rem', border: '1px solid #333' }}>
-                        
-                        <div>
-                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
-                                <span style={{color: '#61afef', fontSize:'0.9rem', fontWeight:'bold'}}>Reverb</span>
-                                <span style={{color: '#888', fontSize:'0.8rem'}}>{Math.round(c.reverb || 0)}%</span>
-                            </div>
-                            <Slider label="Mix" val={c.reverb} onChange={(v: number) => handleChange('config.reverb', v)} max={100} step={1} />
-                        </div>
-
-                        <div>
-                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
-                                <span style={{color: '#61afef', fontSize:'0.9rem', fontWeight:'bold'}}>Delay</span>
-                                <span style={{color: '#888', fontSize:'0.8rem'}}>{Math.round(c.delay || 0)}%</span>
-                            </div>
-                            <Slider label="Mix" val={c.delay} onChange={(v: number) => handleChange('config.delay', v)} max={100} step={1} />
-                        </div>
-
-                        <div>
-                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
-                                <span style={{color: '#e06c75', fontSize:'0.9rem', fontWeight:'bold'}}>Distortion</span>
-                                <span style={{color: '#888', fontSize:'0.8rem'}}>{Math.round(c.distortion || 0)}%</span>
-                            </div>
-                            <Slider label="Amount" val={c.distortion} onChange={(v: number) => handleChange('config.distortion', v)} max={100} step={1} />
-                        </div>
-
-                        <div>
-                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'4px'}}>
-                                <span style={{color: '#e06c75', fontSize:'0.9rem', fontWeight:'bold'}}>BitCrusher</span>
-                                <span style={{color: '#888', fontSize:'0.8rem'}}>{Math.round(c.bitcrush || 0)}%</span>
-                            </div>
-                            <Slider label="Mix" val={c.bitcrush} onChange={(v: number) => handleChange('config.bitcrush', v)} max={100} step={1} />
-                        </div>
-                    </div>
-
-                    <h3 style={{ marginTop: '1.5rem', color: '#e5c07b' }}>Embellishments</h3>
-                    <div style={{ background: '#1c1e24', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
-                        {c.embellishments?.map((emb: EmbellishmentDef, i: number) => (
-                            <div key={i} style={{ marginBottom: '1rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                    <label style={{ fontSize: '0.7rem', color: 'var(--tool-text-dim)'}}>Sample URL</label>
-                                    <button onClick={() => removeEmbellishment(i)} style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
-                                </div>
-                                <input 
-                                    value={emb.url} 
-                                    onChange={e => updateEmbellishment(i, 'url', e.target.value)}
-                                    style={{ width: '100%', background: '#111', border: '1px solid #444', color: 'var(--tool-text-main)', fontSize: '0.8rem', marginBottom: '8px' }}
-                                    placeholder="fret_noise.mp3"
-                                />
-                                <Slider label="Prob." val={emb.probability} onChange={(v: number) => updateEmbellishment(i, 'probability', v)} max={1} />
-                                <Slider label="Vol (dB)" val={emb.volume} onChange={(v: number) => updateEmbellishment(i, 'volume', v)} min={-40} max={0} step={1} />
-                            </div>
-                        ))}
-                        <button onClick={addEmbellishment} style={{ width: '100%', background: '#333', border: '1px dashed #555', color: 'var(--tool-text-main)', padding: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                            + Add Layer
-                        </button>
+                    {/* NEW: Modulators Section */}
+                    <div style={{ background: '#21252b', padding: '1rem', borderRadius: '4px' }}>
+                         <h4 style={{marginTop:0, color:'#ccc', borderBottom:'1px solid #444', paddingBottom:'5px'}}>Modulation</h4>
+                         
+                         <label style={{fontSize:'0.75rem', color:'#888', display:'block', marginBottom:'5px'}}>Vibrato</label>
+                         <Slider label="Depth" val={c.vibrato?.depth} onChange={(v:number) => handleChange('config.vibrato.depth', v)} max={100} step={1} />
+                         <Slider label="Rate" val={c.vibrato?.rate} onChange={(v:number) => handleChange('config.vibrato.rate', v)} max={10} step={0.1} />
+                         
+                         <div style={{marginTop:'1rem', borderTop:'1px dashed #444', paddingTop:'1rem'}}>
+                             <label style={{fontSize:'0.75rem', color:'#888', display:'block', marginBottom:'5px'}}>Panning</label>
+                             <div style={{display:'flex', gap:'10px', marginBottom:'10px'}}>
+                                 <label style={{fontSize:'0.8rem', color:'#ccc'}}>
+                                     <input type="checkbox" checked={c.panning?.enabled || false} onChange={e => handleChange('config.panning.enabled', e.target.checked)} /> Enable Auto-Pan
+                                 </label>
+                             </div>
+                             {c.panning?.enabled && (
+                                 <>
+                                     <Slider label="Frequency" val={c.panning?.frequency} onChange={(v:number) => handleChange('config.panning.frequency', v)} max={10} />
+                                     <Slider label="Depth" val={c.panning?.depth} onChange={(v:number) => handleChange('config.panning.depth', v)} max={1} />
+                                 </>
+                             )}
+                         </div>
                     </div>
                 </div>
 
             </div>
-            {onDelete && (<button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', marginTop: '2rem' }}>Delete Instrument</button>)}
         </div>
     );
-    
-    if (onClose) {
-        return (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-                <div style={{ 
-                    background: 'var(--tool-bg-input)', padding: '2rem', borderRadius: '8px', 
-                    width: '90%', maxWidth: '1400px', maxHeight: '90vh', 
-                    overflowY: 'auto', boxShadow: '0 5px 15px rgba(0,0,0,0.5)', 
-                    border: '1px solid #444' 
-                }} onClick={e => e.stopPropagation()}>
-                    {editorContent}
-                </div>
-            </div>
-        );
-    }
-    return editorContent;
 }
