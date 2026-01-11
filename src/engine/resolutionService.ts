@@ -61,5 +61,13 @@ export function processAutoEquip(
                 character.equipment[slot] = change.qid;
             }
         }
+        
+        if (change.levelAfter <= 0) {
+            for (const slot in character.equipment) {
+                if (character.equipment[slot] === change.qid) {
+                    character.equipment[slot] = null;
+                }
+            }
+        }
     }
 }

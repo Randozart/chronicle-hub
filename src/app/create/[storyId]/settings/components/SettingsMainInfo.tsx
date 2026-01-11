@@ -29,7 +29,6 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
         const success = await onChangeWorldId(tempId);
         if (success) {
             setIsEditingId(false);
-            // Redirect happens in parent usually, or we just update state
         }
     };
 
@@ -86,7 +85,8 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                 onCancel={() => setShowConfirmId(false)}
             />
 
-            <div className="form-row">
+            <div className="form-row" style={{ alignItems: 'flex-start' }}>
+                {/* LEFT COLUMN: Cover Image + Preview */}
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Cover Image URL</label>
                     <input value={settings.coverImage || ''} onChange={e => onChange('coverImage', e.target.value)} className="form-input" />
@@ -96,15 +96,33 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                         </div>
                     )}
                 </div>
-                <div className="form-group" style={{ flex: 1}}>
-                    <label className="form-label">Summary</label>
-                    <textarea 
-                        value={settings.summary || ''} 
-                        onChange={e => onChange('summary', e.target.value)} 
-                        className="form-textarea" 
-                        rows={6}
-                        placeholder="Shown on main menu..."
-                    />
+
+                {/* RIGHT COLUMN: Tags + Summary */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    
+                    {/* Tags Input */}
+                    <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">World Tags</label>
+                        <input 
+                            value={settings.tags?.join(', ') || ''} 
+                            onChange={e => onChange('tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} 
+                            className="form-input" 
+                            placeholder="fantasy, horror, rpg, victorian" 
+                        />
+                        <p className="special-desc">Comma-separated tags to help players find your world.</p>
+                    </div>
+
+                    {/* Summary Input */}
+                    <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Summary</label>
+                        <textarea 
+                            value={settings.summary || ''} 
+                            onChange={e => onChange('summary', e.target.value)} 
+                            className="form-textarea" 
+                            rows={6}
+                            placeholder="Shown on main menu..."
+                        />
+                    </div>
                 </div>
             </div>
         </div>

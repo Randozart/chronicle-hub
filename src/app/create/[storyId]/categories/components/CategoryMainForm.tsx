@@ -61,13 +61,22 @@ export default function CategoryMainForm({
 
     // --- Global Settings Updates ---
     const updateGlobalList = async (listName: 'equipCategories' | 'characterSheetCategories', newList: string[]) => {
+        // Construct the full settings object with the update
+        const updatedSettings = { ...settings, [listName]: newList };
+        
         try {
+            // FIX: Save to settings/settings instead of root/itemId to ensure consistency
             await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId, category: 'root', itemId: listName, data: newList })
+                body: JSON.stringify({ 
+                    storyId, 
+                    category: 'settings', 
+                    itemId: 'settings', 
+                    data: updatedSettings 
+                })
             });
-            onUpdateSettings({ ...settings, [listName]: newList });
+            onUpdateSettings(updatedSettings);
             showToast("World settings updated.", "success");
         } catch (e) {
             console.error(e);
