@@ -1,28 +1,54 @@
+// src/app/create/[storyId]/audio/page.tsx
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useRef } from 'react';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
-import InstrumentEditor from './components/InstrumentEditor';
-import TrackEditor from './components/TrackEditor';
-import { AUDIO_PRESETS } from '@/engine/audio/presets';
+import InstrumentMainForm from './components/InstrumentMainForm';
+import TrackMainForm from './components/TrackMainForm';
+import InputModal from '@/components/admin/InputModal';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
+import { FormGuard } from '@/hooks/useCreatorForm';
 
+// Union type for the list view
 type AudioItem = (InstrumentDefinition | LigatureTrack) & { 
     category: 'instrument' | 'track';
     scope: 'local' | 'global';
     folder?: string;
 };
 
-const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUMENTS]\n\nPiano: hq_piano\n\n[PATTERN: Main]\n\nPiano |................|\n\n[PLAYLIST]\n\nMain\n`;
-
 export default function AudioAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const { showToast } = useToast();
+    
+    // State
     const [items, setItems] = useState<AudioItem[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Guard & Navigation
+    const guardRef = useRef<FormGuard | null>(null);
+    const [pendingId, setPendingId] = useState<string | null>(null);
+    const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+    // Modals
+    const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        mode: 'create' | 'duplicate';
+        type: 'instrument' | 'track';
+        sourceItem?: AudioItem;
+    }>({ isOpen: false, mode: 'create', type: 'instrument' });
+
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        itemToDelete?: string;
+    }>({ isOpen: false, title: '', message: '' });
+
+    // 1. Fetch Data
     const fetchData = () => {
         setIsLoading(true);
         fetch(`/api/admin/audio?storyId=${storyId}`)
@@ -39,208 +65,245 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                         combined.push({ ...t, category: 'track', scope: 'local', folder: 'Project Tracks' })
                     );
                 }
-                if (data.global && Array.isArray(data.global)) {
-                    data.global.forEach((g: any) => {
-                        combined.push({
-                            ...g.data,
-                            id: g.id, 
-                            category: g.type,
-                            scope: 'global',
-                            folder: g.folder || (g.type === 'track' ? `Global Tracks` : `Global Instruments`)
-                        });
-                    });
+                if (data.global) {
+                     data.global.forEach((g: any) => {
+                        combined.push({ ...g.data, id: g.id, category: g.type, scope: 'global', folder: 'Global Library' });
+                     });
                 }
                 setItems(combined);
             })
             .finally(() => setIsLoading(false));
     };
 
-    useEffect(() => {
-        fetchData();
-    }, [storyId]);
+    useEffect(() => { fetchData(); }, [storyId]);
 
-    const handleCreate = (type: 'instrument' | 'track') => {
-        const name = prompt(`New ${type} name:`);
-        if (!name) return;
-        const id = name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        
-        if (items.find(i => i.id === id)) return alert("ID exists");
-        
-        const isGlobal = confirm("Save to Global Account? (Cancel for Local Project)");
-        const scope = isGlobal ? 'global' : 'local';
-        const folder = isGlobal ? (type === 'track' ? `Tracks/${storyId}` : 'Instruments') : (type === 'track' ? 'Project Tracks' : 'Project Instruments');
-
-        let newItem: AudioItem;
-        if (type === 'instrument') {
-            newItem = {
-                id, name, category: 'instrument', type: 'synth', scope, folder,
-                config: { oscillator: { type: 'triangle' }, envelope: { attack: 0.1, decay: 0.2, sustain: 0.5, release: 1 }, volume: -10 }
-            };
+    // --- NAVIGATION GUARD ---
+    const handleSelectAttempt = (newId: string) => {
+        if (newId === selectedId) return;
+        if (guardRef.current && guardRef.current.isDirty) {
+            setPendingId(newId);
+            setShowUnsavedModal(true);
         } else {
-            newItem = {
-                id, name, category: 'track', source: EMPTY_TEMPLATE, scope, folder
-            };
+            setSelectedId(newId);
         }
+    };
+
+    const handleConfirmSwitch = async () => {
+        if (guardRef.current) {
+            const success = await guardRef.current.save();
+            if (success) {
+                setShowUnsavedModal(false);
+                if (pendingId) setSelectedId(pendingId);
+                setPendingId(null);
+            }
+        }
+    };
+
+    const handleDiscardSwitch = () => {
+        setShowUnsavedModal(false);
+        if (pendingId) setSelectedId(pendingId);
+        setPendingId(null);
+    };
+
+    const handleCancelSwitch = () => {
+        setShowUnsavedModal(false);
+        setPendingId(null);
+    };
+
+    // --- CRUD ACTIONS ---
+    const openCreateModal = (type: 'instrument' | 'track') => setModalConfig({ isOpen: true, mode: 'create', type });
+    const openDuplicateModal = (source: AudioItem) => setModalConfig({ isOpen: true, mode: 'duplicate', type: source.category, sourceItem: source });
+
+    const handleDeleteRequest = (id: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Audio Asset?",
+            message: `Are you sure? This cannot be undone.`,
+            itemToDelete: id
+        });
+    };
+
+    const handleModalSubmit = async (val: string) => {
+        const cleanId = val.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (items.find(i => i.id === cleanId)) {
+            showToast("ID Exists", "error");
+            return;
+        }
+
+        if (modalConfig.mode === 'create') {
+            await performCreate(cleanId, modalConfig.type);
+        } 
+        else if (modalConfig.mode === 'duplicate' && modalConfig.sourceItem) {
+            await performDuplicate(cleanId, modalConfig.sourceItem);
+        }
+    };
+
+    const performCreate = async (id: string, type: 'instrument' | 'track') => {
+        const newItem: any = type === 'instrument' 
+            ? { 
+                id, name: "New Synth", category: 'instrument', type: 'synth', scope: 'local', folder: 'Project Instruments', version: 1,
+                config: { oscillator: { type: 'triangle' }, envelope: { attack: 0.1, decay: 0.1, sustain: 0.5, release: 0.5 }, volume: -10 } 
+              }
+            : { 
+                id, name: "New Track", category: 'track', scope: 'local', folder: 'Project Tracks', version: 1,
+                source: "[CONFIG]\nBPM: 120\nGrid: 4\n" 
+              };
         
         setItems(prev => [...prev, newItem]);
-        setSelectedId(id);
-        handleSave(newItem);
-    };
-
-    const handleSave = async (updated: AudioItem) => {
+        const cat = type === 'instrument' ? 'instruments' : 'music';
+        
         try {
-            if (updated.scope === 'local') {
-                const endpointCat = updated.category === 'instrument' ? 'instruments' : 'music';
-                await fetch('/api/admin/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ storyId, category: endpointCat, itemId: updated.id, data: updated })
-                });
-            } else {
-                await fetch('/api/assets/audio', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        id: updated.id, 
-                        type: updated.category, 
-                        folder: updated.folder, 
-                        data: updated 
-                    })
-                });
-            }
-            setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-            showToast(`${updated.category === 'instrument' ? 'Instrument' : 'Track'} saved!`, 'success');
+            await fetch('/api/admin/config', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, category: cat, itemId: id, data: newItem }) 
+            });
+            
+            guardRef.current = null;
+            setSelectedId(id);
+            showToast("Created", "success");
         } catch(e) {
-            console.error(e);
-            showToast("Save failed", 'error');
+            showToast("Failed to create", "error");
         }
     };
 
-    const handleDelete = async (id: string, category: string) => {
+    const performDuplicate = async (newId: string, source: AudioItem) => {
+         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         const { _id, ...rest } = source as any;
+         
+         const newItem = { ...rest, id: newId, name: `${source.name} (Copy)`, version: 1 };
+         
+         setItems(prev => [...prev, newItem]);
+         const endpoint = source.scope === 'global' ? '/api/assets/audio' : '/api/admin/config';
+         
+         try {
+             if (source.scope === 'global') {
+                 await fetch(endpoint, { 
+                     method: 'POST', 
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ id: newId, type: source.category, data: newItem }) 
+                 });
+             } else {
+                 const cat = source.category === 'instrument' ? 'instruments' : 'music';
+                 await fetch(endpoint, { 
+                     method: 'POST', 
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ storyId, category: cat, itemId: newId, data: newItem }) 
+                 });
+             }
+             
+             guardRef.current = null;
+             setSelectedId(newId);
+             showToast("Duplicated", "success");
+         } catch(e) {
+             showToast("Failed to duplicate", "error");
+         }
+    };
+
+    const performDelete = async () => {
+        const id = confirmModal.itemToDelete;
+        if (!id) return;
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        
         const item = items.find(i => i.id === id);
         if (!item) return;
-        if (!confirm(`Delete ${item.scope} item: ${item.name}?`)) return;
 
-        if (item.scope === 'local') {
-            const endpointCat = category === 'instrument' ? 'instruments' : 'music';
-            await fetch(`/api/admin/config?storyId=${storyId}&category=${endpointCat}&itemId=${id}`, { method: 'DELETE' });
-        } else {
-            await fetch(`/api/assets/audio?id=${id}`, { method: 'DELETE' });
-        }
-        setItems(prev => prev.filter(i => i.id !== id));
-        setSelectedId(null);
-        showToast("Deleted successfully.", "info");
-    };
-
-    const handleUpdateInstrument = (updatedInstrument: InstrumentDefinition) => {
-        const existing = items.find(i => i.id === updatedInstrument.id);
-        if (!existing) return;
+        const endpoint = item.scope === 'global' 
+            ? `/api/assets/audio?id=${id}` 
+            : `/api/admin/config?storyId=${storyId}&category=${item.category === 'instrument' ? 'instruments' : 'music'}&itemId=${id}`;
         
-        const itemToSave: AudioItem = { 
-            ...updatedInstrument, 
-            category: 'instrument', 
-            scope: existing.scope, 
-            folder: existing.folder 
-        };
-        handleSave(itemToSave);
+        try {
+            await fetch(endpoint, { method: 'DELETE' });
+            setItems(prev => prev.filter(i => i.id !== id));
+            if (selectedId === id) setSelectedId(null);
+            showToast("Deleted", "info");
+        } catch(e) {
+            showToast("Delete failed", "error");
+        }
     };
+
+    const handleListUpdate = (data: AudioItem) => {
+        setItems(prev => prev.map(i => i.id === data.id ? { ...i, ...data } : i));
+    };
+
+    if (isLoading) return <div className="loading-container">Loading...</div>;
 
     const selectedItem = items.find(i => i.id === selectedId);
-    
-    const allInstrumentsMap = new Map<string, InstrumentDefinition>();
-    Object.values(AUDIO_PRESETS).forEach(preset => allInstrumentsMap.set(preset.id, preset));
-    items.filter(i => i.category === 'instrument').forEach(inst => allInstrumentsMap.set(inst.id, inst as InstrumentDefinition));
-    const allInstruments = Array.from(allInstrumentsMap.values());
 
     return (
         <div className="admin-split-view">
-            {/* 1. SIDEBAR (Collapses on Mobile) */}
             <AdminListSidebar 
-                title="Audio Assets" 
+                title="Audio"
                 items={items}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
-                onCreate={() => handleCreate('track')} 
-                groupOptions={[
-                    { label: "By Folder", key: "folder" },
-                    { label: "By Type", key: "category" },
-                    { label: "By Scope", key: "scope" }
-                ]}
+                onSelect={handleSelectAttempt}
+                onCreate={() => openCreateModal('instrument')} 
+                groupOptions={[{ label: "Folder", key: "folder" }, { label: "Type", key: "category" }]}
                 defaultGroupByKey="folder"
-                renderItem={(item) => (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="item-title">{item.name}</span>
-                        <span style={{ fontSize: '0.7rem', color: item.scope === 'global' ? 'var(--success-color)' : 'var(--tool-accent)' }}>
-                            {item.category.toUpperCase()} • {item.scope}
-                        </span>
-                    </div>
-                )}
             />
-
-            {/* 2. EDITOR AREA */}
-            <div className="admin-editor-col" style={{ 
-                padding: 0, 
-                background: 'var(--tool-bg-dark)', /* Replaced #141414 */
-                display: 'flex', 
-                flexDirection: 'column',
-                maxWidth: '100vw', 
-                overflowX: 'hidden'
-            }}>
-                
-                {/* TOOLBAR */}
-                <div style={{ 
-                    padding: '0.5rem 1rem', 
-                    borderBottom: '1px solid var(--tool-border)', /* Replaced #333 */
-                    background: 'var(--tool-bg-header)', /* Replaced #21252b */
-                    display: 'flex', 
-                    gap: '10px',
-                    flexWrap: 'wrap'
-                }}>
-                    <button className="new-btn" onClick={() => handleCreate('instrument')}>+ New Instrument</button>
-                    <button className="new-btn" onClick={() => handleCreate('track')}>+ New Track</button>
+            
+            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--tool-border)', display: 'flex', gap: '10px' }}>
+                    <button className="new-btn" onClick={() => openCreateModal('instrument')}>+ New Instrument</button>
+                    <button className="new-btn" onClick={() => openCreateModal('track')}>+ New Track</button>
                 </div>
 
-                {selectedItem?.category === 'instrument' && (
-                    <div style={{ padding: 'clamp(1rem, 5vw, 2rem)', overflowY: 'auto', flex: 1 }}>
-                        <InstrumentEditor 
-                            key={selectedItem.id}
-                            data={selectedItem as InstrumentDefinition} 
-                            onSave={(d) => handleUpdateInstrument(d)} 
-                            onDelete={() => handleDelete(selectedItem.id, 'instrument')}
+                {selectedItem ? (
+                    selectedItem.category === 'instrument' ? (
+                        <InstrumentMainForm 
+                            initialData={selectedItem as InstrumentDefinition}
+                            // FIX: Cast handlers to specific type expected by child
+                            onSave={handleListUpdate as (d: InstrumentDefinition) => void}
+                            onDelete={handleDeleteRequest}
+                            onDuplicate={openDuplicateModal as (d: InstrumentDefinition) => void}
+                            storyId={storyId}
+                            guardRef={guardRef}
                         />
-                        <div style={{ marginTop:'1rem', fontSize:'0.8rem', color:'var(--tool-text-dim)' }}>
-                            Scope: <span style={{ color: selectedItem.scope === 'global' ? 'var(--success-color)' : 'var(--tool-accent)' }}>{selectedItem.scope.toUpperCase()}</span>
-                        </div>
-                    </div>
-                )}
-                
-                {selectedItem?.category === 'track' && (
-                    <div style={{ 
-                        flex: 1, 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        width: '100%',
-                        overflow: 'hidden' 
-                    }}>
-                        <TrackEditor 
-                            key={selectedItem.id}
-                            data={selectedItem as LigatureTrack} 
-                            onSave={handleSave} 
-                            onDelete={() => handleDelete(selectedItem.id, 'track')}
-                            availableInstruments={allInstruments} 
-                            onUpdateInstrument={handleUpdateInstrument}
-                            enableDownload={true}
+                    ) : (
+                        <TrackMainForm 
+                            initialData={selectedItem as LigatureTrack}
+                            // FIX: Cast handlers to specific type expected by child
+                            onSave={handleListUpdate as (d: LigatureTrack) => void}
+                            onDelete={handleDeleteRequest}
+                            onDuplicate={openDuplicateModal as (d: LigatureTrack) => void}
+                            storyId={storyId}
+                            availableInstruments={items.filter(i => i.category === 'instrument') as InstrumentDefinition[]}
+                            guardRef={guardRef}
                         />
-                    </div>
-                )}
-                
-                {!selectedItem && (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tool-text-dim)', flexDirection: 'column', padding: '2rem', textAlign: 'center' }}>
-                        <h3>Select an asset to edit</h3>
-                        <p style={{ fontSize: '0.9rem' }}>Or use the + buttons above to create one.</p>
-                    </div>
+                    )
+                ) : (
+                    <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select an asset</div>
                 )}
             </div>
+
+            {/* Modals */}
+            <InputModal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                onSubmit={handleModalSubmit}
+                title={modalConfig.mode === 'create' ? `Create ${modalConfig.type}` : "Duplicate"}
+                label="ID"
+                placeholder="unique_id"
+                defaultValue={modalConfig.mode === 'duplicate' ? `${modalConfig.sourceItem?.id}_copy` : ""}
+                confirmLabel={modalConfig.mode === 'create' ? "Create" : "Duplicate"}
+            />
+
+            <ConfirmationModal 
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant="danger"
+                confirmLabel="Delete"
+                onConfirm={performDelete}
+                onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+            />
+
+            <UnsavedChangesModal 
+                isOpen={showUnsavedModal}
+                onSaveAndContinue={handleConfirmSwitch}
+                onDiscard={handleDiscardSwitch}
+                onCancel={handleCancelSwitch}
+            />
         </div>
     );
 }

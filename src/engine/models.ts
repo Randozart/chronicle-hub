@@ -224,7 +224,7 @@ export interface LocationDefinition extends VersionedEntity {
     visibleCondition?: string; 
     marketId?: string; 
 }
-export interface ImageDefinition { 
+export interface ImageDefinition extends VersionedEntity{ 
     id: string; 
     url: string; 
     alt?: string; 
@@ -232,7 +232,8 @@ export interface ImageDefinition {
     size?: number; 
     focus?: { x: number; y: number }; 
 }
-export interface CategoryDefinition { id: string; 
+export interface CategoryDefinition extends VersionedEntity{ 
+    id: string; 
     name?: string; 
     color?: string; 
     description?: string; 
