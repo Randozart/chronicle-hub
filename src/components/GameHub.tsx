@@ -195,12 +195,19 @@ export default function GameHub(props: GameHubProps) {
         }
     }, [location, props.musicTracks, props.instruments, playTrack]);
 
-    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>) => {
+    const handleQualitiesUpdate = useCallback((
+        newQualities: PlayerQualities, 
+        newDefinitions?: Record<string, QualityDefinition>, 
+        newEquipment?: Record<string, string | null>
+    ) => {
         setCharacter(prev => {
             if (!prev) return null;
             const updated = { ...prev, qualities: { ...newQualities } };
             if (newDefinitions) {
                 updated.dynamicQualities = { ...(prev.dynamicQualities || {}), ...newDefinitions };
+            }
+            if (newEquipment) {
+                updated.equipment = { ...newEquipment };
             }
             return updated;
         });
@@ -210,12 +217,20 @@ export default function GameHub(props: GameHubProps) {
         setCharacter({ ...newCharacterState, qualities: { ...newCharacterState.qualities } });
     }, []);
 
-    const handleEventFinish = useCallback((newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => {
+    const handleEventFinish = useCallback((
+        newQualities: PlayerQualities, 
+        redirectId?: string, 
+        moveToId?: string, 
+        newEquipment?: Record<string, string | null>
+    ) => {
         setActiveResolution(null);
         setCharacter(prev => {
             if (!prev) return null;
             const newChar = { ...prev, qualities: { ...newQualities } };
             if (moveToId) newChar.currentLocationId = moveToId;
+            if (newEquipment) {
+                newChar.equipment = { ...newEquipment };
+            }
             return newChar;
         });
         showEvent(redirectId ?? null);
@@ -617,7 +632,7 @@ export default function GameHub(props: GameHubProps) {
                                 qualityDefs={mergedQualityDefs} 
                                 imageLibrary={props.imageLibrary} 
                                 settings={props.settings}
-
+                                engine={renderEngine}
                             />
                         </div>
                     )}

@@ -1,5 +1,3 @@
-// src/app/api/market/transact/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -7,6 +5,7 @@ import { getCharacter, saveCharacterState } from '@/engine/characterService';
 import { getContent } from '@/engine/contentCache'; 
 import { GameEngine } from '@/engine/gameEngine';
 import { getWorldState } from '@/engine/worldService';
+import { processAutoEquip } from '@/engine/resolutionService';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -17,14 +16,12 @@ export async function POST(request: NextRequest) {
 
     if (!quantity || quantity < 1) return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 });
 
-    // 1. Load State
     const gameData = await getContent(storyId);
     const worldState = await getWorldState(storyId);
     const character = await getCharacter(userId, storyId, characterId);
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
-    // 2. Validate Location (Anti-Teleport Hack)
     const currentLocation = gameData.locations[character.currentLocationId];
     const locationMarket = currentLocation?.marketId;
     const regionMarket = currentLocation?.regionId ? gameData.regions[currentLocation.regionId]?.marketId : null;
@@ -33,7 +30,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'You are not at this market.' }, { status: 403 });
     }
 
-    // 3. Find the Listing
     const market = gameData.markets[marketId];
     if (!market) return NextResponse.json({ error: 'Market not found' }, { status: 404 });
 
@@ -43,7 +39,6 @@ export async function POST(request: NextRequest) {
     const listing = stall.listings.find(l => l.id === listingId);
     if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
-    // 4. Initialize Engine & Check Requirements
     const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
     
     if (listing.visible_if && !engine.evaluateCondition(listing.visible_if)) {
@@ -53,7 +48,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Item is locked.' }, { status: 403 });
     }
 
-    // 5. Calculate Price (ScribeScript)
     const unitPriceStr = engine.evaluateText(`{${listing.price}}`);
     const unitPrice = parseInt(unitPriceStr, 10);
     
@@ -66,7 +60,6 @@ export async function POST(request: NextRequest) {
     const currencyId = listing.currencyId || market.defaultCurrencyId;
     const itemId = listing.qualityId;
 
-    // 6. EXECUTE TRANSACTION
     if (stall.mode === 'buy') {
         const currentFunds = engine.getEffectiveLevel(currencyId);
         
@@ -76,11 +69,8 @@ export async function POST(request: NextRequest) {
 
         const sourceTag = stall.source || `bought at ${stall.name}`;
         
-        // Combine effects into one transaction string
         engine.applyEffects(`$${currencyId} -= ${totalCost}, $${itemId}[source:${sourceTag}] += ${quantity}`);
-
     } else {
-        // Sell Mode
         const currentItems = engine.getEffectiveLevel(itemId);
         
         if (currentItems < quantity) {
@@ -90,13 +80,15 @@ export async function POST(request: NextRequest) {
         engine.applyEffects(`$${itemId} -= ${quantity}, $${currencyId} += ${totalCost}`);
     }
 
-    // 7. Save
+    processAutoEquip(character, engine.changes, gameData);
+
     character.qualities = engine.getQualities();
     await saveCharacterState(character);
 
     return NextResponse.json({ 
         success: true, 
         newQualities: character.qualities,
+        equipment: character.equipment,
         message: stall.mode === 'buy' 
             ? `Bought ${quantity}x ${itemId} for ${totalCost} ${currencyId}`
             : `Sold ${quantity}x ${itemId} for ${totalCost} ${currencyId}`

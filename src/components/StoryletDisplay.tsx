@@ -34,8 +34,17 @@ interface StoryletDisplayProps {
     resolution: ResolutionState | null; 
     onResolve: (res: ResolutionState) => void; 
     
-    onFinish: (newQualities: PlayerQualities, redirectId?: string, moveToId?: string) => void;
-    onQualitiesUpdate: (newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>) => void;
+    onFinish: (
+        newQualities: PlayerQualities, 
+        redirectId?: string, 
+        moveToId?: string, 
+        newEquipment?: Record<string, string | null>
+    ) => void;
+    onQualitiesUpdate: (
+        newQualities: PlayerQualities, 
+        newDefinitions?: Record<string, QualityDefinition>, 
+        newEquipment?: Record<string, string | null>
+    ) => void;
     
     onCardPlayed?: (cardId: string) => void;
     imageLibrary: Record<string, ImageDefinition>; 
@@ -122,7 +131,7 @@ export default function StoryletDisplay({
                 }
             }
 
-            onQualitiesUpdate(data.newQualities, data.newDefinitions); 
+            onQualitiesUpdate(data.newQualities, data.newDefinitions, data.equipment); 
             
             if (onCardPlayed && 'deck' in eventData) {
                 onCardPlayed(eventData.id);
@@ -131,7 +140,7 @@ export default function StoryletDisplay({
             const isInstant = option.tags?.includes('instant_redirect');
 
             if (isInstant) {
-                onFinish(data.newQualities, data.result.redirectId, data.result.moveToId);
+                onFinish(data.newQualities, data.result.redirectId, data.result.moveToId, data.equipment);
             } else {
                 onResolve({ 
                     ...data.result, 

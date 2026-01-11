@@ -1,7 +1,7 @@
 'use client';
 
 import { Storylet, PlayerQualities, QualityDefinition, ImageDefinition, WorldSettings } from "@/engine/models";
-import { evaluateText } from "@/engine/textProcessor"; // BUG FIX: Removed unused/harmful evaluateCondition import
+import { GameEngine } from "@/engine/gameEngine";
 import GameImage from "./GameImage";
 import FormattedText from "./FormattedText";
 
@@ -11,13 +11,11 @@ interface LocationStoryletsProps {
     qualities: PlayerQualities;
     qualityDefs: Record<string, QualityDefinition>;
     imageLibrary: Record<string, ImageDefinition>;
-    settings: WorldSettings; 
+    settings: WorldSettings;
+    engine: GameEngine; 
 }
 
-export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs, imageLibrary, settings }: LocationStoryletsProps) {
-    // BUG FIX: Removed the redundant .filter() here. 
-    // GameHub has already filtered the storylets using the authoritative GameEngine (which has access to dynamic qualities).
-    // Re-filtering here with the raw `evaluateCondition` often fails because it lacks the full context of the Engine.
+export default function LocationStorylets({ storylets, onStoryletClick, qualities, qualityDefs, imageLibrary, settings, engine }: LocationStoryletsProps) {
     const visibleStorylets = storylets; 
 
     if (visibleStorylets.length === 0) return null;
@@ -33,8 +31,12 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
             <h2>Actions</h2>
             <div className={containerClass}>
                 {visibleStorylets.map(storylet => {
-                    const evaluatedName = evaluateText(storylet.name, qualities, qualityDefs, null, 0);
-                    const evaluatedShort = storylet.short ? evaluateText(storylet.short, qualities, qualityDefs, null, 0) : "";
+                    const context = { qid: storylet.id, state: qualities[storylet.id] };
+                    const evaluatedName = engine.evaluateText(storylet.name, context);
+                    const evaluatedShort = storylet.short ? engine.evaluateText(storylet.short, context) : "";
+
+                    // FIX: Corrected variable name from "image evaluator" to "evaluator"
+                    const evaluator = (text: string) => engine.evaluateText(text, context);
 
                     if (layoutStyle === 'polaroid') {
                         return (
@@ -75,6 +77,7 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                                 alt={evaluatedName}
                                                 className="option-image"
                                                 settings={settings}
+                                                evaluateText={evaluator}
                                                 style={{
                                                     borderBottomLeftRadius: 0,
                                                     borderBottomRightRadius: 0
@@ -87,9 +90,9 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                         className="option-text-wrapper"
                                         style={{ padding: '0 1rem 1rem' }}
                                     >
-                                        <h3>{evaluatedName}</h3>
+                                        <h3><FormattedText text={evaluatedName} inline /></h3>
                                         {evaluatedShort && (
-                                            <div className="option-short-desc">{evaluatedShort}</div>
+                                            <div className="option-short-desc"><FormattedText text={evaluatedShort} /></div>
                                         )}
                                     </div>
                                 </div>
@@ -103,7 +106,15 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                 <div className="option-content-wrapper">
                                     {storylet.image_code && (
                                         <div className="option-image-container">
-                                            <GameImage code={storylet.image_code} imageLibrary={imageLibrary} type="storylet" alt={evaluatedName} className="option-image" settings={settings}/>
+                                            <GameImage 
+                                                code={storylet.image_code} 
+                                                imageLibrary={imageLibrary} 
+                                                type="storylet" 
+                                                alt={evaluatedName} 
+                                                className="option-image" 
+                                                settings={settings}
+                                                evaluateText={evaluator}
+                                            />
                                         </div>
                                     )}
                                     <div className="option-text-wrapper">
@@ -126,6 +137,7 @@ export default function LocationStorylets({ storylets, onStoryletClick, qualitie
                                         alt={evaluatedName} 
                                         className="card-image" 
                                         settings={settings}
+                                        evaluateText={evaluator}
                                     />
                                  )}                                 
                                  <div className="card-text">

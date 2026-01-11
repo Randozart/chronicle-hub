@@ -7,7 +7,6 @@ import { getWorldState } from '@/engine/worldService';
 import { Storylet, Opportunity, LocationDefinition } from '@/engine/models'; // Added LocationDefinition
 import GameHub from '@/components/GameHub';
 
-// Helper to prevent passing complex server-only objects to client
 function serialize<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
 }
@@ -30,21 +29,17 @@ export default async function PlayPage({ params, searchParams }: Props) {
     const storyId = resolvedParams.storyId;
     const userId = (session.user as any).id;
     
-    // 1. Fetch World Configuration
     const gameData = await getContent(storyId);
     if (!gameData) return <div>Story not found.</div>;
 
-    // 2. Fetch All Events (Storylets + Opportunities)
     const allContent = await getStorylets(storyId);
 
-    // 3. Fetch Characters
     const availableCharacters = await getCharactersList(userId, storyId);
     
-    // Determine active character
     let character = null;
-    let initialLocation: LocationDefinition | null = null; // Use the interface
+    let initialLocation: LocationDefinition | null = null; 
     let initialHand: Opportunity[] = [];
-    let activeEvent: Storylet | Opportunity | null = null; // Use the interfaces
+    let activeEvent: Storylet | Opportunity | null = null; 
 
     if (resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
         const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
@@ -53,11 +48,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
 
     // Hydration Logic
     if (character) {
-        // --- FIX: Ensure we are handling the full object correctly ---
-        // The locDef is the full LocationDefinition object including version, etc.
         const locDef = gameData.locations[character.currentLocationId];
-        // We assign the full object here, and the client component GameHub will be responsible
-        // for picking the properties it needs (like .name, .image).
         initialLocation = locDef || null;
 
         if (character.opportunityHands) {
@@ -80,13 +71,11 @@ export default async function PlayPage({ params, searchParams }: Props) {
 
     const worldState = await getWorldState(storyId);
 
-    // --- MERGE DYNAMIC DEFINITIONS ---
     const mergedQualityDefs = {
         ...gameData.qualities,
         ...(character?.dynamicQualities || {}) 
     };
 
-    // Serialize everything before passing to Client Component
     const safeCharacter = serialize(character);
     const safeLocation = serialize(initialLocation);
     const safeHand = serialize(initialHand);
