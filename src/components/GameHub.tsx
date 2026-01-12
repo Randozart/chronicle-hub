@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom';
 import CharacterInspector from '@/app/create/[storyId]/players/components/CharacterInspector';
 import { ToastProvider } from '@/providers/ToastProvider';
 import GameModal from './GameModal';
+import LivingStories from './LivingStories';
 
 
 interface GameHubProps {
@@ -110,7 +111,7 @@ export default function GameHub(props: GameHubProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
-    const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
+    const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile' | 'living'>('story');
     const [eventSource, setEventSource] = useState<'story' | 'item'>('story');
     const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
 
@@ -441,18 +442,29 @@ export default function GameHub(props: GameHubProps) {
     const actionState = character.qualities[actionQid];
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
     const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
-
+    
+    const livingStoriesEnabled = props.settings.livingStoriesConfig?.enabled !== false;
+    const showLivingStoriesTab = props.settings.livingStoriesConfig?.position === 'tab' && character?.pendingEvents && character.pendingEvents.length > 0;
+    
     const TabBar = () => (
         <div className="tab-bar">
             <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
             <button onClick={() => setActiveTab('possessions')} data-tab-id="possessions" className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
             <button onClick={() => setActiveTab('profile')} data-tab-id="profile" className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
+            {livingStoriesEnabled && showLivingStoriesTab && (
+                <button onClick={() => setActiveTab('living')} className={`tab-btn ${activeTab === 'living' ? 'active' : ''}`}>
+                    {props.settings.livingStoriesConfig?.title || "Living Stories"}
+                </button>
+            )}
         </div>
     );
 
     const sidebarTab = props.settings.tabLocation === 'sidebar';
 
     const buildSidebar = () => {
+        const showLivingStoriesInSidebar = !props.settings.livingStoriesConfig || props.settings.livingStoriesConfig.position === 'sidebar' || !props.settings.livingStoriesConfig.position;
+        const livingStoriesEnabled = props.settings.livingStoriesConfig?.enabled !== false;
+
         if (sidebarTab) {
             return (
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -495,6 +507,18 @@ export default function GameHub(props: GameHubProps) {
                             </div>
                         )}
                     </div>
+
+                     {livingStoriesEnabled && showLivingStoriesInSidebar && character.pendingEvents && character.pendingEvents.length > 0 && (
+                        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px dashed var(--border-color)' }}>
+                            <LivingStories 
+                                pendingEvents={character.pendingEvents}
+                                qualityDefs={mergedQualityDefs}
+                                imageLibrary={props.imageLibrary}
+                                settings={props.settings}
+                                engine={renderEngine}
+                            />
+                        </div>
+                    )}
                     
                     <div className="sidebar-footer">
                         <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
@@ -527,6 +551,7 @@ export default function GameHub(props: GameHubProps) {
                         engine={renderEngine}
                         showHidden={showHiddenQualities}
                     />
+                    
                     {props.isPlaytesting && (
                         <div style={{ marginTop: '2rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
                             <h4 style={{ color: 'var(--warning-color)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
@@ -545,6 +570,17 @@ export default function GameHub(props: GameHubProps) {
                         </div>
                     )}
                 </div>
+                {livingStoriesEnabled && showLivingStoriesInSidebar && character.pendingEvents && character.pendingEvents.length > 0 && (
+                <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px dashed var(--border-color)' }}>
+                    <LivingStories 
+                        pendingEvents={character.pendingEvents}
+                        qualityDefs={mergedQualityDefs}
+                        imageLibrary={props.imageLibrary}
+                        settings={props.settings}
+                        engine={renderEngine}
+                    />
+                </div>
+                )}
                 <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
                 </div>
@@ -633,6 +669,18 @@ export default function GameHub(props: GameHubProps) {
                         settings={props.settings} 
                         engine={renderEngine} 
                         showHidden={showHiddenQualities}
+                    />
+                </div>
+            );
+        } else if (activeTab === 'living') {
+            innerContent = (
+                <div className="content-panel">
+                     <LivingStories 
+                        pendingEvents={character.pendingEvents || []}
+                        qualityDefs={mergedQualityDefs}
+                        imageLibrary={props.imageLibrary}
+                        settings={props.settings}
+                        engine={renderEngine}
                     />
                 </div>
             );

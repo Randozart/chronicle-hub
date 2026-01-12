@@ -17,7 +17,7 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
         onChange(field, val);
     };
 
-    const handleDeepChange = (parent: 'imageConfig' | 'componentConfig', key: string, val: string) => {
+    const handleDeepChange = (parent: 'imageConfig' | 'componentConfig' | 'livingStoriesConfig', key: string, val: any) => {
         const current = settings[parent] || {};
         onChange(parent, { ...current, [key]: val });
     };
@@ -201,7 +201,48 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                     </div>
                 </div>
             </div>
+            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--tool-border)', paddingTop: '1rem' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', paddingBottom: '0.5rem' }}>
+                    Living Stories (Timers)
+                </h4>
+                
+                <div style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
+                    <label className="toggle-label" style={{ fontWeight: 'bold', marginBottom: '1rem' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={settings.livingStoriesConfig?.enabled !== false} 
+                            onChange={e => handleDeepChange('livingStoriesConfig', 'enabled', e.target.checked)} 
+                        />
+                        Show Active Timers
+                    </label>
 
+                    {settings.livingStoriesConfig?.enabled !== false && (
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                            <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label">Position</label>
+                                <select 
+                                    value={settings.livingStoriesConfig?.position || 'sidebar'} 
+                                    onChange={e => handleDeepChange('livingStoriesConfig', 'position', e.target.value)} 
+                                    className="form-select"
+                                >
+                                    <option value="sidebar">Sidebar (Below Character)</option>
+                                    <option value="column">Right Column (Desktop Only)</option>
+                                    <option value="tab">Separate Tab</option>
+                                </select>
+                            </div>
+                            <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label">Section Title</label>
+                                <input 
+                                    value={settings.livingStoriesConfig?.title || ''} 
+                                    onChange={e => handleDeepChange('livingStoriesConfig', 'title', e.target.value)} 
+                                    className="form-input" 
+                                    placeholder="Living Stories"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
                 <div style={{ flex: 1, minWidth: '300px' }}>
                     <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>Component Styles</h4>

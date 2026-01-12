@@ -191,6 +191,11 @@ export interface WorldSettings {
     summary?: string;
     tags?: string[];
     skipCharacterCreation?: boolean;
+    livingStoriesConfig?: {
+        enabled: boolean;
+        position: 'sidebar' | 'column' | 'tab';
+        title?: string; 
+    };
 }
 
 export interface DeckDefinition extends VersionedEntity { 
@@ -299,6 +304,7 @@ export interface PendingEvent {
     op: '=' | '+=' | '-=';
     value: number;
     triggerTime: Date;
+    startTime?: Date;
     recurring: boolean; 
     intervalMs?: number;
     description?: string;
@@ -322,7 +328,7 @@ export interface CharacterDocument {
     acknowledgedMessages?: string[];
     dynamicQualities?: Record<string, QualityDefinition>;
 }
-// ... (rest of file is correct and unchanged) ...
+
 export interface UserDocument {
     _id: ObjectId | string; 
     username: string;

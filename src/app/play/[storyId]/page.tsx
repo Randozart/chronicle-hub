@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getContent, getAutofireStorylets, getStorylets } from '@/engine/contentCache';
-import { getCharacter, getCharactersList, saveCharacterState } from '@/engine/characterService';
+import { checkLivingStories, getCharacter, getCharactersList, saveCharacterState } from '@/engine/characterService';
 import { getWorldState } from '@/engine/worldService';
 import { Storylet, Opportunity, LocationDefinition, CharacterDocument } from '@/engine/models'; 
 import GameHub from '@/components/GameHub';
@@ -50,6 +50,8 @@ export default async function PlayPage({ params, searchParams }: Props) {
 
     if (character) {
         character = regenerateAllDecks(character, gameData);
+        character = await checkLivingStories(character);
+
         await saveCharacterState(character);
 
         const locDef = gameData.locations[character.currentLocationId];

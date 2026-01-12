@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getContent, getAutofireStorylets } from '@/engine/contentCache'; 
-import { getCharacter, saveCharacterState, regenerateActions, processScheduledUpdates } from '@/engine/characterService'; 
+import { getCharacter, saveCharacterState, regenerateActions, processScheduledUpdates, checkLivingStories } from '@/engine/characterService'; 
 import { GameEngine } from '@/engine/gameEngine';
 import { getEvent, getWorldState } from '@/engine/worldService'; 
 import { applyWorldUpdates, processAutoEquip } from '@/engine/resolutionService';
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
         if (gameData.settings.useActionEconomy) {
             character = await regenerateActions(character);
         }
+        character = await checkLivingStories(character);
 
         // 1. Initialize Engine 
         const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
