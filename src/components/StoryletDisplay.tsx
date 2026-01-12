@@ -54,7 +54,7 @@ interface StoryletDisplayProps {
     engine: GameEngine; 
     isPlaytesting?: boolean;
     onLog?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void;
-    eventSource?: 'story' | 'item'; 
+    eventSource?: 'story' | 'item';
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -190,6 +190,9 @@ export default function StoryletDisplay({
             return evaluateText(text, postResolutionQualities, qualityDefs, null, 0);
         };
         const imageCode = resolution.image_code || storylet.image_code || "";
+        
+        // FIX: Ensure qualityChanges is an array
+        const changes = resolution.qualityChanges || [];
 
         return (
             <div className="storylet-container">
@@ -215,23 +218,21 @@ export default function StoryletDisplay({
                     </div>
                 </div>
 
-                {resolution.qualityChanges?.length > 0 && 
+                {changes.length > 0 && 
                     <div className="quality-changes-container">
-                        {resolution.qualityChanges.map((change) => {
+                        {changes.map((change) => {
                             if (change.hidden && !showHidden) return null;
 
                             const resolvedChangeText = evaluateText(change.changeText, postResolutionQualities, qualityDefs, null, 0);
                             const finalChange = {...change, changeText: resolvedChangeText};
                             const catDef = categories[change.category || ""] || categories['default'];
 
-                            // --- FIX: Check if an icon exists before rendering its container ---
                             const qualityDef = qualityDefs[change.qid];
                             const iconCode = qualityDef?.image || change.qid;
                             const hasIcon = !!(imageLibrary[iconCode] || (iconCode && iconCode.startsWith('http')));
 
                             return (
                                 <div key={change.qid} style={{ opacity: change.hidden ? 0.6 : 1, display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                    {/* Conditionally render the icon container */}
                                     {hasIcon ? (
                                         <div style={{ width: '40px', height: '40px', flexShrink: 0, marginTop: '2px' }}>
                                             <GameImage 
@@ -243,7 +244,6 @@ export default function StoryletDisplay({
                                             />
                                         </div>
                                     ) : (
-                                        // If no icon, render a spacer to maintain alignment but keep it empty
                                         <div style={{ width: '40px', flexShrink: 0 }}></div>
                                     )}
                                     <div style={{ flex: 1 }}>
@@ -258,9 +258,11 @@ export default function StoryletDisplay({
                     </div>
                 }
 
+                {/* ... Debug Console ... */}
                 {canDebug && (
                     <div style={{ marginTop: '20px', border: '1px solid #7f8c8d', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div 
+                        {/* ... debug UI ... */}
+                         <div 
                             onClick={() => setShowDebug(!showDebug)}
                             style={{ 
                                 background: (resolution.errors && resolution.errors.length > 0) ? '#e74c3c' : '#7f8c8d', 
@@ -306,6 +308,8 @@ export default function StoryletDisplay({
         );
     }
     
+    // ... Lock Reason Logic ...
+
     const getLockReason = (condition: string): string => {
         const match = condition.match(/\$([a-zA-Z0-9_]+)\s*(>=|<=|==|>|<)\s*(\d+)/);
         if (!match) return `A requirement is not met.`;
@@ -316,7 +320,10 @@ export default function StoryletDisplay({
         return `Requires ${qualityName} ${op} ${val} (You have ${currentVal})`;
     };
 
-    const optionsToDisplay: DisplayOption[] = storylet.options
+    // FIX: Default to empty array if options are missing
+    const safeOptions = storylet.options || [];
+
+    const optionsToDisplay: DisplayOption[] = safeOptions
         .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, null, 0))
         .map(option => {
             const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, null, 0);

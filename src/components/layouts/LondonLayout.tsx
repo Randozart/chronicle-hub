@@ -57,7 +57,14 @@ export default function LondonLayout({
                              {currentMarketId && (
                                 <button onClick={onOpenMarket} className="banner-btn-market">Market</button>
                             )}
-                            <button onClick={onOpenMap} className="banner-btn-travel">Travel</button>
+                            <button 
+                                onClick={onOpenMap} 
+                                className="banner-btn-travel"
+                                disabled={!onOpenMap} 
+                                style={!onOpenMap ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            >
+                                Travel
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -131,13 +131,13 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
                 src={initialSrc}
                 alt={alt || def?.alt || resolvedCode}
                 onError={handleImageError}
-                className="fade-in-image"
+                // className="fade-in-image"
                 style={{
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
                     objectPosition: objectPosition,
-                    animation: 'fadeIn 0.5s ease-out'
+                    // animation: 'fadeIn 0.5s ease-out'
                 }}
 
             />

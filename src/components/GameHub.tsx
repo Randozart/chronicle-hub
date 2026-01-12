@@ -344,7 +344,7 @@ export default function GameHub(props: GameHubProps) {
         } catch (e) { console.error(e); }
     }, [character, props.storyId]);
     
-        const handleTravel = useCallback(async (targetId: string) => {
+    const handleTravel = useCallback(async (targetId: string) => {
         if (activeEvent) {
             setAlertState({ isOpen: true, title: "Cannot Travel", message: "You must finish the current event before travelling." });
             return;
@@ -362,13 +362,33 @@ export default function GameHub(props: GameHubProps) {
 
             if (data.success) {
                 setShowMap(false);
+                
+                if (data.newLocation) {
+                    setLocation(data.newLocation);
+                    
+                    setCharacter(prev => {
+                        if (!prev) return null;
+                        return {
+                            ...prev,
+                            currentLocationId: data.currentLocationId,
+                            opportunityHands: data.handCleared ? {} : prev.opportunityHands
+                        };
+                    });
+                    
+                    if (data.handCleared) setHand([]);
+                }
+
                 router.refresh();
+                
+                setTimeout(() => setIsTransitioning(false), 300);
+
             } else {
                 setAlertState({ isOpen: true, title: "Travel Failed", message: data.error });
                 setIsTransitioning(false); 
             }
         } catch(e) { 
             console.error("Travel failed:", e); 
+            setAlertState({ isOpen: true, title: "Travel Error", message: "A network error occurred." });
             setIsTransitioning(false); 
         } 
     }, [character, props.storyId, activeEvent, router]);
@@ -669,6 +689,10 @@ export default function GameHub(props: GameHubProps) {
                         settings={props.settings} 
                         engine={renderEngine} 
                         showHidden={showHiddenQualities}
+                        onAutofire={(id) => {
+                            setActiveTab('story'); 
+                            showEvent(id, 'story');
+                        }}
                     />
                 </div>
             );
