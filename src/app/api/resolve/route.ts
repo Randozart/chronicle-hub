@@ -225,6 +225,8 @@ export async function POST(request: NextRequest) {
             newDefinitions: Object.keys(newDefinitions).length > 0 ? newDefinitions : undefined,
             equipment: character.equipment, 
             updatedHand: 'deck' in storyletDef || finalTags.has('clear_hand') ? character.opportunityHands : undefined, 
+        
+            pendingEvents: character.pendingEvents,
             currentLocationId: character.currentLocationId,
             result: { 
                 ...engineResult, 

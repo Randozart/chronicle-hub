@@ -140,6 +140,7 @@ export interface WorldSettings {
     defaultDrawCost?: string;
     deckDrawCostsAction?: boolean; 
     startLocation?: string;
+    locationId?: string;
     characterSheetCategories: string[];
     equipCategories: string[];
     currencyQualities?: string[];
@@ -195,6 +196,8 @@ export interface WorldSettings {
         enabled: boolean;
         position: 'sidebar' | 'column' | 'tab';
         title?: string; 
+        hideWhenEmpty?: boolean; // NEW: Toggle to hide component if no timers running
+
     };
 }
 

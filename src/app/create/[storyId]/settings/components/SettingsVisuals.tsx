@@ -226,7 +226,7 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                                     className="form-select"
                                 >
                                     <option value="sidebar">Sidebar (Below Character)</option>
-                                    <option value="column">Right Column (Desktop Only)</option>
+                                    {/* <option value="column">Right Column (Desktop Only)</option> */}
                                     <option value="tab">Separate Tab</option>
                                 </select>
                             </div>

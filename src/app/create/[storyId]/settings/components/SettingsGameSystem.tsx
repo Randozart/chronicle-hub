@@ -139,28 +139,50 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                     Map Engine concepts to your specific Qualities. Toggling features off (like Identity) disables the need for a binding.
                 </p>
                 
-                <div className="form-row" style={{ alignItems: 'flex-start' }}>
-                    <div className="form-group" style={{ flex: 1 }}>
+                {/* 2x2 GRID LAYOUT */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    
+                    {/* 1. Action Counter */}
+                    <div className="form-group">
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem', minHeight: '1.2rem'}}>
                             <label className="form-label" style={{marginBottom:0}}>Action Counter ID</label>
                         </div>
-
-                            {settings.useActionEconomy ? (
-                                <>
-                                    <input value={settings.actionId} onChange={e => handleChange('actionId', e.target.value)} className="form-input" placeholder="actions or $actions, any ID" />
-                                    {renderMissingQuality(settings.actionId, QualityType.Counter)}
-                                    {isUndefinedOrMissing(settings.actionId) && (
-                                        <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
-                                            If undefined, engine uses ghost variable (max 20, regen enabled).
-                                        </p>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="form-label" style = {{color: 'var(--warning-color)', marginTop: '1rem'}}>Disabled (Economy Inactive)</div>
-                            )}
+                        {settings.useActionEconomy ? (
+                            <>
+                                <input value={settings.actionId} onChange={e => handleChange('actionId', e.target.value)} className="form-input" placeholder="actions / $actions / custom_id" />
+                                {renderMissingQuality(settings.actionId, QualityType.Counter)}
+                                {isUndefinedOrMissing(settings.actionId) && (
+                                    <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
+                                        If undefined, engine uses ghost variable (max 20, regen enabled).
+                                    </p>
+                                )}
+                            </>
+                        ) : (
+                            <div className="form-label" style={{color: 'var(--warning-color)', marginTop: '0.5rem'}}>Disabled</div>
+                        )}
                     </div>
 
-                    <div className="form-group" style={{ flex: 1 }}>
+                    {/* 2. Location Binding (NEW) */}
+                    <div className="form-group">
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem', minHeight: '1.2rem'}}>
+                            <label className="form-label" style={{marginBottom:0}}>Current Location ID</label>
+                        </div>
+                        <input value={settings.locationId || ''} onChange={e => handleChange('locationId', e.target.value)} className="form-input" placeholder="current_location / $current_location / custom_id" />
+                        {settings.locationId && renderMissingQuality(settings.locationId, QualityType.String)}
+                        
+                        {isUndefinedOrMissing(settings.locationId || '') ? (
+                            <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
+                                If undefined, location is tracked internally only.
+                            </p>
+                        ) : (
+                            <p className="special-desc" style={{color: 'var(--success-color)'}}>
+                                Enabled. Setting this quality will trigger travel.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* 3. Player Name */}
+                    <div className="form-group">
                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem', minHeight: '1.2rem'}}>
                             <label className="form-label" style={{marginBottom:0}}>Player Name ID</label>
                             <label className="toggle-label" style={{fontSize:'0.7rem'}}>
@@ -171,7 +193,7 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
 
                         {!settings.hideProfileIdentity ? (
                             <>
-                                <input value={settings.playerName} onChange={e => handleChange('playerName', e.target.value)} className="form-input" placeholder="player_name or $player_name, any ID" />
+                                <input value={settings.playerName} onChange={e => handleChange('playerName', e.target.value)} className="form-input" placeholder="player_name / $player_name / custom_id"  />
                                 {renderMissingQuality(settings.playerName, QualityType.String)}
                                 {isUndefinedOrMissing(settings.playerName) && (
                                     <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
@@ -180,11 +202,12 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                                 )}
                             </>
                         ) : (
-                            <div className="form-label" style = {{color: 'var(--warning-color)', marginTop: '1rem'}}>Disabled (Anonymous Protagonist)</div>
+                            <div className="form-label" style={{color: 'var(--warning-color)', marginTop: '0.5rem'}}>Disabled</div>
                         )}
                     </div>
 
-                    <div className="form-group" style={{ flex: 1 }}>
+                    {/* 4. Portrait */}
+                    <div className="form-group">
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem', minHeight: '1.2rem'}}>
                             <label className="form-label" style={{marginBottom:0}}>Portrait ID</label>
                             <label className="toggle-label" style={{fontSize:'0.7rem'}}>
@@ -194,7 +217,7 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                         </div>
                         {!settings.hideProfileIdentity && settings.enablePortrait !== false ? (
                             <>
-                                <input value={settings.playerImage} onChange={e => handleChange('playerImage', e.target.value)} className="form-input" placeholder="player_portrait or $player_portrait, any ID" />
+                                <input value={settings.playerImage} onChange={e => handleChange('playerImage', e.target.value)} className="form-input" placeholder="player_portrait / $player_portrait / custom_id" />
                                 {renderMissingQuality(settings.playerImage, QualityType.String)}
                                 {isUndefinedOrMissing(settings.playerImage) && (
                                     <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
@@ -203,9 +226,10 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                                 )}
                             </>
                         ) : (
-                            <div className="form-label" style = {{color: 'var(--warning-color)', marginTop: '1rem'}}>Disabled (Portrait Hidden)</div>
+                            <div className="form-label" style={{color: 'var(--warning-color)', marginTop: '0.5rem'}}>Disabled</div>
                         )}
                     </div>
+
                 </div>
             </div>
         </div>
