@@ -82,9 +82,10 @@ export default function CharCreateEditor({
 
     const addComplexIdentity = () => {
         const baseOrder = sortedKeys.length;
-        onCreateQuality('first_name', QualityType.String);
-        onCreateQuality('last_name', QualityType.String);
-        
+        onCreateQuality('first_name', QualityType.String, {tags: ['hidden']});
+        onCreateQuality('last_name', QualityType.String, {tags: ['hidden']});
+        onCreateQuality('player_name', QualityType.String, {tags: ['hidden']});
+
         const newRules = { ...rules };
         newRules['$identity_header'] = { type: 'header', rule: "Identity", visible: true, readOnly: true, visible_if: '', ordering: baseOrder, displayMode: 'modal' } as any;
         newRules['$first_name'] = { type: 'string', rule: '', visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 1 };
@@ -233,7 +234,6 @@ export default function CharCreateEditor({
                 </p>
             </div>
 
-            {/* List Container (Removed opacity/grayscale style) */}
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--warning-color)', margin: 0 }}>Character Initialization Rules</label>
