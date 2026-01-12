@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
                     return NextResponse.json({ error: 'You do not have enough actions.' }, { status: 429 });
                 }
                 engine.applyEffects(`$${actionQid} -= ${numericCost}`);
-                character.lastActionTimestamp = new Date();
+                
             } else if (costExpr) {
                 engine.applyEffects(String(costExpr));
             }

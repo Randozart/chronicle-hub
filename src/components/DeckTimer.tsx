@@ -18,7 +18,7 @@ export default function DeckTimer({
 }: Props) {
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
-    useEffect(() => {
+     useEffect(() => {
         if (currentCharges >= maxCharges) {
             setTimeLeft(null);
             return;
@@ -27,10 +27,8 @@ export default function DeckTimer({
         let intervalMinutes = 0;
         let effectiveLastUpdate = new Date(lastUpdate).getTime();
         
-        // FIX: Determine Interval AND Reference Time
         if (deck.timer === 'sync_actions') {
             intervalMinutes = settings.regenIntervalInMinutes;
-            // If synced, override the deck's specific time with the global action time
             if (actionTimestamp) {
                 effectiveLastUpdate = new Date(actionTimestamp).getTime();
             }
@@ -45,22 +43,23 @@ export default function DeckTimer({
 
         const tick = () => {
             const now = Date.now();
-            const elapsed = now - effectiveLastUpdate;
+            // FIX: Add the same 5s (5000ms) buffer as server to match logic
+            const elapsed = (now - effectiveLastUpdate) + 5000;
             
-            // Offline Calc
             const chargesGained = Math.floor(elapsed / intervalMs);
             const effectiveCharges = Math.min(maxCharges, currentCharges + chargesGained);
 
             if (effectiveCharges >= maxCharges) {
                 setTimeLeft(null);
-                // Trigger refresh if we just crossed the line locally
                 if (currentCharges < maxCharges) onRegen();
                 return;
             }
 
-            const msRemaining = intervalMs - (elapsed % intervalMs);
+            // Time into current cycle
+            const msIntoCycle = elapsed % intervalMs;
+            const msRemaining = intervalMs - msIntoCycle;
             
-            // If we are extremely close to the next tick, trigger regen
+            // If we are extremely close (less than 1s + buffer), refresh
             if (msRemaining < 1000) {
                 onRegen();
             }

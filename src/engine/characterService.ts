@@ -377,9 +377,12 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
     
     const lastTimestamp = character.lastActionTimestamp ? new Date(character.lastActionTimestamp) : new Date();
     const now = new Date();
-    const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
+    
+    const msPassed = now.getTime() - lastTimestamp.getTime();
     const regenInterval = settings.regenIntervalInMinutes || 10;
-    const ticks = Math.floor(minutesPassed / regenInterval);
+    const intervalMs = regenInterval * 60 * 1000;
+    
+    const ticks = Math.floor(msPassed / intervalMs);
     
     if (ticks <= 0) return character;
     
@@ -387,22 +390,22 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
     const engine = new GameEngine(character.qualities, worldConfig, character.equipment);
     const regenRaw = settings.regenAmount || 1;
     const actionQid = settings.actionId.replace('$', '');
-    
+
+    if (!character.qualities[actionQid]) {
+        character.qualities[actionQid] = {
+            qualityId: actionQid,
+            type: QualityType.Counter,
+            level: engine.getEffectiveLevel(actionQid),
+            changePoints: 0
+        } as any;
+    }
+
     if (!isNaN(Number(regenRaw))) {
         const amount = Number(regenRaw) * ticks;
         const maxStr = settings.maxActions || 20;
         const maxVal = parseInt(engine.evaluateText(`{${maxStr}}`), 10) || 20;
         const current = engine.getEffectiveLevel(actionQid);
         
-        if (!character.qualities[actionQid]) {
-            character.qualities[actionQid] = {
-                qualityId: actionQid,
-                type: QualityType.Counter,
-                level: current, 
-                changePoints: 0
-            } as any;
-        }
-
         if (character.qualities[actionQid]) {
             (character.qualities[actionQid] as any).level = Math.min(maxVal, current + amount);
         }
@@ -413,7 +416,8 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
         character.qualities = engine.getQualities();
     }
     
-    character.lastActionTimestamp = new Date(lastTimestamp.getTime() + ticks * regenInterval * 60 * 1000);
+    character.lastActionTimestamp = new Date(lastTimestamp.getTime() + ticks * intervalMs);
+
     return character;
 };
 

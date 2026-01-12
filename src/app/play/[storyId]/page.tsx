@@ -2,10 +2,11 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getContent, getAutofireStorylets, getStorylets } from '@/engine/contentCache';
-import { getCharacter, getCharactersList } from '@/engine/characterService';
+import { getCharacter, getCharactersList, saveCharacterState } from '@/engine/characterService';
 import { getWorldState } from '@/engine/worldService';
-import { Storylet, Opportunity, LocationDefinition } from '@/engine/models'; // Added LocationDefinition
+import { Storylet, Opportunity, LocationDefinition, CharacterDocument } from '@/engine/models'; 
 import GameHub from '@/components/GameHub';
+import { regenerateAllDecks } from '@/engine/deckService';
 
 function serialize<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
@@ -17,7 +18,7 @@ type Props = {
 };
 
 export default async function PlayPage({ params, searchParams }: Props) {
-    const session = await getServerSession(authOptions);
+     const session = await getServerSession(authOptions);
     if (!session?.user) {
         const resolvedParams = await params;
         redirect(`/auth/signin?callbackUrl=/play/${resolvedParams.storyId}`);
@@ -36,18 +37,21 @@ export default async function PlayPage({ params, searchParams }: Props) {
 
     const availableCharacters = await getCharactersList(userId, storyId);
     
-    let character = null;
-    let initialLocation: LocationDefinition | null = null; 
+    let character: CharacterDocument | null = null;
+    
+    let initialLocation: LocationDefinition | null = null;
     let initialHand: Opportunity[] = [];
-    let activeEvent: Storylet | Opportunity | null = null; 
+    let activeEvent: Storylet | Opportunity | null = null;
 
     if (resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
         const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
         character = await getCharacter(userId, storyId, charIdToLoad);
     }
 
-    // Hydration Logic
     if (character) {
+        character = regenerateAllDecks(character, gameData);
+        await saveCharacterState(character);
+
         const locDef = gameData.locations[character.currentLocationId];
         initialLocation = locDef || null;
 
@@ -62,8 +66,8 @@ export default async function PlayPage({ params, searchParams }: Props) {
         
         if (character.currentStoryletId) {
              const autofires = await getAutofireStorylets(storyId);
-             const evt = autofires.find(s => s.id === character.currentStoryletId) 
-                 || allContent.find(s => s.id === character.currentStoryletId);
+             const evt = autofires.find(s => s.id === character?.currentStoryletId) 
+                 || allContent.find(s => s.id === character?.currentStoryletId);
              
              if (evt) activeEvent = evt;
         }

@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 
 interface ActionTimerProps {
-    currentActions: number; // Stale DB value
+    currentActions: number; 
     maxActions: number;
     lastTimestamp: string | Date;
     regenIntervalMinutes: number;
-    onRegen: () => void; // Trigger parent refresh/save
+    regenAmount: number; // NEW PROP
+    onRegen: () => void; 
 }
 
 export default function ActionTimer({ 
@@ -15,10 +16,10 @@ export default function ActionTimer({
     maxActions, 
     lastTimestamp, 
     regenIntervalMinutes,
+    regenAmount, // Destructure
     onRegen 
 }: ActionTimerProps) {
     
-    // We maintain local display state to show "Offline Gained" actions immediately
     const [displayState, setDisplayState] = useState({
         actions: currentActions,
         timeLeft: "--:--"
@@ -32,15 +33,19 @@ export default function ActionTimer({
             const now = Date.now();
             const elapsed = now - lastTime;
 
-            // 1. Calculate actions gained purely by time passed
-            const actionsGainedOffline = Math.floor(elapsed / intervalMs);
-            const effectiveActions = Math.min(maxActions, currentActions + actionsGainedOffline);
+            // 1. Calculate how many full cycles have passed
+            const cyclesPassed = Math.floor(elapsed / intervalMs);
+            
+            // 2. FIX: Multiply cycles by the regen amount (e.g. 4)
+            const actionsGained = cyclesPassed * regenAmount;
+            
+            const effectiveActions = Math.min(maxActions, currentActions + actionsGained);
 
-            // 2. Calculate time into the *current* pending action
+            // 3. Time into current cycle
             const msIntoCurrentCycle = elapsed % intervalMs;
             const msRemaining = intervalMs - msIntoCurrentCycle;
 
-            // 3. Update Display
+            // 4. Update Display
             if (effectiveActions >= maxActions) {
                 setDisplayState({ actions: maxActions, timeLeft: "MAX" });
             } else {
@@ -51,8 +56,6 @@ export default function ActionTimer({
                     timeLeft: `${m}:${s < 10 ? '0' : ''}${s}` 
                 });
 
-                // If we officially hit a new tick in real-time, notify parent to sync/save if desired
-                // (Optional: debounce this to avoid spamming calls)
                 if (msRemaining < 1000) {
                     onRegen(); 
                 }
@@ -60,10 +63,10 @@ export default function ActionTimer({
         };
 
         const timerId = setInterval(tick, 1000);
-        tick(); // Run immediately to prevent flash of old data
+        tick(); 
 
         return () => clearInterval(timerId);
-    }, [currentActions, maxActions, lastTimestamp, regenIntervalMinutes, onRegen]);
+    }, [currentActions, maxActions, lastTimestamp, regenIntervalMinutes, onRegen, regenAmount]);
 
     return (
         <div className="action-timer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -75,7 +78,7 @@ export default function ActionTimer({
                 {displayState.actions >= maxActions ? (
                     <span style={{ color: 'var(--success-color)' }}>Full</span>
                 ) : (
-                    <span>Next in: <span style={{ color: 'var(--text-primary)', fontWeight: 'bold', fontFamily: 'monospace' }}>{displayState.timeLeft}</span></span>
+                    <span>+{regenAmount} in <span style={{ color: 'var(--text-primary)', fontWeight: 'bold', fontFamily: 'monospace' }}>{displayState.timeLeft}</span></span>
                 )}
             </div>
         </div>

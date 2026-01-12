@@ -244,7 +244,7 @@ export default function OpportunityHand({
                                             </div>
                                         </div>
                                     </button>
-                                    {discardButton}
+                                    {renderDiscardBtn(card)}
                                 </div>
                             );
                         }
@@ -252,39 +252,63 @@ export default function OpportunityHand({
                                                 
                         if (layoutStyle === 'rows' || layoutStyle === 'compact') {
                             return (
-                                <button
+                                <div 
                                     key={card.id}
                                     className="option-button"
-                                    onClick={() => onCardClick(card.id)}
+                                    style={{ 
+                                        position: 'relative', // Required for absolute positioning of discard btn
+                                        padding: 0, // Remove padding from container so inner button hits edges
+                                        display: 'flex',
+                                        overflow: 'hidden' // Keeps border radius clean
+                                    }}
                                 >
-                                    <div className="option-content-wrapper">
-                                        {card.image_code && (
-                                            <div className="option-image-container">
-                                                <GameImage
-                                                    code={card.image_code}
-                                                    imageLibrary={imageLibrary}
-                                                    type="storylet"
-                                                    alt={evaluatedName}
-                                                    className="option-image"
-                                                    settings={settings}
-                                                    evaluateText={(text) =>
-                                                        engine.evaluateText(text, {
-                                                            qid: card.id,
-                                                            state: qualities[card.id]
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div className="option-text-wrapper">
-                                            <h3><FormattedText text={evaluatedName} inline/></h3>
-                                            {evaluatedShort && (
-                                                <div><FormattedText text={evaluatedShort} /></div>
+                                    {/* Main Card Click Area */}
+                                    <button
+                                        onClick={() => onCardClick(card.id)}
+                                        style={{
+                                            flex: 1,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            padding: '1rem', // Restore padding inside
+                                            textAlign: 'left',
+                                            cursor: 'pointer',
+                                            display: 'block',
+                                            width: '100%'
+                                        }}
+                                    >
+                                        <div className="option-content-wrapper">
+                                            {card.image_code && (
+                                                <div className="option-image-container">
+                                                    <GameImage
+                                                        code={card.image_code}
+                                                        imageLibrary={imageLibrary}
+                                                        type="storylet"
+                                                        alt={evaluatedName}
+                                                        className="option-image"
+                                                        settings={settings}
+                                                        evaluateText={(text) =>
+                                                            engine.evaluateText(text, {
+                                                                qid: card.id,
+                                                                state: qualities[card.id]
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
                                             )}
+
+                                            <div className="option-text-wrapper">
+                                                <h3 style={{ marginRight: '30px' }}> {/* Add margin to avoid overlapping discard btn */}
+                                                    <FormattedText text={evaluatedName} inline/>
+                                                </h3>
+                                                {evaluatedShort && (
+                                                    <div><FormattedText text={evaluatedShort} /></div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </button>
+                                    </button>
+
+                                    {renderDiscardBtn(card)}
+                                </div>
                             );
                         }
 
@@ -298,7 +322,7 @@ export default function OpportunityHand({
                                         <div className="card-text"><h3><FormattedText text={evaluatedName} inline/></h3>{evaluatedShort && layoutStyle !== 'tarot' && <div><FormattedText text={evaluatedShort} /></div>}</div>
                                     {layoutStyle === 'images-only' && <div className="image-only-overlay"><FormattedText text={evaluatedName} /></div>}
                                 </button>
-                                {discardButton}
+                                {renderDiscardBtn(card)}
                             </div>
                         );
                     })

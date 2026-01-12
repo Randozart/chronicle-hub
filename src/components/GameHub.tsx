@@ -26,6 +26,7 @@ import { useRouter } from 'next/navigation';
 import ScribeDebugger from './admin/ScribeDebugger';
 import { createPortal } from 'react-dom';
 import CharacterInspector from '@/app/create/[storyId]/players/components/CharacterInspector';
+import { ToastProvider } from '@/providers/ToastProvider';
 import GameModal from './GameModal';
 
 
@@ -124,7 +125,8 @@ export default function GameHub(props: GameHubProps) {
     const [logs, setLogs] = useState<{ message: string, type: 'EVAL' | 'COND' | 'FX', timestamp: number }[]>([]);
     const [showLogger, setShowLogger] = useState(false);
     const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
-
+    
+    
     const handleLog = useCallback((message: string, type: 'EVAL' | 'COND' | 'FX') => {
         logQueue.current.push({ message, type });
     }, []);
@@ -403,8 +405,10 @@ export default function GameHub(props: GameHubProps) {
         new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState, props.isPlaytesting ? handleLog : undefined),
         [character.qualities, worldConfig, character.equipment, props.worldState, props.isPlaytesting, handleLog]
     );
-
     
+    const rawRegen = props.settings.regenAmount || 1;
+    const evaluatedRegen = parseInt(renderEngine.evaluateText(`{${rawRegen}}`), 10) || 1;
+
     const displayQualities = renderEngine.getDisplayState();
 
     const visibleStorylets = useMemo(() => {
@@ -455,7 +459,14 @@ export default function GameHub(props: GameHubProps) {
                     <div className="sidebar-content-scroll">
                         <TabBar /> 
                         <div className="action-box">
-                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                            <ActionTimer 
+                                currentActions={currentActions} 
+                                maxActions={maxActions} 
+                                lastTimestamp={character.lastActionTimestamp || new Date()} 
+                                regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} 
+                                regenAmount={evaluatedRegen}
+                                onRegen={() => {}} 
+                            />                        
                         </div>
                         <CharacterSheet 
                             qualities={character.qualities} 
@@ -498,7 +509,14 @@ export default function GameHub(props: GameHubProps) {
                 </div>
                 <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
                     <div className="action-box">
-                        <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
+                            <ActionTimer 
+                                currentActions={currentActions} 
+                                maxActions={maxActions} 
+                                lastTimestamp={character.lastActionTimestamp || new Date()} 
+                                regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} 
+                                regenAmount={evaluatedRegen}
+                                onRegen={() => {}} 
+                            />                      
                     </div>
                     <CharacterSheet 
                         qualities={character.qualities} 
@@ -753,37 +771,39 @@ export default function GameHub(props: GameHubProps) {
     };
     return ( 
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
-            {alertState && (
-                <GameModal 
-                    isOpen={alertState.isOpen}
-                    title={alertState.title}
-                    message={alertState.message}
-                    onConfirm={() => setAlertState(null)}
-                    onClose={() => setAlertState(null)}
-                    confirmLabel="Dismiss"
-                />
+            <ToastProvider>
+                {alertState && (
+                    <GameModal 
+                        isOpen={alertState.isOpen}
+                        title={alertState.title}
+                        message={alertState.message}
+                        onConfirm={() => setAlertState(null)}
+                        onClose={() => setAlertState(null)}
+                        confirmLabel="Dismiss"
+                    />
+                )}
+                
+                {renderLayout()}
+                
+                {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
+                
+                {isMounted && props.isPlaytesting && showInspector && character && createPortal(
+                    <CharacterInspector 
+                        characterId={character.characterId}
+                        storyId={props.storyId}
+                        worldQualities={mergedQualityDefs}
+                        settings={props.settings}
+                        onClose={() => setShowInspector(false)}
+                    />,
+                    document.body 
+                )}
+                {isMounted && props.isPlaytesting && showLogger && createPortal(
+                <div data-theme="default">
+                    <PlaytestLogger logs={logs} onClear={() => setLogs([])} />
+                </div>,
+                document.body
             )}
-            
-            {renderLayout()}
-            
-            {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
-            
-            {isMounted && props.isPlaytesting && showInspector && character && createPortal(
-                <CharacterInspector 
-                    characterId={character.characterId}
-                    storyId={props.storyId}
-                    worldQualities={mergedQualityDefs}
-                    settings={props.settings}
-                    onClose={() => setShowInspector(false)}
-                />,
-                document.body 
-            )}
-             {isMounted && props.isPlaytesting && showLogger && createPortal(
-            <div data-theme="default">
-                <PlaytestLogger logs={logs} onClear={() => setLogs([])} />
-            </div>,
-            document.body
-        )}
+            </ToastProvider>
         </div>
     );
 }

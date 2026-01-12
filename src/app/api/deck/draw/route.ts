@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
 
         const deckDef = gameData.decks[targetDeckId];
 
-        // 2. Action Cost Logic
         if (gameData.settings.deckDrawCostsAction !== false && gameData.settings.useActionEconomy) {
             character = await regenerateActions(character);
             if (!character) throw new Error("Character load failed after regenerating actions.");
@@ -59,15 +58,6 @@ export async function POST(request: NextRequest) {
             
             engine.applyEffects(`$${actionQid} -= ${costVal}`);
             character.qualities = engine.getQualities();
-            character.lastActionTimestamp = new Date();
-            const finalActionState = character.qualities[actionQid];
-            let actionsAfterLogMessage = `(action quality '${actionQid}' not found)`;
-
-            if (finalActionState && 'level' in finalActionState) {
-                actionsAfterLogMessage = String(finalActionState.level);
-            } else if (finalActionState) {
-                actionsAfterLogMessage = `(is a string: '${finalActionState.stringValue}')`;
-            }
         }
 
 
