@@ -18,6 +18,8 @@ export type ResolutionState = {
     wasSuccess?: boolean; 
     skillCheckDetails?: { description: string; };
     qualityChanges: QualityChangeInfo[];
+    pendingEvents?: any[];
+    equipment?: Record<string, string | null>;
     errors?: string[]; 
     rawEffects?: string;
     resolvedEffects?: string[];
@@ -38,12 +40,14 @@ interface StoryletDisplayProps {
         newQualities: PlayerQualities, 
         redirectId?: string, 
         moveToId?: string, 
-        newEquipment?: Record<string, string | null>
+        newEquipment?: Record<string, string | null>,
+        newPendingEvents?: any[]
     ) => void;
     onQualitiesUpdate: (
         newQualities: PlayerQualities, 
         newDefinitions?: Record<string, QualityDefinition>, 
-        newEquipment?: Record<string, string | null>
+        newEquipment?: Record<string, string | null>,
+        newPendingEvents?: any[]
     ) => void;
     
     onCardPlayed?: (cardId: string) => void;
@@ -133,7 +137,7 @@ export default function StoryletDisplay({
                 }
             }
 
-            onQualitiesUpdate(data.newQualities, data.newDefinitions, data.equipment); 
+            onQualitiesUpdate(data.newQualities, data.newDefinitions, data.equipment, data.pendingEvents); 
             
             if (onCardPlayed && 'deck' in eventData) {
                 onCardPlayed(eventData.id);
@@ -142,12 +146,14 @@ export default function StoryletDisplay({
             const isInstant = option.tags?.includes('instant_redirect');
 
             if (isInstant) {
-                onFinish(data.newQualities, data.result.redirectId, data.result.moveToId, data.equipment);
+                onFinish(data.newQualities, data.result.redirectId, data.result.moveToId, data.equipment, data.pendingEvents);
             } else {
                 onResolve({ 
                     ...data.result, 
                     image_code: option.image_code, 
-                    qualities: data.newQualities 
+                    qualities: data.newQualities,
+                    pendingEvents: data.pendingEvents,
+                    equipment: data.equipment
                 });
             }
         } catch (error) {
@@ -160,7 +166,7 @@ export default function StoryletDisplay({
 
     const handleContinue = () => {
         if (!resolution) return;
-        onFinish(resolution.qualities, resolution.redirectId, resolution.moveToId);
+        onFinish(resolution.qualities, resolution.redirectId, resolution.moveToId, resolution.equipment, resolution.pendingEvents);
     };
 
     const disableReturn = storylet.tags?.includes('no_return');

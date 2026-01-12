@@ -437,11 +437,11 @@ export default function GameHub(props: GameHubProps) {
     const lsConfig = props.settings.livingStoriesConfig;
     const livingStoriesEnabled = lsConfig?.enabled !== false;
     
-    let rightColumnContent = null;
+    let columnLivingStories = null;
     let sidebarLivingStories = null;
 
     if (livingStoriesEnabled) {
-        const hideBecauseEmpty = lsConfig?.hideWhenEmpty && (!character.pendingEvents || character.pendingEvents.length === 0);
+        const hideBecauseEmpty = props.settings.livingStoriesConfig?.hideWhenEmpty && (!character.pendingEvents || character.pendingEvents.length === 0);
         
         if (!hideBecauseEmpty) {
             const livingStoriesComponent = (
@@ -454,9 +454,9 @@ export default function GameHub(props: GameHubProps) {
                     onAcknowledge={handleAcknowledgeEvent}
                 />
             );
-            if (lsConfig?.position === 'column') {
-                rightColumnContent = livingStoriesComponent;
-            } else if (lsConfig?.position === 'sidebar' || !lsConfig?.position) {
+            if (props.settings.livingStoriesConfig?.position === 'column') {
+                columnLivingStories = livingStoriesComponent;
+            } else if (props.settings.livingStoriesConfig?.position === 'sidebar' || !props.settings.livingStoriesConfig?.position) {
                 sidebarLivingStories = (
                     <div style={{ padding: '0 1.5rem', marginTop: '1.5rem', borderTop: '1px dashed var(--border-color)' }}>
                         {livingStoriesComponent}
@@ -797,29 +797,35 @@ export default function GameHub(props: GameHubProps) {
                 </div>
             );
         }
+        const contentWithLivingStories = columnLivingStories ? (
+            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                <div style={{ flex: '1', minWidth: 0 }}>{innerContent}</div>
+                <div style={{ width: '320px', flexShrink: 0, marginTop: '2rem' }}>{columnLivingStories}</div>
+            </div>
+        ) : innerContent;
+
         if (!sidebarTab) {
             return (
                 <div className="main-content-wrapper">
                     <div className="tab-container" style={{ marginBottom: '2rem' }}><TabBar /></div>
-                    {innerContent}
+                    {contentWithLivingStories}
                 </div>
             );
         } else {
             return (
                 <div className="main-content-wrapper">
-                    {innerContent}
+                    {contentWithLivingStories}
                 </div>
             );
         }
     };
-
+    
     const renderLayout = () => {
         const canTravel = !activeEvent;
 
         const layoutProps: any = {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
-            rightColumnContent: rightColumnContent, 
             settings: props.settings,
             location: renderedLocation!,
             imageLibrary: props.imageLibrary,

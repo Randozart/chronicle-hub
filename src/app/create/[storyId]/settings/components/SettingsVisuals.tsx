@@ -217,29 +217,42 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                     </label>
 
                     {settings.livingStoriesConfig?.enabled !== false && (
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label">Position</label>
-                                <select 
-                                    value={settings.livingStoriesConfig?.position || 'sidebar'} 
-                                    onChange={e => handleDeepChange('livingStoriesConfig', 'position', e.target.value)} 
-                                    className="form-select"
-                                >
-                                    <option value="sidebar">Sidebar (Below Character)</option>
-                                    {/* <option value="column">Right Column (Desktop Only)</option> */}
-                                    <option value="tab">Separate Tab</option>
-                                </select>
+                        <>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <div className="form-group" style={{ flex: 1 }}>
+                                    <label className="form-label">Position</label>
+                                    <select 
+                                        value={settings.livingStoriesConfig?.position || 'sidebar'} 
+                                        onChange={e => handleDeepChange('livingStoriesConfig', 'position', e.target.value)} 
+                                        className="form-select"
+                                    >
+                                        <option value="sidebar">Sidebar (Below Character)</option>
+                                        <option value="column">Right Column (Desktop Only)</option>
+                                        <option value="tab">Separate Tab</option>
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{ flex: 1 }}>
+                                    <label className="form-label">Section Title</label>
+                                    <input 
+                                        value={settings.livingStoriesConfig?.title || ''} 
+                                        onChange={e => handleDeepChange('livingStoriesConfig', 'title', e.target.value)} 
+                                        className="form-input" 
+                                        placeholder="Living Stories"
+                                    />
+                                </div>
                             </div>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label">Section Title</label>
-                                <input 
-                                    value={settings.livingStoriesConfig?.title || ''} 
-                                    onChange={e => handleDeepChange('livingStoriesConfig', 'title', e.target.value)} 
-                                    className="form-input" 
-                                    placeholder="Living Stories"
-                                />
+                            <div style={{ marginTop: '1rem' }}>
+                                <label className="toggle-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={settings.livingStoriesConfig?.hideWhenEmpty || false}
+                                        onChange={e => handleDeepChange('livingStoriesConfig', 'hideWhenEmpty', e.target.checked)}
+                                    />
+                                    Hide component when no timers are active
+                                </label>
+                                <p className="special-desc" style={{ marginLeft: '1.5rem' }}>If checked, the entire component (e.g., the Right Column or Tab) will not be displayed if the player has no active timers.</p>
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
             </div>
