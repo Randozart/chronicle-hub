@@ -12,7 +12,6 @@ export enum QualityType {
     Equipable = 'E',
 }
 
-// ... (other interfaces are correct) ...
 export interface LogicGates {
     visible_if?: string; 
     unlock_if?: string;  
@@ -311,6 +310,8 @@ export interface PendingEvent {
     recurring: boolean; 
     intervalMs?: number;
     description?: string;
+    completedTime?: Date;
+
 }
 
 export interface CharacterDocument {

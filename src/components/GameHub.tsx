@@ -117,7 +117,8 @@ export default function GameHub(props: GameHubProps) {
     const { playTrack } = useAudio(); 
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
-    
+    const [isMobile, setIsMobile] = useState(false);
+
     // Playtest State
     const [showHiddenQualities, setShowHiddenQualities] = useState(false);
     const [showInspector, setShowInspector] = useState(false);
@@ -126,20 +127,35 @@ export default function GameHub(props: GameHubProps) {
     const [showLogger, setShowLogger] = useState(false);
     const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
     
+    useEffect(() => {
+        const checkDevice = () => {
+            setIsMobile(window.innerWidth <= 900);
+        };
+        checkDevice();
+        window.addEventListener('resize', checkDevice);
+        return () => window.removeEventListener('resize', checkDevice);
+    }, []);
+
     const handleAcknowledgeEvent = useCallback(async (instanceId: string) => {
         if (!character) return;
         try {
-            const res = await fetch('/api/character/check-events', {
+            const res = await fetch('/api/character/acknowledge-event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId })
+                body: JSON.stringify({ 
+                    storyId: props.storyId, 
+                    characterId: character.characterId,
+                    instanceId: instanceId 
+                })
             });
             const data = await res.json();
             if (data.success && data.character) {
                 setCharacter(data.character);
+            } else {
+                console.error("Failed to acknowledge event:", data.error);
             }
         } catch (e) {
-            console.error("Failed to acknowledge event:", e);
+            console.error("Network error while acknowledging event:", e);
         }
     }, [character, props.storyId]);
 
@@ -437,13 +453,15 @@ export default function GameHub(props: GameHubProps) {
     const lsConfig = props.settings.livingStoriesConfig;
     const livingStoriesEnabled = lsConfig?.enabled !== false;
     
-    let rightColumnContent = null;
+    let columnLivingStories = null;
     let sidebarLivingStories = null;
 
     if (livingStoriesEnabled) {
         const hideBecauseEmpty = lsConfig?.hideWhenEmpty && (!character.pendingEvents || character.pendingEvents.length === 0);
         
         if (!hideBecauseEmpty) {
+            const position = isMobile && lsConfig?.position === 'column' ? 'sidebar' : lsConfig?.position;
+
             const livingStoriesComponent = (
                 <LivingStories 
                     pendingEvents={character.pendingEvents || []}
@@ -454,9 +472,10 @@ export default function GameHub(props: GameHubProps) {
                     onAcknowledge={handleAcknowledgeEvent}
                 />
             );
-            if (lsConfig?.position === 'column') {
-                rightColumnContent = livingStoriesComponent;
-            } else if (lsConfig?.position === 'sidebar' || !lsConfig?.position) {
+            
+            if (position === 'column') {
+                columnLivingStories = livingStoriesComponent;
+            } else if (position === 'sidebar' || !position) {
                 sidebarLivingStories = (
                     <div style={{ padding: '0 1.5rem', marginTop: '1.5rem', borderTop: '1px dashed var(--border-color)' }}>
                         {livingStoriesComponent}
@@ -465,6 +484,7 @@ export default function GameHub(props: GameHubProps) {
             }
         }
     }
+
 
     const rawRegen = props.settings.regenAmount || 1;
     const evaluatedRegen = parseInt(renderEngine.evaluateText(`{${rawRegen}}`), 10) || 1;
@@ -797,29 +817,35 @@ export default function GameHub(props: GameHubProps) {
                 </div>
             );
         }
+        const contentWithLivingStories = columnLivingStories ? (
+            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                <div style={{ flex: '1', minWidth: 0 }}>{innerContent}</div>
+                <div style={{ width: '320px', flexShrink: 0, marginTop: '2rem' }}>{columnLivingStories}</div>
+            </div>
+        ) : innerContent;
+
         if (!sidebarTab) {
             return (
                 <div className="main-content-wrapper">
                     <div className="tab-container" style={{ marginBottom: '2rem' }}><TabBar /></div>
-                    {innerContent}
+                    {contentWithLivingStories}
                 </div>
             );
         } else {
             return (
                 <div className="main-content-wrapper">
-                    {innerContent}
+                    {contentWithLivingStories}
                 </div>
             );
         }
     };
-
+    
     const renderLayout = () => {
         const canTravel = !activeEvent;
 
         const layoutProps: any = {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
-            rightColumnContent: rightColumnContent, 
             settings: props.settings,
             location: renderedLocation!,
             imageLibrary: props.imageLibrary,
