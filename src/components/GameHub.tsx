@@ -23,11 +23,11 @@ import GameImage from '@/components/GameImage';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
-import ScribeDebugger from './admin/ScribeDebugger';
 import { createPortal } from 'react-dom';
 import CharacterInspector from '@/app/create/[storyId]/players/components/CharacterInspector';
 import { ToastProvider } from '@/providers/ToastProvider';
 import GameModal from './GameModal';
+import LivingStories from './LivingStories';
 
 
 interface GameHubProps {
@@ -110,7 +110,7 @@ export default function GameHub(props: GameHubProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
-    const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
+    const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile' | 'living'>('story');
     const [eventSource, setEventSource] = useState<'story' | 'item'>('story');
     const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
 
@@ -126,7 +126,23 @@ export default function GameHub(props: GameHubProps) {
     const [showLogger, setShowLogger] = useState(false);
     const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
     
-    
+    const handleAcknowledgeEvent = useCallback(async (instanceId: string) => {
+        if (!character) return;
+        try {
+            const res = await fetch('/api/character/check-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId })
+            });
+            const data = await res.json();
+            if (data.success && data.character) {
+                setCharacter(data.character);
+            }
+        } catch (e) {
+            console.error("Failed to acknowledge event:", e);
+        }
+    }, [character, props.storyId]);
+
     const handleLog = useCallback((message: string, type: 'EVAL' | 'COND' | 'FX') => {
         logQueue.current.push({ message, type });
     }, []);
@@ -204,20 +220,13 @@ export default function GameHub(props: GameHubProps) {
         }
     }, [location, props.musicTracks, props.instruments, playTrack]);
 
-    const handleQualitiesUpdate = useCallback((
-        newQualities: PlayerQualities, 
-        newDefinitions?: Record<string, QualityDefinition>, 
-        newEquipment?: Record<string, string | null>
-    ) => {
+    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>, newEquipment?: Record<string, string | null>, newPendingEvents?: any[]) => {
         setCharacter(prev => {
             if (!prev) return null;
-            const updated = { ...prev, qualities: { ...newQualities } };
-            if (newDefinitions) {
-                updated.dynamicQualities = { ...(prev.dynamicQualities || {}), ...newDefinitions };
-            }
-            if (newEquipment) {
-                updated.equipment = { ...newEquipment };
-            }
+            const updated: CharacterDocument = { ...prev, qualities: { ...newQualities } };
+            if (newDefinitions) updated.dynamicQualities = { ...(prev.dynamicQualities || {}), ...newDefinitions };
+            if (newEquipment) updated.equipment = { ...newEquipment };
+            if (newPendingEvents) updated.pendingEvents = newPendingEvents;
             return updated;
         });
     }, []);
@@ -230,24 +239,23 @@ export default function GameHub(props: GameHubProps) {
         newQualities: PlayerQualities, 
         redirectId?: string, 
         moveToId?: string,
-        newEquipment?: Record<string, string | null>
+        newEquipment?: Record<string, string | null>,
+        newPendingEvents?: any[] 
     ) => {
         setActiveResolution(null);
+        if (eventSource === 'item' && !redirectId && !moveToId) setActiveTab('possessions');
         
-        if (eventSource === 'item' && !redirectId && !moveToId) {
-            setActiveTab('possessions');
-        }
-
         setCharacter(prev => {
             if (!prev) return null;
-            const newChar = { ...prev, qualities: { ...newQualities } };
+            const newChar: CharacterDocument = { ...prev, qualities: { ...newQualities } };
             if (moveToId) newChar.currentLocationId = moveToId;
             if (newEquipment) newChar.equipment = { ...newEquipment };
+            if (newPendingEvents) newChar.pendingEvents = newPendingEvents; 
             return newChar;
         });
         
         showEvent(redirectId ?? null, 'story');
-    }, [showEvent, eventSource]); // Add eventSource dependency
+    }, [showEvent, eventSource]);
 
 
     const handleCardPlayed = useCallback((cardId: string) => {
@@ -343,7 +351,7 @@ export default function GameHub(props: GameHubProps) {
         } catch (e) { console.error(e); }
     }, [character, props.storyId]);
     
-        const handleTravel = useCallback(async (targetId: string) => {
+    const handleTravel = useCallback(async (targetId: string) => {
         if (activeEvent) {
             setAlertState({ isOpen: true, title: "Cannot Travel", message: "You must finish the current event before travelling." });
             return;
@@ -361,13 +369,33 @@ export default function GameHub(props: GameHubProps) {
 
             if (data.success) {
                 setShowMap(false);
+                
+                if (data.newLocation) {
+                    setLocation(data.newLocation);
+                    
+                    setCharacter(prev => {
+                        if (!prev) return null;
+                        return {
+                            ...prev,
+                            currentLocationId: data.currentLocationId,
+                            opportunityHands: data.handCleared ? {} : prev.opportunityHands
+                        };
+                    });
+                    
+                    if (data.handCleared) setHand([]);
+                }
+
                 router.refresh();
+                
+                setTimeout(() => setIsTransitioning(false), 300);
+
             } else {
                 setAlertState({ isOpen: true, title: "Travel Failed", message: data.error });
                 setIsTransitioning(false); 
             }
         } catch(e) { 
             console.error("Travel failed:", e); 
+            setAlertState({ isOpen: true, title: "Travel Error", message: "A network error occurred." });
             setIsTransitioning(false); 
         } 
     }, [character, props.storyId, activeEvent, router]);
@@ -406,6 +434,38 @@ export default function GameHub(props: GameHubProps) {
         [character.qualities, worldConfig, character.equipment, props.worldState, props.isPlaytesting, handleLog]
     );
     
+    const lsConfig = props.settings.livingStoriesConfig;
+    const livingStoriesEnabled = lsConfig?.enabled !== false;
+    
+    let rightColumnContent = null;
+    let sidebarLivingStories = null;
+
+    if (livingStoriesEnabled) {
+        const hideBecauseEmpty = lsConfig?.hideWhenEmpty && (!character.pendingEvents || character.pendingEvents.length === 0);
+        
+        if (!hideBecauseEmpty) {
+            const livingStoriesComponent = (
+                <LivingStories 
+                    pendingEvents={character.pendingEvents || []}
+                    qualityDefs={mergedQualityDefs}
+                    imageLibrary={props.imageLibrary}
+                    settings={props.settings}
+                    engine={renderEngine}
+                    onAcknowledge={handleAcknowledgeEvent}
+                />
+            );
+            if (lsConfig?.position === 'column') {
+                rightColumnContent = livingStoriesComponent;
+            } else if (lsConfig?.position === 'sidebar' || !lsConfig?.position) {
+                sidebarLivingStories = (
+                    <div style={{ padding: '0 1.5rem', marginTop: '1.5rem', borderTop: '1px dashed var(--border-color)' }}>
+                        {livingStoriesComponent}
+                    </div>
+                );
+            }
+        }
+    }
+
     const rawRegen = props.settings.regenAmount || 1;
     const evaluatedRegen = parseInt(renderEngine.evaluateText(`{${rawRegen}}`), 10) || 1;
 
@@ -441,14 +501,24 @@ export default function GameHub(props: GameHubProps) {
     const actionState = character.qualities[actionQid];
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
     const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
-
-    const TabBar = () => (
-        <div className="tab-bar">
-            <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
-            <button onClick={() => setActiveTab('possessions')} data-tab-id="possessions" className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
-            <button onClick={() => setActiveTab('profile')} data-tab-id="profile" className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
-        </div>
-    );
+    
+    const TabBar = () => {
+        const showLivingStoriesTab = lsConfig?.position === 'tab' && character?.pendingEvents && character.pendingEvents.length > 0;
+        return (
+            <div className="tab-bar">
+                <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
+                <button onClick={() => setActiveTab('possessions')} data-tab-id="possessions" className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
+                {!props.settings.hideProfileIdentity && (
+                     <button onClick={() => setActiveTab('profile')} data-tab-id="profile" className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>
+                )}
+                {livingStoriesEnabled && showLivingStoriesTab && (
+                    <button onClick={() => setActiveTab('living')} data-tab-id="living" className={`tab-btn ${activeTab === 'living' ? 'active' : ''}`}>
+                        {props.settings.livingStoriesConfig?.title || "Living Stories"}
+                    </button>
+                )}
+            </div>
+        );
+    };
 
     const sidebarTab = props.settings.tabLocation === 'sidebar';
 
@@ -456,41 +526,24 @@ export default function GameHub(props: GameHubProps) {
         if (sidebarTab) {
             return (
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div className="sidebar-content-scroll">
+                    <div className="sidebar-content-scroll" style={{ overflowY: 'auto' }}>
                         <TabBar /> 
                         <div className="action-box">
-                            <ActionTimer 
-                                currentActions={currentActions} 
-                                maxActions={maxActions} 
-                                lastTimestamp={character.lastActionTimestamp || new Date()} 
-                                regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} 
-                                regenAmount={evaluatedRegen}
-                                onRegen={() => {}} 
-                            />                        
+                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} regenAmount={evaluatedRegen} onRegen={() => {}} />                        
                         </div>
-                        <CharacterSheet 
-                            qualities={character.qualities} 
-                            equipment={character.equipment} 
-                            qualityDefs={mergedQualityDefs} 
-                            settings={props.settings} 
-                            categories={props.categories}
-                            engine={renderEngine} 
-                            showHidden={showHiddenQualities}
-                        />                    
+                        <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} settings={props.settings} categories={props.categories} engine={renderEngine} showHidden={showHiddenQualities} />                    
+                        
+                        {sidebarLivingStories}
+
                         {props.isPlaytesting && (
-                            <div style={{ marginTop: '2rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
+                            <div style={{ marginTop: '2rem', padding: '0 1.5rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
                                 <h4 style={{ color: 'var(--warning-color)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--tool-text-dim)' }}>
-                                        <input type="checkbox" checked={showHiddenQualities} onChange={e => setShowHiddenQualities(e.target.checked)} />
-                                        Show Hidden Qualities
+                                        <input type="checkbox" checked={showHiddenQualities} onChange={e => setShowHiddenQualities(e.target.checked)} /> Show Hidden Qualities
                                     </label>
-                                    <button onClick={() => setShowInspector(true)} style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                        Open Character Inspector
-                                    </button>
-                                    <button onClick={() => setShowLogger(prev => !prev)} style={{ background: showLogger ? 'var(--tool-accent)' : 'var(--tool-bg-input)', color: showLogger ? 'var(--tool-text-header)' : 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                        {showLogger ? 'Hide Live Log' : 'Show Live Log'}
-                                    </button>
+                                    <button onClick={() => setShowInspector(true)} style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Open Character Inspector</button>
+                                    <button onClick={() => setShowLogger(prev => !prev)} style={{ background: showLogger ? 'var(--tool-accent)' : 'var(--tool-bg-input)', color: showLogger ? 'var(--tool-text-header)' : 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>{showLogger ? 'Hide Live Log' : 'Show Live Log'}</button>
                                 </div>
                             </div>
                         )}
@@ -514,7 +567,7 @@ export default function GameHub(props: GameHubProps) {
                                 maxActions={maxActions} 
                                 lastTimestamp={character.lastActionTimestamp || new Date()} 
                                 regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} 
-                                regenAmount={evaluatedRegen}
+                                regenAmount={evaluatedRegen} 
                                 onRegen={() => {}} 
                             />                      
                     </div>
@@ -523,35 +576,32 @@ export default function GameHub(props: GameHubProps) {
                         equipment={character.equipment} 
                         qualityDefs={mergedQualityDefs} 
                         settings={props.settings} 
-                        categories={props.categories}
-                        engine={renderEngine}
-                        showHidden={showHiddenQualities}
+                        categories={props.categories} 
+                        engine={renderEngine} 
+                        showHidden={showHiddenQualities} 
                     />
+                    
+                    {sidebarLivingStories}
+
                     {props.isPlaytesting && (
                         <div style={{ marginTop: '2rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
-                            <h4 style={{ color: 'var(--warning-color)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--tool-text-dim)' }}>
-                                    <input type="checkbox" checked={showHiddenQualities} onChange={e => setShowHiddenQualities(e.target.checked)} />
-                                    Show Hidden Qualities
-                                </label>
-                                <button onClick={() => setShowInspector(true)} style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                    Open Character Inspector
-                                </button>
-                                {/* <button onClick={() => setShowLogger(prev => !prev)} style={{ background: showLogger ? 'var(--tool-accent)' : 'var(--tool-bg-input)', color: showLogger ? 'var(--tool-text-header)' : 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                    {showLogger ? 'Hide Live Log' : 'Show Live Log'}
-                                </button> */}
-                            </div>
+                           <h4 style={{ color: 'var(--warning-color)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>GM Controls</h4>
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--tool-text-dim)' }}>
+                                   <input type="checkbox" checked={showHiddenQualities} onChange={e => setShowHiddenQualities(e.target.checked)} /> Show Hidden Qualities
+                               </label>
+                               <button onClick={() => setShowInspector(true)} style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-accent)', border: '1px solid var(--tool-border)', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Open Character Inspector</button>
+                           </div>
                         </div>
                     )}
                 </div>
+                
                 <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
                 </div>
             </div>
         );
     };
-
 
     const buildMainContent = () => {
         const headerStyle = props.settings.locationHeaderStyle || 'standard';
@@ -633,6 +683,23 @@ export default function GameHub(props: GameHubProps) {
                         settings={props.settings} 
                         engine={renderEngine} 
                         showHidden={showHiddenQualities}
+                        onAutofire={(id) => {
+                            setActiveTab('story'); 
+                            showEvent(id, 'story');
+                        }}
+                    />
+                </div>
+            );
+        } else if (activeTab === 'living') {
+            innerContent = (
+                <div className="content-panel">
+                    <LivingStories 
+                        pendingEvents={character?.pendingEvents || []}
+                        qualityDefs={mergedQualityDefs}
+                        imageLibrary={props.imageLibrary}
+                        settings={props.settings}
+                        engine={renderEngine}
+                        onAcknowledge={handleAcknowledgeEvent}
                     />
                 </div>
             );
@@ -749,9 +816,10 @@ export default function GameHub(props: GameHubProps) {
     const renderLayout = () => {
         const canTravel = !activeEvent;
 
-        const layoutProps = {
+        const layoutProps: any = {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
+            rightColumnContent: rightColumnContent, 
             settings: props.settings,
             location: renderedLocation!,
             imageLibrary: props.imageLibrary,

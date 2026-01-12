@@ -199,14 +199,14 @@
     grid-template-columns: 300px 1fr; 
     gap: 2rem;
     /* Ensure height fits in viewport minus banner */
-    height: calc(100vh - 300px); 
-    overflow: hidden;
+    /* height: calc(100vh - 300px); 
+    overflow: hidden; */
 }
 
 /* Ensure content column scrolls independently */
 .layout-content-col {
-    overflow-y: auto;
-    height: 100%;
+    /* overflow-y: auto;
+    height: 100%; */
     padding-right: 1rem; /* Space for scrollbar */
 }
 

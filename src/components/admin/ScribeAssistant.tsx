@@ -184,12 +184,12 @@ export default function ScribeAssistant({
                 result = `${qTag}${metaStr} ${operator} ${value}`;
                 break;
             case 'batch':
-                result = `{%all[${selectedCat}]} ${operator} ${value}`;
+                result = `%all[${selectedCat}] ${operator} ${value}`;
                 break;
             case 'timer':
                 const tEffect = `${qTag} ${operator} ${value}`;
                 const tTime = `${timeAmt}${timeUnit}`;
-                result = `{%${timerCmd}[${tEffect} : ${tTime}]}`;
+                result = `%${timerCmd}[${tEffect} : ${tTime}]`;
                 break;
             case 'collections':
                 const colArgs: string[] = [selectedCat]; 

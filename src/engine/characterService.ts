@@ -9,8 +9,6 @@ import { v4 as uuidv4 } from 'uuid';
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 const COLLECTION_NAME = 'characters';
 
-// --- LIVING STORIES EXECUTION ---
-
 export const checkLivingStories = async (character: CharacterDocument): Promise<CharacterDocument> => {
     if (!character.pendingEvents || character.pendingEvents.length === 0) return character;
 

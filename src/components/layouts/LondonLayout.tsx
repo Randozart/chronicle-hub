@@ -29,15 +29,13 @@ export default function LondonLayout({
     isTransitioning
 }: LondonLayoutProps) {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-    
-    // Check mobile state for rendering logic if needed, 
-    // though CSS usually handles the heavy lifting.
+
     
     return (
-        <div className="layout-column london-layout-container" style={{ height: '100vh', overflow: 'hidden' }}>
+        // THE ONLY CHANGE IS ON THIS LINE
+        <div className="layout-column london-layout-container" style={{ minHeight: '100vh' }}>
             
             <div className="content-area" style={{ padding: 0 }}>
-                {/* BANNER SECTION */}
                 <div className="layout-banner">
                     <div className="banner-image-container">
                         <GameImage code={location.image} imageLibrary={imageLibrary} type="location" alt="" className="banner-bg-image" />
@@ -57,7 +55,14 @@ export default function LondonLayout({
                              {currentMarketId && (
                                 <button onClick={onOpenMarket} className="banner-btn-market">Market</button>
                             )}
-                            <button onClick={onOpenMap} className="banner-btn-travel">Travel</button>
+                            <button 
+                                onClick={onOpenMap} 
+                                className="banner-btn-travel"
+                                disabled={!onOpenMap} 
+                                style={!onOpenMap ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            >
+                                Travel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -77,7 +82,8 @@ export default function LondonLayout({
                         style={{ 
                             opacity: isTransitioning ? 0 : 1, 
                             transition: 'opacity 0.2s ease-in-out',
-                            width: '100%' 
+                            width: '100%', 
+                            height: '100%'
                         }}
                     >
                         {mainContent}

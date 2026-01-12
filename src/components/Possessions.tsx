@@ -21,7 +21,8 @@ interface PossessionsProps {
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
     engine: GameEngine;
-    showHidden?: boolean; 
+    showHidden?: boolean;
+    onAutofire?: (storyletId: string) => void;
 }
 
 const FormatBonus = ({ bonusStr, qualityDefs, qualities }: { bonusStr: string, qualityDefs: Record<string, QualityDefinition>, qualities: PlayerQualities }) => {
@@ -240,7 +241,7 @@ function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: 
 
 // --- MAIN COMPONENT ---
 export default function Possessions({ 
-    qualities, equipment, qualityDefs, equipCategories, onUpdateCharacter, onUseItem, onRequestTabChange, storyId, imageLibrary, settings, engine, showHidden
+    qualities, equipment, qualityDefs, equipCategories, onUpdateCharacter, onUseItem, onRequestTabChange, storyId, imageLibrary, settings, engine, showHidden, onAutofire
 }: PossessionsProps) {
     
     const [isLoading, setIsLoading] = useState(false);
@@ -249,6 +250,7 @@ export default function Possessions({
     const [modalState, setModalState] = useState({ isOpen: false, message: "" });
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: "", message: "" });
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
+    
 
     // @ts-ignore
     const invStyle = settings.componentConfig?.inventoryStyle || 'standard';
@@ -319,18 +321,19 @@ export default function Possessions({
             
             if (data.success) {
                 onUpdateCharacter(data.character);
+                
+                if (data.redirectId && onAutofire) {
+                    onAutofire(data.redirectId);
+                }
             }
             else if (data.isLocked) {
-                // UPDATE: Set Modal State
                 setModalConfig({ isOpen: true, title: "Item Locked", message: data.error });
             }
             else {
-                // UPDATE: Set Modal State for generic errors too
                 setModalConfig({ isOpen: true, title: "Cannot Equip", message: data.error });
             }
         } catch (e) { console.error(e); } finally { setIsLoading(false); }
     };
-
     const handleUse = (eventId: string) => { 
         if (!eventId) return; 
         onUseItem(eventId); 

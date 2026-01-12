@@ -140,6 +140,7 @@ export interface WorldSettings {
     defaultDrawCost?: string;
     deckDrawCostsAction?: boolean; 
     startLocation?: string;
+    locationId?: string;
     characterSheetCategories: string[];
     equipCategories: string[];
     currencyQualities?: string[];
@@ -191,6 +192,13 @@ export interface WorldSettings {
     summary?: string;
     tags?: string[];
     skipCharacterCreation?: boolean;
+    livingStoriesConfig?: {
+        enabled: boolean;
+        position: 'sidebar' | 'column' | 'tab';
+        title?: string; 
+        hideWhenEmpty?: boolean; // NEW: Toggle to hide component if no timers running
+
+    };
 }
 
 export interface DeckDefinition extends VersionedEntity { 
@@ -299,6 +307,7 @@ export interface PendingEvent {
     op: '=' | '+=' | '-=';
     value: number;
     triggerTime: Date;
+    startTime?: Date;
     recurring: boolean; 
     intervalMs?: number;
     description?: string;
@@ -322,7 +331,7 @@ export interface CharacterDocument {
     acknowledgedMessages?: string[];
     dynamicQualities?: Record<string, QualityDefinition>;
 }
-// ... (rest of file is correct and unchanged) ...
+
 export interface UserDocument {
     _id: ObjectId | string; 
     username: string;

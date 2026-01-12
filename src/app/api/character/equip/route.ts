@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from "@/lib/auth";
 import { getCharacter, saveCharacterState } from '@/engine/characterService';
-import { getContent } from '@/engine/contentCache'; 
+import { getContent, getAutofireStorylets } from '@/engine/contentCache'; // Import getAutofireStorylets
+import { GameEngine } from '@/engine/gameEngine'; // Import Engine
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -16,7 +17,6 @@ export async function POST(request: NextRequest) {
 
     const gameData = await getContent(storyId);
     
-    // 1. CHECK LOCATION LOCK
     const locationDef = gameData.locations[character.currentLocationId];
     if (locationDef?.tags?.includes('lock_equipment')) {
          return NextResponse.json({ 
@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
          });
     }
 
-    // 2. HANDLE UNEQUIP
     if (!itemId) {
         const currentItem = character.equipment[slot];
         
@@ -39,45 +38,75 @@ export async function POST(request: NextRequest) {
         }
 
         character.equipment[slot] = null;
-        await saveCharacterState(character);
-        return NextResponse.json({ success: true, character });
+    } 
+
+    else {
+        const itemDef = gameData.qualities[itemId];
+
+        if (!itemDef) {
+            return NextResponse.json({ error: 'Item definition not found' }, { status: 404 });
+        }
+
+        const ownedState = character.qualities[itemId];
+        const amountOwned = (ownedState && 'level' in ownedState) ? ownedState.level : 0;
+        
+        if (amountOwned < 1) {
+            return NextResponse.json({ error: 'You do not own this item.' }, { status: 403 });
+        }
+
+        if (itemDef.type !== 'E') {
+            return NextResponse.json({ error: 'This item cannot be equipped.' }, { status: 400 });
+        }
+
+        const allowedSlots = itemDef.category?.split(',').map(s => s.trim()) || [];
+        
+        const isValidSlot = allowedSlots.some(cat => {
+            if (slot === cat) return true;
+            if (slot.startsWith(`${cat}_`)) return true;
+            return false;
+        });
+
+        if (!isValidSlot) {
+            return NextResponse.json({ error: `This item does not go in the ${slot} slot.` }, { status: 400 });
+        }
+
+        character.equipment[slot] = itemId;
     }
-
-    // 3. HANDLE EQUIP
-    const itemDef = gameData.qualities[itemId];
-
-    if (!itemDef) {
-        return NextResponse.json({ error: 'Item definition not found' }, { status: 404 });
-    }
-
-    const ownedState = character.qualities[itemId];
-    const amountOwned = (ownedState && 'level' in ownedState) ? ownedState.level : 0;
     
-    if (amountOwned < 1) {
-        return NextResponse.json({ error: 'You do not own this item.' }, { status: 403 });
-    }
-
-    if (itemDef.type !== 'E') {
-        return NextResponse.json({ error: 'This item cannot be equipped.' }, { status: 400 });
-    }
-
-    // Validation: Does the item fit in this slot?
-    // FIX: Support "Ring_1", "Ring_2" matching category "Ring"
-    const allowedSlots = itemDef.category?.split(',').map(s => s.trim()) || [];
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    const pendingAutofires = await getAutofireStorylets(storyId);
     
-    // Check if the target slot starts with any allowed category followed by end-of-string or '_'
-    const isValidSlot = allowedSlots.some(cat => {
-        if (slot === cat) return true;
-        if (slot.startsWith(`${cat}_`)) return true;
-        return false;
+    const eligibleAutofires = pendingAutofires.filter(e => 
+        (!e.location || e.location === character.currentLocationId) && 
+        engine.evaluateCondition(e.autofire_if || "")
+    );
+    
+    eligibleAutofires.sort((a, b) => {
+        const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
+        const pA = priority[a.urgency || 'Normal'] || 1;
+        const pB = priority[b.urgency || 'Normal'] || 1;
+        return pB - pA; 
     });
 
-    if (!isValidSlot) {
-        return NextResponse.json({ error: `This item does not go in the ${slot} slot.` }, { status: 400 });
-    }
+    const activeAutofire = eligibleAutofires[0];
 
-    character.equipment[slot] = itemId;
+    if (activeAutofire) {
+        character.currentStoryletId = activeAutofire.id;
+    } else {
+        if (character.currentStoryletId) {
+             const currentIsAutofire = pendingAutofires.some(s => s.id === character.currentStoryletId);
+             
+             if (currentIsAutofire) {
+                 character.currentStoryletId = "";
+             }
+        }
+    }
     
     await saveCharacterState(character);
-    return NextResponse.json({ success: true, character });
+
+    return NextResponse.json({ 
+        success: true, 
+        character,
+        redirectId: activeAutofire ? activeAutofire.id : undefined 
+    });
 }
