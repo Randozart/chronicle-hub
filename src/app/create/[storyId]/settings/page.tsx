@@ -249,17 +249,16 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
                         value={form.startLocation || ''} 
                         onChange={e => handleChange('startLocation', e.target.value)} 
                         className="form-input" 
-                        // UPDATED PLACEHOLDER
                         placeholder="e.g. intro_room (Defaults to first available location)" 
                     />
                     
-                    {/* ALERT + CREATE BUTTON */}
                     {form.startLocation && !existingLocIDs.includes(form.startLocation) && (
                         <MissingEntityAlert 
                             id={form.startLocation}
                             type="location"
                             storyId={storyId}
                             onCreate={() => createLocation(form.startLocation!)}
+                            isRequired={true}
                         />
                     )}
                 </div>

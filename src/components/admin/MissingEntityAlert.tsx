@@ -64,7 +64,7 @@ export default function MissingEntityAlert({ id, type, storyId, onCreate, isRequ
 
     const buttonStyle: React.CSSProperties = isRequired ? {
         background: 'var(--warning-color)',
-        color: 'var(--bg-panel)', // Dark text on gold button
+        color: 'var(--bg-panel)', 
         fontWeight: 'bold'
     } : {
         background: 'var(--tool-accent)',

@@ -151,13 +151,18 @@ export default function CharCreateEditor({
     const addPronounSystem = () => {
         const baseOrder = sortedKeys.length;
         onCreateQuality('pronouns', QualityType.String, { 
-            tags: ['is_pronoun_set'], 
+            name: 'Pronouns',
+            tags: ['hidden'] ,
             text_variants: {
                 "subject": "{ $.stringValue == he/him : he | $.stringValue == she/her : she | $.stringValue == they/them : they | {$pronoun_subject} }",
                 "object": "{ $.stringValue == he/him : him | $.stringValue == she/her : her | $.stringValue == they/them : them | {$pronoun_object} }",
                 "possessive": "{ $.stringValue == he/him : his | $.stringValue == she/her : her | $.stringValue == they/them : their | {$pronoun_possessive} }"
             }
         });
+        onCreateQuality('pronoun_subject', QualityType.String, { name: "Subject Pronoun (He/She/They)",tags: ['hidden']});
+        onCreateQuality('pronoun_object', QualityType.String, { name: "Object Pronoun (Him/Her/Them)",tags: ['hidden']});
+        onCreateQuality('pronoun_possessive', QualityType.String, { name: "Possessive Pronoun (His/Her/Their)",tags: ['hidden']});
+
         const newRules = { ...rules };
         newRules['$pronouns_header'] = { type: 'header', rule: "Pronouns", visible: true, readOnly: true, visible_if: '', ordering: baseOrder };
         newRules['$pronouns'] = { type: 'label_select', rule: "he/him:He/Him | she/her:She/Her | they/them:They/Them | Custom:Custom", visible: true, readOnly: false, visible_if: '', ordering: baseOrder + 1 };

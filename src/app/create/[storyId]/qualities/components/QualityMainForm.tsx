@@ -263,10 +263,10 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         <label className="special-label" style={{ color: 'var(--warning-color)' }}>Progression Limits</label>
                         <div className="form-row">
                             <div className="form-group" style={{flex:1}}>
-                                <SmartArea label="Hard Cap" value={form.max || ''} onChange={v => handleChange('max', v)} storyId={storyId} minHeight="38px" placeholder="Infinity" qualityDefs={qualityDefs} />
+                                <SmartArea label="Hard Cap (Cannot exceed)" value={form.max || ''} onChange={v => handleChange('max', v)} storyId={storyId} minHeight="38px" placeholder="Infinity" qualityDefs={qualityDefs} />
                             </div>
                             <div className="form-group" style={{flex:1}}>
-                                <SmartArea label="Soft Cap (Grind)" value={form.grind_cap || ''} onChange={v => handleChange('grind_cap', v)} storyId={storyId} minHeight="38px" placeholder="None" qualityDefs={qualityDefs} />
+                                <SmartArea label="Soft Cap (Can exceed with bonuses)" value={form.grind_cap || ''} onChange={v => handleChange('grind_cap', v)} storyId={storyId} minHeight="38px" placeholder="None" qualityDefs={qualityDefs} />
                             </div>
                             {form.type === 'P' && (
                                 <div className="form-group" style={{flex:1}}>
