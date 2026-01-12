@@ -301,8 +301,18 @@ export const getOrCreateCharacter = async (
         }
     }
 
-    const startingLocation = choices?.['location'] || worldContent.settings.startLocation || 'village';
-    let charName = choices?.['player_name'] || (initialQualities['player_name'] as any)?.stringValue || "Unknown";
+    let startingLocation = choices?.['location'] || worldContent.settings.startLocation;
+
+    if (!startingLocation) {
+        // Fallback 1: Pick the first location defined in the world
+        const allLocations = Object.keys(worldContent.locations || {});
+        if (allLocations.length > 0) {
+            startingLocation = allLocations[0];
+        } else {
+            // Fallback 2: Absolute safety net if world has ZERO locations
+            startingLocation = 'start';
+        }
+    }    let charName = choices?.['player_name'] || (initialQualities['player_name'] as any)?.stringValue || "Unknown";
 
     const newCharacter: CharacterDocument = {
         characterId: uuidv4(),
@@ -364,11 +374,13 @@ export const saveCharacterState = async (character: CharacterDocument): Promise<
 export const regenerateActions = async (character: CharacterDocument): Promise<CharacterDocument> => {
     const settings = await getSettings(character.storyId);
     if (!settings.useActionEconomy) return character;
+    
     const lastTimestamp = character.lastActionTimestamp ? new Date(character.lastActionTimestamp) : new Date();
     const now = new Date();
     const minutesPassed = (now.getTime() - lastTimestamp.getTime()) / (1000 * 60);
     const regenInterval = settings.regenIntervalInMinutes || 10;
     const ticks = Math.floor(minutesPassed / regenInterval);
+    
     if (ticks <= 0) return character;
     
     const worldConfig = await getWorldConfig(character.storyId);
@@ -381,6 +393,16 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
         const maxStr = settings.maxActions || 20;
         const maxVal = parseInt(engine.evaluateText(`{${maxStr}}`), 10) || 20;
         const current = engine.getEffectiveLevel(actionQid);
+        
+        if (!character.qualities[actionQid]) {
+            character.qualities[actionQid] = {
+                qualityId: actionQid,
+                type: QualityType.Counter,
+                level: current, 
+                changePoints: 0
+            } as any;
+        }
+
         if (character.qualities[actionQid]) {
             (character.qualities[actionQid] as any).level = Math.min(maxVal, current + amount);
         }
@@ -390,11 +412,11 @@ export const regenerateActions = async (character: CharacterDocument): Promise<C
         for (let i = 0; i < safeTicks; i++) { engine.applyEffects(effectString); }
         character.qualities = engine.getQualities();
     }
+    
     character.lastActionTimestamp = new Date(lastTimestamp.getTime() + ticks * regenInterval * 60 * 1000);
     return character;
 };
 
-// Helper for inferType
 const inferType = (value: any): QualityType => {
     if (typeof value === 'string' && isNaN(Number(value))) return QualityType.String;
     return QualityType.Pyramidal;

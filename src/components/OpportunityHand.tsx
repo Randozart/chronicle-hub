@@ -28,7 +28,6 @@ export default function OpportunityHand({
     hand, onCardClick, qualities, onDrawClick, onDiscard, isLoading, 
     qualityDefs, imageLibrary, character, locationDeckId, deckDefs, settings, currentDeckStats, engine 
 }: OpportunityHandProps) {
-    //console.log("[OpportunityHand] Component is rendering. Received hand prop:", JSON.parse(JSON.stringify(hand)));
 
     const deckDef = deckDefs[locationDeckId];
     const deckSize = currentDeckStats?.deckSize ?? 0;

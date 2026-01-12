@@ -53,7 +53,8 @@ interface StoryletDisplayProps {
     characterId: string;
     engine: GameEngine; 
     isPlaytesting?: boolean;
-    onLog?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void; // <--- NEW PROP
+    onLog?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void;
+    eventSource?: 'story' | 'item'; 
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -76,7 +77,8 @@ export default function StoryletDisplay({
     characterId,
     engine, 
     isPlaytesting,
-    onLog
+    onLog,
+    eventSource = 'story'
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
     
@@ -420,7 +422,9 @@ export default function StoryletDisplay({
                             ? `Return to ${evalText(returnTargetName)}`
                             : ('deck' in storylet)
                                 ? 'Put Card Back (Return to Hand)'
-                                : 'Return to Location'
+                                : (eventSource === 'item') 
+                                    ? 'Return to Inventory' 
+                                    : 'Return to Location'
                         }
                     </button>
                 )}

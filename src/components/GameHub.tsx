@@ -109,6 +109,8 @@ export default function GameHub(props: GameHubProps) {
     const [showMap, setShowMap] = useState(false);
     const [showMarket, setShowMarket] = useState(false);
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
+    const [eventSource, setEventSource] = useState<'story' | 'item'>('story');
+
     const { playTrack } = useAudio(); 
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
@@ -168,12 +170,15 @@ export default function GameHub(props: GameHubProps) {
         }
     }, [character, location, props.locations]);
 
-    const showEvent = useCallback(async (eventId: string | null) => {
+    const showEvent = useCallback(async (eventId: string | null, source: 'story' | 'item' = 'story') => {
         if (!eventId) { 
             setActiveEvent(null); 
             setActiveResolution(null); 
             return; 
         }
+        
+        setEventSource(source);
+        
         setIsLoading(true);
         try {
             if (!character) return;
@@ -220,21 +225,26 @@ export default function GameHub(props: GameHubProps) {
     const handleEventFinish = useCallback((
         newQualities: PlayerQualities, 
         redirectId?: string, 
-        moveToId?: string, 
+        moveToId?: string,
         newEquipment?: Record<string, string | null>
     ) => {
         setActiveResolution(null);
+        
+        if (eventSource === 'item' && !redirectId && !moveToId) {
+            setActiveTab('possessions');
+        }
+
         setCharacter(prev => {
             if (!prev) return null;
             const newChar = { ...prev, qualities: { ...newQualities } };
             if (moveToId) newChar.currentLocationId = moveToId;
-            if (newEquipment) {
-                newChar.equipment = { ...newEquipment };
-            }
+            if (newEquipment) newChar.equipment = { ...newEquipment };
             return newChar;
         });
-        showEvent(redirectId ?? null);
-    }, [showEvent]);
+        
+        showEvent(redirectId ?? null, 'story');
+    }, [showEvent, eventSource]); // Add eventSource dependency
+
 
     const handleCardPlayed = useCallback((cardId: string) => {
         setHand(prev => prev.filter(c => c.id !== cardId));
@@ -572,7 +582,7 @@ export default function GameHub(props: GameHubProps) {
                         qualityDefs={mergedQualityDefs} 
                         equipCategories={props.settings.equipCategories || []} 
                         onUpdateCharacter={handleCharacterUpdate} 
-                        onUseItem={showEvent} 
+                        onUseItem={(id) => showEvent(id, 'item')} 
                         onRequestTabChange={(tab) => setActiveTab(tab)} 
                         storyId={props.storyId} 
                         imageLibrary={props.imageLibrary} 
@@ -616,6 +626,7 @@ export default function GameHub(props: GameHubProps) {
                         engine={renderEngine} 
                         isPlaytesting={props.isPlaytesting}
                         onLog={props.isPlaytesting ? handleLog : undefined} 
+                        eventSource={eventSource}
                     />
                 </div>
             );

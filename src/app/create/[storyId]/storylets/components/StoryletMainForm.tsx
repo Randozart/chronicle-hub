@@ -34,10 +34,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
         initialData, 
         '/api/admin/storylets', 
         { storyId },
-        guardRef // <--- PASS REF HERE
+        guardRef
     );
 
-    // 2. Local UI State for Modal
     const [showRevertModal, setShowRevertModal] = useState(false);
 
     if (!form) return <div className="loading-container">Loading editor state...</div>;
@@ -47,11 +46,10 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
         handleChange('tags', newTags);
     };
 
-    // 3. Wrapper to update parent list after successful save
     const onSaveClick = async () => {
         const success = await handleSave();
         if (success && form) {
-            onSave(form); // Update parent sidebar list
+            onSave(form); 
         }
     };
 
@@ -80,22 +78,65 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
             {/* Content Form Area */}
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem' }}>
                 
+                {/*Name*/}
+                <div style={{ marginBottom: '10px' }}>
+                    <SmartArea 
+                        label="Title" 
+                        value={form.name} 
+                        onChange={v => handleChange('name', v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        qualityDefs={qualityDefs} 
+                    />
+                </div>
+
+                {/*Internal Metadata Row */}
                 <div className="form-row">
-                    <div style={{ flex: 2 }}>
-                        <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Folder</label>
+                        <input 
+                            value={form.folder || ''} 
+                            onChange={e => handleChange('folder', e.target.value)} 
+                            className="form-input" 
+                            placeholder="e.g. Chapter 1" 
+                        />
+                    </div>
+                    {/*Editor Name */}
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Internal Label</label>
+                        <input 
+                            // @ts-ignore (Assumes model allows editor_name)
+                            value={form.editor_name || ''} 
+                            // @ts-ignore
+                            onChange={e => handleChange('editor_name', e.target.value)} 
+                            className="form-input" 
+                            placeholder="Editor Only Name" 
+                            style={{ borderColor: 'var(--tool-accent)' }} 
+                        />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Sort Order</label>
-                        <input type="number" value={form.ordering || 0} onChange={e => handleChange('ordering', parseInt(e.target.value))} className="form-input" />
+                        <input 
+                            type="number" 
+                            value={form.ordering || 0} 
+                            onChange={e => handleChange('ordering', parseInt(e.target.value))} 
+                            className="form-input" 
+                        />
                     </div>
                 </div>
                 
+                {/*Location & Visuals */}
                 <div className="form-row">
                     <div className="form-group" style={{ flex:1 }}>
                         <label className="form-label">Location ID</label>
-                        <input value={form.location || ''} onChange={e => handleChange('location', e.target.value)} className="form-input" />
+                        <input 
+                            value={form.location || ''} 
+                            onChange={e => handleChange('location', e.target.value)} 
+                            className="form-input" 
+                            placeholder="Global if empty"
+                        />
                     </div>
-                    <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
+                    
                     <div className="form-group" style={{ flex: 1 }}>
                         <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" />
                         <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -126,11 +167,60 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                     <SmartArea label="Main Text" value={form.text} onChange={v => handleChange('text', v)} storyId={storyId} minHeight="200px" qualityDefs={qualityDefs} />
                 </div>
 
+                {/*Metatext*/}
+                <SmartArea 
+                    label="Instruction Text (Meta)"
+                    subLabel="Italic text below the body."
+                    value={form.metatext || ''} 
+                    onChange={v => handleChange('metatext', v)} 
+                    storyId={storyId} 
+                    minHeight="38px"
+                    qualityDefs={qualityDefs}
+                />
+
+                {/*Autofire Logic */}
+                <div className="special-field-group" style={{ borderColor: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-border)', marginTop: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="special-label" style={{ color: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-text-dim)', margin: 0 }}>Must-Event (Autofire)</label>
+                        <label className="toggle-label">
+                            <input 
+                                type="checkbox" 
+                                checked={!!form.autofire_if} 
+                                onChange={e => handleChange('autofire_if', e.target.checked ? 'true' : '')} 
+                            />
+                            Enable
+                        </label>
+                    </div>
+                    {form.autofire_if !== undefined && (
+                        <SmartArea 
+                            label="Condition" 
+                            value={form.autofire_if} 
+                            onChange={v => handleChange('autofire_if', v)} 
+                            storyId={storyId} 
+                            mode="condition" 
+                            qualityDefs={qualityDefs}
+                            placeholder="$quality > 10"
+                        />
+                    )}
+                </div>
+                
+                {/*Tags*/}
                 <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Behavior</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                         <BehaviorCard checked={hasProperty(form.tags, 'no_return')} onChange={() => handleTagToggle('no_return')} label="Disable Return" desc="Removes the 'Go Back' button." />
                         <BehaviorCard checked={hasProperty(form.tags, 'instant_redirect')} onChange={() => handleTagToggle('instant_redirect')} label="Instant Redirect" desc="Skip to first option." />
+                    </div>
+                    
+                    {/*Return Target */}
+                    <div className="form-group">
+                        <label className="form-label">Return Target</label>
+                        <input 
+                            value={form.return || ''} 
+                            onChange={e => handleChange('return', e.target.value)} 
+                            className="form-input" 
+                            placeholder="Default: Location Hub" 
+                        />
                     </div>
                 </div>
 
@@ -145,7 +235,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} // Use wrapper
+                onSave={onSaveClick} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

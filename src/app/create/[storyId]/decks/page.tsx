@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useRef } from 'react';
 import { DeckDefinition, QualityDefinition } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
-import DeckMainForm from './components/DeckMainForm'; // New Import
+import DeckMainForm from './components/DeckMainForm';
 import InputModal from '@/components/admin/InputModal';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
@@ -39,7 +39,6 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
         itemToDelete?: string;
     }>({ isOpen: false, title: '', message: '' });
 
-    // 1. Fetch Data
     useEffect(() => {
         setIsLoading(true);
         Promise.all([
@@ -58,7 +57,6 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
         }).finally(() => setIsLoading(false));
     }, [storyId]);
 
-    // --- NAVIGATION GUARD ---
     const handleSelectAttempt = (newId: string) => {
         if (newId === selectedId) return;
         if (guardRef.current && guardRef.current.isDirty) {
@@ -86,7 +84,6 @@ export default function DecksAdmin({ params }: { params: Promise<{ storyId: stri
         setPendingId(null);
     };
 
-    // --- CRUD ACTIONS ---
     const openCreateModal = () => setModalConfig({ isOpen: true, mode: 'create' });
     const openDuplicateModal = (source: DeckDefinition) => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: source });
 

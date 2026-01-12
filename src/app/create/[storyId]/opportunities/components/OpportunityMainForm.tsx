@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Opportunity, QualityDefinition } from '@/engine/models';
 import OptionList from '../../storylets/components/OptionList';
 import SmartArea from '@/components/admin/SmartArea';
@@ -8,6 +8,7 @@ import BehaviorCard from '@/components/admin/BehaviorCard';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
+import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
 
 interface Props {
     initialData: Opportunity;
@@ -20,10 +21,8 @@ interface Props {
 
 export default function OpportunityMainForm({ initialData, onSave, onDelete, onDuplicate, qualityDefs, guardRef }: Props) {
     
-    // Safety check for storyId (though form assumes it exists)
     const storyId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : "";
 
-    // 1. Hook Initialization
     const { 
         data: form, 
         handleChange, 
@@ -40,19 +39,31 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
+    const [knownDecks, setKnownDecks] = useState<string[]>([]);
+    
+    useEffect(() => {
+        fetch(`/api/admin/decks?storyId=${storyId}`)
+            .then(res => res.json())
+            .then(data => {
+                const list = Array.isArray(data) ? data : Object.values(data);
+                setKnownDecks(list.map((d: any) => d.id));
+            })
+            .catch(err => console.error("Failed to load decks", err));
+    }, [storyId]);
 
     if (!form) return <div className="loading-container">Loading...</div>;
 
-    // Helper to update sidebar list after successful save
     const onSaveClick = async () => {
         const success = await handleSave();
         if (success && form) onSave(form);
     };
+    
+    const isDeckMissing = form.deck && !form.deck.includes('{') && !knownDecks.includes(form.deck);
 
     return (
         <div className="h-full flex flex-col relative" style={{ color: 'var(--tool-text-main)', paddingBottom: '80px' }}>
             
-            {/* HEADER (Cleaned up) */}
+            {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--tool-border)' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
@@ -74,19 +85,63 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
             {/* FORM BODY */}
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem' }}>
                 
+                {/* Name */}
+                <div style={{ marginBottom: '10px' }}>
+                    <SmartArea 
+                        label="Title" 
+                        value={form.name} 
+                        onChange={v => handleChange('name', v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        qualityDefs={qualityDefs} 
+                    />
+                </div>
+
+                {/* Internal Metadata Row */}
                 <div className="form-row">
-                    <div style={{ flex: 2 }}>
-                        <SmartArea label="Title" value={form.name} onChange={v => handleChange('name', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Folder</label>
+                        <input 
+                            value={form.folder || ''} 
+                            onChange={e => handleChange('folder', e.target.value)} 
+                            className="form-input" 
+                            placeholder="special_cards.cards_for_special_deck.nice_cards"
+                        />
+                    </div>
+                    {/* Editor Name */}
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Internal Label</label>
+                        <input 
+                            // @ts-ignore
+                            value={form.editor_name || ''} 
+                            // @ts-ignore
+                            onChange={e => handleChange('editor_name', e.target.value)} 
+                            className="form-input" 
+                            placeholder="Editor Only Name" 
+                            style={{ borderColor: 'var(--tool-accent)' }} 
+                        />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Sort Order</label>
-                        <input type="number" value={form.ordering || 0} onChange={e => handleChange('ordering', parseInt(e.target.value))} className="form-input" />
+                        <input 
+                            type="number" 
+                            value={form.ordering || 0} 
+                            onChange={e => handleChange('ordering', parseInt(e.target.value))} 
+                            className="form-input" 
+                        />
                     </div>
                 </div>
 
+                {/* Deck & Visuals */}
                 <div className="form-row">
-                    <div className="form-group"><label className="form-label">Deck ID</label><input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" /></div>
-                    <div className="form-group"><label className="form-label">Folder</label><input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" /></div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Deck ID</label>
+                        <input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" placeholder="Basic_Deck" />
+                        {isDeckMissing && (
+                            <MissingEntityAlert id={form.deck} type="deck" storyId={storyId} />
+                        )}
+                    </div>
+                    
                     <div className="form-group" style={{ flex: 1 }}>
                         <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" placeholder="image_id or { $logic }" qualityDefs={qualityDefs} />
                     </div>

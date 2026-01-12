@@ -318,7 +318,11 @@ export default function Possessions({
         } catch (e) { console.error(e); } finally { setIsLoading(false); }
     };
 
-    const handleUse = (eventId: string) => { if (!eventId) return; onUseItem(eventId); onRequestTabChange('story'); };
+    const handleUse = (eventId: string) => { 
+        if (!eventId) return; 
+        onUseItem(eventId); 
+        onRequestTabChange('story');
+    };
 
     const inventoryItems = useMemo(() => {
         const equippedIds = new Set(Object.values(equipment).filter(Boolean));

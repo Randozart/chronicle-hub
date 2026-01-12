@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QualityDefinition, QualityType, WorldSettings } from '@/engine/models';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
@@ -9,6 +9,7 @@ import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
+import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
 
 interface Props {
     initialData: QualityDefinition;
@@ -40,7 +41,6 @@ const Accessor = ({ code }: { code: string }) => (
 
 export default function QualityMainForm({ initialData, settings, onSave, onDelete, onDuplicate, storyId, qualityDefs, guardRef }: Props) {
     
-    // 1. Hook Initialization
     const { 
         data: form, 
         handleChange, 
@@ -59,10 +59,20 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
 
     const [showRevertModal, setShowRevertModal] = useState(false);
     const [newVariantKey, setNewVariantKey] = useState("");
+    const [knownCategories, setKnownCategories] = useState<string[]>([]);
+    
+    useEffect(() => {
+        fetch(`/api/admin/categories?storyId=${storyId}`)
+            .then(res => res.json())
+            .then(data => {
+                const cats = Object.values(data).map((c: any) => c.id);
+                setKnownCategories(cats);
+            })
+            .catch(err => console.error("Failed to load categories for validation", err));
+    }, [storyId]);
 
     if (!form) return <div className="loading-container">Loading...</div>;
 
-    // --- Helpers ---
     const handleTagToggle = (tag: string) => {
         const newTags = toggleProperty(form.tags, tag);
         handleChange('tags', newTags);
@@ -96,6 +106,15 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
         delete current[key];
         handleChange('text_variants', current);
     };
+
+    const getMissingCategories = () => {
+        if (!form.category) return [];
+        return form.category.split(',')
+            .map(s => s.trim())
+            .filter(s => s && !s.includes('{') && !knownCategories.includes(s));
+    };
+    const missingCats = getMissingCategories();
+
 
     const getConflict = (id: string) => {
         const cleanId = id.toLowerCase();
@@ -132,7 +151,7 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
             {/* Scrollable Body */}
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem' }}>
                 
-                {/* 1. Core Info */}
+                {/*Basic Info */}
                 <div className="form-row">
                     <div className="form-group" style={{ flex: 2 }}>
                         <SmartArea 
@@ -164,12 +183,18 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         <input value={form.folder || ''} onChange={e => handleChange('folder', e.target.value)} className="form-input" placeholder="Items.Weapons" />
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Internal Label</label>
+                        <input value={form.editor_name || ''} onChange={e => handleChange('editor_name', e.target.value)} className="form-input" placeholder="Editor Only Name" style={{ borderColor: 'var(--tool-accent)' }} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Sort Order <Accessor code="$.ordering" /></label>
                         <input type="number" value={form.ordering || 0} onChange={e => handleChange('ordering', parseInt(e.target.value))} className="form-input" />
                     </div>
                 </div>
 
-                {/* 2. Display & Image */}
+                
+
+                {/*Display & Image */}
                 <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
                         <SmartArea 
@@ -180,6 +205,9 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                             minHeight="38px" 
                             qualityDefs={qualityDefs} 
                         />
+                        {missingCats.map(cat => (
+                            <MissingEntityAlert key={cat} id={cat} type="category" storyId={storyId} />
+                        ))}
                     </div>
                     <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Image Code <Accessor code="$.image" /></label>
@@ -191,7 +219,35 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         </div>
                     </div>
                 </div>
-
+                {/*Singular and Plural name*/}
+                <div className="form-row">
+                     <div className="form-group" style={{ flex: 1 }}>
+                        <SmartArea 
+                            label={<span>Singular Name <Accessor code="$.singular" /></span>}
+                            value={form.singular_name || ''} 
+                            onChange={v => handleChange('singular_name', v)} 
+                            storyId={storyId}
+                            minHeight="38px"
+                            placeholder="e.g. Coin" 
+                            contextQualityId={form.id}
+                            qualityDefs={qualityDefs}
+                        />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <SmartArea 
+                            label={<span>Plural Name <Accessor code="$.plural" /></span>}
+                            value={form.plural_name || ''} 
+                            onChange={v => handleChange('plural_name', v)} 
+                            storyId={storyId}
+                            minHeight="38px"
+                            placeholder="e.g. Coins" 
+                            contextQualityId={form.id}
+                            qualityDefs={qualityDefs}
+                        />
+                    </div>
+                </div>
+                
+                {/*Description*/}
                 <SmartArea 
                     label={<span>Description <Accessor code="$.description" /></span>}
                     value={form.description || ''} 
@@ -200,8 +256,8 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     minHeight="80px" 
                     qualityDefs={qualityDefs} 
                 />
-
-                {/* 3. Progression Logic */}
+                
+                {/*Progression*/}
                 {(form.type === 'P' || form.type === 'C' || form.type === 'T') && (
                     <div className="special-field-group" style={{ borderColor: 'var(--warning-color)', marginTop: '1rem' }}>
                         <label className="special-label" style={{ color: 'var(--warning-color)' }}>Progression Limits</label>
@@ -221,7 +277,35 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     </div>
                 )}
 
-                {/* 4. Text Variants */}
+                <div className="special-field-group" style={{ borderColor: '#61afef', marginTop: '1rem' }}>
+                    <label className="special-label" style={{ color: '#61afef' }}>Change Feedback</label>
+                    <div className="form-group">
+                         <SmartArea 
+                            label="On Increase" 
+                            value={form.increase_description || ''} 
+                            onChange={v => handleChange('increase_description', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="Your {$.name} has increased!" 
+                            contextQualityId={form.id}
+                            qualityDefs={qualityDefs}
+                        />
+                    </div>
+                    <div className="form-group">
+                         <SmartArea 
+                            label="On Decrease" 
+                            value={form.decrease_description || ''} 
+                            onChange={v => handleChange('decrease_description', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="Your {$.name} has dropped..." 
+                            contextQualityId={form.id}
+                            qualityDefs={qualityDefs}
+                        />
+                    </div>
+                </div>
+                
+                {/*Text Variants/Custom Properties*/}
                 <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Text Variants</label>
                     <p className="special-desc">Custom properties accessed via accessor syntax.</p>
@@ -255,7 +339,7 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     </div>
                 </div>
 
-                {/* 5. Behavior Tags */}
+                {/*Behavior Tags */}
                 <div className="special-field-group" style={{ borderColor: 'var(--success-color)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--success-color)' }}>Behavior</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -282,7 +366,7 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     </div>
                 </div>
 
-                {/* 6. Item Specifics */}
+                {/*Item Specifics */}
                 {(form.type === 'E' || form.type === 'I') && (
                     <div className="form-group" style={{ borderTop: '1px solid var(--tool-border)', paddingTop: '1rem', marginTop: '1rem' }}>
                         <label className="special-label" style={{color: 'var(--tool-accent)'}}>Item Logic</label>
@@ -296,6 +380,19 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                         </div>
                     </div>
                 )}
+            </div>
+
+            <div className="form-group">
+                <SmartArea 
+                    label="Lock Message (if Bound)" 
+                    value={form.lock_message || ''} 
+                    onChange={v => handleChange('lock_message', v)} 
+                    storyId={storyId} 
+                    minHeight="38px" 
+                    placeholder="You cannot unequip this item."
+                    contextQualityId={form.id}
+                    qualityDefs={qualityDefs}
+                />
             </div>
 
             {/* COMMAND CENTER */}

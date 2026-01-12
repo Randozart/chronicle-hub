@@ -16,6 +16,7 @@ import CharCreateEditor from './components/CharCreateEditor';
 import DataManagement from './components/DataManagement';
 import CollaboratorManager from './components/CollaboratorManager';
 import SmartArea from '@/components/admin/SmartArea';
+import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
 
 interface FullSettingsForm extends WorldSettings {
     id: string; 
@@ -35,6 +36,7 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
     const [existingLocIDs, setExistingLocIDs] = useState<string[]>([]);
     const [existingQIDs, setExistingQIDs] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [existingCategories, setExistingCategories] = useState<string[]>([]); // New state
     
     const onSaveAll = async () => {
         if (!form) return;
@@ -71,12 +73,18 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
     useEffect(() => {
         const load = async () => {
             try {
-                const endpoints = ['settings', 'char_create', 'qualities', 'locations', 'images'];
+                const endpoints = ['settings', 'char_create', 'qualities', 'locations', 'images', 'categories'];
                 const responses = await Promise.all(endpoints.map(ep => fetch(`/api/admin/${ep}?storyId=${storyId}`)));
                 
-                const [sRes, cRes, qRes, lRes, iRes] = responses;
+                const [sRes, cRes, qRes, lRes, iRes, catRes] = responses;
                 const sData = await sRes.json();
                 
+                if (catRes.ok) {
+                    const catData = await catRes.json();
+                    const list = Array.isArray(catData) ? catData : Object.values(catData);
+                    setExistingCategories(list.map((c: any) => c.id));
+                }
+
                 const qData = qRes.ok ? await qRes.json() : {};
                 const qDefs: Record<string, QualityDefinition> = {};
                 (Array.isArray(qData) ? qData : Object.values(qData)).forEach((q: any) => qDefs[q.id] = q);
@@ -119,12 +127,13 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
         load();
     }, [storyId]);
 
-    
+    const getMissingItems = (list: string[], known: string[]) => {
+        return list.filter(item => item && !known.includes(item));
+    };
 
     const handleGenericChange = (field: string, val: any) => handleChange(field as keyof FullSettingsForm, val);
     const handleArrayChange = (field: keyof FullSettingsForm, strVal: string) => handleChange(field, strVal.split(',').map(s => s.trim()).filter(Boolean));
     
-    // Create System Quality Logic
     const createQuality = async (qid: string, type: QualityType, extra: any = {}) => {
         const cleanId = qid.replace('$', '').trim();
         if (existingQIDs.includes(cleanId)) return;
@@ -135,19 +144,40 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
         } catch(e) { showToast("Failed to create", "error"); }
     };
 
+    const createLocation = async (id: string) => {
+        if (existingLocIDs.includes(id)) return;
+        try {
+            await fetch('/api/admin/config', { 
+                method: 'POST', 
+                body: JSON.stringify({ 
+                    storyId, 
+                    category: 'locations', 
+                    itemId: id, 
+                    data: { 
+                        id: id, 
+                        name: id, 
+                        deck: 'default', // standard default
+                        tags: [] 
+                    } 
+                }) 
+            });
+            setExistingLocIDs(prev => [...prev, id]);
+            showToast(`Created Location: ${id}`, "success");
+        } catch(e) { 
+            showToast("Failed to create location", "error"); 
+        }
+    };
+
     if (isLoading || !form) return <div className="loading-container">Loading...</div>;
 
     return (
         <div className="admin-editor-col" style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '80px' }}>
-            
-            
-
             {/* 1. Main Info */}
             <SettingsMainInfo 
                 settings={form} 
                 onChange={handleGenericChange} 
                 storyId={storyId} 
-                onChangeWorldId={async (newId) => { /* ID Change Logic from before */ return true; }}
+                onChangeWorldId={async (newId) => { return true; }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '10px' }}>
                 <button onClick={() => setExpandAll('open')} style={{ fontSize: '0.8rem', background: 'none', border: '1px solid var(--tool-border)', color: 'var(--tool-text-dim)', borderRadius: '4px', cursor: 'pointer', padding: '2px 8px' }}>Expand All</button>
@@ -170,22 +200,68 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
                 <div className="form-group">
                     <label className="form-label">Sidebar Categories</label>
                     <input defaultValue={form.characterSheetCategories.join(', ')} onBlur={e => handleArrayChange('characterSheetCategories', e.target.value)} className="form-input" placeholder="character, menace" />
+                    
+                    {/* ALERT for Sidebar Cats */}
+                    {getMissingItems(form.characterSheetCategories, existingCategories).map(cat => (
+                        <MissingEntityAlert key={cat} id={cat} type="category" storyId={storyId} />
+                    ))}
+                    
                     <p className="special-desc">Qualities with these categories appear in the main sidebar.</p>
                 </div>
+
                 <div className="form-group">
                     <label className="form-label">Equipment Slots</label>
                     <input defaultValue={form.equipCategories.join(', ')} onBlur={e => handleArrayChange('equipCategories', e.target.value)} className="form-input" placeholder="head, body" />
+                    
+                    {/* ALERT for Equipment Cats (Handle the * wildcards) */}
+                    {form.equipCategories.map(cat => {
+                        const cleanCat = cat.split('*')[0].split('_')[0]; // Simple cleanup
+                        if (!existingCategories.includes(cleanCat)) {
+                            return <MissingEntityAlert key={cat} id={cleanCat} type="category" storyId={storyId} />;
+                        }
+                        return null;
+                    })}
+
                     <p className="special-desc">Creates wearable slots for items matching these categories.</p>
                 </div>
+
                 <div className="form-group">
                     <label className="form-label">Currency Qualities</label>
                     <input defaultValue={form.currencyQualities?.join(', ')} onBlur={e => handleArrayChange('currencyQualities', e.target.value)} className="form-input" placeholder="gold, echoes" />
+                    
+                    {/* ALERT for Currencies */}
+                    {getMissingItems(form.currencyQualities || [], existingQIDs).map(qid => (
+                        <MissingEntityAlert 
+                            key={qid} 
+                            id={qid} 
+                            type="quality" 
+                            storyId={storyId} 
+                            onCreate={() => createQuality(qid, QualityType.Pyramidal, { category: 'Currency' })}
+                        />
+                    ))}
+
                     <p className="special-desc">Comma-separated IDs. These appear in the top wallet bar.</p>
                 </div>
+
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                     <label className="form-label">Starting Location ID</label>
-                    <input value={form.startLocation || ''} onChange={e => handleChange('startLocation', e.target.value)} className="form-input" placeholder="village" />
-                    {!existingLocIDs.includes(form.startLocation || '') && form.startLocation && <p style={{ color: 'var(--danger-color)', fontSize: '0.8rem' }}>Warning: ID not found.</p>}
+                    <input 
+                        value={form.startLocation || ''} 
+                        onChange={e => handleChange('startLocation', e.target.value)} 
+                        className="form-input" 
+                        // UPDATED PLACEHOLDER
+                        placeholder="e.g. intro_room (Defaults to first available location)" 
+                    />
+                    
+                    {/* ALERT + CREATE BUTTON */}
+                    {form.startLocation && !existingLocIDs.includes(form.startLocation) && (
+                        <MissingEntityAlert 
+                            id={form.startLocation}
+                            type="location"
+                            storyId={storyId}
+                            onCreate={() => createLocation(form.startLocation!)}
+                        />
+                    )}
                 </div>
             </SettingsSection>
 

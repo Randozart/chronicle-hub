@@ -1,6 +1,7 @@
 'use client';
 import { WorldSettings, QualityDefinition, QualityType } from '@/engine/models';
 import SmartArea from '@/components/admin/SmartArea';
+import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
 
 interface Props {
     settings: WorldSettings;
@@ -18,8 +19,23 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
         onChange('challengeConfig', { ...(settings.challengeConfig || {}), [field]: val });
     };
 
-    // Helper to check missing system qualities
     const checkMissing = (id: string) => id && !existingQIDs.includes(id.replace('$', '').trim());
+    const isUndefinedOrMissing = (id: string) => !id || checkMissing(id);
+
+    const renderMissingQuality = (id: string, type: QualityType) => {
+        if (checkMissing(id)) {
+            return (
+                <MissingEntityAlert 
+                    id={id} 
+                    type="quality" 
+                    storyId={storyId} 
+                    onCreate={() => onCreateQuality(id, type)}
+                    isRequired={true} 
+                />
+            );
+        }
+        return null;
+    };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -123,7 +139,7 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                     Map Engine concepts to your specific Qualities. Toggling features off (like Identity) disables the need for a binding.
                 </p>
                 
-                <div className="form-row">
+                <div className="form-row" style={{ alignItems: 'flex-start' }}>
                     <div className="form-group" style={{ flex: 1 }}>
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem', minHeight: '1.2rem'}}>
                             <label className="form-label" style={{marginBottom:0}}>Action Counter ID</label>
@@ -131,8 +147,13 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
 
                             {settings.useActionEconomy ? (
                                 <>
-                                    <input value={settings.actionId} onChange={e => handleChange('actionId', e.target.value)} className="form-input" placeholder="$actions" />
-                                    {checkMissing(settings.actionId) && <button onClick={() => onCreateQuality(settings.actionId, QualityType.Counter)} className="quick-create-btn">Create {settings.actionId}</button>}
+                                    <input value={settings.actionId} onChange={e => handleChange('actionId', e.target.value)} className="form-input" placeholder="actions or $actions, any ID" />
+                                    {renderMissingQuality(settings.actionId, QualityType.Counter)}
+                                    {isUndefinedOrMissing(settings.actionId) && (
+                                        <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
+                                            If undefined, engine uses ghost variable (max 20, regen enabled).
+                                        </p>
+                                    )}
                                 </>
                             ) : (
                                 <div className="form-label" style = {{color: 'var(--warning-color)', marginTop: '1rem'}}>Disabled (Economy Inactive)</div>
@@ -150,8 +171,13 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
 
                         {!settings.hideProfileIdentity ? (
                             <>
-                                <input value={settings.playerName} onChange={e => handleChange('playerName', e.target.value)} className="form-input" placeholder="$player_name" />
-                                {checkMissing(settings.playerName) && <button onClick={() => onCreateQuality(settings.playerName, QualityType.String)} className="quick-create-btn">Create {settings.playerName}</button>}
+                                <input value={settings.playerName} onChange={e => handleChange('playerName', e.target.value)} className="form-input" placeholder="player_name or $player_name, any ID" />
+                                {renderMissingQuality(settings.playerName, QualityType.String)}
+                                {isUndefinedOrMissing(settings.playerName) && (
+                                    <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
+                                        If undefined, character names will appear blank.
+                                    </p>
+                                )}
                             </>
                         ) : (
                             <div className="form-label" style = {{color: 'var(--warning-color)', marginTop: '1rem'}}>Disabled (Anonymous Protagonist)</div>
@@ -168,8 +194,13 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                         </div>
                         {!settings.hideProfileIdentity && settings.enablePortrait !== false ? (
                             <>
-                                <input value={settings.playerImage} onChange={e => handleChange('playerImage', e.target.value)} className="form-input" placeholder="$player_portrait" />
-                                {checkMissing(settings.playerImage) && <button onClick={() => onCreateQuality(settings.playerImage, QualityType.String)} className="quick-create-btn">Create {settings.playerImage}</button>}
+                                <input value={settings.playerImage} onChange={e => handleChange('playerImage', e.target.value)} className="form-input" placeholder="player_portrait or $player_portrait, any ID" />
+                                {renderMissingQuality(settings.playerImage, QualityType.String)}
+                                {isUndefinedOrMissing(settings.playerImage) && (
+                                    <p className="special-desc" style={{color: 'var(--tool-text-dim)', fontStyle: 'italic'}}>
+                                        If undefined, defaults to standard silhouette.
+                                    </p>
+                                )}
                             </>
                         ) : (
                             <div className="form-label" style = {{color: 'var(--warning-color)', marginTop: '1rem'}}>Disabled (Portrait Hidden)</div>
@@ -177,13 +208,6 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                     </div>
                 </div>
             </div>
-
-            <style jsx>{`
-                .info-box { padding: 0.8rem; background: rgba(255,255,255,0.05); border-radius: 4px; color: var(--tool-text-dim); font-style: italic; font-size: 0.9rem; }
-                .disabled-input { padding: 0.6rem; border: 1px dashed var(--tool-border); color: var(--tool-text-dim); border-radius: 4px; font-size: 0.85rem; background: rgba(0,0,0,0.2); }
-                .quick-create-btn { margin-top: 5px; font-size: 0.75rem; background: var(--success-color); color: #000; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-                .special-desc { font-size: 0.8rem; color: var(--tool-text-dim); margin-top: 4px; }
-            `}</style>
         </div>
     );
 }
