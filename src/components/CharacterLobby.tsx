@@ -4,6 +4,7 @@ import { CharacterDocument, ImageDefinition, LocationDefinition, SystemMessage, 
 import SystemMessageBanner from "./SystemMessageBanner";
 import { useState } from "react";
 import GameImage from "./GameImage";
+import GameModal from "./GameModal";
 
 interface CharacterLobbyProps {
     settings: WorldSettings;
@@ -24,21 +25,51 @@ interface CharacterLobbyProps {
 export default function CharacterLobby (props: CharacterLobbyProps) {
     const theme = props.settings.visualTheme || 'default';
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
-    const [isCreating, setIsCreating] = useState(false); 
-    const skipCreation = props.settings.skipCharacterCreation === true;
-
+    
+    const [charToDelete, setCharToDelete] = useState<string | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
+    
     const hideIdentity = props.settings.hideProfileIdentity === true;
+    const skipCreation = props.settings.skipCharacterCreation === true;
     
     const portraitStyle = props.settings.portraitStyle || 'circle';
     const borderRadius = portraitStyle === 'circle' ? '50%' : (portraitStyle === 'rounded' ? '8px' : '0px');
-    
+
+    const handleDismissMessage = async () => {
+        if (!props.systemMessage || !character) return;
+        try {
+            await fetch('/api/character/acknowledge-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterId: character.characterId, messageId: props.systemMessage.id })
+            });
+        } catch (e) { console.error(e); }
+    }; 
+
+    // NEW: Open Modal instead of confirm()
+    const requestDelete = (charId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); 
+        setCharToDelete(charId);
+    };
+
+    // NEW: Perform Delete after Modal confirmation
+    const confirmDelete = async () => {
+        if (!charToDelete) return;
+        try {
+            await fetch('/api/character/delete', {
+                method: 'DELETE',
+                body: JSON.stringify({ storyId: props.storyId, characterId: charToDelete })
+            });
+            window.location.reload();
+        } catch (err) { console.error(err); }
+    };
+
     const handleStartGame = async () => {
         setIsCreating(true);
         try {
             const response = await fetch('/api/character/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // Send empty choices to use defaults
                 body: JSON.stringify({ storyId: props.storyId, choices: {} }) 
             });
             
@@ -55,31 +86,6 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
             setIsCreating(false);
         }
     };
-
-    const handleDismissMessage = async () => {
-        if (!props.systemMessage || !character) return;
-        try {
-            await fetch('/api/character/acknowledge-message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ characterId: character.characterId, messageId: props.systemMessage.id })
-            });
-        } catch (e) { console.error(e); }
-    }; 
-
-    const handleDeleteChar = async (charId: string, e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent clicking the card itself
-        if (!confirm("Permanently delete this character? This cannot be undone.")) return;
-        
-        try {
-            await fetch('/api/character/delete', {
-                method: 'DELETE',
-                body: JSON.stringify({ storyId: props.storyId, characterId: charId })
-            });
-            window.location.reload();
-        } catch (err) { console.error(err); }
-    };
-
 
     return (
         <div 
@@ -105,6 +111,16 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                     onDismiss={handleDismissMessage} 
                 />
             )}
+
+            <GameModal
+                isOpen={!!charToDelete}
+                type="danger"
+                title="Delete Character?"
+                message="Are you sure you want to permanently delete this character? This action cannot be undone."
+                confirmLabel="Delete Forever"
+                onConfirm={confirmDelete}
+                onClose={() => setCharToDelete(null)}
+            />
 
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 0 }} />
             
@@ -181,11 +197,8 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                                 </div>
                                 
                                 <div 
-                                    onClick={(e) => handleDeleteChar(c.characterId, e)}
-                                    style={{ 
-                                        color: 'var(--danger-color)', padding: '0.5rem', 
-                                        cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6
-                                    }}
+                                    onClick={(e) => requestDelete(c.characterId, e)}
+                                    style={{ color: 'var(--danger-color)', padding: '0.5rem', cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6 }}
                                     title="Delete Save"
                                     className="hover:opacity-100"
                                 >

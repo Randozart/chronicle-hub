@@ -9,45 +9,60 @@ interface Props {
     lastUpdate: string | Date;
     currentCharges: number;
     maxCharges: number;
-    onRegen: () => void; // Trigger a visual refresh
+    onRegen?: () => void;
+    actionTimestamp?: string | Date; // NEW PROP
 }
 
-export default function DeckTimer({ deck, settings, lastUpdate, currentCharges, maxCharges, onRegen }: Props) {
-    const [timeLeft, setTimeLeft] = useState("--:--");
+export default function DeckTimer({ 
+    deck, settings, lastUpdate, currentCharges, maxCharges, onRegen = () => {}, actionTimestamp 
+}: Props) {
+    const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
     useEffect(() => {
         if (currentCharges >= maxCharges) {
-            setTimeLeft("");
+            setTimeLeft(null);
             return;
         }
 
-        // 1. Determine Interval
         let intervalMinutes = 0;
+        let effectiveLastUpdate = new Date(lastUpdate).getTime();
         
+        // FIX: Determine Interval AND Reference Time
         if (deck.timer === 'sync_actions') {
             intervalMinutes = settings.regenIntervalInMinutes;
+            // If synced, override the deck's specific time with the global action time
+            if (actionTimestamp) {
+                effectiveLastUpdate = new Date(actionTimestamp).getTime();
+            }
         } else if (deck.timer) {
-            // Try parsing as number
             const parsed = parseInt(deck.timer, 10);
             if (!isNaN(parsed)) intervalMinutes = parsed;
-            // Note: If it's complex logic ("$vitality"), client-side prediction is hard. 
-            // We default to 0 (hidden) or standard to avoid complex parsing here.
         }
 
         if (intervalMinutes <= 0) return;
 
         const intervalMs = intervalMinutes * 60 * 1000;
-        const lastTime = new Date(lastUpdate).getTime();
 
         const tick = () => {
             const now = Date.now();
-            const elapsed = now - lastTime;
-            const timeIntoCurrentInterval = elapsed % intervalMs;
-            const msRemaining = intervalMs - timeIntoCurrentInterval;
+            const elapsed = now - effectiveLastUpdate;
+            
+            // Offline Calc
+            const chargesGained = Math.floor(elapsed / intervalMs);
+            const effectiveCharges = Math.min(maxCharges, currentCharges + chargesGained);
 
-            if (msRemaining <= 1000) {
-                // Optimistic update suggestion
-                onRegen(); 
+            if (effectiveCharges >= maxCharges) {
+                setTimeLeft(null);
+                // Trigger refresh if we just crossed the line locally
+                if (currentCharges < maxCharges) onRegen();
+                return;
+            }
+
+            const msRemaining = intervalMs - (elapsed % intervalMs);
+            
+            // If we are extremely close to the next tick, trigger regen
+            if (msRemaining < 1000) {
+                onRegen();
             }
 
             const m = Math.floor(msRemaining / 60000);
@@ -59,13 +74,26 @@ export default function DeckTimer({ deck, settings, lastUpdate, currentCharges, 
         tick();
 
         return () => clearInterval(timerId);
-    }, [deck, settings, lastUpdate, currentCharges, maxCharges, onRegen]);
+    }, [deck, settings, lastUpdate, currentCharges, maxCharges, onRegen, actionTimestamp]);
 
-    if (currentCharges >= maxCharges || timeLeft === "") return null;
+    if (!timeLeft) return null;
 
     return (
-        <span style={{ fontSize: '0.8rem', color: '#aaa', marginLeft: '10px' }}>
-            Next card in: <span style={{ color: '#fff', fontWeight: 'bold' }}>{timeLeft}</span>
+        <span style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.75rem', 
+            background: 'rgba(0,0,0,0.3)', 
+            border: '1px solid var(--border-color)',
+            padding: '2px 8px',
+            borderRadius: '12px',
+            marginLeft: '10px',
+            color: 'var(--text-secondary)',
+            verticalAlign: 'middle'
+        }}>
+            <span>⏳</span>
+            <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)', fontWeight: 'bold' }}>{timeLeft}</span>
         </span>
     );
 }

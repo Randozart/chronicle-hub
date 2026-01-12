@@ -7,6 +7,7 @@ import GameImage from "./GameImage";
 import { evaluateText } from "@/engine/textProcessor";
 import { GameEngine } from '@/engine/gameEngine';
 import FormattedText from "./FormattedText"; 
+import GameModal from "./GameModal";
 
 interface PossessionsProps {
     qualities: PlayerQualities;
@@ -96,6 +97,8 @@ const ItemDisplay = ({
         else if (canEquip) onEquipToggle();
         else if (canUse) onUse(item.storylet);
     };
+
+    
 
     return (
         <div className={`inventory-item style-${activeStyle} ${capabilityClass} ${portraitVariantClass}`} style={{ 
@@ -244,6 +247,7 @@ export default function Possessions({
     const [search, setSearch] = useState("");
     const [groupBy, setGroupBy] = useState("category");
     const [modalState, setModalState] = useState({ isOpen: false, message: "" });
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: "", message: "" });
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
 
     // @ts-ignore
@@ -312,9 +316,18 @@ export default function Possessions({
         try {
             const res = await fetch('/api/character/equip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, slot: targetSlot, itemId }) });
             const data = await res.json();
-            if (data.success) onUpdateCharacter(data.character);
-            else if (data.isLocked) setModalState({ isOpen: true, message: data.error });
-            else alert(data.error);
+            
+            if (data.success) {
+                onUpdateCharacter(data.character);
+            }
+            else if (data.isLocked) {
+                // UPDATE: Set Modal State
+                setModalConfig({ isOpen: true, title: "Item Locked", message: data.error });
+            }
+            else {
+                // UPDATE: Set Modal State for generic errors too
+                setModalConfig({ isOpen: true, title: "Cannot Equip", message: data.error });
+            }
         } catch (e) { console.error(e); } finally { setIsLoading(false); }
     };
 
@@ -348,7 +361,14 @@ export default function Possessions({
 
     return (
         <div className="possessions-container">
-            <MessageModal isOpen={modalState.isOpen} message={modalState.message} onClose={() => setModalState({ isOpen: false, message: "" })} />
+            <GameModal 
+                isOpen={modalConfig.isOpen} 
+                title={modalConfig.title}
+                message={modalConfig.message} 
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                onConfirm={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                confirmLabel="Dismiss"
+            />
 
             {expandedSlots.length > 0 && (
                 <>

@@ -26,6 +26,7 @@ import { useRouter } from 'next/navigation';
 import ScribeDebugger from './admin/ScribeDebugger';
 import { createPortal } from 'react-dom';
 import CharacterInspector from '@/app/create/[storyId]/players/components/CharacterInspector';
+import GameModal from './GameModal';
 
 
 interface GameHubProps {
@@ -110,6 +111,7 @@ export default function GameHub(props: GameHubProps) {
     const [showMarket, setShowMarket] = useState(false);
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile'>('story');
     const [eventSource, setEventSource] = useState<'story' | 'item'>('story');
+    const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
 
     const { playTrack } = useAudio(); 
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
@@ -261,10 +263,11 @@ export default function GameHub(props: GameHubProps) {
             const data = await response.json();
             
             if (data.success) {
-                const newCards = data.hand as Opportunity[];
+                const newCards = (data.hand || []) as Opportunity[];
                 
                 setHand(prev => {
-                    const otherDecksCards = prev.filter(c => c.deck !== deckId);
+                    const currentHand = prev || [];
+                    const otherDecksCards = currentHand.filter(c => c.deck !== deckId);
                     return [...otherDecksCards, ...newCards];
                 });
                 
@@ -281,10 +284,37 @@ export default function GameHub(props: GameHubProps) {
                     };
                 });
             } else {
-                alert(data.message || "Failed to draw.");
+                setAlertState({ isOpen: true, title: "Cannot Draw", message: data.message || "Failed to draw." });
             }
         } catch (e) { console.error(e); } finally { setIsLoading(false); }
     }, [isLoading, character, props.storyId]);
+    
+    const handleDeckRegen = useCallback(async () => {
+        if (!character) return;
+        try {
+            const res = await fetch('/api/deck/regen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    storyId: props.storyId, 
+                    characterId: character.characterId 
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setCharacter(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        deckCharges: data.deckCharges,
+                        lastDeckUpdate: data.lastDeckUpdate
+                    };
+                });
+            }
+        } catch (e) {
+            console.error("Failed to regen deck:", e);
+        }
+    }, [character, props.storyId]);
 
     const handleDiscard = useCallback(async (deckId: string, cardId: string) => {
         if (!character) return;
@@ -313,7 +343,7 @@ export default function GameHub(props: GameHubProps) {
     
         const handleTravel = useCallback(async (targetId: string) => {
         if (activeEvent) {
-            alert("You must finish the current event before travelling.");
+            setAlertState({ isOpen: true, title: "Cannot Travel", message: "You must finish the current event before travelling." });
             return;
         }
         if (!character) return;
@@ -331,7 +361,7 @@ export default function GameHub(props: GameHubProps) {
                 setShowMap(false);
                 router.refresh();
             } else {
-                alert(data.error);
+                setAlertState({ isOpen: true, title: "Travel Failed", message: data.error });
                 setIsTransitioning(false); 
             }
         } catch(e) { 
@@ -419,14 +449,12 @@ export default function GameHub(props: GameHubProps) {
     const sidebarTab = props.settings.tabLocation === 'sidebar';
 
     const buildSidebar = () => {
-        // This is the version for themes like "Parchment" where tabs are in the sidebar
         if (sidebarTab) {
             return (
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div className="sidebar-content-scroll">
                         <TabBar /> 
                         <div className="action-box">
-                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                             <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
                         </div>
                         <CharacterSheet 
@@ -463,7 +491,6 @@ export default function GameHub(props: GameHubProps) {
                 </div>
             );
         }
-        // This is the version for themes like "Detective Noir" where tabs are in the main content area
         return (
             <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div className="sidebar-header">
@@ -471,7 +498,6 @@ export default function GameHub(props: GameHubProps) {
                 </div>
                 <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
                     <div className="action-box">
-                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{currentActions} / {maxActions}</h3>
                         <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} onRegen={() => {}} />
                     </div>
                     <CharacterSheet 
@@ -667,6 +693,8 @@ export default function GameHub(props: GameHubProps) {
                                     onCardClick={showEvent}
                                     onDrawClick={() => handleDrawForDeck(deckId)}
                                     onDiscard={(cardId) => handleDiscard(deckId, cardId)}
+                                    onRegen={handleDeckRegen}
+                                    actionTimestamp={character.lastActionTimestamp}
                                     isLoading={isLoading}
                                     qualities={character.qualities}
                                     qualityDefs={mergedQualityDefs}
@@ -725,6 +753,17 @@ export default function GameHub(props: GameHubProps) {
     };
     return ( 
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
+            {alertState && (
+                <GameModal 
+                    isOpen={alertState.isOpen}
+                    title={alertState.title}
+                    message={alertState.message}
+                    onConfirm={() => setAlertState(null)}
+                    onClose={() => setAlertState(null)}
+                    confirmLabel="Dismiss"
+                />
+            )}
+            
             {renderLayout()}
             
             {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
