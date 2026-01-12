@@ -13,24 +13,18 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
     if (!character.pendingEvents || character.pendingEvents.length === 0) return character;
 
     const now = new Date();
-    // Find events that are due
-    const eventsToFire = character.pendingEvents.filter(e => now >= new Date(e.triggerTime));
+    const eventsToFire = character.pendingEvents.filter(e => now >= new Date(e.triggerTime) && !e.completedTime);
     
     if (eventsToFire.length === 0) return character;
 
     const gameData = await getWorldConfig(character.storyId);
-    
-    // Instantiate Engine to apply effects
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
 
-    // Keep track of events to remove or re-schedule
-    const eventsToRemoveIds = new Set<string>();
-    const newRecurrences: PendingEvent[] = [];
+    let needsSave = false;
 
     for (const event of eventsToFire) {
-        eventsToRemoveIds.add(event.instanceId);
-
-        // 1. APPLY EFFECT
+        needsSave = true;
+        // 1. APPLY EFFECT (Same as before)
         if (event.scope === 'category') {
             const categoryName = event.targetId;
             const affectedQids = Object.values(gameData.qualities)
@@ -42,44 +36,47 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
                 engine.applyEffects(effectString);
             }
         } else {
-            // Single Quality Operation
             const effectString = `$${event.targetId} ${event.op} ${event.value}`;
             engine.applyEffects(effectString);
         }
 
-        // 2. HANDLE RECURRENCE
-         if (event.recurring && event.intervalMs && event.intervalMs > 0) {
-            const oldTriggerTime = new Date(event.triggerTime).getTime();
-            const nextTriggerTime = new Date(oldTriggerTime + event.intervalMs);
+        // Find the original event in the character's list to update it
+        const originalEvent = character.pendingEvents.find(e => e.instanceId === event.instanceId);
+        if (!originalEvent) continue;
+
+        // 2. MARK AS COMPLETE and HANDLE RECURRENCE
+        originalEvent.completedTime = now;
+
+        if (originalEvent.recurring && originalEvent.intervalMs && originalEvent.intervalMs > 0) {
+            const oldTriggerTime = new Date(originalEvent.triggerTime).getTime();
+            const nextTriggerTime = new Date(oldTriggerTime + originalEvent.intervalMs);
             
-            newRecurrences.push({
-                ...event,
+            // Add a new event for the next cycle
+            character.pendingEvents.push({
+                ...originalEvent,
                 instanceId: uuidv4(),
-                startTime: event.triggerTime, 
+                startTime: originalEvent.triggerTime,
                 triggerTime: nextTriggerTime,
+                completedTime: undefined, // Ensure the new one is not complete
             });
         }
     }
 
     // 3. UPDATE CHARACTER STATE
     character.qualities = engine.getQualities();
-
     const newDefinitions = engine.getDynamicQualities();
     if (Object.keys(newDefinitions).length > 0) {
-        character.dynamicQualities = {
-            ...(character.dynamicQualities || {}),
-            ...newDefinitions
-        };
+        character.dynamicQualities = { ...(character.dynamicQualities || {}), ...newDefinitions };
     }
     
-    character.pendingEvents = character.pendingEvents.filter(e => !eventsToRemoveIds.has(e.instanceId));
-    character.pendingEvents.push(...newRecurrences);
-    
-    // 4. SAVE
-    await saveCharacterState(character);
+    // 4. SAVE (if any events were fired)
+    if (needsSave) {
+        await saveCharacterState(character);
+    }
 
     return character;
 };
+
 
 
 // --- INSTRUCTION PROCESSING (Called by API) ---

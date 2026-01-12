@@ -139,17 +139,23 @@ export default function GameHub(props: GameHubProps) {
     const handleAcknowledgeEvent = useCallback(async (instanceId: string) => {
         if (!character) return;
         try {
-            const res = await fetch('/api/character/check-events', {
+            const res = await fetch('/api/character/acknowledge-event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId })
+                body: JSON.stringify({ 
+                    storyId: props.storyId, 
+                    characterId: character.characterId,
+                    instanceId: instanceId 
+                })
             });
             const data = await res.json();
             if (data.success && data.character) {
                 setCharacter(data.character);
+            } else {
+                console.error("Failed to acknowledge event:", data.error);
             }
         } catch (e) {
-            console.error("Failed to acknowledge event:", e);
+            console.error("Network error while acknowledging event:", e);
         }
     }, [character, props.storyId]);
 
