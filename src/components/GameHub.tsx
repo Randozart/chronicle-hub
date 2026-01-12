@@ -117,7 +117,8 @@ export default function GameHub(props: GameHubProps) {
     const { playTrack } = useAudio(); 
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
-    
+    const [isMobile, setIsMobile] = useState(false);
+
     // Playtest State
     const [showHiddenQualities, setShowHiddenQualities] = useState(false);
     const [showInspector, setShowInspector] = useState(false);
@@ -126,6 +127,15 @@ export default function GameHub(props: GameHubProps) {
     const [showLogger, setShowLogger] = useState(false);
     const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
     
+    useEffect(() => {
+        const checkDevice = () => {
+            setIsMobile(window.innerWidth <= 900);
+        };
+        checkDevice();
+        window.addEventListener('resize', checkDevice);
+        return () => window.removeEventListener('resize', checkDevice);
+    }, []);
+
     const handleAcknowledgeEvent = useCallback(async (instanceId: string) => {
         if (!character) return;
         try {
@@ -441,9 +451,11 @@ export default function GameHub(props: GameHubProps) {
     let sidebarLivingStories = null;
 
     if (livingStoriesEnabled) {
-        const hideBecauseEmpty = props.settings.livingStoriesConfig?.hideWhenEmpty && (!character.pendingEvents || character.pendingEvents.length === 0);
+        const hideBecauseEmpty = lsConfig?.hideWhenEmpty && (!character.pendingEvents || character.pendingEvents.length === 0);
         
         if (!hideBecauseEmpty) {
+            const position = isMobile && lsConfig?.position === 'column' ? 'sidebar' : lsConfig?.position;
+
             const livingStoriesComponent = (
                 <LivingStories 
                     pendingEvents={character.pendingEvents || []}
@@ -454,9 +466,10 @@ export default function GameHub(props: GameHubProps) {
                     onAcknowledge={handleAcknowledgeEvent}
                 />
             );
-            if (props.settings.livingStoriesConfig?.position === 'column') {
+            
+            if (position === 'column') {
                 columnLivingStories = livingStoriesComponent;
-            } else if (props.settings.livingStoriesConfig?.position === 'sidebar' || !props.settings.livingStoriesConfig?.position) {
+            } else if (position === 'sidebar' || !position) {
                 sidebarLivingStories = (
                     <div style={{ padding: '0 1.5rem', marginTop: '1.5rem', borderTop: '1px dashed var(--border-color)' }}>
                         {livingStoriesComponent}
@@ -465,6 +478,7 @@ export default function GameHub(props: GameHubProps) {
             }
         }
     }
+
 
     const rawRegen = props.settings.regenAmount || 1;
     const evaluatedRegen = parseInt(renderEngine.evaluateText(`{${rawRegen}}`), 10) || 1;

@@ -48,13 +48,14 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
         }
 
         // 2. HANDLE RECURRENCE
-        if (event.recurring && event.intervalMs && event.intervalMs > 0) {
+         if (event.recurring && event.intervalMs && event.intervalMs > 0) {
             const oldTriggerTime = new Date(event.triggerTime).getTime();
             const nextTriggerTime = new Date(oldTriggerTime + event.intervalMs);
             
             newRecurrences.push({
                 ...event,
                 instanceId: uuidv4(),
+                startTime: event.triggerTime, 
                 triggerTime: nextTriggerTime,
             });
         }
@@ -136,6 +137,7 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
                 targetId: instr.targetId,
                 op: instr.op,
                 value: instr.value,
+                startTime: new Date(), 
                 triggerTime: new Date(Date.now() + instr.intervalMs),
                 recurring: !!instr.recurring,
                 intervalMs: instr.intervalMs,

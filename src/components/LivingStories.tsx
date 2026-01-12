@@ -67,7 +67,9 @@ export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary
                     const desc = event.description || qDef?.description || "";
                     
                     const triggerTime = new Date(event.triggerTime).getTime();
-                    const startTime = event.startTime ? new Date(event.startTime).getTime() : (triggerTime - 10000); 
+                    const startTime = event.startTime 
+                        ? new Date(event.startTime).getTime() 
+                        : (triggerTime - (event.intervalMs || 10000)); 
                     
                     const totalDuration = triggerTime - startTime;
                     const elapsed = now - startTime;
@@ -80,7 +82,7 @@ export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary
                     const timeLeftMs = triggerTime - now;
                     const isComplete = timeLeftMs <= 0;
                     const renderedDesc = engine.evaluateText(desc);
-
+                    
                     return (
                         <div key={event.instanceId} className="living-story-card" style={{ 
                             background: 'var(--bg-item)', border: `1px solid ${isComplete ? 'var(--success-color)' : 'var(--border-color)'}`,
