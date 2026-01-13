@@ -121,7 +121,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                         <input 
                             type="checkbox" 
                             checked={hasDifficulty} 
-                            onChange={() => handleChange('challenge', hasDifficulty ? undefined : '{%chance[$stat >> 50]}')} 
+                            onChange={() => handleChange('challenge', hasDifficulty ? undefined : '50')} 
                         />
                         Enable Failure State
                     </label>
@@ -178,296 +178,182 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
 }
 
 // --- SUB-COMPONENTS ---
-
 function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { value: string, onChange: (v: string) => void, qualityDefs: QualityDefinition[], storyId: string }) {
     const [mode, setMode] = useState<'simple' | 'logic' | 'manual'>('manual');
-    const [globalDefaults, setGlobalDefaults] = useState<{margin: number, min: number, max: number, pivot: number} | null>(null);
+    const [globalDefaults, setGlobalDefaults] = useState<{margin: string, min: string, max: string, pivot: string} | null>(null);
 
-    // Logic State
+    // State for all UI controls
     const [qid, setQid] = useState('');
     const [op, setOp] = useState('>>');
-    const [target, setTarget] = useState('50');
-    
-    // Independent Defaults Flags
+    const [target, setTarget] = useState(50);
     const [useDefMargin, setUseDefMargin] = useState(true);
     const [useDefMin, setUseDefMin] = useState(true);
     const [useDefMax, setUseDefMax] = useState(true);
     const [useDefPivot, setUseDefPivot] = useState(true);
-    
-    // Local Overrides
-    const [margin, setMargin] = useState('10');
-    const [min, setMin] = useState('0');
-    const [max, setMax] = useState('100');
-    const [pivot, setPivot] = useState('60');
-    
-    // Simple State
-    const [chance, setChance] = useState('50');
+    const [margin, setMargin] = useState(10);
+    const [min, setMin] = useState(0);
+    const [max, setMax] = useState(100);
+    const [pivot, setPivot] = useState(60);
+    const [chance, setChance] = useState(50);
 
-    // 1. Fetch Global Settings on Mount
+    // --- HOOK 1: Fetch Global Settings (Unchanged) ---
     useEffect(() => {
         fetch(`/api/admin/settings?storyId=${storyId}`)
             .then(res => res.json())
             .then((settings: WorldSettings) => {
-                if (settings.challengeConfig) {
-                    // Note: defaultMargin might be a string like "$target". 
-                    // For visualization, we need a number. We'll parse or fallback.
-                    const defMargin = parseInt(settings.challengeConfig.defaultMargin || '10') || 10;
-                    setGlobalDefaults({
-                        margin: defMargin,
-                        min: settings.challengeConfig.minCap ?? 0,
-                        max: settings.challengeConfig.maxCap ?? 100,
-                        pivot: settings.challengeConfig.basePivot ?? 60
-                    });
-                } else {
-                    setGlobalDefaults({ margin: 10, min: 0, max: 100, pivot: 60 });
-                }
+                const config = settings.challengeConfig || {};
+                setGlobalDefaults({
+                    margin: String(config.defaultMargin || 'target'),
+                    min: String(config.minCap ?? '0'),
+                    max: String(config.maxCap ?? '100'),
+                    pivot: String(config.basePivot ?? '60')
+                });
             })
-            .catch(err => console.error("Failed to load settings for defaults", err));
+            .catch(err => {
+                console.error("Failed to load settings", err);
+                setGlobalDefaults({ margin: 'target', min: '0', max: '100', pivot: '60' });
+            });
     }, [storyId]);
 
-    // Helpers to get effective values for UI/Chart
-    const getEffectiveMargin = () => useDefMargin ? (globalDefaults?.margin ?? 10) : (parseInt(margin) || 10);
-    const getEffectiveMin = () => useDefMin ? (globalDefaults?.min ?? 0) : (parseInt(min) || 0);
-    const getEffectiveMax = () => useDefMax ? (globalDefaults?.max ?? 100) : (parseInt(max) || 100);
-    const getEffectivePivot = () => useDefPivot ? (globalDefaults?.pivot ?? 60) : (parseInt(pivot) || 60);
-    
-    const resolveForChart = (input: string | number): number => {
-        const valStr = String(input);
-        const tVal = parseInt(target) || 50;
-
-        // 1. Is it a number?
-        if (!isNaN(Number(valStr))) return Number(valStr);
-
-        // 2. Is it a simple formula?
-        try {
-            // Replace 'target' with actual number
-            // Sanitize to only allow basic math characters to prevent injection
-            const sanitized = valStr.replace(/target/g, String(tVal)).replace(/[^-+*/0-9.() ]/g, '');
-            // eslint-disable-next-line no-new-func
-            return new Function('return ' + sanitized)();
-        } catch (e) {
-            return 0; // Fallback
-        }
-    };
-
-    // Helper to generate the string based on current state
-    const generateString = () => {
-        if (mode === 'simple') {
-            return chance;
-        }
-        if (mode === 'logic') {
-            const needsCustomArgs = !useDefMargin || !useDefMin || !useDefMax || !useDefPivot;
-            
-            let params = '';
-            if (needsCustomArgs) {
-                const mVal = useDefMargin ? String(globalDefaults?.margin ?? 10) : (margin || '10');
-                const minVal = useDefMin ? String(globalDefaults?.min ?? 0) : (min || '0');
-                const maxVal = useDefMax ? String(globalDefaults?.max ?? 100) : (max || '100');
-                const pivVal = useDefPivot ? String(globalDefaults?.pivot ?? 60) : (pivot || '60');
-                
-                params = ` ; ${mVal}, ${minVal}, ${maxVal}, ${pivVal}`;
-            }
-
-            return `{%chance[$${qid || 'stat'} ${op} ${target || '0'}${params}]}`;
-        }
-        return value;
-    };
-
-    // PARSER: Ingest prop changes
+    // --- HOOK 2 (REFACTORED): PARSER ---
+    // This hook ONLY reacts to the 'value' prop changing from the parent.
+    // Its job is to deconstruct the ScribeScript and set the internal UI state.
     useEffect(() => {
         const clean = value.trim();
-
-        if (clean === generateString().trim()) {
-            return; 
-        }
         
-        // Simple Mode Check
+        // Simple Mode: "50"
         if (/^(\d+)$/.test(clean)) {
             setMode('simple');
-            setChance(clean);
+            setChance(parseInt(clean, 10));
             return;
         }
 
-        // Logic Mode Check
-        const logicMatch = clean.match(/^\{\s*%chance\s*\[\s*\$([a-zA-Z0-9_]+)\s*(>>|<<|><|<>)\s*(\d+)\s*(?:;\s*([\d]+)\s*(?:,\s*([\d]+)\s*,\s*([\d]+)\s*(?:,\s*([\d]+))?)?)?\s*\]\s*\}$/);
+        // Logic Mode: {%chance[...]}
+        // Regex includes optional pivot capture group
+        const logicMatch = clean.match(/^\{\s*%chance\s*\[\s*\$([a-zA-Z0-9_]+)\s*(>>|<<|><|<>)\s*(\d+)\s*(?:;\s*([^,]+)\s*(?:,\s*([^,]+)\s*(?:,\s*([^,]+)\s*(?:,\s*([^,]+))?)?)?)?\s*\]\s*\}$/);
         
         if (logicMatch) {
             setMode('logic');
-            setQid(logicMatch[1]);
-            setOp(logicMatch[2]);
-            setTarget(logicMatch[3]);
+            const [, id, op, targetStr, mArg, minArg, maxArg, pivArg] = logicMatch.map(s => s?.trim());
             
-            const mArg = logicMatch[4];
-            const minArg = logicMatch[5];
-            const maxArg = logicMatch[6];
-            const pivArg = logicMatch[7];
+            setQid(id);
+            setOp(op);
+            setTarget(parseInt(targetStr, 10));
 
-            if (mArg) {
-                setUseDefMargin(false); setMargin(mArg);
-                if (minArg) { setUseDefMin(false); setMin(minArg); } else { setUseDefMin(true); }
-                if (maxArg) { setUseDefMax(false); setMax(maxArg); } else { setUseDefMax(true); }
-                if (pivArg) { setUseDefPivot(false); setPivot(pivArg); } else { setUseDefPivot(true); }
-            } else {
-                setUseDefMargin(true); setUseDefMin(true); setUseDefMax(true); setUseDefPivot(true);
-            }
+            if (mArg) { setUseDefMargin(false); setMargin(parseInt(mArg, 10) || 10); } else { setUseDefMargin(true); }
+            if (minArg) { setUseDefMin(false); setMin(parseInt(minArg, 10) || 0); } else { setUseDefMin(true); }
+            if (maxArg) { setUseDefMax(false); setMax(parseInt(maxArg, 10) || 100); } else { setUseDefMax(true); }
+            if (pivArg) { setUseDefPivot(false); setPivot(parseInt(pivArg, 10) || 60); } else { setUseDefPivot(true); }
             return;
         }
 
+        // Fallback for custom code
         setMode('manual');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [value]); 
+    }, [value]);
 
-    // BUILDER
+    // --- HOOK 3 (REFACTORED): BUILDER ---
+    // This hook ONLY reacts to changes in the internal UI state.
+    // Its job is to construct the ScribeScript string and notify the parent via onChange.
     const isFirstRun = useRef(true);
     useEffect(() => {
+        // Prevent running on initial mount before state is settled
         if (isFirstRun.current) {
             isFirstRun.current = false;
             return;
         }
-        if (mode === 'manual') return; 
+        // Manual mode is handled by SmartArea's onChange, so we don't interfere
+        if (mode === 'manual') return;
 
-        const newVal = generateString();
+        let newVal = '';
+        if (mode === 'simple') {
+            newVal = String(chance);
+        } else if (mode === 'logic') {
+            const needsCustomArgs = !useDefMargin || !useDefMin || !useDefMax || !useDefPivot;
+            let params = '';
+            if (needsCustomArgs) {
+                // Use the string from settings if default, otherwise use local number state
+                const mVal = useDefMargin ? (globalDefaults?.margin ?? 'target') : String(margin);
+                const minVal = useDefMin ? (globalDefaults?.min ?? '0') : String(min);
+                const maxVal = useDefMax ? (globalDefaults?.max ?? '100') : String(max);
+                const pivVal = useDefPivot ? (globalDefaults?.pivot ?? '60') : String(pivot);
+                params = ` ; ${mVal}, ${minVal}, ${maxVal}, ${pivVal}`;
+            }
+            newVal = `{%chance[$${qid || 'stat'} ${op} ${target}${params}]}`;
+        }
+
+        // Only call onChange if the generated string is different from the prop
         if (newVal !== value) {
             onChange(newVal);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode, qid, op, target, useDefMargin, useDefMin, useDefMax, useDefPivot, margin, min, max, pivot, chance, globalDefaults]);
+    // This extensive dependency array is correct; it ensures any UI change triggers a rebuild.
+    }, [mode, qid, op, target, useDefMargin, useDefMin, useDefMax, useDefPivot, margin, min, max, pivot, chance, globalDefaults, onChange, value]);
 
-
+    const resolveForChart = (input: string): number => {
+        try {
+            const sanitized = input.replace(/target/g, String(target)).replace(/[^-+*/0-9.() ]/g, '');
+            // eslint-disable-next-line no-new-func
+            return new Function('return ' + sanitized)();
+        } catch (e) { return 0; }
+    };
+    
     return (
         <div style={{ background: 'var(--tool-bg-input)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
-            
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
+             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
                 <button onClick={() => setMode('simple')} style={{ ...tabStyle, opacity: mode === 'simple' ? 1 : 0.5 }}>Simple %</button>
                 <button onClick={() => setMode('logic')} style={{ ...tabStyle, opacity: mode === 'logic' ? 1 : 0.5 }}>Logic Builder</button>
                 <button onClick={() => setMode('manual')} style={{ ...tabStyle, opacity: mode === 'manual' ? 1 : 0.5 }}>Manual Code</button>
             </div>
 
-            {/* SIMPLE MODE */}
             {mode === 'simple' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <label style={{ color: 'var(--tool-text-main)' }}>Success Chance:</label>
-                    <input 
-                        type="number" 
-                        className="form-input" 
-                        value={chance} 
-                        onChange={e => setChance(e.target.value)} 
-                        style={{ width: '80px', fontSize: '1.2rem', textAlign: 'center' }} 
-                        min="0" max="100"
-                    />
+                    <input type="number" className="form-input" value={chance} onChange={e => setChance(parseInt(e.target.value, 10) || 0)} style={{ width: '80px', fontSize: '1.2rem', textAlign: 'center' }} min="0" max="100"/>
                     <span style={{ fontSize: '1.2rem', color: 'var(--tool-text-main)' }}>%</span>
                 </div>
             )}
 
-            {/* LOGIC BUILDER */}
             {mode === 'logic' && (
                 <div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={miniLabel}>Stat</label>
-                            <select className="form-select" value={qid} onChange={e => setQid(e.target.value)}>
-                                <option value="">Select...</option>
-                                {qualityDefs.map(q => <option key={q.id} value={q.id}>{q.name} ({q.id})</option>)}
-                            </select>
-                        </div>
-                        <div style={{ width: '120px' }}>
-                            <label style={miniLabel}>Function</label>
-                            <select className="form-select" value={op} onChange={e => setOp(e.target.value)}>
-                                <option value=">>">Progressive</option>
-                                <option value="<<">Regressive</option>
-                                <option value="><">Precise</option>
-                                <option value="<>">Avoid</option>
-                            </select>
-                        </div>
-                        <div style={{ width: '80px' }}>
-                            <label style={miniLabel}>Target</label>
-                            <input className="form-input" type="number" value={target} onChange={e => setTarget(e.target.value)} />
-                        </div>
+                        <div style={{ flex: 1 }}><label style={miniLabel}>Stat</label><select className="form-select" value={qid} onChange={e => setQid(e.target.value)}><option value="">Select...</option>{qualityDefs.map(q => <option key={q.id} value={q.id}>{q.name} ({q.id})</option>)}</select></div>
+                        <div style={{ width: '120px' }}><label style={miniLabel}>Function</label><select className="form-select" value={op} onChange={e => setOp(e.target.value)}><option value=">>">Progressive</option><option value="<<">Regressive</option><option value="><">Precise</option><option value="<>">Avoid</option></select></div>
+                        <div style={{ width: '80px' }}><label style={miniLabel}>Target</label><input className="form-input" type="number" value={target} onChange={e => setTarget(parseInt(e.target.value, 10) || 0)} /></div>
                     </div>
 
-                    {/* INDIVIDUAL DEFAULTS ROW */}
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem', background: 'var(--tool-bg-sidebar)', padding: '0.5rem', borderRadius: '4px' }}>
-                        
-                        {/* Margin */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <label className="toggle-label" style={{fontSize: '0.75rem'}}>
-                                <input type="checkbox" checked={useDefMargin} onChange={e => setUseDefMargin(e.target.checked)} />
-                                Def. Margin ({globalDefaults?.margin ?? 10})
-                            </label>
-                            {!useDefMargin && (
-                                <input className="form-input" style={{padding: '2px 5px'}} placeholder="10" value={margin} onChange={e => setMargin(e.target.value)} />
-                            )}
+                            <label className="toggle-label" style={{fontSize: '0.75rem'}} title={String(globalDefaults?.margin ?? 'target')}><input type="checkbox" checked={useDefMargin} onChange={e => setUseDefMargin(e.target.checked)} />Def. Margin ("{globalDefaults?.margin ?? 'target'}")</label>
+                            {!useDefMargin && <input className="form-input" style={{padding: '2px 5px'}} type="number" value={margin} onChange={e => setMargin(parseInt(e.target.value, 10) || 0)} />}
                         </div>
-
-                        {/* Min */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <label className="toggle-label" style={{fontSize: '0.75rem'}}>
-                                <input type="checkbox" checked={useDefMin} onChange={e => setUseDefMin(e.target.checked)} />
-                                Def. Min ({globalDefaults?.min ?? 0}%)
-                            </label>
-                            {!useDefMin && (
-                                <input className="form-input" style={{padding: '2px 5px'}} placeholder="0" value={min} onChange={e => setMin(e.target.value)} />
-                            )}
+                            <label className="toggle-label" style={{fontSize: '0.75rem'}} title={String(globalDefaults?.min ?? '0')}><input type="checkbox" checked={useDefMin} onChange={e => setUseDefMin(e.target.checked)} />Def. Min ({globalDefaults?.min ?? 0}%)</label>
+                            {!useDefMin && <input className="form-input" style={{padding: '2px 5px'}} type="number" value={min} onChange={e => setMin(parseInt(e.target.value, 10) || 0)} />}
                         </div>
-
-                        {/* Max */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <label className="toggle-label" style={{fontSize: '0.75rem'}}>
-                                <input type="checkbox" checked={useDefMax} onChange={e => setUseDefMax(e.target.checked)} />
-                                Def. Max ({globalDefaults?.max ?? 100}%)
-                            </label>
-                            {!useDefMax && (
-                                <input className="form-input" style={{padding: '2px 5px'}} placeholder="100" value={max} onChange={e => setMax(e.target.value)} />
-                            )}
+                            <label className="toggle-label" style={{fontSize: '0.75rem'}} title={String(globalDefaults?.max ?? '100')}><input type="checkbox" checked={useDefMax} onChange={e => setUseDefMax(e.target.checked)} />Def. Max ({globalDefaults?.max ?? 100}%)</label>
+                            {!useDefMax && <input className="form-input" style={{padding: '2px 5px'}} type="number" value={max} onChange={e => setMax(parseInt(e.target.value, 10) || 0)} />}
                         </div>
-
-                        {/* Pivot */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <label className="toggle-label" style={{fontSize: '0.75rem'}}>
-                                <input type="checkbox" checked={useDefPivot} onChange={e => setUseDefPivot(e.target.checked)} />
-                                Def. Pivot ({globalDefaults?.pivot ?? 60}%)
-                            </label>
-                            {!useDefPivot && (
-                                <input className="form-input" style={{padding: '2px 5px'}} placeholder="60" value={pivot} onChange={e => setPivot(e.target.value)} />
-                            )}
+                            <label className="toggle-label" style={{fontSize: '0.75rem'}} title={String(globalDefaults?.pivot ?? '60')}><input type="checkbox" checked={useDefPivot} onChange={e => setUseDefPivot(e.target.checked)} />Def. Pivot ({globalDefaults?.pivot ?? 60}%)</label>
+                            {!useDefPivot && <input className="form-input" style={{padding: '2px 5px'}} type="number" value={pivot} onChange={e => setPivot(parseInt(e.target.value, 10) || 0)} />}
                         </div>
                     </div>
                     
-                     <div style={{ 
-                        marginTop: '0.5rem', 
-                        minHeight: '120px',
-                        width: '100%', 
-                        border: '1px solid var(--tool-border)', 
-                        background: 'var(--tool-bg-code-editor)',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        flexDirection: 'column'
-                    }}>
+                    <div style={{ marginTop: '0.5rem', minHeight: '120px', width: '100%', border: '1px solid var(--tool-border)', background: 'var(--tool-bg-code-editor)', overflow: 'hidden', position: 'relative', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
                         <ProbabilityChart 
                             operator={op} 
-                            target={parseInt(target)||50} 
-                            margin={resolveForChart(useDefMargin ? (globalDefaults?.margin ?? 10) : margin)} 
-                            minCap={resolveForChart(useDefMin ? (globalDefaults?.min ?? 0) : min)} 
-                            maxCap={resolveForChart(useDefMax ? (globalDefaults?.max ?? 100) : max)} 
-                            pivot={resolveForChart(useDefPivot ? (globalDefaults?.pivot ?? 60) : pivot)} 
+                            target={target} 
+                            margin={resolveForChart(useDefMargin ? (globalDefaults?.margin ?? 'target') : String(margin))} 
+                            minCap={resolveForChart(useDefMin ? (globalDefaults?.min ?? '0') : String(min))} 
+                            maxCap={resolveForChart(useDefMax ? (globalDefaults?.max ?? '100') : String(max))} 
+                            pivot={resolveForChart(useDefPivot ? (globalDefaults?.pivot ?? '60') : String(pivot))} 
                         />
                     </div>
                 </div>
             )}
 
-            {/* MANUAL MODE */}
             {mode === 'manual' && (
-                <SmartArea 
-                    value={value} 
-                    onChange={onChange} 
-                    storyId={storyId} 
-                    mode="condition" 
-                    qualityDefs={qualityDefs} 
-                    minHeight="80px"
-                    placeholder="{%chance[$stat >> 50]}"
-                />
+                <SmartArea value={value} onChange={onChange} storyId={storyId} mode="condition" qualityDefs={qualityDefs} minHeight="80px" placeholder="{%chance[$stat >> 50]}"/>
             )}
         </div>
     );

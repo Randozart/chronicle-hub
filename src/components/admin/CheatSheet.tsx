@@ -3,10 +3,28 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import SparkleIcon from '@/components/icons/SparkleIcon';
+const LOCAL_STORAGE_KEY = 'scribe_cheatsheet_is_open';
 
 export default function CheatSheet() {
-    const [isOpen, setIsOpen] = useState(true); 
+    // 2. Initialize state to null to avoid hydration errors
+    const [isOpen, setIsOpen] = useState<boolean | null>(null); 
     const [isMobile, setIsMobile] = useState(false);
+
+    // 3. Add hooks for persistence
+    useEffect(() => {
+        // On initial client-side mount, read the saved state.
+        // Default to 'false' (closed) if no preference is saved yet.
+        const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
+        setIsOpen(savedState ? JSON.parse(savedState) : true);
+    }, []);
+
+    useEffect(() => {
+        // Whenever isOpen changes, write the new value to localStorage.
+        // We check for null to avoid writing the initial undetermined state.
+        if (isOpen !== null) {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(isOpen));
+        }
+    }, [isOpen]);
 
     // Hydration-safe mobile check
     useEffect(() => {
@@ -15,9 +33,12 @@ export default function CheatSheet() {
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+    
+    // 4. Render nothing until the state is loaded from localStorage
+    if (isOpen === null) {
+        return null; 
+    }
 
-    // ON MOBILE: Always render content (The Layout Drawer handles visibility)
-    // ON DESKTOP: Respect the toggle state
     const showContent = isMobile || isOpen;
 
     if (!isOpen) {
@@ -28,8 +49,7 @@ export default function CheatSheet() {
                 style={{ 
                     width: '40px', 
                     borderLeft: '1px solid var(--tool-border)',
-                    background: 'var(--tool-bg-sidebar)'
-,
+                    background: 'var(--tool-bg-sidebar)',
                     color: 'var(--tool-text-dim)',
                     cursor: 'pointer',
                     writingMode: 'vertical-rl',
@@ -39,8 +59,8 @@ export default function CheatSheet() {
                     letterSpacing: '2px',
                     transition: 'background 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#21252b'}
-                onMouseLeave={(e) => e.currentTarget.style.background = '#181a1f'}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--tool-bg-header)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--tool-bg-sidebar)'}
             >
                 REFERENCE
             </button>
@@ -48,7 +68,7 @@ export default function CheatSheet() {
     }
 
     return (
-<div className="cheat-sheet-container" style={{ width: isMobile ? '100%' : '320px', display: 'flex', flexDirection: 'column', height: '100%' }}>            
+        <div className="cheat-sheet-container" style={{ width: isMobile ? '100%' : '320px', display: 'flex', flexDirection: 'column', height: '100%' }}>            
             {/* FIXED HEADER - Clickable to Close */}
             <div 
                 className="cheat-sheet-header" 
