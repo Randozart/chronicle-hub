@@ -216,7 +216,6 @@ export class GameEngine implements EngineContext {
     }
 
     // === MAIN RESOLUTION FLOW ===
-
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
         this.changes = [];
         this.scheduledUpdates = [];
@@ -228,25 +227,32 @@ export class GameEngine implements EngineContext {
         const challengeResult = this.evaluateChallenge(option.challenge);
         const isSuccess = challengeResult.wasSuccess;
         
+        // 1. Select Content based on Success/Failure
         const bodyTemplate = isSuccess ? option.pass_long : option.fail_long || "";
+        const metaTemplate = isSuccess ? option.pass_meta : option.fail_meta; 
         
         const changeString = isSuccess ? option.pass_quality_change : option.fail_quality_change;
         const redirectId = isSuccess ? option.pass_redirect : option.fail_redirect;
         const moveToId = isSuccess ? option.pass_move_to : option.fail_move_to;
         
+        // 2. Evaluate Text
         let finalBody = this.evaluateText(bodyTemplate);
+        let finalMeta = metaTemplate ? this.evaluateText(metaTemplate) : undefined; 
 
         if (changeString) {
             this.applyEffects(changeString);
         }
 
+        // 3. Post-Effect Re-evaluation (if tagged)
         if (option.tags?.includes('post_effects_eval')) {
             finalBody = this.evaluateText(bodyTemplate);
+            if (metaTemplate) finalMeta = this.evaluateText(metaTemplate); 
         }
         
         return { 
             wasSuccess: isSuccess, 
             body: finalBody, 
+            metatext: finalMeta, 
             redirectId, 
             moveToId, 
             qualityChanges: this.changes, 
