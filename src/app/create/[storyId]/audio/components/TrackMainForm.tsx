@@ -51,15 +51,13 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
 
     return (
         <div className="h-full flex flex-col relative" style={{ paddingBottom: '80px' }}>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflow: 'auto' }}>
                 <TrackEditor 
                     data={form} 
                     onSave={() => {}} // Disabled
                     onDelete={() => {}} // Disabled
                     availableInstruments={availableInstruments}
                     onUpdateInstrument={() => {}} 
-                    // This prop hooks the editor source back to the form state
-                    // The TrackEditor must be updated to call this when its internal source changes
                     onChange={(newSource) => handleChange('source', newSource)}
                 />
             </div>

@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import SettingsMainInfo from './components/SettingsMainInfo';
 import SettingsSection from './components/SettingsSection';
 import SettingsVisuals from './components/SettingsVisuals';
-import SettingsGameSystem from './components/SettingsGameSystem'; // NEW
+import SettingsGameSystem from './components/SettingsGameSystem'; 
 import CharCreateEditor from './components/CharCreateEditor';
 import DataManagement from './components/DataManagement';
 import CollaboratorManager from './components/CollaboratorManager';

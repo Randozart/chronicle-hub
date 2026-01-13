@@ -100,7 +100,6 @@ export async function GET(request: NextRequest) {
             characterName: charMap[w.worldId]
         }));
         
-        // --- THE FIX ---
         // Ensure that even if DB calls return null/undefined, we always send an empty array.
         // This prevents the client from crashing with "Cannot read properties of undefined (reading 'map')"
         return NextResponse.json({ 

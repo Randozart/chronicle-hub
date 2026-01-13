@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { updateTag } from 'next/cache'; 
+import { revalidateTag } from 'next/cache'; 
 import clientPromise from '@/engine/database';
 import { WorldConfig, Storylet, Opportunity, WorldSettings, PlayerQualities } from './models';
 
@@ -17,7 +17,6 @@ export const getWorldState = async (worldId: string): Promise<PlayerQualities> =
     return (world?.worldState as PlayerQualities) || {};
 };
 
-// --- FIX IS HERE ---
 // This helper is now robust and handles both Objects and Arrays from the database.
 const injectIds = <T>(data: Record<string, T> | T[] | undefined): Record<string, T> | T[] => {
     if (!data) {
@@ -146,7 +145,7 @@ export const updateWorldConfigItem = async (
     if (result.acknowledged) {
         const tag = `world-${worldId}`;
         console.log(`[Cache] Invalidating tag '${tag}' due to update in ${category}`);
-        updateTag(tag); 
+        revalidateTag(tag, ''); 
     }
 
     return result.acknowledged;
@@ -170,7 +169,7 @@ export const deleteWorldConfigItem = async (
     if (result.acknowledged) {
         const tag = `world-${worldId}`;
         console.log(`[Cache] Invalidating tag '${tag}' due to deletion in ${category}`);
-        updateTag(tag); 
+        revalidateTag(tag, ''); 
     }
 
     return result.acknowledged;
@@ -242,7 +241,7 @@ export const updateStoryletOrCard = async (
 
     if (result.success) {
         if (process.env.NODE_ENV !== 'production') console.log(`[Cache] Invalidating ${collectionName}-${worldId}`);
-        updateTag(`${collectionName}-${worldId}`);
+        revalidateTag(`${collectionName}-${worldId}`, '');
         return { success: true, newVersion: result.newVersion };
     }
 
@@ -268,7 +267,7 @@ export const deleteStoryletOrCard = async (
             const tag = `storylets-${worldId}`;
             console.log(`[Cache] Invalidating tag '${tag}' due to deletion of ${id}`);
             
-            updateTag(tag); 
+            revalidateTag(tag, ''); 
         }
 
         return result.acknowledged;

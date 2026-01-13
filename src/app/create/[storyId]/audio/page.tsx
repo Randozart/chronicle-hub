@@ -290,7 +290,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                             onDelete={handleDeleteRequest}
                             onDuplicate={openDuplicateModal as (d: LigatureTrack) => void}
                             storyId={storyId}
-                            availableInstruments={allAvailableInstruments} // Pass merged list
+                            availableInstruments={allAvailableInstruments}
                             guardRef={guardRef}
                         />
                     )

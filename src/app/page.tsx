@@ -48,7 +48,6 @@ export default function Dashboard() {
 
     if (status === 'loading') return <div className="loading-container">Loading Studio...</div>;
 
-    // --- THE FIX ---
     // The raw 'data' from the API can be messy. We will create a clean, reliable list here.
     const getCleanDisplayList = () => {
         if (!data) return [];
