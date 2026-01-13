@@ -10,6 +10,7 @@ import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/providers/ToastProvider';
 import { FormGuard } from '@/hooks/useCreatorForm';
+import ConnectivitySidebar from '@/components/admin/ConnectivitySidebar';
 
 export default function OpportunitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -255,6 +256,7 @@ export default function OpportunitiesAdmin({ params }: { params: Promise<{ story
                     <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a card</div>
                 )}
             </div>
+            <ConnectivitySidebar storyId={storyId} currentItemId={selectedId} />
 
             {/* Modals */}
             <InputModal

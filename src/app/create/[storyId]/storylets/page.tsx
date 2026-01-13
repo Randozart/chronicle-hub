@@ -11,6 +11,7 @@ import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal'; // New
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/providers/ToastProvider';
 import { FormGuard } from '@/hooks/useCreatorForm';
+import ConnectivitySidebar from '@/components/admin/ConnectivitySidebar';
 
 export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -269,6 +270,9 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
                     <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a storylet</div>
                 )}
             </div>
+            
+            <ConnectivitySidebar storyId={storyId} currentItemId={selectedId} />
+
 
             {/* Input Modal */}
             <InputModal

@@ -10,6 +10,7 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
 import { FormGuard } from '@/hooks/useCreatorForm';
+import ConnectivitySidebar from '@/components/admin/ConnectivitySidebar';
 
 export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
@@ -215,6 +216,8 @@ export default function QualitiesAdmin({ params }: { params: Promise<{ storyId: 
                     />
                 ) : <div style={{color:'#777', textAlign:'center', marginTop:'20%'}}>Select a quality</div>}
             </div>
+            
+            <ConnectivitySidebar storyId={storyId} currentItemId={selectedId} />
 
             {/* Modals */}
             <InputModal
