@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ResolveOption, QualityDefinition } from '@/engine/models';
+import { ResolveOption, QualityDefinition, WorldSettings } from '@/engine/models';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
@@ -106,12 +106,12 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
             {/* DIFFICULTY / RISK CONFIGURATION */}
             <div className="special-field-group" style={{ 
                 marginTop: '1.5rem', 
-                borderColor: hasDifficulty ? '#f1c40f' : 'var(--tool-border)',
-                background: hasDifficulty ? 'rgba(241, 196, 15, 0.05)' : 'transparent'
+                borderColor: hasDifficulty ? 'var(--warning-color)' : 'var(--tool-border)',
+                background: hasDifficulty ? 'var(--warning-bg)' : 'transparent'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasDifficulty ? '1rem' : '0' }}>
                     <label className="special-label" style={{ 
-                        color: hasDifficulty ? '#f1c40f' : 'var(--tool-text-dim)', 
+                        color: hasDifficulty ? 'var(--warning-color)' : 'var(--tool-text-dim)', 
                         margin: 0,
                         position: 'relative', top: 'auto', left: 'auto', background: 'none', padding: 0
                     }}>
@@ -181,18 +181,20 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
 
 function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { value: string, onChange: (v: string) => void, qualityDefs: QualityDefinition[], storyId: string }) {
     const [mode, setMode] = useState<'simple' | 'logic' | 'manual'>('manual');
-    
+    const [globalDefaults, setGlobalDefaults] = useState<{margin: number, min: number, max: number, pivot: number} | null>(null);
+
     // Logic State
     const [qid, setQid] = useState('');
     const [op, setOp] = useState('>>');
     const [target, setTarget] = useState('50');
     
-    // Independent Defaults
+    // Independent Defaults Flags
     const [useDefMargin, setUseDefMargin] = useState(true);
     const [useDefMin, setUseDefMin] = useState(true);
     const [useDefMax, setUseDefMax] = useState(true);
     const [useDefPivot, setUseDefPivot] = useState(true);
     
+    // Local Overrides
     const [margin, setMargin] = useState('10');
     const [min, setMin] = useState('0');
     const [max, setMax] = useState('100');
@@ -200,6 +202,53 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
     
     // Simple State
     const [chance, setChance] = useState('50');
+
+    // 1. Fetch Global Settings on Mount
+    useEffect(() => {
+        fetch(`/api/admin/settings?storyId=${storyId}`)
+            .then(res => res.json())
+            .then((settings: WorldSettings) => {
+                if (settings.challengeConfig) {
+                    // Note: defaultMargin might be a string like "$target". 
+                    // For visualization, we need a number. We'll parse or fallback.
+                    const defMargin = parseInt(settings.challengeConfig.defaultMargin || '10') || 10;
+                    setGlobalDefaults({
+                        margin: defMargin,
+                        min: settings.challengeConfig.minCap ?? 0,
+                        max: settings.challengeConfig.maxCap ?? 100,
+                        pivot: settings.challengeConfig.basePivot ?? 60
+                    });
+                } else {
+                    setGlobalDefaults({ margin: 10, min: 0, max: 100, pivot: 60 });
+                }
+            })
+            .catch(err => console.error("Failed to load settings for defaults", err));
+    }, [storyId]);
+
+    // Helpers to get effective values for UI/Chart
+    const getEffectiveMargin = () => useDefMargin ? (globalDefaults?.margin ?? 10) : (parseInt(margin) || 10);
+    const getEffectiveMin = () => useDefMin ? (globalDefaults?.min ?? 0) : (parseInt(min) || 0);
+    const getEffectiveMax = () => useDefMax ? (globalDefaults?.max ?? 100) : (parseInt(max) || 100);
+    const getEffectivePivot = () => useDefPivot ? (globalDefaults?.pivot ?? 60) : (parseInt(pivot) || 60);
+    
+    const resolveForChart = (input: string | number): number => {
+        const valStr = String(input);
+        const tVal = parseInt(target) || 50;
+
+        // 1. Is it a number?
+        if (!isNaN(Number(valStr))) return Number(valStr);
+
+        // 2. Is it a simple formula?
+        try {
+            // Replace 'target' with actual number
+            // Sanitize to only allow basic math characters to prevent injection
+            const sanitized = valStr.replace(/target/g, String(tVal)).replace(/[^-+*/0-9.() ]/g, '');
+            // eslint-disable-next-line no-new-func
+            return new Function('return ' + sanitized)();
+        } catch (e) {
+            return 0; // Fallback
+        }
+    };
 
     // Helper to generate the string based on current state
     const generateString = () => {
@@ -211,10 +260,11 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
             
             let params = '';
             if (needsCustomArgs) {
-                const mVal = useDefMargin ? '10' : (margin || '10');
-                const minVal = useDefMin ? '0' : (min || '0');
-                const maxVal = useDefMax ? '100' : (max || '100');
-                const pivVal = useDefPivot ? '60' : (pivot || '60');
+                const mVal = useDefMargin ? String(globalDefaults?.margin ?? 10) : (margin || '10');
+                const minVal = useDefMin ? String(globalDefaults?.min ?? 0) : (min || '0');
+                const maxVal = useDefMax ? String(globalDefaults?.max ?? 100) : (max || '100');
+                const pivVal = useDefPivot ? String(globalDefaults?.pivot ?? 60) : (pivot || '60');
+                
                 params = ` ; ${mVal}, ${minVal}, ${maxVal}, ${pivVal}`;
             }
 
@@ -238,8 +288,7 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
             return;
         }
 
-        // Logic Mode Check: {%chance[$q op target ...]}
-        // Groups: 1=id, 2=op, 3=target, 4=margin, 5=min, 6=max, 7=pivot
+        // Logic Mode Check
         const logicMatch = clean.match(/^\{\s*%chance\s*\[\s*\$([a-zA-Z0-9_]+)\s*(>>|<<|><|<>)\s*(\d+)\s*(?:;\s*([\d]+)\s*(?:,\s*([\d]+)\s*,\s*([\d]+)\s*(?:,\s*([\d]+))?)?)?\s*\]\s*\}$/);
         
         if (logicMatch) {
@@ -248,30 +297,18 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
             setOp(logicMatch[2]);
             setTarget(logicMatch[3]);
             
-            // Logic for args:
             const mArg = logicMatch[4];
             const minArg = logicMatch[5];
             const maxArg = logicMatch[6];
             const pivArg = logicMatch[7];
 
             if (mArg) {
-                setUseDefMargin(false);
-                setMargin(mArg);
-                
-                if (minArg) { setUseDefMin(false); setMin(minArg); } 
-                else { setUseDefMin(true); }
-
-                if (maxArg) { setUseDefMax(false); setMax(maxArg); } 
-                else { setUseDefMax(true); }
-
-                if (pivArg) { setUseDefPivot(false); setPivot(pivArg); }
-                else { setUseDefPivot(true); }
-
+                setUseDefMargin(false); setMargin(mArg);
+                if (minArg) { setUseDefMin(false); setMin(minArg); } else { setUseDefMin(true); }
+                if (maxArg) { setUseDefMax(false); setMax(maxArg); } else { setUseDefMax(true); }
+                if (pivArg) { setUseDefPivot(false); setPivot(pivArg); } else { setUseDefPivot(true); }
             } else {
-                setUseDefMargin(true);
-                setUseDefMin(true);
-                setUseDefMax(true);
-                setUseDefPivot(true);
+                setUseDefMargin(true); setUseDefMin(true); setUseDefMax(true); setUseDefPivot(true);
             }
             return;
         }
@@ -294,13 +331,13 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
             onChange(newVal);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode, qid, op, target, useDefMargin, useDefMin, useDefMax, useDefPivot, margin, min, max, pivot, chance]);
+    }, [mode, qid, op, target, useDefMargin, useDefMin, useDefMax, useDefPivot, margin, min, max, pivot, chance, globalDefaults]);
 
 
     return (
-        <div style={{ background: '#21252b', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
+        <div style={{ background: 'var(--tool-bg-input)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
             
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
                 <button onClick={() => setMode('simple')} style={{ ...tabStyle, opacity: mode === 'simple' ? 1 : 0.5 }}>Simple %</button>
                 <button onClick={() => setMode('logic')} style={{ ...tabStyle, opacity: mode === 'logic' ? 1 : 0.5 }}>Logic Builder</button>
                 <button onClick={() => setMode('manual')} style={{ ...tabStyle, opacity: mode === 'manual' ? 1 : 0.5 }}>Manual Code</button>
@@ -309,7 +346,7 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
             {/* SIMPLE MODE */}
             {mode === 'simple' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <label style={{ color: '#ccc' }}>Success Chance:</label>
+                    <label style={{ color: 'var(--tool-text-main)' }}>Success Chance:</label>
                     <input 
                         type="number" 
                         className="form-input" 
@@ -318,7 +355,7 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
                         style={{ width: '80px', fontSize: '1.2rem', textAlign: 'center' }} 
                         min="0" max="100"
                     />
-                    <span style={{ fontSize: '1.2rem', color: '#ccc' }}>%</span>
+                    <span style={{ fontSize: '1.2rem', color: 'var(--tool-text-main)' }}>%</span>
                 </div>
             )}
 
@@ -349,13 +386,13 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
                     </div>
 
                     {/* INDIVIDUAL DEFAULTS ROW */}
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem', background: '#181a1f', padding: '0.5rem', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem', background: 'var(--tool-bg-sidebar)', padding: '0.5rem', borderRadius: '4px' }}>
                         
                         {/* Margin */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <label className="toggle-label" style={{fontSize: '0.75rem'}}>
                                 <input type="checkbox" checked={useDefMargin} onChange={e => setUseDefMargin(e.target.checked)} />
-                                Default Margin (10)
+                                Def. Margin ({globalDefaults?.margin ?? 10})
                             </label>
                             {!useDefMargin && (
                                 <input className="form-input" style={{padding: '2px 5px'}} placeholder="10" value={margin} onChange={e => setMargin(e.target.value)} />
@@ -366,7 +403,7 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <label className="toggle-label" style={{fontSize: '0.75rem'}}>
                                 <input type="checkbox" checked={useDefMin} onChange={e => setUseDefMin(e.target.checked)} />
-                                Default Min (0%)
+                                Def. Min ({globalDefaults?.min ?? 0}%)
                             </label>
                             {!useDefMin && (
                                 <input className="form-input" style={{padding: '2px 5px'}} placeholder="0" value={min} onChange={e => setMin(e.target.value)} />
@@ -377,18 +414,18 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <label className="toggle-label" style={{fontSize: '0.75rem'}}>
                                 <input type="checkbox" checked={useDefMax} onChange={e => setUseDefMax(e.target.checked)} />
-                                Default Max (100%)
+                                Def. Max ({globalDefaults?.max ?? 100}%)
                             </label>
                             {!useDefMax && (
                                 <input className="form-input" style={{padding: '2px 5px'}} placeholder="100" value={max} onChange={e => setMax(e.target.value)} />
                             )}
                         </div>
 
-                        {/* Pivot (NEW) */}
+                        {/* Pivot */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <label className="toggle-label" style={{fontSize: '0.75rem'}}>
                                 <input type="checkbox" checked={useDefPivot} onChange={e => setUseDefPivot(e.target.checked)} />
-                                Default Pivot (60)
+                                Def. Pivot ({globalDefaults?.pivot ?? 60}%)
                             </label>
                             {!useDefPivot && (
                                 <input className="form-input" style={{padding: '2px 5px'}} placeholder="60" value={pivot} onChange={e => setPivot(e.target.value)} />
@@ -396,13 +433,12 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
                         </div>
                     </div>
                     
-                    {/* Visualizer Container */}
-                    <div style={{ 
+                     <div style={{ 
                         marginTop: '0.5rem', 
                         minHeight: '120px',
                         width: '100%', 
-                        border: '1px solid #333', 
-                        background: '#111',
+                        border: '1px solid var(--tool-border)', 
+                        background: 'var(--tool-bg-code-editor)',
                         overflow: 'hidden',
                         position: 'relative',
                         borderRadius: '4px',
@@ -412,10 +448,10 @@ function ChallengeConfigurator({ value, onChange, qualityDefs, storyId }: { valu
                         <ProbabilityChart 
                             operator={op} 
                             target={parseInt(target)||50} 
-                            margin={useDefMargin ? 10 : parseInt(margin)||10} 
-                            minCap={useDefMin ? 0 : parseInt(min)||0} 
-                            maxCap={useDefMax ? 100 : parseInt(max)||100} 
-                            pivot={useDefPivot ? 60 : parseInt(pivot)||60} 
+                            margin={resolveForChart(useDefMargin ? (globalDefaults?.margin ?? 10) : margin)} 
+                            minCap={resolveForChart(useDefMin ? (globalDefaults?.min ?? 0) : min)} 
+                            maxCap={resolveForChart(useDefMax ? (globalDefaults?.max ?? 100) : max)} 
+                            pivot={resolveForChart(useDefPivot ? (globalDefaults?.pivot ?? 60) : pivot)} 
                         />
                     </div>
                 </div>
@@ -493,10 +529,10 @@ function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityD
 }
 
 const tabStyle: React.CSSProperties = {
-    background: 'none', border: 'none', color: '#61afef', 
+    background: 'none', border: 'none', color: 'var(--tool-accent)', 
     cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold'
 };
 
 const miniLabel: React.CSSProperties = {
-    display: 'block', fontSize: '0.7rem', color: '#888', marginBottom: '2px'
+    display: 'block', fontSize: '0.7rem', color: 'var(--tool-text-dim)', marginBottom: '2px'
 };

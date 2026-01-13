@@ -56,7 +56,8 @@ export function evaluateText(
     aliases: Record<string, string> | null = {},
     errors?: string[],
     logger?: TraceLogger,
-    depth: number = 0
+    depth: number = 0,
+    locals?: Record<string, number | string> 
 ): string {
     if (!rawText) return '';
     if (selfContext && depth === 0) {
@@ -70,7 +71,7 @@ export function evaluateText(
     const effectiveAliases = aliases || {}; 
     
     try {
-        return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors, logger, depth);
+        return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors, logger, depth, locals);
     } catch (e: any) {
         const msg = `Fatal Parser Error: ${e.message}`;
         console.error(msg);
@@ -89,7 +90,8 @@ function evaluateRecursive(
     resolutionRoll: number,
     errors?: string[],
     logger?: TraceLogger,
-    depth: number = 0
+    depth: number = 0,
+    locals?: Record<string, number | string>
 ): string {
     let currentText = text;
     let currentBlock = ""; 
@@ -107,8 +109,7 @@ function evaluateRecursive(
                 logger(`Eval: ${blockWithBraces}`, depth);
             }
 
-            const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1);
-            const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
+            const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, locals);            const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
             if (logger && context === 'TEXT' && safeValue !== "") {
                  logger(`Result: "${safeValue}"`, depth, 'SUCCESS');
             }
@@ -117,8 +118,7 @@ function evaluateRecursive(
         }
 
         if (context === 'LOGIC') {
-            return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth).toString();
-        } else {
+            return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, locals).toString();        } else {
             return currentText;
         }
     } catch (e: any) {
@@ -140,12 +140,27 @@ function evaluateExpression(
     resolutionRoll: number,
     errors?: string[],
     logger?: TraceLogger,
-    depth: number = 0
+    depth: number = 0,
+    locals?: Record<string, number | string>
 ): string | number | boolean {
     const cleanExpr = expr.replace(/\/\/.*$/gm, '').trim();
     if (!cleanExpr) return "";
-    const trimmedExpr = cleanExpr; 
+    let trimmedExpr = cleanExpr; 
     
+    if (locals) {
+        // Sort keys by length desc to prevent partial matching (e.g. 'targets' vs 'target')
+        const localKeys = Object.keys(locals).sort((a, b) => b.length - a.length);
+        
+        for (const key of localKeys) {
+            // Regex to match whole word only
+            const regex = new RegExp(`\\b${key}\\b`, 'g');
+            if (regex.test(trimmedExpr)) {
+                const val = locals[key];
+                trimmedExpr = trimmedExpr.replace(regex, String(val));
+                if (logger && depth < 2) logger(`Local '${key}' -> ${val}`, depth, 'INFO');
+            }
+        }
+    }
     // 1. Alias Assignment
     const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
     if (assignmentMatch) {

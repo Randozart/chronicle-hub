@@ -94,7 +94,11 @@ export class GameEngine implements EngineContext {
     });
 }
 
-    public evaluateText(rawText: string | undefined, context?: { qid: string, state: QualityState }): string {
+    public evaluateText(
+        rawText: string | undefined, 
+        context?: { qid: string, state: QualityState },
+        locals?: Record<string, number | string> 
+    ): string {
          if (this._logger && rawText) {
             this._logger(rawText, 'EVAL');
         }
@@ -107,7 +111,8 @@ export class GameEngine implements EngineContext {
             this.tempAliases,
             this.errors,
             (msg, depth, type) => this.traceLog(msg, depth, type),
-            0 
+            0,
+            locals
         );
     }
 
@@ -285,16 +290,127 @@ export class GameEngine implements EngineContext {
 
     private evaluateChallenge(challengeString?: string): SkillCheckResult {
         if (!challengeString) return { wasSuccess: true, roll: -1, targetChance: 100, description: "" };
-        const chanceStr = this.evaluateText(`{${challengeString}}`);
-        const targetChance = parseInt(chanceStr, 10) || 100;
+
+        // A. Extract content from {%chance[ ... ]} or { ... }
+        let clean = challengeString.trim();
+        if (clean.startsWith('{%chance[')) clean = clean.replace(/^{%chance\[|\]}$/g, '');
+        else if (clean.startsWith('{')) clean = clean.replace(/^{|}$/g, '');
+
+        // B. Split Logic vs Args
+        // Format: $stat >> target ; margin, min, max, pivot
+        const parts = clean.split(';'); 
+        const mainLogic = parts[0]; 
+        const argsStr = parts[1] || '';
+
+        // C. Parse Operator and Sides ($stat >> target)
+        // We look for the standard operators.
+        const opMatch = mainLogic.match(/(>>|<<|><|<>|==|!=)/);
+        if (!opMatch) {
+            // Fallback for simple percentage "{ 50 }%"
+            const val = parseInt(this.evaluateText(`{${mainLogic}}`), 10);
+            return { 
+                wasSuccess: this.resolutionRoll <= val, 
+                roll: Math.floor(this.resolutionRoll), 
+                targetChance: val, 
+                description: `Flat Chance: ${val}%`
+            };
+        }
+        
+        const operator = opMatch[0];
+        const [leftRaw, rightRaw] = mainLogic.split(operator);
+
+        // D. Resolve Skill and Target
+        // We evaluate these normally first.
+        const skillVal = parseFloat(this.evaluateText(`{${leftRaw}}`));
+        const targetVal = parseFloat(this.evaluateText(`{${rightRaw}}`));
+
+        // E. Resolve Configuration (Margin, etc) with LOCAL CONTEXT
+        const defaults = this.worldContent.settings.challengeConfig || {};
+
+        let marginExpr = defaults.defaultMargin ? String(defaults.defaultMargin) : 'target';
+        let minExpr = String(defaults.minCap ?? '0');
+        let maxExpr = String(defaults.maxCap ?? '100');
+        let pivotExpr = String(defaults.basePivot ?? '60');
+
+        // Override with arguments if present
+        if (argsStr) {
+            const args = argsStr.split(',').map(s => s.trim());
+            if (args[0]) marginExpr = args[0];
+            if (args[1]) minExpr = args[1];
+            if (args[2]) maxExpr = args[2];
+            if (args[3]) pivotExpr = args[3];
+        }
+
+        // F. EVALUATE PARAMETERS WITH { target: targetVal }
+        const localScope = { target: targetVal };
+
+        const marginVal = parseFloat(this.evaluateText(`{${marginExpr}}`, undefined, localScope));
+        const minVal = parseFloat(this.evaluateText(`{${minExpr}}`, undefined, localScope));
+        const maxVal = parseFloat(this.evaluateText(`{${maxExpr}}`, undefined, localScope));
+        const pivotVal = parseFloat(this.evaluateText(`{${pivotExpr}}`, undefined, localScope));
+
+        // G. Calculate
+        const finalChance = this.calculateChanceMath(
+            skillVal, 
+            operator, 
+            targetVal, 
+            isNaN(marginVal) ? 10 : marginVal, 
+            isNaN(minVal) ? 0 : minVal, 
+            isNaN(maxVal) ? 100 : maxVal, 
+            isNaN(pivotVal) ? 60 : pivotVal
+        );
         
         return { 
-            wasSuccess: this.resolutionRoll <= targetChance, 
+            wasSuccess: this.resolutionRoll <= finalChance, 
             roll: Math.floor(this.resolutionRoll), 
-            targetChance, 
-            description: `Rolled ${Math.floor(this.resolutionRoll)} vs ${targetChance}%` 
+            targetChance: Math.floor(finalChance), 
+            description: `Rolled ${Math.floor(this.resolutionRoll)} vs ${Math.floor(finalChance)}%` 
         };
     }
+
+    private calculateChanceMath(skill: number, op: string, target: number, margin: number, min: number, max: number, pivot: number): number {
+        const lowerBound = target - margin;
+        const upperBound = target + margin;
+        const pivotDecimal = pivot / 100;
+        let chance = 0;
+
+        if (op === '>>' || op === '>=') {
+            if (skill <= lowerBound) chance = 0;
+            else if (skill >= upperBound) chance = 1;
+            else if (skill < target) {
+                const range = target - lowerBound;
+                chance = range <= 0 ? 0.5 : ((skill - lowerBound) / range) * pivotDecimal;
+            } else {
+                const range = upperBound - target;
+                chance = range <= 0 ? 0.5 : pivotDecimal + ((skill - target) / range) * (1 - pivotDecimal);
+            }
+        } 
+        else if (op === '<<' || op === '<=') {
+            let inv = 0;
+            if (skill <= lowerBound) inv = 0;
+            else if (skill >= upperBound) inv = 1;
+            else if (skill < target) {
+                const range = target - lowerBound;
+                inv = range <= 0 ? 0.5 : ((skill - lowerBound) / range) * pivotDecimal;
+            } else {
+                const range = upperBound - target;
+                inv = range <= 0 ? 0.5 : pivotDecimal + ((skill - target) / range) * (1 - pivotDecimal);
+            }
+            chance = 1.0 - inv;
+        }
+        else if (op === '==' || op === '><') {
+            const dist = Math.abs(skill - target);
+            chance = dist >= margin ? 0 : 1.0 - (dist / margin);
+        }
+        else if (op === '!=' || op === '<>') {
+            const dist = Math.abs(skill - target);
+            chance = dist >= margin ? 1.0 : (dist / margin);
+        }
+
+        let percent = chance * 100;
+        return Math.max(min, Math.min(max, percent));
+    }
+
 
     // === API Wrappers ===
 

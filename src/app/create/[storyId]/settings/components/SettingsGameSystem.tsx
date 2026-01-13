@@ -93,10 +93,9 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                 <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-main)', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
                     Challenge Physics
                 </h4>
-                {/* ADD THIS SNIPPET */}
-                <p className="special-desc" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
-                    Global defaults for Margin-based Probability. 
-                    <a 
+                <p className="form-label" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                    Global defaults for Margin-based Probability. All fields are ScribeScript-enabled and can use the <code>target</code> keyword to make calculations relative to the check's target value.
+                    <br/><a 
                         href="/docs/scribescript#challenges" 
                         target="_blank" 
                         rel="noopener noreferrer" 
@@ -108,24 +107,53 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
                 
                 <div className="form-row">
                     <div style={{flex:1}}>
-                        <SmartArea label="Default Margin" value={settings.challengeConfig?.defaultMargin || ''} onChange={v => handleChallengeChange('defaultMargin', v)} storyId={storyId} minHeight="38px" placeholder="$target" subLabel="Difficulty spread (e.g. Target +/- Margin)." />
+                        <SmartArea 
+                            label="Default Margin" 
+                            value={settings.challengeConfig?.defaultMargin || ''} 
+                            onChange={v => handleChallengeChange('defaultMargin', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="target" 
+                            subLabel="Can be a number (10), use the 'target' keyword (target / 2), or another $quality" 
+                        />
                     </div>
-                    <div className="form-group" style={{flex:1}}>
-                        <label className="form-label">Base Pivot %</label>
-                        <input type="number" value={settings.challengeConfig?.basePivot ?? 60} onChange={e => handleChallengeChange('basePivot', parseInt(e.target.value))} className="form-input" style={{ height: '40px' }} />
-                        <p className="special-desc">Success chance when Skill == Target.</p>
+                    <div style={{flex:1}}>
+                        <SmartArea 
+                            label="Base Pivot %" 
+                            value={String(settings.challengeConfig?.basePivot ?? '')} 
+                            onChange={v => handleChallengeChange('basePivot', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="60" 
+                            subLabel="Success chance when Skill == Target" 
+                            qualityDefs={qualityDefs}
+                        />
                     </div>
                 </div>
                 <div className="form-row">
-                    <div className="form-group" style={{flex:1}}>
-                        <label className="form-label">Min Chance Cap %</label>
-                        <input type="number" value={settings.challengeConfig?.minCap ?? 0} onChange={e => handleChallengeChange('minCap', parseInt(e.target.value))} className="form-input" style={{ height: '40px' }} />
-                        <p className="special-desc">Lowest possible success chance (e.g. 1% to prevent impossible checks).</p>
+                    <div style={{flex:1}}>
+                        <SmartArea 
+                            label="Min Chance Cap %" 
+                            value={String(settings.challengeConfig?.minCap ?? '')} 
+                            onChange={v => handleChallengeChange('minCap', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="0" 
+                            subLabel="Lowest possible success chance" 
+                            qualityDefs={qualityDefs}
+                        />
                     </div>
-                    <div className="form-group" style={{flex:1}}>
-                        <label className="form-label">Max Chance Cap %</label>
-                        <input type="number" value={settings.challengeConfig?.maxCap ?? 100} onChange={e => handleChallengeChange('maxCap', parseInt(e.target.value))} className="form-input" style={{ height: '40px' }} />
-                        <p className="special-desc">Highest possible success chance (e.g. 99% to ensure risk of failure).</p>
+                    <div style={{flex:1}}>
+                        <SmartArea 
+                            label="Max Chance Cap %" 
+                            value={String(settings.challengeConfig?.maxCap ?? '')} 
+                            onChange={v => handleChallengeChange('maxCap', v)} 
+                            storyId={storyId} 
+                            minHeight="38px" 
+                            placeholder="100" 
+                            subLabel="Highest possible success chance" 
+                            qualityDefs={qualityDefs}
+                        />
                     </div>
                 </div>
             </div>
