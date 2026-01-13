@@ -25,6 +25,9 @@
     
 }
 
+.layout-grid-nexus.mode-centered.mode-wide {
+    max-width: 1800px;
+}
 
 .layout-grid-nexus.mode-centered .sidebar-panel,
 .layout-grid-nexus.mode-centered .content-area {
@@ -195,12 +198,12 @@
     margin: 0 auto;
     padding: 2rem;
     display: grid;
-    /* Desktop: Sidebar (300px) + Content (Rest) */
     grid-template-columns: 300px 1fr; 
     gap: 2rem;
-    /* Ensure height fits in viewport minus banner */
-    /* height: calc(100vh - 300px); 
-    overflow: hidden; */
+}
+
+.layout-main-grid.layout-wide {
+    max-width: 1600px; 
 }
 
 /* Ensure content column scrolls independently */

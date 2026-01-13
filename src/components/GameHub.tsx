@@ -843,6 +843,8 @@ export default function GameHub(props: GameHubProps) {
     const renderLayout = () => {
         const canTravel = !activeEvent;
 
+        const hasRightColumn = !!columnLivingStories;
+
         const layoutProps: any = {
             sidebarContent: buildSidebar(),
             mainContent: buildMainContent(),
@@ -853,7 +855,8 @@ export default function GameHub(props: GameHubProps) {
             onOpenMap: canTravel ? () => setShowMap(true) : undefined,
             onOpenMarket: () => setShowMarket(true),
             currentMarketId: activeMarketId,
-            isTransitioning: isTransitioning
+            isTransitioning: isTransitioning,
+            hasRightColumn: hasRightColumn 
         };
 
         switch (props.settings.layoutStyle) {

@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { WorldSettings, LocationDefinition, ImageDefinition } from '@/engine/models';
 import GameImage from '../GameImage';
@@ -15,6 +14,7 @@ interface LondonLayoutProps {
     onOpenMarket: () => void;
     currentMarketId?: string;
     isTransitioning?: boolean;
+    hasRightColumn?: boolean;
 }
 
 export default function LondonLayout({ 
@@ -26,13 +26,14 @@ export default function LondonLayout({
     onOpenMap, 
     onOpenMarket, 
     currentMarketId,
-    isTransitioning
+    isTransitioning,
+    hasRightColumn
 }: LondonLayoutProps) {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
+    
+    const gridClass = `layout-main-grid ${hasRightColumn ? 'layout-wide' : ''}`;
     
     return (
-        // THE ONLY CHANGE IS ON THIS LINE
         <div className="layout-column london-layout-container" style={{ minHeight: '100vh' }}>
             
             <div className="content-area" style={{ padding: 0 }}>
@@ -67,16 +68,13 @@ export default function LondonLayout({
                     </div>
                 </div>
 
-                {/* MAIN GRID */}
-                <div className="layout-main-grid">
+                <div className={gridClass}>
                     
-                    {/* SIDEBAR - Uses common .sidebar-panel class for mobile drawer behavior */}
                     <div className={`sidebar-panel ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
                         <button className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</button>
                         {sidebarContent}
                     </div>
                     
-                    {/* CONTENT COLUMN */}
                     <div 
                         className="layout-content-col layout-column"
                         style={{ 
@@ -87,17 +85,15 @@ export default function LondonLayout({
                         }}
                     >
                         {mainContent}
-                        
-              
                     </div>
                 </div>
-                          {/* MOBILE FAB */}
-                        <button 
-                            className="mobile-sidebar-toggle"
-                            onClick={() => setMobileSidebarOpen(true)}
-                        >
-                            Character Sheet
-                        </button>
+                
+                <button 
+                    className="mobile-sidebar-toggle"
+                    onClick={() => setMobileSidebarOpen(true)}
+                >
+                    Character Sheet
+                </button>
             </div>
         </div>
     );

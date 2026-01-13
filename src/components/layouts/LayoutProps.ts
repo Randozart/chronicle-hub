@@ -24,20 +24,22 @@ export interface LayoutProps {
     storyId: string;
     deckDefs: Record<string, DeckDefinition>;
     currentDeckStats?: DeckStats;
-    currentMarketId?: string; // The ID of the active market (if any)
-
+    currentMarketId?: string; 
+    
     // Handlers
-    onOptionClick: (storyletId: string) => void; // This maps to 'showEvent'
+    onOptionClick: (storyletId: string) => void; 
     onDrawClick: () => void;
     onEventFinish: (newQualities: PlayerQualities, redirectId?: string) => void;
     onQualitiesUpdate: (newQualities: PlayerQualities) => void;
     onCardPlayed: (cardId: string) => void;
-    onOpenMap?: () => void; // New Handler
+    onOpenMap?: () => void; 
     onExit: () => void;
-    onOpenMarket: () => void; // The function to open the UI
-
+    onOpenMarket: () => void; 
+    
     showMarket: boolean;
-    activeMarket: MarketDefinition | null; // The full object, resolved in GameHub
+    activeMarket: MarketDefinition | null; 
     onCloseMarket: () => void;
     worldState: PlayerQualities;
+
+    hasRightColumn?: boolean; 
 }

@@ -55,6 +55,11 @@
     min-height: 100%;
 }
 
+.elysium-container.layout-wide {
+    max-width: 1600px;
+    padding: 4rem 4rem; 
+}
+
 @media (max-width: 900px) {
     .elysium-sidebar {
         display: none; /* Handled by .mobile-visible logic */

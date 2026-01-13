@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { WorldSettings, LocationDefinition, ImageDefinition } from '@/engine/models';
 
@@ -9,7 +8,8 @@ interface ElysiumLayoutProps {
     location: LocationDefinition;
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
-    isTransitioning?: boolean; // Added Prop
+    isTransitioning?: boolean;
+    hasRightColumn?: boolean;
 }
 
 export default function ElysiumLayout({ 
@@ -18,28 +18,23 @@ export default function ElysiumLayout({
     location, 
     imageLibrary, 
     settings,
-    isTransitioning
+    isTransitioning,
+    hasRightColumn
 }: ElysiumLayoutProps) {
     const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     
-    // NEW: State to track if we're on a mobile device
     const [isMobile, setIsMobile] = useState(false);
 
-    // NEW: Client-side effect to check screen width
     useEffect(() => {
         const checkDevice = () => {
             setIsMobile(window.innerWidth <= 900);
         };
-        // Check on mount
         checkDevice();
-        // Check on resize
         window.addEventListener('resize', checkDevice);
         return () => window.removeEventListener('resize', checkDevice);
     }, []);
 
-
-    // Parallax Logic
     const parallaxEnabled = settings.enableParallax !== false;
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!parallaxEnabled) return;
@@ -55,6 +50,7 @@ export default function ElysiumLayout({
     const bgSrc = bgDef ? bgDef.url : `/images/locations/${location.image}.png`;
 
     const sidebarClassName = isMobile ? 'sidebar-panel' : 'elysium-sidebar';
+    const containerClass = `elysium-container ${hasRightColumn ? 'layout-wide' : ''}`;
 
     return (
         <div className="elysium-wrapper" onMouseMove={handleMouseMove}>
@@ -76,7 +72,7 @@ export default function ElysiumLayout({
 
             <div className="elysium-content">
                 <div 
-                    className="elysium-container"
+                    className={containerClass}
                     style={{ 
                         opacity: isTransitioning ? 0 : 1, 
                         transition: 'opacity 0.3s ease-in-out' 

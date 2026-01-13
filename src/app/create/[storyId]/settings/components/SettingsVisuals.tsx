@@ -162,6 +162,14 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                                     <option value="large">Large</option>
                                 </select> 
                             </div>
+                            <div className="form-group" style={{ margin: 0, flex: 1 }}>
+                                <label style={{fontSize: '0.7rem', color: 'var(--tool-text-dim)', display:'block'}}>Selection Grid Size</label>
+                                <select value={settings.modalImageSize || 'small'} onChange={e => handleChange('modalImageSize', e.target.value as any)} className="form-select" style={{ fontSize: '0.8rem', padding: '2px 8px' }}>
+                                    <option value="small">Small (Compact)</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="large">Large (Showcase)</option>
+                                </select> 
+                            </div>
                         </div>
                     )}
 
@@ -180,6 +188,24 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                 </div>
 
                 <hr style={{ borderColor: 'var(--tool-border)', margin: '1.5rem 0', borderTop: '1px dashed' }} />
+                
+                {/* --- RESTORED: LOCATION HEADER STYLE --- */}
+                <div className="form-group">
+                    <label className="form-label">Location Header Style</label>
+                    <select 
+                        value={settings.locationHeaderStyle || 'standard'} 
+                        onChange={e => handleChange('locationHeaderStyle', e.target.value as any)} 
+                        className="form-select"
+                    >
+                        <option value="standard">Standard (Default)</option>
+                        <option value="banner">Banner (Wide Image)</option>
+                        <option value="square">Square Icon</option>
+                        <option value="circle">Circle Icon</option>
+                        <option value="title-card">Title Card (Text Only)</option>
+                        <option value="hidden">Hidden</option>
+                    </select>
+                    <p className="special-desc">Controls how the current location name and image are displayed.</p>
+                </div>
 
                 <label className="toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 2}}>
                     <input 
@@ -189,9 +215,33 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                     /> 
                     Show Location Header in Storylets
                 </label>
-            </div>
-                </div>
+                 <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
+                    When enabled, the location header/banner will appear above the storylet text.
+                </p>
 
+                {/* --- RESTORED: MOVE TABS TO SIDEBAR --- */}
+                <label 
+                    className="toggle-label" 
+                    style={{ 
+                        marginTop: '1rem', 
+                        opacity: settings.visualTheme === 'black-crown' ? 0.6 : 1,
+                        cursor: settings.visualTheme === 'black-crown' ? 'not-allowed' : 'pointer'
+                    }}
+                    title={settings.visualTheme === 'black-crown' ? "This setting is required by the Black Crown theme." : ""}
+                >
+                    <input 
+                        type="checkbox" 
+                        checked={settings.tabLocation === 'sidebar'} 
+                        onChange={e => handleChange('tabLocation', e.target.checked ? 'sidebar' : 'main')} 
+                        disabled={settings.visualTheme === 'black-crown'}
+                    /> 
+                    Move Tabs to Sidebar
+                </label>
+                <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
+                    When enabled, the "Story, Possessions, Myself" tabs will be moved to the top of the sidebar.
+                </p>
+            </div>
+            </div>
                 <div style={{ width: '350px', flexShrink: 0 }}>
                     <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
                         Live Preview
@@ -199,9 +249,7 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                     <div style={{ position: 'sticky', top: '20px' }}>
                         <ThemePreview theme={settings.visualTheme || 'default'} />
                     </div>
-                </div>
-            </div>
-            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--tool-border)', paddingTop: '1rem' }}>
+                    <div style={{ marginTop: '2rem', borderTop: '1px solid var(--tool-border)', paddingTop: '1rem' }}>
                 <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', paddingBottom: '0.5rem' }}>
                     Living Stories (Timers)
                 </h4>
@@ -256,6 +304,10 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                     )}
                 </div>
             </div>
+                </div>
+                
+            </div>
+            
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
                 <div style={{ flex: 1, minWidth: '300px' }}>
                     <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)', fontSize: '0.8rem', textTransform: 'uppercase', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>Component Styles</h4>
