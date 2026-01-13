@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { revalidateTag } from 'next/cache'; 
+import { updateTag } from 'next/cache'; 
 import clientPromise from '@/engine/database';
 import { WorldConfig, Storylet, Opportunity, WorldSettings, PlayerQualities } from './models';
 
@@ -146,7 +146,7 @@ export const updateWorldConfigItem = async (
     if (result.acknowledged) {
         const tag = `world-${worldId}`;
         console.log(`[Cache] Invalidating tag '${tag}' due to update in ${category}`);
-        revalidateTag(tag, ''); 
+        updateTag(tag); 
     }
 
     return result.acknowledged;
@@ -170,7 +170,7 @@ export const deleteWorldConfigItem = async (
     if (result.acknowledged) {
         const tag = `world-${worldId}`;
         console.log(`[Cache] Invalidating tag '${tag}' due to deletion in ${category}`);
-        revalidateTag(tag, ''); 
+        updateTag(tag); 
     }
 
     return result.acknowledged;
@@ -242,7 +242,7 @@ export const updateStoryletOrCard = async (
 
     if (result.success) {
         if (process.env.NODE_ENV !== 'production') console.log(`[Cache] Invalidating ${collectionName}-${worldId}`);
-        revalidateTag(`${collectionName}-${worldId}`,"");
+        updateTag(`${collectionName}-${worldId}`);
         return { success: true, newVersion: result.newVersion };
     }
 
@@ -268,7 +268,7 @@ export const deleteStoryletOrCard = async (
             const tag = `storylets-${worldId}`;
             console.log(`[Cache] Invalidating tag '${tag}' due to deletion of ${id}`);
             
-            revalidateTag(tag, ''); 
+            updateTag(tag); 
         }
 
         return result.acknowledged;
