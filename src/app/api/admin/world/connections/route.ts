@@ -1,4 +1,3 @@
-// src/app/api/admin/world/connections/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/engine/database';
 import { Storylet, QualityDefinition, Opportunity, MarketDefinition, CharCreateRule } from '@/engine/models';
@@ -13,33 +12,41 @@ type ConnectionItem = {
     reason: string;
 };
 
-// Helper: robustly check if 'container' text refers to 'id'
-function checkReference(container: string, id: string, type: 'quality' | 'storylet' | 'any'): string | null {
-    if (!container) return null;
-    
-    const text = container.toLowerCase();
-    const target = id.toLowerCase();
-
-    // 1. Check for ScribeScript Sigils ($target, #target, @target)
-    // Matches: $target, $target+, $target=, but not $targetIdentifier
-    const sigilRegex = new RegExp(`[\\$#@]\\.?${escapeRegExp(target)}\\b`);
-    if (sigilRegex.test(text)) return "Logic Reference";
-
-    // 2. Check for Redirect/ID usage (Quotes or Word Boundaries)
-    // Matches: "target", 'target', : target, :target
-    // Useful for redirects: pass_redirect: "target"
-    const idRegex = new RegExp(`['":\\s]${escapeRegExp(target)}['"\\s,}]`);
-    if (idRegex.test(text)) return "Direct Reference";
-
-    // 3. Strict Whole Word Match (fallback)
-    const wordRegex = new RegExp(`\\b${escapeRegExp(target)}\\b`);
-    if (wordRegex.test(text)) return "Text Reference";
-
-    return null;
-}
-
+// Helper: Escape ID for Regex safety
 function escapeRegExp(string: string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Robust Reference Checker
+ * returns a "Reason" string if found, null otherwise.
+ */
+function checkReference(containerJSON: string, targetId: string): string | null {
+    if (!containerJSON || !targetId) return null;
+    
+    const text = containerJSON.toLowerCase();
+    const cleanId = targetId.toLowerCase();
+
+    // 1. Fast Fail: If the string isn't there at all, exit.
+    if (!text.includes(cleanId)) return null;
+
+    // 2. Precise Checks to determine "Reason"
+    
+    // A. Logic Variable ($target, #target)
+    // Matches $target followed by non-word char, or at end of string
+    if (new RegExp(`[\\$#]${escapeRegExp(cleanId)}\\b`).test(text)) {
+        return "Logic Reference ($)";
+    }
+
+    // B. Explicit Redirects or Keys ("target", 'target')
+    // Matches quotes around the ID
+    if (new RegExp(`["']${escapeRegExp(cleanId)}["']`).test(text)) {
+        return "Direct Link / Redirect";
+    }
+
+    // C. Loose Text Mention
+    // If it's in the description or name but not code
+    return "Referenced in Text";
 }
 
 export async function GET(request: NextRequest) {
@@ -51,13 +58,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Missing params' }, { status: 400 });
     }
 
+    // 1. Auth
     const canView = await verifyWorldAccess(storyId, 'writer');
     if (!canView) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 1. Fetch World Data
+    // 2. Fetch World Data
     const [storylets, opportunities, qualities, markets, worldDoc] = await Promise.all([
         db.collection<Storylet>('storylets').find({ worldId: storyId }).toArray(),
         db.collection<Opportunity>('opportunities').find({ worldId: storyId }).toArray(),
@@ -66,116 +74,114 @@ export async function GET(request: NextRequest) {
         db.collection('worlds').findOne({ worldId: storyId })
     ]);
 
+    // 3. Prepare System Objects (Fixes Scope Issue)
+    const charCreate = (worldDoc?.content?.char_create || {}) as Record<string, CharCreateRule>;
+
     const inbound: ConnectionItem[] = [];
     const outbound: ConnectionItem[] = [];
 
-    // Helper to push results
+    // Helper to safely add unique items
     const add = (list: ConnectionItem[], id: string, name: string, type: ConnectionItem['type'], reason: string) => {
-        if (id === targetId) return;
-        // Avoid duplicates
+        if (id === targetId) return; // Don't link self
         if (!list.some(i => i.id === id)) {
             list.push({ id, name, type, reason });
         }
     };
 
-    // 2. Identify Target
+    // 4. Find the Target Object (to scan for Outbound)
     const targetS = storylets.find(s => s.id === targetId) || opportunities.find(o => o.id === targetId);
     const targetQ = qualities.find(q => q.id === targetId);
     const targetM = markets.find(m => m.id === targetId);
 
-    // =========================================================================
-    // ANALYSIS: OUTBOUND (What does Target use?)
-    // =========================================================================
-    
-    // Convert target to a searchable string
+    // Prepare the JSON dump of the target for Outbound scanning
     const targetDump = JSON.stringify(targetS || targetQ || targetM || {}).toLowerCase();
 
-    // A. Check against all Qualities
+    // =========================================================================
+    // LOOP: Check Every Entity in the World
+    // =========================================================================
+    
+    // 1. Qualities (e.g. Items, Stats)
     for (const q of qualities) {
         if (q.id === targetId) continue;
-        
-        // Scan targetDump for this quality ID
-        const ref = checkReference(targetDump, q.id, 'quality');
-        if (ref) {
-            add(outbound, q.id, q.name || q.id, 'quality', ref);
+        const qDump = JSON.stringify(q).toLowerCase();
+
+        // INBOUND: Does Q reference Target?
+        // (e.g. Cloak referencing Darkness in bonus)
+        const inRef = checkReference(qDump, targetId);
+        if (inRef) {
+            let reason = inRef;
+            if (q.bonus && q.bonus.toLowerCase().includes(targetId.toLowerCase())) reason = "Bonus Modifier";
+            if (q.storylet === targetId) reason = "Use Event Trigger";
+            add(inbound, q.id, q.name || q.id, 'quality', reason);
+        }
+
+        // OUTBOUND: Does Target reference Q?
+        // (e.g. Storylet checking logic against Q)
+        const outRef = checkReference(targetDump, q.id);
+        if (outRef) {
+            add(outbound, q.id, q.name || q.id, 'quality', outRef);
         }
     }
 
-    // B. Check against all Storylets (Redirects)
-    for (const s of storylets) {
-        if (s.id === targetId) continue;
-        
-        // Scan targetDump for this storylet ID (mostly redirects)
-        const ref = checkReference(targetDump, s.id, 'storylet');
-        if (ref) {
-            add(outbound, s.id, s.name || s.id, 'storylet', ref);
-        }
-    }
-
-    // =========================================================================
-    // ANALYSIS: INBOUND (Who uses Target?)
-    // =========================================================================
-
-    const cleanTargetId = targetId; // checkReference handles lowercase
-
-    // A. Scan All Storylets/Opportunities
+    // 2. Storylets & Opportunities
     const allEvents = [...storylets, ...opportunities];
-    for (const node of allEvents) {
-        if (node.id === targetId) continue;
+    for (const s of allEvents) {
+        if (s.id === targetId) continue;
+        const sDump = JSON.stringify(s).toLowerCase();
 
-        const sourceDump = JSON.stringify(node); // Keep case for specific field checks, lower inside helper
-        const ref = checkReference(sourceDump, cleanTargetId, targetQ ? 'quality' : 'storylet');
-        
-        if (ref) {
-            // Refine reason for better UI
-            let detailedReason = ref;
-            if (node.options?.some(o => o.pass_redirect === targetId || o.fail_redirect === targetId)) {
-                detailedReason = "Redirects Here";
-            }
-            if (targetQ && node.options?.some(o => 
-                (o.pass_quality_change && o.pass_quality_change.toLowerCase().includes(targetId.toLowerCase())) ||
-                (o.fail_quality_change && o.fail_quality_change.toLowerCase().includes(targetId.toLowerCase()))
+        // INBOUND: Does Storylet reference Target?
+        const inRef = checkReference(sDump, targetId);
+        if (inRef) {
+            let reason = inRef;
+            // Refine reason for Storylets
+            if (s.options?.some(o => o.pass_redirect === targetId || o.fail_redirect === targetId)) {
+                reason = "Redirects Here";
+            } else if (s.return === targetId) {
+                reason = "Returns Here";
+            } else if (targetQ && (
+                (s as any).visible_if?.toLowerCase().includes(targetId.toLowerCase()) || 
+                s.unlock_if?.toLowerCase().includes(targetId.toLowerCase())
             )) {
-                detailedReason = "Modifies Quality";
+                reason = "Logic Requirement";
             }
-            if (targetQ && (
-                (node as any).visible_if?.toLowerCase().includes(targetId.toLowerCase()) || 
-                (node as any).unlock_if?.toLowerCase().includes(targetId.toLowerCase())
-            )) {
-                detailedReason = "Logic Requirement";
-            }
+            
+            add(inbound, s.id, s.name || s.id, 'storylet', reason);
+        }
 
-            add(inbound, node.id, node.name || node.id, 'storylet', detailedReason);
+        // OUTBOUND: Does Target reference Storylet?
+        const outRef = checkReference(targetDump, s.id);
+        if (outRef) {
+            let reason = outRef;
+            if (targetS) {
+                if (targetS.options?.some(o => o.pass_redirect === s.id || o.fail_redirect === s.id)) {
+                    reason = "Redirects To";
+                }
+            }
+            add(outbound, s.id, s.name || s.id, 'storylet', reason);
         }
     }
 
-    // B. Scan All Qualities (e.g. Bonuses, Text Variants)
-    for (const q of qualities) {
-        if (q.id === targetId) continue;
-
-        const sourceDump = JSON.stringify(q);
-        const ref = checkReference(sourceDump, cleanTargetId, 'quality');
-        
-        if (ref) {
-            let detailedReason = ref;
-            if (q.bonus && checkReference(q.bonus, cleanTargetId, 'quality')) detailedReason = "Bonus Logic";
-            add(inbound, q.id, q.name || q.id, 'quality', detailedReason);
-        }
-    }
-
-    // C. Scan Markets
+    // 3. Markets
     for (const m of markets) {
-        const sourceDump = JSON.stringify(m);
-        if (checkReference(sourceDump, cleanTargetId, 'any')) {
+        const mDump = JSON.stringify(m).toLowerCase();
+        
+        // INBOUND
+        if (checkReference(mDump, targetId)) {
             add(inbound, m.id, m.name || m.id, 'market', "Market Listing/Currency");
         }
+
+        // OUTBOUND (Target refers to Market ID)
+        if (checkReference(targetDump, m.id)) {
+            add(outbound, m.id, m.name || m.id, 'market', "Linked Market");
+        }
     }
 
-    // // D. Scan System (Char Create)
-    // const charCreateDump = JSON.stringify(charCreate);
-    // if (checkReference(charCreateDump, cleanTargetId, 'any')) {
-    //     add(inbound, 'char_create', 'Character Creation', 'system', "Creation Rule");
-    // }
+    // 4. System (Char Create)
+    // Only Inbound usually (Char Create uses Stats)
+    const charDump = JSON.stringify(charCreate).toLowerCase();
+    if (checkReference(charDump, targetId)) {
+        add(inbound, 'char_create', 'Character Creation', 'system', "Creation Rule");
+    }
 
     return NextResponse.json({ inbound, outbound });
 }
