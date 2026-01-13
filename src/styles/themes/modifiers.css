@@ -666,12 +666,16 @@ html[data-theme='revolutionary']::before {
     }
 
     /* Mobile Close Button */
-    [data-theme='detective-noir'] .mobile-close-btn {
+    /* [data-theme='detective-noir'] .mobile-close-btn {
         display: flex !important; align-items: center; justify-content: center;
         position: fixed !important; top: 1.5rem; right: 1.5rem; z-index: 10000 !important;
         background-color: var(--accent-highlight) !important; color: var(--bg-main) !important;
         border: 2px solid rgba(255,255,255,0.2) !important; border-radius: 50px;
         padding: 0.8rem 1.2rem; font-size: 0.9rem; font-weight: 900;
         cursor: pointer; pointer-events: auto !important;
+    } */
+
+    [data-theme='detective-noir'] .sidebar-panel .mobile-close-btn {
+        color: #fff !important;
     }
 }

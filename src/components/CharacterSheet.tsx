@@ -82,7 +82,6 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
 
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
                     
-                    // --- NEW LOGIC: HIDE LEVEL ---
                     const hideLevel = q.tags?.includes('hide_level');
 
                     let displayValue: React.ReactNode = null;

@@ -452,3 +452,261 @@
         font-size: 0.9rem;
     }
 }
+
+/* src/styles/base/responsive.css */
+
+/* --- 1. GLOBAL DENSITY SCALING (The "De-Clutter") --- */
+@media (max-width: 768px) {
+    html {
+        /* 
+           Standard Desktop is usually 16px. 
+           Setting this to 11px scales the ENTIRE UI down by ~30%.
+           This makes it feel like a native app rather than a zoomed-in website.
+        */
+        font-size: 10px; 
+    }
+
+    /* --- TYPOGRAPHY CLAMPING --- */
+    h1, .location-text h1, .banner-title, .profile-name, .docs-h1 {
+        font-size: 1.6rem !important; /* Cap headers at ~17px visual size */
+        line-height: 1.2;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    h2, .action-box h3, .location-text h2, .docs-h2 {
+        font-size: 1.2rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    h3, .option-button h3, .card-text h3 {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+
+    p, .storylet-text, .item-desc, .option-button p {
+        line-height: 1.5 !important; /* Tighten line height for reading on small screens */
+    }
+
+    /* --- COMPONENT COMPACTING --- */
+    
+    /* Tighter containers */
+    .container, 
+    .storylet-container, 
+    .main-content-wrapper,
+    .admin-content-wrapper,
+    .dashboard-content,
+    .layout-main-grid {
+        padding: 1rem !important; /* Reduce from 2rem+ */
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Reduce the massive whitespace in Storylets */
+    .storylet-main-content {
+        gap: 1rem !important;
+        margin-bottom: 1rem !important;
+        flex-direction: column;
+    }
+
+    /* Smaller, tighter Option buttons */
+    .option-button {
+        padding: 0.75rem 1rem !important; /* Was 1.5rem */
+        min-height: auto !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    .option-content-wrapper {
+        padding: 0 !important; /* Remove inner wrapper padding */
+        gap: 0.75rem !important;
+        align-items: center;
+        flex-direction: row !important; /* Keep image left of text if possible */
+        text-align: left !important;
+    }
+
+    /* Compact Image Thumbnails in Options */
+    .option-image-container {
+        width: 50px !important;
+        flex-shrink: 0;
+        margin: 0 !important;
+    }
+
+    /* Tighter Action/Time Box */
+    .action-box {
+        padding: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .action-timer {
+        font-size: 0.9rem !important;
+    }
+
+    /* Tighter Inventory Items */
+    .inventory-item {
+        padding: 0.5rem !important;
+    }
+    
+    .inventory-grid {
+        gap: 0.5rem !important;
+        grid-template-columns: 1fr !important; /* Force list view on mobile for space */
+    }
+
+    /* Compact Banners */
+    .layout-banner, .location-wrapper.mode-banner {
+        height: 140px !important; /* Drastically reduce banner height */
+        min-height: 0 !important;
+    }
+    
+    .banner-content {
+        padding: 1rem !important;
+        align-items: flex-end !important;
+        flex-direction: row !important;
+    }
+    
+    .banner-top-controls {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+    
+    /* Make the switch character button tiny */
+    .switch-char-btn-transparent {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+}
+
+/* --- 2. TABLET/MOBILE LAYOUT LOGIC (Max 1024px) --- */
+@media (max-width: 1024px) {
+    
+    /* Collapse Grids */
+    .layout-grid-nexus,
+    .layout-grid-tabletop,
+    .london-layout-container .layout-main-grid {
+        display: flex !important;
+        flex-direction: column;
+        height: auto !important;
+        overflow: visible !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Reset Content Areas to flow naturally */
+    .content-area, 
+    .layout-content-col,
+    .elysium-content {
+        overflow: visible !important;
+        height: auto !important;
+        flex: 1 1 auto;
+        padding: 0 !important;
+    }
+
+    /* Fix Tabletop Visuals */
+    .tabletop-visual-col {
+        height: 180px !important; /* Shorter visual area */
+        width: 100%;
+        order: -1; /* Always on top */
+    }
+
+    /* --- THE DRAWER SIDEBAR (Fixing "In-Your-Face") --- */
+    
+    /* 1. Hide by default */
+    .sidebar-panel, .elysium-sidebar {
+        display: none !important;
+        
+        /* Fixed positioning */
+        position: fixed !important;
+        top: 0; left: 0; bottom: 0;
+        z-index: 2000 !important;
+        
+        /* DRAWER STYLING */
+        width: 85vw !important; /* Leave a gap on the right */
+        max-width: 300px !important; /* Never get too wide */
+        
+        background-color: var(--bg-panel) !important;
+        box-shadow: 10px 0 50px rgba(0,0,0,0.5) !important; /* Deep shadow */
+        border-right: 1px solid var(--border-color);
+        
+        overflow-y: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        transform: none !important; /* Reset any theme rotations */
+    }
+
+    /* 2. Show when active */
+    .sidebar-panel.mobile-visible, .elysium-sidebar.mobile-visible {
+        display: flex !important;
+        flex-direction: column;
+        animation: slideIn 0.2s ease-out;
+    }
+
+    /* 3. The Close Button - Positioned nicely inside the drawer */
+    .mobile-close-btn {
+        display: block !important;
+        width: 100%;
+        text-align: left;
+        background: var(--bg-item);
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem !important;
+        color: var(--text-muted);
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+    
+    /* 4. Sidebar Content Tweaks */
+    .sidebar-content-scroll {
+        padding: 1rem !important;
+    }
+
+    /* --- MOBILE FAB (Floating Action Button) --- */
+    .mobile-sidebar-toggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 1500;
+        
+        background-color: var(--accent-highlight);
+        color: var(--bg-main); /* High contrast text */
+        
+        border: 2px solid rgba(255,255,255,0.2);
+        border-radius: 50px;
+        
+        padding: 0.8rem 1.2rem;
+        font-weight: 800;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+    }
+}
+
+/* Animation for the drawer */
+@keyframes slideIn {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* --- ADMIN SPECIFIC MOBILE FIXES --- */
+@media (max-width: 900px) {
+    .admin-layout { flex-direction: column; height: auto; }
+    .admin-sidebar { 
+        position: relative !important; 
+        width: 100% !important; 
+        height: auto !important; 
+        flex-direction: row; 
+        overflow-x: auto; 
+        box-shadow: none;
+        border-bottom: 1px solid var(--tool-border);
+    }
+    .admin-nav ul { flex-direction: row !important; }
+    .admin-link { width: auto !important; border-bottom: none !important; white-space: nowrap; }
+    
+    .form-row { flex-direction: column; gap: 0.5rem; }
+}

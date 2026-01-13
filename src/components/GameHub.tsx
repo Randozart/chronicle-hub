@@ -28,6 +28,7 @@ import CharacterInspector from '@/app/create/[storyId]/players/components/Charac
 import { ToastProvider } from '@/providers/ToastProvider';
 import GameModal from './GameModal';
 import LivingStories from './LivingStories';
+import { useTheme } from '@/providers/ThemeProvider';
 
 
 interface GameHubProps {
@@ -96,6 +97,48 @@ const PlaytestLogger = ({ logs, onClear }: { logs: { message: string, type: stri
                     </div>
                 ))}
             </div>
+        </div>
+    );
+};
+
+const ZoomControls = () => {
+    const { zoom, setZoom } = useTheme();
+    
+    const btnStyle = {
+        background: 'transparent',
+        border: '1px solid var(--border-light)',
+        color: 'var(--text-secondary)',
+        borderRadius: '4px',
+        width: '32px', height: '32px',
+        cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '0.9rem',
+        padding: 0
+    };
+
+    return (
+        <div className="theme-zoom-controls" style={{ display: 'flex', gap: '2px', background: 'var(--bg-item)', borderRadius: '4px', padding: '2px', border: '1px solid var(--border-color)' }}>
+            <button 
+                onClick={() => setZoom(zoom - 10)}
+                style={{ ...btnStyle, border: 'none', width: '24px', fontSize: '1rem' }}
+                title="Zoom Out"
+                className="hover:text-emphasis"
+            >
+                −
+            </button>
+            
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: '0 4px', minWidth: '35px', justifyContent: 'center', userSelect: 'none' }}>
+                {zoom}%
+            </div>
+
+            <button 
+                onClick={() => setZoom(zoom + 10)}
+                style={{ ...btnStyle, border: 'none', width: '24px', fontSize: '1rem' }}
+                title="Zoom In"
+                className="hover:text-emphasis"
+            >
+                +
+            </button>
         </div>
     );
 };
@@ -571,10 +614,12 @@ export default function GameHub(props: GameHubProps) {
                     
                     <div className="sidebar-footer">
                         <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
+                        <ZoomControls />
                     </div>
                 </div>
             );
         }
+
         return (
             <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div className="sidebar-header">
@@ -618,6 +663,7 @@ export default function GameHub(props: GameHubProps) {
                 
                 <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
+                    <ZoomControls />
                 </div>
             </div>
         );

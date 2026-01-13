@@ -74,7 +74,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const setZoom = (newZoom: number) => {
-        const clamped = Math.min(Math.max(newZoom, 70), 150);
+        const clamped = Math.min(Math.max(newZoom, 50), 150);
         setZoomState(clamped);
         localStorage.setItem('chronicle-zoom', String(clamped));
     };

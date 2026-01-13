@@ -52,7 +52,6 @@ export default function ThemeControls({ vertical = false }: { vertical?: boolean
      return (
         <div style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: '0.5rem', alignItems: 'center' }}>
             
-            {/* ADD className to this wrapper div */}
             <div className="theme-zoom-controls" style={{ display: 'flex', gap: '2px', background: 'var(--bg-item)', borderRadius: '4px', padding: '2px', border: '1px solid var(--border-color)' }}>
                 <button 
                     onClick={() => setZoom(zoom - 10)}
