@@ -1,4 +1,4 @@
-import { Storylet, QualityDefinition, Opportunity } from './models';
+import { Storylet, QualityDefinition, MarketDefinition } from './models';
 import { Node, Edge } from '@xyflow/react';
 
 // =============================================================================
@@ -8,7 +8,7 @@ import { Node, Edge } from '@xyflow/react';
 export interface GraphConnection {
     id: string;
     name: string;
-    type: 'storylet' | 'opportunity' | 'quality';
+    type: 'storylet' | 'opportunity' | 'quality' | 'market';
     direction: 'inbound' | 'outbound';
     reason: string;
     context: string;
@@ -33,7 +33,7 @@ function sanitizeId(id: string) {
 }
 
 /**
- * Analyzes a container (Storylet/Opp) to see how it interacts with a specific ID.
+ * Analyzes a container (Storylet/Opp/Market) to see how it interacts with a specific ID.
  */
 function analyzeRelationship(container: any, searchId: string, containerJson: string): AnalysisResult | null {
     const cleanId = searchId.toLowerCase();
@@ -42,7 +42,7 @@ function analyzeRelationship(container: any, searchId: string, containerJson: st
     // Matches: $id +=, $id =, $id -=, $id++, $id--
     const modRegex = new RegExp(`\\$${escapeRegExp(cleanId)}\\s*(=|\\+=|-=|\\+\\+|--)`, 'i');
     if (modRegex.test(containerJson)) {
-        return { role: 'provider', reason: "Modifies State", context: "Effect / Script" };
+        return { role: 'provider', reason: "Modifies State", context: "Effects Field" };
     }
 
     // 2. Explicit Redirects (Provider -> Dependent)
@@ -54,7 +54,6 @@ function analyzeRelationship(container: any, searchId: string, containerJson: st
     }
 
     // 3. Logic Gate (Dependent)
-    // Check specific fields first for accuracy
     if (container.visible_if?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Visibility Condition", context: "Main Visibility" };
     if (container.unlock_if?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Unlock Requirement", context: "Main Unlock" };
     
@@ -63,13 +62,35 @@ function analyzeRelationship(container: any, searchId: string, containerJson: st
         for (const opt of container.options) {
             const optJson = JSON.stringify(opt).toLowerCase();
             if (optJson.includes(cleanId)) {
-                // If regex matched mod earlier, we wouldn't be here, so it must be logic
+                // If the regex matched mod earlier, we wouldn't be here.
                 return { role: 'dependent', reason: "Option Logic", context: `Option: ${opt.name}` };
             }
         }
     }
 
-    // 4. Text Reference (Interpolation/Usage)
+    // 4. Item / Quality Specifics
+    // Check if an Item triggers a Storylet (e.g. "Use Event")
+    if (container.storylet === searchId) {
+        return { role: 'provider', reason: "Item Use Event", context: "On Use Trigger" };
+    }
+    // Check if Item has a bonus (Provider of stats)
+    if (container.bonus && container.bonus.toLowerCase().includes(cleanId)) {
+        return { role: 'provider', reason: "Stat Bonus", context: "Equipment" };
+    }
+
+    // 5. Market Logic
+    if (container.stalls) {
+        if (container.defaultCurrencyId === searchId) return { role: 'dependent', reason: "Market Currency", context: "Default Currency" };
+        for(const stall of container.stalls) {
+            for(const listing of stall.listings) {
+                if (listing.qualityId === searchId) return { role: 'provider', reason: "Sold/Bought Here", context: `Stall: ${stall.name}` };
+                if (listing.currencyId === searchId) return { role: 'dependent', reason: "Currency Used", context: `Stall: ${stall.name}` };
+                if (listing.price?.includes(cleanId)) return { role: 'dependent', reason: "Price Formula", context: `Stall: ${stall.name}` };
+            }
+        }
+    }
+
+    // 6. Text Reference (Interpolation/Usage)
     if (container.text?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Text Interpolation", context: "Main Text" };
     if (container.name?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Name Reference", context: "Header" };
 
@@ -83,18 +104,19 @@ function analyzeRelationship(container: any, searchId: string, containerJson: st
 export function findConnections(
     targetId: string,
     allStorylets: Record<string, Storylet>,
-    allQualities: Record<string, QualityDefinition>
+    allQualities: Record<string, QualityDefinition>,
+    allMarkets?: Record<string, MarketDefinition>
 ): GraphConnection[] {
     const results: GraphConnection[] = [];
     const cleanTargetId = targetId.toLowerCase();
     
     // Flatten entities
-    const entities = [
+    const entities: any[] = [
         ...Object.values(allStorylets),
-        ...Object.values(allQualities)
+        ...Object.values(allQualities),
+        ...(allMarkets ? Object.values(allMarkets) : [])
     ];
 
-    // Find Target Object (for outbound scan)
     const targetObj = entities.find(e => e.id === targetId);
     const targetJson = targetObj ? JSON.stringify(targetObj).toLowerCase() : "";
 
@@ -102,10 +124,15 @@ export function findConnections(
         if (entity.id === targetId) return;
         
         const entityJson = JSON.stringify(entity).toLowerCase();
-        const entityType = (entity as any).type ? 'quality' : ((entity as any).deck ? 'opportunity' : 'storylet');
+        
+        let entityType: GraphConnection['type'] = 'storylet';
+        if ((entity as any).type) entityType = 'quality';
+        else if ((entity as any).deck) entityType = 'opportunity';
+        else if ((entity as any).stalls) entityType = 'market';
+
         const entityName = entity.name || entity.id;
 
-        // 1. INBOUND: Does this Entity reference the Target?
+        // 1. INBOUND
         if (entityJson.includes(cleanTargetId)) {
             const analysis = analyzeRelationship(entity, targetId, entityJson);
             if (analysis) {
@@ -120,7 +147,7 @@ export function findConnections(
             }
         }
 
-        // 2. OUTBOUND: Does the Target reference this Entity?
+        // 2. OUTBOUND
         if (targetObj && targetJson.includes(entity.id.toLowerCase())) {
             const analysis = analyzeRelationship(targetObj, entity.id, targetJson);
             if (analysis) {
@@ -155,7 +182,6 @@ export function generateGraph(
     const storyletList = Object.values(storylets);
     const cleanQ = targetQuality ? targetQuality.replace('$', '').trim() : '';
 
-    // --- 1. IDENTIFY RELEVANT NODES ---
     const tempNodes = new Set<string>();
     const nodeDataMap: Record<string, { label: string, role: string, description: string, originalId: string }> = {};
 
@@ -167,7 +193,6 @@ export function generateGraph(
         const sJson = JSON.stringify(s).toLowerCase();
 
         if (mode === 'quality' && cleanQ) {
-            // Check if this storylet interacts with the quality at all
             if (!sJson.includes(cleanQ.toLowerCase())) {
                 isRelevant = false;
             } else {
@@ -192,23 +217,18 @@ export function generateGraph(
         }
     });
 
-    // --- 2. CALCULATE EDGES & TOPOLOGY ---
     const finalEdges: Edge[] = [];
     const edgeCounts: Record<string, number> = {};
     const adjacency: Record<string, string[]> = {}; 
     const inDegree: Record<string, number> = {};    
 
-    // Init adjacency
     tempNodes.forEach(id => { adjacency[id] = []; inDegree[id] = 0; });
 
-    // Helper to create edge
     const addEdge = (sourceId: string, targetId: string, label: string, color: string) => {
         const sId = sanitizeId(sourceId);
         const tId = sanitizeId(targetId);
-        
         if (!tempNodes.has(sId) || !tempNodes.has(tId)) return;
 
-        // Update Topology for Layout
         if (sId !== tId) {
             adjacency[sId].push(tId);
             inDegree[tId] = (inDegree[tId] || 0) + 1;
@@ -235,45 +255,26 @@ export function generateGraph(
         });
     };
 
-    // Iterate Logic to Draw Edges
     storyletList.forEach(source => {
         if (!source.options) return;
-
         source.options.forEach(opt => {
-            // A. REDIRECT MODE: Explicit Links
             if (mode === 'redirect') {
                 if (opt.pass_redirect) addEdge(source.id, opt.pass_redirect, `(Pass) ${opt.name}`, '#2ecc71');
                 if (opt.fail_redirect) addEdge(source.id, opt.fail_redirect, `(Fail) ${opt.name}`, '#e74c3c');
             }
-
-            // B. QUALITY MODE: Implicit Links (Provider -> Dependent)
             if (mode === 'quality' && cleanQ) {
-                // If Source Modifies Q
                 const optJson = JSON.stringify(opt).toLowerCase();
-                // Basic check if option touches quality
                 if (optJson.includes(cleanQ.toLowerCase())) {
                     const analysis = analyzeRelationship({ options: [opt] }, cleanQ, optJson);
-                    
                     if (analysis && analysis.role === 'provider') {
-                        // We found a Provider Option. Now find Dependencies.
                         const valueLabel = analysis.reason === 'Modifies State' ? 'Modifies' : 'Sets';
-                        
-                        // Look at ALL other storylets to see if they need this
                         storyletList.forEach(target => {
                             if (target.id === source.id) return;
-                            
-                            // Check target for dependency
                             const tJson = JSON.stringify(target).toLowerCase();
                             if (tJson.includes(cleanQ.toLowerCase())) {
                                 const tAnalysis = analyzeRelationship(target, cleanQ, tJson);
                                 if (tAnalysis && tAnalysis.role === 'dependent') {
-                                    // EDGE: Provider Option -> Dependent Storylet
-                                    addEdge(
-                                        source.id, 
-                                        target.id, 
-                                        `${opt.name}\n[${valueLabel}]`, 
-                                        '#61afef'
-                                    );
+                                    addEdge(source.id, target.id, `${opt.name}\n[${valueLabel}]`, '#61afef');
                                 }
                             }
                         });
@@ -283,46 +284,32 @@ export function generateGraph(
         });
     });
 
-    // --- 3. AUTO-LAYOUT (BFS Layering) ---
     const nodePositions: Record<string, { x: number, y: number }> = {};
     const visited = new Set<string>();
     let queue: string[] = [];
 
-    // Find roots
-    tempNodes.forEach(id => {
-        if (inDegree[id] === 0) queue.push(id);
-    });
-    // Fallback if circular
-    if (queue.length === 0 && tempNodes.size > 0) {
-        queue.push(Array.from(tempNodes)[0]);
-    }
+    tempNodes.forEach(id => { if (inDegree[id] === 0) queue.push(id); });
+    if (queue.length === 0 && tempNodes.size > 0) queue.push(Array.from(tempNodes)[0]);
 
     let level = 0;
     const levelHeight: Record<number, number> = {};
 
     while (queue.length > 0) {
         const nextQueue: string[] = [];
-        queue.sort(); // Sort for deterministic layout
-
+        queue.sort();
         queue.forEach(id => {
             if (visited.has(id)) return;
             visited.add(id);
-
             const row = levelHeight[level] || 0;
             nodePositions[id] = { x: level * 350, y: row * 200 };
             levelHeight[level] = row + 1;
-
             const neighbors = adjacency[id] || [];
-            neighbors.forEach(nid => {
-                if (!visited.has(nid)) nextQueue.push(nid);
-            });
+            neighbors.forEach(nid => { if (!visited.has(nid)) nextQueue.push(nid); });
         });
-
         queue = nextQueue;
         level++;
     }
 
-    // Handle disconnected islands
     tempNodes.forEach(id => {
         if (!visited.has(id)) {
             const row = levelHeight[0] || 0;
@@ -331,7 +318,6 @@ export function generateGraph(
         }
     });
 
-    // --- 4. BUILD REACT FLOW NODES ---
     const finalNodes: Node[] = [];
     tempNodes.forEach(id => {
         const pos = nodePositions[id] || { x: 0, y: 0 };

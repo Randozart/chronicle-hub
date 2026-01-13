@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { findConnections, GraphConnection } from '@/engine/graphAnalysis';
-import { Storylet, QualityDefinition } from '@/engine/models';
+import { Storylet, QualityDefinition, MarketDefinition } from '@/engine/models';
 
 interface Props {
     storyId: string;
@@ -16,26 +16,28 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
     // --- Data State ---
     const [storylets, setStorylets] = useState<Record<string, Storylet>>({});
     const [qualities, setQualities] = useState<Record<string, QualityDefinition>>({});
+    const [markets, setMarkets] = useState<Record<string, MarketDefinition>>({});
     const [isLoaded, setIsLoaded] = useState(false);
     
     // --- UI State ---
     const [connections, setConnections] = useState<GraphConnection[]>([]);
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(['inbound', 'outbound']));
+    const [expanded, setExpanded] = useState<Set<string>>(new Set(['inbound', 'outbound', 'requirements']));
+    const [targetType, setTargetType] = useState<'storylet' | 'quality' | 'market' | null>(null);
 
-    // 1. Fetch World Data (Once on Mount)
+    // 1. Fetch World Data
     useEffect(() => {
         let isMounted = true;
         const fetchData = async () => {
             try {
-                // Determine if we need to fetch. 
-                // In a real app, this should probably come from a Context/Store to avoid refetching.
-                const [sRes, qRes] = await Promise.all([
+                const [sRes, qRes, mRes] = await Promise.all([
                     fetch(`/api/admin/storylets?storyId=${storyId}&full=true`),
-                    fetch(`/api/admin/qualities?storyId=${storyId}`)
+                    fetch(`/api/admin/qualities?storyId=${storyId}`),
+                    fetch(`/api/admin/markets?storyId=${storyId}`)
                 ]);
 
-                const sData = await sRes.json();
-                const qData = await qRes.json();
+                const sData = sRes.ok ? await sRes.json() : [];
+                const qData = qRes.ok ? await qRes.json() : [];
+                const mData = mRes.ok ? await mRes.json() : [];
 
                 if (!isMounted) return;
 
@@ -46,8 +48,12 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                 if (Array.isArray(qData)) qData.forEach((q: any) => qMap[q.id] = q);
                 else if (typeof qData === 'object') Object.values(qData).forEach((q: any) => qMap[q.id] = q);
 
+                const mMap: Record<string, MarketDefinition> = {};
+                if (Array.isArray(mData)) mData.forEach((m: any) => mMap[m.id] = m);
+
                 setStorylets(sMap);
                 setQualities(qMap);
+                setMarkets(mMap);
                 setIsLoaded(true);
             } catch (e) {
                 console.error("Connectivity Sidebar Fetch Error:", e);
@@ -59,40 +65,87 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
         return () => { isMounted = false; };
     }, [storyId]);
 
-    // 2. Calculate Connections (Local "Graph" Logic)
+    // 2. Calculate Connections
     useEffect(() => {
         if (!currentItemId || !isLoaded) {
             setConnections([]);
+            setTargetType(null);
             return;
         }
 
-        // Run the imported logic from graphAnalysis
-        const results = findConnections(currentItemId, storylets, qualities);
+        if (qualities[currentItemId]) setTargetType('quality');
+        else if (markets[currentItemId]) setTargetType('market');
+        else setTargetType('storylet');
+
+        const results = findConnections(currentItemId, storylets, qualities, markets);
         setConnections(results);
 
-    }, [currentItemId, isLoaded, storylets, qualities]);
+    }, [currentItemId, isLoaded, storylets, qualities, markets]);
 
-    // 3. Grouping Logic
+    // 3. Grouping Logic (The new 3-split for storylets)
     const grouped = useMemo(() => {
         const groups = {
-            inbound: [] as GraphConnection[],
-            outbound: [] as GraphConnection[]
+            inbound: [] as GraphConnection[],     // "Linked From"
+            outboundMod: [] as GraphConnection[], // "Leads To & Modifies"
+            outboundReq: [] as GraphConnection[]  // "Requires & Checks"
         };
         
         connections.forEach(c => {
-            if (c.direction === 'inbound') groups.inbound.push(c);
-            else groups.outbound.push(c);
+            if (c.direction === 'inbound') {
+                groups.inbound.push(c);
+            } else {
+                // Outbound: Split based on Reason
+                const r = c.reason.toLowerCase();
+                
+                // If it modifies, redirects, or is a bonus -> It's an Effect/Result
+                if (r.includes('modifies') || r.includes('redirect') || r.includes('sets')) {
+                    groups.outboundMod.push(c);
+                } 
+                // If it's a condition, unlock, or logic check -> It's a Requirement
+                else if (r.includes('condition') || r.includes('requirement') || r.includes('logic') || r.includes('reference')) {
+                    groups.outboundReq.push(c);
+                }
+                // Fallback for text interpolation or unknown
+                else {
+                    groups.outboundReq.push(c);
+                }
+            }
         });
 
-        // Sort by Type then Name
         const sorter = (a: GraphConnection, b: GraphConnection) => 
             a.type.localeCompare(b.type) || a.name.localeCompare(b.name);
             
         groups.inbound.sort(sorter);
-        groups.outbound.sort(sorter);
+        groups.outboundMod.sort(sorter);
+        groups.outboundReq.sort(sorter);
 
         return groups;
     }, [connections]);
+
+    // 4. Headers Config
+    const getHeaders = () => {
+        if (targetType === 'quality') {
+            return {
+                inbound: "Modified By (Providers)",
+                inboundSub: "Connections that change this quality",
+                outboundMod: "Refers To",
+                outboundModSub: "Dependencies",
+                outboundReq: "Used By (Logic)",
+                outboundReqSub: "Connections checking this quality"
+            };
+        }
+        // Storylet / Opportunity / Market
+        return {
+            inbound: "Linked From",
+            inboundSub: "Incoming redirects, item uses & sources",
+            outboundMod: "Leads To & Modifies",
+            outboundModSub: "Outgoing links & quality changes",
+            outboundReq: "Requires & Checks",
+            outboundReqSub: "Logic gates & text references"
+        };
+    };
+
+    const headers = getHeaders();
 
     const handleNavigate = (item: GraphConnection) => {
         let path = '';
@@ -100,8 +153,9 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
             case 'storylet': path = 'storylets'; break;
             case 'opportunity': path = 'opportunities'; break;
             case 'quality': path = 'qualities'; break;
+            case 'market': path = 'markets'; break;
         }
-        router.push(`/create/${storyId}/${path}?id=${item.id}`);
+        if (path) router.push(`/create/${storyId}/${path}?id=${item.id}`);
     };
 
     const toggleGroup = (key: string) => {
@@ -113,16 +167,21 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
 
     if (!currentItemId) return null;
 
+    // Special rendering for Quality vs Storylet to handle the groups logically
+    const isQuality = targetType === 'quality';
+
     return (
         <aside style={{ 
-            width: '260px', 
-            minWidth: '260px',
+            width: '280px', 
+            minWidth: '280px',
             borderLeft: '1px solid var(--tool-border)', 
             background: 'var(--tool-bg-sidebar)', 
             display: 'flex', 
             flexDirection: 'column',
-            color: 'var(--tool-text-main)'
+            color: 'var(--tool-text-main)',
+            height: '100%'
         }}>
+            {/* --- HEADER --- */}
             <div style={{ 
                 padding: '0.75rem', 
                 borderBottom: '1px solid var(--tool-border)', 
@@ -136,28 +195,90 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                 Nexus Connections
             </div>
 
+            {/* --- LEGEND --- */}
+            <div style={{ 
+                padding: '0.75rem', 
+                borderBottom: '1px solid var(--tool-border)',
+                background: 'var(--bg-panel)',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                fontSize: '0.7rem',
+                color: 'var(--text-secondary)'
+            }}>
+                <LegendItem type="storylet" label="Storylet" />
+                <LegendItem type="opportunity" label="Card" />
+                <LegendItem type="quality" label="Quality" />
+                <LegendItem type="market" label="Market" />
+            </div>
+
+            {/* --- CONTENT --- */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
                 {!isLoaded ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--tool-text-dim)', fontStyle: 'italic' }}>
-                        Loading World Data...
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--tool-text-dim)', fontStyle: 'italic', fontSize: '0.8rem' }}>
+                        Scanning World...
                     </div>
                 ) : (
                     <>
-                        <Group 
-                            title="Providers (modify the quality)" 
-                            items={grouped.outbound} 
-                            isOpen={expanded.has('outbound')}
-                            onToggle={() => toggleGroup('outbound')}
-                            onNav={handleNavigate}
-                        />
-                        <div style={{ height: 1, background: 'var(--tool-border)', margin: '10px 0' }} />
-                        <Group 
-                            title="Consumers (use the quality)" 
-                            items={grouped.inbound} 
-                            isOpen={expanded.has('inbound')}
-                            onToggle={() => toggleGroup('inbound')}
-                            onNav={handleNavigate}
-                        />
+                        {isQuality ? (
+                            <>
+                                {/* For Qualities: Modified By (Providers) is usually most important */}
+                                <Group 
+                                    title={headers.inbound}
+                                    subtitle={headers.inboundSub}
+                                    items={grouped.inbound} 
+                                    isOpen={expanded.has('inbound')}
+                                    onToggle={() => toggleGroup('inbound')}
+                                    onNav={handleNavigate}
+                                />
+                                <div style={{ height: 1, background: 'var(--tool-border)', margin: '10px 0', opacity: 0.5 }} />
+                                {/* Then Checks */}
+                                <Group 
+                                    title={headers.outboundReq}
+                                    subtitle={headers.outboundReqSub}
+                                    items={grouped.outboundReq} 
+                                    isOpen={expanded.has('requirements')}
+                                    onToggle={() => toggleGroup('requirements')}
+                                    onNav={handleNavigate}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                {/* For Storylets: Linked From (Inbound) */}
+                                <Group 
+                                    title={headers.inbound}
+                                    subtitle={headers.inboundSub}
+                                    items={grouped.inbound} 
+                                    isOpen={expanded.has('inbound')}
+                                    onToggle={() => toggleGroup('inbound')}
+                                    onNav={handleNavigate}
+                                />
+                                
+                                <div style={{ height: 1, background: 'var(--tool-border)', margin: '10px 0', opacity: 0.5 }} />
+                                
+                                {/* Requires (Outbound Read) */}
+                                <Group 
+                                    title={headers.outboundReq}
+                                    subtitle={headers.outboundReqSub}
+                                    items={grouped.outboundReq} 
+                                    isOpen={expanded.has('requirements')}
+                                    onToggle={() => toggleGroup('requirements')}
+                                    onNav={handleNavigate}
+                                />
+                                
+                                <div style={{ height: 1, background: 'var(--tool-border)', margin: '10px 0', opacity: 0.5 }} />
+
+                                {/* Leads To / Modifies (Outbound Write) */}
+                                <Group 
+                                    title={headers.outboundMod}
+                                    subtitle={headers.outboundModSub}
+                                    items={grouped.outboundMod} 
+                                    isOpen={expanded.has('outbound')}
+                                    onToggle={() => toggleGroup('outbound')}
+                                    onNav={handleNavigate}
+                                />
+                            </>
+                        )}
                     </>
                 )}
             </div>
@@ -165,12 +286,25 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
     );
 }
 
-function Group({ title, items, isOpen, onToggle, onNav }: any) {
+// --- SUB COMPONENTS ---
+
+function LegendItem({ type, label }: { type: string, label: string }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <TypeIcon type={type} />
+            <span>{label}</span>
+        </div>
+    );
+}
+
+function Group({ title, subtitle, items, isOpen, onToggle, onNav }: any) {
     if (items.length === 0) {
         return (
-             <div style={{ padding: '0.5rem', opacity: 0.5 }}>
-                <div style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>{title}</div>
-                <div style={{ fontSize: '0.8rem', fontStyle: 'italic' }}>None</div>
+             <div style={{ padding: '0.5rem', opacity: 0.6 }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '2px', color: 'var(--tool-text-dim)' }}>
+                    {title}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>None</div>
             </div>
         );
     }
@@ -180,77 +314,112 @@ function Group({ title, items, isOpen, onToggle, onNav }: any) {
             <div 
                 onClick={onToggle}
                 style={{ 
-                    fontSize: '0.7rem', 
-                    fontWeight: 'bold', 
-                    textTransform: 'uppercase', 
-                    color: 'var(--tool-text-dim)', 
                     padding: '0.5rem',
                     cursor: 'pointer',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    background: 'rgba(255,255,255,0.03)',
-                    borderRadius: '4px'
+                    background: 'var(--bg-item)',
+                    borderRadius: 'var(--border-radius)',
+                    marginBottom: '6px'
                 }}
             >
-                <span>{title} ({items.length})</span>
-                <span>{isOpen ? '▼' : '▶'}</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--tool-text-dim)' }}>
+                        {title} ({items.length})
+                    </span>
+                    {isOpen && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>{subtitle}</span>}
+                </div>
+                <span style={{ fontSize: '10px', color: 'var(--tool-text-dim)' }}>{isOpen ? '▼' : '▶'}</span>
             </div>
 
             {isOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px' }}>
                     {items.map((item: GraphConnection) => (
                         <div 
                             key={item.id}
                             onClick={() => onNav(item)}
-                            className="nexus-card"
+                            className="nexus-item"
                             style={{ 
-                                padding: '6px 8px', 
-                                borderRadius: '4px',
+                                padding: '8px', 
+                                borderRadius: 'var(--border-radius)',
                                 cursor: 'pointer',
-                                borderLeft: `3px solid ${getTypeColor(item.type)}`
+                                border: '1px solid transparent',
+                                background: 'var(--bg-panel)'
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                <TypeIcon type={item.type} />
                                 <div style={{ 
                                     fontWeight: 500, 
                                     fontSize: '0.85rem', 
                                     overflow: 'hidden', 
                                     textOverflow: 'ellipsis', 
-                                    whiteSpace: 'nowrap' 
+                                    whiteSpace: 'nowrap',
+                                    color: 'var(--tool-text-main)',
+                                    flex: 1
                                 }}>
                                     {item.name}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginTop: '2px', color: 'var(--tool-text-dim)' }}>
-                                <span>{item.reason}</span>
-                                <span style={{ opacity: 0.7 }}>{item.context}</span>
+                            
+                            <div style={{ 
+                                fontSize: '0.75rem', 
+                                color: 'var(--text-secondary)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
+                                paddingLeft: '28px' 
+                            }}>
+                                <span style={{ color: 'var(--accent-highlight)' }}>{item.reason}</span>
+                                <span style={{ fontSize: '0.7rem', opacity: 0.7, fontStyle: 'italic' }}>{item.context}</span>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
             <style jsx>{`
-                .nexus-card {
-                    background: var(--bg-item);
-                    border: 1px solid transparent;
+                .nexus-item {
                     transition: all 0.2s ease;
+                    border: 1px solid var(--border-color);
                 }
-                .nexus-card:hover {
-                    background: var(--bg-item-hover);
+                .nexus-item:hover {
+                    background: var(--bg-item-hover) !important;
+                    border-color: var(--tool-accent);
                     transform: translateX(2px);
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                 }
             `}</style>
         </div>
     );
 }
 
-function getTypeColor(type: string) {
-    switch (type) {
-        case 'storylet': return 'var(--docs-accent-blue, #61afef)';
-        case 'opportunity': return 'var(--warning-color, #e5c07b)';
-        case 'quality': return 'var(--success-color, #98c379)';
-        default: return '#5c6370';
-    }
+function TypeIcon({ type }: { type: string }) {
+    let char = '?';
+    let bgVar = '--tool-text-dim';
+    
+    // Map to CSS Variables
+    if (type === 'storylet') { char = 'S'; bgVar = '--docs-accent-blue'; }
+    else if (type === 'opportunity') { char = 'O'; bgVar = '--warning-color'; }
+    else if (type === 'quality') { char = 'Q'; bgVar = '--success-color'; }
+    else if (type === 'market') { char = 'M'; bgVar = '--tool-accent-mauve'; }
+
+    return (
+        <div style={{
+            width: '20px',
+            height: '20px',
+            borderRadius: '4px',
+            background: `var(${bgVar})`,
+            color: '#111', 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '10px',
+            fontWeight: '900',
+            flexShrink: 0,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+        }}>
+            {char}
+        </div>
+    );
 }
