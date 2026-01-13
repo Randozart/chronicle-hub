@@ -192,7 +192,7 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
             }}>
-                Nexus Connections
+                Connections
             </div>
 
             {/* --- LEGEND --- */}
