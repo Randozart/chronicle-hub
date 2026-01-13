@@ -12,6 +12,7 @@ export type ResolutionState = {
     qualities: PlayerQualities; 
     title: string; 
     body: string; 
+    metatext?: string; 
     redirectId?: string; 
     moveToId?: string; 
     image_code?: string;
@@ -197,7 +198,6 @@ export default function StoryletDisplay({
         };
         const imageCode = resolution.image_code || storylet.image_code || "";
         
-        // FIX: Ensure qualityChanges is an array
         const changes = resolution.qualityChanges || [];
 
         return (
@@ -221,6 +221,11 @@ export default function StoryletDisplay({
                         <div className="storylet-text">
                             <FormattedText text={resolution.body} />
                         </div>
+                        {resolution.metatext && (
+                            <div className="metatext" style={{ marginTop: '1rem', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                                <FormattedText text={resolution.metatext} />
+                            </div>
+                        )}
                     </div>
                 </div>
 

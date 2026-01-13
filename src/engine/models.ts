@@ -28,14 +28,21 @@ export interface ResolveOption extends LogicGates {
     tags?: string[]; 
     dynamic_tags?: string; 
     ordering?: number;
+
+    // Success Resolution
     pass_long: string;
+    pass_meta?: string;    
     pass_quality_change?: string;
     pass_redirect?: string;
     pass_move_to?: string;
+
+    // Failure Resolution
     fail_long?: string;
+    fail_meta?: string;    
     fail_quality_change?: string;
     fail_redirect?: string;
     fail_move_to?: string;
+
     computed_action_cost?: number | string;
 }
 
@@ -379,6 +386,7 @@ export interface QualityChangeInfo {
 export interface EngineResult {
     wasSuccess?: boolean;
     body: string;
+    metatext?: string; 
     redirectId?: string;
     moveToId?: string;
     qualityChanges: QualityChangeInfo[];

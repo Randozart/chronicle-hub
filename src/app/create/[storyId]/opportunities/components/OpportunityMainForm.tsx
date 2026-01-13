@@ -175,7 +175,26 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                 </div>
 
                 <div style={{ marginTop: '1rem' }}>
-                    <SmartArea label="Card Body Text" value={form.text} onChange={v => handleChange('text', v)} storyId={storyId} minHeight="150px" qualityDefs={qualityDefs} />
+                    <SmartArea 
+                        label="Card Body Text" 
+                        value={form.text} 
+                        onChange={v => handleChange('text', v)} 
+                        storyId={storyId} 
+                        minHeight="150px" 
+                        qualityDefs={qualityDefs} 
+                    />
+                </div>
+
+                <div style={{ marginTop: '0.5rem' }}>
+                    <SmartArea 
+                        label="Instruction Text (Metatext)"
+                        subLabel="Instruction text below the body (e.g., 'Playing this will discard your hand')."
+                        value={form.metatext || ''} 
+                        onChange={v => handleChange('metatext', v)} 
+                        storyId={storyId} 
+                        minHeight="38px"
+                        qualityDefs={qualityDefs}
+                    />
                 </div>
 
                 {/* BEHAVIOR */}

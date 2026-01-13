@@ -1,3 +1,5 @@
+// src/app/create/[storyId]/storylets/components/OptionList.tsx
+
 'use client';
 
 import { useState } from 'react';
@@ -20,13 +22,14 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
     };
 
     const handleAdd = () => {
-        const id = prompt("Enter unique Option ID suffix (e.g. 'agree', 'fight'):");
-        if (!id) return;
+        // CHANGED: Auto-generate ID instead of prompting
+        const uniqueSuffix = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        const newId = `opt_${uniqueSuffix}`;
         
         const newOption: ResolveOption = {
-            id: id,
+            id: newId,
             name: "New Option",
-            pass_long: "Success text...",
+            pass_long: "Success...",
             ordering: options.length + 1
         };
         onChange([...options, newOption]);
@@ -72,9 +75,10 @@ export default function OptionList({ options, onChange, storyId, qualityDefs }: 
                                 <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', marginRight: '0.5rem' }}>#{index + 1}</span>
                                 <span style={{ fontWeight: 'bold', color: expandedId === opt.id ? 'var(--tool-text-header)' : 'var(--tool-text-main)' }}>{opt.name || opt.id}</span>
                                 {opt.tags?.includes('dangerous') && <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', padding: '0 4px', borderRadius: '4px' }}>DANGEROUS</span>}
+                                {opt.challenge && <span style={{ marginLeft: '10px', fontSize: '0.7rem', color: '#f1c40f', border: '1px solid #f1c40f', padding: '0 4px', borderRadius: '4px' }}>DIFFICULTY CHECK</span>}
                             </div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
-                                {opt.id} {expandedId === opt.id ? '▼' : '▶'}
+                                {expandedId === opt.id ? '▼' : '▶'}
                             </div>
                         </div>
                     </div>
