@@ -14,7 +14,9 @@ export async function proxy(req: NextRequest) {
         pathname.startsWith('/api/auth') ||     
         pathname === '/login' || 
         pathname === '/register' ||
-        pathname === '/verify-email' || // <--- ADD THIS LINE
+        pathname === '/verify-email' || 
+        pathname === '/forgot-password' || 
+        pathname === '/reset-password' ||  
         pathname.startsWith('/_next') || 
         pathname.startsWith('/images') || 
         pathname.startsWith('/themes') ||
@@ -26,16 +28,22 @@ export async function proxy(req: NextRequest) {
         pathname.startsWith('/sounds') 
 
     ) {
-        // If logged in, redirect OUT of login/register pages to Home
-        if (token && (pathname === '/login' || pathname === '/register')) {
+        // If logged in, redirect OUT of auth pages to Home
+        if (token && (
+            pathname === '/login' || 
+            pathname === '/register' || 
+            pathname === '/forgot-password' || 
+            pathname === '/reset-password'
+        )) {
             return NextResponse.redirect(new URL('/', req.url));
         }
         return NextResponse.next();
     }
 
-    // 2. PROTECTED ROUTES (Create, Play, Character APIs)
+    // 2. PROTECTED ROUTES
     if (!token) {
         const loginUrl = new URL('/login', req.url);
+        // Optional: Add ?callbackUrl=... logic here if you want deep linking
         return NextResponse.redirect(loginUrl);
     }
     

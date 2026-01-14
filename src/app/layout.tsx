@@ -3,12 +3,18 @@
 import type { Metadata, Viewport } from "next";
 import { fontVariables } from './fonts'; 
 import "@/styles/main.css";
-import ClientProviders from "@/components/ClientProviders"; // NEW IMPORT
+import ClientProviders from "@/components/ClientProviders";
 
 export const metadata: Metadata = {
   title: "Chronicle Hub",
   description: "Create and play text-based RPGs",
-  icons: { icon: '/logo.svg' },
+  icons: {
+    icon: [
+      { url: '/logo.svg', media: '(prefers-color-scheme: light)' },
+      { url: '/logo-w.svg', media: '(prefers-color-scheme: dark)' },
+    ],
+    apple: '/logo.svg', 
+  },
 };
 
 export const viewport: Viewport = {

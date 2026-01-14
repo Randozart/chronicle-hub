@@ -41,31 +41,31 @@ export default function RegisterPage() {
   return (
     <div style={{ 
         minHeight: '100vh', 
-        background: '#121212', 
+        background: 'var(--bg-main)', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
         fontFamily: 'var(--font-main)' 
     }}>
       <form onSubmit={handleSubmit} style={{ 
-          background: '#1e1e1e', 
+          background: 'var(--bg-panel)', 
           padding: '2.5rem', 
-          borderRadius: '12px', 
-          border: '1px solid #333', 
+          borderRadius: 'var(--border-radius)', 
+          border: '1px solid var(--border-color)', 
           width: '100%', 
           maxWidth: '400px', 
-          boxShadow: '0 20px 50px rgba(0,0,0,0.5)' 
+          boxShadow: 'var(--shadow-modal)' 
       }}>
-        <h1 style={{ marginTop: 0, color: '#fff', textAlign: 'center', fontSize: '1.8rem' }}>Join the Chronicle</h1>
-        <p style={{ textAlign: 'center', color: '#666', marginBottom: '2rem' }}>Create your account</p>
+        <h1 style={{ marginTop: 0, color: 'var(--text-primary)', textAlign: 'center', fontSize: '1.8rem' }}>Join the Chronicle</h1>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '2rem' }}>Create your account</p>
         
         {error && (
             <div style={{ 
-                background: 'rgba(231, 76, 60, 0.15)', 
-                border: '1px solid #e74c3c', 
-                color: '#ff6b6b', 
+                background: 'var(--danger-bg)', 
+                border: '1px solid var(--danger-color)', 
+                color: 'var(--danger-color)', 
                 padding: '0.75rem', 
-                borderRadius: '6px', 
+                borderRadius: '4px', 
                 marginBottom: '1.5rem', 
                 fontSize: '0.9rem', 
                 textAlign: 'center' 
@@ -75,7 +75,7 @@ export default function RegisterPage() {
         )}
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', color: '#aaa', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Username</label>
+          <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Username</label>
           <input 
             name="username"
             placeholder="Drifter"
@@ -83,17 +83,17 @@ export default function RegisterPage() {
             onChange={handleChange}
             required 
             style={{ 
-                width: '100%', padding: '0.75rem', background: '#252525', 
-                border: '1px solid #333', borderRadius: '6px', 
-                color: 'white', fontSize: '1rem', outline: 'none' 
+                width: '100%', padding: '0.75rem', background: 'var(--bg-item)', 
+                border: '1px solid var(--border-color)', borderRadius: '4px', 
+                color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' 
             }} 
-            onFocus={(e) => e.target.style.borderColor = '#61afef'}
-            onBlur={(e) => e.target.style.borderColor = '#333'}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent-highlight)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
           />
         </div>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', color: '#aaa', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Email</label>
+          <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Email</label>
           <input 
             name="email"
             type="email"
@@ -102,17 +102,17 @@ export default function RegisterPage() {
             onChange={handleChange}
             required 
             style={{ 
-                width: '100%', padding: '0.75rem', background: '#252525', 
-                border: '1px solid #333', borderRadius: '6px', 
-                color: 'white', fontSize: '1rem', outline: 'none' 
+                width: '100%', padding: '0.75rem', background: 'var(--bg-item)', 
+                border: '1px solid var(--border-color)', borderRadius: '4px', 
+                color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' 
             }} 
-            onFocus={(e) => e.target.style.borderColor = '#61afef'}
-            onBlur={(e) => e.target.style.borderColor = '#333'}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent-highlight)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
           />
         </div>
 
         <div style={{ marginBottom: '2rem' }}>
-          <label style={{ display: 'block', color: '#aaa', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Password</label>
+          <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Password</label>
           <input 
             name="password"
             type="password"
@@ -121,16 +121,16 @@ export default function RegisterPage() {
             onChange={handleChange}
             required 
             style={{ 
-                width: '100%', padding: '0.75rem', background: '#252525', 
-                border: '1px solid #333', borderRadius: '6px', 
-                color: 'white', fontSize: '1rem', outline: 'none' 
+                width: '100%', padding: '0.75rem', background: 'var(--bg-item)', 
+                border: '1px solid var(--border-color)', borderRadius: '4px', 
+                color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' 
             }} 
-            onFocus={(e) => e.target.style.borderColor = '#61afef'}
-            onBlur={(e) => e.target.style.borderColor = '#333'}
+            onFocus={(e) => e.target.style.borderColor = 'var(--accent-highlight)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
           />
         </div>
 
-        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.5rem' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
             Must contain: 8+ chars, Uppercase, Lowercase, Number.
         </div>
 
@@ -139,19 +139,17 @@ export default function RegisterPage() {
             disabled={isSubmitting}
             style={{ 
                 width: '100%', padding: '0.8rem', 
-                background: isSubmitting ? '#444' : '#2e7d32', // Green for Register 
-                color: 'white', border: 'none', borderRadius: '6px', 
+                background: isSubmitting ? 'var(--border-color)' : 'var(--success-color)', 
+                color: '#fff', border: 'none', borderRadius: '4px', 
                 fontWeight: 'bold', cursor: isSubmitting ? 'wait' : 'pointer', 
                 fontSize: '1rem', transition: 'background 0.2s' 
             }}
-            onMouseOver={(e) => !isSubmitting && (e.currentTarget.style.background = '#388e3c')}
-            onMouseOut={(e) => !isSubmitting && (e.currentTarget.style.background = '#2e7d32')}
         >
           {isSubmitting ? 'Creating Account...' : 'Register'}
         </button>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', color: '#666', fontSize: '0.9rem' }}>
-            Already have an account? <Link href="/login" style={{ color: '#61afef', textDecoration: 'none' }}>Login</Link>
+        <p style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            Already have an account? <Link href="/login" style={{ color: 'var(--accent-highlight)', textDecoration: 'none' }}>Login</Link>
         </p>
       </form>
     </div>
