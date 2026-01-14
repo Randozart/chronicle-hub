@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/audio/components/TrackMainForm.tsx
 'use client';
 
 import { useState } from 'react';
@@ -49,43 +50,41 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
         if (success && form) onSave(form);
     };
 
+    // FIX: Use Flexbox Column to manage height distribution
     return (
-        <div className="h-full flex flex-col relative" style={{ paddingBottom: '80px' }}>
-            <div style={{ 
-                flex: 1, 
-                overflowY: 'auto', 
-                overflowX: 'hidden', 
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
-                <div style={{
-                    width: '100%',
-                    maxWidth: '100%', 
-                    overflowX: 'auto', 
-                    paddingBottom: '10px' 
-                }}>
-                    <TrackEditor 
-                        data={form} 
-                        onSave={() => {}} 
-                        onDelete={() => {}} 
-                        availableInstruments={availableInstruments}
-                        onUpdateInstrument={() => {}} 
-                        onChange={(newSource) => handleChange('source', newSource)}
-                    />
-                </div>
+        <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100%', 
+            width: '100%', 
+            overflow: 'hidden',
+            position: 'relative' // Context for modals
+        }}>
+            {/* 1. TrackEditor: Fills all available space (flex: 1) and handles its own scroll */}
+            <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+                <TrackEditor 
+                    data={form} 
+                    onSave={() => {}} 
+                    onDelete={() => {}} 
+                    availableInstruments={availableInstruments}
+                    onUpdateInstrument={() => {}} 
+                    onChange={(newSource) => handleChange('source', newSource)}
+                />
             </div>
 
-            <CommandCenter 
-                isDirty={isDirty} 
-                isSaving={isSaving} 
-                lastSaved={lastSaved} 
-                onSave={onSaveClick} 
-                onRevert={() => setShowRevertModal(true)} 
-                onDelete={() => onDelete(form.id)}
-                onDuplicate={() => onDuplicate(form)}
-                itemType="Track"
-            />
+            {/* 2. CommandCenter: Fixed height footer */}
+            <div style={{ flexShrink: 0, height: '80px', position: 'relative', zIndex: 100 }}>
+                <CommandCenter 
+                    isDirty={isDirty} 
+                    isSaving={isSaving} 
+                    lastSaved={lastSaved} 
+                    onSave={onSaveClick} 
+                    onRevert={() => setShowRevertModal(true)} 
+                    onDelete={() => onDelete(form.id)}
+                    onDuplicate={() => onDuplicate(form)}
+                    itemType="Track"
+                />
+            </div>
 
             <ConfirmationModal
                 isOpen={showRevertModal}

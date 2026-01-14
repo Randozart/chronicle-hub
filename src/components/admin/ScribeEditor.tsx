@@ -117,12 +117,15 @@ export default function ScribeEditor({
                 )}
 
                 {/* EDITOR AREA */}
-                <div style={{ 
+                 <div style={{ 
                     flex: 1, 
-                    overflowX: effectiveOverflowX, 
+                    overflowX: isLigature ? 'auto' : 'hidden', 
                     position: 'relative',
-                    width: displayGutter ? 'calc(100% - 40px)' : '100%',
-                    minWidth: '0'
+                    
+                    width: '100%', 
+                    maxWidth: '100%', 
+                    
+                    minWidth: isLigature ? 0 : '100%' 
                 }}>
                     {/* Error Underlines */}
                     {visualErrors.length > 0 && (
@@ -186,7 +189,7 @@ export default function ScribeEditor({
                     alignItems: 'center',
                     gap: '6px'
                 }}>
-                    <span style={{ opacity: 0.7 }}>ℹ Dynamic Qualities Used:</span>
+                    <span style={{ opacity: 0.7 }}>Dynamic Qualities Used:</span>
                     <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
                         {Array.from(new Set(infoMessages.map(m => m.message.replace('Dynamic Quality found: ', '').replace(/'/g, '')))).join(', ')}
                     </span>

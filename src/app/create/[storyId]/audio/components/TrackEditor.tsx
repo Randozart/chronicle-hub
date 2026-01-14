@@ -27,7 +27,7 @@ const EMPTY_TEMPLATE = `[CONFIG]\nBPM: 120\nGrid: 4\nScale: C Minor\n\n[INSTRUME
 
 interface Props {
     data: LigatureTrack;
-    onChange?: (source: string) => void; // Controlled Input
+    onChange?: (source: string) => void;
     onSave: (d: any) => void;
     onDelete: () => void;
     availableInstruments: InstrumentDefinition[];
@@ -42,7 +42,6 @@ export default function TrackEditor({
     enableDownload = false, isPlayground = false, hideCategories = []
 }: Props) {
     
-    // Controlled Source
     const source = data.source || "";
     const debouncedSource = useDebounce(source, 600);
     
@@ -71,7 +70,6 @@ export default function TrackEditor({
     const { playTrack, stop, isPlaying, limiterSettings, setLimiterSettings, masterVolume, setMasterVolume } = useAudio();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Initial Load & Mobile Check
     useEffect(() => { 
         setIsClient(true); 
         if (typeof window !== 'undefined' && window.innerWidth > 900) {
@@ -80,7 +78,6 @@ export default function TrackEditor({
         }
     }, []);
     
-    // Parsing Logic
     useEffect(() => {
         setIsParsing(true);
         const timer = setTimeout(() => {
@@ -94,18 +91,15 @@ export default function TrackEditor({
         return () => clearTimeout(timer);
     }, [debouncedSource, mockQualities, mockDefs]);
 
-    // Handlers
     const handleDebuggerUpdate = useCallback((qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => {
         setMockQualities(q => JSON.stringify(q) === JSON.stringify(qualities) ? q : qualities);
         setMockDefs(d => JSON.stringify(d) === JSON.stringify(defs) ? d : defs);
     }, []);
 
-    // Controlled Update
     const handleSourceChange = (newSource: string) => {
         if (onChange) onChange(newSource);
     };
 
-    // Derived Updates
     const handleVisualUpdate = (newSource: string) => handleSourceChange(newSource);
 
     const handleConfigUpdate = (key: string, val: any) => {
@@ -165,13 +159,21 @@ export default function TrackEditor({
     };
 
     return (
-        <div className="editor-layout">
+        // FIX 1: Added height: '100%' to ensure it fills the parent absolute container
+        <div className="editor-layout" style={{ display: 'flex', width: '100%', height: '100%', position: 'relative', isolation: 'isolate' }}>
             <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".lig,.txt" />
             
             {/* LEFT SIDEBAR */}
             <div 
                 className="editor-sidebar"
-                style={{ width: leftSidebarOpen ? '250px' : '40px', cursor: 'pointer' }}
+                style={{ 
+                    width: leftSidebarOpen ? '250px' : '40px', 
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    borderRight: '1px solid var(--tool-border)',
+                    background: 'var(--tool-bg-sidebar)',
+                    transition: 'width 0.2s'
+                }}
                 onClick={() => !leftSidebarOpen && setLeftSidebarOpen(true)}
             >
                 <div className="editor-sidebar-header">
@@ -185,16 +187,15 @@ export default function TrackEditor({
                     </div>
                 ) : <div className="editor-sidebar-collapsed-text">DEBUGGER</div>}
             </div>
-
+            
             {/* MAIN CONTENT */}
-            <div className="editor-main">
-                
-                {/* TOOLBAR */}
+            {/* FIX 2: Ensure flex basis is 0 to allow shrinking */}
+            <div className="editor-main" style={{ flex: 1, width: 0, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>                
                 <div className="editor-toolbar" style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                      <div className="editor-toolbar-group">
                         <h2 className="editor-title">{data.name}</h2>
                         <span className="editor-status" style={{color: isParsing ? 'var(--warning-color)' : 'var(--tool-text-dim)'}}>
-                            {isParsing ? "⚡" : (isPlaying ? "▶" : "")}
+                            {isParsing ? "Parsing..." : (isPlaying ? "▶" : "")}
                         </span>
                     </div>
                     
@@ -224,16 +225,15 @@ export default function TrackEditor({
                             : <button onClick={handlePlay} className="tool-btn tool-btn-play">▶</button>
                         }
                         
-                        {/* Playground Specific Controls (Only show internal save if playground mode) */}
                         {isPlayground && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
                     </div>
                 </div>
 
                 {/* SCROLLABLE CONTENT */}
-                <div className="editor-scrollable-content" style={{ overflowX: 'hidden' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                {/* FIX 3: Explicit overflowY and flex: 1 to enable internal scrolling */}
+                 <div className="editor-scrollable-content" style={{ overflowX: 'hidden', overflowY: 'auto', width: '100%', maxWidth: '100%', flex: 1 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '100%' }}>
                         
-                        {/* Timeline */}
                         {showArrangement && isClient && (
                             <div style={{ borderBottom: '1px solid var(--tool-border)', overflowX: 'auto', width: '100%' }}>
                                 <div style={{ minWidth: '600px' }}>
@@ -251,7 +251,6 @@ export default function TrackEditor({
                             </div>
                         )}
                         
-                        {/* Mixer */}
                         {showMixer && isClient && (
                             <div style={{ borderBottom: '1px solid var(--tool-border)', height: '220px', resize: 'vertical', overflow: 'hidden', overflowX: 'auto', width: '100%' }}>
                                 <div style={{ minWidth: '400px' }}>
@@ -260,7 +259,6 @@ export default function TrackEditor({
                             </div>
                         )}
 
-                        {/* Piano Roll / Tracker */}
                         {showNoteEditor && isClient && (
                             <div style={{ borderBottom: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', width: '100%' }}>
                                 <div className="note-editor-header">
@@ -305,7 +303,8 @@ export default function TrackEditor({
                     )}
                     
                     {/* TEXT EDITOR */}
-                    <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '500px', padding: '0' }}>
+                    {/* Note: minHeight matches your original request, but now it scrolls if screen is small */}
+                    <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '500px', padding: '0', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
                         {isClient && <ScribeEditor value={source} onChange={handleSourceChange} minHeight="100%" language="ligature" errors={lintErrors} />}
                     </div>
                 </div>
@@ -314,7 +313,14 @@ export default function TrackEditor({
             {/* RIGHT SIDEBAR */}
             <div 
                 className="editor-sidebar right"
-                style={{ width: rightSidebarOpen ? '250px' : '40px', cursor: 'pointer' }}
+                style={{ 
+                    width: rightSidebarOpen ? '250px' : '40px', 
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    borderLeft: '1px solid var(--tool-border)',
+                    background: 'var(--tool-bg-sidebar)',
+                    transition: 'width 0.2s'
+                }}
                 onClick={() => !rightSidebarOpen && setRightSidebarOpen(true)}
             >
                 <div className="editor-sidebar-header">
@@ -322,14 +328,15 @@ export default function TrackEditor({
                         {rightSidebarOpen ? '»' : '«'}
                     </button>
                 </div>
+                {/* FIX 4: Ensure the wrapper around InstrumentLibrary has flex properties to fill height */}
                 {rightSidebarOpen 
-                    ? <div onClick={e => e.stopPropagation()} style={{cursor:'default'}}>
+                    ? <div onClick={e => e.stopPropagation()} style={{cursor:'default', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0}}>
                         <InstrumentLibrary instruments={availableInstruments.filter(inst => !hideCategories.includes(inst.category || ''))} onSelect={handleEditInstrument} /> 
                       </div>
                     : <div className="editor-sidebar-collapsed-text">LIBRARY</div>
                 }
             </div>
-
+            
             {editingInstrument && (
                 <InstrumentEditor 
                     data={editingInstrument} 

@@ -3,33 +3,37 @@
 /* --- Layout --- */
 .editor-layout {
     height: 100%;
+    width: 100%;        
+    max-width: 100%;    
     display: flex;
     gap: 0;
-    overflow: hidden;
-    background: var(--tool-bg-dark); /* WAS: #141414 */
-    color: var(--tool-text-main);    /* WAS: #ccc */
+    overflow: hidden;     
+    background: var(--tool-bg-dark);
+    color: var(--tool-text-main);
     font-family: sans-serif;
+    position: relative;   
 }
 
 .editor-main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0;
-    background: var(--tool-bg-dark); /* WAS: #141414 */
+    min-width: 0;        
+    background: var(--tool-bg-dark);
     position: relative;
 }
 
 /* --- Sidebars --- */
 .editor-sidebar {
-    flex-shrink: 0;
+    flex-shrink: 0;      
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--tool-border); /* WAS: #333 */
-    background: var(--tool-bg-sidebar); /* WAS: #181a1f */
+    border-right: 1px solid var(--tool-border);
+    background: var(--tool-bg-sidebar);
     transition: width 0.2s ease;
     cursor: default;
     z-index: 10;
+    overflow: hidden;     
 }
 
 .editor-sidebar.right {
