@@ -6,12 +6,22 @@ import { QualityDefinition } from '@/engine/models';
 export interface LintError {
     line: number;
     message: string;
-    severity: 'error' | 'warning';
+    severity: 'error' | 'warning' | 'info';
     context?: string;
 }
 
 const HEADER_REGEX = /^\[(.*?)\]$/;
-const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|[-.|])/g;
+const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|(\$\{[^}]+\})|(\$\([^)]+\))|[-.|])/g;
+
+export function scanForDynamicQualities(source: string): Set<string> {
+    const dynamicIds = new Set<string>();
+    // Match %new[ID; ...] or %new[ID]
+    const newMatches = source.matchAll(/%new\[(.*?)(?:;|\])/g);
+    for (const m of newMatches) {
+        if (m[1]) dynamicIds.add(m[1].trim());
+    }
+    return dynamicIds;
+}
 
 export function lintLigature(source: string): LintError[] {
     const errors: LintError[] = [];
@@ -167,7 +177,7 @@ interface ScopeState {
 export interface LintError {
     line: number;
     message: string;
-    severity: 'error' | 'warning';
+    severity: 'error' | 'warning' | 'info';
     context?: string;
 }
 
@@ -179,79 +189,80 @@ interface ScopeState {
 export function lintScribeScript(
     source: string, 
     mode: ScribeContext,
-    definitions?: QualityDefinition[] 
+    definitions?: QualityDefinition[],
+    dynamicIds?: Set<string> // Accepts the global list
 ): LintError[] {
     const errors: LintError[] = [];
     const lines = source.split('\n');
 
     let braceDepth = 0;
     let bracketDepth = 0;
-    let commentDepth = 0; // Tracks block comments { // ... } across lines
-
+    let commentDepth = 0;
     const scopeStack: ScopeState[] = []; 
 
     const validIds = definitions ? new Set(definitions.map(d => d.id)) : null;
     const localVars = new Set<string>();
 
-    // --- PASS 1: Discovery (Find local assignments) ---
-    // We scan the whole text first to find variables defined locally (e.g. @alias = ...)
+    // Pass 1: Local Discovery
     lines.forEach(line => {
-        // Regex to find @var =, $var =, #var = 
         const assignmentMatches = [...line.matchAll(/(?:^|[^@])([\$#@])([a-zA-Z0-9_]+)(?:\[[\s\S]*?\])?\s*=/g)];
         for (const m of assignmentMatches) {
             localVars.add(m[2]);
         }
     });
 
-    // --- PASS 2: Validation ---
+    // Pass 2: Validation
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         
-        // 1. Variable Spell-Checking
-        // Only run if we are NOT inside a comment block and the line isn't a full comment
+        // 1. Variable Check
         if (validIds && commentDepth === 0 && !line.trim().startsWith('//')) {
-            const varMatches = [...line.matchAll(/(?:^|[^@])([\$#])([a-zA-Z0-9_]+)/g)];
+            const varMatches = [...line.matchAll(/(?:^|[^@\w])([\$#])([a-zA-Z0-9_]+)/g)];
+            
             for (const m of varMatches) {
                 const varName = m[2];
+                if (varName === 'level') continue; 
                 
-                if (varName === 'level') continue; // Special property, ignore
-
                 const isGlobal = validIds.has(varName);
                 const isLocal = localVars.has(varName);
                 
-                // If it's neither global nor local, warn
                 if (!isGlobal && !isLocal) {
-                    errors.push({
-                        line: lineNumber,
-                        message: `Unknown variable '${varName}'. Is it defined?`,
-                        severity: 'warning'
-                    });
+                    // CHECK DYNAMIC
+                    if (dynamicIds && dynamicIds.has(varName)) {
+                        // It exists dynamically!
+                        errors.push({
+                            line: lineNumber,
+                            message: `Dynamic Quality found: '${varName}'`,
+                            severity: 'info' // Soft String
+                        });
+                    } else {
+                        // Truly unknown
+                        errors.push({
+                            line: lineNumber,
+                            message: `Unknown variable '${varName}'. Is it defined?`,
+                            severity: 'warning'
+                        });
+                    }
                 }
             }
         }
 
-        // 2. Structural Parsing (Char by Char)
+        // 2. Structural Parsing
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
             const nextChar = line[i + 1] || '';
             const prevChar = line[i - 1] || '';
 
-            // A. Comment Block Tracking: { //
-            // Check for { followed immediately by //
             if (commentDepth === 0 && char === '{' && line.substr(i, 3) === '{//') {
                 commentDepth = 1;
             }
             
-            // If inside comment...
             if (commentDepth > 0) {
                 if (char === '{') commentDepth++;
                 else if (char === '}') commentDepth--;
-                
-                // While in comment, skip all other checks for this char
                 continue; 
             }
 
-            // B. Bracket Tracking
             if (char === '{') {
                 braceDepth++;
                 scopeStack.push({ type: 'brace', hasSeenColon: false });
@@ -272,37 +283,25 @@ export function lintScribeScript(
                 }
             }
 
-            // C. Colon Tracking (for Conditional branches)
             if (char === ':' && braceDepth > 0 && bracketDepth === 0) {
                 if (scopeStack.length > 0) {
                     scopeStack[scopeStack.length - 1].hasSeenColon = true;
                 }
             }
 
-            // D. Logic Checks (Assignments)
-            // Check for single '=' that isn't part of '==' '!=' '>=' '<='
+            // Logic Assignment Check
             if (char === '=' && nextChar !== '=' && prevChar !== '!' && prevChar !== '>' && prevChar !== '<' && prevChar !== '=') {
-                
-                // CASE 1: Inside { ... }
-                // Inside logic blocks, '=' is assignment. We want to check if assignment is valid here.
                 if (braceDepth > 0 && bracketDepth === 0) {
                     const currentScope = scopeStack[scopeStack.length - 1];
-                    
-                    // Simple check: Assignments are only allowed in Effect Scope (after colon) 
-                    // OR if defining an alias/variable at start of block.
-                    
-                    // Look backwards to see what's being assigned
                     const textBefore = line.substring(0, i).trimEnd();
                     const lastToken = textBefore.split(/[^a-zA-Z0-9_$@#.]/).pop() || "";
                     
                     const isAliasDef = lastToken.startsWith('@');
                     const isWorldDef = lastToken.startsWith('#');
-                    const isVarDef = lastToken.startsWith('$'); // Allow $var = 5
-                    const isEffectInBranch = currentScope?.hasSeenColon; // Allow { cond : $var = 5 }
-
+                    const isVarDef = lastToken.startsWith('$'); 
+                    const isEffectInBranch = currentScope?.hasSeenColon;
                     const isAllowed = isEffectInBranch || isAliasDef || isWorldDef || isVarDef;
 
-                    // If not allowed context, it might be a typo for '=='
                     if (!isAllowed) {
                          errors.push({ 
                             line: lineNumber, 
@@ -312,12 +311,10 @@ export function lintScribeScript(
                     }
                 }
                 
-                // CASE 2: Outside logic (Condition fields)
-                // If we are in 'condition' mode and NOT inside any braces, '=' is almost certainly wrong.
                 if (braceDepth === 0 && mode === 'condition') {
                      errors.push({ 
                         line: lineNumber, 
-                        message: "Assignments '=' are not allowed in Condition fields. Use '==' for comparison.", 
+                        message: "Assignments '=' are not allowed in Condition fields.", 
                         severity: 'error' 
                     });
                 }

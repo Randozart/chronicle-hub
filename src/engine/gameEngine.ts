@@ -116,21 +116,84 @@ export class GameEngine implements EngineContext {
         );
     }
 
-    public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
-        if (this._logger && expression) {
-            this._logger(expression, 'COND');
-        }
-        return evaluateScribeCondition(
-            expression, 
-            this.getEffectiveQualitiesProxy(),
-            this.worldContent.qualities, 
-            contextOverride || null,
-            this.resolutionRoll, 
-            this.tempAliases,
-            this.errors
-        );
-    }
+        public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
+        if (!expression) return true;
 
+        // Check if we have top-level commas that act as separators
+        // We must ignore commas inside braces {}, brackets [], or quotes ""
+        let parts: string[] = [];
+        let buffer = "";
+        let depth = 0;
+        let inQuote = false;
+        let quoteChar = '';
+
+        for (let i = 0; i < expression.length; i++) {
+            const char = expression[i];
+            
+            if (inQuote) {
+                buffer += char;
+                if (char === quoteChar) inQuote = false;
+            } else {
+                if (char === '"' || char === "'") {
+                    inQuote = true;
+                    quoteChar = char;
+                    buffer += char;
+                } else if (char === '{' || char === '[') {
+                    depth++;
+                    buffer += char;
+                } else if (char === '}' || char === ']') {
+                    if (depth > 0) depth--;
+                    buffer += char;
+                } else if (char === ',' && depth === 0) {
+                    // Found a top-level comma separator
+                    parts.push(buffer.trim());
+                    buffer = "";
+                } else {
+                    buffer += char;
+                }
+            }
+        }
+        if (buffer.trim()) parts.push(buffer.trim());
+
+        // If simple logic (no commas), pass through directly
+        if (parts.length <= 1) {
+            if (this._logger && expression) {
+                this._logger(expression, 'COND');
+            }
+            return evaluateScribeCondition(
+                expression, 
+                this.getEffectiveQualitiesProxy(),
+                this.worldContent.qualities, 
+                contextOverride || null,
+                this.resolutionRoll, 
+                this.tempAliases,
+                this.errors
+            );
+        }
+
+        // Evaluate ALL parts. Implicit AND.
+        for (const part of parts) {
+            if (!part) continue;
+            const result = evaluateScribeCondition(
+                part, 
+                this.getEffectiveQualitiesProxy(),
+                this.worldContent.qualities, 
+                contextOverride || null,
+                this.resolutionRoll, 
+                this.tempAliases,
+                this.errors
+            );
+            
+            if (this._logger) {
+                this._logger(`[Implicit AND] Checking: "${part}" -> ${result}`, 'COND');
+            }
+
+            if (!result) return false;
+        }
+
+        return true;
+    }
+    
     public getEffectiveLevel(qid: string): number {
         const baseState = this.qualities[qid];
         let total = (baseState && 'level' in baseState) ? baseState.level : 0;

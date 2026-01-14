@@ -51,15 +51,29 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
 
     return (
         <div className="h-full flex flex-col relative" style={{ paddingBottom: '80px' }}>
-            <div style={{ flex: 1, overflow: 'auto' }}>
-                <TrackEditor 
-                    data={form} 
-                    onSave={() => {}} // Disabled
-                    onDelete={() => {}} // Disabled
-                    availableInstruments={availableInstruments}
-                    onUpdateInstrument={() => {}} 
-                    onChange={(newSource) => handleChange('source', newSource)}
-                />
+            <div style={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                overflowX: 'hidden', 
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
+                <div style={{
+                    width: '100%',
+                    maxWidth: '100%', 
+                    overflowX: 'auto', 
+                    paddingBottom: '10px' 
+                }}>
+                    <TrackEditor 
+                        data={form} 
+                        onSave={() => {}} 
+                        onDelete={() => {}} 
+                        availableInstruments={availableInstruments}
+                        onUpdateInstrument={() => {}} 
+                        onChange={(newSource) => handleChange('source', newSource)}
+                    />
+                </div>
             </div>
 
             <CommandCenter 

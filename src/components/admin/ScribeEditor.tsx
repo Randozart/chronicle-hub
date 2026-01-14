@@ -52,14 +52,25 @@ export default function ScribeEditor({
     const lineCount = useMemo(() => value.split('\n').length, [value]);
     const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1), [lineCount]);
     
+    // FILTER ERRORS vs INFO
+    // We only show visual errors/warnings in the gutter and underlining
+    const visualErrors = useMemo(() => errors.filter(e => e.severity !== 'info'), [errors]);
+    const infoMessages = useMemo(() => errors.filter(e => e.severity === 'info'), [errors]);
+
     const errorMap = useMemo(() => {
         const map = new Map<number, 'error' | 'warning'>();
-        errors.forEach(e => map.set(e.line, e.severity));
+        visualErrors.forEach(e => map.set(e.line, e.severity as 'error' | 'warning'));
         return map;
-    }, [errors]);
+    }, [visualErrors]);
 
     const scopeClass = isLigature ? 'lang-ligature' : 'lang-scribescript';
-    const displayGutter = showLineNumbers || errors.length > 0;
+    const displayGutter = showLineNumbers || visualErrors.length > 0;
+
+    // Dynamic Logic for Scrollbar & Wrapping
+    const hasGutter = displayGutter; 
+    const effectiveWhiteSpace = isLigature || hasGutter ? 'pre' : 'pre-wrap';
+    const effectiveOverflowX = isLigature || hasGutter ? 'auto' : 'hidden';
+    const effectiveWordBreak = isLigature || hasGutter ? 'normal' : 'break-word';
 
     return (
         <div 
@@ -70,100 +81,117 @@ export default function ScribeEditor({
                 lineHeight: '1.5',
                 position: 'relative',
                 display: 'flex', 
-                overflow: 'hidden', // Contain floats/margins
+                flexDirection: 'column', // Changed to column to support footer
+                overflow: 'hidden', 
                 minHeight: minHeight,
-                width: '100%', // Ensure it respects parent width
+                width: '100%', 
             }}
         >
-            {/* LINE NUMBER GUTTER */}
-            {displayGutter && (
-                <div style={{
-                    flexShrink: 0,
-                    width: '40px',
-                    textAlign: 'right',
-                    padding: '10px 8px 10px 0',
-                    background: 'var(--tool-bg-sidebar)',
-                    borderRight: '1px solid var(--tool-border)',
-                    color: 'var(--tool-text-dim)',
-                    fontFamily: '"Fira Code", "Fira Mono", monospace',
-                    userSelect: 'none'
-                }}>
-                    {lineNumbers.map(n => {
-                        const status = errorMap.get(n);
-                        const color = status === 'error' ? 'var(--danger-color)' : status === 'warning' ? 'var(--warning-color)' : 'inherit';
-                        const weight = status ? 'bold' : 'normal';
-                        const marker = status === 'error' ? '!' : status === 'warning' ? '?' : n;
-                        
-                        return (
-                            <div key={n} style={{ height: '21px', lineHeight: '21px', color, fontWeight: weight }}>
-                                {marker}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* EDITOR AREA */}
-            <div style={{ 
-                flex: 1, 
-                // CRITICAL FIX: ScribeScript wraps (hidden X), Ligature scrolls (auto X)
-                overflowX: isLigature ? 'auto' : 'hidden', 
-                position: 'relative',
-                width: isLigature ? 'auto' : '0', // Hack to force flex child to respect container width for wrapping
-                minWidth: '100%'
-            }}>
-                {/* Error Underlines */}
-                {errors.length > 0 && (
-                    <div style={{ position: 'absolute', top: '10px', left: 0, width: '100%', pointerEvents: 'none', zIndex: 0 }}>
-                         {errors.map((err, i) => (
-                             <div key={i} style={{
-                                 position: 'absolute',
-                                 top: `${(err.line - 1) * 21}px`, 
-                                 left: 0,
-                                 width: '100%',
-                                 height: '21px',
-                                 background: err.severity === 'error' 
-                                    ? 'linear-gradient(90deg, var(--danger-bg) 0%, transparent 100%)' 
-                                    : 'linear-gradient(90deg, var(--warning-bg) 0%, transparent 100%)',
-                                 borderBottom: err.severity === 'error' ? '1px dashed var(--danger-color)' : '1px dashed var(--warning-color)'
-                             }} />
-                         ))}
+            <div style={{ display: 'flex', flex: 1, position: 'relative' }}>
+                {/* LINE NUMBER GUTTER */}
+                {displayGutter && (
+                    <div style={{
+                        flexShrink: 0,
+                        width: '40px',
+                        textAlign: 'right',
+                        padding: '10px 8px 10px 0',
+                        background: 'var(--tool-bg-sidebar)',
+                        borderRight: '1px solid var(--tool-border)',
+                        color: 'var(--tool-text-dim)',
+                        fontFamily: '"Fira Code", "Fira Mono", monospace',
+                        userSelect: 'none'
+                    }}>
+                        {lineNumbers.map(n => {
+                            const status = errorMap.get(n);
+                            const color = status === 'error' ? 'var(--danger-color)' : status === 'warning' ? 'var(--warning-color)' : 'inherit';
+                            const weight = status ? 'bold' : 'normal';
+                            const marker = status === 'error' ? '!' : status === 'warning' ? '?' : n;
+                            
+                            return (
+                                <div key={n} style={{ height: '21px', lineHeight: '21px', color, fontWeight: weight }}>
+                                    {marker}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
-                <Editor
-                    value={value || ""}
-                    onValueChange={onChange}
-                    highlight={highlightCode} 
-                    padding={10}
-                    onSelect={!isLigature ? (e) => {
-                        const target = e.target as HTMLTextAreaElement;
-                        if (target.selectionStart === target.selectionEnd) {
-                            setCursorOffset(target.selectionStart);
-                        } else {
-                            setCursorOffset(null);
-                        }
-                    } : undefined}
+                {/* EDITOR AREA */}
+                <div style={{ 
+                    flex: 1, 
+                    overflowX: effectiveOverflowX, 
+                    position: 'relative',
+                    width: displayGutter ? 'calc(100% - 40px)' : '100%',
+                    minWidth: '0'
+                }}>
+                    {/* Error Underlines */}
+                    {visualErrors.length > 0 && (
+                        <div style={{ position: 'absolute', top: '10px', left: 0, width: '100%', pointerEvents: 'none', zIndex: 0 }}>
+                             {visualErrors.map((err, i) => (
+                                 <div key={i} style={{
+                                     position: 'absolute',
+                                     top: `${(err.line - 1) * 21}px`, 
+                                     left: 0,
+                                     width: '100%',
+                                     height: '21px',
+                                     background: err.severity === 'error' 
+                                        ? 'linear-gradient(90deg, var(--danger-bg) 0%, transparent 100%)' 
+                                        : 'linear-gradient(90deg, var(--warning-bg) 0%, transparent 100%)',
+                                     borderBottom: err.severity === 'error' ? '1px dashed var(--danger-color)' : '1px dashed var(--warning-color)'
+                                 }} />
+                             ))}
+                        </div>
+                    )}
 
-                    style={{
-                        fontFamily: '"Fira Code", "Fira Mono", monospace',
-                        minHeight: minHeight,
-                        color: 'var(--tool-text-main)',
-                        background: 'transparent',
-                        
-                        // CRITICAL WRAP SETTINGS
-                        whiteSpace: isLigature ? 'pre' : 'pre-wrap', 
-                        wordBreak: isLigature ? 'normal' : 'break-word',
-                        overflowWrap: isLigature ? 'normal' : 'anywhere',
-                        
-                        minWidth: isLigature ? 'max-content' : '100%',
-                        lineHeight: '21px',
-                        zIndex: 1
-                    }}
-                    textareaClassName="focus:outline-none"
-                    placeholder={placeholder}
-                />
+                    <Editor
+                        value={value || ""}
+                        onValueChange={onChange}
+                        highlight={highlightCode} 
+                        padding={10}
+                        onSelect={!isLigature ? (e) => {
+                            const target = e.target as HTMLTextAreaElement;
+                            if (target.selectionStart === target.selectionEnd) {
+                                setCursorOffset(target.selectionStart);
+                            } else {
+                                setCursorOffset(null);
+                            }
+                        } : undefined}
+                        style={{
+                            fontFamily: '"Fira Code", "Fira Mono", monospace',
+                            minHeight: minHeight,
+                            color: 'var(--tool-text-main)',
+                            background: 'transparent',
+                            whiteSpace: effectiveWhiteSpace,
+                            wordBreak: effectiveWordBreak,
+                            overflowWrap: isLigature ? 'normal' : 'anywhere',
+                            minWidth: (isLigature || displayGutter) ? 'max-content' : '100%',
+                            lineHeight: '21px',
+                            zIndex: 1
+                        }}
+                        textareaClassName="focus:outline-none"
+                        placeholder={placeholder}
+                    />
+                </div>
             </div>
+
+            {/* INFO FOOTER (Soft String) */}
+            {infoMessages.length > 0 && (
+                <div style={{
+                    padding: '4px 8px',
+                    fontSize: '0.75rem',
+                    color: 'var(--info-color)', // Assuming a blue/cyan color variable
+                    background: 'var(--tool-bg-sidebar)',
+                    borderTop: '1px solid var(--tool-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                }}>
+                    <span style={{ opacity: 0.7 }}>ℹ Dynamic Qualities Used:</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                        {Array.from(new Set(infoMessages.map(m => m.message.replace('Dynamic Quality found: ', '').replace(/'/g, '')))).join(', ')}
+                    </span>
+                </div>
+            )}
             
             <style jsx global>{`
                 /* === SCRIBESCRIPT THEME === */
