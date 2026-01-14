@@ -5,14 +5,13 @@ import { ObjectId } from 'mongodb';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
-// GET: List collaborators with emails
+// GET: List collaborators with rich info
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storyId = searchParams.get('storyId');
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
 
-    // Allow writers to see who else is collaborating
     if (!await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -20,30 +19,30 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 1. Fetch the world document
     const world = await db.collection('worlds').findOne({ worldId: storyId }, { projection: { collaborators: 1 } });
     
     if (!world || !world.collaborators || world.collaborators.length === 0) {
         return NextResponse.json([]);
     }
 
-    // 2. Fetch User Emails
-    // We need to map the string IDs back to ObjectIds for the lookup
+    // Map IDs to ObjectIds
     const userIds = world.collaborators.map((c: any) => new ObjectId(c.userId));
     
+    // Fetch User Details
     const users = await db.collection('users').find(
         { _id: { $in: userIds } },
-        { projection: { email: 1, name: 1 } } // Only fetch safe fields
+        { projection: { email: 1, username: 1, image: 1 } } // Fetch Image and Username
     ).toArray();
 
-    // 3. Merge Data
+    // Merge Data
     const enrichedList = world.collaborators.map((c: any) => {
         const user = users.find(u => u._id.toString() === c.userId);
         return {
             userId: c.userId,
             role: c.role,
             email: user?.email || "Unknown User",
-            name: user?.name
+            username: user?.username || "Drifter",
+            image: user?.image || null
         };
     });
     

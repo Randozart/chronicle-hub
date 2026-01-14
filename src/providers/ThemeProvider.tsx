@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
-type Theme = 'light' | 'soft-light' | 'dark' | 'soft-dark' | 'classic' | 'classic-light' | 'system';
+type Theme = 'light' | 'soft-light' | 'dark' | 'soft-dark' | 'classic' | 'classic-light' | 'system' | 'terminal';
 
 interface ThemeContextType {
     theme: Theme;

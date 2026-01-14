@@ -390,6 +390,88 @@
     --warning-bg: rgba(221, 107, 32, 0.1);
 }
 
+/* --- 7. TERMINAL (Hacker / TUI) --- */
+:root[data-global-theme='terminal'] {
+    /* Base: Pure Void Black */
+    --bg-main: #000000;
+    --bg-panel: #000000;
+    --bg-item: #111111;       /* Very subtle separation */
+    --bg-item-hover: #333333; /* High contrast hover */
+    
+    /* Borders: Stark VGA Grey & White */
+    --border-color: #808080;  /* Standard Grey */
+    --border-light: #ffffff;  /* High Intensity White */
+    
+    /* Text: CP437 Standard */
+    --text-primary: #cccccc;  /* VGA Grey (Main Text) */
+    --text-secondary: #808080;/* Dark Grey */
+    --text-muted: #555555;    /* Dimmed */
+    --text-header: #ffffff;   /* Pure White Headers */
+    
+    /* Accents: The 16-color Palette */
+    --accent-primary: #0000aa;   /* DOS Background Blue */
+    --accent-hover: #0000ff;     /* Bright Blue */
+    --accent-highlight: #ffff55; /* Bright Yellow (Classic Highlight) */
+
+    --success-color: #55ff55;    /* Bright Green */
+    --success-bg: #002200;       /* Solid dark green bg, no transparency */
+    
+    --danger-color: #ff5555;     /* Bright Red */
+    --danger-bg: #220000;        /* Solid dark red bg */
+    
+    --warning-color: #aa5500;    /* Brown/Orange */
+    
+    --progress-bg: #555555;
+    --progress-fill: #ffffff;    /* Stark white bar */
+
+    /* Fonts: Pure Monospace */
+    --font-main: "Courier New", "Lucida Console", "Fira Mono", monospace;
+    --border-radius: 0px; /* SHARP EDGES ONLY */
+
+    /* Editor Mapping (TUI Style) */
+    --tool-bg-dark: #000000;
+    --tool-bg-header: #111111;
+    --tool-bg-sidebar: #000000;
+    --tool-bg-input: #000000;
+    
+    --tool-text-main: #cccccc;
+    --tool-text-dim: #808080;
+    --tool-text-header: #ffffff;
+    
+    --tool-border: #808080;
+    --tool-border-highlight: #ffffff;
+    --tool-accent: #55ffff;       /* Cyan */
+    
+    --tool-key-white: #cccccc;
+    --tool-key-black: #000000;
+    --tool-accent-mauve: #ff55ff; /* Bright Magenta */
+
+    /* Scrollbars */
+    --scrollbar-bg: #000000;
+    --scrollbar-thumb: #808080;
+    --scrollbar-thumb-hover: #ffffff;
+
+    /* Docs */
+    --docs-bg-sidebar: #000000;
+    --docs-bg-content: #000000;
+    --docs-text-main: #cccccc;
+    --docs-text-header: #ffffff;
+    --docs-border: #ffffff;
+    --docs-code-bg: #111111;
+
+    --docs-accent-blue: #5555ff;  /* Bright Blue */
+    --docs-accent-green: #55ff55; /* Bright Green */
+    --docs-accent-gold: #ffff55;  /* Bright Yellow */
+    
+    --bg-overlay: rgba(0, 0, 0, 0.95);
+    --bg-input: #000000;
+    
+    /* Hard Block Shadow (No Blur) */
+    --shadow-modal: 6px 6px 0px #555555; 
+    
+    --tool-bg-code-editor: #000000; 
+    --warning-bg: #221100; 
+}
 /* --- THEME PALETTES --- */
 
 [data-theme='victorian'] {
