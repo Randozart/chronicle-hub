@@ -18,7 +18,7 @@ export default function ThemeControls({ vertical = false }: { vertical?: boolean
     };
 
     const cycleTheme = () => {
-        const order = ['dark', 'soft-dark', 'classic', 'classic-light', 'soft-light', 'light', 'terminal'];
+        const order = ['dark', 'soft-dark', 'classic', 'classic-light', 'soft-light', 'light', 'terminal', 'terminal-light'];
         const idx = order.indexOf(theme);
         const next = order[(idx + 1) % order.length];
         setTheme(next as any);
@@ -47,6 +47,7 @@ export default function ThemeControls({ vertical = false }: { vertical?: boolean
             case 'soft-light': return Icons.Quill;     // Parchment / Writing
             case 'light': return Icons.Sun;
             case 'terminal': return Icons.Prompt; // <--- NEW
+            case 'terminal-light': return Icons.Prompt; // Same icon, color changes automatically
             default: return Icons.Moon;
         }
     };

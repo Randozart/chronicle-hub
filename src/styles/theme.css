@@ -472,6 +472,89 @@
     --tool-bg-code-editor: #000000; 
     --warning-bg: #221100; 
 }
+
+/* --- 8. TERMINAL LIGHT (Teletype / High Contrast White) --- */
+:root[data-global-theme='terminal-light'] {
+    /* Base: Stark White */
+    --bg-main: #ffffff;
+    --bg-panel: #ffffff;
+    --bg-item: #f0f0f0;       /* Very light grey */
+    --bg-item-hover: #e0e0e0; /* Hover state */
+    
+    /* Borders: Ink Black */
+    --border-color: #000000;  /* Hard black borders */
+    --border-light: #666666;  /* Dark grey secondary */
+    
+    /* Text: Ink Black */
+    --text-primary: #000000;
+    --text-secondary: #444444;
+    --text-muted: #666666;
+    --text-header: #000000;
+    
+    /* Accents: CMYK / ANSI Style */
+    --accent-primary: #0000aa;   /* Dark Blue */
+    --accent-hover: #0000ff;     /* Bright Blue */
+    --accent-highlight: #aa00aa; /* Dark Magenta (Readable on white) */
+
+    --success-color: #008800;    /* Dark Green */
+    --success-bg: #ccffcc;       /* Pale Green Block */
+    
+    --danger-color: #cc0000;     /* Dark Red */
+    --danger-bg: #ffcccc;        /* Pale Red Block */
+    
+    --warning-color: #aa5500;    /* Dark Orange/Brown */
+    
+    --progress-bg: #dddddd;
+    --progress-fill: #000000;    /* Black Bar */
+
+    /* Fonts: Pure Monospace */
+    --font-main: "Courier New", "Lucida Console", "Fira Mono", monospace;
+    --border-radius: 0px; /* SHARP EDGES */
+
+    /* Editor Mapping */
+    --tool-bg-dark: #ffffff;
+    --tool-bg-header: #eeeeee;
+    --tool-bg-sidebar: #ffffff;
+    --tool-bg-input: #ffffff;
+    
+    --tool-text-main: #000000;
+    --tool-text-dim: #666666;
+    --tool-text-header: #000000;
+    
+    --tool-border: #000000;
+    --tool-border-highlight: #0000aa;
+    --tool-accent: #0000ff;       
+    
+    --tool-key-white: #ffffff;
+    --tool-key-black: #222222;
+    --tool-accent-mauve: #800080; /* Purple (Readable) */
+
+    /* Scrollbars */
+    --scrollbar-bg: #ffffff;
+    --scrollbar-thumb: #000000;
+    --scrollbar-thumb-hover: #444444;
+
+    /* Docs */
+    --docs-bg-sidebar: #f8f8f8;
+    --docs-bg-content: #ffffff;
+    --docs-text-main: #000000;
+    --docs-text-header: #000000;
+    --docs-border: #000000;
+    --docs-code-bg: #f0f0f0;
+
+    --docs-accent-blue: #0000aa; 
+    --docs-accent-green: #008800;
+    --docs-accent-gold: #aa5500;
+    
+    --bg-overlay: rgba(255, 255, 255, 0.95);
+    --bg-input: #ffffff;
+    
+    /* Hard Block Shadow (Black on White) */
+    --shadow-modal: 6px 6px 0px #000000; 
+    
+    --tool-bg-code-editor: #ffffff; 
+    --warning-bg: #fffccc; 
+}
 /* --- THEME PALETTES --- */
 
 [data-theme='victorian'] {
