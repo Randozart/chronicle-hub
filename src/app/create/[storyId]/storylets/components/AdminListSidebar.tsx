@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/storylets/components/AdminListSidebar.tsx
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -33,10 +34,9 @@ export default function AdminListSidebar<T extends ListItem>({
     const [groupByKey, setGroupByKey] = useState<string>(defaultGroupByKey || (groupOptions[0]?.key) || "");
     const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
     
-    // NEW: Mobile State
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false); 
 
-    // --- HELPER: Resolve Category Path ---
     const getSafePath = (item: any, key: string): string => {
         if (item.folder) return String(item.folder);
         const val = item[key];
@@ -50,19 +50,21 @@ export default function AdminListSidebar<T extends ListItem>({
         return strVal;
     };
 
-    // 1. Build Tree
     const tree = useMemo(() => {
         const root: Record<string, any> = { _files: [] };
-        const filtered = items.filter(i => 
-            i.id.toLowerCase().includes(search.toLowerCase()) || 
-            (i.name && i.name.toLowerCase().includes(search.toLowerCase()))
-        );
+        
+        const filtered = items.filter(i => {
+            if (i.category === 'image') return false; 
+            return i.id.toLowerCase().includes(search.toLowerCase()) || 
+                   (i.name && i.name.toLowerCase().includes(search.toLowerCase()));
+        });
 
         for (const item of filtered) {
             let rawPath = "Uncategorized";
             if (groupByKey) rawPath = getSafePath(item, groupByKey);
+            
             const normalizedPath = rawPath.replace(/\\/g, '/'); 
-            const path = normalizedPath.split('.').filter(Boolean); 
+            const path = normalizedPath.split(/[./]/).filter(Boolean); 
                        
             let current = root;
             for (const folder of path) {
@@ -82,13 +84,11 @@ export default function AdminListSidebar<T extends ListItem>({
         setCollapsedFolders(next);
     };
 
-    // Intercept selection to close modal on mobile
     const handleSelect = (id: string) => {
         onSelect(id);
         setIsMobileOpen(false);
     };
 
-    // Find active name for the button label
     const activeItem = items.find(i => i.id === selectedId);
     const activeLabel = activeItem ? (activeItem.name || activeItem.id) : "Select Item...";
 
@@ -97,8 +97,8 @@ export default function AdminListSidebar<T extends ListItem>({
         return (
             <>
                 {keys.map(folder => {
-                    const fullPath = path ? `${path}.${folder}` : folder;
-                    const isCollapsed = collapsedFolders.has(fullPath);
+                    const fullPath = path ? `${path}/${folder}` : folder;
+                    const isFolderCollapsed = collapsedFolders.has(fullPath);
                     return (
                         <div key={fullPath}>
                             <div 
@@ -111,9 +111,9 @@ export default function AdminListSidebar<T extends ListItem>({
                                     userSelect: 'none'
                                 }}
                             >
-                                <span style={{ fontSize: '0.7rem' }}>{isCollapsed ? '📁' : '📂'}</span> {folder}
+                                <span style={{ fontSize: '0.7rem' }}>{isFolderCollapsed ? '📁' : '📂'}</span> {folder}
                             </div>
-                            {!isCollapsed && renderTree(node[folder], fullPath, depth + 1)}
+                            {!isFolderCollapsed && renderTree(node[folder], fullPath, depth + 1)}
                         </div>
                     );
                 })}
@@ -136,9 +136,54 @@ export default function AdminListSidebar<T extends ListItem>({
         );
     };
 
+    if (isCollapsed) {
+        return (
+            <div 
+                className="admin-list-col collapsed"
+                style={{ 
+                    width: '40px', 
+                    minWidth: '40px',
+                    height: '100%',
+                    borderRight: '1px solid var(--tool-border)',
+                    background: 'var(--tool-bg-sidebar)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    paddingTop: '10px'
+                }}
+            >
+                <button 
+                    onClick={() => setIsCollapsed(false)}
+                    className="tool-icon-btn"
+                    title="Expand Sidebar"
+                    style={{ 
+                        marginBottom: '20px', 
+                        padding: '8px', 
+                        width: '100%',
+                        display: 'flex',
+                        justifyContent: 'center'
+                    }}
+                >
+                    »
+                </button>
+                <div style={{ 
+                    writingMode: 'vertical-rl', 
+                    textOrientation: 'mixed', 
+                    color: 'var(--tool-text-dim)', 
+                    fontWeight: 'bold', 
+                    letterSpacing: '2px',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    padding: '20px 0'
+                }} onClick={() => setIsCollapsed(false)}>
+                    {title.toUpperCase()}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
-            {/* MOBILE: Toggle Button (Visible only on small screens) */}
             <button className="mobile-list-toggle-btn" onClick={() => setIsMobileOpen(true)}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                     <span style={{ fontSize: '0.7rem', opacity: 0.7, textTransform: 'uppercase' }}>Editing:</span>
@@ -147,10 +192,8 @@ export default function AdminListSidebar<T extends ListItem>({
                 <span>📂 Change</span>
             </button>
 
-            {/* CONTAINER (Hidden on mobile by default, becomes Modal when .mobile-active) */}
             <div className={`admin-list-col ${isMobileOpen ? 'mobile-active' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 
-                {/* MOBILE: Modal Header (Back button) */}
                 <div className="mobile-list-header-row">
                     <button 
                         onClick={() => setIsMobileOpen(false)}
@@ -162,21 +205,58 @@ export default function AdminListSidebar<T extends ListItem>({
                     <button className="new-btn" onClick={() => { onCreate(); setIsMobileOpen(false); }}>+ New</button>
                 </div>
 
-                {/* DESKTOP: Standard Header */}
-                <div className="list-header" style={{ display: 'block' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{title} ({items.length})</span>
-                        <button className="new-btn" onClick={onCreate}>+ New</button>
+                {/* DESKTOP HEADER */}
+                <div className="list-header" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+                    {/* Top Row: Title + Controls */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <span style={{ fontWeight:'bold', color:'var(--tool-text-header)' }}>{title} <span style={{ opacity: 0.5, fontSize:'0.8em' }}>({items.length})</span></span>
+                        
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button className="new-btn" onClick={onCreate}>+ New</button>
+                            
+                            {/* Distinct Collapse Button */}
+                            <button 
+                                onClick={() => setIsCollapsed(true)} 
+                                title="Collapse Sidebar"
+                                style={{ 
+                                    background: 'var(--tool-bg-input)', 
+                                    border: '1px solid var(--tool-border)',
+                                    color: 'var(--tool-text-dim)',
+                                    borderRadius: '4px',
+                                    width: '24px',
+                                    height: '24px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    fontSize: '1rem',
+                                    lineHeight: 1
+                                }}
+                                className="hover:bg-white hover:text-black"
+                            >
+                                «
+                            </button>
+                        </div>
                     </div>
+
+                    {/* Group Selector */}
                     {groupOptions.length > 0 && (
-                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.8rem' }}>
-                            <span style={{ color: 'var(--tool-text-dim)' }}>Group by:</span>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '0.8rem', width: '100%' }}>
+                            <span style={{ color: 'var(--tool-text-dim)', whiteSpace: 'nowrap' }}>Group:</span>
                             <select 
                                 value={groupByKey} 
                                 onChange={(e) => setGroupByKey(e.target.value)}
-                                style={{ background: 'var(--tool-bg-input)', border: '1px solid #333', color: 'var(--tool-text-main)', borderRadius: '3px', padding: '2px' }}
+                                style={{ 
+                                    background: 'var(--tool-bg-input)', 
+                                    border: '1px solid var(--tool-border)', 
+                                    color: 'var(--tool-text-main)', 
+                                    borderRadius: '4px', 
+                                    padding: '4px', 
+                                    flex: 1,
+                                    fontSize: '0.8rem'
+                                }}
                             >
-                                <option value="">None (Flat)</option>
+                                <option value="">None</option>
                                 {groupOptions.map(opt => (
                                     <option key={opt.key} value={opt.key}>{opt.label}</option>
                                 ))}
@@ -185,7 +265,6 @@ export default function AdminListSidebar<T extends ListItem>({
                     )}
                 </div>
 
-                {/* Search */}
                 <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)' }}>
                     <input 
                         value={search}
@@ -196,7 +275,6 @@ export default function AdminListSidebar<T extends ListItem>({
                     />
                 </div>
 
-                {/* List */}
                 <div className="list-items" style={{ flex: 1, overflowY: 'auto' }}>
                     {renderTree(tree)}
                 </div>

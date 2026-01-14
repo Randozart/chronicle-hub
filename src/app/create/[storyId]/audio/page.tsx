@@ -55,10 +55,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             .then(res => res.json())
             .then(data => {
                 const combined: AudioItem[] = [];
-
-                // NOTE: We do NOT inject AUDIO_PRESETS here anymore. 
-                // The sidebar should only show user-created/imported assets.
-
+                
                 // 1. Project Instruments
                 if (data.instruments) {
                     Object.values(data.instruments).forEach((i: any) => 
@@ -72,11 +69,24 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                         combined.push({ ...t, category: 'track', scope: 'local', folder: 'Project Tracks' })
                     );
                 }
-
-                // 3. Global User Assets (Optional, depends if you want them in the list)
+                
+                // 3. Global User Assets (Categorized by Type)
                 if (data.global) {
                      data.global.forEach((g: any) => {
-                        combined.push({ ...g.data, id: g.id, category: g.type, scope: 'global', folder: 'Global Assets' });
+                        if (g.type === 'image') return; // Skip images
+
+                        const cat = g.type === 'instrument' ? 'instrument' : 'track';
+                        
+                        // FIX: Sub-folder organization using slashes
+                        const subFolder = g.type === 'instrument' ? 'Instruments' : 'Tracks';
+                        
+                        combined.push({ 
+                            ...g.data, 
+                            id: g.id, 
+                            category: cat, 
+                            scope: 'global', 
+                            folder: `Global Assets/${subFolder}` // <--- Creates nested folders
+                        });
                      });
                 }
                 setItems(combined);
