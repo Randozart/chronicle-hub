@@ -229,15 +229,9 @@ export default function Possessions({
     const [modalState, setModalState] = useState({ isOpen: false, message: "" });
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: "", message: "" });
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
-    
-
-    // @ts-ignore
     const invStyle = settings.componentConfig?.inventoryStyle || 'standard';
-    // @ts-ignore
     const sizeSetting = settings.componentConfig?.inventoryCardSize || 'medium';
-    // @ts-ignore
     const portraitMode = settings.componentConfig?.inventoryPortraitMode || 'cover';
-    // @ts-ignore
     const invShape = settings.imageConfig?.inventory || 'default';
 
     const sizeMap: Record<string, string> = { 'small': '160px', 'medium': '220px', 'large': '340px' };

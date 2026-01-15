@@ -54,7 +54,7 @@ export default function InstrumentMainForm({ initialData, onSave, onDelete, onDu
             <InstrumentEditor 
                 data={form}
                 onChange={(newData) => setData(newData)}
-                onInsertIntoTrack={undefined}
+                onInsertIntoTrack={undefined} 
             />
 
             <CommandCenter 

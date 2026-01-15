@@ -1,3 +1,4 @@
+// src/app/create/[storyId]/audio/components/TrackMainForm.tsx
 'use client';
 
 import { useState } from 'react';
@@ -48,30 +49,37 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
         const success = await handleSave();
         if (success && form) onSave(form);
     };
-
     return (
-        <div className="h-full flex flex-col relative" style={{ paddingBottom: '80px' }}>
-            <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: '100%', 
+            width: '100%', 
+            overflow: 'auto',
+            position: 'relative'
+        }}>
+            <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
                 <TrackEditor 
                     data={form} 
-                    onSave={() => {}}
-                    onDelete={() => {}}
+                    onSave={() => {}} 
+                    onDelete={() => {}} 
                     availableInstruments={availableInstruments}
                     onUpdateInstrument={() => {}} 
                     onChange={(newSource) => handleChange('source', newSource)}
                 />
             </div>
-
-            <CommandCenter 
-                isDirty={isDirty} 
-                isSaving={isSaving} 
-                lastSaved={lastSaved} 
-                onSave={onSaveClick} 
-                onRevert={() => setShowRevertModal(true)} 
-                onDelete={() => onDelete(form.id)}
-                onDuplicate={() => onDuplicate(form)}
-                itemType="Track"
-            />
+            <div style={{ flexShrink: 0, height: '80px', position: 'relative', zIndex: 100 }}>
+                <CommandCenter 
+                    isDirty={isDirty} 
+                    isSaving={isSaving} 
+                    lastSaved={lastSaved} 
+                    onSave={onSaveClick} 
+                    onRevert={() => setShowRevertModal(true)} 
+                    onDelete={() => onDelete(form.id)}
+                    onDuplicate={() => onDuplicate(form)}
+                    itemType="Track"
+                />
+            </div>
 
             <ConfirmationModal
                 isOpen={showRevertModal}

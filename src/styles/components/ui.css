@@ -6,6 +6,8 @@
     --_bg-item: var(--bg-item);
     --_text-primary: var(--text-primary);
     --_border-color: var(--border-color);
+    position: relative;
+    overflow: hidden;
 }
 
 .tab-bar {

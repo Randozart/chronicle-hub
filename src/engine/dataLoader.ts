@@ -5,7 +5,6 @@ import { WorldConfig } from '@/engine/models';
 import clientPromise from '@/engine/database';
 
 export const loadGameData = cache(async (worldId: string = 'trader_johns_world'): Promise<WorldConfig> => {
-
     try {
         const client = await clientPromise;
         const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');

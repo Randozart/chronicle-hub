@@ -11,6 +11,8 @@ export default function AdminDocs() {
                     The Control Panel of your world. Defining game rules, character creation, and team access.
                 </p>
             </header>
+
+            {/* SECTION 1: GLOBAL SETTINGS */}
             <section id="settings">
                 <h2 className="docs-h2">1. Global Settings</h2>
                 <p className="docs-p">
@@ -55,6 +57,8 @@ export default function AdminDocs() {
                     </tbody>
                 </table>
             </section>
+
+            {/* SECTION 2: SYSTEM BINDINGS */}
             <section id="bindings">
                 <h2 className="docs-h2">2. System Bindings</h2>
                 <p className="docs-p">
@@ -70,6 +74,8 @@ export default function AdminDocs() {
                     <li><strong>Portrait ID:</strong> Which string quality holds the avatar image ID? (Default: <code>$player_portrait</code>)</li>
                 </ul>
             </section>
+
+            {/* SECTION 3: CHARACTER INITIALIZATION */}
             <section id="init">
                 <h2 className="docs-h2">3. Character Initialization</h2>
                 <p className="docs-p">
@@ -121,6 +127,8 @@ export default function AdminDocs() {
                     The engine resolves inputs first, then calculates derived values.
                 </p>
             </section>
+
+            {/* SECTION 4: TEAM & PUBLISHING */}
             <section id="access">
                 <h2 className="docs-h2">4. Team & Access</h2>
 

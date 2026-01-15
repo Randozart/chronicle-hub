@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
         let character = await getCharacter(userId, storyId, characterId);
         if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
         const updatedCharacter = await checkLivingStories(character);
-
         return NextResponse.json({ 
             success: true, 
             character: updatedCharacter 

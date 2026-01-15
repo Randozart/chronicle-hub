@@ -150,7 +150,7 @@
     
     --accent-primary:  #2a3e5c;
     --accent-hover: #56b6c2;
-    --accent-highlight: #61afef;/* Gold/Yellow */
+    --accent-highlight: #61afef;
 
     --success-color: #98c379;
     --danger-color: #e06c75;
@@ -160,10 +160,10 @@
     --tool-bg-sidebar: #21252b;
     --tool-bg-input: #1b1d23;
     
-    --tool-text-main: #abb2bf;
-    --tool-text-dim: #5c6370;
+    --tool-text-main: #aab1bd;
+    --tool-text-dim: #8a92a0;
     --tool-text-header: #ffffff;
-    
+
     --tool-border: #4b5263;
     --tool-border-highlight: #abb2bf;
     --tool-accent: #61afef;
@@ -326,6 +326,134 @@
 
      --tool-bg-code-editor: #ffffff;
     --warning-bg: rgba(221, 107, 32, 0.1);
+}
+:root[data-global-theme='terminal'] {
+    --bg-main: #000000;
+    --bg-panel: #000000;
+    --bg-item: #111111;
+    --bg-item-hover: #333333;
+    --border-color: #808080;
+    --border-light: #ffffff;
+    --text-primary: #cccccc;
+    --text-secondary: #808080;
+    --text-muted: #555555;
+    --text-header: #ffffff;
+    --accent-primary: #0000aa;
+    --accent-hover: #0000ff;
+    --accent-highlight: #ffff55;
+
+    --success-color: #55ff55;
+    --success-bg: #002200;
+    
+    --danger-color: #ff5555;
+    --danger-bg: #220000;
+    
+    --warning-color: #aa5500;
+    
+    --progress-bg: #555555;
+    --progress-fill: #ffffff;
+    --font-main: "Courier New", "Lucida Console", "Fira Mono", monospace;
+    --border-radius: 0px;
+    --tool-bg-dark: #000000;
+    --tool-bg-header: #111111;
+    --tool-bg-sidebar: #000000;
+    --tool-bg-input: #000000;
+    
+    --tool-text-main: #cccccc;
+    --tool-text-dim: #808080;
+    --tool-text-header: #ffffff;
+    
+    --tool-border: #808080;
+    --tool-border-highlight: #ffffff;
+    --tool-accent: #55ffff;
+    
+    --tool-key-white: #cccccc;
+    --tool-key-black: #000000;
+    --tool-accent-mauve: #ff55ff;
+    --scrollbar-bg: #000000;
+    --scrollbar-thumb: #808080;
+    --scrollbar-thumb-hover: #ffffff;
+    --docs-bg-sidebar: #000000;
+    --docs-bg-content: #000000;
+    --docs-text-main: #cccccc;
+    --docs-text-header: #ffffff;
+    --docs-border: #ffffff;
+    --docs-code-bg: #111111;
+
+    --docs-accent-blue: #5555ff;
+    --docs-accent-green: #55ff55;
+    --docs-accent-gold: #ffff55;
+    
+    --bg-overlay: rgba(0, 0, 0, 0.95);
+    --bg-input: #000000;
+    --shadow-modal: 6px 6px 0px #555555; 
+    
+    --tool-bg-code-editor: #000000; 
+    --warning-bg: #221100; 
+}
+:root[data-global-theme='terminal-light'] {
+    --bg-main: #ffffff;
+    --bg-panel: #ffffff;
+    --bg-item: #f0f0f0;
+    --bg-item-hover: #e0e0e0;
+    --border-color: #000000;
+    --border-light: #666666;
+    --text-primary: #000000;
+    --text-secondary: #444444;
+    --text-muted: #666666;
+    --text-header: #000000;
+    --accent-primary: #0000aa;
+    --accent-hover: #0000ff;
+    --accent-highlight: #aa00aa;
+
+    --success-color: #008800;
+    --success-bg: #ccffcc;
+    
+    --danger-color: #cc0000;
+    --danger-bg: #ffcccc;
+    
+    --warning-color: #aa5500;
+    
+    --progress-bg: #dddddd;
+    --progress-fill: #000000;
+    --font-main: "Courier New", "Lucida Console", "Fira Mono", monospace;
+    --border-radius: 0px;
+    --tool-bg-dark: #ffffff;
+    --tool-bg-header: #eeeeee;
+    --tool-bg-sidebar: #ffffff;
+    --tool-bg-input: #ffffff;
+    
+    --tool-text-main: #000000;
+    --tool-text-dim: #666666;
+    --tool-text-header: #000000;
+    
+    --tool-border: #000000;
+    --tool-border-highlight: #0000aa;
+    --tool-accent: #0000ff;       
+    
+    --tool-key-white: #ffffff;
+    --tool-key-black: #222222;
+    --tool-accent-mauve: #800080;
+    --scrollbar-bg: #ffffff;
+    --scrollbar-thumb: #000000;
+    --scrollbar-thumb-hover: #444444;
+    --docs-bg-sidebar: #f8f8f8;
+    --docs-bg-content: #ffffff;
+    --docs-text-main: #000000;
+    --docs-text-header: #000000;
+    --docs-border: #000000;
+    --docs-code-bg: #f0f0f0;
+
+    --docs-accent-blue: #0000aa; 
+    --docs-accent-green: #008800;
+    --docs-accent-gold: #aa5500;
+    
+    --bg-overlay: rgba(255, 255, 255, 0.95);
+    --bg-input: #ffffff;
+    --shadow-modal: 6px 6px 0px #000000; 
+    
+    --tool-bg-code-editor: #ffffff; 
+    --warning-bg: #fffccc; 
 }
 [data-theme='victorian'] {
     --bg-main: #0b0f0b url('/themes/victorian/bg.png');
@@ -1193,4 +1321,76 @@
     --border-radius: 2px;
     --shadow-paper: 0 2px 4px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.1);
     --shadow-float: 0 10px 20px rgba(0,0,0,0.4);
+}
+
+[data-theme='grimoire'] {
+    --bg-main-color:#26211b;
+    --bg-main: var(--bg-main-color);
+    --bg-panel: #fdf6e3;
+    --bg-item: #f4efe9;
+    --bg-item-hover: #eaddcf;
+    --border-color: #8d6e63;
+    --border-light: #a1887f;
+    --text-primary: #3a291b;
+    --text-secondary: #5b442f;
+    --text-muted: #7a634d;
+    --accent-primary: #795548;
+    --accent-hover: #5d4037;
+    --accent-highlight: #d9a025;
+    --danger-color: #8a0303;
+    --font-main: var(--font-im-fell), "Garamond", "Times New Roman", serif;
+    --border-radius: 2px;
+}
+
+[data-theme='vanguard'] {
+    --bg-main: #0d1117;
+    --bg-panel: rgba(22, 27, 34, 0.75);
+    --bg-item: rgba(33, 38, 45, 0.75);
+    --bg-item-hover: rgba(50, 56, 65, 0.85);
+    --border-color: rgba(66, 231, 255, 0.3);
+    --border-light: rgba(66, 231, 255, 0.5);
+    --text-primary: #e6f1ff;
+    --text-secondary: #8892b0;
+    --text-muted: #484f58;
+    --accent-primary: #ff64c4;
+    --accent-hover: #ff82e1;
+    --accent-highlight: #42e7ff;
+    --font-main: var(--font-orbitron), "Fira Code", monospace;
+    --border-radius: 0px;
+}
+
+[data-theme='cassette'] {
+    --bg-main: #080808;
+    --bg-panel: #111111;
+    --bg-item: #1a1a1a;
+    --bg-item-hover: #2a2a2a;
+    --border-color: #555;
+    --border-light: #888;
+    --text-primary: #d4d4d4;
+    --text-secondary: #a0a0a0;
+    --text-muted: #666666;
+    --accent-primary: #8a3b3b;
+    --accent-hover: #a35050;
+    --accent-highlight: #ffb000;
+    --danger-color: #ff0000;
+    --font-main: "Courier New", "Fira Code", monospace;
+    --border-radius: 12px;
+}
+
+[data-theme='inferno'] {
+    --bg-main: #1a0505;
+    --bg-panel: #2a1010;
+    --bg-item: #3a1a1a;
+    --bg-item-hover: #4a2020;
+    --border-color: #6e2020;
+    --border-light: #8a3b3b;
+    --text-primary: #f1d4d4;
+    --text-secondary: #c5b4c1;
+    --text-muted: #8f7b8a;
+    --accent-primary: #8a0303;
+    --accent-hover: #a35050;
+    --accent-highlight: #ff4800;
+    --danger-color: #ff4800;
+    --font-main: var(--font-grenze), "Times New Roman", serif;
+    --border-radius: 0px;
 }

@@ -265,7 +265,6 @@ function resolveVariable(
             const resolvedId = evaluateText(inner, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
             identifier = resolvedId.toString().trim();
         }
-
         let qualityId: string | undefined;
         let contextQualities = qualities;
 
@@ -300,7 +299,6 @@ function resolveVariable(
                 state = { ...state, level: spoofedVal } as any;
             }
         }
-
         const properties = propChain ? propChain.split('.').filter(Boolean) : [];
         let currentValue: any = state;
 

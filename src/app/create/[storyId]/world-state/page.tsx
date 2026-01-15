@@ -23,7 +23,6 @@ export default function WorldStateAdmin({ params }: { params: Promise<{ storyId:
 
     const guardRef = useRef<FormGuard | null>(null);
     const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-
     useEffect(() => {
         const load = async () => {
             try {

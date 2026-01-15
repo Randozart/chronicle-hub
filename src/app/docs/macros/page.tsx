@@ -125,6 +125,7 @@ export default function MacrosPage() {
         </div>
     </div>
 </section>
+{/* 5. COLLECTIONS & LISTS */}
             <section id="collections">
                 <h2 className="docs-h2">5. Collection Macros</h2>
                 <p className="docs-p">

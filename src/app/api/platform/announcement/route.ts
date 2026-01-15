@@ -6,7 +6,6 @@ export const revalidate = 300;
 
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
     const announcement = await db.collection('platform_announcements').findOne({ enabled: true });

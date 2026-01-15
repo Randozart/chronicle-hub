@@ -15,7 +15,6 @@ export default function SelfLoopEdge({
     sourceY += 50;
     const archHeight = 90 + (index * 35); 
     const archWidth = 50 + (index * 10);
-    
     const startX = sourceX + 50  + (index * 5); 
     const startY = sourceY - 20; 
     const endX = sourceX -50 - (index * 5);

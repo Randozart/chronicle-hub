@@ -1,3 +1,6 @@
+// src/engine/audio/models.ts
+import { VersionedEntity } from "../models";
+
 export type SynthType = 
     | 'triangle' | 'sine' | 'square' | 'sawtooth' 
     | 'fmsine' | 'fmsquare' | 'fmsawtooth' | 'fmtriangle'
@@ -9,12 +12,10 @@ export interface EnvelopeDef {
     sustain?: number;
     release?: number;
 }
-
 export interface EffectCommand {
     code: string; 
     value: number;
 }
-
 export interface FilterDef {
     type: 'lowpass' | 'highpass' | 'bandpass' | 'notch' | 'allpass' | 'peaking' | 'lowshelf' | 'highshelf';
     frequency: number; 
@@ -23,7 +24,6 @@ export interface FilterDef {
     gain?: number;
     velocitySens?: number;
 }
-
 export interface EQDef {
     low: number;
     mid: number;
@@ -31,7 +31,6 @@ export interface EQDef {
     lowFrequency?: number;
     highFrequency?: number;
 }
-
 export interface LFODef {
     target: 'pan' | 'filter' | 'volume';
     type: 'sine' | 'square' | 'triangle' | 'sawtooth';
@@ -40,23 +39,20 @@ export interface LFODef {
     min?: number;
     max?: number;
 }
-
 export interface EmbellishmentDef {
     url: string;
     probability: number; 
     volume?: number;     
     pitchOffset?: number; 
 }
-
 export interface VibratoDef {
-    rate: number;
-    depth: number;
-    delay: number;
-    rise: number;
+    rate: number;       
+    depth: number;      
+    delay: number;      
+    rise: number;       
     shape?: 'sine' | 'triangle' | 'square' | 'sawtooth';
 }
-
-export interface InstrumentDefinition {
+export interface InstrumentDefinition extends VersionedEntity {
     id: string;
     name: string;
     type: 'synth' | 'sampler';
@@ -149,42 +145,35 @@ export interface InstrumentConfig {
 }
 
 export type PlaylistItem = PatternPlaylistItem | CommandPlaylistItem;
-
 export interface PatternModifier {
     transpose: number;
     volume: number;
     pan: number;
     effects?: EffectCommand[];
 }
-
 export interface PatternPlaylistItem {
     type: 'pattern',
     layers: Layer[];
 }
-
 export interface Layer {
     items: ChainItem[];
 }
-
 export interface ChainItem {
     id: string;
     transposition: number;
     volume?: number;
 }
-
 export interface CommandPlaylistItem {
     type: 'command';
     command: 'BPM' | 'Scale';
     value: string;
 }
-
 export interface ParsedPattern {
     id: string;
     duration: number;
     tracks: Record<string, SequenceEvent[]>; 
     trackModifiers: Record<string, PatternModifier>;
 }
-
 export interface SequenceEvent {
     time: number;       
     duration: number;   
@@ -192,7 +181,6 @@ export interface SequenceEvent {
     isCut?: boolean;
     isGlide?: boolean;
 }
-
 export interface NoteDef {
     degree: number;       
     octaveShift: number;  
@@ -201,8 +189,7 @@ export interface NoteDef {
     volume?: number;
     effects?: EffectCommand[];
 }
-
-export interface LigatureTrack {
+export interface LigatureTrack extends VersionedEntity {
     id: string;
     name: string;
     source: string; 

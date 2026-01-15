@@ -210,7 +210,6 @@ export class PolySampler extends Instrument<PolySamplerOptions> {
         const semitoneDiff = midi - activeMidi;
         const targetRate = previousRate * Math.pow(2, semitoneDiff / 12);
         voice.env.cancel(now);
-        
         const glideTime = this.portamento > 0 ? this.portamento : 0.1;
         
         voice.source.playbackRate.setValueAtTime(previousRate, now);

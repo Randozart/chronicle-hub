@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
 
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
-    
     await db.collection('platform_announcements').replaceOne(
         { _id: "current_message" as any },
         {

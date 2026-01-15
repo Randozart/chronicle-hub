@@ -99,6 +99,10 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                             <option value="starship">Starship Interior</option>
                             <option value="dark-parchment">Dark Parchment</option>
                             <option value="black-crown">Paranoid Archive</option>
+                            <option value="grimoire">Grimoire</option>
+                            <option value="vanguard">Deep Space</option>
+                            <option value="cassette">Found Footage</option>
+                            <option value="inferno">Infernum</option>
                         </select>
                     </div>
 

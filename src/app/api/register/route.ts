@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
         if (passError) {
             return NextResponse.json({ message: passError }, { status: 400 });
         }
-
         const client = await clientPromise;
         const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
         const usersCollection = db.collection('users');

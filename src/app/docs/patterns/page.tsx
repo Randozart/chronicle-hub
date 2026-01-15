@@ -15,6 +15,8 @@ export default function PatternsDocs() {
             <hr className="docs-divider" />
 
             <section id="patterns">
+                
+                {/* PATTERN 1: THE CAROUSEL */}
                 <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: 'var(--docs-accent-green)'}}>1. The Carousel (The Grind)</h3>
                     <p className="docs-p">
@@ -36,6 +38,8 @@ export default function PatternsDocs() {
                         </li>
                     </ol>
                 </div>
+
+                {/* PATTERN 2: THE MENACE */}
                 <div className="docs-card" style={{borderColor: '#e74c3c', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#e74c3c'}}>2. The Menace (The Trap)</h3>
                     <p className="docs-p">
@@ -57,6 +61,9 @@ export default function PatternsDocs() {
                         </li>
                     </ol>
                 </div>
+
+
+                {/* PATTERN 3: VISUAL NOVEL */}
 <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: 'var(--docs-accent-blue)'}}>3. The Simple Chain (Visual Novel)</h3>
     <p className="docs-p">
@@ -84,6 +91,8 @@ export default function PatternsDocs() {
         </li>
     </ol>
 </div>
+
+                {/* PATTERN 4: THE HUB */}
                 <div className="docs-card" style={{borderColor: '#f1c40f', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#f1c40f'}}>4. The Hub (Exploration)</h3>
                     <p className="docs-p">
@@ -103,6 +112,9 @@ export default function PatternsDocs() {
                         </li>
                     </ol>
                 </div>
+
+                {/* PATTERN 5: TIME */}
+                {/* PATTERN 5: TIME */}
 <div className="docs-card" style={{borderColor: '#c678dd', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: '#c678dd'}}>5. The Appointment (Time Delay)</h3>
     <p className="docs-p">
@@ -124,6 +136,9 @@ export default function PatternsDocs() {
         </li>
     </ol>
 </div>
+
+                {/* PATTERN 6: THE EXPEDITION */}
+                {/* PATTERN 6: THE EXPEDITION */}
 <div className="docs-card" style={{borderColor: '#e06c75', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: '#e74c75'}}>6. The Expedition (Deck-Driven)</h3>
     <p className="docs-p">
@@ -152,6 +167,9 @@ export default function PatternsDocs() {
         </li>
     </ol>
 </div>
+
+                {/* PATTERN 7: PERSONALIZATION */}
+                {/* PATTERN 7: PERSONALIZATION */}
 <div className="docs-card" style={{borderColor: '#9b59b6', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: '#9b59b6'}}>7. The Road with Many Faces</h3>
     <p className="docs-p">
@@ -170,6 +188,8 @@ export default function PatternsDocs() {
         <br/><em>Visible If:</em> <code>$class == Noble</code>
     </p>
 </div>
+
+                {/* PATTERN 8: PYTHON */}
                 <div className="docs-card" style={{borderColor: '#f39c12', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#f39c12'}}>8. The Python (Non-Linear Mystery)</h3>
                     <p className="docs-p">
@@ -187,6 +207,8 @@ export default function PatternsDocs() {
                         </li>
                     </ul>
                 </div>
+
+                {/* PATTERN 9: MIDNIGHT STAIRCASE */}
                 <div className="docs-card" style={{borderColor: '#34495e', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#95a5a6'}}>9. The Midnight Staircase</h3>
                     <p className="docs-p">
@@ -206,6 +228,8 @@ export default function PatternsDocs() {
                         </li>
                     </ol>
                 </div>
+
+                {/* PATTERN 10: GRANDFATHER CLOCK */}
                 <div className="docs-card" style={{borderColor: '#2c3e50', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#34495e'}}>10. The Grandfather Clock</h3>
                     <p className="docs-p">

@@ -31,10 +31,15 @@ export function evaluateCondition(
             return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth, evaluator);
         }
 
-        const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
+                const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
         if (!operatorMatch) {
-            const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
-            return val === 'true' || val === true || Number(val) > 0;
+            const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors, undefined, depth, evaluator);
+            const result = val === 'true' || val === true || Number(val) > 0;
+            
+            if (logger) {
+                logger(`[Check] Is '${trimExpr}' true? Value: ${val} -> ${result ? 'YES' : 'NO'}`, depth, result ? 'SUCCESS' : 'WARN');
+            }
+            return result;
         }
         
         const operator = operatorMatch[0];
@@ -42,21 +47,31 @@ export function evaluateCondition(
         let leftRaw = trimExpr.substring(0, index).trim();
         if (leftRaw === '' && self) leftRaw = '$.';
 
-        const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
-        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
+        const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, undefined, depth, evaluator);
+        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, undefined, depth, evaluator);
 
-        if (operator === '==' || operator === '=') return leftVal == rightVal;
-        if (operator === '!=') return leftVal != rightVal;
-        const lNum = Number(leftVal);
-        const rNum = Number(rightVal);
-        if (isNaN(lNum) || isNaN(rNum)) return false;
-        switch (operator) {
-            case '>': return lNum > rNum;
-            case '<': return lNum < rNum;
-            case '>=': return lNum >= rNum;
-            case '<=': return lNum <= rNum;
-            default: return false;
+        let result = false;
+        if (operator === '==' || operator === '=') result = leftVal == rightVal;
+        else if (operator === '!=') result = leftVal != rightVal;
+        else {
+            const lNum = Number(leftVal);
+            const rNum = Number(rightVal);
+            if (!isNaN(lNum) && !isNaN(rNum)) {
+                switch (operator) {
+                    case '>': result = lNum > rNum; break;
+                    case '<': result = lNum < rNum; break;
+                    case '>=': result = lNum >= rNum; break;
+                    case '<=': result = lNum <= rNum; break;
+                }
+            }
         }
+
+        if (logger) {
+            logger(`[Check] ${leftRaw} (${leftVal}) ${operator} ${rightVal} ? -> ${result}`, depth, result ? 'SUCCESS' : 'INFO');
+        }
+
+        return result;
+
     } catch (e: any) {
         if (errors) errors.push(`Condition Error "${expression}": ${e.message}`);
         return false;

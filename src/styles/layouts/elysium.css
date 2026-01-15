@@ -1,10 +1,11 @@
+
 .elysium-wrapper {
     height: 100vh;
     display: flex;
     overflow: hidden;
     position: relative;
-    color: #eee;
-    background: #000;
+    color: var(--text-primary);
+    background: var(--bg-main);
 }
 
 .elysium-bg-layer {
@@ -24,14 +25,17 @@
 .elysium-vignette {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.8) 100%);
+    background: radial-gradient(circle at center, transparent 20%, var(--bg-main) 100%);
 }
 
 .elysium-sidebar {
     width: 400px;
-    border-right: 1px solid rgba(255,255,255,0.1);
-    background: rgba(10, 10, 15, 0.6);
+    border-right: 1px solid color-mix(in srgb, var(--text-primary), transparent 85%);
+    background: color-mix(in srgb, var(--bg-panel) 75%, transparent);
+    
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    
     display: flex;
     flex-direction: column;
     z-index: 10;

@@ -4,6 +4,7 @@ import React from 'react';
 
 export default function SyntaxHighlightingPage() {
     
+    // Helper to simulate the Editor look
     const CodeBlock = ({ children }: { children: React.ReactNode }) => (
         <div className="docs-pre" style={{ lineHeight: '1.6', fontSize: '0.95rem' }}>
             <code style={{ fontFamily: 'Consolas, "Courier New", monospace', background: 'transparent' }}>
@@ -12,6 +13,7 @@ export default function SyntaxHighlightingPage() {
         </div>
     );
 
+    // Color Constants (Matched to your CSS)
     const C = {
         text: '#bec0c5',     // Base Text
         brace1: 'var(--docs-accent-gold)',   // Gold
@@ -37,6 +39,7 @@ export default function SyntaxHighlightingPage() {
                     A visual guide to the ScribeScript editor. Understand what the colors mean and how they help you write cleaner code.
                 </p>
             </header>
+            {/* 1. CONTEXT MODES */}
             <section id="modes">
                 <h2 className="docs-h2">1. Context Modes</h2>
                 <p className="docs-p">
@@ -216,6 +219,8 @@ export default function SyntaxHighlightingPage() {
                     </div>
                 </div>
             </section>
+
+            {/* 2. COLOR LEGEND */}
             <section id="legend">
                 <h2 className="docs-h2">2. The Color Legend</h2>
                 <p className="docs-p">
@@ -279,6 +284,8 @@ export default function SyntaxHighlightingPage() {
                     </tbody>
                 </table>
             </section>
+
+            {/* 1. STRUCTURE */}
             <section id="structure">
                 <h2>3. Structure (Braces)</h2>
                 <p className="docs-p">
@@ -303,6 +310,8 @@ export default function SyntaxHighlightingPage() {
                     </CodeBlock>
                 </div>
             </section>
+
+            {/* 2. DATA */}
             <section id="data">
                 <h2 className="docs-h2" >4. Data (Variables)</h2>
                 <p className="docs-p">
@@ -344,6 +353,8 @@ export default function SyntaxHighlightingPage() {
                     </CodeBlock>
                 </div>
             </section>
+
+            {/* 3. ACTIONS */}
             <section id="actions">
                 <h2 className="docs-h2">5. Actions (Macros)</h2>
                 <p className="docs-p">
@@ -367,6 +378,8 @@ export default function SyntaxHighlightingPage() {
                     </CodeBlock>
                 </div>
             </section>
+
+            {/* 4. LOGIC & MATH */}
             <section id="math">
                 <h2 className="docs-h2">6. Logic & Math</h2>
                 <p className="docs-p">
@@ -417,6 +430,8 @@ export default function SyntaxHighlightingPage() {
                     </CodeBlock>
                 </div>
             </section>
+
+            {/* 5. SPECIAL ELEMENTS */}
             <section id="special">
                 <h2 className="docs-h2">7. Special Elements</h2>
                 
