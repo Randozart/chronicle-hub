@@ -145,7 +145,6 @@ export default function ArrangementView({
             ...parsedTrack.playlist,
             { type: 'pattern', layers: [{ items: [{ id: firstPat, transposition: 0 }] }] }
         ];
-        // @ts-ignore
         onChange(serializeParsedTrack({ ...parsedTrack, playlist: newPlaylist }));
     };
 
@@ -160,8 +159,6 @@ export default function ArrangementView({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', background: '#141414' }}>
-            
-            {/* SETTINGS BAR */}
             <div className="settings-bar">
                 <div className="settings-group">
                     <span className="settings-label">BPM</span>
@@ -220,8 +217,6 @@ export default function ArrangementView({
                     />
                 </div>
             </div>
-
-            {/* Timeline */}
             <div
                 ref={scrollContainerRef}
                 style={{
@@ -364,8 +359,6 @@ export default function ArrangementView({
                     </button>
                 </div>
             </div>
-
-            {/* CONTEXT MENU */}
             {contextMenu && (
                 <AudioContextMenu 
                     x={contextMenu.x}

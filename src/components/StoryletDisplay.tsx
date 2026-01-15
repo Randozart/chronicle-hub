@@ -315,7 +315,6 @@ export default function StoryletDisplay({
             </div>
         );
     }
-
     const getLockReason = (condition: string): string => {
         const match = condition.match(/\$([a-zA-Z0-9_]+)\s*(>=|<=|==|>|<)\s*(\d+)/);
         if (!match) return `A requirement is not met.`;

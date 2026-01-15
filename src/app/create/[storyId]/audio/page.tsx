@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useRef } from 'react';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
-import { AUDIO_PRESETS } from '@/engine/audio/presets';
+import { AUDIO_PRESETS } from '@/engine/audio/presets'; 
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import InstrumentMainForm from './components/InstrumentMainForm';
 import TrackMainForm from './components/TrackMainForm';
@@ -11,6 +11,7 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
 import { FormGuard } from '@/hooks/useCreatorForm';
+
 type AudioItem = (InstrumentDefinition | LigatureTrack) & { 
     category: 'instrument' | 'track';
     scope: 'local' | 'global';
@@ -20,12 +21,15 @@ type AudioItem = (InstrumentDefinition | LigatureTrack) & {
 export default function AudioAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const { showToast } = useToast();
+    
     const [items, setItems] = useState<AudioItem[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
     const guardRef = useRef<FormGuard | null>(null);
     const [pendingId, setPendingId] = useState<string | null>(null);
     const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
     const [modalConfig, setModalConfig] = useState<{
         isOpen: boolean;
         mode: 'create' | 'duplicate';
@@ -39,25 +43,40 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
         message: string;
         itemToDelete?: string;
     }>({ isOpen: false, title: '', message: '' });
+
     const fetchData = () => {
         setIsLoading(true);
         fetch(`/api/admin/audio?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => {
                 const combined: AudioItem[] = [];
+
                 if (data.instruments) {
                     Object.values(data.instruments).forEach((i: any) => 
                         combined.push({ ...i, category: 'instrument', scope: 'local', folder: 'Project Instruments' })
                     );
                 }
+                
                 if (data.music) {
                     Object.values(data.music).forEach((t: any) => 
                         combined.push({ ...t, category: 'track', scope: 'local', folder: 'Project Tracks' })
                     );
                 }
+
                 if (data.global) {
                      data.global.forEach((g: any) => {
-                        combined.push({ ...g.data, id: g.id, category: g.type, scope: 'global', folder: 'Global Assets' });
+                        if (g.type !== 'instrument' && g.type !== 'track') return;
+
+                        const cat = g.type as 'instrument' | 'track';
+                        const subFolder = g.type === 'instrument' ? 'Instruments' : 'Tracks';
+                        
+                        combined.push({ 
+                            ...g.data, 
+                            id: g.id, 
+                            category: cat, 
+                            scope: 'global', 
+                            folder: `Global Assets/${subFolder}` 
+                        });
                      });
                 }
                 setItems(combined);
@@ -75,7 +94,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             setSelectedId(newId);
         }
     };
-
     const handleConfirmSwitch = async () => {
         if (guardRef.current) {
             const success = await guardRef.current.save();
@@ -86,20 +104,17 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             }
         }
     };
-
     const handleDiscardSwitch = () => {
         setShowUnsavedModal(false);
         if (pendingId) setSelectedId(pendingId);
         setPendingId(null);
     };
-
     const handleCancelSwitch = () => {
         setShowUnsavedModal(false);
         setPendingId(null);
     };
     const openCreateModal = (type: 'instrument' | 'track') => setModalConfig({ isOpen: true, mode: 'create', type });
     const openDuplicateModal = (source: AudioItem) => setModalConfig({ isOpen: true, mode: 'duplicate', type: source.category, sourceItem: source });
-
     const handleDeleteRequest = (id: string) => {
         setConfirmModal({
             isOpen: true,
@@ -108,9 +123,9 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             itemToDelete: id
         });
     };
-
     const handleModalSubmit = async (val: string) => {
         const cleanId = val.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        
         if (items.find(i => i.id === cleanId)) {
             showToast("ID Exists in Project", "error");
             return;
@@ -127,7 +142,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             await performDuplicate(cleanId, modalConfig.sourceItem);
         }
     };
-
     const performCreate = async (id: string, type: 'instrument' | 'track') => {
         const newItem: any = type === 'instrument' 
             ? { 
@@ -138,6 +152,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 id, name: "New Track", category: 'track', scope: 'local', folder: 'Project Tracks', version: 1,
                 source: "[CONFIG]\nBPM: 120\nGrid: 4\n" 
               };
+        
         setItems(prev => [...prev, newItem]);
         const cat = type === 'instrument' ? 'instruments' : 'music';
         
@@ -155,7 +170,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             showToast("Failed to create", "error");
         }
     };
-
     const performDuplicate = async (newId: string, source: AudioItem) => {
          const { _id, ...rest } = source as any;
          
@@ -186,7 +200,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
              showToast("Failed to duplicate", "error");
          }
     };
-
     const performDelete = async () => {
         const id = confirmModal.itemToDelete;
         if (!id) return;
@@ -208,7 +221,6 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
             showToast("Delete failed", "error");
         }
     };
-
     const handleListUpdate = (data: AudioItem) => {
         setItems(prev => prev.map(i => i.id === data.id ? { ...i, ...data } : i));
     };
@@ -216,10 +228,11 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     const selectedItem = items.find(i => i.id === selectedId);
+    
     const projectInstruments = items.filter(i => i.category === 'instrument') as InstrumentDefinition[];
     const systemInstruments = Object.values(AUDIO_PRESETS).map(p => ({
         ...p,
-        scope: 'system'
+        scope: 'system' 
     })) as InstrumentDefinition[];
     
     const allAvailableInstruments = [...projectInstruments, ...systemInstruments];

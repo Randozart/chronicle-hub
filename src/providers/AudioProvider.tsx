@@ -225,27 +225,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                         sustain: instConfig.overrides.sustain ?? baseDef.config.envelope?.sustain,
                         release: instConfig.overrides.release ?? baseDef.config.envelope?.release
                     },
-                    // @ts-ignore
                     reverb: instConfig.overrides.reverb,
-                    // @ts-ignore
                     delay: instConfig.overrides.delay,
-                    // @ts-ignore
                     distortion: instConfig.overrides.distortion,
-                    // @ts-ignore
                     bitcrush: instConfig.overrides.bitcrush,
-                    // @ts-ignore
                     filter: instConfig.overrides.filter ? instConfig.overrides.filter : baseDef.config.filter,
-                    // @ts-ignore
                     eq: instConfig.overrides.eq ? instConfig.overrides.eq : baseDef.config.eq,
-                    // @ts-ignore
                     embellishments: baseDef.config.embellishments,
-                    // @ts-ignore
                     portamento: baseDef.config.portamento,
-                    // @ts-ignore
                     noteCut: baseDef.config.noteCut, 
-                    // @ts-ignore
                     noteCutBleed: baseDef.config.noteCutBleed,
-                    // @ts-ignore
                     vibrato: baseDef.config.vibrato
                 }
             };

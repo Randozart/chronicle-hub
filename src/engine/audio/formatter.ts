@@ -6,7 +6,6 @@ export function formatLigatureSource(source: string): string {
     const outputLines: string[] = [];
     let currentPatternLines: { trackName: string, content: string, originalIndex: number }[] = [];
     let inPatternBlock = false;
-    
     const flushPattern = () => {
         if (currentPatternLines.length === 0) return;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import SparkleIcon from '@/components/icons/SparkleIcon';
 import ScribeAssistant from '@/components/admin/ScribeAssistant';
 import dynamic from 'next/dynamic';
@@ -8,6 +8,7 @@ import { LintError, lintScribeScript } from '@/engine/audio/linter';
 import { QualityDefinition, PlayerQualities, WorldConfig } from '@/engine/models';
 import { evaluateText } from '@/engine/textProcessor';
 import { GameEngine } from '@/engine/gameEngine';
+import { useDynamicQualities } from '@/hooks/useDynamicQualities';
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { 
     ssr: false,
     loading: () => (
@@ -44,6 +45,7 @@ export default function SmartArea({
     const containerRef = useRef<HTMLDivElement>(null);
     const [errors, setErrors] = useState<LintError[]>([]);
     const [previewResult, setPreviewResult] = useState<string>("");
+    const dynamicIds = useDynamicQualities(storyId);
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -62,13 +64,12 @@ export default function SmartArea({
             let lintContext: 'text' | 'effect' | 'condition' = 'text';
             if (mode === 'effect') lintContext = 'effect';
             else if (mode === 'condition') lintContext = 'condition';
-
-            const newErrors = lintScribeScript(value, lintContext, qualityDefs);
+            const newErrors = lintScribeScript(value, lintContext, qualityDefs, dynamicIds);
             setErrors(newErrors);
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [value, mode, qualityDefs]);
+    }, [value, mode, qualityDefs, dynamicIds]);
     useEffect(() => {
         if (!showPreview) return;
         
@@ -82,11 +83,18 @@ export default function SmartArea({
                     mockQualities[q.id] = {
                         qualityId: q.id,
                         type: q.type,
-                        level: 1,
+                        level: 1, 
                         stringValue: "Test Value",
                         changePoints: 0
                     } as any;
                 });
+                if (dynamicIds) {
+                    dynamicIds.forEach(id => {
+                        if (!mockQualities[id]) {
+                            mockQualities[id] = { qualityId: id, type: 'P', level: 1 } as any;
+                        }
+                    });
+                }
 
                 const selfContext = contextQualityId ? { qid: contextQualityId, state: mockQualities[contextQualityId] || null } : null;
 
@@ -116,14 +124,15 @@ export default function SmartArea({
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [value, showPreview, qualityDefs, contextQualityId, mode]);
+    }, [value, showPreview, qualityDefs, contextQualityId, mode, dynamicIds]);
 
     const handleInsert = (text: string) => {
         const prefix = (value && value.length > 0 && !/\s$/.test(value)) ? " " : "";
         onChange(value + prefix + text);
     };
-
-    const hasErrors = errors.length > 0;
+    const visualErrors = useMemo(() => errors.filter(e => e.severity !== 'info'), [errors]);
+    const hasVisualErrors = visualErrors.length > 0;
+    const infoCount = errors.length - visualErrors.length;
 
     return (
         <div className="form-group" ref={containerRef} style={{ position: 'relative', zIndex: showAssistant ? 50 : 1 }}>
@@ -137,9 +146,13 @@ export default function SmartArea({
                 ) : <div />}
                 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto' }}>
-                    {hasErrors && (
-                        <span style={{ color: 'var(--danger-color)', fontSize: '0.7rem', fontWeight: 'bold' }}>
-                            {errors.length} Issue{errors.length > 1 ? 's' : ''}
+                    {errors.length > 0 && (
+                        <span style={{ 
+                            color: hasVisualErrors ? 'var(--danger-color)' : 'var(--info-color)', 
+                            fontSize: '0.7rem', 
+                            fontWeight: 'bold' 
+                        }}>
+                            {hasVisualErrors ? `${visualErrors.length} Issue${visualErrors.length > 1 ? 's' : ''}` : 'Valid'}
                         </span>
                     )}
                     <button 
@@ -186,9 +199,9 @@ export default function SmartArea({
                 />
             )}
             <div 
-                className={hasErrors ? 'editor-has-errors' : ''}
+                className={hasVisualErrors ? 'editor-has-errors' : ''}
                 style={{ 
-                    border: hasErrors ? '1px solid var(--danger-color)' : '1px solid var(--tool-border)', 
+                    border: hasVisualErrors ? '1px solid var(--danger-color)' : '1px solid var(--tool-border)', 
                     borderRadius: 'var(--border-radius)', 
                     overflow: 'hidden',
                     background: 'var(--tool-bg-input)'
@@ -202,7 +215,7 @@ export default function SmartArea({
                     language="scribescript"
                     errors={errors}
                     mode={mode} 
-                    showLineNumbers={hasErrors} 
+                    showLineNumbers={hasVisualErrors} 
                 />
             </div>
             
@@ -220,13 +233,12 @@ export default function SmartArea({
                     {previewResult || <span style={{ color: 'var(--tool-text-dim)' }}>(Empty)</span>}
                 </div>
             )}
-
-            {hasErrors && !showPreview && (
+            {hasVisualErrors && !showPreview && (
                 <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--danger-color)', fontFamily: 'monospace' }}>
-                    <div>Line {errors[0].line}: {errors[0].message}</div>
-                    {errors.length > 1 && (
+                    <div>Line {visualErrors[0].line}: {visualErrors[0].message}</div>
+                    {visualErrors.length > 1 && (
                         <div style={{ opacity: 0.7, fontStyle: 'italic', marginTop: '2px' }}>
-                            ...and {errors.length - 1} more issues.
+                            ...and {visualErrors.length - 1} more issues.
                         </div>
                     )}
                 </div>

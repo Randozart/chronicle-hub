@@ -56,6 +56,43 @@
     to { opacity: 1; }
 }
 
+@keyframes flicker {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.2; }
+}
+
+@keyframes film-grain-flicker {
+  0% { opacity: 0.08; }
+  50% { opacity: 0.12; }
+  100% { opacity: 0.08; }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 10px 0px rgba(255, 72, 0, 0.4); }
+    50% { box-shadow: 0 0 20px 8px rgba(255, 72, 0, 0.7); }
+    100% { box-shadow: 0 0 10px 0px rgba(255, 72, 0, 0.4); }
+}
+
+@keyframes warp-churn {
+    from { transform: rotate(0deg) scale(1.2); }
+    to { transform: rotate(360deg) scale(1.2); }
+}
+
+@keyframes float-up {
+    from {
+        transform: translateY(0);
+        opacity: 0.8;
+    }
+    to {
+        transform: translateY(-100vh);
+        opacity: 0;
+    }
+}
+
 .fade-in-image {
     animation: fadeIn 0.5s ease-out;
 }

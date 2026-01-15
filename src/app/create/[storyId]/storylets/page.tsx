@@ -103,7 +103,6 @@ export default function StoryletsAdmin ({ params }: { params: Promise<{ storyId:
         setShowUnsavedModal(false);
         setPendingId(null);
     };
-
     const openCreateModal = () => setModalConfig({ isOpen: true, mode: 'create' });
     const openDuplicateModal = (source: Storylet) => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: source });
 

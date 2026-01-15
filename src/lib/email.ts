@@ -44,3 +44,32 @@ export const sendVerificationEmail = async (email: string, token: string) => {
         console.error("❌ Unexpected Email Error:", err);
     }
 };
+
+export const sendPasswordResetEmail = async (email: string, token: string) => {
+    const baseUrl = process.env.NEXTAUTH_URL;
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+    if (!process.env.SMTP_PASS) {
+        console.log("=== [DEV EMAIL] Password Reset ===");
+        console.log(resetUrl);
+        return;
+    }
+
+    try {
+        await resend.emails.send({
+            from: process.env.SMTP_FROM || 'Chronicle Hub <noreply@chroniclehub.dev>',
+            to: email,
+            subject: 'Reset your Chronicle Hub Password',
+            html: `
+                <div style="font-family: sans-serif; padding: 20px;">
+                    <h2>Password Reset Request</h2>
+                    <p>We received a request to reset your password. Click below to proceed.</p>
+                    <p><a href="${resetUrl}">Reset Password</a></p>
+                    <p>This link expires in 1 hour.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("Email Error:", err);
+    }
+};

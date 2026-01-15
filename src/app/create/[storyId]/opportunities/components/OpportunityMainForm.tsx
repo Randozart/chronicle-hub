@@ -103,9 +103,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                     <div className="form-group" style={{ flex: 1 }}>
                         <label className="form-label">Internal Label</label>
                         <input 
-                            // @ts-ignore
                             value={form.editor_name || ''} 
-                            // @ts-ignore
                             onChange={e => handleChange('editor_name', e.target.value)} 
                             className="form-input" 
                             placeholder="Editor Only Name" 

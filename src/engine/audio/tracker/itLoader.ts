@@ -60,13 +60,11 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     if (magic !== 'IMPM') throw new Error("Not an Impulse Tracker file");
 
     const title = decodeCString(u8.slice(4, 30));
-    
     p = 32;
     const ordNum = dv.getUint16(p, true); p += 2;
     const insNum = dv.getUint16(p, true); p += 2;
     const smpNum = dv.getUint16(p, true); p += 2;
     const patNum = dv.getUint16(p, true); p += 2;
-
     p += 4;
     const flags = dv.getUint16(p, true); p += 2;
     p += 2;
@@ -75,13 +73,11 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     const mixVol = dv.getUint8(p); p += 1;
     const initialSpeed = dv.getUint8(p); p += 1;
     const initialTempo = dv.getUint8(p); p += 1;
-
     const orders: number[] = [];
     p = 192;
     for(let i=0; i<ordNum; i++) {
         orders.push(u8[p + i]);
     }
-    
     p = 192 + ordNum;
     
     const insOffsets: number[] = [];
@@ -97,7 +93,6 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
     for(let i=0; i<smpOffsets.length; i++) {
         samples.push(parseSample(dv, smpOffsets[i]));
     }
-
     const patterns: ItPattern[] = [];
     for(let i=0; i<patOffsets.length; i++) {
         const offset = patOffsets[i];
@@ -107,7 +102,6 @@ export function parseItFile(buffer: ArrayBuffer): ItSong {
             patterns.push(parsePattern(dv, offset));
         }
     }
-
     return {
         title, globalVol, mixVol, initialSpeed, initialTempo, orders, samples, patterns
     };

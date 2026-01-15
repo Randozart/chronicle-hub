@@ -50,6 +50,5 @@ export function mergeLigatureSnippet(mainSource: string, snippet: string): strin
     if (snippetSections['PLAYLIST']) {
         injectContent('PLAYLIST|PLAY|SEQ|LIST', snippetSections['PLAYLIST']);
     }
-
     return outputLines.join('\n');
 }

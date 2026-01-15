@@ -18,7 +18,6 @@ export async function applyWorldUpdates(
     
     for (const change of worldChanges) {
         const key = `worldState.${change.qid}`;
-        
         const val = change.stringValue !== undefined ? change.stringValue : change.levelAfter;
         
         updates[key] = { 

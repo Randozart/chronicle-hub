@@ -6,12 +6,21 @@ import { QualityDefinition } from '@/engine/models';
 export interface LintError {
     line: number;
     message: string;
-    severity: 'error' | 'warning';
+    severity: 'error' | 'warning' | 'info';
     context?: string;
 }
 
 const HEADER_REGEX = /^\[(.*?)\]$/;
-const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|[-.|])/g;
+const TOKEN_REGEX = /(\(.*?\)|@\w+(?:\(\s*[+-]?\d+\s*\))?|(\d+['#b%,]*(?:\([^)]*\))?(?:\^\[.*?\])?)|(\$\{[^}]+\})|(\$\([^)]+\))|[-.|])/g;
+
+export function scanForDynamicQualities(source: string): Set<string> {
+    const dynamicIds = new Set<string>();
+    const newMatches = source.matchAll(/%new\[(.*?)(?:;|\])/g);
+    for (const m of newMatches) {
+        if (m[1]) dynamicIds.add(m[1].trim());
+    }
+    return dynamicIds;
+}
 
 export function lintLigature(source: string): LintError[] {
     const errors: LintError[] = [];
@@ -163,7 +172,7 @@ interface ScopeState {
 export interface LintError {
     line: number;
     message: string;
-    severity: 'error' | 'warning';
+    severity: 'error' | 'warning' | 'info';
     context?: string;
 }
 
@@ -175,7 +184,8 @@ interface ScopeState {
 export function lintScribeScript(
     source: string, 
     mode: ScribeContext,
-    definitions?: QualityDefinition[] 
+    definitions?: QualityDefinition[],
+    dynamicIds?: Set<string>
 ): LintError[] {
     const errors: LintError[] = [];
     const lines = source.split('\n');
@@ -183,7 +193,6 @@ export function lintScribeScript(
     let braceDepth = 0;
     let bracketDepth = 0;
     let commentDepth = 0;
-
     const scopeStack: ScopeState[] = []; 
 
     const validIds = definitions ? new Set(definitions.map(d => d.id)) : null;
@@ -197,20 +206,29 @@ export function lintScribeScript(
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         if (validIds && commentDepth === 0 && !line.trim().startsWith('//')) {
-            const varMatches = [...line.matchAll(/(?:^|[^@])([\$#])([a-zA-Z0-9_]+)/g)];
+            const varMatches = [...line.matchAll(/(?:^|[^@\w])([\$#])([a-zA-Z0-9_]+)/g)];
+            
             for (const m of varMatches) {
                 const varName = m[2];
+                if (varName === 'level') continue; 
                 
-                if (varName === 'level') continue;
-
                 const isGlobal = validIds.has(varName);
                 const isLocal = localVars.has(varName);
+                
                 if (!isGlobal && !isLocal) {
-                    errors.push({
-                        line: lineNumber,
-                        message: `Unknown variable '${varName}'. Is it defined?`,
-                        severity: 'warning'
-                    });
+                    if (dynamicIds && dynamicIds.has(varName)) {
+                        errors.push({
+                            line: lineNumber,
+                            message: `Dynamic Quality found: '${varName}'`,
+                            severity: 'info'
+                        });
+                    } else {
+                        errors.push({
+                            line: lineNumber,
+                            message: `Unknown variable '${varName}'. Is it defined?`,
+                            severity: 'warning'
+                        });
+                    }
                 }
             }
         }
@@ -218,14 +236,17 @@ export function lintScribeScript(
             const char = line[i];
             const nextChar = line[i + 1] || '';
             const prevChar = line[i - 1] || '';
+
             if (commentDepth === 0 && char === '{' && line.substr(i, 3) === '{//') {
                 commentDepth = 1;
             }
+            
             if (commentDepth > 0) {
                 if (char === '{') commentDepth++;
                 else if (char === '}') commentDepth--;
                 continue; 
             }
+
             if (char === '{') {
                 braceDepth++;
                 scopeStack.push({ type: 'brace', hasSeenColon: false });
@@ -245,6 +266,7 @@ export function lintScribeScript(
                     bracketDepth = 0;
                 }
             }
+
             if (char === ':' && braceDepth > 0 && bracketDepth === 0) {
                 if (scopeStack.length > 0) {
                     scopeStack[scopeStack.length - 1].hasSeenColon = true;
@@ -258,10 +280,10 @@ export function lintScribeScript(
                     
                     const isAliasDef = lastToken.startsWith('@');
                     const isWorldDef = lastToken.startsWith('#');
-                    const isVarDef = lastToken.startsWith('$');
+                    const isVarDef = lastToken.startsWith('$'); 
                     const isEffectInBranch = currentScope?.hasSeenColon;
-
                     const isAllowed = isEffectInBranch || isAliasDef || isWorldDef || isVarDef;
+
                     if (!isAllowed) {
                          errors.push({ 
                             line: lineNumber, 
@@ -270,10 +292,11 @@ export function lintScribeScript(
                         });
                     }
                 }
+                
                 if (braceDepth === 0 && mode === 'condition') {
                      errors.push({ 
                         line: lineNumber, 
-                        message: "Assignments '=' are not allowed in Condition fields. Use '==' for comparison.", 
+                        message: "Assignments '=' are not allowed in Condition fields.", 
                         severity: 'error' 
                     });
                 }

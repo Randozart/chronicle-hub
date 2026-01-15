@@ -233,7 +233,6 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         ctx.fillText(`${OUTPUT_WIDTHS[category]}px width`, maskX, maskY - 12);
 
     }, [originalImage, scale, pan, category]);
-    
     const getPointerPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
         let clientX, clientY;
         if ('touches' in e) {
@@ -434,7 +433,6 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                             gap: '20px', 
                             alignItems: 'flex-start' 
                         }}>
-                            
                             <div style={{ 
                                 flex: '1 1 300px',
                                 minWidth: 'min(100%, 300px)',

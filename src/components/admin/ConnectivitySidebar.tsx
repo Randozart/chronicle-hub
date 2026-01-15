@@ -75,9 +75,9 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
     }, [currentItemId, isLoaded, storylets, qualities, markets]);
     const grouped = useMemo(() => {
         const groups = {
-            inbound: [] as GraphConnection[],
-            outboundMod: [] as GraphConnection[],
-            outboundReq: [] as GraphConnection[]
+            inbound: [] as GraphConnection[],     
+            outboundMod: [] as GraphConnection[], 
+            outboundReq: [] as GraphConnection[]  
         };
         
         connections.forEach(c => {
@@ -88,9 +88,6 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                 if (r.includes('modifies') || r.includes('redirect') || r.includes('sets')) {
                     groups.outboundMod.push(c);
                 } 
-                else if (r.includes('condition') || r.includes('requirement') || r.includes('logic') || r.includes('reference')) {
-                    groups.outboundReq.push(c);
-                }
                 else {
                     groups.outboundReq.push(c);
                 }
@@ -106,6 +103,7 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
 
         return groups;
     }, [connections]);
+    const lookup = useMemo(() => ({ ...storylets, ...qualities, ...markets }), [storylets, qualities, markets]);
     const getHeaders = () => {
         if (targetType === 'quality') {
             return {
@@ -204,6 +202,7 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                                     isOpen={expanded.has('inbound')}
                                     onToggle={() => toggleGroup('inbound')}
                                     onNav={handleNavigate}
+                                    lookup={lookup}
                                 />
                                 <div style={{ height: 1, background: 'var(--tool-border)', margin: '10px 0', opacity: 0.5 }} />
                                 <Group 
@@ -213,6 +212,7 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                                     isOpen={expanded.has('requirements')}
                                     onToggle={() => toggleGroup('requirements')}
                                     onNav={handleNavigate}
+                                    lookup={lookup}
                                 />
                             </>
                         ) : (
@@ -224,9 +224,11 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                                     isOpen={expanded.has('inbound')}
                                     onToggle={() => toggleGroup('inbound')}
                                     onNav={handleNavigate}
+                                    lookup={lookup}
                                 />
                                 
                                 <div style={{ height: 1, background: 'var(--tool-border)', margin: '10px 0', opacity: 0.5 }} />
+                                
                                 <Group 
                                     title={headers.outboundReq}
                                     subtitle={headers.outboundReqSub}
@@ -234,9 +236,11 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                                     isOpen={expanded.has('requirements')}
                                     onToggle={() => toggleGroup('requirements')}
                                     onNav={handleNavigate}
+                                    lookup={lookup}
                                 />
                                 
                                 <div style={{ height: 1, background: 'var(--tool-border)', margin: '10px 0', opacity: 0.5 }} />
+
                                 <Group 
                                     title={headers.outboundMod}
                                     subtitle={headers.outboundModSub}
@@ -244,6 +248,7 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                                     isOpen={expanded.has('outbound')}
                                     onToggle={() => toggleGroup('outbound')}
                                     onNav={handleNavigate}
+                                    lookup={lookup}
                                 />
                             </>
                         )}
@@ -263,7 +268,7 @@ function LegendItem({ type, label }: { type: string, label: string }) {
     );
 }
 
-function Group({ title, subtitle, items, isOpen, onToggle, onNav }: any) {
+function Group({ title, subtitle, items, isOpen, onToggle, onNav, lookup }: any) {
     if (items.length === 0) {
         return (
              <div style={{ padding: '0.5rem', opacity: 0.6 }}>
@@ -301,47 +306,88 @@ function Group({ title, subtitle, items, isOpen, onToggle, onNav }: any) {
 
             {isOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px' }}>
-                    {items.map((item: GraphConnection) => (
-                        <div 
-                            key={item.id}
-                            onClick={() => onNav(item)}
-                            className="nexus-item"
-                            style={{ 
-                                padding: '8px', 
-                                borderRadius: 'var(--border-radius)',
-                                cursor: 'pointer',
-                                border: '1px solid transparent',
-                                background: 'var(--bg-panel)'
-                            }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                <TypeIcon type={item.type} />
+                    {items.map((item: GraphConnection) => {
+                        const entity = lookup[item.id] || {};
+                        let primary = item.id;
+                        let secondary = null;
+
+                        if (item.type === 'storylet' || item.type === 'opportunity') {
+                            if (entity.name) {
+                                primary = entity.name;
+                                secondary = item.id;
+                            }
+                        } else if (item.type === 'quality') {
+                            if (entity.editor_name) {
+                                primary = entity.editor_name;
+                                secondary = item.id;
+                            } else {
+                                primary = item.id;
+                                if (entity.name && entity.name !== item.id) {
+                                    secondary = `"${entity.name}"`;
+                                }
+                            }
+                        } else {
+                             if (entity.name && entity.name !== item.id) {
+                                 primary = entity.name;
+                                 secondary = item.id;
+                             }
+                        }
+                        if (primary === secondary) secondary = null;
+
+                        return (
+                            <div 
+                                key={item.id}
+                                onClick={() => onNav(item)}
+                                className="nexus-item"
+                                style={{ 
+                                    padding: '8px', 
+                                    borderRadius: 'var(--border-radius)',
+                                    cursor: 'pointer',
+                                    border: '1px solid transparent',
+                                    background: 'var(--bg-panel)'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
+                                    <TypeIcon type={item.type} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ 
+                                            fontWeight: 600, 
+                                            fontSize: '0.85rem', 
+                                            color: 'var(--tool-text-main)',
+                                            lineHeight: '1.2'
+                                        }}>
+                                            {primary}
+                                        </div>
+                                        {secondary && (
+                                            <div style={{ 
+                                                fontSize: '0.7rem', 
+                                                color: 'var(--tool-text-dim)', 
+                                                fontFamily: 'monospace',
+                                                marginTop: '2px',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            }}>
+                                                {secondary}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                
                                 <div style={{ 
-                                    fontWeight: 500, 
-                                    fontSize: '0.85rem', 
-                                    overflow: 'hidden', 
-                                    textOverflow: 'ellipsis', 
-                                    whiteSpace: 'nowrap',
-                                    color: 'var(--tool-text-main)',
-                                    flex: 1
+                                    fontSize: '0.75rem', 
+                                    color: 'var(--text-secondary)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px',
+                                    paddingLeft: '28px' 
                                 }}>
-                                    {item.name}
+                                    <span style={{ color: 'var(--accent-highlight)' }}>{item.reason}</span>
+                                    {item.context && <span style={{ fontSize: '0.7rem', opacity: 0.7, fontStyle: 'italic' }}>{item.context}</span>}
                                 </div>
                             </div>
-                            
-                            <div style={{ 
-                                fontSize: '0.75rem', 
-                                color: 'var(--text-secondary)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '2px',
-                                paddingLeft: '28px' 
-                            }}>
-                                <span style={{ color: 'var(--accent-highlight)' }}>{item.reason}</span>
-                                <span style={{ fontSize: '0.7rem', opacity: 0.7, fontStyle: 'italic' }}>{item.context}</span>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
             <style jsx>{`
@@ -381,6 +427,7 @@ function TypeIcon({ type }: { type: string }) {
             fontSize: '10px',
             fontWeight: '900',
             flexShrink: 0,
+            marginTop: '2px',
             boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
         }}>
             {char}

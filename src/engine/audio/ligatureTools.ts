@@ -380,7 +380,6 @@ function absoluteNoteToDegree(absolutePitch: string, targetScale: any): NoteDef 
         });
         accidental = bestDiff;
     }
-    
     const rootVal = NOTES_ORDER.indexOf(tonicPC);
     let interval = NOTES_ORDER.indexOf(matchPC) - rootVal;
     if (interval < 0) interval += 12; 
@@ -849,7 +848,6 @@ export function atomizeRepetitions(source: string, mockQualities: PlayerQualitie
             layer.items = newItems;
         });
     }
-    
     track = renamePatterns(track);
 
     return formatLigatureSource(serializeParsedTrack(track));
@@ -912,13 +910,11 @@ export function consolidateVerticals(source: string, mockQualities: PlayerQualit
             }
         }
         if (cohort.length > 1) {
-            
             const targetSig = cohort[0];
             const targetLayer = layerExamples.get(targetSig)!;
             for (let k = 1; k < cohort.length; k++) {
                 const sourceSig = cohort[k];
                 const sourceLayer = layerExamples.get(sourceSig)!;
-                
                 sourceLayer.items.forEach((sourceItem, itemIdx) => {
                     if (!targetLayer.items[itemIdx]) return;
                     
@@ -981,7 +977,6 @@ export function consolidateVerticals(source: string, mockQualities: PlayerQualit
         });
     }
     track = pruneUnusedInstruments(track);
-    
     track = renamePatterns(track);
 
     return formatLigatureSource(serializeParsedTrack(track));

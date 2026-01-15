@@ -88,7 +88,6 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
                 changePoints: 0, sources: [], spentTowardsPrune: 0, text_variants: {}
             } as any;
         });
-        
         sortedKeys.forEach(key => {
             const ruleObj = rules[key];
             const qid = key.replace('$', '');
@@ -184,7 +183,6 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
         if (!rule.visible_if) return true;
         return evaluateCondition(rule.visible_if, calculatedState.mockQualities, allDefinitions, null, 0);
     };
-
     const renderChoiceGrid = (ruleObj: CharCreateRule, qid: string) => {
         const options = ruleObj.rule.split('|').map(opt => {
             const parts = opt.split(':');

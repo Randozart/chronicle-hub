@@ -9,22 +9,23 @@ export async function GET(request: NextRequest) {
     const storyId = searchParams.get('storyId');
 
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
+
     if (!await verifyWorldAccess(storyId, 'writer')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+
     const world = await db.collection('worlds').findOne({ worldId: storyId }, { projection: { collaborators: 1 } });
     
     if (!world || !world.collaborators || world.collaborators.length === 0) {
         return NextResponse.json([]);
     }
     const userIds = world.collaborators.map((c: any) => new ObjectId(c.userId));
-    
     const users = await db.collection('users').find(
         { _id: { $in: userIds } },
-        { projection: { email: 1, name: 1 } }
+        { projection: { email: 1, username: 1, image: 1 } }
     ).toArray();
     const enrichedList = world.collaborators.map((c: any) => {
         const user = users.find(u => u._id.toString() === c.userId);
@@ -32,7 +33,8 @@ export async function GET(request: NextRequest) {
             userId: c.userId,
             role: c.role,
             email: user?.email || "Unknown User",
-            name: user?.name
+            username: user?.username || "Drifter",
+            image: user?.image || null
         };
     });
     

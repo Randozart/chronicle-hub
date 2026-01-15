@@ -341,6 +341,8 @@ export interface UserDocument {
     username: string;
     email: string;
     password?: string;
+    resetToken?: string;
+    resetTokenExpiry?: Date;
     image?: string;
     emailVerified?: Date | null;
     roles?: ('admin' | 'premium' | 'writer')[];

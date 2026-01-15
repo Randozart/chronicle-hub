@@ -11,6 +11,8 @@ export default function DocsPage() {
                     The Architect&apos;s Guide to sculpting narrative possibility space.
                 </p>
             </header>
+                    
+            {/* SECTION 1: THE PHILOSOPHY */}
             <section id="philosophy">
                 <h2 className="docs-h2">1. Beyond Branching</h2>
                 <p className="docs-p">
@@ -40,6 +42,8 @@ export default function DocsPage() {
                     </p>
                 </div>
             </section>
+
+            {/* SECTION 2: THE METAPHOR */}
             <section id="metaphor">
                 <h2 className="docs-h2">2. The "Bag of Marbles"</h2>
                 <p className="docs-p">
@@ -86,6 +90,8 @@ export default function DocsPage() {
                     </div>
                 </div>
             </section>
+
+            {/* SECTION 3: THE CORE LOOP */}
             <section id="loop">
                 <h2 className="docs-h2">3. The Engine Loop</h2>
                 <p className="docs-p">

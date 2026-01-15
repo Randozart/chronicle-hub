@@ -45,8 +45,8 @@ export default function MixerView({ parsedTrack, onChange }: Props) {
     };
 
     return (
-        <div style={{ display: 'flex', height: '100%', background: '#111' }}>
-            <div style={{ flex: 1, display: 'flex', gap: '8px', padding: '1rem', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', background: '#111', flex: 1, minHeight: '340px', height: 'auto', position: 'relative', alignItems: 'stretch'}}>
+            <div style={{ flex: 1, display: 'flex', gap: '8px', padding: '1rem', overflowX: 'auto', minHeight: '100%'  }}>
                 {Object.entries(parsedTrack.instruments).map(([name, config]) => {
                     const state = localState[name] || { vol: -10, oct: 0 };
                     const isSelected = selectedInst === name;
@@ -70,7 +70,7 @@ export default function MixerView({ parsedTrack, onChange }: Props) {
                                 {name}
                             </div>
                             
-                            <div style={{ flex: 1, position: 'relative', width: '30px', background: '#111', borderRadius: '2px', marginBottom: '8px' }}>
+                            <div style={{ flex: 1, position: 'relative', width: '30px', background: '#111', borderRadius: '2px', marginBottom: '8px', flexDirection: 'column'}}>
                                 <input 
                                     type="range" min="-60" max="6" step="1" 
                                     value={state.vol}

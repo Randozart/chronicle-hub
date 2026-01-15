@@ -11,6 +11,8 @@ export default function StoryletsDocs() {
                     The atoms of your world. Every conversation, shop, battle, or random event is a Storylet.
                 </p>
             </header>
+
+            {/* SECTION 1: THE CONCEPT */}
             <section id="concept">
                 <h2 className="docs-h2">1. The Narrative Unit</h2>
                 <p className="docs-p">
@@ -57,6 +59,8 @@ export default function StoryletsDocs() {
                     </div>
                 </div>
             </section>
+
+            {/* SECTION 2: ANATOMY */}
             <section id="anatomy">
                 <h2 className="docs-h2">2. Anatomy of an Event</h2>
                 <p className="docs-p">
@@ -122,6 +126,8 @@ export default function StoryletsDocs() {
         
     </div>
 </section>
+
+            {/* SECTION 3: DECK MECHANICS */}
             <section id="deck">
                 <h2 className="docs-h2">4. Opportunity Mechanics</h2>
                 <p className="docs-p">
@@ -161,6 +167,8 @@ export default function StoryletsDocs() {
                     </li>
                 </ul>
             </section>
+
+            {/* SECTION 4: BEHAVIOR TAGS */}
             <section id="behavior">
     <h2 className="docs-h2">5. Behavior Tags</h2>
     <p className="docs-p">
@@ -237,6 +245,8 @@ export default function StoryletsDocs() {
 </div>
     </div>
 </section>
+
+            {/* SECTION 5: AUTOFIRE */}
             <section id="autofire">
                 <h2 className="docs-h2">6. Flow Control</h2>
                 <p className="docs-p">

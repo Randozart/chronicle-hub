@@ -47,7 +47,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, onDuplic
         const success = await handleSave();
         if (success && form) onSave(form);
     };
-
     const tradeableQualities = form.allowAllTypes 
         ? allQualities 
         : allQualities.filter(q => q.type === QualityType.Item || q.type === QualityType.Equipable);
@@ -57,7 +56,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, onDuplic
         : allQualities.filter(q => q.type === QualityType.Counter || q.type === QualityType.Tracker || q.type === QualityType.Item);
 
     const currentStall = form.stalls[activeStallIndex];
-
     const addStall = () => {
         const newStall: ShopStall = { id: uuidv4(), name: "New Stall", mode: 'buy', listings: [] };
         const newStalls = [...form.stalls, newStall];
@@ -77,7 +75,6 @@ export default function MarketMainForm({ initialData, onSave, onDelete, onDuplic
         handleChange('stalls', newStalls);
         setActiveStallIndex(Math.max(0, index - 1));
     };
-
     const addListing = () => {
         if (!currentStall) return;
         const newListing: ShopListing = { id: uuidv4(), qualityId: "", price: "10" };

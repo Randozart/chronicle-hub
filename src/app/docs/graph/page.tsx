@@ -11,6 +11,8 @@ export default function GraphDocs() {
                     A visual tool for mapping connections, debugging state logic, and rapidly prototyping content.
                 </p>
             </header>
+
+            {/* SECTION 1: THE TWO MODES */}
             <section id="modes">
                 <h2 className="docs-h2">1. Visualization Modes</h2>
                 <p className="docs-p">
@@ -55,6 +57,8 @@ export default function GraphDocs() {
                     <li><strong>Mini-Map:</strong> Use the box in the bottom right to jump to different areas.</li>
                 </ul>
             </section>
+
+            {/* SECTION 2: READING THE GRAPH */}
             <section id="reading">
                 <h2 className="docs-h2">3. Reading the Graph</h2>
                 <p className="docs-p">
@@ -95,6 +99,8 @@ export default function GraphDocs() {
                     </ul>
                 </div>
             </section>
+
+            {/* SECTION 3: THE BUILDER */}
             <section id="builder">
                 <h2 className="docs-h2">4. Rapid Prototyping (The Builder)</h2>
                 <p className="docs-p">

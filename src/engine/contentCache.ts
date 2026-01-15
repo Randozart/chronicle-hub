@@ -4,15 +4,17 @@ import { getWorldConfig as serviceGetWorldConfig, getAutofireStorylets as servic
 import clientPromise from '@/engine/database';
 import { Storylet, Opportunity } from './models';
 
+const NEW_QUALITY_REGEX = /%new\[(.*?)(?:;|\])/g;
+
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
 const getCachedWorld = (storyId: string) => {
     const cachedLoader = unstable_cache(
         async () => loadGameData(storyId),
-        [`world-content-${storyId}`],
+        [`world-content-${storyId}`], 
         { 
             revalidate: 3600, 
-            tags: [`world-${storyId}`]
+            tags: [`world-${storyId}`] 
         }
     );
     return cachedLoader();
@@ -42,7 +44,7 @@ const getCachedStorylets = (storyId: string): Promise<(Storylet | Opportunity)[]
                 return [];
             }
         },
-        [`world-storylets-${storyId}`],
+        [`world-storylets-${storyId}`], 
         { 
             revalidate: 3600, 
             tags: [`storylets-${storyId}`]
@@ -51,9 +53,48 @@ const getCachedStorylets = (storyId: string): Promise<(Storylet | Opportunity)[]
     return cachedLoader();
 };
 
+const getCachedDynamicIds = (storyId: string): Promise<string[]> => {
+    const cachedLoader = unstable_cache(
+        async (): Promise<string[]> => {
+            const allEvents = await getCachedStorylets(storyId);
+            const dynamicIds = new Set<string>();
+
+            const scan = (text: string | undefined) => {
+                if (!text) return;
+                const matches = text.matchAll(NEW_QUALITY_REGEX);
+                for (const m of matches) {
+                    if (m[1]) dynamicIds.add(m[1].trim());
+                }
+            };
+
+            for (const event of allEvents) {
+                scan(event.text);
+                if (event.options && Array.isArray(event.options)) {
+                    for (const opt of event.options) {
+                        scan(opt.pass_quality_change);
+                        scan(opt.fail_quality_change);
+                        scan(opt.pass_long);
+                        scan(opt.fail_long);
+                    }
+                }
+            }
+
+            return Array.from(dynamicIds);
+        },
+        [`world-dynamic-ids-${storyId}`], 
+        { revalidate: 3600, tags: [`storylets-${storyId}`] } 
+    );
+    return cachedLoader();
+};
+
+
 export const getSettings = async (storyId: string) => {
     const data = await getCachedWorld(storyId);
     return data.settings;
+};
+
+export const getGlobalDynamicQualities = async (storyId: string) => {
+    return getCachedDynamicIds(storyId);
 };
 
 export const getStorylets = async (storyId: string) => {

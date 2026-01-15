@@ -20,8 +20,6 @@ export default function LocationHeader({
     styleMode = 'standard'
 }: LocationHeaderProps) {
     if (!location) return null;
-
-    // @ts-ignore
     const imageCode = location.image;
     const canTravel = !!location.regionId;
     const showIcon = imageCode && 

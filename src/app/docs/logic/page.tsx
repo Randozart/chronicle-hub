@@ -11,6 +11,8 @@ export default function LogicMathPage() {
                     How to control the flow of the story and update the world state.
                 </p>
             </header>
+
+            {/* SECTION 1: LOGIC */}
             <section id="logic">
                 <h2 className="docs-h2">1. Logic (Requirements)</h2>
                 <p className="docs-p">
@@ -124,6 +126,8 @@ export default function LogicMathPage() {
     <code className="docs-code">($has_key == 1 || $lockpicking &gt; 5) && $stamina &gt; 0</code>
 </div>
             </section>
+
+            {/* SECTION 2: EFFECTS */}
                 
             
 
@@ -132,6 +136,8 @@ export default function LogicMathPage() {
     <p className="docs-p">
         ScribeScript uses four specific bracket patterns. Understanding the difference is key to mastering complex logic.
     </p>
+
+    {/* DEFINITIONS */}
     <div className="docs-grid">
         <div className="docs-card" style={{borderColor: '#f1c40f'}}>
             <h4 className="docs-h4" style={{color: '#f1c40f'}}>{`{ }`} Logic Blocks</h4>

@@ -12,8 +12,10 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
     const pathname = usePathname();
     const [toc, setToc] = useState<TocItem[]>([]);
     
+    // MOBILE STATE
     const [showNav, setShowNav] = useState(false);
 
+    // Auto-close nav on link click
     useEffect(() => {
         setShowNav(false);
     }, [pathname]);
@@ -24,6 +26,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             const usedIds = new Set<string>();
             const items = headers.map((header, index) => {
                 let id = header.id || `header-${index}`;
+                // ... (ID generation logic remains same) ...
                 if (!header.id) header.id = id;
                 return { id, label: header.textContent || 'Section', level: parseInt(header.tagName[1]) };
             });
@@ -68,12 +71,18 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
 
     return (
         <div className="docs-wrapper">
+            
+            {/* MOBILE TOP BAR */}
             <div className="docs-mobile-header">
                 <button onClick={() => setShowNav(true)} className="docs-mobile-btn">☰ Menu</button>
                 <span className="docs-mobile-title">Documentation</span>
-                <div style={{width: '24px'}}></div>
+                <div style={{width: '24px'}}></div> {/* Spacer for alignment */}
             </div>
+
+            {/* BACKDROP */}
             {showNav && <div className="docs-mobile-backdrop" onClick={() => setShowNav(false)} />}
+
+            {/* SIDEBAR DRAWER */}
             <aside className={`docs-nav ${showNav ? 'mobile-open' : ''}`}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                     <h2 style={{ margin: 0, color: 'var(--docs-text-header)', fontSize: '1.2rem' }}>
@@ -84,6 +93,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
                 
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {/* ... (Keep existing nav items) ... */}
                         <NavItem href="/docs" label="Introduction" />
                         <Section title="The Language" />
                         <NavItem href="/docs/scribescript" label="ScribeScript Syntax" />

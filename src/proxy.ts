@@ -12,7 +12,9 @@ export async function proxy(req: NextRequest) {
         pathname.startsWith('/api/auth') ||     
         pathname === '/login' || 
         pathname === '/register' ||
-        pathname === '/verify-email' ||
+        pathname === '/verify-email' || 
+        pathname === '/forgot-password' || 
+        pathname === '/reset-password' ||  
         pathname.startsWith('/_next') || 
         pathname.startsWith('/images') || 
         pathname.startsWith('/themes') ||
@@ -24,7 +26,12 @@ export async function proxy(req: NextRequest) {
         pathname.startsWith('/sounds') 
 
     ) {
-        if (token && (pathname === '/login' || pathname === '/register')) {
+        if (token && (
+            pathname === '/login' || 
+            pathname === '/register' || 
+            pathname === '/forgot-password' || 
+            pathname === '/reset-password'
+        )) {
             return NextResponse.redirect(new URL('/', req.url));
         }
         return NextResponse.next();

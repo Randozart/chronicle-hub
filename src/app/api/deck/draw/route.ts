@@ -84,7 +84,6 @@ export async function POST(request: NextRequest) {
 
 
 export async function DELETE(request: NextRequest) {
-    
     const session = await getServerSession(authOptions);
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -92,7 +91,6 @@ export async function DELETE(request: NextRequest) {
 
     const userId = (session.user as any).id;
     const { storyId, characterId, cardId, deckId } = await request.json();
-
     try {
         const character = await getCharacter(userId, storyId, characterId);
         if (!character) {
@@ -105,7 +103,6 @@ export async function DELETE(request: NextRequest) {
 
         character.opportunityHands[deckId] = character.opportunityHands[deckId].filter(id => id !== cardId);
         await saveCharacterState(character);
-
         const handIds = character.opportunityHands[deckId] || [];
         const allEvents = await getStorylets(storyId);
         const handDefinitions = handIds.map(id => allEvents.find(e => e.id === id)).filter(Boolean);

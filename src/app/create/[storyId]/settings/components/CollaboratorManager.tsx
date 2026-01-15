@@ -19,11 +19,8 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
                 return res.json();
             })
             .then(data => {
-                if (Array.isArray(data)) {
-                    setList(data);
-                } else {
-                    setList([]);
-                }
+                if (Array.isArray(data)) setList(data);
+                else setList([]);
             })
             .catch(err => {
                 console.error("Collaborator fetch error:", err);
@@ -31,9 +28,7 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
             });
     };
 
-    useEffect(() => {
-        fetchList();
-    }, [storyId]);
+    useEffect(() => { fetchList(); }, [storyId]);
 
     const handleInvite = async () => {
         if (!email) return;
@@ -44,26 +39,17 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storyId, email, role: 'writer' })
             });
-            
             const data = await res.json();
 
             if (res.ok) {
                 setEmail("");
-                if (data.collaborator) {
-                    setList(prev => [...prev, data.collaborator]);
-                } else {
-                    fetchList();
-                }
+                if (data.collaborator) setList(prev => [...prev, data.collaborator]);
+                else fetchList();
                 showToast("Invitation sent.", "success");
             } else {
-                if (res.status === 403) {
-                    showToast("Only the Owner can invite collaborators.", "error");
-                } else {
-                    showToast(data.error || "Failed to invite", "error");
-                }
+                showToast(data.error || "Failed to invite", "error");
             }
         } catch (e) {
-            console.error(e);
             showToast("Network error.", "error");
         } finally {
             setIsLoading(false);
@@ -84,7 +70,7 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
 
     return (
         <div className="special-field-group" style={{ borderColor: '#555' }}>
-            <label className="special-label" style={{ color: 'var(--tool-text-main' }}>Collaborators</label>
+            <label className="special-label" style={{ color: 'var(--tool-text-main)' }}>Collaborators</label>
             <p className="special-desc">Invite other users to help write this world.</p>
             
             <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem', marginTop: '1rem' }}>
@@ -106,16 +92,29 @@ export default function CollaboratorManager({ storyId }: { storyId: string }) {
 
             <div style={{ display: 'grid', gap: '0.5rem' }}>
                 {Array.isArray(list) && list.map((colab: any) => (
-                    <div key={colab.userId} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--tool-bg-input)', padding: '0.5rem', borderRadius: '4px' }}>
-                        <div style={{ flex: 1, color: 'var(--tool-text-main)' }}>
-                            <span style={{ fontWeight: 'bold' }}>{colab.email || colab.userId.substring(0, 8)}</span>
-                            <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', marginLeft: '8px' }}>
-                                ({colab.role})
-                            </span>
+                    <div key={colab.userId} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--tool-bg-input)', padding: '0.75rem', borderRadius: '4px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', background: '#000', border: '1px solid var(--tool-border)', flexShrink: 0 }}>
+                            {colab.image ? (
+                                <img src={colab.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: '#555' }}>?</div>
+                            )}
                         </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                            <div style={{ color: 'var(--tool-text-main)', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                {colab.username || "Drifter"} 
+                                <span style={{ color: 'var(--tool-accent)', fontSize: '0.75rem', marginLeft: '6px', fontWeight: 'normal', textTransform: 'uppercase', border: '1px solid var(--tool-accent)', padding: '0 4px', borderRadius: '4px' }}>
+                                    {colab.role}
+                                </span>
+                            </div>
+                            <div style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem' }}>
+                                {colab.email}
+                            </div>
+                        </div>
+
                         <button 
                             onClick={() => handleRemove(colab.userId)} 
-                            style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer' }}
+                            style={{ color: '#e06c75', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '0 8px' }}
                             title="Remove"
                         >✕</button>
                     </div>

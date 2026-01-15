@@ -21,6 +21,8 @@ export default function ScribeScriptSyntaxPage() {
                     Learn how to make the world react to your player.
                 </p>
             </header>
+
+            {/* 1. THE PIPELINE */}
             <section id="pipeline">
                 <h2 className="docs-h2">1. The Resolution Pipeline</h2>
                 <p className="docs-p">
@@ -193,6 +195,8 @@ export default function ScribeScriptSyntaxPage() {
                     </p>
                     </div>
             </section>
+
+            {/* 2. RECURSION */}
             <section id="recursion">
     <h2 className="docs-h2">2. The "Russian Doll" Model</h2>
     <p className="docs-p">
@@ -342,6 +346,8 @@ export default function ScribeScriptSyntaxPage() {
     </p>
 </div>
 </section>
+
+            {/* 3. SIGILS */}
            <section id="sigils">
     <h2 className="docs-h2">3. Quality Variables & Scope</h2>
     <p className="docs-p">
@@ -791,6 +797,8 @@ export default function ScribeScriptSyntaxPage() {
     </div>
     
 </section>
+
+            {/* 6. CHALLENGES - THE BIG ONE */}
 <section id="challenges">
     <h2 className="docs-h2">6. Challenges & Probability</h2>
     <p className="docs-p">
