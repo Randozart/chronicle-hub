@@ -88,7 +88,7 @@ export const LIGATURE_LIBRARY: Record<string, SnippetCategory> = {
             {
                 "name": "Jazz Progression (ii-V-I)",
                 "description": "The cornerstone of jazz harmony.",
-                "code": "[INSTRUMENTS]\nPiano: hq_piano\n\n[DEFINITIONS]\n@ii  = [2, 4, 6]
+                "code": "[INSTRUMENTS]\nPiano: hq_piano\n\n[DEFINITIONS]\n@ii  = [2, 4, 6]"
             }
         ]
     },

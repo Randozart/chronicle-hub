@@ -225,6 +225,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                         sustain: instConfig.overrides.sustain ?? baseDef.config.envelope?.sustain,
                         release: instConfig.overrides.release ?? baseDef.config.envelope?.release
                     },
+                    // @ts-ignore
                     reverb: instConfig.overrides.reverb,
                     delay: instConfig.overrides.delay,
                     distortion: instConfig.overrides.distortion,

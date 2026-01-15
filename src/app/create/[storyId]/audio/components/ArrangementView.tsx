@@ -145,6 +145,7 @@ export default function ArrangementView({
             ...parsedTrack.playlist,
             { type: 'pattern', layers: [{ items: [{ id: firstPat, transposition: 0 }] }] }
         ];
+        // @ts-ignore
         onChange(serializeParsedTrack({ ...parsedTrack, playlist: newPlaylist }));
     };
 

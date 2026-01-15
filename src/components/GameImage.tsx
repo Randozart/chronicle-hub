@@ -61,6 +61,7 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
     
     if (!shape || shape === 'default') {
         const configKey = type || 'uncategorized';
+        // @ts-ignore
         shape = settings?.imageConfig?.[configKey] || 'default';
     }
 

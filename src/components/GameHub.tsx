@@ -669,6 +669,8 @@ export default function GameHub(props: GameHubProps) {
     const buildMainContent = () => {
         const headerStyle = props.settings.locationHeaderStyle || 'standard';
         const isBannerMode = headerStyle === 'banner';
+        
+        // @ts-ignore
         const imageCode = renderedLocation?.imageId || renderedLocation?.image;
 
         let innerContent = null;
