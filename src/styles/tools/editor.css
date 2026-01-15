@@ -1,0 +1,530 @@
+.editor-layout {
+    height: 100%;
+    display: flex;
+    gap: 0;
+    overflow: hidden;
+    background: var(--tool-bg-dark);
+    color: var(--tool-text-main);
+    font-family: sans-serif;
+}
+
+.editor-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--tool-bg-dark);
+    position: relative;
+}
+.editor-sidebar {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--tool-border);
+    background: var(--tool-bg-sidebar);
+    transition: width 0.2s ease;
+    cursor: default;
+    z-index: 10;
+}
+
+.editor-sidebar.right {
+    border-right: none;
+    border-left: 1px solid var(--tool-border);
+}
+
+.editor-sidebar-header {
+    padding: 4px;
+    border-bottom: 1px solid var(--tool-border);
+    display: flex;
+    justify-content: center;
+    background: var(--tool-bg-header);
+}
+
+.editor-sidebar-collapsed-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    color: var(--tool-border-highlight);
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    user-select: none;
+}
+.editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--tool-border);
+    padding: 0.5rem 1rem;
+    background: var(--tool-bg-header);
+    height: 42px;
+    flex-shrink: 0;
+}
+
+.editor-toolbar-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.editor-title {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--tool-text-header);
+}
+
+.editor-status {
+    font-size: 0.8rem;
+    color: var(--tool-text-dim);
+    width: 100px;
+    white-space: nowrap;
+}
+.tool-btn {
+    background: transparent;
+    border: 1px solid var(--tool-border);
+    color: var(--tool-text-dim);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.1s;
+}
+
+.tool-btn:hover {
+    border-color: var(--tool-border-highlight);
+    color: var(--tool-text-main);
+}
+
+.tool-btn.active {
+    background: var(--tool-accent);
+    color: var(--tool-key-black);
+    border-color: var(--tool-accent);
+}
+
+.tool-btn-action {
+    background: var(--info-color);
+    color: var(--tool-text-header);
+    border: none;
+    font-weight: bold;
+}
+
+.tool-btn-play {
+    background: var(--success-color);
+    color: var(--tool-key-black);
+    border: none;
+    font-weight: bold;
+    min-width: 60px;
+}
+
+.tool-btn-stop {
+    background: var(--danger-color);
+    color: var(--tool-text-header);
+    border: none;
+    font-weight: bold;
+    min-width: 60px;
+}
+
+.tool-icon-btn {
+    background: none;
+    border: none;
+    color: var(--tool-border-highlight);
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.tool-icon-btn:hover {
+    color: var(--tool-text-header);
+}
+.toggle-group {
+    display: flex;
+    gap: 1px;
+    background: var(--tool-border);
+    padding: 1px;
+    border-radius: 4px;
+}
+
+.toggle-group button {
+    background: var(--tool-bg-input);
+    color: var(--tool-text-main);
+    padding: 4px 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.toggle-group button.active {
+    background: var(--tool-accent);
+    color: var(--tool-key-black);
+}
+.tool-popup {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    z-index: 100;
+    background: var(--tool-bg-sidebar);
+    border: 1px solid var(--tool-accent);
+    border-radius: 4px;
+    padding: 1rem;
+    width: 250px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.tool-popup h4 {
+    margin: 0 0 1rem 0;
+    color: var(--tool-accent);
+    font-size: 0.9rem;
+}
+
+.tool-popup label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--tool-text-dim);
+    margin-bottom: 4px;
+}
+.editor-error-panel {
+    padding: 0.5rem;
+    background: var(--danger-bg);
+    border-bottom: 1px solid var(--danger-color);
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.editor-error-header {
+    color: var(--danger-color);
+    font-weight: bold;
+    font-size: 0.75rem;
+}
+
+.editor-error-item {
+    font-size: 0.8rem;
+    color: var(--danger-color);
+}
+.note-editor-header {
+    background: var(--tool-bg-input);
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--tool-border);
+}
+
+.note-editor-tab {
+    background: none;
+    border: none;
+    color: var(--tool-text-dim);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+.note-editor-tab.active {
+    color: var(--tool-accent);
+}
+.pianoroll-container {
+    display: flex;
+    flex-direction: column;
+    background: var(--tool-bg-input);
+    height: 100%;
+    user-select: none;
+    position: relative;
+}
+
+.pianoroll-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--tool-border);
+    background: var(--tool-bg-sidebar);
+    flex-shrink: 0;
+}
+
+.pianoroll-toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pianoroll-label {
+    font-size: 0.8rem;
+    color: var(--tool-text-dim);
+}
+
+.pianoroll-select {
+    background: var(--tool-bg-header);
+    color: var(--tool-text-main);
+    border: 1px solid var(--tool-border);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.pianoroll-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+.pianoroll-keys {
+    width: 40px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--tool-border);
+    background: var(--tool-bg-sidebar);
+    overflow: hidden;
+    position: relative;
+}
+
+.pianoroll-key {
+    background: var(--tool-key-white);
+    color: var(--tool-text-dim);
+    font-size: 9px;
+    border-bottom: 1px solid var(--tool-border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 4px;
+    box-sizing: border-box;
+}
+
+.pianoroll-key.black {
+    background: var(--tool-key-black);
+    color: var(--tool-text-main);
+}
+.pianoroll-grid-viewport {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: var(--bg-main);
+}
+
+.pianoroll-grid-content {
+    position: relative;
+    background-image: 
+        linear-gradient(to right, var(--tool-border) 1px, transparent 1px),
+        linear-gradient(to right, var(--tool-border-highlight) 1px, transparent 1px);
+    background-attachment: local;
+}
+
+.pianoroll-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--danger-color);
+    z-index: 30;
+    pointer-events: none;
+}
+
+.pianoroll-note {
+    position: absolute;
+    border-radius: 2px;
+    font-size: 9px;
+    color: var(--tool-key-black);
+    overflow: hidden;
+    padding-left: 2px;
+    cursor: move;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    border: 1px solid rgba(0,0,0,0.2);
+}
+
+.pianoroll-note-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: e-resize;
+    z-index: 11;
+}
+
+.pianoroll-note-ghost {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px dashed white;
+    z-index: 20;
+    pointer-events: none;
+    border-radius: 2px;
+}
+
+.pianoroll-resize-handle {
+    height: 8px;
+    background: var(--tool-key-white);
+    border-top: 1px solid var(--tool-border);
+    cursor: ns-resize;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.pianoroll-resize-handle-bar {
+    width: 40px;
+    height: 2px;
+    background: var(--tool-border-highlight);
+}
+.automation-drawer {
+    background: var(--tool-bg-dark);
+    border-top: 1px solid var(--tool-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.automation-header {
+    display: flex;
+    height: 24px;
+    background: var(--tool-bg-header);
+    border-bottom: 1px solid var(--tool-border);
+    align-items: center;
+    padding-left: 40px;
+}
+
+.automation-tab {
+    padding: 4px 12px;
+    cursor: pointer;
+    border: none;
+    font-size: 11px;
+    background: transparent;
+    color: var(--tool-border-highlight);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.automation-tab.active {
+    background: var(--tool-bg-input);
+    color: var(--tool-text-header);
+    border-bottom: 2px solid var(--tool-accent);
+}
+
+.automation-lane {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.automation-point {
+    position: absolute;
+    bottom: 0;
+    border-top: 2px solid var(--tool-text-header);
+    cursor: ns-resize;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    opacity: 0.6;
+}
+
+.automation-point:hover {
+    opacity: 1;
+}
+.settings-bar {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--tool-bg-dark);
+    border-bottom: 1px solid var(--tool-border);
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.settings-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-right: 1px solid var(--tool-border);
+    padding-right: 1rem;
+}
+
+.settings-group:last-child {
+    border-right: none;
+}
+
+.settings-label {
+    color: var(--tool-text-dim);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.settings-input {
+    background: var(--tool-bg-input);
+    border: 1px solid var(--border-light);
+    color: var(--tool-text-main);
+    padding: 2px 4px;
+    border-radius: 2px;
+    width: 50px;
+    font-size: 0.8rem;
+}
+
+.settings-select {
+    background: var(--tool-bg-input);
+    border: 1px solid var(--border-light);
+    color: var(--tool-text-main);
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 0.8rem;
+}
+
+.pianoroll-note-performance-shadow {
+    position: absolute;
+    border-radius: 2px;
+    font-size: 9px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.8;
+    background: transparent !important;
+    border: 1px dashed rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+}
+.pianoroll-selection-marquee {
+    position: absolute;
+    background: var(--tool-accent-fade);
+    border: 1px solid var(--tool-accent);
+    z-index: 50;
+    pointer-events: none;
+}
+
+.pianoroll-note.selected {
+    border: 1px solid #fff;
+    box-shadow: 0 0 4px #fff;
+    z-index: 20 !important;
+}
+
+.pianoroll-note-ghost {
+    opacity: 0.5;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px dashed #fff;
+    pointer-events: none;
+}
+
+.automation-value-label {
+    font-size: 8px;
+    color: var(--tool-text-header);
+    text-shadow: 0 1px 2px #000;
+    pointer-events: none;
+    z-index: 10;
+    margin-top: -12px;
+    white-space: nowrap;
+}
+
+.automation-help-text {
+    margin-left: auto;
+    padding-right: 1rem;
+    font-size: 0.75rem;
+    color: var(--tool-text-dim);
+    font-style: italic;
+}
+
+.editor-scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+}

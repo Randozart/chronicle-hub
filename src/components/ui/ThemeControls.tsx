@@ -1,0 +1,81 @@
+'use client';
+
+import { useTheme } from '@/providers/ThemeProvider';
+
+export default function ThemeControls({ vertical = false }: { vertical?: boolean }) {
+    const { theme, setTheme, resolvedTheme, zoom, setZoom } = useTheme();
+
+    const btnStyle = {
+        background: 'transparent',
+        border: '1px solid var(--border-light)',
+        color: 'var(--text-secondary)',
+        borderRadius: '4px',
+        width: '32px', height: '32px',
+        cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '0.9rem',
+        padding: 0
+    };
+
+    const cycleTheme = () => {
+        if (theme === 'dark') setTheme('soft-dark');
+        else if (theme === 'soft-dark') setTheme('classic');
+        else if (theme === 'classic') setTheme('classic-light');
+        else if (theme === 'classic-light') setTheme('soft-light');
+        else if (theme === 'soft-light') setTheme('light');
+        else setTheme('dark');
+    };
+
+    const getThemeIcon = () => {
+        switch(theme) {
+            case 'dark': return '☾';
+            case 'soft-dark': return '☁';
+            case 'classic': return '⚙️';
+            
+            case 'classic-light': return '🏛️';
+            case 'soft-light': return '☕';
+            case 'light': return '☀';
+            
+            default: return 'B'; 
+        }
+    };
+
+    const currentName = theme.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+     return (
+        <div style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: '0.5rem', alignItems: 'center' }}>
+            
+            <div className="theme-zoom-controls" style={{ display: 'flex', gap: '2px', background: 'var(--bg-item)', borderRadius: '4px', padding: '2px', border: '1px solid var(--border-color)' }}>
+                <button 
+                    onClick={() => setZoom(zoom - 10)}
+                    style={{ ...btnStyle, border: 'none', width: '24px', fontSize: '1rem' }}
+                    title="Zoom Out"
+                    className="hover:text-emphasis"
+                >
+                    −
+                </button>
+                
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: '0 4px', minWidth: '35px', justifyContent: 'center', userSelect: 'none' }}>
+                    {zoom}%
+                </div>
+
+                <button 
+                    onClick={() => setZoom(zoom + 10)}
+                    style={{ ...btnStyle, border: 'none', width: '24px', fontSize: '1rem' }}
+                    title="Zoom In"
+                    className="hover:text-emphasis"
+                >
+                    +
+                </button>
+            </div>
+            <button 
+                onClick={cycleTheme}
+                style={{ ...btnStyle, borderRadius: '50%', fontSize: '1rem' }}
+                className="hover:text-emphasis hover:border-emphasis transition"
+                title={`Current Theme: ${currentName}`}
+            >
+                {getThemeIcon()}
+            </button>
+        </div>
+    );
+}

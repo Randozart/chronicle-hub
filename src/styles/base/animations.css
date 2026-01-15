@@ -1,0 +1,61 @@
+@keyframes glitch {
+  0% { text-shadow: 0.05em 0 0 #00fffa, -0.05em 0 0 #ff0055; }
+  14% { text-shadow: 0.05em 0 0 #00fffa, -0.05em 0 0 #ff0055; }
+  15% { text-shadow: -0.05em -0.025em 0 #00fffa, 0.025em 0.025em 0 #ff0055; }
+  49% { text-shadow: -0.05em -0.025em 0 #00fffa, 0.025em 0.025em 0 #ff0055; }
+  50% { text-shadow: 0.025em 0.05em 0 #00fffa, 0.05em 0 0 #ff0055; }
+  99% { text-shadow: 0.025em 0.05em 0 #00fffa, 0.05em 0 0 #ff0055; }
+  100% { text-shadow: -0.025em 0 0 #00fffa, -0.05em -0.025em 0 #ff0055; }
+}
+
+@keyframes cyberpunk-pulse {
+  0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 3px var(--accent-highlight)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 8px var(--accent-highlight)); }
+}
+
+@keyframes scroll-scanlines {
+  from { background-position-y: 0; }
+  to { background-position-y: 200px; }
+}
+
+@keyframes film-grain-flicker {
+  0% { opacity: 0.08; }
+  25% { opacity: 0.12; }
+  50% { opacity: 0.07; }
+  75% { opacity: 0.14; }
+  100% { opacity: 0.09; }
+}
+
+@keyframes synthwave-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 0 200px; }
+}
+
+@keyframes drift-particles {
+  from { transform: translateX(0px) translateY(0px); }
+  to { transform: translateX(-50px) translateY(-100px); }
+}
+
+@keyframes drift-particles-2 {
+  from { transform: translateX(0px) translateY(0px); }
+  to { transform: translateX(70px) translateY(-80px); }
+}
+
+@keyframes bounce-right {
+  0%, 100% { transform: translateY(-50%) translateX(0); }
+  50% { transform: translateY(-50%) translateX(5px); }
+}
+
+@keyframes data-flicker {
+  0%, 100% { color: var(--text-primary); }
+  50% { color: var(--accent-highlight); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in-image {
+    animation: fadeIn 0.5s ease-out;
+}

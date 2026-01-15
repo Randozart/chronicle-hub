@@ -1,0 +1,25 @@
+// Sfz exported from a sf2 file with Polyphone
+// Name      : Ancient Instruments Of The World
+// Author    : Corey Ferrante
+// Copyright : 
+// Date      : 2025/12/14
+// Comment   : 
+
+<group>
+lokey=127 hikey=0
+amp_veltrack=100
+ampeg_attack=0.000999969
+cutoff=4978
+fil_type=lpf_2p
+fil_veltrack=2400
+loop_mode=no_loop
+
+<region> sample=samples\IRISH LYRE HARPL.wav
+amp_veltrack=100
+loop_end=27654
+loop_mode=loop_sustain
+loop_start=24912
+pan=0
+pitch_keycenter=61
+tune=19
+volume=0

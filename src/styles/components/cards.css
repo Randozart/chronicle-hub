@@ -1,0 +1,557 @@
+.opportunity-hand { margin-top: 2rem; }
+.opportunity-hand h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+.card-container { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); 
+    gap: 1.5rem; 
+    align-items: start;
+}
+.card {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+}
+
+.card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4); 
+    border-color: var(--accent-highlight); 
+}
+.card-content-btn {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    text-align: left;
+    outline: none;
+}
+.card-image { 
+    width: 100%; 
+    aspect-ratio: 4/3; 
+    object-fit: cover; 
+    border-bottom: 1px solid var(--border-light);
+    background-color: #000;
+}
+.card-text { 
+    padding: 1rem; 
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.card-text h3 { 
+    margin: 0; 
+    font-size: 1.1rem; 
+    line-height: 1.3;
+    color: var(--text-highlight);
+}
+
+.card-text p { 
+    margin: 0; 
+    font-size: 0.9rem; 
+    color: var(--text-secondary); 
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.no-cards-text { color: var(--text-muted); font-style: italic; }
+
+.deck-actions { margin-top: 2rem; text-align: center; }
+.deck-button { background-color: var(--accent-primary); color: var(--text-primary); border: none; padding: 1rem 2rem; border-radius: var(--border-radius); font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+.deck-button:hover { background-color: var(--accent-hover); }
+.card.theme-wrapper {
+    min-height: 0;
+    height: 100%;
+    background-attachment: scroll; 
+    background-size: cover;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    border: 1px solid var(--border-color);
+}
+
+.card.theme-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: none;
+    filter: none;
+}
+
+.card.theme-wrapper .continue-button,
+.card.theme-wrapper .return-button {
+    width: auto;
+    flex: 1 1 0%;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-item);
+    color: var(--text-primary);
+    text-decoration: none;
+    position: static;
+    transform: none;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.card.theme-wrapper .continue-button:hover,
+.card.theme-wrapper .return-button:hover {
+    background: var(--accent-primary);
+    color: #fff;
+    border-color: var(--accent-primary);
+}
+.card.theme-wrapper, .preview-card.theme-wrapper {
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    background-attachment: scroll !important;
+    background-size: cover !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.list-constraint-narrow {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.list-constraint-full {
+    width: 100%;
+}
+.mode-rows .option-button {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
+    min-height: auto;
+}
+.img-style-square-small {
+    width: 60px !important;
+    height: 60px !important;
+    flex-shrink: 0;
+    margin-right: 1rem;
+    border-radius: 4px;
+}
+.img-style-square-large {
+    width: 120px !important;
+    height: 120px !important;
+    flex-shrink: 0;
+    margin-right: 1.5rem;
+}
+.img-style-circle {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0;
+    margin-right: 1.5rem;
+    border: 2px solid var(--border-light);
+}
+
+.card-container.mode-images-only {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
+    gap: 0.8rem;
+}
+
+.card.image-only-card {
+    min-height: 0;
+    aspect-ratio: 4/5;
+    border: 2px solid var(--border-color);
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.card.image-only-card:hover {
+    transform: scale(1.05);
+    border-color: var(--accent-highlight);
+    z-index: 5;
+}
+
+.card.image-only-card .card-image {
+    height: 100%;
+    width: 100%;
+    border-bottom: none;
+}
+.card.image-only-card button[title="Discard"] {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.card.image-only-card:hover button[title="Discard"] {
+    opacity: 1;
+}
+.card-container.mode-images-only {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.8rem;
+}
+
+.card-container.mode-images-only .card {
+    aspect-ratio: 1 / 1;
+    min-height: 0;
+}
+
+.card-container.mode-images-only .card-content-btn {
+    height: 100%;
+}
+.card-container.mode-tarot {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.card-container.mode-tarot .card {
+    aspect-ratio: 2 / 3.5;
+    min-height: 0;
+}
+
+.card-container.mode-tarot .card-image {
+    height: 75%;
+    object-fit: cover;
+}
+
+.card-container.mode-tarot .card-text {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.card-container.mode-tarot .card-text p {
+    display: none;
+}
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--inv-item-width, 220px), 1fr));
+    gap: 1rem;
+}
+.inventory-grid.inv-mode-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.inventory-item {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius);
+    position: relative;
+    overflow: visible; 
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.inventory-item:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    border-color: var(--accent-highlight);
+    transform: translateY(-2px);
+    z-index: 5;
+}
+.inventory-item.style-standard {
+    padding: 1rem;
+    min-height: 100%;
+}
+.inventory-item .slot-header {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-light);
+    background: rgba(0,0,0,0.1);
+    width: 100%;
+    margin: 0;
+}
+
+
+.inventory-item.style-standard .slot-header {
+    color: var(--accent-highlight);
+        padding-bottom: 4px;
+        margin-bottom: 0.5rem;
+
+}
+.inventory-item.style-standard .item-main-body {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+}
+.inventory-item.style-standard .item-image-container {
+    width: 64px;
+    flex-shrink: 0;
+}
+.inventory-item.style-standard .item-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.inventory-item.style-standard .item-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.inventory-item.style-standard .item-actions {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--border-light);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.inventory-item.style-portrait {
+    padding: 0; 
+}
+
+.inventory-item.style-portrait .item-image-container {
+    width: 100%;
+    aspect-ratio: 4/3; 
+    border-bottom: 1px solid var(--border-light);
+}
+
+.inventory-item.style-portrait .item-text {
+    padding: 1rem;
+    flex: 1;
+}
+
+.inventory-item.style-portrait .item-actions {
+    padding: 0.5rem 1rem 1rem 1rem;
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.inventory-item.style-portrait.variant-cover .item-image-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+}
+.inventory-item.style-portrait.variant-icon {
+    align-items: center;
+}
+.inventory-item.style-portrait.variant-icon .item-image-container {
+    width: 120px;
+    height: 120px;
+    margin-top: 2rem;
+    border: 1px solid var(--border-light);
+    background: #000;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    position: relative;
+    flex-shrink: 0;
+}
+.inventory-item.style-portrait.variant-icon .item-image-container .game-image-wrapper {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+}
+.inventory-item.style-portrait.variant-icon .item-text {
+    text-align: center;
+}
+
+.inventory-item.style-portrait.variant-icon .item-header {
+    justify-content: center;
+}
+.inventory-item.style-icon-grid {
+    aspect-ratio: 1 / 1;
+    border: 2px solid var(--border-color);
+    padding: 0;
+}
+
+.inventory-item.style-icon-grid .item-image-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.inventory-item.style-icon-grid .slot-header-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    padding: 2px;
+    text-align: center;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.inventory-item.style-icon-grid .item-overlay-title {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 1.5rem 0.25rem 0.25rem 0.25rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 2;
+    pointer-events: none;
+}
+.inventory-item.style-list {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    min-height: auto;
+}
+
+.inventory-item.style-list .item-main-body {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.inventory-item.style-list .item-image-container {
+    width: 40px; 
+    height: 40px; 
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.inventory-item.style-list .item-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.inventory-item.style-list .item-desc { display: none; }
+
+.inventory-item.style-list .item-actions {
+    margin-left: 1rem;
+    padding: 0;
+    border: none;
+    width: auto;
+    margin-top: 0;
+}
+
+.inventory-item.style-list .equip-btn,
+.inventory-item.style-list .unequip-btn,
+.inventory-item.style-list .option-button {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    width: auto;
+}
+.interaction-menu {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 20;
+    border-radius: var(--border-radius);
+}
+.menu-btn {
+    width: 80%;
+    padding: 0.5rem;
+    cursor: pointer;
+    background: var(--bg-item);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+}
+.menu-btn:hover { background: var(--accent-primary); }
+
+@media (max-width: 768px) {
+    .card-container { 
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; 
+        gap: 0.75rem !important; 
+    }
+
+    .card {
+        flex-direction: column !important;
+        min-height: 0 !important;
+        height: 100%;
+    }
+    .card-content-btn {
+        flex-direction: column !important; 
+        height: 100%;
+    }
+
+    .card-image { 
+        width: 100% !important; 
+        height: 100px !important;
+        border-bottom: 1px solid var(--border-light);
+        border-right: none !important;
+        flex-shrink: 0;
+    }
+
+    .card-text { 
+        padding: 0.75rem !important; 
+        gap: 0.25rem !important;
+    }
+
+    .card-text h3 { 
+        font-size: 0.95rem !important; 
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .card-text p { 
+        font-size: 0.8rem !important; 
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .card .deck-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .card button[title="Discard"] {
+        top: 5px !important;
+        right: 5px !important;
+        background: rgba(0,0,0,0.5) !important;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}

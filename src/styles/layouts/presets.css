@@ -1,0 +1,126 @@
+.layout-preset-dossier .layout-grid-nexus {
+    display: grid;
+    grid-template-columns: 400px minmax(0, 1fr);
+    gap: 2rem;
+    max-width: 1500px;
+    width: 95%;
+    height: 100%;
+    margin: 4rem auto;
+    align-items: start;
+}
+.layout-preset-dossier .sidebar-panel {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-paper, 0 4px 6px rgba(0,0,0,0.1));
+    position: sticky;
+    top: 2rem;
+    max-height: calc(100vh - 4rem);
+    width: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    transform: rotate(-0.5deg);
+}
+.layout-preset-dossier .content-area {
+    overflow: visible !important;
+    height: auto !important;
+}
+
+.layout-preset-dossier .storylet-container {
+    background: var(--bg-item);
+    padding: 4rem;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-float, 0 10px 20px rgba(0,0,0,0.2));
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto 3rem auto;
+    transform: rotate(0.4deg);
+    overflow: visible !important;
+    height: auto !important;
+}
+.layout-preset-dossier .option-button {
+    background-color: var(--bg-item);
+    border: 1px solid var(--border-light);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-paper, 0 2px 4px rgba(0,0,0,0.1));
+    transition: transform 0.2s ease-out;
+    position: relative; 
+    overflow: visible;
+}
+.layout-preset-dossier .option-button:nth-child(odd) { transform: rotate(-0.5deg); }
+.layout-preset-dossier .option-button:nth-child(even) { transform: rotate(0.5deg); }
+
+.layout-preset-dossier .option-button:hover {
+    transform: scale(1.01) rotate(0deg) translateY(-3px);
+    z-index: 5;
+    background-color: var(--bg-item-hover);
+}
+[data-theme='detective-noir'] .sidebar-panel h1,
+[data-theme='detective-noir'] .sidebar-panel h2,
+[data-theme='detective-noir'] .sidebar-panel h3,
+[data-theme='detective-noir'] .sidebar-panel span,
+[data-theme='detective-noir'] .sidebar-panel div {
+    color: var(--text-primary) !important;
+    text-shadow: none !important;
+}
+[data-theme='detective-noir'] .sidebar-panel .action-timer {
+    color: var(--text-secondary) !important;
+}
+@media (max-width: 900px) {
+    .layout-preset-dossier .layout-grid-nexus {
+        grid-template-columns: 1fr;
+        margin: 1rem auto;
+        width: 100%;
+    }
+    .layout-preset-dossier .sidebar-panel,
+    .layout-preset-dossier .storylet-container {
+        transform: none;
+        max-height: none;
+        position: static;
+    }
+}
+
+@media (max-width: 1024px) {
+    [data-theme='black-crown'] .sidebar-panel,
+    [data-theme='detective-noir'] .sidebar-panel {
+        display: none !important;
+        
+        position: fixed !important; 
+        top: 0 !important; 
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        
+        width: 100% !important;
+        height: 100vh !important;
+        max-height: none !important;
+        
+        padding: 4rem 1.5rem 1.5rem 1.5rem !important;
+        margin: 0 !important;
+        
+        z-index: 9999 !important;
+        background-color: rgba(28, 24, 22, 0.98) !important;
+        backdrop-filter: blur(15px) !important;
+        
+        transform: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        
+        overflow-y: auto !important;
+    }
+    [data-theme='black-crown'] .sidebar-panel.mobile-visible,
+    [data-theme='detective-noir'] .sidebar-panel.mobile-visible {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    [data-theme='black-crown'] .storylet-container,
+    [data-theme='detective-noir'] .storylet-container {
+        transform: none !important;
+        padding: 1.5rem !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+}
