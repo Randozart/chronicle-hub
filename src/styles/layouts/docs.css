@@ -201,3 +201,29 @@
         padding: 2rem 1.5rem;
     }
 }
+
+.docs-context-box {
+    background: rgba(40, 44, 52, 0.5);
+    border: 1px solid var(--tool-border);
+    border-left: 3px solid #56b6c2;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    font-size: 0.85rem;
+    border-radius: 4px;
+}
+
+.docs-context-box strong {
+    color: #56b6c2;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+}
+
+.docs-context-box ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+}
+
+.docs-context-box li {
+    margin-bottom: 0.25rem;
+}

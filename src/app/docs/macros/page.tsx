@@ -16,18 +16,23 @@ export default function MacrosPage() {
             <section id="basics">
                 <h2 className="docs-h2">1. What is a Macro?</h2>
                 <p className="docs-p">
-                    While most of ScribeScript is about reading or changing simple values, Macros are special commands that ask the game engine to perform complex operations, like calculating probability, scheduling future events, or modifying entire groups of qualities.
+                    While most of ScribeScript is about reading or changing simple values, Macros are special commands 
+                    that ask the game engine to perform complex operations, like calculating probability, scheduling future 
+                    events, or modifying entire groups of qualities.
                 </p>
                 <div className="docs-syntax-box">
-                    <code className="docs-code">{`{%command[ arguments ]}`}</code>
+                    <code className="docs-code">{`%command[ arguments ]`}</code>
                 </div>
                 <p className="docs-p">
-                    All macros are wrapped in <code>{`{%...}`}</code> and their arguments are contained in square brackets <code>[...]</code>.
+                    All macros start with <code>{`%`}</code> and their arguments are contained in square brackets <code>[...]</code>.
                 </p>
+
                 <div className="docs-callout" style={{borderColor: '#f1c40f'}}>
                     <strong style={{color: '#f1c40f'}}>The Percent Shorthand:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
-                        As explained in the <Link href="/docs/scribescript#challenges" className="docs-link">main syntax guide</Link>, the engine recognizes a special shorthand: <code>{`{...}%`}</code>. When the parser sees a number followed by a percent sign, it treats it as a shorthand for the <code>%random</code> macro.
+                        As explained in the <Link href="/docs/scribescript#challenges" className="docs-link">main syntax guide</Link>, the 
+                        engine recognizes a special shorthand: <code>{`{...}%`}</code>. When the parser sees a number followed by a percent sign, 
+                        it treats it as a shorthand for the <code>%random</code> macro.
                     </p>
                     <div className="docs-pre" style={{marginTop:'0.5rem'}}>
                         <code className="docs-code">{`{60%}`} is identical to {`{%random[60]}`}</code>
@@ -35,28 +40,105 @@ export default function MacrosPage() {
                 </div>
             </section>
 
-             <section id="dynamic-registration">
-                <h2 className="docs-h2">2. The <code>%new</code> Macro</h2>
+            <section id="contexts">
+                <h2 className="docs-h2">2. Execution Contexts</h2>
                 <p className="docs-p">
-                    By default, the engine validates all Quality IDs against the database to prevent typos. 
-                    If you want to create a brand new quality on the fly (e.g., inside a specific storylet text) without defining it in the admin panel first, you must register it.
-                    ChronicleHub already supports assignment to an undefined quality, such as <code>$new_quality = 1</code>, which will create a new Pyramidal quality with that ID, but no other properties.
-                    The <code>%new</code> macro allows you to create a dynamic quality, either based on another quality, or completely new.
+                    Macros behave differently depending on where they are used. The primary distinction is whether they are placed inside a 
+                    Logic Block <code>{`{...}`}</code> or directly in an Effect Field. Each macro's documentation will specify which contexts it supports.
                 </p>
-                <div className="docs-syntax-box">
-                    <code className="docs-code">%new[quality_id]</code>
+
+                <div className="docs-grid">
+                    <div className="docs-card">
+                        <h4 className="docs-h4">Bracketed Execution (Value Resolution)</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            When a macro is placed alone inside a Logic Block, it is always treated as a function that must 
+                            <strong>return a value</strong>. The macro runs, and the entire <code>{`{%...[...]}`}</code> block is replaced by its result.
+                        </p>
+                        <div className="docs-pre" style={{marginTop:'1rem'}}>
+                            <code className="docs-code">{`$gold += {%pick[Treasures]}`}.level</code>
+                        </div>
+                        <p className="docs-p" style={{fontSize: '0.9rem', marginTop:'1rem'}}>
+                            <strong>How it works:</strong> The <code>%pick</code> macro runs first and returns a Quality ID (e.g., "diamond"). The line then becomes <code>$gold += $diamond.level</code>, which is a standard effect.
+                        </p>
+                    </div>
+                    <div className="docs-card">
+                        <h4 className="docs-h4">Bracketless Execution (Operand)</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                           When a macro is used <strong>outside</strong> of braces in an Effect Field, it can act as a dynamic <strong>L-Value</strong>—the "target" of an operation. This is a special syntax that only a few macros support.
+                        </p>
+                        <div className="docs-pre" style={{marginTop:'1rem'}}>
+                            <code className="docs-code">%pick[Treasures] += 1</code>
+                        </div>
+                        <p className="docs-p" style={{fontSize: '0.9rem', marginTop:'1rem'}}>
+                           <strong>How it works:</strong> The engine identifies <code>%pick</code> as the target. It runs the macro to get a Quality ID ("diamond"), and then applies the <code>+= 1</code> operation to that result, effectively running <code>$diamond += 1</code>.
+                        </p>
+                    </div>
                 </div>
-                <p className="docs-p">
-                    <strong>Usage:</strong> Place this anywhere in a Storylet's text or effects. The engine scans for this tag before loading the world.
-                    <br />
-                    <em>Example:</em> <code>"You pick up a strange coin. %new[strange_coin] $strange_coin++"</code>
-                </p>
             </section>
 
-            <section id="random">
-                <h2 className="docs-h2">2. The <code>%random</code> Macro</h2>
+            <section id="new">
+                <h2 className="docs-h2">3. The <code>%new</code> Macro (Dynamic Registration)</h2>
+                 <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns the ID of the new quality as a string).</li>
+                        <li><strong>Bracketless:</strong> No. This macro only registers definitions.</li>
+                    </ul>
+                </div>
                 <p className="docs-p">
-                    This is the simplest probability macro. It takes a number (0-100) and returns <code>true</code> or <code>false</code> based on the single Resolution Roll for the current action.
+                    The <code>%new</code> macro dynamically defines a Quality for the current character, making it exist for logic checks and state changes within the current context. 
+                    While you could manually define these qualities, this macro is convenient for creating procedurally generated or player-defined qualities (e.g., a quality for each NPC you've met).
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">%new[ NEW_ID ; BASE_ID , {`{OVERRIDES}`} ]</code>
+                </div>
+                 <ul className="docs-props-list">
+                    <li><code>NEW_ID</code><span><strong>(Required)</strong> The unique ID for the new quality. Can be dynamic, e.g., <code>contract_{`{@person_id}`}</code>.</span></li>
+                    <li><code>BASE_ID</code><span><strong>(Optional)</strong> The ID of an existing quality to use as a template. The new quality will inherit all its properties (name, description, etc.).</span></li>
+                    <li><code>{`{OVERRIDES}`}</code><span><strong>(Optional)</strong> A ScribeScript object literal to override properties from the base.</span></li>
+                </ul>
+                <div className="docs-card" style={{marginTop:'1rem'}}>
+                    <h4 className="docs-h4">Example 1: Simple Registration</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        Register a new, simple tracker quality before using it. If a quality with this ID already exists, the macro does nothing.
+                    </p>
+                    <div className="docs-pre">
+                        <code className="docs-code">
+                            %new[suspicion_of_the_butler], $suspicion_of_the_butler[desc: You gain a new suspicion...] = 1
+                        </code>
+                    </div>
+                </div>
+                <div className="docs-card" style={{marginTop:'1rem'}}>
+                    <h4 className="docs-h4">Example 2: Templating and Overriding</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        Create a unique quest item based on a generic "Quest Item" template, but give it a unique name and description for this specific instance.
+                    </p>
+                    <div className="docs-pre">
+                        <code className="docs-code" style={{whiteSpace:'pre'}}>
+{`{@item_id = quest_item_{%random[1~100]}}
+{%new[@item_id; quest_item_base, { 
+    name: "A Clue from the Docks", 
+    description: "A waterlogged note you found." 
+}]}`}
+                        </code>
+                    </div>
+                </div>
+            </section>
+
+            <section id="probability">
+                <h2 className="docs-h2">4. Probability Macros</h2>
+                <p className="docs-p">
+                    These macros are the foundation of any system involving randomness or skill checks.
+                </p>
+
+                <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%random</code></h3>
+                <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns <code>true</code> or <code>false</code>).</li>
+                        <li><strong>Bracketless:</strong> No.</li>
+                    </ul>
+                </div>
+                <p className="docs-p">
+                    The simplest probability macro. It takes a number (0-100) and returns <code>true</code> or <code>false</code> based on the single Resolution Roll for the current action.
                 </p>
                 <div className="docs-syntax-box">
                     <code className="docs-code">{`{%random[ CHANCE ; invert ]}`}</code>
@@ -76,102 +158,88 @@ export default function MacrosPage() {
                     <br/>
                     <code className="docs-code">{`{ {%random[40]} : You find a loose coin! | You find nothing. }`}</code>
                 </div>
-            </section>
+                <div className="docs-card" style={{marginTop:'1.5rem'}}>
+                    <h4 className="docs-h4">Use Case: Conditional Text with the '%' Shorthand</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        While you can write the full macro, it's far more common to use the <code>{`{...}%`}</code> shorthand. The engine recognizes a number inside braces followed by a percent sign and treats it as a <code>true/false</code> check against the Resolution Roll.
+                    </p>
+                    <div className="docs-pre">
+                        <span style={{color:'#777'}}>// This shorthand...</span>
+                        <br/>
+                        <code className="docs-code">{`{40%}`}</code>
+                        <br/><br/>
+                        <span style={{color:'#777'}}>// ...is identical to writing this full macro:</span>
+                        <br/>
+                        <code className="docs-code">{`{%random[40]}`}</code>
+                    </div>
+                    <p className="docs-p" style={{fontSize: '0.9rem', marginTop:'1rem', borderTop:'1px dashed var(--tool-border)', paddingTop:'1rem'}}>
+                        This makes it very easy to create random outcomes inside a conditional block:
+                    </p>
+                    <div className="docs-pre">
+                        <code className="docs-code">{`You search the room. { {40%} : You find a loose coin! | You find nothing. }`}</code>
+                    </div>
+                     <p className="docs-p" style={{fontSize: '0.9rem', marginTop:'1rem'}}>
+                        <strong>How it works:</strong> The inner <code>{`{40%}`}</code> resolves to <code>true</code> if the action's roll is 40 or less. The outer conditional block then uses this result to decide which text to display.
+                    </p>
+                </div>
 
-            <section id="chance">
-                <h2 className="docs-h2">3. The <code>%chance</code> Macro</h2>
+                <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%chance</code></h3>
+                 <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns a number from 0-100 representing the success chance).</li>
+                        <li><strong>Bracketless:</strong> No.</li>
+                    </ul>
+                </div>
                 <p className="docs-p">
-                    This macro is the explicit, long-form version of the <Link href="/docs/scribescript#challenges" className="docs-link">Anonymous Challenge</Link>. It calculates a probability number based on a skill check, but gives you full control over every parameter.
+                    The explicit, long-form version of the <Link href="/docs/scribescript#challenges" className="docs-link">Anonymous Challenge</Link>. It calculates a probability number based on a skill check.
                 </p>
                 <div className="docs-syntax-box">
                     <code className="docs-code">{`{%chance[ $stat OP Target ; MODIFIERS ]}`}</code>
                 </div>
                 <p className="docs-p">
-                    The result of this macro is a <strong>Number (0-100)</strong>, which you can then use in a Challenge field or with the <code>%</code> shorthand.
+                    The result of this macro is a <strong>Number (0-100)</strong>, which you can then use in a Challenge field or with the <code>%</code> shorthand. See the <Link href="/docs/scribescript#challenges" className="docs-link">main syntax guide</Link> for a full breakdown of modifiers.
                 </p>
-                <div className="docs-pre">
-                    <span style={{color:'#777'}}>// In a 'Challenge' field, this...</span>
-                    <br/>
-                    <code className="docs-code">{`{%chance[ $strength >> 50 ; pivot:30 ]}`}</code>
-                    <br/><br/>
-                    <span style={{color:'#777'}}>// ...is identical to this anonymous shorthand:</span>
-                    <br/>
-                    <code className="docs-code">{`{ $strength >> 50 ; pivot:30 }`}</code>
+
+                <div className="docs-callout" style={{borderColor: '#f1c40f', marginTop: '1.5rem'}}>
+                    <strong style={{color: '#f1c40f'}}>The Anonymous Challenge Shorthand</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
+                        While <code>%chance</code> is explicit, ScribeScript provides a powerful shorthand. If you place a challenge expression directly inside a logic block, the engine will automatically calculate the success chance as a number. This allows you to use probability calculations within other logic.
+                    </p>
+                    <div className="docs-pre" style={{marginTop:'1rem'}}>
+                        <span style={{color:'#777'}}>// In a Text Field, check if your odds are good before acting:</span>
+                        <br/>
+                        <code className="docs-code">
+                            {`"You assess the jump. { { $agility >> 50 } > 75 : You feel confident. | You feel a tremor of doubt. }"`}
+                        </code>
+                    </div>
+                     <p className="docs-p" style={{fontSize: '0.9rem', marginTop:'1rem'}}>
+                        <strong>How it works:</strong>
+                        <br/>1. The inner block <code>{`{ $agility >> 50 }`}</code> is evaluated first, resolving to the player's success chance (e.g., the number <code>80</code>).
+                        <br/>2. The expression becomes <code>{`{ 80 > 75 : "Confident." | "Worried." }`}</code>.
+                        <br/>3. Since 80 is greater than 75, the block resolves to the string <code>"Confident."</code>.
+                    </p>
                 </div>
             </section>
 
-            <section id="batch">
-                <h2 className="docs-h2">4. The <code>%all</code> Macro (Batch Operations)</h2>
-                <p className="docs-p">
-                    This macro is a powerful tool for targeting a group of qualities at once, identified by their <strong>Category</strong>. It is used in Effect fields.
-                </p>
-                <div className="docs-syntax-box">
-                    <code className="docs-code">{`{%all[category_name]} OPERATOR VALUE`}</code>
-                </div>
-
-                <div className="docs-card">
-                    <h4 className="docs-h4">Example 1: Confiscating Contraband</h4>
-                    <p className="docs-p">
-                        When a player enters the city, you can clear all items in the "Contraband" category with one command.
-                    </p>
-                    <div className="docs-pre">
-                        <span style={{color:'#777'}}>// In an 'Effect' field:</span>
-                        <br/>
-                        <code className="docs-code">
-                            {`{%all[Contraband]} = 0`}
-                        </code>
-                    </div>
-                </div>
-                
-                <div className="docs-card">
-                    <h4 className="docs-h4">Example 2: A Spreading Poison</h4>
-                    <p className="docs-p">
-                        You can combine <code>%all</code> with <code>%schedule</code> to create powerful, game-wide effects. For example, a poison that slowly damages all of the player's "Body" stats.
-                    </p>
-                    <div className="docs-pre">
-                        <span style={{color:'#777'}}>// In an 'Effect' field:</span>
-                        <br/>
-                        <code className="docs-code">
-                        {`{%schedule[{%all[Body]} -= 1 : 1h ; recur]}`}
-                        </code>
-                    </div>
-                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                        This schedules a recurring timer that, every hour, will reduce the value of every quality the player has with the "Body" category by 1.
-                    </p>
-                    <div className="docs-callout" style={{borderColor: '#e06c75', marginTop: '1rem'}}>
-                        <strong style={{color: '#e06c75'}}>Note:</strong> The use of <code>%all</code> inside a timer macro is a planned feature and may not be fully implemented in the current version.
-                    </div>
-                </div>
-            </section>
-            {/* 5. COLLECTIONS & LISTS */}
             <section id="collections">
-                <h2 className="docs-h2">5. Collection Macros</h2>
+                <h2 className="docs-h2">5. Collection & Batch Macros</h2>
                 <p className="docs-p">
-                    These macros allow you to treat your Quality Categories as databases. You can randomly select items for loot tables, pick random events, or list inventory items dynamically.
+                    These macros allow you to treat your Quality Categories as databases. You can randomly select items for loot tables, get a count of items, or perform an operation on an entire category at once.
                 </p>
 
                 <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%pick</code> (Random Selection)</h3>
+                <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns a comma-separated string of Quality IDs).</li>
+                        <li><strong>Bracketless:</strong> Yes (Acts as a dynamic L-Value to be modified).</li>
+                    </ul>
+                </div>
                 <p className="docs-p">
-                    Selects one or more random Quality IDs from a specific category. Returns the <strong>ID</strong> (e.g., "iron_sword"), making it useful for variable assignment or logic checks.
+                    Selects one or more random Quality IDs from a specific category.
                 </p>
                 <div className="docs-syntax-box">
                     <code className="docs-code">{`{%pick[ CATEGORY ; COUNT , FILTER ]}`}</code>
                 </div>
-                <ul className="docs-props-list">
-                    <li>
-                        <code>CATEGORY</code>
-                        <span>The name of the category to search (e.g., "Weapons"). This can be a dynamic variable.</span>
-                    </li>
-                    <li>
-                        <code>COUNT</code>
-                        <span><strong>(Optional)</strong> How many items to pick. Defaults to 1.</span>
-                    </li>
-                    <li>
-                        <code>FILTER</code>
-                        <span><strong>(Optional)</strong> A condition to narrow down the pool. See "Advanced Filtering" below.</span>
-                    </li>
-                </ul>
-                
                 <div className="docs-card" style={{marginTop:'1rem'}}>
                     <h4 className="docs-h4">Use Case: Random Loot</h4>
                     <p className="docs-p" style={{fontSize: '0.9rem'}}>
@@ -179,35 +247,39 @@ export default function MacrosPage() {
                     </p>
                     <div className="docs-pre">
                         <code className="docs-code">
-                            {`$ { %pick[Gemstones; 3] } += 1`}
+                            %pick[Gemstones; 3] += 1
                         </code>
                     </div>
-                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                        <em>Note: If the macro returns multiple IDs (e.g., "ruby, sapphire"), the engine's batch assignment logic handles increasing all of them.</em>
-                    </p>
                 </div>
 
                 <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%roll</code> (Weighted Selection)</h3>
+                <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns a single Quality ID).</li>
+                        <li><strong>Bracketless:</strong> No.</li>
+                    </ul>
+                </div>
                 <p className="docs-p">
-                    Performs a <strong>Weighted Random Selection</strong> based on the player's level in that quality. A quality with Level 10 is ten times more likely to be picked than a quality with Level 1.
+                    Performs a <strong>Weighted Random Selection</strong> based on the player's level in each quality. A quality with Level 10 is ten times more likely to be picked than a quality with Level 1. Implicitly filters for qualities the player owns (Level &gt; 0).
                 </p>
                 <div className="docs-syntax-box">
                     <code className="docs-code">{`{%roll[ CATEGORY ; FILTER ]}`}</code>
                 </div>
-                <p className="docs-p">
-                    Implicitly filters for qualities the player owns (Level &gt; 0).
-                </p>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>// Which friend comes to your aid? (Based on relationship level)</span>
-                    <br/>
                     <code className="docs-code">
-                        You call for help! {`{ %roll[Companions] }`} answers the call.
+                        You call for help! {`{%roll[Companions].name}`} answers the call.
                     </code>
                 </div>
 
                 <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%list</code> (Text Generation)</h3>
+                <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns a formatted string of Quality Names).</li>
+                        <li><strong>Bracketless:</strong> No.</li>
+                    </ul>
+                </div>
                 <p className="docs-p">
-                    Returns a formatted string of <strong>Quality Names</strong>. This is primarily used in text fields to show the player what they have.
+                    Returns a formatted string of <strong>Quality Names</strong> for display purposes.
                 </p>
                 <div className="docs-syntax-box">
                     <code className="docs-code">{`{%list[ CATEGORY ; SEPARATOR , FILTER ]}`}</code>
@@ -219,38 +291,64 @@ export default function MacrosPage() {
                     </li>
                 </ul>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>// Show inventory</span>
-                    <br/>
                     <code className="docs-code">
-                        You are carrying: {`{%list[Inventory; comma]}`}.
+                        You are carrying: {`{%list[Inventory; and]}`}.
                     </code>
                 </div>
 
                 <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%count</code> (Count Matches)</h3>
+                <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns the number of matching qualities).</li>
+                        <li><strong>Bracketless:</strong> No.</li>
+                    </ul>
+                </div>
                 <p className="docs-p">
-                    Returns the <strong>number</strong> of qualities in a category that match a filter. This is useful for checking inventory size or creating requirements.
+                    Returns the <strong>number</strong> of qualities in a category that match a filter.
                 </p>
                 <div className="docs-syntax-box">
                     <code className="docs-code">{`{%count[ CATEGORY ; FILTER ]}`}</code>
                 </div>
-                <div className="docs-card" style={{marginTop:'1rem'}}>
-                    <h4 className="docs-h4">Use Case: Evidence Gathering</h4>
-                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
-                        Check if the player has collected enough clues to proceed.
-                    </p>
-                    <div className="docs-pre">
-                        <span style={{color:'#777'}}>// Check if the player has at least 3 owned 'Clue' items</span>
-                        <br/>
-                        <code className="docs-code">
-                            {`{@clues_found = {%count[Clues; owned]}}
+                 <div className="docs-pre">
+                    <code className="docs-code">
+                        {`{@clues_found = {%count[Clues; owned]}}`}
+                    </code>
+                </div>
 
-                { @clues_found >= 3 : You piece the evidence together. | You need more information. }`}
+                <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%all</code> (Batch Operations)</h3>
+                <div className="docs-context-box">
+                    <ul>
+                        <li><strong>Bracketed:</strong> Yes (Returns a comma-separated string of ALL matching Quality IDs in the category).</li>
+                        <li><strong>Bracketless:</strong> Yes (Acts as a dynamic L-Value targeting all qualities in the category).</li>
+                    </ul>
+                </div>
+                <p className="docs-p">
+                    This macro targets all qualities in a category that match an optional filter.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`%all[ CATEGORY ; FILTER ] OPERATOR VALUE`}</code>
+                </div>
+                <div className="docs-card" style={{marginTop:'1rem'}}>
+                    <h4 className="docs-h4">Use Case: Batch Effect</h4>
+                     <p className="docs-p" style={{fontSize:'0.9rem'}}>Clear all items in the "Contraband" category.</p>
+                    <div className="docs-pre">
+                        <code className="docs-code">
+                            {`%all[Contraband] = 0`}
+                        </code>
+                    </div>
+                </div>
+                 <div className="docs-card" style={{marginTop:'1rem'}}>
+                    <h4 className="docs-h4">Use Case: Getting a Full List</h4>
+                    <p className="docs-p" style={{fontSize:'0.9rem'}}>Get the IDs of all learnable spells the player does not yet own to use in other logic.</p>
+                    <div className="docs-pre">
+                        <code className="docs-code">
+                            {`{@unlearned_spells = {%all[Spells; $.level == 0]}}`}
                         </code>
                     </div>
                 </div>
 
                 <div className="docs-card" style={{marginTop: '1.5rem', borderColor: 'var(--docs-accent-green)'}}>
-                    <h4 className="docs-h4" style={{color:'var(--docs-accent-green)'}}>Advanced Filtering</h4>
+                    <h4 className="docs-h4" style={{color:'var(--docs-accent-green)'}}>Advanced Filtering with `$.` and `$(...)`</h4>
                     <p className="docs-p" style={{fontSize:'0.9rem'}}>
                         The <code>FILTER</code> argument allows you to run a ScribeScript condition against every candidate quality. 
                         Inside the filter, the special sigil <code>$.</code> refers to the <strong>candidate quality being checked</strong>.
@@ -259,26 +357,23 @@ export default function MacrosPage() {
                         <thead><tr><th>Filter Syntax</th><th>Meaning</th></tr></thead>
                         <tbody>
                             <tr>
-                                <td><code>&gt;0</code>, <code>has</code>, or <code>owned</code></td>
+                                <td><code>owned</code> (or <code>&gt;0</code>, <code>has</code>)</td>
                                 <td>Only include qualities the player currently possesses (Level &gt; 0).</td>
                             </tr>
                             <tr>
                                 <td><code>$.level &gt; 5</code></td>
                                 <td>Only include qualities where the player's level is greater than 5.</td>
                             </tr>
-                            <tr>
+                             <tr>
                                 <td><code>$.cost &lt; 50</code></td>
                                 <td>Only include qualities where a custom property 'cost' is less than 50.</td>
                             </tr>
+                            <tr>
+                                <td><code>$($.id)_unlocked == 1</code></td>
+                                <td>Only include qualities where a *different* quality, whose name is based on the candidate's ID, is 1 (e.g., checks for `$sword_unlocked` when checking `$sword`).</td>
+                            </tr>
                         </tbody>
                     </table>
-                    <div className="docs-pre" style={{marginTop:'1rem'}}>
-                        <span style={{color:'#777'}}>// Pick a random 'Spell' that the player owns AND costs less than 10 mana</span>
-                        <br/>
-                        <code className="docs-code">
-                            {`{%pick[Spells; 1; owned && $.mana_cost < 10]}`}
-                        </code>
-                    </div>
                 </div>
             </section>
 
