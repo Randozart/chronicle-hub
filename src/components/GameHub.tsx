@@ -29,6 +29,7 @@ import { ToastProvider } from '@/providers/ToastProvider';
 import GameModal from './GameModal';
 import LivingStories from './LivingStories';
 import { useTheme } from '@/providers/ThemeProvider';
+import { DeckState } from '@/engine/deckService';
 
 
 interface GameHubProps {
@@ -60,7 +61,7 @@ interface GameHubProps {
     instruments?: Record<string, InstrumentDefinition>;
     musicTracks?: Record<string, LigatureTrack>;
     isPlaytesting?: boolean;
-    deckEligibility?: Record<string, boolean>;
+    deckStates?: Record<string, DeckState>;
 
 }
 
@@ -835,9 +836,13 @@ export default function GameHub(props: GameHubProps) {
                         const cardsInHand = hand.filter(c => c.deck === deckId);
                         
                         const isDeckDepleted = stats.deckSize > 0 && currentCharges <= 0;
-                        const shouldHide = cardsInHand.length === 0 && isDeckDepleted && !deckDef.always_show;
+                        const deckState = props.deckStates?.[deckId];
+                        const hasCandidates = deckState?.hasCandidates ?? false;
+                        const alwaysShow = deckDef.always_show; 
+                        
+                        const shouldShow = alwaysShow || (deckState?.isVisible ?? false) || cardsInHand.length > 0;
 
-                        if (shouldHide) return null;
+                        if (!shouldShow) return null;
 
                         const deckTitle = deckDef.name || "Opportunities";
 
@@ -848,6 +853,7 @@ export default function GameHub(props: GameHubProps) {
                                 </h3>
                                 <OpportunityHand 
                                     hand={hand.filter(c => c.deck === deckId)}
+                                    hasCandidates={hasCandidates}
                                     onCardClick={showEvent}
                                     onDrawClick={() => handleDrawForDeck(deckId)}
                                     onDiscard={(cardId) => handleDiscard(deckId, cardId)}

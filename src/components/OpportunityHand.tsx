@@ -27,12 +27,13 @@ interface OpportunityHandProps {
     currentDeckStats?: { handSize: number, deckSize: number };
     engine: GameEngine; 
     actionTimestamp?: string | Date; 
+    hasCandidates?: boolean;
 }
 
 export default function OpportunityHand({ 
     hand, onCardClick, qualities, onDrawClick, onDiscard, isLoading, 
     qualityDefs, imageLibrary, character, locationDeckId, deckDefs, settings, currentDeckStats, engine,
-    onRegen, actionTimestamp
+    onRegen, actionTimestamp, hasCandidates
 }: OpportunityHandProps) {
 
     const [showEmptyModal, setShowEmptyModal] = useState(false);
@@ -43,13 +44,19 @@ export default function OpportunityHand({
     const handSize = currentDeckStats?.handSize ?? 3;
     const currentCharges = character.deckCharges?.[locationDeckId] ?? deckSize;
     const lastUpdate = character.lastDeckUpdate?.[locationDeckId] || new Date();
+    
     const isHandFull = hand.length >= handSize;
     const isFinite = deckSize > 0;
     const isEmpty = isFinite && currentCharges <= 0;
+    const cardsAvailable = hasCandidates ?? true;
     
-    const isButtonDisabled = isLoading || isHandFull; 
+    const isButtonDisabled = isLoading || isHandFull || (!cardsAvailable && !isEmpty); 
     
-    let buttonText = isLoading ? "Drawing..." : isHandFull ? `Hand Full (${hand.length}/${handSize})` : isEmpty ? "Refilling..." : "Draw a Card";
+    let buttonText = "Draw a Card";
+    if (isLoading) buttonText = "Drawing...";
+    else if (isHandFull) buttonText = `Hand Full (${hand.length}/${handSize})`;
+    else if (isEmpty) buttonText = "Refilling...";
+    else if (!cardsAvailable) buttonText = "No Cards Available";
 
     const handleDrawInteraction = () => {
         if (isEmpty) {
