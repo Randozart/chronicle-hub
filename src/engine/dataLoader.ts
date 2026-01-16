@@ -19,32 +19,45 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
         }
 
         const rawContent = worldDocument.content;
+        
+        const rawImages = rawContent.images || worldDocument.images || {};
+
         const processedContent: WorldConfig = {
             qualities: {},
             locations: {},
             decks: {},
             char_create: rawContent.char_create || rawContent.starting || {},
             settings: worldDocument.settings,
-            images: worldDocument.images,
+            images: rawImages,
             regions: {},
             markets: {},
             instruments: {},
             music: {}
         };
+
         for (const key in rawContent.qualities) {
             processedContent.qualities[key] = { ...rawContent.qualities[key], id: key };
         }
+
         for (const key in rawContent.locations) {
             processedContent.locations[key] = { ...rawContent.locations[key], id: key };
         }
+
         if (rawContent.decks) {
             for (const key in rawContent.decks) {
                 processedContent.decks[key] = { ...rawContent.decks[key], id: key };
             }
         }
+
         if (rawContent.regions) {
             for (const key in rawContent.regions) {
                 processedContent.regions[key] = { ...rawContent.regions[key], id: key };
+            }
+        }
+        
+        if (rawContent.markets) {
+            for (const key in rawContent.markets) {
+                processedContent.markets[key] = { ...rawContent.markets[key], id: key };
             }
         }
 
@@ -53,11 +66,13 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
                 processedContent.instruments[key] = { ...rawContent.instruments[key], id: key };
             }
         }
+
         if (rawContent.music) {
             for (const key in rawContent.music) {
                 processedContent.music[key] = { ...rawContent.music[key], id: key };
             }
         }
+
         return processedContent;
 
     } catch (error) {

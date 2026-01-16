@@ -1,4 +1,4 @@
-import { getWorldContent } from '@/engine/worldService';
+import { getContent } from '@/engine/contentCache';
 import CreationForm from '@/components/CreationForm';
 
 interface Props {
@@ -6,11 +6,13 @@ interface Props {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function CreationPage({ params }: Props) {
+export default async function CreationPage({ params, searchParams }: Props) {
     const { storyId } = await params;
-    if (!storyId) return <div>Error: No story specified.</div>;
+    const resolvedSearchParams = await searchParams;
+    const isPlaytest = resolvedSearchParams.playtest === 'true';
 
-    const gameData = await getWorldContent(storyId);
+    if (!storyId) return <div>Error: No story specified.</div>;
+    const gameData = await getContent(storyId, isPlaytest);
     
     const rawRules = gameData.char_create || {};
     const rules: any = {};
