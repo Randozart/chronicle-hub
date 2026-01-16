@@ -13,27 +13,45 @@ export default function MacrosPage() {
                 </p>
             </header>
 
-           <section id="basics">
-    <h2 className="docs-h2">1. What is a Macro?</h2>
-    <p className="docs-p">
-        While most of ScribeScript is about reading or changing simple values, Macros are special commands that ask the game engine to perform complex operations, like calculating probability, scheduling future events, or modifying entire groups of qualities.
-    </p>
-    <div className="docs-syntax-box">
-        <code className="docs-code">{`{%command[ arguments ]}`}</code>
-    </div>
-    <p className="docs-p">
-        All macros are wrapped in <code>{`{%...}`}</code> and their arguments are contained in square brackets <code>[...]</code>.
-    </p>
-    <div className="docs-callout" style={{borderColor: '#f1c40f'}}>
-        <strong style={{color: '#f1c40f'}}>The Percent Shorthand:</strong>
-        <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
-            As explained in the <Link href="/docs/scribescript#challenges" className="docs-link">main syntax guide</Link>, the engine recognizes a special shorthand: <code>{`{...}%`}</code>. When the parser sees a number followed by a percent sign, it treats it as a shorthand for the <code>%random</code> macro.
-        </p>
-        <div className="docs-pre" style={{marginTop:'0.5rem'}}>
-            <code className="docs-code">{`{60%}`} is identical to {`{%random[60]}`}</code>
-        </div>
-    </div>
-</section>
+            <section id="basics">
+                <h2 className="docs-h2">1. What is a Macro?</h2>
+                <p className="docs-p">
+                    While most of ScribeScript is about reading or changing simple values, Macros are special commands that ask the game engine to perform complex operations, like calculating probability, scheduling future events, or modifying entire groups of qualities.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`{%command[ arguments ]}`}</code>
+                </div>
+                <p className="docs-p">
+                    All macros are wrapped in <code>{`{%...}`}</code> and their arguments are contained in square brackets <code>[...]</code>.
+                </p>
+                <div className="docs-callout" style={{borderColor: '#f1c40f'}}>
+                    <strong style={{color: '#f1c40f'}}>The Percent Shorthand:</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
+                        As explained in the <Link href="/docs/scribescript#challenges" className="docs-link">main syntax guide</Link>, the engine recognizes a special shorthand: <code>{`{...}%`}</code>. When the parser sees a number followed by a percent sign, it treats it as a shorthand for the <code>%random</code> macro.
+                    </p>
+                    <div className="docs-pre" style={{marginTop:'0.5rem'}}>
+                        <code className="docs-code">{`{60%}`} is identical to {`{%random[60]}`}</code>
+                    </div>
+                </div>
+            </section>
+
+             <section id="dynamic-registration">
+                <h2 className="docs-h2">2. The <code>%new</code> Macro</h2>
+                <p className="docs-p">
+                    By default, the engine validates all Quality IDs against the database to prevent typos. 
+                    If you want to create a brand new quality on the fly (e.g., inside a specific storylet text) without defining it in the admin panel first, you must register it.
+                    ChronicleHub already supports assignment to an undefined quality, such as <code>$new_quality = 1</code>, which will create a new Pyramidal quality with that ID, but no other properties.
+                    The <code>%new</code> macro allows you to create a dynamic quality, either based on another quality, or completely new.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">%new[quality_id]</code>
+                </div>
+                <p className="docs-p">
+                    <strong>Usage:</strong> Place this anywhere in a Storylet's text or effects. The engine scans for this tag before loading the world.
+                    <br />
+                    <em>Example:</em> <code>"You pick up a strange coin. %new[strange_coin] $strange_coin++"</code>
+                </p>
+            </section>
 
             <section id="random">
                 <h2 className="docs-h2">2. The <code>%random</code> Macro</h2>
@@ -83,49 +101,49 @@ export default function MacrosPage() {
             </section>
 
             <section id="batch">
-    <h2 className="docs-h2">4. The <code>%all</code> Macro (Batch Operations)</h2>
-    <p className="docs-p">
-        This macro is a powerful tool for targeting a group of qualities at once, identified by their <strong>Category</strong>. It is used in Effect fields.
-    </p>
-    <div className="docs-syntax-box">
-        <code className="docs-code">{`{%all[category_name]} OPERATOR VALUE`}</code>
-    </div>
+                <h2 className="docs-h2">4. The <code>%all</code> Macro (Batch Operations)</h2>
+                <p className="docs-p">
+                    This macro is a powerful tool for targeting a group of qualities at once, identified by their <strong>Category</strong>. It is used in Effect fields.
+                </p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`{%all[category_name]} OPERATOR VALUE`}</code>
+                </div>
 
-    <div className="docs-card">
-        <h4 className="docs-h4">Example 1: Confiscating Contraband</h4>
-        <p className="docs-p">
-            When a player enters the city, you can clear all items in the "Contraband" category with one command.
-        </p>
-        <div className="docs-pre">
-            <span style={{color:'#777'}}>// In an 'Effect' field:</span>
-            <br/>
-            <code className="docs-code">
-                {`{%all[Contraband]} = 0`}
-            </code>
-        </div>
-    </div>
-    
-    <div className="docs-card">
-        <h4 className="docs-h4">Example 2: A Spreading Poison</h4>
-        <p className="docs-p">
-            You can combine <code>%all</code> with <code>%schedule</code> to create powerful, game-wide effects. For example, a poison that slowly damages all of the player's "Body" stats.
-        </p>
-        <div className="docs-pre">
-            <span style={{color:'#777'}}>// In an 'Effect' field:</span>
-            <br/>
-            <code className="docs-code">
-               {`{%schedule[{%all[Body]} -= 1 : 1h ; recur]}`}
-            </code>
-        </div>
-        <p className="docs-p" style={{fontSize: '0.9rem'}}>
-            This schedules a recurring timer that, every hour, will reduce the value of every quality the player has with the "Body" category by 1.
-        </p>
-        <div className="docs-callout" style={{borderColor: '#e06c75', marginTop: '1rem'}}>
-             <strong style={{color: '#e06c75'}}>Note:</strong> The use of <code>%all</code> inside a timer macro is a planned feature and may not be fully implemented in the current version.
-        </div>
-    </div>
-</section>
-{/* 5. COLLECTIONS & LISTS */}
+                <div className="docs-card">
+                    <h4 className="docs-h4">Example 1: Confiscating Contraband</h4>
+                    <p className="docs-p">
+                        When a player enters the city, you can clear all items in the "Contraband" category with one command.
+                    </p>
+                    <div className="docs-pre">
+                        <span style={{color:'#777'}}>// In an 'Effect' field:</span>
+                        <br/>
+                        <code className="docs-code">
+                            {`{%all[Contraband]} = 0`}
+                        </code>
+                    </div>
+                </div>
+                
+                <div className="docs-card">
+                    <h4 className="docs-h4">Example 2: A Spreading Poison</h4>
+                    <p className="docs-p">
+                        You can combine <code>%all</code> with <code>%schedule</code> to create powerful, game-wide effects. For example, a poison that slowly damages all of the player's "Body" stats.
+                    </p>
+                    <div className="docs-pre">
+                        <span style={{color:'#777'}}>// In an 'Effect' field:</span>
+                        <br/>
+                        <code className="docs-code">
+                        {`{%schedule[{%all[Body]} -= 1 : 1h ; recur]}`}
+                        </code>
+                    </div>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        This schedules a recurring timer that, every hour, will reduce the value of every quality the player has with the "Body" category by 1.
+                    </p>
+                    <div className="docs-callout" style={{borderColor: '#e06c75', marginTop: '1rem'}}>
+                        <strong style={{color: '#e06c75'}}>Note:</strong> The use of <code>%all</code> inside a timer macro is a planned feature and may not be fully implemented in the current version.
+                    </div>
+                </div>
+            </section>
+            {/* 5. COLLECTIONS & LISTS */}
             <section id="collections">
                 <h2 className="docs-h2">5. Collection Macros</h2>
                 <p className="docs-p">
