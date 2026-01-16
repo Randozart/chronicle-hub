@@ -12,19 +12,23 @@ export default function AdminLayout({ children, params }: { children: React.Reac
     const pathname = usePathname();
     const [showNav, setShowNav] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    
     useEffect(() => {
         setShowNav(false);
         setShowHelp(false);
     }, [pathname]);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
+                e.stopPropagation(); // Stop browser save dialog
                 window.dispatchEvent(new Event('global-save-trigger'));
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        
+        window.addEventListener('keydown', handleKeyDown, { capture: true });
+        return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
     }, []);
 
     const base = `/create/${storyId}`;

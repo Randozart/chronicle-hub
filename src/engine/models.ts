@@ -213,6 +213,7 @@ export interface DeckDefinition extends VersionedEntity {
     deck_size?: string; 
     ordering?: number; 
     card_style?: 'default' | 'cards' | 'rows' | 'scrolling';
+    always_show?: boolean;
 }
 
 export interface MapRegion extends VersionedEntity{ 
@@ -291,6 +292,7 @@ export interface BaseQualityState {
     qualityId: string;
     type: QualityType;
     text_variants?: Record<string, string | number | boolean>;
+    tags?: string[];
 }
 
 

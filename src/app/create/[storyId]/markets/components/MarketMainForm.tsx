@@ -33,7 +33,9 @@ export default function MarketMainForm({ initialData, onSave, onDelete, onDuplic
         initialData, 
         '/api/admin/config', 
         { storyId, category: 'markets', itemId: initialData.id }, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [activeStallIndex, setActiveStallIndex] = useState(0);
@@ -309,7 +311,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, onDuplic
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

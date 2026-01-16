@@ -54,14 +54,26 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
         medium: '150px',
         large: '250px'
     };
+    
     const portraitWidth = sizeMap[sizeSetting] || '150px';
+    
     const flatList = useMemo(() => {
         return Object.keys(qualities)
             .map(qid => {
                 const def = qualityDefs[qid];
                 const state = qualities[qid];
                 if (!def || !state) return null;
-                if (def.tags?.includes('hidden') && !showHidden) return null;
+
+                const merged = { ...def, ...state };
+                const rendered = engine.render(merged);
+                
+                const tags = Array.isArray(rendered.tags) ? rendered.tags : [];
+                
+                const shouldHide = tags.includes('hidden') || 
+                                   tags.includes('no_ui') || 
+                                   tags.includes('fx_only');
+
+                if (shouldHide && !showHidden) return null;
 
                 if (qid === settings.titleQualityId?.replace('$', '')) return null; 
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
@@ -70,8 +82,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 
                 if (state.type !== 'S' && state.level === 0 && !hasEquippedBonus) return null;
                 
-                const merged = { ...def, ...state };
-                return engine.render(merged);
+                return rendered;
             })
             .filter(Boolean as any);
     }, [qualities, qualityDefs, settings.titleQualityId, engine, showHidden]);

@@ -60,6 +60,8 @@ interface GameHubProps {
     instruments?: Record<string, InstrumentDefinition>;
     musicTracks?: Record<string, LigatureTrack>;
     isPlaytesting?: boolean;
+    deckEligibility?: Record<string, boolean>;
+
 }
 
 const PlaytestLogger = ({ logs, onClear }: { logs: { message: string, type: string }[], onClear: () => void }) => {
@@ -829,6 +831,14 @@ export default function GameHub(props: GameHubProps) {
                         const deckVal = renderEngine.evaluateText(`{${deckDef.deck_size || 0}}`);
                         const stats = { handSize: parseInt(handVal, 10) || 3, deckSize: parseInt(deckVal, 10) || 0 };
                         
+                        const currentCharges = character.deckCharges?.[deckId] ?? stats.deckSize;
+                        const cardsInHand = hand.filter(c => c.deck === deckId);
+                        
+                        const isDeckDepleted = stats.deckSize > 0 && currentCharges <= 0;
+                        const shouldHide = cardsInHand.length === 0 && isDeckDepleted && !deckDef.always_show;
+
+                        if (shouldHide) return null;
+
                         const deckTitle = deckDef.name || "Opportunities";
 
                         return (

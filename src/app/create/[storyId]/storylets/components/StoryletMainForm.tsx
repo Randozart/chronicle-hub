@@ -34,7 +34,9 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
         initialData, 
         '/api/admin/storylets', 
         { storyId },
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -214,7 +216,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

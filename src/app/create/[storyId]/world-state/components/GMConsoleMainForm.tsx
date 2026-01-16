@@ -37,7 +37,9 @@ export default function GMConsoleMainForm({ initialData, onSave, storyId, qualit
         initialData, 
         '/api/admin/console', 
         { storyId }, 
-        guardRef
+        guardRef,
+        undefined, 
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -206,7 +208,7 @@ export default function GMConsoleMainForm({ initialData, onSave, storyId, qualit
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 itemType="Console State"
             />

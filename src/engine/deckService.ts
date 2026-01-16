@@ -1,6 +1,43 @@
-import { CharacterDocument, DeckDefinition, WorldConfig, Opportunity } from './models';
+import { CharacterDocument, DeckDefinition, WorldConfig, Opportunity, Storylet } from './models';
 import { GameEngine } from './gameEngine';
 const { getStorylets } = require('@/engine/contentCache');
+
+export const checkDeckEligibility = (
+    character: CharacterDocument,
+    gameData: WorldConfig,
+    allContent: (Storylet | Opportunity)[]
+): Record<string, boolean> => {
+    const eligibility: Record<string, boolean> = {};
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    const deckOps: Record<string, Opportunity[]> = {};
+    
+    allContent.forEach(c => {
+        if ('deck' in c && c.deck) {
+            if (!deckOps[c.deck]) deckOps[c.deck] = [];
+            deckOps[c.deck].push(c as Opportunity);
+        }
+    });
+
+    for (const deckId in gameData.decks) {
+        const hand = character.opportunityHands?.[deckId] || [];
+        if (hand.length > 0) { eligibility[deckId] = true; continue; }
+
+        const deckDef = gameData.decks[deckId];
+        const deckSizeStr = engine.evaluateText(`{${deckDef.deck_size || '0'}}`);
+        const deckSize = parseInt(deckSizeStr, 10) || 0;
+        const currentCharges = character.deckCharges?.[deckId] ?? 0;
+
+        if (deckSize > 0 && currentCharges <= 0) { eligibility[deckId] = false; continue; }
+
+        const ops = deckOps[deckId] || [];
+        eligibility[deckId] = ops.some(op => {
+             if (hand.includes(op.id)) return false; 
+             if (op.draw_condition) return engine.evaluateCondition(op.draw_condition);
+             return true;
+        });
+    }
+    return eligibility;
+}
 
 export const regenerateAllDecks = (
     character: CharacterDocument,

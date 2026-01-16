@@ -31,16 +31,28 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             if (currencyIds.includes(qid)) return null;
 
             const definition = qualityDefs[qid];
+            
             if (!definition) return null;
+
             const cats = (definition.category ?? "").split(",").map(s => s.trim());
             const isInSidebarCategory = categoriesToDisplay.length > 0 && categoriesToDisplay.some(c => cats.includes(c));
+            
             if (!isInSidebarCategory) return null;
+
             const renderedObject = engine.render({ id: qid, tags: definition.tags || [] });
             const renderedTags = Array.isArray(renderedObject.tags) ? renderedObject.tags : [];
-            if (renderedTags.includes('hidden') && !showHidden) return null;
+            
+            const shouldHide = renderedTags.includes('hidden') || 
+                               renderedTags.includes('log_only') || 
+                               renderedTags.includes('no_ui') || 
+                               renderedTags.includes('fx_only');
+
+            if (shouldHide && !showHidden) return null;
+
             const state = qualities[qid];
             const baseLevel = (state && 'level' in state) ? state.level : 0;
             const effectiveLevel = engine.getEffectiveLevel(qid);
+            
             if (effectiveLevel <= 0 && definition.type !== QualityType.String) return null;
             
             const mergedState = state || { qualityId: qid, type: definition.type };

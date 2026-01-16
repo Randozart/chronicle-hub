@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MapRegion, QualityDefinition } from '@/engine/models';
 import SmartArea from '@/components/admin/SmartArea'; 
 import GameImage from '@/components/GameImage';
@@ -19,6 +19,12 @@ interface Props {
 }
 
 export default function RegionMainForm({ initialData, onSave, onDelete, onDuplicate, storyId, qualityDefs, guardRef }: Props) {
+    const saveParams = useMemo(() => ({
+        storyId, 
+        category: 'regions', 
+        itemId: initialData.id 
+    }), [storyId, initialData.id]);
+
     const { 
         data: form, 
         handleChange, 
@@ -30,8 +36,10 @@ export default function RegionMainForm({ initialData, onSave, onDelete, onDuplic
     } = useCreatorForm<MapRegion>(
         initialData, 
         '/api/admin/config', 
-        { storyId, category: 'regions', itemId: initialData.id }, 
-        guardRef
+        saveParams, 
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -51,6 +59,7 @@ export default function RegionMainForm({ initialData, onSave, onDelete, onDuplic
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)', fontFamily: 'monospace' }}>v{form.version || 1}</div>
             </div>
+
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem' }}>
                 
                 <div className="form-group">
@@ -110,16 +119,18 @@ export default function RegionMainForm({ initialData, onSave, onDelete, onDuplic
                 </div>
 
             </div>
+
             <CommandCenter 
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}
                 itemType="Region"
             />
+
             <ConfirmationModal
                 isOpen={showRevertModal}
                 title="Discard Changes?"

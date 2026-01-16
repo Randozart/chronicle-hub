@@ -33,7 +33,9 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
         initialData, 
         '/api/admin/config', 
         { storyId, category: 'locations', itemId: initialData.id }, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -209,7 +211,7 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

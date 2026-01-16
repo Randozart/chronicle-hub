@@ -35,7 +35,9 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
         initialData, 
         '/api/admin/opportunities', 
         { storyId },
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -200,7 +202,7 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

@@ -32,7 +32,9 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
         initialData, 
         '/api/admin/config', 
         { storyId, category: 'decks', itemId: initialData.id }, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -177,13 +179,19 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
                         label="Persistent (Saved)" 
                         desc="Cards drawn from this deck stay in the hand when the player leaves the location." 
                     />
+                    <BehaviorCard 
+                        checked={!!form.always_show} 
+                        onChange={() => handleChange('always_show', !form.always_show)} 
+                        label="Always Show Hand" 
+                        desc="Force the hand to be visible even if empty or ineligible to draw." 
+                    />
                 </div>
             </div>
             <CommandCenter 
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

@@ -5,7 +5,7 @@ import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import InstrumentEditor from './InstrumentEditor';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface Props {
     initialData: InstrumentDefinition;
@@ -20,13 +20,14 @@ export default function InstrumentMainForm({ initialData, onSave, onDelete, onDu
     
     const isGlobal = (initialData as any).scope === 'global'; 
     const endpoint = isGlobal ? '/api/assets/audio' : '/api/admin/config';
-    const extraParams = isGlobal 
+
+    const saveParams = useMemo(() => isGlobal 
         ? { id: initialData.id, type: 'instrument' } 
-        : { storyId, category: 'instruments', itemId: initialData.id };
+        : { storyId, category: 'instruments', itemId: initialData.id }
+    , [isGlobal, initialData.id, storyId]);
 
     const { 
         data: form, 
-        handleChange,
         setData, 
         handleSave, 
         revertChanges, 
@@ -36,8 +37,10 @@ export default function InstrumentMainForm({ initialData, onSave, onDelete, onDu
     } = useCreatorForm<InstrumentDefinition>(
         initialData, 
         endpoint, 
-        extraParams, 
-        guardRef
+        saveParams, 
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -61,7 +64,7 @@ export default function InstrumentMainForm({ initialData, onSave, onDelete, onDu
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

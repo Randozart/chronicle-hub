@@ -310,9 +310,7 @@ function PlaygroundContent() {
         try {
             const saved = localStorage.getItem('playground_instruments');
             const customInstruments = saved ? JSON.parse(saved) : [];
-            
-            // Combine default and custom, ensuring custom overrides defaults
-            const instMap = new Map<string, InstrumentDefinition>();
+                        const instMap = new Map<string, InstrumentDefinition>();
             DEFAULT_INSTRUMENT_LIST.forEach(inst => instMap.set(inst.id, inst));
             customInstruments.forEach((inst: InstrumentDefinition) => instMap.set(inst.id, inst));
             
@@ -344,7 +342,6 @@ function PlaygroundContent() {
         const isDefaultPreset = !!AUDIO_PRESETS[updatedInst.id];
         
         if (isDefaultPreset && updatedInst.category !== 'Custom') {
-            // This is a default preset being edited for the first time. "Save As".
             const newName = prompt("Save as new custom instrument. Enter a name:", `${updatedInst.name} Custom`);
             if (!newName) return;
             
@@ -358,7 +355,6 @@ function PlaygroundContent() {
             newInstruments.push(newInstrument);
 
         } else {
-            // This is already a custom instrument, so just update it.
             let found = false;
             newInstruments = newInstruments.map(inst => {
                 if (inst.id === updatedInst.id) {
@@ -367,11 +363,10 @@ function PlaygroundContent() {
                 }
                 return inst;
             });
-            if (!found) newInstruments.push(updatedInst); // Should not happen, but safe
+            if (!found) newInstruments.push(updatedInst);
         }
 
         setLocalInstruments(newInstruments);
-        // Save only the "Custom" instruments to localStorage to avoid bloating
         const customInstruments = newInstruments.filter(inst => inst.category === 'Custom');
         localStorage.setItem('playground_instruments', JSON.stringify(customInstruments));
         alert(`Instrument '${updatedInst.name}' saved to browser storage.`);
@@ -388,7 +383,6 @@ function PlaygroundContent() {
                     <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
                         <div>
                             <label style={{ display: 'block', fontSize: '0.7rem', color: '#e5c07b', fontWeight: 'bold' }}>Select Demo Track</label>
-                            {/* FIX: Restored styles to the dropdown */}
                             <select 
                                 value={selectedPreset} 
                                 onChange={(e) => loadPreset(e.target.value)}
