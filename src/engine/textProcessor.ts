@@ -11,6 +11,13 @@ const SEPARATORS: Record<string, string> = {
     'comma': ', ', 'pipe': ' | ', 'newline': '\n', 'break': '<br/>', 'and': ' and ', 'space': ' ' 
 };
 
+/**
+ * Removes `{ // comments }` from ScribeScript strings
+ * to prevent them from interfering with parsing logic.
+ * 
+ * @param text The raw ScribeScript string.
+ * @returns The sanitized string with comments removed.
+ */
 export function sanitizeScribeScript(text: string): string {
     if (!text) return "";
     let buffer = "";
@@ -35,6 +42,21 @@ export function sanitizeScribeScript(text: string): string {
     return buffer;
 }
 
+/**
+ * The main method to evaluate ScribeScript text blocks.
+ * It first sanitizes the input, then recursively processes it using `evaluateRecursive()`.
+ * 
+ * @param rawText The text containing ScribeScript syntax.
+ * @param qualities The current player qualities.
+ * @param qualityDefs The static definitions of those qualities.
+ * @param selfContext (Optional) Context for self `$.` references.
+ * @param resolutionRoll (Optional) A challenge roll that might affect evaluation.
+ * @param aliases (Optional) Temporary variable aliases map.
+ * @param errors (Optional) Array to push error messages to.
+ * @param logger (Optional) Trace logger for debugging.
+ * @param depth Internal recursion depth for console logging.
+ * @param locals (Optional) Local variables used exclusively for certain fields, like `target` in chance calculations.
+ */
 export function evaluateText(
     rawText: string | undefined,
     qualities: PlayerQualities,
@@ -67,6 +89,11 @@ export function evaluateText(
     }
 }
 
+/**
+ * Handles nested ScribeScript blocks like `{{$a} + {$b}}` by resolving
+ * the innermost braces first and working outward.
+ * Contains a safety break to prevent infinite recursion loops.
+ */
 function evaluateRecursive(
     text: string,
     context: EvaluationContext,
@@ -114,6 +141,12 @@ function evaluateRecursive(
     }
 }
 
+/**
+ * Determines the type of expression inside a brace block `{...}` and routes
+ * it to the appropriate handler (Macro, Conditional, Assignment, or Math).
+ * 
+ * @returns The resolved string, number, or boolean value of the expression.
+ */
 function evaluateExpression(
     expr: string,
     qualities: PlayerQualities,
@@ -193,6 +226,18 @@ function evaluateExpression(
     return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
 }
 
+/**
+ * Resolves variables within a string and executes the result as a mathematical expression using safeEval.
+ * 
+ * **Sigil Rules:**
+ * - Variables **must** be prefixed with `$` (Quality), `#` (World), or `@` (Alias).
+ * - Text *without* a sigil is treated as a raw string literal.
+ *   (e.g., `$strength + 5` becomes `15`, but `strength + 5` becomes `"strength + 5"`).
+ * 
+ * **Context:**
+ * - Used for calculating values (Right-Hand Side), conditions, and text interpolation.
+ * - Can recognize self-references using `$.` syntax.
+ */
 function resolveComplexExpression(
     expr: string, 
     qualities: PlayerQualities, 
@@ -232,6 +277,13 @@ function resolveComplexExpression(
     }
 }
 
+/**
+ * Converts a ScribeScript variable token (like `$strength`, 
+ * `$inventory.main_hand`, or `$.level`) into its actual value from the game state.
+ * 
+ * Handles property access (such as `.name`, `.plural`) and recursive text evaluation 
+ * if the found value contains script.
+ */
 function resolveVariable(
     fullMatch: string, 
     qualities: PlayerQualities, 
@@ -380,6 +432,10 @@ function resolveVariable(
     }
 }
 
+/**
+ * Evaluates conditional logic in the format `{ condition : result | else_result }`.
+ * Supports chaining multiple branches via pipes `|`.
+ */
 function evaluateConditional(
     expr: string, 
     qualities: PlayerQualities, 
@@ -414,6 +470,20 @@ function evaluateConditional(
     return "";
 }
 
+/**
+ * Executes built-in ScribeScript macros starting with `%`.
+ * Handlers include:
+ * - `%random`: Boolean probability check. Returns `true/false`.
+ * - `%choice`: Picks one option from a comma-seperated list provided as arguments in brackets `[]`. Returns the selected option.
+ * - `%chance`: Skill check probability calculator. Explicit macro for challenge checks. Calls `calculateChance()` and returns the result.
+ * - `%roll`: Rolls on a quality-based pool. Returns the selected quality ID.
+ * - `%chance`: Calculates skill check probabilities.
+ * - `%list`: Generates a list of quality names based on criteria. Returns a string of names.
+ * - `%count`: Counts qualities matching criteria. Returns a number.
+ * - `%pick`: Randomly selects one or more quality IDs based on criteria. Returns a comma-separated string of IDs without evaluating their names.
+ * 
+ * Will return the original macro string if unrecognized, since some macros are handled elsewhere (like scheduling).
+ */
 function evaluateMacro(
     macroString: string,
     qualities: PlayerQualities,
@@ -498,6 +568,12 @@ function evaluateMacro(
     }
 }
 
+/**
+ * Evaluates a logical condition string to a boolean.
+ * Supports comparison operators (>, <, ==, !=, >=, <=) and logical operators (&&, ||, !).
+ * 
+ * @param expression The condition string, such as `$strength > 10`.
+ */
 export function evaluateCondition(expression: string | undefined, qualities: PlayerQualities, defs: Record<string, QualityDefinition> = {}, self: { qid: string, state: QualityState } | null = null, resolutionRoll: number = 0, aliases: Record<string, string> = {}, errors?: string[]): boolean {
     if (!expression) return true;
     const trimExpr = expression.trim();
@@ -539,6 +615,12 @@ export function evaluateCondition(expression: string | undefined, qualities: Pla
     }
 }
 
+/**
+ * Helper function that scans quality definitions to find IDs that match
+ * a specific Category (and optional filter condition).
+ * 
+ * Used by macros like `%list` and `%pick`.
+ */
 function getCandidateIds(
     rawCategoryArg: string,
     rawFilterArg: string | undefined,
@@ -576,6 +658,12 @@ function getCandidateIds(
     return candidates;
 }
 
+/**
+ * Calculates the percentage chance of success for a skill check
+ * based on the chosen difficulty curve.
+ * 
+ * Syntax: `quality >> target` (bigger number is better) or `number >< target` (number most be as close as possible to target).
+ */
 export function calculateChance(
     skillCheckExpr: string,
     optionalArgsStr: string | undefined,
@@ -649,6 +737,10 @@ export function calculateChance(
     return Math.round(finalPercent);
 }
 
+/**
+ * Helper for UI tooltips. Parses a challenge string to return the 
+ * probability percentage and a human-readable label.
+ */
 export function getChallengeDetails(
     challengeString: string | undefined,
     qualities: PlayerQualities,

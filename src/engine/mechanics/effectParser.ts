@@ -122,11 +122,15 @@ export function parseAndApplyEffects(
             }
         }
         else {
+            // Regex captures the Left-Hand Side (rawLhs) of the assignment, optional metadata (metaStr), the operator (op), and the Right-Hand Side (valStr).
             const assignMatch = command.match(/^(.+?)(?:\s*\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
 
             if (assignMatch) {
                 const [, rawLhs, metaStr, op, valStr] = assignMatch;
                 let qid = rawLhs.trim();
+
+                // Since we're already parsing effects, we can assume aliases and special prefixes. This also covers dynamic quality IDs, 
+                // and means we don't need to resolve them here. This also covers an ID already starting without a special char, like from the %pick macro.
                 if (['$', '@', '#'].includes(qid.charAt(0))) {
                     if (qid.startsWith('@')) {
                         qid = ctx.tempAliases[qid.substring(1)] || qid.substring(1);
@@ -134,6 +138,11 @@ export function parseAndApplyEffects(
                         qid = qid.substring(1);
                     }
                 }
+                
+                // If no sigil is used, or when it is stripped, we use this as the quality ID (qid).
+                // This string becomes the target ID for changeQuality, which will handle the right-hand side evaluation.
+
+                // Parse metadata if present
                 const metadata: { desc?: string; source?: string; hidden?: boolean } = {};
                 if (metaStr) {
                     const metaParts = metaStr.split(',');
@@ -146,6 +155,10 @@ export function parseAndApplyEffects(
                         if (key === 'hidden') metadata.hidden = true;
                     }
                 }
+
+                // Determine the value to apply (val), if applicable.
+                // Can be a number or string. For ++/--, val is not needed, 
+                // as the operation implies a change of 1 to be handled in changeQuality.
                 let val: string | number = 0;
                 if (op !== '++' && op !== '--') {
                     if (!isNaN(Number(valStr)) && valStr.trim() !== "") {
@@ -155,6 +168,7 @@ export function parseAndApplyEffects(
                     }
                 }
 
+                // Call changeQuality with the parsed parameters, qid, op, val, and metadata.
                 if (qid && qid !== "nothing" && qid !== "undefined") {
                     changeQuality(ctx, qid, op, val, metadata);
                 }

@@ -32,6 +32,11 @@ export class GameEngine implements EngineContext {
     public errors: string[] = [];
     public executedEffectsLog: string[] = [];
 
+    
+    /**
+     * Initializes the engine with a copy of the player's state
+     * to ensure mutations only happen via controlled methods.
+     */
     constructor(
         initialQualities: PlayerQualities,
         worldContent: WorldConfig,
@@ -46,47 +51,64 @@ export class GameEngine implements EngineContext {
         this.resolutionRoll = Math.random() * 100;
         this._logger = logger; 
     }
-
+    
+    /** Replaces the current state entirely. */
     public setQualities(newQualities: PlayerQualities): void { this.qualities = JSON.parse(JSON.stringify(newQualities)); }
+    
+    /** Returns the current raw state object. */
     public getQualities(): PlayerQualities { return this.qualities; }
+
+    /** Returns qualities created dynamically during this session. */
     public getDynamicQualities(): Record<string, QualityDefinition> { return this.dynamicQualities; }
+
+    /** Returns the global world state. */
     public getWorldQualities(): PlayerQualities { return this.worldQualities; }
+
+    /**
+     * Creates a Javascript Proxy around the state.
+     * Intercepts property access to calculate "Effective Levels" (Base + Equipment Bonuses)
+     * on the fly, so scripts always see the modified values.
+     */
     private getEffectiveQualitiesProxy(): PlayerQualities {
-    return new Proxy(this.qualities, {
-        get: (target, prop) => {
-            if (typeof prop !== 'string') return Reflect.get(target, prop);
-            const qid = prop;
-            const baseState = target[qid];
-            const effectiveLevel = this.getEffectiveLevel(qid);
-            
-            if (baseState) {
-                if (baseState.type === QualityType.String) return baseState;
-                if ('level' in baseState && baseState.level === effectiveLevel) return baseState;
-                return { ...baseState, level: effectiveLevel };
-            }
-
-
-            const def = this.worldContent.qualities[qid];
-            if (def || effectiveLevel !== 0 || this.worldQualities[qid]) {
-                if (this.worldQualities[qid]) {
-                    const wq = this.worldQualities[qid];
-                    if (wq.type === QualityType.String) return wq;
-                    return { ...wq, level: effectiveLevel };
+        return new Proxy(this.qualities, {
+            get: (target, prop) => {
+                if (typeof prop !== 'string') return Reflect.get(target, prop);
+                const qid = prop;
+                const baseState = target[qid];
+                const effectiveLevel = this.getEffectiveLevel(qid);
+                
+                if (baseState) {
+                    if (baseState.type === QualityType.String) return baseState;
+                    if ('level' in baseState && baseState.level === effectiveLevel) return baseState;
+                    return { ...baseState, level: effectiveLevel };
                 }
-                return {
-                    qualityId: qid,
-                    type: def?.type || QualityType.Counter,
-                    level: effectiveLevel,
-                    stringValue: "",
-                    changePoints: 0
-                } as QualityState;
+
+
+                const def = this.worldContent.qualities[qid];
+                if (def || effectiveLevel !== 0 || this.worldQualities[qid]) {
+                    if (this.worldQualities[qid]) {
+                        const wq = this.worldQualities[qid];
+                        if (wq.type === QualityType.String) return wq;
+                        return { ...wq, level: effectiveLevel };
+                    }
+                    return {
+                        qualityId: qid,
+                        type: def?.type || QualityType.Counter,
+                        level: effectiveLevel,
+                        stringValue: "",
+                        changePoints: 0
+                    } as QualityState;
+                }
+
+                return undefined;
             }
+        });
+    }
 
-            return undefined;
-        }
-    });
-}
-
+    /**
+     * Wrapper for `textProcessor.evaluateText()`.
+     * Automatically injects the EffectiveQualitiesProxy and logging.
+     */
     public evaluateText(
         rawText: string | undefined, 
         context?: { qid: string, state: QualityState },
@@ -109,7 +131,11 @@ export class GameEngine implements EngineContext {
         );
     }
 
-        public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
+    /**
+     * Wrapper for `textProcessor.evaluateCondition()`.
+     * Handles splitting implicit "AND" conditions (comma-separated strings).
+     */
+    public evaluateCondition(expression: string | undefined, contextOverride?: { qid: string, state: QualityState }): boolean {
         if (!expression) return true;
         let parts: string[] = [];
         let buffer = "";
@@ -179,6 +205,10 @@ export class GameEngine implements EngineContext {
         return true;
     }
     
+    /**
+     * Calculates the final value of a quality by taking the base level
+     * and summing up bonuses from all equipped items.
+     */
     public getEffectiveLevel(qid: string): number {
         const baseState = this.qualities[qid];
         let total = (baseState && 'level' in baseState) ? baseState.level : 0;
@@ -220,6 +250,10 @@ export class GameEngine implements EngineContext {
         return total;
     }
 
+    /**
+     * Scans currently equipped items to find which Qualities they are modifying.
+     * Used to ensure these qualities appear in the UI even if the player has 0 base level.
+     */
     public getBonusQualities(): string[] {
         const affectedQids = new Set<string>();
         for (const slot in this.equipment) {
@@ -236,6 +270,11 @@ export class GameEngine implements EngineContext {
         return Array.from(affectedQids);
     }
 
+    /**
+     * Prepares the state object for the Frontend UI.
+     * 1. Merges base stats with equipment bonuses.
+     * 2. Evaluates ScribeScript in `tags` field to handle visibility logic (for example, a conditional `hidden`).
+     */
     public getDisplayState(): PlayerQualities {
         const displayState = JSON.parse(JSON.stringify(this.qualities));
         const bonusKeys = this.getBonusQualities();
@@ -279,6 +318,13 @@ export class GameEngine implements EngineContext {
         return displayState;
     }
 
+    /**
+     * The main gameplay resolution loop.
+     * 1. Evaluates the challenge (success/fail).
+     * 2. Selects the appropriate result text and effects.
+     * 3. Applies state changes (Effects).
+     * 4. Returns a result object for the UI to render.
+     */
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
         this.changes = [];
         this.scheduledUpdates = [];
@@ -322,14 +368,18 @@ export class GameEngine implements EngineContext {
         };
     }
     
+    /** Clears temporary aliases and errors between resolutions. */
     public resetEvaluationContext(): void {
         this.tempAliases = {};
         this.errors = [];
     }
 
+    /** Parses and executes an effects string, such as `$gold++, $xp += 10`. */
     public applyEffects(effectsString: string): void {
         parseAndApplyEffects(this, effectsString);
     }
+
+    /** Internal logging helper for the Playtest debugger. */
     private traceLog(message: string, depth: number, type?: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR') {
         let prefix = depth > 0 ? '|-- ' : '';
         if (depth > 1) {
@@ -347,6 +397,10 @@ export class GameEngine implements EngineContext {
         }
     }
 
+    /**
+     * Parses a challenge string, calculates the probability, and compares it
+     * against the engine's resolution roll (`this.resolutionRoll`) to determine the outcome.
+     */
     private evaluateChallenge(challengeString?: string): SkillCheckResult {
         if (!challengeString) return { wasSuccess: true, roll: -1, targetChance: 100, description: "" };
         let clean = challengeString.trim();
@@ -407,6 +461,7 @@ export class GameEngine implements EngineContext {
         };
     }
 
+    /** Pure math implementation of the difficulty curves. */
     private calculateChanceMath(skill: number, op: string, target: number, margin: number, min: number, max: number, pivot: number): number {
         const lowerBound = target - margin;
         const upperBound = target + margin;
@@ -449,6 +504,8 @@ export class GameEngine implements EngineContext {
         let percent = chance * 100;
         return Math.max(min, Math.min(max, percent));
     }
+
+    /** Handles the `%new` macro to initialize qualities at runtime. */
     public createNewQuality(id: string, value: number | string, templateId: string | null, props: Record<string, any>) {
         createNewQuality(this, id, value, templateId, props);
         
@@ -472,19 +529,27 @@ export class GameEngine implements EngineContext {
         this.dynamicQualities[id] = newDef;
     }
 
+    /** Wrapper for the low-level changeQuality operation. */
     public changeQuality(qid: string, op: string, value: number | string, metadata: { desc?: string; source?: string; hidden?: boolean }) {
         changeQuality(this, qid, op, value, metadata);
     }
 
+    /** Wrapper for the low-level batchChangeQuality operation. */
     public batchChangeQuality(categoryExpr: string, op: string, value: number | string, filterExpr?: string) {
         batchChangeQuality(this, categoryExpr, op, value, filterExpr);
     }
 
+    /**
+     * Recursively walks an object (like a Storylet definition) and evaluates
+     * any string properties containing ScribeScript.
+     * Ensures the UI receives static text instead of raw code.
+     */
     public render<T extends {id?: string}>(obj: T): T {
         const copy = JSON.parse(JSON.stringify(obj));
         return this.deepEvaluate(copy, copy.id);
     }
 
+    /** Specific render wrapper for Storylets that handles Action Cost computation. */
     public renderStorylet(storylet: Storylet | Opportunity): Storylet | Opportunity {
         const rendered = this.render(storylet);
         if (rendered.options) {
@@ -499,6 +564,8 @@ export class GameEngine implements EngineContext {
         }
         return rendered;
     }
+
+    /** Recursive helper for the render method. */
     private deepEvaluate(obj: any, contextId?: string): any {
         if (typeof obj === 'string') {
             if (obj.includes('{') || obj.includes('$') || obj.includes('#') || obj.includes('@') || obj.includes('$.')) {
