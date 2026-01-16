@@ -44,7 +44,9 @@ export default function ImageMainForm({ initialData, onSave, onDelete, onDuplica
         initialData, 
         '/api/admin/config', 
         { storyId, category: 'images', itemId: initialData.id }, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -223,7 +225,7 @@ export default function ImageMainForm({ initialData, onSave, onDelete, onDuplica
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

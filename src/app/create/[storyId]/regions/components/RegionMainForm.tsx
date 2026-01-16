@@ -37,7 +37,9 @@ export default function RegionMainForm({ initialData, onSave, onDelete, onDuplic
         initialData, 
         '/api/admin/config', 
         saveParams, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -122,7 +124,7 @@ export default function RegionMainForm({ initialData, onSave, onDelete, onDuplic
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

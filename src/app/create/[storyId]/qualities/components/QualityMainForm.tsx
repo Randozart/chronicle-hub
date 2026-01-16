@@ -52,7 +52,9 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
         initialData, 
         '/api/admin/config', 
         { storyId, category: 'qualities', itemId: initialData.id }, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave   
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -375,7 +377,7 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

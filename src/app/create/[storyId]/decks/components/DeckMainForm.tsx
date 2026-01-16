@@ -32,7 +32,9 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
         initialData, 
         '/api/admin/config', 
         { storyId, category: 'decks', itemId: initialData.id }, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -183,7 +185,7 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

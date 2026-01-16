@@ -1,5 +1,5 @@
 // src/hooks/useCreatorForm.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/providers/ToastProvider';
 
 export interface FormGuard {
@@ -12,7 +12,8 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
     saveEndpoint: string,
     extraBodyParams: Record<string, any> = {},
     guardRef?: { current: FormGuard | null }, 
-    customSave?: () => Promise<any> 
+    customSave?: () => Promise<any>,
+    onSaveSuccess?: (data: T) => void 
 ) {
     const [data, setData] = useState<T | null>(initialData);
     const [originalData, setOriginalData] = useState<T | null>(initialData);
@@ -21,11 +22,25 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const { showToast } = useToast();
 
+    // REFS
+    const dataRef = useRef<T | null>(initialData);
+    const isDirtyRef = useRef(isDirty);
+    const customSaveRef = useRef(customSave);
+    const onSaveSuccessRef = useRef(onSaveSuccess);
+
+    useEffect(() => { if (data) dataRef.current = data; }, [data]);
+    useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+    useEffect(() => { customSaveRef.current = customSave; }, [customSave]);
+    useEffect(() => { onSaveSuccessRef.current = onSaveSuccess; }, [onSaveSuccess]);
+
     useEffect(() => {
         if (initialData) {
-            setData(JSON.parse(JSON.stringify(initialData)));
-            setOriginalData(JSON.parse(JSON.stringify(initialData)));
+            const deepCopy = JSON.parse(JSON.stringify(initialData));
+            setData(deepCopy);
+            setOriginalData(deepCopy);
+            dataRef.current = deepCopy;
             setIsDirty(false);
+            isDirtyRef.current = false;
         }
     }, [initialData]);
 
@@ -33,19 +48,26 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         setData(prev => {
             if (!prev) return null;
             const next = { ...prev, [field]: value };
-            setIsDirty(JSON.stringify(next) !== JSON.stringify(originalData));
+            
+            dataRef.current = next;
+
+            const nowDirty = JSON.stringify(next) !== JSON.stringify(originalData);
+            setIsDirty(nowDirty);
+            isDirtyRef.current = nowDirty;
             return next;
         });
     }, [originalData]);
 
     const handleSave = useCallback(async () => {
-        if (!data) return false;
+        const currentData = dataRef.current;
+        if (!currentData) return false;
+        
         setIsSaving(true);
         try {
             const res = await fetch(saveEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...extraBodyParams, data: data })
+                body: JSON.stringify({ ...extraBodyParams, data: currentData })
             });
 
             if (res.status === 409) {
@@ -58,15 +80,24 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
 
             const responseData = await res.json();
             const savedData = { 
-                ...data, 
-                version: responseData.newVersion || (data.version || 0) + 1 
+                ...currentData, 
+                version: responseData.newVersion || (currentData.version || 0) + 1 
             };
 
             setOriginalData(JSON.parse(JSON.stringify(savedData)));
             setData(savedData);
             setIsDirty(false);
+            isDirtyRef.current = false;
             setLastSaved(new Date());
+            
+            dataRef.current = savedData;
+
             showToast("Saved successfully", "success");
+
+            if (onSaveSuccessRef.current) {
+                onSaveSuccessRef.current(savedData);
+            }
+
             return true;
         } catch (e) {
             console.error(e);
@@ -75,23 +106,29 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         } finally {
             setIsSaving(false);
         }
-    }, [data, extraBodyParams, saveEndpoint, showToast]);
+    }, [extraBodyParams, saveEndpoint, showToast]);
+
+    const revertChanges = useCallback(() => {
+        if (originalData) {
+            const copy = JSON.parse(JSON.stringify(originalData));
+            setData(copy);
+            dataRef.current = copy;
+            setIsDirty(false);
+            isDirtyRef.current = false;
+            showToast("Changes discarded.", "info");
+        }
+    }, [originalData, showToast]);
 
     const resetState = useCallback(() => {
         if (data) {
-            setOriginalData(JSON.parse(JSON.stringify(data)));
+            const copy = JSON.parse(JSON.stringify(data));
+            setOriginalData(copy);
             setIsDirty(false);
+            isDirtyRef.current = false;
             setLastSaved(new Date());
         }
     }, [data]);
 
-    const revertChanges = useCallback(() => {
-        if (originalData) {
-            setData(JSON.parse(JSON.stringify(originalData)));
-            setIsDirty(false);
-            showToast("Changes discarded.", "info");
-        }
-    }, [originalData, showToast]);
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
             if (isDirty) {
@@ -102,6 +139,7 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [isDirty]);
+
     useEffect(() => {
         if (guardRef) {
             guardRef.current = {
@@ -112,31 +150,26 @@ export function useCreatorForm<T extends { id: string; version?: number }>(
     }, [isDirty, handleSave, guardRef]);
 
     useEffect(() => {
-        const onKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                if (isDirty) {
-
-                    if (customSave) {
-                        customSave();
-                    } else {
-                        handleSave();
-                    }
+        const onGlobalSave = () => {
+            if (isDirtyRef.current) {
+                if (customSaveRef.current) {
+                    customSaveRef.current();
+                } else {
+                    handleSave();
                 }
             }
         };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [isDirty, handleSave, customSave]); 
-
+        window.addEventListener('global-save-trigger', onGlobalSave);
+        return () => window.removeEventListener('global-save-trigger', onGlobalSave);
+    }, [handleSave]);
 
     return {
         data,
-        setData,
+        setData, 
         handleChange,
         handleSave,
         revertChanges,
-        resetState, 
+        resetState,
         isDirty,
         isSaving,
         lastSaved

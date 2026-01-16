@@ -38,7 +38,9 @@ export default function InstrumentMainForm({ initialData, onSave, onDelete, onDu
         initialData, 
         endpoint, 
         saveParams, 
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -62,7 +64,7 @@ export default function InstrumentMainForm({ initialData, onSave, onDelete, onDu
                 isDirty={isDirty} 
                 isSaving={isSaving} 
                 lastSaved={lastSaved} 
-                onSave={onSaveClick} 
+                onSave={handleSave} 
                 onRevert={() => setShowRevertModal(true)} 
                 onDelete={() => onDelete(form.id)}
                 onDuplicate={() => onDuplicate(form)}

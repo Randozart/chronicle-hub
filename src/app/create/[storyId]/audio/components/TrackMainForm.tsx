@@ -40,7 +40,9 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
         initialData, 
         endpoint, 
         saveParams,
-        guardRef
+        guardRef,
+        undefined,
+        onSave
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
@@ -77,7 +79,7 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
                     isDirty={isDirty} 
                     isSaving={isSaving} 
                     lastSaved={lastSaved} 
-                    onSave={onSaveClick} 
+                    onSave={handleSave} 
                     onRevert={() => setShowRevertModal(true)} 
                     onDelete={() => onDelete(form.id)}
                     onDuplicate={() => onDuplicate(form)}
