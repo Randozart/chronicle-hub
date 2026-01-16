@@ -29,8 +29,7 @@ import { ToastProvider } from '@/providers/ToastProvider';
 import GameModal from './GameModal';
 import LivingStories from './LivingStories';
 import { useTheme } from '@/providers/ThemeProvider';
-import { DeckState } from '@/engine/deckService';
-
+import { DeckState, getDeckStates } from '@/engine/deckLogic';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -158,8 +157,9 @@ export default function GameHub(props: GameHubProps) {
     const [activeTab, setActiveTab] = useState<'story' | 'possessions' | 'profile' | 'living'>('story');
     const [eventSource, setEventSource] = useState<'story' | 'item'>('story');
     const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
+    const [deckStates, setDeckStates] = useState<Record<string, DeckState>>(props.deckStates || {});
 
-    const { playTrack } = useAudio(); 
+    const { playTrack } = useAudio();
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -231,7 +231,10 @@ export default function GameHub(props: GameHubProps) {
         setShowMap(false);
         setShowMarket(false);
         setIsTransitioning(false);
-    }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent]);
+        setDeckStates(props.deckStates || {});
+    }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent, props.deckStates]);
+
+    
     
 
 
@@ -487,6 +490,19 @@ export default function GameHub(props: GameHubProps) {
         instruments: props.instruments || {},
         music: props.musicTracks || {},
     }), [props.settings, mergedQualityDefs, props.deckDefs, props.locations, props.regions, props.imageLibrary, props.categories, props.markets, props.instruments, props.musicTracks]);
+    
+    useEffect(() => {
+        if (!character) return;
+        
+        const allContent = [
+            ...Object.values(props.storyletDefs),
+            ...Object.values(props.opportunityDefs)
+        ];
+        
+        const newStates = getDeckStates(character, worldConfig, allContent);
+        setDeckStates(newStates);
+        
+    }, [character, worldConfig, props.storyletDefs, props.opportunityDefs]);
     
     const renderEngine = useMemo(() => 
         new GameEngine(character.qualities, worldConfig, character.equipment, props.worldState, props.isPlaytesting ? handleLog : undefined),
@@ -836,7 +852,7 @@ export default function GameHub(props: GameHubProps) {
                         const cardsInHand = hand.filter(c => c.deck === deckId);
                         
                         const isDeckDepleted = stats.deckSize > 0 && currentCharges <= 0;
-                        const deckState = props.deckStates?.[deckId];
+                        const deckState = deckStates[deckId];
                         const hasCandidates = deckState?.hasCandidates ?? false;
                         const alwaysShow = deckDef.always_show; 
                         

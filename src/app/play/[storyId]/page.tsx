@@ -3,11 +3,11 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getContent, getAutofireStorylets, getStorylets } from '@/engine/contentCache';
 import { checkLivingStories, getCharacter, getCharactersList, saveCharacterState } from '@/engine/characterService';
-import { getDeckStates, DeckState } from '@/engine/deckService';
 import { getWorldState } from '@/engine/worldService';
 import { Storylet, Opportunity, LocationDefinition, CharacterDocument } from '@/engine/models'; 
 import GameHub from '@/components/GameHub';
 import { regenerateAllDecks } from '@/engine/deckService';
+import { DeckState, getDeckStates } from '@/engine/deckLogic';
 
 function serialize<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
