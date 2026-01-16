@@ -315,21 +315,49 @@ export default function StoryletDisplay({
             </div>
         );
     }
+    
     const getLockReason = (condition: string): string => {
-        const match = condition.match(/\$([a-zA-Z0-9_]+)\s*(>=|<=|==|>|<)\s*(\d+)/);
-        if (!match) return `A requirement is not met.`;
-        const [, qid, op, val] = match;
-        const qualityName = qualityDefs[qid]?.name ?? qid; 
-        const state = qualities[qid];
-        const currentVal = (state && 'level' in state) ? state.level : 0;
-        return `Requires ${qualityName} ${op} ${val} (You have ${currentVal})`;
+        const opMap: Record<string, string> = {
+            '>': 'more than',
+            '>=': 'at least',
+            '<': 'less than',
+            '<=': 'at most',
+            '==': 'exactly',
+            '!=': 'not'
+        };
+
+        // 1. Replace all comparisons with readable text + current values
+        let readable = condition.replace(/(\$?[a-zA-Z0-9_]+)\s*(>=|<=|==|!=|>|<)\s*([0-9]+|'[^']+'|"[^"]+")/g, (match, rawQid, op, val) => {
+            const qid = rawQid.startsWith('$') ? rawQid.substring(1) : rawQid;
+            const qualityName = qualityDefs[qid]?.name ?? qid;
+            
+            const state = qualities[qid];
+            let currentVal: string | number = 0;
+            if (state) {
+                if (state.type === 'S') currentVal = state.stringValue;
+                else if ('level' in state) currentVal = state.level;
+            }
+
+            const cleanVal = val.replace(/^['"]|['"]$/g, '');
+            const readableOp = opMap[op] || op;
+            
+            return `${qualityName} ${readableOp} ${cleanVal} (Current: ${currentVal})`;
+        });
+
+        readable = readable.replace(/&&|,/g, ' AND ');
+        readable = readable.replace(/\|\|/g, ' OR ');
+        
+        readable = readable.replace(/\$/g, '');
+
+        return `Requires: ${readable}`;
     };
+
     const safeOptions = storylet.options || [];
 
     const optionsToDisplay: DisplayOption[] = safeOptions
         .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, null, 0))
         .map(option => {
-            const isLocked = !evaluateCondition(option.unlock_if, qualities, qualityDefs, null, 0);
+            const isLocked = option.unlock_if ? !engine.evaluateCondition(option.unlock_if) : false;
             const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
             const { chance, text } = getChallengeDetails(option.challenge, qualities, qualityDefs);
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}%]` : '';

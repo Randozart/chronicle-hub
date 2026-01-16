@@ -10,6 +10,7 @@ import { regenerateAllDecks } from '@/engine/deckService';
 import { DeckState, getDeckStates } from '@/engine/deckLogic';
 
 function serialize<T>(data: T): T {
+    if (data === undefined) return null as unknown as T;
     return JSON.parse(JSON.stringify(data));
 }
 
@@ -30,11 +31,10 @@ export default async function PlayPage({ params, searchParams }: Props) {
     const isPlaytest = resolvedSearchParams.playtest === 'true'; 
     const storyId = resolvedParams.storyId;
     const userId = (session.user as any).id;
-    
-    const gameData = await getContent(storyId);
+    const gameData = await getContent(storyId, isPlaytest);
     if (!gameData) return <div>Story not found.</div>;
 
-    const allContent = await getStorylets(storyId);
+    const allContent = await getStorylets(storyId, isPlaytest);
 
     const availableCharacters = await getCharactersList(userId, storyId);
     

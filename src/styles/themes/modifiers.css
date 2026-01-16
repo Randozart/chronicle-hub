@@ -38,6 +38,8 @@
 
     mask-image: linear-gradient(to top, black 40%, transparent 100%);
     -webkit-mask-image: linear-gradient(to top, black 40%, transparent 100%);
+
+    pointer-events: none;
 }
 [data-theme='neo-tokyo'] .content-area,
 [data-theme='neo-tokyo'] .sidebar-panel,

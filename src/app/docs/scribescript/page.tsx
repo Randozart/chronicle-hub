@@ -1053,6 +1053,24 @@ You cast your line... {
     </tbody>
 </table>
 
+{/* SECTION: TARGET KEYWORD */}
+<h4 className="docs-h4">The <code>target</code> keyword</h4>
+    <p className="docs-p">
+        In <strong>World Settings &gt; Challenge Physics</strong>, you can define global defaults for challenge margins. 
+        Since the difficulty of a check changes constantly, you can use the special keyword <code>target</code>.
+    </p>
+    <div className="docs-syntax-box">
+        <code className="docs-code">Default Margin: {`{ target / 2 }`}</code>
+    </div>
+    <p className="docs-p">
+        <strong>How it works:</strong> If a player attempts a difficulty <strong>50</strong> check, the engine replaces <code>target</code> with <code>50</code>. 
+        The margin becomes 25. 
+        <br/>
+        If they attempt a difficulty <strong>10</strong> check, the margin becomes 5.
+        <br/>
+        This allows the "randomness window" to scale automatically with the difficulty of the task.
+    </p>
+
 <h4 className="docs-h4">Positional vs. Named Arguments</h4>
 <p className="docs-p">
     You can provide arguments by name or by position. Positional arguments are faster to type but must be in the correct order: `margin`, `min`, `max`, `pivot`.
