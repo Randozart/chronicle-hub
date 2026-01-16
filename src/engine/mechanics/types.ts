@@ -6,10 +6,11 @@ export interface EngineContext {
     dynamicQualities: Record<string, QualityDefinition>;
 
     changes: QualityChangeInfo[];
-    scheduledUpdates: any[];
+scheduledUpdates: any[];
     errors: string[];
     tempAliases: Record<string, string>;
     executedEffectsLog: string[];
+    resolutionRoll: number;
     _logger?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void;
     evaluateText: (text: string, context?: { qid: string, state: QualityState }) => string;
     getEffectiveLevel: (qid: string) => number;

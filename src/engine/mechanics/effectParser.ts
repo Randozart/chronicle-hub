@@ -1,8 +1,10 @@
 // src/engine/mechanics/effectParser.ts
 import { sanitizeScribeScript } from '../scribescript/utils';
 import { EngineContext } from './types';
+import { getCandidateIds, parseCollectionArgs } from '../scribescript/macros'; 
 import { changeQuality, createNewQuality, batchChangeQuality } from './qualityOperations';
 import { parseAndQueueTimerInstruction } from './scheduler';
+
 function splitEffectsString(str: string): string[] {
     const result: string[] = [];
     let current = '';
@@ -76,6 +78,64 @@ export function parseAndApplyEffects(
                 const numVal = isNaN(Number(val)) ? val : Number(val);
                 ctx.executedEffectsLog.push(`[EXECUTE] Batch: Category[${catExpr}] ${op} ${numVal}`);
                 batchChangeQuality(ctx, catExpr, op, numVal, filterExpr);
+            }
+        }
+        else if (command.startsWith('%pick') || command.startsWith('%roll') || command.startsWith('%all')) {
+            const match = command.match(/^(%(?:pick|roll|all))\[(.*?)\]\s*(=|\+=|-=)\s*(.*)$/);
+            
+            if (match) {
+                const [, macroName, argsStr, op, val] = match;
+                const macroType = macroName.substring(1) as 'pick' | 'roll' | 'all';
+                const args = argsStr.split(';').map(s => s.trim());
+
+                const finalVal = ctx.evaluateText(val); 
+
+                const wrapperEval = (t: string) => ctx.evaluateText(t);
+                const { category, count, filter } = parseCollectionArgs(args, macroType, wrapperEval);
+
+                const candidates = getCandidateIds(
+                    category, 
+                    filter, 
+                    ctx.qualities, 
+                    ctx.worldContent.qualities, 
+                    ctx.resolutionRoll, 
+                    ctx.tempAliases, 
+                    ctx.errors, 
+                    undefined, 
+                    0, 
+                    (t) => ctx.evaluateText(t || "")
+                );
+
+                if (candidates.length > 0) {
+                    let selected: string[] = [];
+
+                    if (macroType === 'roll') {
+                        const pool: string[] = [];
+                        candidates.forEach(qid => {
+                            const q = ctx.qualities[qid];
+                            if (q && 'level' in q && q.level > 0) {
+                                const tickets = Math.min(q.level, 100); 
+                                for(let i=0; i<tickets; i++) pool.push(qid);
+                            }
+                        });
+                        if (pool.length > 0) {
+                            for(let i=0; i<count; i++) selected.push(pool[Math.floor(Math.random() * pool.length)]);
+                        }
+                    } else if (macroType === 'pick') {
+                        selected = candidates.sort(() => 0.5 - Math.random()).slice(0, count);
+                    } else {
+                        selected = candidates.slice(0, count);
+                    }
+                    
+                    const numVal = isNaN(Number(finalVal)) ? finalVal : Number(finalVal);
+                    ctx.executedEffectsLog.push(`[EXECUTE] ${macroType} [${category}] (${selected.length}) ${op} ${finalVal}`);
+                    
+                    for (const qid of selected) {
+                        changeQuality(ctx, qid, op, numVal, {});
+                    }
+                } else {
+                    ctx.executedEffectsLog.push(`[EXECUTE] ${macroType} [${category}]: No candidates found.`);
+                }
             }
         }
         else if (command.startsWith('%new')) {
