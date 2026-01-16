@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getContent, getAutofireStorylets, getStorylets } from '@/engine/contentCache';
 import { checkLivingStories, getCharacter, getCharactersList, saveCharacterState } from '@/engine/characterService';
+import { checkDeckEligibility } from '@/engine/deckService';
 import { getWorldState } from '@/engine/worldService';
 import { Storylet, Opportunity, LocationDefinition, CharacterDocument } from '@/engine/models'; 
 import GameHub from '@/components/GameHub';
@@ -42,6 +43,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
     let initialLocation: LocationDefinition | null = null;
     let initialHand: Opportunity[] = [];
     let activeEvent: Storylet | Opportunity | null = null;
+    let deckEligibility: Record<string, boolean> = {};
 
     if (resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
         const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
@@ -71,8 +73,9 @@ export default async function PlayPage({ params, searchParams }: Props) {
              const evt = autofires.find(s => s.id === character?.currentStoryletId) 
                  || allContent.find(s => s.id === character?.currentStoryletId);
              
-             if (evt) activeEvent = evt;
+            if (evt) activeEvent = evt;
         }
+        deckEligibility = checkDeckEligibility(character, gameData, allContent);
     }
 
     const worldState = await getWorldState(storyId);
@@ -107,6 +110,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
             storyletDefs={storyletMap}
             opportunityDefs={opportunityMap}
             deckDefs={serialize(gameData.decks)}
+            deckEligibility={deckEligibility}
             
             settings={serialize(gameData.settings)}
             locations={serialize(gameData.locations)}

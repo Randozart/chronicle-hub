@@ -179,6 +179,12 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
                         label="Persistent (Saved)" 
                         desc="Cards drawn from this deck stay in the hand when the player leaves the location." 
                     />
+                    <BehaviorCard 
+                        checked={!!form.always_show} 
+                        onChange={() => handleChange('always_show', !form.always_show)} 
+                        label="Always Show Hand" 
+                        desc="Force the hand to be visible even if empty or ineligible to draw." 
+                    />
                 </div>
             </div>
             <CommandCenter 

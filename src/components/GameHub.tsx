@@ -60,6 +60,8 @@ interface GameHubProps {
     instruments?: Record<string, InstrumentDefinition>;
     musicTracks?: Record<string, LigatureTrack>;
     isPlaytesting?: boolean;
+    deckEligibility?: Record<string, boolean>;
+
 }
 
 const PlaytestLogger = ({ logs, onClear }: { logs: { message: string, type: string }[], onClear: () => void }) => {

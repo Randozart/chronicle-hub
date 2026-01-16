@@ -326,7 +326,8 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handleTagToggle('hidden')} label="Hidden" desc="Do not show on profile." />
                         <BehaviorCard checked={hasProperty(form.tags, 'hide_level')} onChange={() => handleTagToggle('hide_level')} label="Hide Level" desc="Hide the numeric value." />
-                        {(form.type === 'E') && (
+                        <BehaviorCard checked={hasProperty(form.tags, 'fx_only')} onChange={() => handleTagToggle('fx_only')} label="FX Only" desc="Only show when modified by an effect." />                        
+                            {(form.type === 'E') && (
                             <>
                                 <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip on gain." />
                                 <BehaviorCard checked={hasProperty(form.tags, 'force_equip')} onChange={() => handleTagToggle('force_equip')} label="Force-Equip" desc="Equip on gain, unequip whatever is in the equipment slot." />
@@ -344,7 +345,10 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                             qualityDefs={qualityDefs}
                             placeholder="tag1, tag2"
                         />
-                    </div>
+                        <p className="special-desc" style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>
+                            Supports ScribeScript logic. Tags affect behavior in various parts of the game.
+                        </p>
+                </div>
                 </div>
                 {(form.type === 'E' || form.type === 'I') && (
                     <div className="form-group" style={{ borderTop: '1px solid var(--tool-border)', paddingTop: '1rem', marginTop: '1rem' }}>

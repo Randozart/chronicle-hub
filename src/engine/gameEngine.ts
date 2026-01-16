@@ -260,8 +260,25 @@ export class GameEngine implements EngineContext {
                 }
             }
         });
+        
+        for (const qid in displayState) {
+            const def = this.worldContent.qualities[qid];
+            if (displayState[qid].type !== QualityType.String) {
+                displayState[qid].level = this.getEffectiveLevel(qid);
+            }
+
+            if (def && def.tags && def.tags.length > 0) {
+                const context = { qid: qid, state: displayState[qid] };
+                const evaluatedTags = def.tags.map(tagStr => {
+                    return this.evaluateText(tagStr, context).trim();
+                }).filter(t => t !== "");
+                displayState[qid].tags = evaluatedTags;
+            }
+        }
+
         return displayState;
     }
+
     public resolveOption(storylet: Storylet | Opportunity, option: ResolveOption) {
         this.changes = [];
         this.scheduledUpdates = [];

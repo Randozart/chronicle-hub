@@ -292,6 +292,7 @@ export interface BaseQualityState {
     qualityId: string;
     type: QualityType;
     text_variants?: Record<string, string | number | boolean>;
+    tags?: string[];
 }
 
 
