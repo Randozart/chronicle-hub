@@ -112,10 +112,16 @@ export function changeQuality(
         if ((def.type === QualityType.Counter || isItem) && qState.level < 0) qState.level = 0;
     }
 
-    const isHidden = metadata.hidden || (def.tags && def.tags.includes('hidden'));
     const context = { qid: effectiveQid, state: qState };
-    const displayName = ctx.evaluateText(def.name || effectiveQid, context); 
     
+    let evaluatedTags: string[] = [];
+    if (def.tags) {
+        evaluatedTags = def.tags.map(t => ctx.evaluateText(t, context)).filter(Boolean);
+    }
+
+    const isHidden = metadata.hidden || evaluatedTags.includes('hidden') || evaluatedTags.includes('no_log');
+    const displayName = ctx.evaluateText(def.name || effectiveQid, context); 
+
     let changeText = "";
     const increaseDesc = ctx.evaluateText(def.increase_description || "", context);
     const decreaseDesc = ctx.evaluateText(def.decrease_description || "", context);

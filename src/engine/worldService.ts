@@ -113,10 +113,14 @@ export const updateWorldConfigItem = async (
         result = await db.collection('worlds').updateOne({ worldId }, { $set: { settings: data } });
     } else if (category === 'char_create') {
         result = await db.collection('worlds').updateOne({ worldId }, { $set: { "content.char_create": data } });
+    } else if (['qualities', 'locations', 'decks', 'images', 'categories', 'regions', 'markets', 'instruments', 'music'].includes(category)) {
+        const path = `content.${category}.${itemId}`;
+        result = await db.collection('worlds').updateOne({ worldId }, { $set: { [path]: data } });
     } else {
         const path = `content.${category}.${itemId}`;
         result = await db.collection('worlds').updateOne({ worldId }, { $set: { [path]: data } });
     }
+
 
     if (result.acknowledged) {
         const tag = `world-${worldId}`;

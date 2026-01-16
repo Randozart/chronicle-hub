@@ -1,7 +1,7 @@
 // src/app/create/[storyId]/audio/components/TrackMainForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { LigatureTrack, InstrumentDefinition } from '@/engine/audio/models';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import CommandCenter from '@/components/admin/CommandCenter';
@@ -22,9 +22,11 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
     
     const isGlobal = (initialData as any).scope === 'global';
     const endpoint = isGlobal ? '/api/assets/audio' : '/api/admin/config';
-    const extraParams = isGlobal 
+
+    const saveParams = useMemo(() => isGlobal 
         ? { id: initialData.id, type: 'track' } 
-        : { storyId, category: 'music', itemId: initialData.id };
+        : { storyId, category: 'music', itemId: initialData.id }
+    , [isGlobal, initialData.id, storyId]);
 
     const { 
         data: form, 
@@ -37,7 +39,7 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
     } = useCreatorForm<LigatureTrack>(
         initialData, 
         endpoint, 
-        extraParams, 
+        saveParams,
         guardRef
     );
 
@@ -66,6 +68,8 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
                     availableInstruments={availableInstruments}
                     onUpdateInstrument={() => {}} 
                     onChange={(newSource) => handleChange('source', newSource)}
+                    isPlayground={true}
+                    hideSaveButton={true}
                 />
             </div>
             <div style={{ flexShrink: 0, height: '80px', position: 'relative', zIndex: 100 }}>

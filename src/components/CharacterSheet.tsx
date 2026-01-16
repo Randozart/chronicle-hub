@@ -37,7 +37,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             if (!isInSidebarCategory) return null;
             const renderedObject = engine.render({ id: qid, tags: definition.tags || [] });
             const renderedTags = Array.isArray(renderedObject.tags) ? renderedObject.tags : [];
-            if (renderedTags.includes('hidden') && !showHidden) return null;
+            if ((renderedTags.includes('hidden') || renderedTags.includes('log_only')) && !showHidden) return null;
             const state = qualities[qid];
             const baseLevel = (state && 'level' in state) ? state.level : 0;
             const effectiveLevel = engine.getEffectiveLevel(qid);

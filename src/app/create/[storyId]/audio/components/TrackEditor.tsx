@@ -33,11 +33,12 @@ interface Props {
     enableDownload?: boolean;
     isPlayground?: boolean;
     hideCategories?: string[];
+    hideSaveButton?: boolean;
 }
 
 export default function TrackEditor({ 
     data, onChange, onSave, onDelete, availableInstruments, onUpdateInstrument,
-    enableDownload = false, isPlayground = false, hideCategories = []
+    enableDownload = false, isPlayground = false, hideCategories = [], hideSaveButton = false
 }: Props) {
     
     const source = data.source || "";
@@ -215,7 +216,7 @@ export default function TrackEditor({
                             : <button onClick={handlePlay} className="tool-btn tool-btn-play">▶</button>
                         }
                         
-                        {isPlayground && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
+                        {isPlayground && !hideSaveButton && <button onClick={handleSaveClick} className="tool-btn tool-btn-action">Save</button>}
                     </div>
                 </div>
 
