@@ -155,8 +155,9 @@ export default function OpportunityHand({
                         
                         const isValid = evaluateCondition(card.draw_condition, qualities, qualityDefs, null, 0);
                         const isTransient = !card.keep_if_invalid;
+                        if (isTransient && !isValid) {return null;}
 
-                        if (isTransient && !isValid) return null;
+                        const isLocked = card.unlock_if ? !evaluateCondition(card.unlock_if, qualities, qualityDefs, null, 0) : false;
                         
                         const discardButton = (card.can_discard !== false && onDiscard) ? (
                             <button 
@@ -188,15 +189,18 @@ export default function OpportunityHand({
                                     }}
                                 >
                                     <button
-                                        onClick={() => onCardClick(card.id)}
+                                        onClick={() => !isLocked && onCardClick(card.id)}
+                                        disabled={isLocked}
                                         style={{
+                                            opacity: isLocked ? 0.6 : 1,
+                                            cursor: isLocked ? 'not-allowed' : 'pointer',
+                                            flex: 1,
                                             background: 'none',
                                             border: 'none',
                                             padding: 0,
                                             margin: 0,
                                             width: '100%',
                                             height: '100%',
-                                            cursor: 'pointer',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             alignItems: 'stretch'
@@ -270,14 +274,16 @@ export default function OpportunityHand({
                                     }}
                                 >
                                     <button
-                                        onClick={() => onCardClick(card.id)}
+                                        onClick={() => !isLocked && onCardClick(card.id)}
+                                        disabled={isLocked}
                                         style={{
+                                            opacity: isLocked ? 0.6 : 1,
+                                            cursor: isLocked ? 'not-allowed' : 'pointer',
                                             flex: 1,
                                             background: 'transparent',
                                             border: 'none',
                                             padding: '1rem',
                                             textAlign: 'left',
-                                            cursor: 'pointer',
                                             display: 'block',
                                             width: '100%'
                                         }}
@@ -317,11 +323,17 @@ export default function OpportunityHand({
                                 </div>
                             );
                         }
-
+                        
+                        const cardClass = `card ${isLocked ? 'locked' : ''}`;
                         
                         return (
-                            <div key={card.id} className="card" title={layoutStyle === 'images-only' ? evaluatedName : undefined}>
-                                <button className="card-content-btn" onClick={() => onCardClick(card.id)}>
+                            <div key={card.id} className={cardClass} title={layoutStyle === 'images-only' ? evaluatedName : undefined}>
+                                <button 
+                                    className="card-content-btn" 
+                                    onClick={() => !isLocked && onCardClick(card.id)}
+                                    disabled={isLocked}
+                                    style={{ opacity: isLocked ? 0.6 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
+                                >
                                         {card.image_code && (
                                             <GameImage code={card.image_code} imageLibrary={imageLibrary} type="storylet" alt={evaluatedName} className="card-image" settings={settings} evaluateText={(text) => engine.evaluateText(text, { qid: card.id, state: qualities[card.id] })} />
                                         )}                                       
