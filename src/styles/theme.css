@@ -1394,3 +1394,24 @@
     --font-main: var(--font-grenze), "Times New Roman", serif;
     --border-radius: 0px;
 }
+
+[data-theme='masquerade'] {
+    --bg-main: #2c0b0b;
+    
+    --bg-panel: #fdfaf0;
+    --bg-item: #f4efe9;
+    --bg-item-hover: #eaddcf;
+
+    --border-color: #c19a4c;
+    --border-light: #e3b56f;
+    --text-primary: #1a130d;
+    --text-secondary: #5b442f;
+    --text-muted: #7a634d;
+    
+    --accent-primary: #856d40;
+    --accent-hover: #a1864c;
+    --accent-highlight: #c19a4c;
+
+    --font-main: var(--font-cormorant), "Georgia", serif;
+    --border-radius: 4px;
+}

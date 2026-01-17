@@ -103,6 +103,7 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                             <option value="vanguard">Deep Space</option>
                             <option value="cassette">Found Footage</option>
                             <option value="inferno">Infernum</option>
+                            <option value="masquerade">Masquerade</option>
                         </select>
                     </div>
 
