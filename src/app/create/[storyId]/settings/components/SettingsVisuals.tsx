@@ -1,16 +1,21 @@
 'use client';
-import { useState } from 'react';
-import { WorldSettings } from '@/engine/models';
+import { useEffect, useState } from 'react';
+import { WorldSettings, QualityDefinition } from '@/engine/models';
 import ThemePreview from './ThemePreview';
 import GlobalStylePreview from '@/components/admin/GlobalStylePreview';
 import StoryletStylePreview from '@/components/admin/StoryletStylePreview';
+import SmartArea from '@/components/admin/SmartArea';
+
+
+type ThemeOverride = { condition: string; theme: string; };
 
 interface Props {
     settings: WorldSettings;
     onChange: (field: string, val: any) => void;
+    storyId: string; 
 }
 
-export default function SettingsVisuals({ settings, onChange }: Props) {
+export default function SettingsVisuals({ settings, onChange, storyId }: Props) {
     const [previewOpen, setPreviewOpen] = useState(false);
 
     const handleChange = (field: keyof WorldSettings, val: any) => {
@@ -31,6 +36,69 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
         elysium: "An immersive layout with a full-screen background image. Parallax can be enabled on the image to make it reactive to mouse position.",
         tabletop: "A multi-column layout where the middle section is reserved for the location image. Parallax can be enabled on the image to make it reactive to mouse position."
     };
+
+    const [overrides, setOverrides] = useState<ThemeOverride[]>(settings.themeOverrides || []);
+    const [qualityDefs, setQualityDefs] = useState<QualityDefinition[]>([]);
+
+    useEffect(() => {
+        setOverrides(settings.themeOverrides || []);
+    }, [settings.themeOverrides]);
+
+    useEffect(() => {
+        fetch(`/api/admin/qualities?storyId=${storyId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setQualityDefs(data);
+            })
+            .catch(err => console.error("Failed to load qualities", err));
+    }, [storyId]);
+
+    const onUpdate = (updates: Partial<WorldSettings>) => {
+        Object.entries(updates).forEach(([key, val]) => {
+            onChange(key, val);
+        });
+    };
+
+    const handleAddOverride = () => {
+        let defaultTarget = '';
+        let defaultCond = '';
+
+        if (settings.visualTheme === 'masquerade') {
+            defaultTarget = 'masquerade|darkness-state:on';
+            defaultCond = '{$darkness > 50}';
+        } else if (settings.visualTheme === 'delver') {
+            defaultTarget = 'delver|location-type:dungeon';
+            defaultCond = '{$in_dungeon}';
+        }
+
+        const updated = [...overrides, { condition: defaultCond, theme: defaultTarget }];
+        setOverrides(updated);
+        onUpdate({ themeOverrides: updated });
+    };
+
+    const updateOverride = (index: number, field: keyof ThemeOverride, value: string) => {
+        const updated = [...overrides];
+        updated[index] = { ...updated[index], [field]: value };
+        setOverrides(updated);
+        onUpdate({ themeOverrides: updated });
+    };
+
+    const removeOverride = (index: number) => {
+        const updated = overrides.filter((_, i) => i !== index);
+        setOverrides(updated);
+        onUpdate({ themeOverrides: updated });
+    };
+
+    const isDynamicTheme = ['masquerade', 'delver'].includes(settings.visualTheme || '');
+
+    useEffect(() => {
+        fetch(`/api/admin/qualities?storyId=${storyId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setQualityDefs(data);
+            })
+            .catch(err => console.error("Failed to load qualities for linter", err));
+    }, [storyId]);
 
     return (
         <div>
@@ -103,8 +171,54 @@ export default function SettingsVisuals({ settings, onChange }: Props) {
                             <option value="vanguard">Deep Space</option>
                             <option value="cassette">Found Footage</option>
                             <option value="inferno">Infernum</option>
+                            <option value="masquerade">Masquerade</option>
+                            <option value="delver">Dungeon Delver</option>
                         </select>
                     </div>
+
+                    {isDynamicTheme && (
+                        <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px dashed var(--border-color)', borderRadius: '4px', background: 'var(--bg-item)' }}>
+                            <h4 style={{ marginTop: 0, fontSize: '0.95rem', color: 'var(--accent-primary)' }}>Dynamic Theme Swapping</h4>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                Configure conditions that trigger a visual state change. The <strong>first</strong> true condition determines the active state.
+                            </p>
+
+                            {overrides.map((ov, idx) => {
+                                const isPreset = (settings.visualTheme === 'masquerade') ||
+                                                (settings.visualTheme === 'delver');
+
+                                return (
+                                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: isPreset ? '1fr 40px' : '1fr 1fr 40px', gap: '10px', alignItems: 'start' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Condition (ScribeScript)</label>
+                                            <SmartArea 
+                                                value={ov.condition} 
+                                                onChange={(val) => updateOverride(idx, 'condition', val)} 
+                                                minHeight="40px"
+                                                storyId={storyId}
+                                                qualityDefs={qualityDefs}
+                                            />
+                                        </div>
+
+                                        <button 
+                                            onClick={() => removeOverride(idx)}
+                                            style={{ marginTop: '47px', background: 'var(--danger-bg)', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', borderRadius: '4px', height: '38px', cursor: 'pointer' }}
+                                            title="Remove Override"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                );
+                            })}
+
+                            <button 
+                                onClick={handleAddOverride}
+                                style={{ marginTop: '1rem', background: 'transparent', border: '1px dashed var(--accent-primary)', color: 'var(--accent-primary)', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', width: '100%' }}
+                            >
+                                + Add Dynamic Condition
+                            </button>
+                        </div>
+                    )}
 
                     {settings.layoutStyle === 'nexus' && (
                         <label className="toggle-label" style={{ marginTop: '1rem' }}>

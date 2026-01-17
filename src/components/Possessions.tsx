@@ -25,23 +25,38 @@ interface PossessionsProps {
     onAutofire?: (storyletId: string) => void;
 }
 
-const FormatBonus = ({ bonusStr, qualityDefs, qualities }: { bonusStr: string, qualityDefs: Record<string, QualityDefinition>, qualities: PlayerQualities }) => {
+const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngine }) => {
     if (!bonusStr) return null;
-    const evaluatedBonus = evaluateText(bonusStr, qualities, qualityDefs, null, 0);
+    // Use engine.evaluateText to ensure we have the full context (proxies, locals, etc)
+    const evaluatedBonus = engine.evaluateText(bonusStr);
     const parts = evaluatedBonus.split(',').map(p => p.trim()).filter(Boolean);
+    
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
             {parts.map((part, idx) => {
-                const match = part.match(/^\$?([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
+                // [FIX] Updated Regex to allow spaces/text in the name group (.+?)
+                const match = part.match(/^\$?(.+?)\s*([+\-])\s*(\d+)$/);
                 let content = part;
                 let color = 'inherit';
+                
                 if (match) {
-                    const [, qid, op, val] = match;
-                    const name = qualityDefs[qid]?.name || qid;
-                    content = `${name} ${op}${val}`;
+                    const [, nameRaw, op, val] = match;
+                    content = `${nameRaw} ${op}${val}`;
                     color = op === '+' ? 'var(--success-color)' : 'var(--danger-color)';
                 }
-                return <span key={idx} style={{ color, fontWeight: 'bold', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>{content}</span>;
+                
+                return (
+                    <span key={idx} style={{ 
+                        color, 
+                        fontWeight: 'bold', 
+                        fontSize: '0.85rem', 
+                        backgroundColor: 'rgba(0,0,0,0.2)', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px' 
+                    }}>
+                        {content}
+                    </span>
+                );
             })}
         </div>
     );
@@ -49,7 +64,7 @@ const FormatBonus = ({ bonusStr, qualityDefs, qualities }: { bonusStr: string, q
 
 const ItemDisplay = ({ 
     item, isEquipped, slotName, onEquipToggle, onUse, isLoading, qualityDefs, qualities, imageLibrary, 
-    styleMode, shapeConfig, portraitMode
+    styleMode, shapeConfig, portraitMode, engine 
 }: any) => {
     const [expanded, setExpanded] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
@@ -147,7 +162,7 @@ const ItemDisplay = ({
                                     <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}><FormattedText text={item.name} /></div>
                                     {!slotName && item.level > 1 && <span className="item-count" style={{ fontSize: '0.85rem', opacity: 0.7 }}>x{item.level}</span>}
                                 </div>
-                                {item.bonus && <div className="item-bonus"><FormatBonus bonusStr={item.bonus} qualityDefs={qualityDefs} qualities={qualities} /></div>}
+                                {item.bonus && <div className="item-bonus"><FormatBonus bonusStr={item.bonus} engine={engine} /></div>}
                                 {fullDesc && (
                                     <div className="item-desc" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                                         <FormattedText text={displayDesc} />
@@ -174,7 +189,7 @@ const ItemDisplay = ({
                                     <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}><FormattedText text={item.name} /></div>
                                     {!slotName && item.level > 1 && <span className="item-count" style={{ fontSize: '0.85rem', opacity: 0.7 }}>x{item.level}</span>}
                                 </div>
-                                {item.bonus && <div className="item-bonus"><FormatBonus bonusStr={item.bonus} qualityDefs={qualityDefs} qualities={qualities} /></div>}
+                                {item.bonus && <div className="item-bonus"><FormatBonus bonusStr={item.bonus} engine={engine} /></div>}
                                 {!isList && fullDesc && (
                                     <div className="item-desc" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                                         <FormattedText text={displayDesc} />
@@ -372,6 +387,7 @@ export default function Possessions({
                                         styleMode={invStyle} 
                                         shapeConfig={invShape}
                                         portraitMode={portraitMode}
+                                        engine={engine}
                                     />
                                 );
                             } else {
@@ -417,6 +433,7 @@ export default function Possessions({
                                 styleMode={invStyle} 
                                 shapeConfig={invShape}
                                 portraitMode={portraitMode}
+                                engine={engine}
                             />
                         ))}
                     </div>

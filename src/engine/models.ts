@@ -199,8 +199,11 @@ export interface WorldSettings {
         position: 'sidebar' | 'column' | 'tab';
         title?: string; 
         hideWhenEmpty?: boolean;
-
     };
+     themeOverrides?: {
+        condition: string;
+        theme: string;
+    }[];
 }
 
 export interface DeckDefinition extends VersionedEntity { 
