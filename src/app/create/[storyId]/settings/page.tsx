@@ -252,7 +252,7 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
                 </div>
             </SettingsSection>
             <SettingsSection title="Visuals & Theme" color="var(--tool-accent-mauve)" forceState={expandAll}>
-                <SettingsVisuals settings={form} onChange={handleGenericChange} /> 
+                <SettingsVisuals settings={form} onChange={handleGenericChange} storyId={storyId}/> 
             </SettingsSection>
             <SettingsSection title="Character Initialization" color="var(--warning-color)" forceState={expandAll}>
                 <CharCreateEditor 

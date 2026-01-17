@@ -1397,16 +1397,15 @@
 
 [data-theme='masquerade'] {
     --bg-main: #2c0b0b;
-    
     --bg-panel: #fdfaf0;
     --bg-item: #f4efe9;
     --bg-item-hover: #eaddcf;
 
     --border-color: #c19a4c;
     --border-light: #e3b56f;
-    --text-primary: #1a130d;
-    --text-secondary: #5b442f;
-    --text-muted: #7a634d;
+    --text-primary: #f1e4c7;
+    --text-secondary: #d2c1a4;
+    --text-muted: #a59072;
     
     --accent-primary: #856d40;
     --accent-hover: #a1864c;
@@ -1414,4 +1413,22 @@
 
     --font-main: var(--font-cormorant), "Georgia", serif;
     --border-radius: 4px;
+}
+
+[data-theme='delver'] {
+    --bg-main: #1a1510;
+    --bg-panel: #e8e0d2;
+    --bg-item: #dcd2bf;
+    --bg-item-hover: #c9bdae;
+    --border-color: #5a442f;
+    --border-light: #7b634f;
+    --text-primary: #1a1510;
+    --text-secondary: #4a3a2e;
+    --text-muted: #6f5b4e;
+    --accent-primary: #856d40;
+    --accent-hover: #a1864c;
+    --accent-highlight: #c19a4c;
+    --danger-color: #8a0303;
+    --font-main: var(--font-roboto-slab), "Georgia", serif;
+    --border-radius: 3px;
 }

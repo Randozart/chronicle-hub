@@ -96,3 +96,11 @@
 .fade-in-image {
     animation: fadeIn 0.5s ease-out;
 }
+
+@keyframes torch-flicker {
+    0%, 100% { box-shadow: 0 0 15px 5px rgba(255, 159, 0, 0.3), inset 0 0 5px rgba(0,0,0,0.5); border-color: rgba(255, 159, 0, 0.3); }
+    20% { box-shadow: 0 0 18px 7px rgba(255, 159, 0, 0.45), inset 0 0 5px rgba(0,0,0,0.5); border-color: rgba(255, 159, 0, 0.5); }
+    40% { box-shadow: 0 0 14px 6px rgba(255, 159, 0, 0.35), inset 0 0 5px rgba(0,0,0,0.5); border-color: rgba(255, 159, 0, 0.4); }
+    60% { box-shadow: 0 0 20px 6px rgba(255, 159, 0, 0.5), inset 0 0 5px rgba(0,0,0,0.5); border-color: rgba(255, 159, 0, 0.6); }
+    80% { box-shadow: 0 0 15px 5px rgba(255, 159, 0, 0.3), inset 0 0 5px rgba(0,0,0,0.5); border-color: rgba(255, 159, 0, 0.3); }
+}
