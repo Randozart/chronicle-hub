@@ -20,23 +20,20 @@ type Props = {
 };
 
 export default async function PlayPage({ params, searchParams }: Props) {
-     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-        const resolvedParams = await params;
-        redirect(`/auth/signin?callbackUrl=/play/${resolvedParams.storyId}`);
-    }
+    const session = await getServerSession(authOptions);
+    const userId = session?.user ? (session.user as any).id : null;
 
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
     const isPlaytest = resolvedSearchParams.playtest === 'true'; 
     const storyId = resolvedParams.storyId;
-    const userId = (session.user as any).id;
+    
     const gameData = await getContent(storyId, isPlaytest);
     if (!gameData) return <div>Story not found.</div>;
 
     const allContent = await getStorylets(storyId, isPlaytest);
 
-    const availableCharacters = await getCharactersList(userId, storyId);
+    const availableCharacters = userId ? await getCharactersList(userId, storyId) : [];
     
     let character: CharacterDocument | null = null;
     
@@ -45,9 +42,13 @@ export default async function PlayPage({ params, searchParams }: Props) {
     let activeEvent: Storylet | Opportunity | null = null;
     let deckStates: Record<string, DeckState> = {};
 
-    if (resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
+    if (userId && resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
         const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
         character = await getCharacter(userId, storyId, charIdToLoad);
+    }
+
+    if (!character && !initialLocation && gameData.settings.startLocation) {
+        initialLocation = gameData.locations[gameData.settings.startLocation] || null;
     }
 
     if (character) {
@@ -126,6 +127,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
             
             activeEvent={safeActiveEvent}
             isPlaytesting={isPlaytest}
+            isGuest={!userId}
         />
     );
 }

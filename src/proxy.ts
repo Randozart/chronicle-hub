@@ -23,7 +23,11 @@ export async function proxy(req: NextRequest) {
         pathname === '/logo.svg' ||
 
         pathname.startsWith('/playground/ligature')  ||
-        pathname.startsWith('/sounds') 
+        pathname.startsWith('/sounds') ||
+
+        //Opened this route to ensure guest character's are possible
+        pathname.startsWith('/play') ||
+        pathname.startsWith('/api/character/create')
 
     ) {
         if (token && (

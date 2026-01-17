@@ -24,6 +24,7 @@ import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
 import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import CharacterInspector from '@/app/create/[storyId]/players/components/CharacterInspector';
 import { ToastProvider } from '@/providers/ToastProvider';
 import GameModal from './GameModal';
@@ -61,7 +62,7 @@ interface GameHubProps {
     musicTracks?: Record<string, LigatureTrack>;
     isPlaytesting?: boolean;
     deckStates?: Record<string, DeckState>;
-
+    isGuest?: boolean;
 }
 
 const PlaytestLogger = ({ logs, onClear }: { logs: { message: string, type: string }[], onClear: () => void }) => {
@@ -148,6 +149,7 @@ export default function GameHub(props: GameHubProps) {
     const router = useRouter();
 
     const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
+    const [isGuestMode] = useState(!!props.isGuest);
     const [location, setLocation] = useState<LocationDefinition | null>(props.initialLocation);
     const [hand, setHand] = useState<Opportunity[]>(props.initialHand);
     const [activeEvent, setActiveEvent] = useState<Storylet | Opportunity | null>(null);
@@ -234,9 +236,59 @@ export default function GameHub(props: GameHubProps) {
         setDeckStates(props.deckStates || {});
     }, [props.initialCharacter, props.initialLocation, props.initialHand, props.activeEvent, props.deckStates]);
 
-    
-    
+    // Logic for ChronicleHub Guest mode, so non-registered users can still play.
+    // Saves the data locally instead of in the database.
+    useEffect(() => {
+        if (isGuestMode && !props.initialCharacter) {
+            const localKey = `chronicle_guest_${props.storyId}`;
+            const stored = localStorage.getItem(localKey);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    setCharacter(parsed);
+                    if (parsed.currentLocationId && props.locations[parsed.currentLocationId]) {
+                        setLocation(props.locations[parsed.currentLocationId]);
+                    }
+                } catch (e) { console.error("Guest load error", e); }
+            } else {
+                // Just like with characters from the DB, should no character exist, redirect to charCreate.
+                router.replace(`/play/${props.storyId}/creation`);
+            }
+        }
+    }, [isGuestMode, props.storyId, props.initialCharacter, props.locations, router]);
 
+    // Updates save to local storage instead of the DB.
+    useEffect(() => {
+        if (isGuestMode && character) {
+            const localKey = `chronicle_guest_${props.storyId}`;
+            localStorage.setItem(localKey, JSON.stringify(character));
+        }
+    }, [isGuestMode, character, props.storyId]);
+
+    // Logic for auto-migrating local stored data to a new account if it's created, 
+    // so user data can be "saved" through registering an account.
+    useEffect(() => {
+        if (!isGuestMode && !props.initialCharacter) {
+             const localKey = `chronicle_guest_${props.storyId}`;
+             const stored = localStorage.getItem(localKey);
+             if (stored) {
+                 const doMigrate = async () => {
+                     try {
+                        const res = await fetch('/api/character/migrate-guest', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ storyId: props.storyId, guestCharacter: JSON.parse(stored) })
+                        });
+                        if ((await res.json()).success) {
+                            localStorage.removeItem(localKey);
+                            window.location.reload();
+                        }
+                     } catch(e) {}
+                 };
+                 doMigrate();
+             }
+        }
+    }, [isGuestMode, props.initialCharacter, props.storyId]);
 
     useEffect(() => {
         if (!character || !location) return;
@@ -509,6 +561,30 @@ export default function GameHub(props: GameHubProps) {
         [character.qualities, worldConfig, character.equipment, props.worldState, props.isPlaytesting, handleLog]
     );
     
+    // Logic for swapping the theme-wrapper if the selected theme allows for swapping.
+    // Introduced with "Masquerade" and "Dungeon Delver"
+    useEffect(() => {
+        if (!character) return;
+        
+        const activeThemeStr = renderEngine.evaluateActiveTheme(props.settings);
+        const parts = activeThemeStr.split('|');
+        const baseTheme = parts[0];
+
+        const wrapper = document.querySelector('.theme-wrapper') as HTMLElement;
+        if (wrapper) {
+            wrapper.dataset.theme = baseTheme;
+            
+            Object.keys(wrapper.dataset).forEach(k => {
+                if (k !== 'theme') delete wrapper.dataset[k];
+            });
+
+            for (let i = 1; i < parts.length; i++) {
+                const [key, val] = parts[i].split(':');
+                if (key && val) wrapper.setAttribute(`data-${key}`, val);
+            }
+        }
+    }, [character?.qualities, props.settings, renderEngine]);
+
     const lsConfig = props.settings.livingStoriesConfig;
     const livingStoriesEnabled = lsConfig?.enabled !== false;
     
@@ -944,6 +1020,14 @@ export default function GameHub(props: GameHubProps) {
     return ( 
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             <ToastProvider>
+                {isGuestMode && (
+                    <div style={{ background: 'var(--accent-primary)', color: '#fff', padding: '0.5rem', textAlign: 'center', fontSize: '0.9rem', position: 'sticky', top: 0, zIndex: 9999 }}>
+                        Playing as Guest. Progress saved locally. 
+                        <Link href={`/register?callbackUrl=/play/${props.storyId}`} style={{ color: '#fff', fontWeight: 'bold', marginLeft: '10px', textDecoration: 'underline' }}>
+                            Create Account to Save
+                        </Link>
+                    </div>
+                )}
                 {alertState && (
                     <GameModal 
                         isOpen={alertState.isOpen}

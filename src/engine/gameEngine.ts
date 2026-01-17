@@ -2,7 +2,8 @@
 
 import {
     PlayerQualities, QualityState, QualityType, ResolveOption, Storylet,
-    QualityChangeInfo, WorldConfig, Opportunity, QualityDefinition
+    QualityChangeInfo, WorldConfig, Opportunity, QualityDefinition,
+    WorldSettings
 } from '@/engine/models';
 import {
     evaluateText as evaluateScribeText,
@@ -203,6 +204,27 @@ export class GameEngine implements EngineContext {
         }
 
         return true;
+    }
+
+    /**
+     * Evaluation method for themes like "Masquerade" and "Dungeon Delver" to dynamically switch visual theme logic.
+     * @param settings The `WorldSettings` model which contains the override for this specific world.
+     * @returns string value of the `visualTheme` to be applied.
+     */
+    public evaluateActiveTheme(settings: WorldSettings): string {
+        const baseTheme = settings.visualTheme || 'default';
+        
+        if (!settings.themeOverrides || settings.themeOverrides.length === 0) {
+            return baseTheme;
+        }
+
+        for (const override of settings.themeOverrides) {
+            if (this.evaluateCondition(override.condition)) {
+                return override.theme;
+            }
+        }
+
+        return baseTheme;
     }
     
     /**
