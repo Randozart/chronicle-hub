@@ -960,9 +960,17 @@ html[data-theme='revolutionary']::before {
 [data-theme='masquerade'] .layout-grid-nexus.mode-centered .content-area {
     background: transparent;
 }
+
+[data-theme='masquerade'] .sidebar-panel {
+    background: var(--bg-item);
+}
+
 [data-theme='masquerade']:not([data-darkness-state="on"]) .storylet-container,
 [data-theme='masquerade']:not([data-darkness-state="on"]) .sidebar-panel,
+[data-theme='masquerade']:not([data-darkness-state="on"]) .profile-header,
+[data-theme='masquerade']:not([data-darkness-state="on"]) .quality-category-card,
 [data-theme='masquerade']:not([data-darkness-state="on"]) .card,
+[data-theme='masquerade']:not([data-darkness-state="on"]) .inventory-item,
 [data-theme='masquerade']:not([data-darkness-state="on"]) .option-button,
 [data-theme='masquerade']:not([data-darkness-state="on"]) .action-box,
 [data-theme='masquerade']:not([data-darkness-state="on"]) .character-sheet,
@@ -1007,6 +1015,7 @@ html[data-theme='revolutionary']::before {
 [data-theme='masquerade'][data-darkness-state="on"] .sidebar-panel {
     border-image-source: none;
     border-width: 1px;
+    border-color: var(--border-color);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }
