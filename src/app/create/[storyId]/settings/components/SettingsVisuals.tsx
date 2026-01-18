@@ -244,7 +244,7 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
                     Anonymous Protagonist
                 </label>
                 <p className="special-desc" style={{ marginLeft: '1.5rem', marginBottom: '1.5rem' }}>
-                    Hides the "Myself" tab, name, and portrait. Useful for games where the protagonist is anonymous or predetermined.
+                    Hides the name and portrait. Useful for games where the protagonist is anonymous or predetermined.
                 </p>
 
                 <div style={{ 
@@ -254,9 +254,14 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
                     borderLeft: '2px solid var(--tool-border)',
                     paddingLeft: '1.5rem'
                 }}>
-                    <label className="toggle-label" style={{ marginBottom: '1rem' }}>
+                    <label className="toggle-label" style={{ marginBottom: '0.5rem' }}>
                         <input type="checkbox" checked={settings.enablePortrait !== false} onChange={e => handleChange('enablePortrait', e.target.checked)} /> 
-                        Show Portrait
+                        Show Portrait (Profile Tab)
+                    </label>
+
+                    <label className="toggle-label" style={{ marginBottom: '1rem' }}>
+                        <input type="checkbox" checked={settings.showPortraitInSidebar || false} onChange={e => handleChange('showPortraitInSidebar', e.target.checked)} /> 
+                        Show Portrait in Sidebar
                     </label>
                     
                     {settings.enablePortrait !== false && (
@@ -512,6 +517,19 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
                                 <option value="circle">Circle</option>
                             </select>
                         </div>
+                    </div>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                        <label className="toggle-label">
+                            <input 
+                                type="checkbox" 
+                                checked={settings.showQualityIconsInSheet || false} 
+                                onChange={e => handleChange('showQualityIconsInSheet', e.target.checked)} 
+                            />
+                            Show Quality Icons in Sidebar
+                        </label>
+                        <p className="special-desc">
+                            If enabled, qualities with an image assigned will display a small icon next to their name in the sidebar.
+                        </p>
                     </div>
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                         <label className="form-label">Inventory Icon</label>

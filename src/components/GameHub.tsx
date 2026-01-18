@@ -528,7 +528,7 @@ export default function GameHub(props: GameHubProps) {
         const showLivingStoriesTab = lsConfig?.position === 'tab' && character?.pendingEvents && character.pendingEvents.length > 0;
         return (
             <div className="tab-bar">
-                
+
                 <button onClick={() => setActiveTab('story')} 
                     data-tab-id="story" 
                     className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>
@@ -562,10 +562,45 @@ export default function GameHub(props: GameHubProps) {
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div className="sidebar-content-scroll" style={{ overflowY: 'auto' }}>
                         <TabBar /> 
-                        <div className="action-box">
-                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} regenAmount={evaluatedRegen} onRegen={() => {}} />                        
-                        </div>
-                        <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} settings={props.settings} categories={props.categories} engine={renderEngine} showHidden={showHiddenQualities} />                    
+                        
+                        {!props.settings.hideProfileIdentity && props.settings.showPortraitInSidebar && (
+                            <div style={{ padding: '1rem', display: 'flex', justifyContent: 'center' }}>
+                                <div style={{ 
+                                    width: '120px', 
+                                    aspectRatio: props.settings.portraitStyle === 'rect' ? '3/4' : '1/1',
+                                    borderRadius: props.settings.portraitStyle === 'circle' ? '50%' : 'var(--border-radius)',
+                                    overflow: 'hidden',
+                                    border: '2px solid var(--border-color)',
+                                    background: '#000'
+                                }}>
+                                    <GameImage 
+                                        code={(character.qualities['player_portrait'] as any)?.stringValue || "default_avatar"} 
+                                        imageLibrary={props.imageLibrary} 
+                                        type="portrait"
+                                        settings={props.settings}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {props.settings.useActionEconomy && (
+                            <div className="action-box">
+                                <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} regenAmount={evaluatedRegen} onRegen={() => {}} />                        
+                            </div>
+                        )}
+
+                        <CharacterSheet 
+                            qualities={character.qualities} 
+                            equipment={character.equipment} 
+                            qualityDefs={mergedQualityDefs} 
+                            settings={props.settings} 
+                            categories={props.categories} 
+                            engine={renderEngine} 
+                            showHidden={showHiddenQualities} 
+                            imageLibrary={props.imageLibrary}
+                        />
+
                         {sidebarLivingStories}
                         {props.isPlaytesting && (
                             <div style={{ marginTop: '2rem', padding: '0 1.5rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
@@ -593,10 +628,51 @@ export default function GameHub(props: GameHubProps) {
                     <WalletHeader qualities={character.qualities} qualityDefs={mergedQualityDefs} settings={props.settings} imageLibrary={props.imageLibrary} />
                 </div>
                 <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
-                    <div className="action-box">
-                            <ActionTimer currentActions={currentActions} maxActions={maxActions} lastTimestamp={character.lastActionTimestamp || new Date()} regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} regenAmount={evaluatedRegen} onRegen={() => {}} />                      
-                    </div>
-                    <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} settings={props.settings} categories={props.categories} engine={renderEngine} showHidden={showHiddenQualities} />
+                    
+                    {!props.settings.hideProfileIdentity && props.settings.showPortraitInSidebar && (
+                        <div style={{ paddingBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                            <div style={{ 
+                                width: '100px', 
+                                aspectRatio: props.settings.portraitStyle === 'rect' ? '3/4' : '1/1',
+                                borderRadius: props.settings.portraitStyle === 'circle' ? '50%' : 'var(--border-radius)',
+                                overflow: 'hidden',
+                                border: '2px solid var(--border-color)',
+                                background: '#000'
+                            }}>
+                                <GameImage 
+                                    code={(character.qualities['player_portrait'] as any)?.stringValue || "default_avatar"} 
+                                    imageLibrary={props.imageLibrary} 
+                                    type="portrait"
+                                    settings={props.settings}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {props.settings.useActionEconomy && (
+                        <div className="action-box">
+                                <ActionTimer 
+                                    currentActions={currentActions} 
+                                    maxActions={maxActions} 
+                                    lastTimestamp={character.lastActionTimestamp || new Date()} 
+                                    regenIntervalMinutes={props.settings.regenIntervalInMinutes || 10} 
+                                    regenAmount={evaluatedRegen} 
+                                    onRegen={() => {}} 
+                                />                      
+                        </div>
+                    )}
+
+                    <CharacterSheet 
+                        qualities={character.qualities} 
+                        equipment={character.equipment} 
+                        qualityDefs={mergedQualityDefs} 
+                        settings={props.settings} 
+                        categories={props.categories} 
+                        engine={renderEngine} 
+                        showHidden={showHiddenQualities} 
+                        imageLibrary={props.imageLibrary} 
+                    />
                     {sidebarLivingStories}
                     {props.isPlaytesting && (
                         <div style={{ marginTop: '2rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>

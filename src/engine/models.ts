@@ -187,7 +187,9 @@ export interface WorldSettings {
     allowScribeScriptInInputs?: boolean;
     storynexusMode?: boolean; 
     hideProfileIdentity?: boolean;
-    attributions?: string; 
+    showQualityIconsInSheet?: boolean;
+    showPortraitInSidebar?: boolean;
+    attributions?: string;
     aiDisclaimer?: string; 
     isPublished?: boolean; 
     coverImage?: string;
