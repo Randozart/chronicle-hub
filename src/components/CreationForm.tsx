@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ImageDefinition, CharCreateRule, QualityType, PlayerQualities, QualityDefinition, WorldSettings } from '@/engine/models';
 import GameImage from '@/components/GameImage';
@@ -20,7 +20,6 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => setIsMounted(true), []);
 
-    
     const router = useRouter();
     const [choices, setChoices] = useState<Record<string, string>>({});
     const [error, setError] = useState('');
@@ -146,7 +145,7 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
         setActiveSelectModal(null);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         const errors: Record<string, string> = {};
         let hasError = false;
@@ -174,9 +173,30 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
             method: 'POST', 
             body: JSON.stringify({ storyId, choices: finalPayload }) 
         });
-        if (res.ok) router.push(`/play/${storyId}`);
-        else { setError('Creation failed. Please try again.'); setIsSubmitting(false); }
-    };
+        
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+                if (data.character && data.character.characterId.startsWith('guest_')) {
+                    localStorage.setItem(`chronicle_guest_${storyId}`, JSON.stringify(data.character));
+                }
+                router.push(`/play/${storyId}`);
+            } else {
+                setError('Creation failed. Please try again.');
+                setIsSubmitting(false);
+            }
+        } else { 
+            setError('Creation failed. Please try again.'); 
+            setIsSubmitting(false); 
+        }
+    }, [choices, derivedValues, rules, sortedKeys, storyId, router, calculatedState, allDefinitions]); // Add dependencies
+    
+    useEffect(() => {
+        if (isMounted && settings.skipCharacterCreation && !isSubmitting) {
+            const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+            handleSubmit(syntheticEvent);
+        }
+    }, [isMounted, settings.skipCharacterCreation, handleSubmit]);
 
     const isVisible = (rule: CharCreateRule) => {
         if (!rule.visible) return false;

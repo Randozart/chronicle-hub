@@ -27,14 +27,12 @@ interface PossessionsProps {
 
 const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngine }) => {
     if (!bonusStr) return null;
-    // Use engine.evaluateText to ensure we have the full context (proxies, locals, etc)
     const evaluatedBonus = engine.evaluateText(bonusStr);
     const parts = evaluatedBonus.split(',').map(p => p.trim()).filter(Boolean);
     
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
             {parts.map((part, idx) => {
-                // [FIX] Updated Regex to allow spaces/text in the name group (.+?)
                 const match = part.match(/^\$?(.+?)\s*([+\-])\s*(\d+)$/);
                 let content = part;
                 let color = 'inherit';

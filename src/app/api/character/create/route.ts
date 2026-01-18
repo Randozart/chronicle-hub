@@ -33,16 +33,29 @@ export async function POST(request: NextRequest) {
     try {
         const gameData = await getContent(storyId);
         if (!gameData) return NextResponse.json({ error: 'Story not found' }, { status: 404 });
-        const initialQualities: any = {};
         const tempEngine = new GameEngine({}, gameData);
-        
         for (const ruleId in gameData.char_create) {
-            const val = choices[ruleId];
-            if (val) {
+            const rule = gameData.char_create[ruleId];
+            const providedVal = choices[ruleId];
+            if (providedVal !== undefined && providedVal !== "") {
                 if (gameData.qualities[ruleId]) {
-                    tempEngine.changeQuality(ruleId, '=', val, { source: 'Creation' });
+                    tempEngine.changeQuality(ruleId, '=', providedVal, { source: 'Creation' });
                 } else {
-                    tempEngine.createNewQuality(ruleId, val, null, {});
+                    tempEngine.createNewQuality(ruleId, providedVal, null, {});
+                }
+            } 
+            else if (rule.type === 'static' || rule.readOnly) {
+                let val = rule.rule;
+                try {
+                    val = tempEngine.evaluateText(rule.rule);
+                } catch (e) {}
+                const num = parseFloat(val);
+                const finalVal = !isNaN(num) && val.trim() !== "" ? num : val;
+
+                if (gameData.qualities[ruleId]) {
+                    tempEngine.changeQuality(ruleId, '=', finalVal, { source: 'Creation (Static)' });
+                } else {
+                    tempEngine.createNewQuality(ruleId, finalVal, null, {});
                 }
             }
         }

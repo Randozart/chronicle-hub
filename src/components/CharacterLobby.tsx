@@ -2,7 +2,7 @@
 
 import { CharacterDocument, ImageDefinition, LocationDefinition, SystemMessage, WorldSettings } from "@/engine/models";
 import SystemMessageBanner from "./SystemMessageBanner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GameImage from "./GameImage";
 import GameModal from "./GameModal";
 
@@ -20,15 +20,26 @@ interface CharacterLobbyProps {
     imageLibrary: Record<string, ImageDefinition>;
     locations: Record<string, LocationDefinition>;
     storyId: string; 
+    isGuest?: boolean;
 }
 
 export default function CharacterLobby (props: CharacterLobbyProps) {
     const theme = props.settings.visualTheme || 'default';
-    const [character, setCharacter] = useState<CharacterDocument | null>(props.initialCharacter);
-    
     const [charToDelete, setCharToDelete] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
-    
+    const [guestChar, setGuestChar] = useState<CharacterDocument | null>(null);
+    useEffect(() => {
+        if (props.isGuest) {
+            const localKey = `chronicle_guest_${props.storyId}`;
+            const stored = localStorage.getItem(localKey);
+            if (stored) {
+                try {
+                    setGuestChar(JSON.parse(stored));
+                } catch (e) { console.error("Error parsing guest save", e); }
+            }
+        }
+    }, [props.isGuest, props.storyId]);
+
     const hideIdentity = props.settings.hideProfileIdentity === true;
     const skipCreation = props.settings.skipCharacterCreation === true;
     
@@ -36,42 +47,47 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
     const borderRadius = portraitStyle === 'circle' ? '50%' : (portraitStyle === 'rounded' ? '8px' : '0px');
 
     const handleDismissMessage = async () => {
-        if (!props.systemMessage || !character) return;
-        try {
-            await fetch('/api/character/acknowledge-message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ characterId: character.characterId, messageId: props.systemMessage.id })
-            });
-        } catch (e) { console.error(e); }
     }; 
+
     const requestDelete = (charId: string, e: React.MouseEvent) => {
         e.stopPropagation(); 
         setCharToDelete(charId);
     };
+
     const confirmDelete = async () => {
         if (!charToDelete) return;
-        try {
-            await fetch('/api/character/delete', {
-                method: 'DELETE',
-                body: JSON.stringify({ storyId: props.storyId, characterId: charToDelete })
-            });
-            window.location.reload();
-        } catch (err) { console.error(err); }
-    };
 
+        if (props.isGuest) {
+            localStorage.removeItem(`chronicle_guest_${props.storyId}`);
+            setGuestChar(null);
+            setCharToDelete(null);
+        } else {
+            try {
+                await fetch('/api/character/delete', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ storyId: props.storyId, characterId: charToDelete })
+                });
+                window.location.reload();
+            } catch (err) { console.error(err); }
+        }
+    };
     const handleStartGame = async () => {
         setIsCreating(true);
         try {
             const response = await fetch('/api/character/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: props.storyId, choices: {} }) 
+                body: JSON.stringify({ storyId: props.storyId, choices: { name: 'Drifter' } }) 
             });
             
             const data = await response.json();
             if (data.success && data.character) {
-                window.location.href = `/play/${props.storyId}?char=${data.character.characterId}`;
+                if (props.isGuest) {
+                    localStorage.setItem(`chronicle_guest_${props.storyId}`, JSON.stringify(data.character));
+                    window.location.href = `/play/${props.storyId}`; 
+                } else {
+                    window.location.href = `/play/${props.storyId}?char=${data.character.characterId}`;
+                }
             } else {
                 alert("Failed to create character: " + (data.error || "Unknown Error"));
                 setIsCreating(false);
@@ -137,7 +153,35 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 </h1>
                 
                 <div style={{ display: 'grid', gap: '1rem' }}>
-                    {props.availableCharacters.map((c, index) => {
+                    {props.isGuest && guestChar && (
+                        <button 
+                            onClick={() => window.location.href = `/play/${props.storyId}`} 
+                            className="option-button"
+                            style={{ 
+                                padding: '1rem', 
+                                display: 'flex', alignItems: 'center', gap: '1rem',
+                                textAlign: 'left', width: '100%'
+                            }}
+                        >
+                            <div style={{ flex: 1 }}>
+                                <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)', fontSize: '1.1rem' }}>
+                                    {guestChar.name || "Guest Drifter"}
+                                </h3>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                    Local Save • {props.locations[guestChar.currentLocationId]?.name || "Unknown Location"}
+                                </p>
+                            </div>
+                            <div 
+                                onClick={(e) => requestDelete(guestChar.characterId, e)}
+                                style={{ color: 'var(--danger-color)', padding: '0.5rem', cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6 }}
+                                title="Delete Save"
+                                className="hover:opacity-100"
+                            >
+                                ✕
+                            </div>
+                        </button>
+                    )}
+                    {!props.isGuest && props.availableCharacters.map((c, index) => {
                         const sizeSetting = props.settings.portraitSize || 'medium';
                         const sizeMap: Record<string, string> = {
                             small: '50px',
@@ -200,25 +244,46 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                             </button>
                         );
                     })}
-                    
-                    <button 
-                        onClick={skipCreation ? handleStartGame : () => window.location.href = `/play/${props.storyId}/creation`}
-                        className="option-button"
-                        disabled={isCreating}
-                        style={{ 
-                            border: '2px dashed var(--border-color)', 
-                            background: 'transparent', 
-                            color: 'var(--text-muted)', 
-                            textAlign: 'center', justifyContent: 'center',
-                            padding: '1rem',
-                            cursor: isCreating ? 'wait' : 'pointer'
-                        }}
-                    >
-                        {isCreating 
-                            ? "Creating..." 
-                            : (skipCreation ? "+ Start New Game" : "+ Create New Character")
-                        }
-                    </button>
+                    {(!props.isGuest || !guestChar) && (
+                        <button 
+                            onClick={skipCreation ? handleStartGame : () => window.location.href = `/play/${props.storyId}/creation`}
+                            className="option-button"
+                            disabled={isCreating}
+                            style={{ 
+                                border: '2px dashed var(--border-color)', 
+                                background: 'transparent', 
+                                color: 'var(--text-muted)', 
+                                textAlign: 'center', justifyContent: 'center',
+                                padding: '1rem',
+                                cursor: isCreating ? 'wait' : 'pointer'
+                            }}
+                        >
+                            {isCreating 
+                                ? "Creating..." 
+                                : (skipCreation ? "+ Start New Game" : "+ Create New Character")
+                            }
+                        </button>
+                    )}
+                    {props.isGuest && guestChar && (
+                        <button
+                            onClick={() => {
+                                if (confirm("Starting a new game will overwrite your current Guest save. Continue?")) {
+                                    skipCreation ? handleStartGame() : window.location.href = `/play/${props.storyId}/creation`;
+                                }
+                            }}
+                            className="option-button"
+                            style={{ 
+                                padding: '0.8rem', 
+                                opacity: 0.7, 
+                                fontSize: '0.9rem', 
+                                border: '1px solid var(--border-color)', 
+                                background: 'transparent',
+                                marginTop: '1rem' 
+                            }}
+                        >
+                            Start Over (Overwrite Save)
+                        </button>
+                    )}
                 </div>
 
                 <div style={{ marginTop: '2rem', textAlign: 'center' }}>

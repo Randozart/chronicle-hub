@@ -25,9 +25,9 @@ export async function proxy(req: NextRequest) {
         pathname.startsWith('/playground/ligature')  ||
         pathname.startsWith('/sounds') ||
 
-        //Opened this route to ensure guest character's are possible
         pathname.startsWith('/play') ||
-        pathname.startsWith('/api/character/create')
+        pathname.startsWith('/api/character/create') ||
+        pathname.startsWith('/api/character/migrate-guest') 
 
     ) {
         if (token && (

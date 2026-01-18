@@ -128,6 +128,8 @@ export default async function PlayPage({ params, searchParams }: Props) {
             activeEvent={safeActiveEvent}
             isPlaytesting={isPlaytest}
             isGuest={!userId}
+            isMenu={resolvedSearchParams.menu === 'true'}
+
         />
     );
 }

@@ -18,7 +18,7 @@ export default async function CreationPage({ params, searchParams }: Props) {
     const rules: any = {};
     
     for (const key in rawRules) {
-        if (['version', 'lastModified', 'lastModifiedBy', 'itemId', '_id'].includes(key)) {
+        if (['version', 'lastModified', 'lastModifiedBy', 'itemId', '_id', 'lastModifiedAt'].includes(key)) {
             continue;
         }
 
