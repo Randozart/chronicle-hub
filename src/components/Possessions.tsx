@@ -27,19 +27,30 @@ interface PossessionsProps {
 
 const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngine }) => {
     if (!bonusStr) return null;
+    
     const evaluatedBonus = engine.evaluateText(bonusStr);
     const parts = evaluatedBonus.split(',').map(p => p.trim()).filter(Boolean);
     
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
             {parts.map((part, idx) => {
+                // Regex matches "$quality + 1", "quality + 1", "$quality -2", "quality- 2", etc.
+                // Makes the sign and number optional for flexibility.
                 const match = part.match(/^\$?(.+?)\s*([+\-])\s*(\d+)$/);
                 let content = part;
                 let color = 'inherit';
                 
                 if (match) {
                     const [, nameRaw, op, val] = match;
-                    content = `${nameRaw} ${op}${val}`;
+                    let displayName = nameRaw;
+
+                    const def = engine.worldContent.qualities[nameRaw];
+                    
+                    if (def && def.name) {
+                        displayName = engine.evaluateText(def.name);
+                    } 
+                    
+                    content = `${displayName} ${op}${val}`;
                     color = op === '+' ? 'var(--success-color)' : 'var(--danger-color)';
                 }
                 
@@ -101,8 +112,6 @@ const ItemDisplay = ({
         else if (canEquip) onEquipToggle();
         else if (canUse) onUse(item.storylet);
     };
-
-    
 
     return (
         <div className={`inventory-item style-${activeStyle} ${capabilityClass} ${portraitVariantClass}`} style={{ 
