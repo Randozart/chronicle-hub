@@ -108,7 +108,9 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                         }
                     }
                     
-                    const displayName = evaluateText(q.name, qualities, qualityDefs, null, 0);
+                    const displayName = engine.evaluateText(q.name);
+                    const displayDesc = q.description ? engine.evaluateText(q.description) : "";
+
                     const primaryCat = (q.category || "").split(',')[0].trim();
                     const catDef = categories[primaryCat];
                     const barColor = catDef?.color || 'var(--progress-fill)';
@@ -124,6 +126,11 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                                     {subText}
                                 </span>
                             </div>
+                            {displayDesc && (
+                                <div className="quality-desc" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>
+                                    <FormattedText text={displayDesc} />
+                                </div>
+                            )}
                             {isPyramidal && (
                                 <div className="quality-cp-bar-background">
                                     <div 

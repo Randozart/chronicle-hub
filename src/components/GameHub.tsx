@@ -528,9 +528,23 @@ export default function GameHub(props: GameHubProps) {
         const showLivingStoriesTab = lsConfig?.position === 'tab' && character?.pendingEvents && character.pendingEvents.length > 0;
         return (
             <div className="tab-bar">
-                <button onClick={() => setActiveTab('story')} data-tab-id="story" className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>Story</button>
-                <button onClick={() => setActiveTab('possessions')} data-tab-id="possessions" className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>Possessions</button>
-                {!props.settings.hideProfileIdentity && <button onClick={() => setActiveTab('profile')} data-tab-id="profile" className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>Myself</button>}
+                
+                <button onClick={() => setActiveTab('story')} 
+                    data-tab-id="story" 
+                    className={`tab-btn ${activeTab === 'story' ? 'active' : ''}`}>
+                        Story
+                </button>
+                <button onClick={() => setActiveTab('possessions')} 
+                    data-tab-id="possessions" 
+                    className={`tab-btn ${activeTab === 'possessions' ? 'active' : ''}`}>
+                        Possessions
+                </button>
+                <button onClick={() => setActiveTab('profile')} 
+                    data-tab-id="profile" 
+                    className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}>
+                        Myself
+                </button>
+
                 {livingStoriesEnabled && showLivingStoriesTab && (
                     <button onClick={() => setActiveTab('living')} data-tab-id="living" className={`tab-btn ${activeTab === 'living' ? 'active' : ''}`}>
                         {props.settings.livingStoriesConfig?.title || "Living Stories"}

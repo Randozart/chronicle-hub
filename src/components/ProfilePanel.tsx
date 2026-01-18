@@ -25,12 +25,15 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
         { qualities: qualityDefs, settings } as any, 
         {}
     ), [qualities, qualityDefs, settings]);
+
     const hideIdentity = settings.hideProfileIdentity === true;
+    
     const nameState = qualities['player_name'];
     const portraitState = qualities['player_portrait'];
     const playerName = !hideIdentity && (nameState?.type === 'S') ? nameState.stringValue : "Unknown Drifter";
     const portraitCode = !hideIdentity && (portraitState?.type === 'S') ? portraitState.stringValue : "default_avatar";
     let playerTitle = "";
+    
     if (!hideIdentity && settings.enableTitle && settings.titleQualityId) {
         const qid = settings.titleQualityId.replace('$', '');
         const titleState = qualities[qid];
@@ -57,6 +60,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
     
     const portraitWidth = sizeMap[sizeSetting] || '150px';
     
+    // Qualities List Calculation
     const flatList = useMemo(() => {
         return Object.keys(qualities)
             .map(qid => {
@@ -125,7 +129,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 </div>
             ) : (
                  <h1 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '2rem', fontSize: '1.5rem', color: 'var(--text-primary)' }}>
-                     Qualities
+                     My Qualities
                  </h1>
             )}
 
