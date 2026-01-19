@@ -38,6 +38,8 @@ export default function Dashboard() {
     const dismissPlatformMsg = async () => {
          if (!platformMsg) return;
          await fetch('/api/user/acknowledge-message', { method: 'POST', body: JSON.stringify({ messageId: platformMsg.id }) });
+         
+         setPlatformMsg(null);
     };
 
     if (status === 'loading') return <div className="loading-container">Loading Studio...</div>;

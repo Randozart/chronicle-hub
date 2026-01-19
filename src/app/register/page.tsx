@@ -2,12 +2,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import TermsModal from '@/components/TermsModal';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [agreed, setAgreed] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -16,6 +20,12 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    if (!agreed) {
+        setError("You must agree to the Terms of Service.");
+        return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -47,6 +57,8 @@ export default function RegisterPage() {
         justifyContent: 'center', 
         fontFamily: 'var(--font-main)' 
     }}>
+      <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      
       <form onSubmit={handleSubmit} style={{ 
           background: 'var(--bg-panel)', 
           padding: '2.5rem', 
@@ -111,7 +123,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Password</label>
           <input 
             name="password"
@@ -129,19 +141,28 @@ export default function RegisterPage() {
             onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
           />
         </div>
-
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            Must contain: 8+ chars, Uppercase, Lowercase, Number.
+        
+        <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <input 
+                type="checkbox" 
+                id="tos-agree"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                style={{ marginTop: '3px' }}
+            />
+            <label htmlFor="tos-agree" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                I have read and agree to the <span onClick={(e) => { e.preventDefault(); setShowTerms(true); }} style={{ color: 'var(--accent-highlight)', cursor: 'pointer', textDecoration: 'underline' }}>Terms of Service</span>.
+            </label>
         </div>
 
         <button 
             type="submit" 
-            disabled={isSubmitting}
+            disabled={isSubmitting || !agreed}
             style={{ 
                 width: '100%', padding: '0.8rem', 
-                background: isSubmitting ? 'var(--border-color)' : 'var(--success-color)', 
+                background: (isSubmitting || !agreed) ? 'var(--border-color)' : 'var(--success-color)', 
                 color: '#fff', border: 'none', borderRadius: '4px', 
-                fontWeight: 'bold', cursor: isSubmitting ? 'wait' : 'pointer', 
+                fontWeight: 'bold', cursor: (isSubmitting || !agreed) ? 'not-allowed' : 'pointer', 
                 fontSize: '1rem', transition: 'background 0.2s' 
             }}
         >

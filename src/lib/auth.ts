@@ -50,17 +50,28 @@ export const authOptions: NextAuthOptions = {
         async signIn({ user }) {
             return true;
         },
-        async jwt({ token, user }: any) {
+        async jwt({ token, user, trigger, session }: any) {
             if (user) {
                 token.id = user.id;
                 token.roles = user.roles;
+                token.tosAgreed = !!user.tosAgreedAt;
             }
+            
+            if (trigger === "update" && session?.user) {
+                if (session.user.hasAgreedToTos !== undefined) {
+                    token.tosAgreed = session.user.hasAgreedToTos;
+                }
+                if (session.user.image) token.picture = session.user.image;
+                if (session.user.name) token.name = session.user.name;
+            }
+            
             return token;
         },
         async session({ session, token }: any) {
             if (session.user && token.id) {
                 (session.user as any).id = token.id;
                 (session.user as any).roles = token.roles;
+                (session.user as any).hasAgreedToTos = token.tosAgreed;
             }
             return session;
         },

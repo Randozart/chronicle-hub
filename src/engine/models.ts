@@ -365,6 +365,7 @@ export interface UserDocument {
     storageLimit?: number; 
     assets?: GlobalAsset[];
     acknowledgedPlatformMessages?: string[];
+    tosAgreedAt?: Date;
 }
 export type AssetType = 'instrument' | 'track' | 'image';
 

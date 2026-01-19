@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import SmartArea from '@/components/admin/SmartArea';
 
 export default function SysAdminPage() {
-    const [form, setForm] = useState({
-        id: '',
-        title: '',
-        content: '',
-        severity: 'info',
-        enabled: false
+    const [announcementForm, setAnnouncementForm] = useState({
+        id: '', title: '', content: '', severity: 'info', enabled: false
     });
+    
+    const [tosContent, setTosContent] = useState('');
+
     const [isLoading, setIsLoading] = useState(true);
     const [status, setStatus] = useState('');
 
@@ -22,7 +21,7 @@ export default function SysAdminPage() {
             })
             .then(data => {
                 if (data && !data.error) {
-                    setForm({
+                    setAnnouncementForm({
                         id: data.real_id || '',
                         title: data.title || '',
                         content: data.content || '',
@@ -33,18 +32,36 @@ export default function SysAdminPage() {
             })
             .catch(e => setStatus(e.message))
             .finally(() => setIsLoading(false));
+
+        fetch('/api/legal/tos')
+            .then(res => res.json())
+            .then(data => setTosContent(data.content))
+            .catch(console.error);
     }, []);
 
-    const handleSave = async () => {
-        setStatus('Saving...');
+    const handleSaveAnnouncement = async () => {
+        setStatus('Saving Announcement...');
         try {
             const res = await fetch('/api/sysadmin/announcement', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
+                body: JSON.stringify(announcementForm)
             });
-            if (res.ok) setStatus('Published Successfully');
-            else setStatus('Error Saving');
+            if (res.ok) setStatus('Announcement Published');
+            else setStatus('Error Saving Announcement');
+        } catch (e) { console.error(e); setStatus('Network Error'); }
+    };
+
+    const handleSaveTos = async () => {
+        setStatus('Saving ToS...');
+        try {
+            const res = await fetch('/api/sysadmin/tos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: tosContent })
+            });
+            if (res.ok) setStatus('ToS Updated');
+            else setStatus('Error Saving ToS');
         } catch (e) { console.error(e); setStatus('Network Error'); }
     };
 
@@ -52,11 +69,14 @@ export default function SysAdminPage() {
     if (status === 'Unauthorized') return <div style={{padding:'2rem', color:'red'}}>ACCESS DENIED. You are not the SysAdmin.</div>;
 
     return (
-        <div style={{ maxWidth: '800px', margin: '4rem auto', padding: '2rem', background: '#181a1f', border: '1px solid #333', borderRadius: '8px', color: '#ccc' }}>
-            <h1 style={{ marginTop: 0, color: '#61afef', borderBottom: '1px solid #333', paddingBottom: '1rem' }}>SysAdmin Console</h1>
+        <div style={{ maxWidth: '900px', margin: '4rem auto', padding: '2rem', background: '#181a1f', border: '1px solid #333', borderRadius: '8px', color: '#ccc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '1rem', marginBottom: '2rem' }}>
+                <h1 style={{ margin: 0, color: '#61afef' }}>SysAdmin Console</h1>
+                <div style={{ color: status.includes('Error') ? '#e06c75' : '#98c379', fontWeight: 'bold' }}>{status}</div>
+            </div>
             
-            <div style={{ marginTop: '2rem' }}>
-                <h3 style={{ color: '#fff' }}>Platform Announcement</h3>
+            <div style={{ marginBottom: '3rem' }}>
+                <h3 style={{ color: '#fff', borderLeft: '4px solid #c678dd', paddingLeft: '10px' }}>Platform Announcement</h3>
                 <p style={{ fontSize: '0.9rem', color: '#777', marginBottom: '1.5rem' }}>
                     This message appears on the Dashboard for ALL users.
                 </p>
@@ -66,20 +86,17 @@ export default function SysAdminPage() {
                         <label className="form-label">Message ID (Version)</label>
                         <input 
                             className="form-input" 
-                            value={form.id} 
-                            onChange={e => setForm({ ...form, id: e.target.value })} 
+                            value={announcementForm.id} 
+                            onChange={e => setAnnouncementForm({ ...announcementForm, id: e.target.value })} 
                             placeholder="e.g. patch-2.0"
                         />
-                        <p style={{ fontSize: '0.75rem', color: '#e06c75', marginTop: '5px' }}>
-                            Changing this ID forces the message to re-appear for everyone who dismissed it.
-                        </p>
                     </div>
                     <div>
                         <label className="form-label">Severity</label>
                         <select 
                             className="form-select" 
-                            value={form.severity} 
-                            onChange={e => setForm({ ...form, severity: e.target.value })}
+                            value={announcementForm.severity} 
+                            onChange={e => setAnnouncementForm({ ...announcementForm, severity: e.target.value })}
                         >
                             <option value="info">Info (Blue)</option>
                             <option value="warning">Warning (Yellow)</option>
@@ -92,35 +109,54 @@ export default function SysAdminPage() {
                     <label className="form-label">Title</label>
                     <input 
                         className="form-input" 
-                        value={form.title} 
-                        onChange={e => setForm({ ...form, title: e.target.value })} 
+                        value={announcementForm.title} 
+                        onChange={e => setAnnouncementForm({ ...announcementForm, title: e.target.value })} 
                     />
                 </div>
 
                 <div className="form-group">
                     <SmartArea 
                         label="Content" 
-                        value={form.content} 
-                        onChange={v => setForm({ ...form, content: v })} 
+                        value={announcementForm.content} 
+                        onChange={v => setAnnouncementForm({ ...announcementForm, content: v })} 
                         storyId="sysadmin"
                         minHeight="100px"
                     />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #333' }}>
-                    <label className="toggle-label" style={{ fontSize: '1.1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem' }}>
+                    <label className="toggle-label" style={{ fontSize: '1rem' }}>
                         <input 
                             type="checkbox" 
-                            checked={form.enabled} 
-                            onChange={e => setForm({ ...form, enabled: e.target.checked })} 
+                            checked={announcementForm.enabled} 
+                            onChange={e => setAnnouncementForm({ ...announcementForm, enabled: e.target.checked })} 
                         />
-                        Is Active
+                        Announcement Active
                     </label>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span>{status}</span>
-                        <button onClick={handleSave} className="save-btn">Publish</button>
-                    </div>
+                    <button onClick={handleSaveAnnouncement} className="save-btn">Publish Announcement</button>
+                </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #333', paddingTop: '2rem' }}>
+                <h3 style={{ color: '#fff', borderLeft: '4px solid #e5c07b', paddingLeft: '10px' }}>Legal: Terms of Service</h3>
+                <p style={{ fontSize: '0.9rem', color: '#777', marginBottom: '1.5rem' }}>
+                    This text is displayed in the Registration modal. Use Markdown.
+                </p>
+                
+                <div className="form-group">
+                    <textarea 
+                        className="form-textarea" 
+                        value={tosContent}
+                        onChange={(e) => setTosContent(e.target.value)}
+                        rows={15}
+                        style={{ fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: '1.4' }}
+                    />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button onClick={handleSaveTos} className="save-btn" style={{ backgroundColor: '#e5c07b', color: '#000' }}>
+                        Update Terms
+                    </button>
                 </div>
             </div>
         </div>
