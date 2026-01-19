@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const userId = (session?.user as any)?.id;
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+
     const enrichWorlds = async (worlds: any[]) => {
         if (worlds.length === 0) return [];
         const userIds = new Set<string>();
@@ -49,13 +50,18 @@ export async function GET(request: NextRequest) {
             };
         });
     };
+
     if (mode === 'discover') {
         const rawWorlds = await db.collection('worlds')
-            .find({ published: true })
+            .find({ 
+                published: true,
+                "contentConfig.erotica": { $ne: true } 
+            })
             .sort({ playerCount: -1, createdAt: -1 })
             .limit(20)
             .project({ 
                 worldId: 1, title: 1, summary: 1, coverImage: 1, tags: 1, ownerId: 1, collaborators: 1,
+                contentConfig: 1, 
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 
                 'settings.attributions': 1 
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
         const enriched = await enrichWorlds(rawWorlds);
         return NextResponse.json(enriched);
     }
+
     if (!userId) {
         return NextResponse.json({ myWorlds: [], playedWorlds: [] });
     }
@@ -79,12 +86,14 @@ export async function GET(request: NextRequest) {
             })
             .project({ 
                 worldId: 1, title: 1, summary: 1, published: 1, coverImage: 1, tags: 1, ownerId: 1, collaborators: 1,
+                contentConfig: 1, 
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 'settings.attributions': 1 
             })
             .toArray();
         const myWorlds = await enrichWorlds(rawMyWorlds);
         const myWorldsWithUser = myWorlds.map(w => ({ ...w, currentUserId: userId }));
+
         const playChars = await db.collection('characters')
             .find({ userId: userId })
             .project({ storyId: 1, qualities: 1 }) 
@@ -111,6 +120,7 @@ export async function GET(request: NextRequest) {
             })
             .project({ 
                 worldId: 1, title: 1, summary: 1, coverImage: 1, ownerId: 1,
+                contentConfig: 1, 
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 'settings.attributions': 1 
             })
@@ -132,6 +142,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ myWorlds: [], playedWorlds: [] }, { status: 500 });
     }
 }
+
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -32,11 +32,12 @@ export async function POST(request: NextRequest) {
 
         const userId = (session.user as any).id;
         const body = await request.json();
-        const { username, image, password } = body;
+        const { username, image, password, dob } = body;
         const updateDoc: any = {};
 
         if (username && username.trim().length > 0) updateDoc.username = username.trim();
         if (image !== undefined) updateDoc.image = image;
+        if (dob !== undefined) updateDoc.dob = dob ? new Date(dob) : null;
 
         if (password && password.trim().length > 0) {
             if (password.length < 8) return NextResponse.json({ error: 'Password too short' }, { status: 400 });

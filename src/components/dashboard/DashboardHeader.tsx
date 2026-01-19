@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import MainLogo from '@/components/icons/MainLogo';
 import ThemeControls from '@/components/ui/ThemeControls';
+import { useEffect } from 'react';
 
 interface Props {
     activePage?: 'dashboard' | 'profile';
@@ -66,8 +67,9 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
                                         background: 'var(--bg-item)', border: '1px solid var(--border-color)',
                                         flexShrink: 0
                                     }}>
+                                        {/* [FIX] Ensure src exists before rendering img tag */}
                                         {session?.user?.image ? (
-                                            <img src={session.user.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <img src={session.user.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Profile" />
                                         ) : (
                                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>?</div>
                                         )}
@@ -78,7 +80,7 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
                                 </Link>
                             )}
                             
-                            <button onClick={() => signOut({ callbackUrl: '' })} className="logout-btn">
+                            <button onClick={() => signOut({ callbackUrl: '/' })} className="logout-btn">
                                 Log Out
                             </button>
                         </>

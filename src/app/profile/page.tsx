@@ -20,12 +20,15 @@ export default function ProfilePage() {
     
     const [showPicker, setShowPicker] = useState(false);
 
+    const [dob, setDob] = useState("");
+
     useEffect(() => {
         fetch('/api/user/profile')
             .then(res => res.json())
             .then(data => {
                 if (data.username) setUsername(data.username);
                 if (data.image) setImage(data.image);
+                if (data.dob) setDob(data.dob.split('T')[0]);
             })
             .catch(() => showToast("Failed to load profile", "error"))
             .finally(() => setIsLoading(false));
@@ -42,7 +45,12 @@ export default function ProfilePage() {
             const res = await fetch('/api/user/profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, image, password: password || undefined })
+                body: JSON.stringify({ 
+                    username, 
+                    image, 
+                    password: password || undefined, 
+                    dob: dob || null 
+                })
             });
 
             if (res.ok) {
@@ -100,7 +108,20 @@ export default function ProfilePage() {
                             
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>This is visible to collaborators and in credits.</p>
                         </div>
+
+                        
                         <div className="storylet-container" style={{ margin: 0 }}>
+                            <div className="form-group">
+                                <label className="form-label">Date of Birth</label>
+                                <input 
+                                    type="date" 
+                                    className="form-input" 
+                                    value={dob} 
+                                    onChange={e => setDob(e.target.value)} 
+                                    style={{ textAlign: 'center' }} 
+                                />
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Required for Mature (16+) content.</p>
+                            </div>
                             <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>Account Security</h2>
                             
                             <div className="form-group">

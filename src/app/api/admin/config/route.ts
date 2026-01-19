@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
             if ('coverImage' in data) rootUpdates.coverImage = data.coverImage;
             if ('summary' in data) rootUpdates.summary = data.summary;
             if ('tags' in data) rootUpdates.tags = data.tags;
+            if ('contentConfig' in data) rootUpdates.contentConfig = data.contentConfig;
 
             if (Object.keys(rootUpdates).length > 0) {
                 console.log(`[API: POST /admin/config] Syncing root metadata for ${storyId}`);

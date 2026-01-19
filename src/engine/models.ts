@@ -206,6 +206,14 @@ export interface WorldSettings {
         condition: string;
         theme: string;
     }[];
+    contentConfig?: {
+        mature?: boolean;
+        matureDetails?: string;
+        erotica?: boolean;
+        eroticaDetails?: string;
+        triggers?: boolean;
+        triggerDetails?: string;
+    };
 }
 
 export interface DeckDefinition extends VersionedEntity { 

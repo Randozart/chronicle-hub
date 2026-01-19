@@ -9,7 +9,7 @@ interface GameModalProps {
     isOpen: boolean;
     type?: ModalType;
     title: string;
-    message?: string;
+    message?: string | React.ReactNode;
     confirmLabel?: string;
     cancelLabel?: string;
     onConfirm: (inputValue?: string) => void;
@@ -86,8 +86,12 @@ export default function GameModal({
                         {title}
                     </h3>
                     {message && (
-                        <div style={{ marginTop: '1rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                            <FormattedText text={message} />
+                        <div style={{ marginTop: '1rem', color: 'var(--text-secondary)', lineHeight: '1.5', textAlign: 'left' }}>
+                            {typeof message === 'string' ? (
+                                <FormattedText text={message} />
+                            ) : (
+                                message
+                            )}
                         </div>
                     )}
                 </div>
@@ -114,7 +118,9 @@ export default function GameModal({
                                 flex: 1, 
                                 background: 'transparent', 
                                 border: '1px solid var(--border-color)',
-                                color: 'var(--text-muted)' 
+                                color: 'var(--text-muted)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: '0.8rem'
                             }}
                         >
                             {cancelLabel}
@@ -126,7 +132,13 @@ export default function GameModal({
                         style={{ 
                             flex: 1,
                             borderColor: isDanger ? 'var(--danger-color)' : 'var(--accent-highlight)',
-                            color: isDanger ? 'var(--danger-color)' : 'var(--text-primary)'
+                            color: isDanger ? 'var(--danger-color)' : 'var(--text-primary)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            textAlign: 'center',
+                            padding: '0.8rem',
+                            whiteSpace: 'normal',
+                            lineHeight: '1.2',
+                            height: 'auto'
                         }}
                     >
                         {confirmLabel}

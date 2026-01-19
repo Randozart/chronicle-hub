@@ -1,8 +1,7 @@
 'use client';
 import { WorldSettings } from '@/engine/models';
-import GameImage from '@/components/GameImage';
 import { useToast } from '@/providers/ToastProvider';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 
 interface Props {
@@ -16,7 +15,12 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
     const [isEditingId, setIsEditingId] = useState(false);
     const [tempId, setTempId] = useState(storyId);
     const [showConfirmId, setShowConfirmId] = useState(false);
-    const { showToast } = useToast();
+    
+    const [localTags, setLocalTags] = useState(settings.tags?.join(', ') || '');
+
+    useEffect(() => {
+        setLocalTags(settings.tags?.join(', ') || '');
+    }, [settings.tags]);
 
     const handleIdChangeRequest = () => {
         if (tempId === storyId) { setIsEditingId(false); return; }
@@ -31,87 +35,216 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
         }
     };
 
+    const handleTagsBlur = () => {
+        const arr = localTags.split(',').map(s => s.trim()).filter(Boolean);
+        const unique = Array.from(new Set(arr));
+        onChange('tags', unique);
+    };
+
+    const handleContentToggle = (type: 'mature' | 'erotica' | 'triggers', value: boolean) => {
+        const currentConfig = settings.contentConfig || {};
+        const newConfig = { ...currentConfig, [type]: value };
+        
+        const currentTags = new Set(settings.tags || []);
+        
+        if (type === 'mature') {
+            if (value) currentTags.add('Mature');
+            else currentTags.delete('Mature');
+        }
+        if (type === 'erotica') {
+            if (value) currentTags.add('NSFW');
+            else currentTags.delete('NSFW');
+        }
+        if (type === 'triggers') {
+            if (value) currentTags.add('CW');
+            else currentTags.delete('CW');
+        }
+
+        onChange('contentConfig', newConfig);
+        onChange('tags', Array.from(currentTags));
+    };
+
+    const updateContentDetail = (field: string, val: string) => {
+        const currentConfig = settings.contentConfig || {};
+        onChange('contentConfig', { ...currentConfig, [field]: val });
+    };
+
+    const content = settings.contentConfig || {};
+
     return (
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: 'var(--tool-bg-header)', borderRadius: 'var(--border-radius)', border: '1px solid var(--tool-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: 0 }}>World Settings</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ 
-                        color: settings.isPublished ? 'var(--success-color)' : 'var(--warning-color)', 
-                        fontWeight: 'bold', fontSize: '0.8rem', textTransform: 'uppercase' 
-                    }}>
-                        {settings.isPublished ? 'LIVE' : 'PRIVATE'}
-                    </span>
-                    <label className="toggle-label">
-                        <input type="checkbox" checked={settings.isPublished || false} onChange={e => onChange('isPublished', e.target.checked)} />
-                        Publish
-                    </label>
-                </div>
-            </div>
-
-            <div className="form-group">
-                <label className="form-label">World ID (URL Slug)</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                        value={isEditingId ? tempId : storyId} 
-                        disabled={!isEditingId}
-                        onChange={e => setTempId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                        className="form-input"
-                        style={{ fontWeight: 'bold', color: isEditingId ? 'var(--tool-text-main)' : 'var(--tool-text-dim)' }} 
-                    />
-                    {isEditingId ? (
-                        <>
-                            <button onClick={handleIdChangeRequest} className="save-btn" style={{ padding: '0 1rem' }}>Save ID</button>
-                            <button onClick={() => { setIsEditingId(false); setTempId(storyId); }} className="unequip-btn" style={{ padding: '0 1rem' }}>Cancel</button>
-                        </>
-                    ) : (
-                        <button onClick={() => setIsEditingId(true)} className="option-button" style={{ padding: '0 1rem' }}>Change ID</button>
-                    )}
-                </div>
-                <p className="special-desc" style={{ color: 'var(--warning-color)'}}>
-                    Changing this will update all storylets and cards. Links to your world will change.
-                </p>
-            </div>
-            <ConfirmationModal 
-                isOpen={showConfirmId}
-                title="Change World ID?"
-                message={`Are you sure you want to rename "${storyId}" to "${tempId}"? This is a major operation.`}
-                variant="danger"
-                confirmLabel="Yes, Rename"
-                onConfirm={confirmIdChange}
-                onCancel={() => setShowConfirmId(false)}
-            />
-
-            <div className="form-row" style={{ alignItems: 'flex-start' }}>
-                <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Cover Image URL</label>
-                    <input value={settings.coverImage || ''} onChange={e => onChange('coverImage', e.target.value)} className="form-input" />
-                    {settings.coverImage && (
-                        <div style={{ marginTop: '10px', height: '150px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--tool-border)' }}>
-                            <img src={settings.coverImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Cover" />
-                        </div>
-                    )}
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">World Tags</label>
-                        <input 
-                            value={settings.tags?.join(', ') || ''} 
-                            onChange={e => onChange('tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} 
-                            className="form-input" 
-                            placeholder="fantasy, horror, rpg, victorian" 
-                        />
-                        <p className="special-desc">Comma-separated tags to help players find your world.</p>
+        <div style={{ marginBottom: '2rem' }}>
+            
+            <div style={{ padding: '1.5rem', background: 'var(--tool-bg-header)', borderRadius: 'var(--border-radius)', border: '1px solid var(--tool-border)', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <h2 style={{ margin: 0 }}>World Settings</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ 
+                            color: settings.isPublished ? 'var(--success-color)' : 'var(--warning-color)', 
+                            fontWeight: 'bold', fontSize: '0.8rem', textTransform: 'uppercase' 
+                        }}>
+                            {settings.isPublished ? 'LIVE' : 'PRIVATE'}
+                        </span>
+                        <label className="toggle-label">
+                            <input type="checkbox" checked={settings.isPublished || false} onChange={e => onChange('isPublished', e.target.checked)} />
+                            Publish
+                        </label>
                     </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Summary</label>
-                        <textarea 
-                            value={settings.summary || ''} 
-                            onChange={e => onChange('summary', e.target.value)} 
-                            className="form-textarea" 
-                            rows={6}
-                            placeholder="Shown on main menu..."
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">World ID (URL Slug)</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <input 
+                            value={isEditingId ? tempId : storyId} 
+                            disabled={!isEditingId}
+                            onChange={e => setTempId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                            className="form-input"
+                            style={{ fontWeight: 'bold', color: isEditingId ? 'var(--tool-text-main)' : 'var(--tool-text-dim)' }} 
                         />
+                        {isEditingId ? (
+                            <>
+                                <button onClick={handleIdChangeRequest} className="save-btn" style={{ padding: '0 1rem' }}>Save ID</button>
+                                <button onClick={() => { setIsEditingId(false); setTempId(storyId); }} className="unequip-btn" style={{ padding: '0 1rem' }}>Cancel</button>
+                            </>
+                        ) : (
+                            <button onClick={() => setIsEditingId(true)} className="option-button" style={{ padding: '0 1rem' }}>Change ID</button>
+                        )}
+                    </div>
+                    <p className="special-desc" style={{ color: 'var(--warning-color)'}}>
+                        Changing this will update all storylets and cards. Links to your world will change.
+                    </p>
+                </div>
+                
+                <ConfirmationModal 
+                    isOpen={showConfirmId}
+                    title="Change World ID?"
+                    message={`Are you sure you want to rename "${storyId}" to "${tempId}"? This is a major operation.`}
+                    variant="danger"
+                    confirmLabel="Yes, Rename"
+                    onConfirm={confirmIdChange}
+                    onCancel={() => setShowConfirmId(false)}
+                />
+
+                <div className="form-row" style={{ alignItems: 'flex-start' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Cover Image URL</label>
+                        <input value={settings.coverImage || ''} onChange={e => onChange('coverImage', e.target.value)} className="form-input" />
+                        {settings.coverImage && (
+                            <div style={{ marginTop: '10px', height: '150px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--tool-border)' }}>
+                                <img src={settings.coverImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Cover" />
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">World Tags</label>
+                            <input 
+                                value={localTags} 
+                                onChange={e => setLocalTags(e.target.value)} 
+                                onBlur={handleTagsBlur}
+                                onKeyDown={e => { if(e.key === 'Enter') handleTagsBlur(); }}
+                                className="form-input" 
+                                placeholder="fantasy, horror, rpg, victorian" 
+                            />
+                            <p className="special-desc">Comma-separated. Auto-updated by Content Ratings below.</p>
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Summary</label>
+                            <textarea 
+                                value={settings.summary || ''} 
+                                onChange={e => onChange('summary', e.target.value)} 
+                                className="form-textarea" 
+                                rows={6}
+                                placeholder="Shown on main menu..."
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ padding: '1.5rem', background: 'var(--tool-bg-sidebar)', borderRadius: 'var(--border-radius)', border: '1px dashed var(--warning-color)' }}>
+                <h3 style={{ marginTop: 0, color: 'var(--warning-color)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Content Ratings & Safety</h3>
+                <p className="special-desc" style={{ marginBottom: '1.5rem' }}>
+                    Accurately flagging your content ensures it reaches the right audience and protects your account.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    {/* Toggle for Mature Content (16+) */}
+                    <div>
+                        <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--tool-text-main)' }}>
+                            <input type="checkbox" checked={content.mature || false} onChange={e => handleContentToggle('mature', e.target.checked)} />
+                            Mature Content (16+)
+                        </label>
+                        <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
+                            Examples: Heavy violence, substance abuse, dark themes, non-explicit suggestive themes.
+                        </p>
+                        {content.mature && (
+                            <div style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
+                                <input 
+                                    className="form-input" 
+                                    placeholder="Specify (e.g. Graphic Violence, Drug Use)" 
+                                    value={content.matureDetails || ''} 
+                                    onChange={e => updateContentDetail('matureDetails', e.target.value)}
+                                />
+                                <p className="special-desc" style={{ color: 'var(--success-color)' }}>
+                                    ✓ Shown in Community Arcade. Players must confirm age/consent.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Toggle for Trigger Warnings */}
+                    <div>
+                        <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--tool-text-main)' }}>
+                            <input type="checkbox" checked={content.triggers || false} onChange={e => handleContentToggle('triggers', e.target.checked)} />
+                            Trigger Warnings
+                        </label>
+                        <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
+                            Content that may cause distress (e.g. self-harm, sexual assault references, phobias).
+                        </p>
+                        {content.triggers && (
+                            <div style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
+                                <input 
+                                    className="form-input" 
+                                    placeholder="List Triggers (e.g. Spiders, Claustrophobia)" 
+                                    value={content.triggerDetails || ''} 
+                                    onChange={e => updateContentDetail('triggerDetails', e.target.value)}
+                                />
+                                <p className="special-desc" style={{ color: 'var(--success-color)' }}>
+                                    ✓ Shown in Community Arcade. Warnings displayed before playing.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Toggle for Erotica (18+) */}
+                    <div>
+                        <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--accent-highlight)' }}>
+                            <input type="checkbox" checked={content.erotica || false} onChange={e => handleContentToggle('erotica', e.target.checked)} />
+                            Erotica / Explicit (18+)
+                        </label>
+                        <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
+                            Contains explicit sexual descriptions or interactive sexual content.
+                        </p>
+                        {content.erotica && (
+                            <div style={{ marginLeft: '1.5rem', marginTop: '0.5rem' }}>
+                                <input 
+                                    className="form-input" 
+                                    placeholder="Specify details if necessary" 
+                                    value={content.eroticaDetails || ''} 
+                                    onChange={e => updateContentDetail('eroticaDetails', e.target.value)}
+                                />
+                                <div style={{ background: 'rgba(200, 50, 50, 0.1)', borderLeft: '3px solid var(--danger-color)', padding: '0.5rem', marginTop: '0.5rem' }}>
+                                    <p className="special-desc" style={{ color: 'var(--danger-color)', marginTop: 0 }}>
+                                        <strong>Restricted:</strong> This game will NOT appear in the public Community Arcade.
+                                    </p>
+                                    <p className="special-desc" style={{ marginTop: '5px' }}>
+                                        You may share the direct link anywhere. ChronicleHub will continue to host it.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
