@@ -1064,6 +1064,21 @@ html[data-theme='revolutionary']::before {
     border-image-repeat: stretch;
     box-shadow: 0 10px 25px rgba(0,0,0,0.6);
 }
+[data-theme='delver'] .layout-grid-tabletop,
+[data-theme='delver'] .content-column,
+[data-theme='delver'] .layout-column.content-column {
+    background-color: transparent !important;
+}
+
+[data-theme='delver'] .profile-container, 
+[data-theme='delver'] .location-header {
+    --text-primary: #f1e4c7;
+    --text-secondary: #d2c1a4;
+    --text-muted: #a59072;
+}
+[data-theme='delver'] .possessions-container h2 {
+    color: #f1e4c7;
+}
 
 [data-theme='delver'] .option-button:hover,
 [data-theme='delver'] .card:hover {
@@ -1090,18 +1105,19 @@ html[data-theme='revolutionary']::before {
     z-index: 1;
 }
 
-[data-theme='delver'][data-location-type="dungeon"].theme-wrapper {
+[data-theme='delver'][data-in-dungeon="on"].theme-wrapper {
     background-image: radial-gradient(ellipse at center, transparent 30%, #000 80%);
 }
 
-[data-theme='delver'][data-location-type="dungeon"] .storylet-container,
-[data-theme='delver'][data-location-type="dungeon"] .sidebar-panel {
+
+[data-theme='delver'][data-in-dungeon="on"] .storylet-container,
+[data-theme='delver'][data-in-dungeon="on"] .sidebar-panel {
     box-shadow: none;
     animation: torch-flicker 6s ease-in-out infinite;
 }
 
-[data-theme='delver'][data-location-type="dungeon"] .option-button:hover,
-[data-theme='delver'][data-location-type="dungeon"] .card:hover {
+[data-theme='delver'][data-in-dungeon="on"] .option-button:hover,
+[data-theme='delver'][data-in-dungeon="on"] .card:hover {
     box-shadow: 0 0 15px 2px var(--accent-highlight);
     transform: translate(0, -2px);
 }

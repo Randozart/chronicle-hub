@@ -20,6 +20,16 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
 
     const handleChange = (field: keyof WorldSettings, val: any) => {
         onChange(field, val);
+
+        if (field === 'visualTheme') {
+            const newTarget = THEME_TARGETS[val as string];
+            if (newTarget && settings.themeOverrides && settings.themeOverrides.length > 0) {
+                const currentCondition = settings.themeOverrides[0].condition;
+                onUpdate({ 
+                    themeOverrides: [{ condition: currentCondition, theme: newTarget }] 
+                });
+            }
+        }
     };
 
     const handleDeepChange = (parent: 'imageConfig' | 'componentConfig' | 'livingStoriesConfig', key: string, val: any) => {
@@ -37,12 +47,31 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
         tabletop: "A multi-column layout where the middle section is reserved for the location image. Parallax can be enabled on the image to make it reactive to mouse position."
     };
 
-    const [overrides, setOverrides] = useState<ThemeOverride[]>(settings.themeOverrides || []);
     const [qualityDefs, setQualityDefs] = useState<QualityDefinition[]>([]);
 
-    useEffect(() => {
-        setOverrides(settings.themeOverrides || []);
-    }, [settings.themeOverrides]);
+    const THEME_TARGETS: Record<string, string> = {
+        'masquerade': 'masquerade|darkness-state:on',
+        'delver': 'delver|in-dungeon:on' 
+    };
+
+    const onUpdate = (updates: Partial<WorldSettings>) => {
+        Object.entries(updates).forEach(([key, val]) => {
+            onChange(key, val);
+        });
+    };
+
+    const isDynamicTheme = !!THEME_TARGETS[settings.visualTheme || ''];
+    const currentCondition = settings.themeOverrides?.[0]?.condition || "";
+
+    const handleConditionChange = (val: string) => {
+        const target = THEME_TARGETS[settings.visualTheme || ''] || "";
+        
+        if (!val.trim()) {
+            onUpdate({ themeOverrides: [] });
+        } else {
+            onUpdate({ themeOverrides: [{ condition: val, theme: target }] });
+        }
+    };
 
     useEffect(() => {
         fetch(`/api/admin/qualities?storyId=${storyId}`)
@@ -52,44 +81,6 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
             })
             .catch(err => console.error("Failed to load qualities", err));
     }, [storyId]);
-
-    const onUpdate = (updates: Partial<WorldSettings>) => {
-        Object.entries(updates).forEach(([key, val]) => {
-            onChange(key, val);
-        });
-    };
-
-    const handleAddOverride = () => {
-        let defaultTarget = '';
-        let defaultCond = '';
-
-        if (settings.visualTheme === 'masquerade') {
-            defaultTarget = 'masquerade|darkness-state:on';
-            defaultCond = '{$darkness > 50}';
-        } else if (settings.visualTheme === 'delver') {
-            defaultTarget = 'delver|location-type:dungeon';
-            defaultCond = '{$in_dungeon}';
-        }
-
-        const updated = [...overrides, { condition: defaultCond, theme: defaultTarget }];
-        setOverrides(updated);
-        onUpdate({ themeOverrides: updated });
-    };
-
-    const updateOverride = (index: number, field: keyof ThemeOverride, value: string) => {
-        const updated = [...overrides];
-        updated[index] = { ...updated[index], [field]: value };
-        setOverrides(updated);
-        onUpdate({ themeOverrides: updated });
-    };
-
-    const removeOverride = (index: number) => {
-        const updated = overrides.filter((_, i) => i !== index);
-        setOverrides(updated);
-        onUpdate({ themeOverrides: updated });
-    };
-
-    const isDynamicTheme = ['masquerade', 'delver'].includes(settings.visualTheme || '');
 
     useEffect(() => {
         fetch(`/api/admin/qualities?storyId=${storyId}`)
@@ -178,45 +169,20 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
 
                     {isDynamicTheme && (
                         <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px dashed var(--border-color)', borderRadius: '4px', background: 'var(--bg-item)' }}>
-                            <h4 style={{ marginTop: 0, fontSize: '0.95rem', color: 'var(--accent-primary)' }}>Dynamic Theme Swapping</h4>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                Configure conditions that trigger a visual state change. The <strong>first</strong> true condition determines the active state.
+                            <h4 style={{ marginTop: 0, fontSize: '0.95rem', color: 'var(--accent-primary)' }}>Dynamic Theme Logic</h4>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                define the condition (ScribeScript) that triggers the <strong>alternate state</strong> (e.g. Darkness, Dungeon Mode).
                             </p>
 
-                            {overrides.map((ov, idx) => {
-                                const isPreset = (settings.visualTheme === 'masquerade') ||
-                                                (settings.visualTheme === 'delver');
-
-                                return (
-                                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: isPreset ? '1fr 40px' : '1fr 1fr 40px', gap: '10px', alignItems: 'start' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Condition (ScribeScript)</label>
-                                            <SmartArea 
-                                                value={ov.condition} 
-                                                onChange={(val) => updateOverride(idx, 'condition', val)} 
-                                                minHeight="40px"
-                                                storyId={storyId}
-                                                qualityDefs={qualityDefs}
-                                            />
-                                        </div>
-
-                                        <button 
-                                            onClick={() => removeOverride(idx)}
-                                            style={{ marginTop: '47px', background: 'var(--danger-bg)', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', borderRadius: '4px', height: '38px', cursor: 'pointer' }}
-                                            title="Remove Override"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                );
-                            })}
-
-                            <button 
-                                onClick={handleAddOverride}
-                                style={{ marginTop: '1rem', background: 'transparent', border: '1px dashed var(--accent-primary)', color: 'var(--accent-primary)', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', width: '100%' }}
-                            >
-                                + Add Dynamic Condition
-                            </button>
+                            <SmartArea 
+                                value={currentCondition} 
+                                onChange={handleConditionChange} 
+                                minHeight="80px"
+                                storyId={storyId}
+                                qualityDefs={qualityDefs}
+                                placeholder={settings.visualTheme === 'masquerade' ? "$darkness > 50" : "$in_dungeon >= 1"}
+                                mode="condition" 
+                            />
                         </div>
                     )}
 
