@@ -78,7 +78,7 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
                                 </Link>
                             )}
                             
-                            <button onClick={() => signOut({ callbackUrl: '/login' })} className="logout-btn">
+                            <button onClick={() => signOut({ callbackUrl: '' })} className="logout-btn">
                                 Log Out
                             </button>
                         </>

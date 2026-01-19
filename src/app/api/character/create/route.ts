@@ -82,6 +82,30 @@ export async function POST(request: NextRequest) {
             pendingEvents: [],
             dynamicQualities: {}
         };
+        
+        // Normally auto-equip logic is handled elsewhere, but because guest characters function a little differently and aren't 
+        // written to the database, we handle auto- and force-equipping at game start here.
+        const computedQualities = guestCharacter.qualities;
+        for (const qid in computedQualities) {
+            const def = gameData.qualities[qid];
+            
+            if (def && def.type === 'E') {
+                const tags = def.tags || [];
+                const isAuto = tags.includes('auto_equip');
+                const isForce = tags.includes('force_equip');
+
+                if (isAuto || isForce) {
+                    const state = computedQualities[qid];
+                    if (state && 'level' in state && state.level > 0) {
+                        const slot = (def.category || 'Misc').split(',')[0].trim();
+                        
+                        if (isForce || !guestCharacter.equipment[slot]) {
+                            guestCharacter.equipment[slot] = qid;
+                        }
+                    }
+                }
+            }
+        }
 
         return NextResponse.json({ success: true, character: guestCharacter });
 

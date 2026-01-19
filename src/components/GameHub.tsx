@@ -530,7 +530,7 @@ export default function GameHub(props: GameHubProps) {
     const TabBar = () => {
         const showLivingStoriesTab = lsConfig?.position === 'tab' && character?.pendingEvents && character.pendingEvents.length > 0;
         return (
-            <div className="tab-bar">
+            <div className="tab-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
 
                 <button onClick={() => setActiveTab('story')} 
                     data-tab-id="story" 
@@ -560,32 +560,45 @@ export default function GameHub(props: GameHubProps) {
     const sidebarTab = props.settings.tabLocation === 'sidebar' && !isMobile;
 
     const buildSidebar = () => {
+        const showPortrait = !props.settings.hideProfileIdentity && props.settings.showPortraitInSidebar && !isMobile;
+        const portraitShape = props.settings.portraitStyle || 'circle';
+        const portraitSize = props.settings.portraitSize || 'medium';
+        
+        const sizeMap: Record<string, string> = { small: '80px', medium: '150px', large: '250px' };
+        const portraitWidth = sizeMap[portraitSize] || '150px';
+
+        const portraitImage = showPortrait ? (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', width: '100%' }}>
+                <div 
+                    className="profile-portrait" 
+                    data-shape={portraitShape}
+                    style={{ 
+                        width: portraitWidth,
+                        maxWidth: '100%',
+                        aspectRatio: portraitShape === 'rect' ? '3/4' : '1/1',
+                        flexShrink: 0,
+                    }} 
+                >
+                    <GameImage 
+                        code={(character.qualities['player_portrait'] as any)?.stringValue || "default_avatar"} 
+                        imageLibrary={props.imageLibrary} 
+                        type="portrait" 
+                        settings={props.settings}
+                        shapeOverride={portraitShape}
+                        alt="Portrait" 
+                        className="w-full h-full object-cover" 
+                    />
+                </div>
+            </div>
+        ) : null;
+
         if (sidebarTab) {
             return (
                 <div className="sidebar-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div className="sidebar-content-scroll" style={{ overflowY: 'auto' }}>
                         <TabBar /> 
                         
-                        {!props.settings.hideProfileIdentity && props.settings.showPortraitInSidebar && (
-                            <div style={{ padding: '1rem', display: 'flex', justifyContent: 'center' }}>
-                                <div style={{ 
-                                    width: '120px', 
-                                    aspectRatio: props.settings.portraitStyle === 'rect' ? '3/4' : '1/1',
-                                    borderRadius: props.settings.portraitStyle === 'circle' ? '50%' : 'var(--border-radius)',
-                                    overflow: 'hidden',
-                                    border: '2px solid var(--border-color)',
-                                    background: '#000'
-                                }}>
-                                    <GameImage 
-                                        code={(character.qualities['player_portrait'] as any)?.stringValue || "default_avatar"} 
-                                        imageLibrary={props.imageLibrary} 
-                                        type="portrait"
-                                        settings={props.settings}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                            </div>
-                        )}
+                        {portraitImage && <div style={{ padding: '1rem 0' }}>{portraitImage}</div>}
 
                         {props.settings.useActionEconomy && (
                             <div className="action-box">
@@ -593,17 +606,7 @@ export default function GameHub(props: GameHubProps) {
                             </div>
                         )}
 
-                        <CharacterSheet 
-                            qualities={character.qualities} 
-                            equipment={character.equipment} 
-                            qualityDefs={mergedQualityDefs} 
-                            settings={props.settings} 
-                            categories={props.categories} 
-                            engine={renderEngine} 
-                            showHidden={showHiddenQualities} 
-                            imageLibrary={props.imageLibrary}
-                        />
-
+                        <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} settings={props.settings} categories={props.categories} engine={renderEngine} showHidden={showHiddenQualities} imageLibrary={props.imageLibrary} />                    
                         {sidebarLivingStories}
                         {props.isPlaytesting && (
                             <div style={{ marginTop: '2rem', padding: '0 1.5rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
@@ -632,26 +635,7 @@ export default function GameHub(props: GameHubProps) {
                 </div>
                 <div className="sidebar-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
                     
-                    {!props.settings.hideProfileIdentity && props.settings.showPortraitInSidebar && (
-                        <div style={{ paddingBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
-                            <div style={{ 
-                                width: '100px', 
-                                aspectRatio: props.settings.portraitStyle === 'rect' ? '3/4' : '1/1',
-                                borderRadius: props.settings.portraitStyle === 'circle' ? '50%' : 'var(--border-radius)',
-                                overflow: 'hidden',
-                                border: '2px solid var(--border-color)',
-                                background: '#000'
-                            }}>
-                                <GameImage 
-                                    code={(character.qualities['player_portrait'] as any)?.stringValue || "default_avatar"} 
-                                    imageLibrary={props.imageLibrary} 
-                                    type="portrait"
-                                    settings={props.settings}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        </div>
-                    )}
+                    {portraitImage}
 
                     {props.settings.useActionEconomy && (
                         <div className="action-box">
@@ -665,17 +649,7 @@ export default function GameHub(props: GameHubProps) {
                                 />                      
                         </div>
                     )}
-
-                    <CharacterSheet 
-                        qualities={character.qualities} 
-                        equipment={character.equipment} 
-                        qualityDefs={mergedQualityDefs} 
-                        settings={props.settings} 
-                        categories={props.categories} 
-                        engine={renderEngine} 
-                        showHidden={showHiddenQualities} 
-                        imageLibrary={props.imageLibrary} 
-                    />
+                    <CharacterSheet qualities={character.qualities} equipment={character.equipment} qualityDefs={mergedQualityDefs} settings={props.settings} categories={props.categories} engine={renderEngine} showHidden={showHiddenQualities} imageLibrary={props.imageLibrary} />
                     {sidebarLivingStories}
                     {props.isPlaytesting && (
                         <div style={{ marginTop: '2rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem', paddingBottom: '2rem' }}>
@@ -928,7 +902,7 @@ export default function GameHub(props: GameHubProps) {
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             <ToastProvider>
                 {isGuestMode && (
-                    <div style={{ background: 'var(--accent-primary)', color: '#fff', padding: '0.5rem', textAlign: 'center', fontSize: '0.9rem', position: 'sticky', top: 0, zIndex: 9999 }}>
+                    <div style={{ background: 'var(--accent-primary)', color: '#fff', padding: '0.5rem', textAlign: 'center', fontSize: '0.9rem', position: 'sticky', top: 0, zIndex: 40 }}>
                         Playing as Guest. Progress saved locally. 
                         <Link href={`/register?callbackUrl=/play/${props.storyId}`} style={{ color: '#fff', fontWeight: 'bold', marginLeft: '10px', textDecoration: 'underline' }}>
                             Create Account to Save

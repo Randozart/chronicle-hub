@@ -65,8 +65,19 @@ export default function ElysiumLayout({
                 />
                 <div className="elysium-vignette" />
             </div>
+            
+            {mobileSidebarOpen && (
+                <div className="mobile-backdrop" onClick={() => setMobileSidebarOpen(false)} />
+            )}
 
             <div className={`${sidebarClassName} ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
+                <div 
+                    className="mobile-drawer-toggle" 
+                    onClick={() => setMobileSidebarOpen(false)}
+                    title="Close Sidebar"
+                >
+                    ◀
+                </div>
                 {sidebarContent}
             </div>
 
@@ -90,16 +101,6 @@ export default function ElysiumLayout({
                     </button>
                 </div>
             </div>
-
-            {mobileSidebarOpen && (
-                <button 
-                    className="mobile-close-btn" 
-                    onClick={() => setMobileSidebarOpen(false)}
-                    type="button"
-                >
-                    × Close
-                </button>
-            )}
         </div>
     );
 }

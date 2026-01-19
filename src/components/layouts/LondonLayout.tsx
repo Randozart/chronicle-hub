@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { WorldSettings, LocationDefinition, ImageDefinition } from '@/engine/models';
 import GameImage from '../GameImage';
 
@@ -70,8 +70,18 @@ export default function LondonLayout({
 
                 <div className={gridClass}>
                     
+                    {mobileSidebarOpen && (
+                        <div className="mobile-backdrop" onClick={() => setMobileSidebarOpen(false)} />
+                    )}
+                    
                     <div className={`sidebar-panel ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
-                        <button className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</button>
+                        <div 
+                            className="mobile-drawer-toggle" 
+                            onClick={() => setMobileSidebarOpen(false)}
+                            title="Close Sidebar"
+                        >
+                            ◀
+                        </div>
                         {sidebarContent}
                     </div>
                     

@@ -23,7 +23,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
     
     const categoriesToDisplay = settings.characterSheetCategories || [];
     const currencyIds = (settings.currencyQualities || []).map(c => c.replace('$', '').trim());
-    const showIcons = settings.showQualityIconsInSheet; // [ADDED]
+    const showIcons = settings.showQualityIconsInSheet;
 
     const characterQualities = useMemo(() => {
         const rawKeys = Object.keys(qualities);

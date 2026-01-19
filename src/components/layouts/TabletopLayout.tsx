@@ -43,8 +43,19 @@ export default function TabletopLayout({
 
     return (
         <div className="layout-grid-tabletop" onMouseMove={handleMouseMove}>
+            
+            {mobileSidebarOpen && (
+                <div className="mobile-backdrop" onClick={() => setMobileSidebarOpen(false)} />
+            )}
+
             <div className={`sidebar-panel ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
-                <div className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</div>
+                <div 
+                    className="mobile-drawer-toggle" 
+                    onClick={() => setMobileSidebarOpen(false)}
+                    title="Close Sidebar"
+                >
+                    ◀
+                </div>
                 {sidebarContent}
             </div>
             <div className="tabletop-visual-col">

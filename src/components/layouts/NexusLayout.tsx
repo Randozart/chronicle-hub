@@ -23,8 +23,19 @@ export default function NexusLayout({ sidebarContent, mainContent, settings, isT
 
     return (
         <div className={containerClass.trim()}>
+
+            {mobileSidebarOpen && (
+                <div className="mobile-backdrop" onClick={() => setMobileSidebarOpen(false)} />
+            )}
+            
             <div className={`sidebar-panel ${mobileSidebarOpen ? 'mobile-visible' : ''}`}>
-                 <div className="mobile-close-btn" onClick={() => setMobileSidebarOpen(false)}>× Close</div>
+                <div 
+                    className="mobile-drawer-toggle" 
+                    onClick={() => setMobileSidebarOpen(false)}
+                    title="Close Sidebar"
+                >
+                    ◀
+                </div>
                 {sidebarContent}
             </div>
             
