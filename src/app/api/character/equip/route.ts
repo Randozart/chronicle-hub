@@ -7,12 +7,17 @@ import { GameEngine } from '@/engine/gameEngine';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = session?.user ? (session.user as any).id : 'guest';
     
-    const userId = (session.user as any).id;
-    const { storyId, slot, itemId } = await request.json();
+    const { storyId, slot, itemId, guestState } = await request.json();
 
-    const character = await getCharacter(userId, storyId);
+    let character = null;
+    if (userId === 'guest' && guestState) {
+        character = guestState;
+    } else {
+        character = await getCharacter(userId, storyId);
+    }
+
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
     const gameData = await getContent(storyId);
@@ -102,8 +107,10 @@ export async function POST(request: NextRequest) {
         }
     }
     
-    await saveCharacterState(character);
-
+    if (userId !== 'guest') {
+        await saveCharacterState(character);
+    }
+    
     return NextResponse.json({ 
         success: true, 
         character,

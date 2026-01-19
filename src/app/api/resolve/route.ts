@@ -11,15 +11,20 @@ import { verifyWorldAccess } from '@/engine/accessControl';
 export async function POST(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session?.user ? (session.user as any).id : 'guest';
 
-        const userId = (session.user as any).id;
-        const { storyletId, optionId, storyId, characterId } = await request.json();
+        const { storyletId, optionId, storyId, characterId, guestState } = await request.json();
         const canDebug = await verifyWorldAccess(storyId, 'writer');
 
         const gameData = await getContent(storyId);
         const worldState = await getWorldState(storyId);
-        let character = await getCharacter(userId, storyId, characterId);
+        let character = null;
+
+        if (userId === 'guest' && guestState) {
+            character = guestState;
+        } else {
+            character = await getCharacter(userId, storyId, characterId);
+        }
 
         if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
             
@@ -186,8 +191,11 @@ export async function POST(request: NextRequest) {
         }
         
         character.currentStoryletId = finalRedirectId || "";
-        await saveCharacterState(character);
-
+        
+        if (userId !== 'guest') {
+            await saveCharacterState(character);
+        }
+        
         const cleanTitle = postResolutionEngine.evaluateText(resolutionTitle(option, engineResult));
         const cleanBody = postResolutionEngine.evaluateText(engineResult.body);
 

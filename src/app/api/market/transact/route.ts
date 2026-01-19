@@ -9,16 +9,22 @@ import { processAutoEquip } from '@/engine/resolutionService';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = session?.user ? (session.user as any).id : 'guest';
     
-    const userId = (session.user as any).id;
-    const { storyId, characterId, marketId, stallId, listingId, quantity } = await request.json();
+    const { storyId, characterId, marketId, stallId, listingId, quantity, guestState } = await request.json();
 
     if (!quantity || quantity < 1) return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 });
 
     const gameData = await getContent(storyId);
     const worldState = await getWorldState(storyId);
-    const character = await getCharacter(userId, storyId, characterId);
+    
+    let character = null;
+    if (userId === 'guest' && guestState) {
+        character = guestState;
+    } else {
+        character = await getCharacter(userId, storyId, characterId);
+    }
+    
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
@@ -83,8 +89,10 @@ export async function POST(request: NextRequest) {
     processAutoEquip(character, engine.changes, gameData);
 
     character.qualities = engine.getQualities();
-    await saveCharacterState(character);
-
+    
+    if (userId !== 'guest') {
+        await saveCharacterState(character);
+    }
     return NextResponse.json({ 
         success: true, 
         newQualities: character.qualities,

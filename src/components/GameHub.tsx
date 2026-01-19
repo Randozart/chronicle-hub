@@ -182,7 +182,7 @@ export default function GameHub(props: GameHubProps) {
             const res = await fetch('/api/character/acknowledge-event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, instanceId: instanceId })
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, instanceId: instanceId, guestState: isGuestMode ? character : undefined })
             });
             const data = await res.json();
             if (data.success && data.character) setCharacter(data.character);
@@ -241,7 +241,7 @@ export default function GameHub(props: GameHubProps) {
         try {
             const response = await fetch('/api/deck/draw', { 
                 method: 'POST',
-                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, deckId }) 
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, deckId, guestState: isGuestMode ? character : undefined }) 
             });
             const data = await response.json();
             if (data.success) {
@@ -266,7 +266,8 @@ export default function GameHub(props: GameHubProps) {
     const handleDeckRegen = useCallback(async () => {
         if (!character) return;
         try {
-            const res = await fetch('/api/deck/regen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId }) });
+            const res = await fetch('/api/deck/regen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, guestState: isGuestMode ? character : undefined }) });
             const data = await res.json();
             if (data.success) {
                 setCharacter(prev => prev ? { ...prev, deckCharges: data.deckCharges, lastDeckUpdate: data.lastDeckUpdate } : null);
@@ -277,7 +278,8 @@ export default function GameHub(props: GameHubProps) {
     const handleDiscard = useCallback(async (deckId: string, cardId: string) => {
         if (!character) return;
         try {
-            const res = await fetch('/api/deck/draw', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, cardId, deckId }) });
+            const res = await fetch('/api/deck/draw', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, cardId, deckId, guestState: isGuestMode ? character : undefined }) });
             const data = await res.json();
             if (data.success) {
                 setHand(prev => prev.filter(c => c.id !== cardId));
@@ -291,7 +293,8 @@ export default function GameHub(props: GameHubProps) {
         if (!character) return;
         setIsTransitioning(true); 
         try {
-            const res = await fetch('/api/travel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId }) });
+            const res = await fetch('/api/travel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ storyId: props.storyId, targetLocationId: targetId, characterId: character.characterId, guestState: isGuestMode ? character : undefined }) });
             const data = await res.json();
             if (data.success) {
                 setShowMap(false);
@@ -554,7 +557,7 @@ export default function GameHub(props: GameHubProps) {
         );
     };
 
-    const sidebarTab = props.settings.tabLocation === 'sidebar';
+    const sidebarTab = props.settings.tabLocation === 'sidebar' && !isMobile;
 
     const buildSidebar = () => {
         if (sidebarTab) {
@@ -746,13 +749,22 @@ export default function GameHub(props: GameHubProps) {
                         engine={renderEngine} 
                         showHidden={showHiddenQualities}
                         onAutofire={(id) => { setActiveTab('story'); showEvent(id, 'story'); }}
+                        isGuestMode={isGuestMode}
+                        character={character}
                     />
                 </div>
             );
         } else if (activeTab === 'living') {
             innerContent = (
                 <div className="content-panel">
-                    <LivingStories pendingEvents={character?.pendingEvents || []} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} engine={renderEngine} onAcknowledge={handleAcknowledgeEvent} />
+                    <LivingStories 
+                        pendingEvents={character?.pendingEvents || []} 
+                        qualityDefs={mergedQualityDefs} 
+                        imageLibrary={props.imageLibrary} 
+                        settings={props.settings} 
+                        engine={renderEngine} 
+                        onAcknowledge={handleAcknowledgeEvent} 
+                    />
                 </div>
             );
         } else if (isLoading) {
@@ -760,7 +772,18 @@ export default function GameHub(props: GameHubProps) {
         } else if (showMarket && activeMarketId) {
             innerContent = (
                 <div className="content-panel">
-                    <MarketInterface market={props.markets[activeMarketId]!} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} onClose={() => setShowMarket(false)} onUpdate={handleQualitiesUpdate} storyId={props.storyId} characterId={character.characterId} worldState={props.worldState} />
+                    <MarketInterface 
+                        market={props.markets[activeMarketId]!} 
+                        qualities={character.qualities} 
+                        qualityDefs={mergedQualityDefs} 
+                        imageLibrary={props.imageLibrary} 
+                        settings={props.settings} 
+                        onClose={() => setShowMarket(false)} 
+                        onUpdate={handleQualitiesUpdate} 
+                        storyId={props.storyId} 
+                        characterId={character.characterId} 
+                        worldState={props.worldState} 
+                    />
                 </div>
             );
         } else if (activeEvent) { 
@@ -768,7 +791,29 @@ export default function GameHub(props: GameHubProps) {
             innerContent = (
                 <div className="event-view">
                     {showHeaderInStorylet && renderHeader()}
-                    <StoryletDisplay eventData={activeEvent} qualities={character.qualities} resolution={activeResolution} onResolve={setActiveResolution} onFinish={handleEventFinish} onQualitiesUpdate={handleQualitiesUpdate} onCardPlayed={handleCardPlayed} qualityDefs={mergedQualityDefs} storyletDefs={props.storyletDefs} opportunityDefs={props.opportunityDefs} settings={props.settings} imageLibrary={props.imageLibrary} categories={props.categories} storyId={props.storyId} characterId={character.characterId} engine={renderEngine} isPlaytesting={props.isPlaytesting} onLog={props.isPlaytesting ? handleLog : undefined} eventSource={eventSource} />
+                    <StoryletDisplay 
+                        eventData={activeEvent} 
+                        qualities={character.qualities} 
+                        resolution={activeResolution} 
+                        onResolve={setActiveResolution} 
+                        onFinish={handleEventFinish} 
+                        onQualitiesUpdate={handleQualitiesUpdate} 
+                        onCardPlayed={handleCardPlayed} 
+                        qualityDefs={mergedQualityDefs} 
+                        storyletDefs={props.storyletDefs} 
+                        opportunityDefs={props.opportunityDefs} 
+                        settings={props.settings} 
+                        imageLibrary={props.imageLibrary} 
+                        categories={props.categories} 
+                        storyId={props.storyId} 
+                        characterId={character.characterId} 
+                        engine={renderEngine} 
+                        isPlaytesting={props.isPlaytesting} 
+                        onLog={props.isPlaytesting ? handleLog : undefined} 
+                        eventSource={eventSource} 
+                        isGuestMode={isGuestMode}
+                        character={character}
+                    />
                 </div>
             );
         } else {
@@ -777,7 +822,15 @@ export default function GameHub(props: GameHubProps) {
                     {renderHeader()}
                     {visibleStorylets.length > 0 && (
                         <div className="storylet-feed" style={{ marginTop: '2rem' }}>
-                            <LocationStorylets storylets={visibleStorylets} onStoryletClick={showEvent} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} settings={props.settings} engine={renderEngine} />
+                            <LocationStorylets 
+                                storylets={visibleStorylets} 
+                                onStoryletClick={showEvent} 
+                                qualities={character.qualities} 
+                                qualityDefs={mergedQualityDefs} 
+                                imageLibrary={props.imageLibrary} 
+                                settings={props.settings} 
+                                engine={renderEngine} 
+                            />
                         </div>
                     )}
                     {deckIds.map(deckId => {
@@ -799,7 +852,25 @@ export default function GameHub(props: GameHubProps) {
                                 <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--text-highlight)', textTransform: 'uppercase', fontSize: '1.1rem', letterSpacing: '1px' }}>
                                     {renderEngine.evaluateText(deckTitle)}
                                 </h3>
-                                <OpportunityHand hand={hand.filter(c => c.deck === deckId)} hasCandidates={hasCandidates} onCardClick={showEvent} onDrawClick={() => handleDrawForDeck(deckId)} onDiscard={(cardId) => handleDiscard(deckId, cardId)} onRegen={handleDeckRegen} actionTimestamp={character.lastActionTimestamp} isLoading={isLoading} qualities={character.qualities} qualityDefs={mergedQualityDefs} imageLibrary={props.imageLibrary} character={character} locationDeckId={deckId} deckDefs={props.deckDefs} settings={props.settings} currentDeckStats={stats} engine={renderEngine} />
+                                <OpportunityHand 
+                                    hand={hand.filter(c => c.deck === deckId)} 
+                                    hasCandidates={hasCandidates} 
+                                    onCardClick={showEvent} 
+                                    onDrawClick={() => handleDrawForDeck(deckId)} 
+                                    onDiscard={(cardId) => handleDiscard(deckId, cardId)} 
+                                    onRegen={handleDeckRegen} 
+                                    actionTimestamp={character.lastActionTimestamp} 
+                                    isLoading={isLoading} 
+                                    qualities={character.qualities} 
+                                    qualityDefs={mergedQualityDefs} 
+                                    imageLibrary={props.imageLibrary} 
+                                    character={character} 
+                                    locationDeckId={deckId} 
+                                    deckDefs={props.deckDefs} 
+                                    settings={props.settings} 
+                                    currentDeckStats={stats} 
+                                    engine={renderEngine} 
+                                />
                             </div>
                         );
                     })}

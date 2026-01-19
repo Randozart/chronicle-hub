@@ -9,16 +9,19 @@ import { Opportunity } from '@/engine/models';
 export async function POST(request: NextRequest) {
     
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userId = (session.user as any).id;
-    const { storyId, characterId, deckId } = await request.json(); 
+    const userId = session?.user ? (session.user as any).id : 'guest';
+    
+    const { storyId, characterId, deckId, guestState } = await request.json(); 
 
     try {
         const gameData = await getContent(storyId);
-        let character = await getCharacter(userId, storyId, characterId);
+        let character = null;
+        
+        if (userId === 'guest' && guestState) {
+            character = guestState;
+        } else {
+            character = await getCharacter(userId, storyId, characterId);
+        }
 
         if (!character) {
             return NextResponse.json({ error: 'Character not found' }, { status: 404 });
@@ -59,8 +62,10 @@ export async function POST(request: NextRequest) {
 
         character = await drawCards(character, targetDeckId, gameData);
         
-        await saveCharacterState(character);
-        
+        if (userId !== 'guest') {
+            await saveCharacterState(character);
+        }
+                
         const handIds = character.opportunityHands[targetDeckId] || [];
         
         const allEvents = await getStorylets(storyId);
@@ -85,27 +90,33 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
-    const userId = (session.user as any).id;
-    const { storyId, characterId, cardId, deckId } = await request.json();
+    const userId = session?.user ? (session.user as any).id : 'guest';
+    const { storyId, characterId, cardId, deckId, guestState } = await request.json();
+    
     try {
-        const character = await getCharacter(userId, storyId, characterId);
-        if (!character) {
-            return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+        
+        let character = null;
+        if (userId === 'guest' && guestState) {
+            character = guestState;
+        } else {
+            character = await getCharacter(userId, storyId, characterId);
         }
 
         if (!character.opportunityHands?.[deckId]) {
             return NextResponse.json({ error: 'Deck not found on character' }, { status: 404 });
         }
 
-        character.opportunityHands[deckId] = character.opportunityHands[deckId].filter(id => id !== cardId);
-        await saveCharacterState(character);
+        character.opportunityHands[deckId] = character.opportunityHands[deckId].filter((id: any) => id !== cardId);
+        
+        if (userId !== 'guest') {
+            await saveCharacterState(character);
+        }
+        
         const handIds = character.opportunityHands[deckId] || [];
         const allEvents = await getStorylets(storyId);
-        const handDefinitions = handIds.map(id => allEvents.find(e => e.id === id)).filter(Boolean);
+        const handDefinitions = handIds.map((id: string) => allEvents.find(e => e.id === id)).filter(Boolean);
+        
         return NextResponse.json({ success: true, hand: handDefinitions });
     } catch (e: any) {
         return NextResponse.json({ message: "Failed to discard card" }, { status: 500 });

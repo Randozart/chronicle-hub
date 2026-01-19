@@ -1,6 +1,6 @@
 'use client';
 
-import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition } from '@/engine/models';
+import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition, CharacterDocument } from '@/engine/models';
 import { useState } from 'react';
 import { evaluateText, evaluateCondition, getChallengeDetails } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
@@ -60,6 +60,8 @@ interface StoryletDisplayProps {
     isPlaytesting?: boolean;
     onLog?: (message: string, type: 'EVAL' | 'COND' | 'FX') => void;
     eventSource?: 'story' | 'item';
+    isGuestMode?: boolean;
+    character?: CharacterDocument;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -83,7 +85,9 @@ export default function StoryletDisplay({
     engine, 
     isPlaytesting,
     onLog,
-    eventSource = 'story'
+    eventSource = 'story',
+    isGuestMode,
+    character
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
     
@@ -103,7 +107,7 @@ export default function StoryletDisplay({
             const response = await fetch('/api/resolve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId, characterId })
+                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId, characterId, guestState: isGuestMode ? character : undefined })
             });
 
             if (response.status === 409) {

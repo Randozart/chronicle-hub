@@ -268,7 +268,13 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                         <button
                             onClick={() => {
                                 if (confirm("Starting a new game will overwrite your current Guest save. Continue?")) {
-                                    skipCreation ? handleStartGame() : window.location.href = `/play/${props.storyId}/creation`;
+                                    localStorage.removeItem(`chronicle_guest_${props.storyId}`);
+                                    
+                                    if (skipCreation) {
+                                        handleStartGame();
+                                    } else {
+                                        window.location.href = `/play/${props.storyId}/creation`;
+                                    }
                                 }
                             }}
                             className="option-button"

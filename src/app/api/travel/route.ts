@@ -6,16 +6,20 @@ import { getContent } from '@/engine/contentCache';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = session?.user ? (session.user as any).id : 'guest';
 
-    const { storyId, targetLocationId, characterId } = await request.json();
-    const userId = (session.user as any).id;
+    const { storyId, targetLocationId, characterId, guestState } = await request.json();
 
     if (!storyId || !targetLocationId || !characterId) {
         return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    const character = await getCharacter(userId, storyId, characterId);
+let character = null;
+    if (userId === 'guest' && guestState) {
+        character = guestState;
+    } else {
+        character = await getCharacter(userId, storyId, characterId);
+    }    
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
     const gameData = await getContent(storyId);
@@ -36,7 +40,9 @@ export async function POST(request: NextRequest) {
         handCleared = true;
     }
 
-    await saveCharacterState(character);
+    if (userId !== 'guest') {
+        await saveCharacterState(character);
+    }
 
     return NextResponse.json({ 
         success: true,

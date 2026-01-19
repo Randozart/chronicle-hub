@@ -29,36 +29,43 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
         }
     }
+    
     console.log(`[API: POST /character/create] Guest creating character in story '${storyId}'.`);
+    
     try {
         const gameData = await getContent(storyId);
         if (!gameData) return NextResponse.json({ error: 'Story not found' }, { status: 404 });
         const tempEngine = new GameEngine({}, gameData);
         for (const ruleId in gameData.char_create) {
             const rule = gameData.char_create[ruleId];
-            const providedVal = choices[ruleId];
-            if (providedVal !== undefined && providedVal !== "") {
-                if (gameData.qualities[ruleId]) {
-                    tempEngine.changeQuality(ruleId, '=', providedVal, { source: 'Creation' });
+            const val = choices[ruleId];
+            
+            const cleanId = ruleId.startsWith('$') ? ruleId.substring(1) : ruleId;
+
+            if (val !== undefined && val !== "") {
+                if (gameData.qualities[cleanId]) {
+                    tempEngine.changeQuality(cleanId, '=', val, { source: 'Creation' });
                 } else {
-                    tempEngine.createNewQuality(ruleId, providedVal, null, {});
+                    tempEngine.createNewQuality(cleanId, val, null, {});
                 }
             } 
             else if (rule.type === 'static' || rule.readOnly) {
-                let val = rule.rule;
+                let calculated = rule.rule;
                 try {
-                    val = tempEngine.evaluateText(rule.rule);
+                    calculated = tempEngine.evaluateText(rule.rule);
                 } catch (e) {}
-                const num = parseFloat(val);
-                const finalVal = !isNaN(num) && val.trim() !== "" ? num : val;
 
-                if (gameData.qualities[ruleId]) {
-                    tempEngine.changeQuality(ruleId, '=', finalVal, { source: 'Creation (Static)' });
+                const num = parseFloat(calculated);
+                const finalVal = !isNaN(num) && calculated.trim() !== "" ? num : calculated;
+
+                if (gameData.qualities[cleanId]) {
+                    tempEngine.changeQuality(cleanId, '=', finalVal, { source: 'Creation (Static)' });
                 } else {
-                    tempEngine.createNewQuality(ruleId, finalVal, null, {});
+                    tempEngine.createNewQuality(cleanId, finalVal, null, {});
                 }
             }
         }
+
         const guestCharacter: CharacterDocument = {
             characterId: `guest_${uuidv4()}`,
             userId: 'guest',

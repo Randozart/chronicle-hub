@@ -27,8 +27,14 @@ export async function proxy(req: NextRequest) {
 
         pathname.startsWith('/play') ||
         pathname.startsWith('/api/character/create') ||
-        pathname.startsWith('/api/character/migrate-guest') 
+        pathname.startsWith('/api/character/migrate-guest') ||
 
+        pathname.startsWith('/api/resolve') ||
+        pathname.startsWith('/api/storylet') ||
+        pathname.startsWith('/api/character/equip') ||
+        pathname.startsWith('/api/deck') ||
+        pathname.startsWith('/api/market') ||
+        pathname.startsWith('/api/travel')
     ) {
         if (token && (
             pathname === '/login' || 

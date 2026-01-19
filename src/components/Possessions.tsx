@@ -1,6 +1,6 @@
 'use client';
 
-import { ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
+import { CharacterDocument, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
@@ -23,6 +23,8 @@ interface PossessionsProps {
     engine: GameEngine;
     showHidden?: boolean;
     onAutofire?: (storyletId: string) => void;
+    isGuestMode?: boolean;
+    character?: CharacterDocument;
 }
 
 const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngine }) => {
@@ -229,6 +231,7 @@ const ItemDisplay = ({
     );
 };
 
+// Deprecated message modal before I had a universal one
 function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: string, onClose: () => void }) {
     if (!isOpen) return null;
     return (
@@ -241,8 +244,23 @@ function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: 
         </div>
     );
 }
+
 export default function Possessions({ 
-    qualities, equipment, qualityDefs, equipCategories, onUpdateCharacter, onUseItem, onRequestTabChange, storyId, imageLibrary, settings, engine, showHidden, onAutofire
+    qualities, 
+    equipment, 
+    qualityDefs, 
+    equipCategories, 
+    onUpdateCharacter, 
+    onUseItem, 
+    onRequestTabChange, 
+    storyId, 
+    imageLibrary, 
+    settings,
+    engine, 
+    showHidden, 
+    onAutofire,
+    isGuestMode,
+    character
 }: PossessionsProps) {
     
     const [isLoading, setIsLoading] = useState(false);
@@ -311,7 +329,8 @@ export default function Possessions({
             }
         }
         try {
-            const res = await fetch('/api/character/equip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storyId, slot: targetSlot, itemId }) });
+            const res = await fetch('/api/character/equip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ storyId, slot: targetSlot, itemId, guestState: isGuestMode ? character : undefined }) });
             const data = await res.json();
             
             if (data.success) {
