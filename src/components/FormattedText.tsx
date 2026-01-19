@@ -1,6 +1,17 @@
 'use client';
 
-import React from 'react';
+import { useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+
+// SECURITY CONFIG
+// Whitelist of trusted domains for externally hosted images.
+// No external websites are whitelisted by default to prevent Tabnabbing or Phishing.
+// For now, I'm just including imgur and ChronicleHub.
+const IMAGE_HOSTNAME_WHITELIST = [
+    'i.imgur.com',
+    'assets.chroniclehub.com', 
+
+];
 
 interface FormattedTextProps {
     text: string | undefined | null;
@@ -9,96 +20,128 @@ interface FormattedTextProps {
 
 export default function FormattedText({ text, inline = false }: FormattedTextProps) {
     if (!text) return null;
-    const renderLines = (blockText: string) => {
-        const lines = blockText.split('\n');
-        return lines.map((line, j) => (
-            <React.Fragment key={j}>
-                {parseInlineFormatting(line)}
-                {j < lines.length - 1 && <br />} 
-            </React.Fragment>
-        ));
-    };
 
-    if (inline) {
-        return <span className="formatted-text-inline">{renderLines(text)}</span>;
-    }
+    const processedText = useMemo(() => {
+        let processed = text;
+        
+        // Convert [Emphasis] to Markdown Link syntax, BUT ignore escaped brackets \[...\]
+        // Brackets are still included, because they were part of the StoryNexus syntax for colored text.
+        
+        // Regex Explanation:
+        // 1. (^|[^\\])         -> Start of line OR any character that isn't a backslash (Group 1)
+        // 2. \[                -> Opening bracket
+        // 3. ((?:[^\]\\]|\\.)+) -> Content Group (Group 2):
+        //                         Matches any char that isn't ] or \, OR a backslash followed by any char.
+        //                         This allows \[ and \] to exist inside the block without breaking it.
+        // 4. \]                -> Closing bracket
+        // 5. (?!\()            -> Negative lookahead (ensure it's not a standard Markdown link)
+        processed = processed.replace(/(^|[^\\])\[((?:[^\]\\]|\\.)+)\](?!\()/g, '$1[$2](#emphasis)');
+        
+        // Preserve newlines
+        processed = processed.replace(/\n/g, '  \n');
 
-    const paragraphs = text.split(/\n\s*\n/);
+        return processed;
+    }, [text]);
+
+    const Wrapper = inline ? 'span' : 'div';
 
     return (
-        <>
-            {paragraphs.map((paragraph, i) => {
-                if (!paragraph.trim()) return null;
-                
-                return (
-                    <p key={i} style={{ margin: '0 0 1em 0' }}> 
-                        {renderLines(paragraph)}
-                    </p>
-                );
-            })}
-        </>
+        <Wrapper className={inline ? "formatted-text-inline" : "formatted-text-block"}>
+            <ReactMarkdown
+                components={{
+                    a: ({ href, children, ...props }) => {
+                        if (href === '#emphasis') {
+                            return <span className="text-emphasis">{children}</span>;
+                        }
+                        
+                        return (
+                            <a 
+                                href={href} 
+                                target="_blank"          
+                                rel="noopener noreferrer"
+                                {...props} 
+                                style={{ color: 'var(--accent-highlight)', textDecoration: 'underline' }}
+                                title="Opens in a new tab"
+                            >
+                                {children}
+                                <span style={{fontSize: '0.8em', verticalAlign: 'super', marginLeft: '2px'}}>↗</span>
+                            </a>
+                        );
+                    },
+                    
+                    img: ({ src, alt, ...props }) => {
+                        if (typeof src !== 'string' || !src) return null;
+
+                        try {
+                            const url = new URL(src);
+                            if (IMAGE_HOSTNAME_WHITELIST.includes(url.hostname)) {
+                                return (
+                                    <img 
+                                        src={src} 
+                                        alt={alt} 
+                                        referrerPolicy="no-referrer" 
+                                        style={{ maxWidth: '100%', height: 'auto', borderRadius: 'var(--border-radius)' }} 
+                                        {...props} 
+                                    />
+                                );
+                            }
+                        } catch (e) {
+                            console.warn("Invalid image URL detected:", src);
+                            return <em style={{color: 'var(--danger-color)'}}>[Invalid Image URL]</em>;
+                        }
+
+                        return <em style={{color: 'var(--danger-color)'}}>[Untrusted Image Host]</em>;
+                    },
+
+                    p: ({ children }) => {
+                        if (inline) {
+                            return <span style={{ display: 'inline' }}>{children}</span>;
+                        }
+                        return <p style={{ margin: '0 0 1em 0' }}>{children}</p>;
+                    },
+
+                    code: ({ children }) => (
+                        <code style={{ 
+                            background: 'rgba(127, 127, 127, 0.2)', 
+                            padding: '2px 4px', 
+                            borderRadius: '3px', 
+                            fontSize: '0.9em',
+                            fontFamily: 'monospace',
+                            color: 'var(--text-primary)'
+                        }}>
+                            {children}
+                        </code>
+                    )
+                }}
+            >
+                {processedText}
+            </ReactMarkdown>
+        </Wrapper>
     );
 }
-const PLACEHOLDER_SENTINEL = '\uE000';
-function parseInlineFormatting(line: string): React.ReactNode[] {
-    if (!line) return [];
 
-    const escapes: string[] = [];
-    const placeholderLine = line.replace(/`(.+?)`/g, (match, content) => {
-        escapes.push(content);
-        return `${PLACEHOLDER_SENTINEL}${escapes.length - 1}${PLACEHOLDER_SENTINEL}`;
-    });
-
-    function substituteEscapes(text: string): React.ReactNode[] {
-        if (!text.includes(PLACEHOLDER_SENTINEL)) {
-            return [text];
-        }
-        const placeholderRegex = new RegExp(`(${PLACEHOLDER_SENTINEL}\\d+${PLACEHOLDER_SENTINEL})`, 'g');
-        const parts = text.split(placeholderRegex);
-
-        return parts.map((part) => {
-            if (part.startsWith(PLACEHOLDER_SENTINEL) && part.endsWith(PLACEHOLDER_SENTINEL)) {
-                const index = parseInt(part.slice(1, -1), 10);
-                return escapes[index];
-            }
-            return part;
-        }).filter(part => part !== '');
-    }
-    const formattingRegex = /(\*\*(?:.+?)\*\*|_(?:.+?)_|\*(?:.+?)\*|\[(?:[^\]]+)\])/g;
-
-    function recursiveParse(subLine: string): React.ReactNode[] {
-        const results: React.ReactNode[] = [];
-        let lastIndex = 0;
-        const matches = Array.from(subLine.matchAll(formattingRegex));
-
-        for (const match of matches) {
-            const segment = match[0];
-            const index = match.index!;
-
-            if (index > lastIndex) {
-                results.push(...substituteEscapes(subLine.slice(lastIndex, index)));
-            }
-
-            if (segment.startsWith('**') && segment.endsWith('**')) {
-                results.push(<strong key={index}>{recursiveParse(segment.slice(2, -2))}</strong>);
-            } else if ((segment.startsWith('_') && segment.endsWith('_')) || (segment.startsWith('*') && segment.endsWith('*'))) {
-                results.push(<em key={index}>{recursiveParse(segment.slice(1, -1))}</em>);
-            } else if (segment.startsWith('[') && segment.endsWith(']')) {
-                results.push(
-                    <span key={index} className="text-emphasis">
-                        {recursiveParse(segment.slice(1, -1))}
-                    </span>
-                );
-            }
-            lastIndex = index + segment.length;
-        }
-
-        if (lastIndex < subLine.length) {
-            results.push(...substituteEscapes(subLine.slice(lastIndex)));
-        }
-
-        return results;
-    }
-
-    return recursiveParse(placeholderLine);
-}
+/*
+ * MARKDOWN SYNTAX REFERENCE
+ * ----------------------------------------------------------------------
+ * This component supports standard CommonMark syntax with custom extensions.
+ *
+ * CUSTOM SYNTAX:
+ * [Text]             -> Highlighted/Emphasis text (Theme color)
+ * \[Text\]           -> Literal bracketed text (No highlight)
+ * [\[Tag\] Text]     -> Highlighted text containing brackets
+ *
+ * STANDARD MARKDOWN:
+ * **Bold**           -> Bold text
+ * *Italic*           -> Italic text
+ * # Header 1-6       -> Headings (# H1, ## H2, etc.)
+ * > Quote            -> Blockquote
+ * - List Item        -> Unordered List
+ * 1. List Item       -> Ordered List
+ * `Code`             -> Inline Monospace/Code
+ * ```                -> Code Block
+ * ---                -> Horizontal Rule (Divider)
+ * [Link](url)        -> External Hyperlink
+ * ![Alt](url)        -> Image
+ *
+ * Note: Newlines are automatically preserved as line breaks.
+ */
