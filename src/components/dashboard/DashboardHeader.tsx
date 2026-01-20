@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import MainLogo from '@/components/icons/MainLogo';
 import ThemeControls from '@/components/ui/ThemeControls';
-import { useEffect } from 'react';
+import { useState } from 'react';
+import TermsModal from '@/components/TermsModal';
 
 interface Props {
     activePage?: 'dashboard' | 'profile';
@@ -13,9 +14,20 @@ interface Props {
 export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
     const { data: session, status } = useSession();
     const isGuest = status === 'unauthenticated';
+    const [showTerms, setShowTerms] = useState(false);
+
+    const getProfileSrc = (img: string | null | undefined) => {
+        if (!img) return null;
+        if (img.startsWith('http') || img.startsWith('/')) return img;
+        return `/images/uploads/${img}.png`;
+    };
+
+    const profileSrc = getProfileSrc(session?.user?.image);
 
     return (
         <div className="dashboard-header">
+            <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+            
             <div className="header-brand">
                 <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', color: 'inherit' }}>
                     <MainLogo width={40} height={40} />
@@ -31,6 +43,7 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
             
             <div className="header-controls">
                 <ThemeControls />
+                
                 {activePage === 'profile' && (
                     <Link 
                         href="/" 
@@ -48,6 +61,14 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
                         <span>←</span> Exit
                     </Link>
                 )}
+
+                <button 
+                    onClick={() => setShowTerms(true)} 
+                    className="header-link" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                    Terms
+                </button>
 
                 <Link href="/docs" className="header-link">Docs</Link>
                 
@@ -67,9 +88,8 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
                                         background: 'var(--bg-item)', border: '1px solid var(--border-color)',
                                         flexShrink: 0
                                     }}>
-                                        {/* [FIX] Ensure src exists before rendering img tag */}
-                                        {session?.user?.image ? (
-                                            <img src={session.user.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Profile" />
+                                        {profileSrc ? (
+                                            <img src={profileSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Profile" />
                                         ) : (
                                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>?</div>
                                         )}

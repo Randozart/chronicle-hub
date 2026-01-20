@@ -37,7 +37,9 @@ export const authOptions: NextAuthOptions = {
                 id: user._id.toString(),
                 name: user.username,
                 email: user.email,
-                roles: user.roles || [] 
+                image: user.image,           
+                roles: user.roles || [],
+                tosAgreedAt: user.tosAgreedAt 
             };
         },
       }),
@@ -54,6 +56,7 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 token.roles = user.roles;
+                token.picture = user.image; 
                 token.tosAgreed = !!user.tosAgreedAt;
             }
             
@@ -72,6 +75,7 @@ export const authOptions: NextAuthOptions = {
                 (session.user as any).id = token.id;
                 (session.user as any).roles = token.roles;
                 (session.user as any).hasAgreedToTos = token.tosAgreed;
+                session.user.image = token.picture; 
             }
             return session;
         },
