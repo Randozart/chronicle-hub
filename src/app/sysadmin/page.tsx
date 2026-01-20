@@ -1,164 +1,136 @@
 'use client';
+import { useState } from 'react';
+import OverviewTab from '@/components/admin/dashboard/OverviewTab';
+import UserManagement from '@/components/admin/dashboard/UserManagement';
+import WorldManagement from '@/components/admin/dashboard/WorldManagement';
+import SystemConfig from '@/components/admin/dashboard/SystemConfig';
 
-import { useState, useEffect } from 'react';
-import SmartArea from '@/components/admin/SmartArea';
+const ChartIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3v18h18" />
+        <path d="M18 17V9" />
+        <path d="M13 17V5" />
+        <path d="M8 17v-3" />
+    </svg>
+);
+
+const UsersIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+);
+
+const GlobeIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="2" y1="12" x2="22" y2="12" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+);
+
+const BroadcastIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 12a3 3 0 0 0-3-3h-2v6h2a3 3 0 0 0 3-3Z" />
+        <path d="M17 17v-6a2 2 0 0 0-2-2H6l-3 3v2l3 3h9a2 2 0 0 0 2-2Z" />
+        <path d="M2 8v8" />
+    </svg>
+);
 
 export default function SysAdminPage() {
-    const [announcementForm, setAnnouncementForm] = useState({
-        id: '', title: '', content: '', severity: 'info', enabled: false
-    });
-    
-    const [tosContent, setTosContent] = useState('');
+    const [activeTab, setActiveTab] = useState('overview');
 
-    const [isLoading, setIsLoading] = useState(true);
-    const [status, setStatus] = useState('');
-
-    useEffect(() => {
-        fetch('/api/sysadmin/announcement')
-            .then(res => {
-                if (res.status === 403) throw new Error("Unauthorized");
-                return res.json();
-            })
-            .then(data => {
-                if (data && !data.error) {
-                    setAnnouncementForm({
-                        id: data.real_id || '',
-                        title: data.title || '',
-                        content: data.content || '',
-                        severity: data.severity || 'info',
-                        enabled: !!data.enabled
-                    });
-                }
-            })
-            .catch(e => setStatus(e.message))
-            .finally(() => setIsLoading(false));
-
-        fetch('/api/legal/tos')
-            .then(res => res.json())
-            .then(data => setTosContent(data.content))
-            .catch(console.error);
-    }, []);
-
-    const handleSaveAnnouncement = async () => {
-        setStatus('Saving Announcement...');
-        try {
-            const res = await fetch('/api/sysadmin/announcement', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(announcementForm)
-            });
-            if (res.ok) setStatus('Announcement Published');
-            else setStatus('Error Saving Announcement');
-        } catch (e) { console.error(e); setStatus('Network Error'); }
+    const renderTab = () => {
+        switch (activeTab) {
+            case 'users': return <UserManagement />;
+            case 'worlds': return <WorldManagement />;
+            case 'config': return <SystemConfig />;
+            default: return <OverviewTab />;
+        }
     };
-
-    const handleSaveTos = async () => {
-        setStatus('Saving ToS...');
-        try {
-            const res = await fetch('/api/sysadmin/tos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: tosContent })
-            });
-            if (res.ok) setStatus('ToS Updated');
-            else setStatus('Error Saving ToS');
-        } catch (e) { console.error(e); setStatus('Network Error'); }
-    };
-
-    if (isLoading) return <div style={{padding:'2rem', color:'#ccc'}}>Checking credentials...</div>;
-    if (status === 'Unauthorized') return <div style={{padding:'2rem', color:'red'}}>ACCESS DENIED. You are not the SysAdmin.</div>;
 
     return (
-        <div style={{ maxWidth: '900px', margin: '4rem auto', padding: '2rem', background: '#181a1f', border: '1px solid #333', borderRadius: '8px', color: '#ccc' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '1rem', marginBottom: '2rem' }}>
-                <h1 style={{ margin: 0, color: '#61afef' }}>SysAdmin Console</h1>
-                <div style={{ color: status.includes('Error') ? '#e06c75' : '#98c379', fontWeight: 'bold' }}>{status}</div>
-            </div>
-            
-            <div style={{ marginBottom: '3rem' }}>
-                <h3 style={{ color: '#fff', borderLeft: '4px solid #c678dd', paddingLeft: '10px' }}>Platform Announcement</h3>
-                <p style={{ fontSize: '0.9rem', color: '#777', marginBottom: '1.5rem' }}>
-                    This message appears on the Dashboard for ALL users.
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                        <label className="form-label">Message ID (Version)</label>
-                        <input 
-                            className="form-input" 
-                            value={announcementForm.id} 
-                            onChange={e => setAnnouncementForm({ ...announcementForm, id: e.target.value })} 
-                            placeholder="e.g. patch-2.0"
-                        />
-                    </div>
-                    <div>
-                        <label className="form-label">Severity</label>
-                        <select 
-                            className="form-select" 
-                            value={announcementForm.severity} 
-                            onChange={e => setAnnouncementForm({ ...announcementForm, severity: e.target.value })}
-                        >
-                            <option value="info">Info (Blue)</option>
-                            <option value="warning">Warning (Yellow)</option>
-                            <option value="critical">Critical (Red)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label className="form-label">Title</label>
-                    <input 
-                        className="form-input" 
-                        value={announcementForm.title} 
-                        onChange={e => setAnnouncementForm({ ...announcementForm, title: e.target.value })} 
+        <div style={{ minHeight: '100vh', background: '#141414', color: '#ccc', display: 'flex' }}>
+            <div style={{ width: '250px', background: '#181a1f', borderRight: '1px solid #333', padding: '2rem 1rem', flexShrink: 0 }}>
+                <h2 style={{ color: '#61afef', margin: '0 0 2rem 0', paddingLeft: '1rem', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    SysAdmin
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <NavBtn 
+                        label="Overview" 
+                        id="overview" 
+                        active={activeTab} 
+                        set={setActiveTab} 
+                        icon={<ChartIcon />} 
+                    />
+                    <NavBtn 
+                        label="Users & Roles" 
+                        id="users" 
+                        active={activeTab} 
+                        set={setActiveTab} 
+                        icon={<UsersIcon />} 
+                    />
+                    <NavBtn 
+                        label="Worlds" 
+                        id="worlds" 
+                        active={activeTab} 
+                        set={setActiveTab} 
+                        icon={<GlobeIcon />} 
+                    />
+                    <NavBtn 
+                        label="Announcements" 
+                        id="config" 
+                        active={activeTab} 
+                        set={setActiveTab} 
+                        icon={<BroadcastIcon />} 
                     />
                 </div>
-
-                <div className="form-group">
-                    <SmartArea 
-                        label="Content" 
-                        value={announcementForm.content} 
-                        onChange={v => setAnnouncementForm({ ...announcementForm, content: v })} 
-                        storyId="sysadmin"
-                        minHeight="100px"
-                    />
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem' }}>
-                    <label className="toggle-label" style={{ fontSize: '1rem' }}>
-                        <input 
-                            type="checkbox" 
-                            checked={announcementForm.enabled} 
-                            onChange={e => setAnnouncementForm({ ...announcementForm, enabled: e.target.checked })} 
-                        />
-                        Announcement Active
-                    </label>
-                    <button onClick={handleSaveAnnouncement} className="save-btn">Publish Announcement</button>
+                <div style={{ marginTop: 'auto', paddingTop: '2rem', fontSize: '0.7rem', color: '#555', textAlign: 'center' }}>
+                    ChronicleHub Admin v2.1
                 </div>
             </div>
 
-            <div style={{ borderTop: '1px solid #333', paddingTop: '2rem' }}>
-                <h3 style={{ color: '#fff', borderLeft: '4px solid #e5c07b', paddingLeft: '10px' }}>Legal: Terms of Service</h3>
-                <p style={{ fontSize: '0.9rem', color: '#777', marginBottom: '1.5rem' }}>
-                    This text is displayed in the Registration modal. Use Markdown.
-                </p>
-                
-                <div className="form-group">
-                    <textarea 
-                        className="form-textarea" 
-                        value={tosContent}
-                        onChange={(e) => setTosContent(e.target.value)}
-                        rows={15}
-                        style={{ fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: '1.4' }}
-                    />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                    <button onClick={handleSaveTos} className="save-btn" style={{ backgroundColor: '#e5c07b', color: '#000' }}>
-                        Update Terms
-                    </button>
+            {/* Main Content */}
+            <div style={{ flex: 1, padding: '3rem', overflowY: 'auto' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                    <h1 style={{ marginTop: 0, marginBottom: '2rem', color: '#fff', borderBottom: '1px solid #333', paddingBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '1.5rem' }}>
+                        {activeTab === 'overview' && 'Dashboard Overview'}
+                        {activeTab === 'users' && 'User Management'}
+                        {activeTab === 'worlds' && 'World Registry'}
+                        {activeTab === 'config' && 'System Configuration'}
+                    </h1>
+                    {renderTab()}
                 </div>
             </div>
         </div>
+    );
+}
+
+function NavBtn({ label, id, active, set, icon }: { label: string, id: string, active: string, set: (id: string) => void, icon: React.ReactNode }) {
+    const isActive = active === id;
+    return (
+        <button 
+            onClick={() => set(id)}
+            style={{
+                background: isActive ? 'rgba(97, 175, 239, 0.1)' : 'transparent',
+                color: isActive ? '#61afef' : '#abb2bf',
+                border: 'none',
+                borderLeft: `3px solid ${isActive ? '#61afef' : 'transparent'}`,
+                padding: '0.8rem 1rem',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                transition: 'all 0.2s',
+                borderRadius: '0 4px 4px 0'
+            }}
+        >
+            <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span> 
+            {label}
+        </button>
     );
 }
