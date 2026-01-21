@@ -38,6 +38,14 @@ export async function PATCH(request: NextRequest) {
     const { worldId, action } = await request.json();
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
+    
+    if (action === 'unpublish') {
+        await db.collection('worlds').updateOne({ worldId }, { $set: { published: false } });
+    }
+    if (action === 'toggle_feature') {
+        const world = await db.collection('worlds').findOne({ worldId });
+        await db.collection('worlds').updateOne({ worldId }, { $set: { featured: !world?.featured } });
+    }
 
     if (action === 'unpublish') {
         await db.collection('worlds').updateOne({ worldId }, { $set: { published: false } });

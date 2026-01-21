@@ -10,12 +10,13 @@ export default function WorldManagement() {
 
     useEffect(() => { fetchWorlds(); }, []);
 
-    const togglePublish = async (worldId: string) => {
-        if (!confirm("Are you sure you want to FORCE UNPUBLISH this world?")) return;
+    const togglePublish = async (worldId: string, action: string = 'unpublish') => {
+        if (action === 'unpublish' && !confirm("Are you sure you want to FORCE UNPUBLISH this world?")) return;
+        
         await fetch('/api/sysadmin/worlds', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ worldId, action: 'unpublish' })
+            body: JSON.stringify({ worldId, action })
         });
         fetchWorlds();
     };
@@ -58,6 +59,15 @@ export default function WorldManagement() {
                                         ? <span style={{ color: '#98c379' }}>● Live</span> 
                                         : <span style={{ color: '#555' }}>○ Draft</span>
                                     }
+                                </td>
+                                 <td style={{ padding: '1rem', display: 'flex', gap: '10px' }}>
+                                    <button 
+                                        onClick={() => togglePublish(w.worldId, 'toggle_feature')}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', filter: w.featured ? 'none' : 'grayscale(1)' }}
+                                        title="Feature this world"
+                                    >
+                                        ⭐
+                                    </button>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
                                     {w.published && (

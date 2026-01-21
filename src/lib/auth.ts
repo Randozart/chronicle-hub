@@ -24,6 +24,10 @@ export const authOptions: NextAuthOptions = {
             
             if (!user || !user.password) return null;
 
+            if (user.isBanned) {
+                throw new Error(`Account Suspended: ${user.banReason || "Violation of Terms"}`);
+            }
+
             const isWhitelisted = await isEmailWhitelisted(user.email);
 
             if (!user.emailVerified && !isWhitelisted) {

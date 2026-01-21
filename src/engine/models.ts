@@ -366,6 +366,8 @@ export interface UserDocument {
     assets?: GlobalAsset[];
     acknowledgedPlatformMessages?: string[];
     tosAgreedAt?: Date;
+    isBanned?: Boolean;
+    banReason?: string;
 }
 export type AssetType = 'instrument' | 'track' | 'image';
 

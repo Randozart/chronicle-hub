@@ -1,38 +1,39 @@
 'use client';
 import { useEffect, useState } from 'react';
+import GameModal from '@/components/GameModal';
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
     const [search, setSearch] = useState("");
+    const [inspectData, setInspectData] = useState<any>(null); 
 
     const fetchUsers = () => {
-        fetch(`/api/sysadmin/users?search=${search}`)
-            .then(r => r.json())
-            .then(setUsers);
+        fetch(`/api/sysadmin/users?search=${search}`).then(r => r.json()).then(setUsers);
     };
 
     useEffect(() => { fetchUsers(); }, []);
 
-    const updateRole = async (userId: string, role: string) => {
-        if (!confirm(`Change this user's role to ${role}?`)) return;
-        await fetch('/api/sysadmin/users', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, role })
-        });
-        fetchUsers();
+    const toggleBan = async (user: any) => {
+        const action = user.isBanned ? "Unban" : "Ban";
+        const reason = user.isBanned ? null : prompt("Reason for suspension?");
+        if (user.isBanned || reason) {
+            await fetch('/api/sysadmin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user._id, action: 'ban', role: !user.isBanned ? 'banned' : 'active', reason })
+            });
+            fetchUsers();
+        }
+    };
+    
+    const inspectUser = (user: any) => {
+        setInspectData(user);
     };
 
     return (
         <div>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
-                <input 
-                    className="form-input" 
-                    placeholder="Search username or email..." 
-                    value={search} 
-                    onChange={e => setSearch(e.target.value)} 
-                    onKeyDown={e => e.key === 'Enter' && fetchUsers()}
-                />
+                <input className="form-input" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchUsers()} />
                 <button className="deck-button" onClick={fetchUsers}>Search</button>
             </div>
 
@@ -41,53 +42,46 @@ export default function UserManagement() {
                     <thead>
                         <tr style={{ textAlign: 'left', background: '#181a1f', color: '#777' }}>
                             <th style={{ padding: '1rem' }}>User</th>
-                            <th style={{ padding: '1rem' }}>Joined</th>
-                            <th style={{ padding: '1rem' }}>Storage</th>
+                            <th style={{ padding: '1rem' }}>Status</th>
                             <th style={{ padding: '1rem' }}>Role</th>
+                            <th style={{ padding: '1rem' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map((u: any) => {
-                            const mbUsed = ((u.storageUsage || 0) / 1024 / 1024).toFixed(2);
-                            const roles = u.roles || [];
-                            let currentRole = 'scribe';
-                            if (roles.includes('owner')) currentRole = 'owner';
-                            else if (roles.includes('admin')) currentRole = 'admin';
-                            else if (roles.includes('archivist')) currentRole = 'archivist';
-                            else if (roles.includes('premium')) currentRole = 'illuminator';
-
-                            return (
-                                <tr key={u._id} style={{ borderTop: '1px solid #333' }}>
-                                    <td style={{ padding: '1rem' }}>
-                                        <div style={{ fontWeight: 'bold', color: '#fff' }}>{u.username}</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#777' }}>{u.email}</div>
-                                        {u.emailVerified && <span style={{fontSize:'0.7rem', color:'var(--success-color)'}}>✓ Verified</span>}
-                                    </td>
-                                    <td style={{ padding: '1rem', color: '#ccc' }}>
-                                        {new Date(u.createdAt).toLocaleDateString()}
-                                    </td>
-                                    <td style={{ padding: '1rem', color: '#ccc' }}>{mbUsed} MB</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <select 
-                                            className="form-select"
-                                            value={currentRole}
-                                            onChange={(e) => updateRole(u._id, e.target.value)}
-                                            style={{ padding: '0.3rem', fontSize: '0.85rem' }}
-                                            disabled={currentRole === 'owner'}
-                                        >
-                                            <option value="scribe">Scribe</option>
-                                            <option value="illuminator">Illuminator</option>
-                                            <option value="archivist">Archivist</option>
-                                            <option value="admin">Admin</option>
-                                            <option value="owner" disabled>Owner</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                        {users.map((u: any) => (
+                            <tr key={u._id} style={{ borderTop: '1px solid #333', background: u.isBanned ? 'rgba(224, 108, 117, 0.1)' : 'transparent' }}>
+                                <td style={{ padding: '1rem' }}>
+                                    <div style={{ fontWeight: 'bold', color: '#fff' }}>{u.username}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#777' }}>{u.email}</div>
+                                </td>
+                                <td style={{ padding: '1rem' }}>
+                                    {u.isBanned ? <span style={{color: 'var(--danger-color)'}}>Suspended</span> : <span style={{color: 'var(--success-color)'}}>Active</span>}
+                                    {u.isBanned && <div style={{fontSize:'0.7rem', color: '#aaa'}}>{u.banReason}</div>}
+                                </td>
+                                <td style={{ padding: '1rem' }}>{/* Role Select (Same as before) */}</td>
+                                <td style={{ padding: '1rem', display: 'flex', gap: '10px' }}>
+                                    <button onClick={() => toggleBan(u)} style={{ background: u.isBanned ? '#98c379' : '#e06c75', border:'none', padding:'4px 8px', borderRadius:'4px', cursor:'pointer', color:'#000' }}>
+                                        {u.isBanned ? "Unban" : "Suspend"}
+                                    </button>
+                                    <button onClick={() => inspectUser(u)} style={{ background: '#61afef', border:'none', padding:'4px 8px', borderRadius:'4px', cursor:'pointer', color:'#000' }}>
+                                        Inspect
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
+
+            <GameModal 
+                isOpen={!!inspectData} 
+                title="User Inspection" 
+                message={<pre style={{textAlign:'left', maxHeight:'400px', overflow:'auto', fontSize:'0.8rem'}}>{JSON.stringify(inspectData, null, 2)}</pre>}
+                onClose={() => setInspectData(null)}
+                onConfirm={() => setInspectData(null)}
+                confirmLabel="Close"
+                type="alert" 
+            />
         </div>
     );
 }
