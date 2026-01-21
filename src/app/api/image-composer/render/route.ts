@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/engine/database';
 import { getAssetBuffer } from '@/engine/storageService';
-import { getThemeColors } from '@/engine/themeParser';
+import { getAllThemes } from '@/engine/themeParser';
 import { ImageComposition, CompositionLayer } from '@/engine/models';
 import sharp from 'sharp';
 const RENDER_CACHE = new Map<string, Buffer>();
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
         if (!composition) {
             return NextResponse.json({ error: 'Composition not found' }, { status: 404 });
         }
-        const themeColors = getThemeColors(themeName);
+        const allThemes = await getAllThemes();
+        const themeColors = { ...(allThemes[':root'] || {}), ...(allThemes[themeName] || {}) };        
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
 

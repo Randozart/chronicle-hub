@@ -34,10 +34,11 @@ interface Props {
     onSave: (data: ImageComposition) => void;
     onDelete: () => void;
     guardRef: { current: FormGuard | null };
+    allThemes: Record<string, Record<string, string>>;
 }
 const imageElementCache = new Map<string, HTMLImageElement>();
 
-export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef }: Props) {
+export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes}: Props) {
     const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
         '/api/admin/compositions',
@@ -151,7 +152,8 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 if (img.complete) {
                     const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
                     if (isSvg && layer.tintColor) {
-                        const resolvedTint = resolveCssVariable(layer.tintColor);
+                        const worldTheme = 'default'; 
+                        const resolvedTint = resolveCssVariable(layer.tintColor, worldTheme, allThemes);
                         const offscreenCanvas = document.createElement('canvas');
                         offscreenCanvas.width = img.width;
                         offscreenCanvas.height = img.height;
@@ -424,6 +426,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                                     <ColorPickerInput 
                                         value={selectedLayer.tintColor || ''}
                                         onChange={color => updateLayer(selectedLayer.id, { tintColor: color })}
+                                        allThemes={allThemes} 
                                     />
                                 </div>
 

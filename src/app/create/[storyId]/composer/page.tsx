@@ -9,11 +9,15 @@ import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
 import { FormGuard } from '@/hooks/useCreatorForm';
 import ComposerEditor from './components/ComposerEditor';
+import { getAllThemes } from '@/engine/themeParser';
+
 
 export default function ComposerPage({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const { showToast } = useToast();
     
+    const [allThemes, setAllThemes] = useState<Record<string, Record<string, string>>>({});
+
     const [items, setItems] = useState<ImageComposition[]>([]);
     const [assets, setAssets] = useState<GlobalAsset[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -34,12 +38,17 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
     useEffect(() => {
         Promise.all([
             fetch(`/api/admin/compositions?storyId=${storyId}`),
-            fetch(`/api/admin/assets/mine`)
-        ]).then(async ([compRes, assetRes]) => {
+            fetch(`/api/admin/assets/mine`),
+            fetch(`/api/admin/themes`) 
+        ]).then(async ([compRes, assetRes, themeRes]) => { 
             if (compRes.ok) setItems(await compRes.json());
             if (assetRes.ok) {
                 const data = await assetRes.json();
                 setAssets(data.assets || []);
+            }
+            if (themeRes.ok) {
+                const data = await themeRes.json();
+                setAllThemes(data.themes || {});
             }
         }).finally(() => setIsLoading(false));
     }, [storyId]);
@@ -110,6 +119,7 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                         initialData={activeItem}
                         storyId={storyId}
                         assets={assets}
+                        allThemes={allThemes}
                         onSave={handleSave}
                         onDelete={() => setConfirmModal({ isOpen: true, id: activeItem.id })}
                         guardRef={guardRef}

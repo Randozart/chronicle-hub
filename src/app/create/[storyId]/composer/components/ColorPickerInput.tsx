@@ -1,30 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 
 interface Props {
     value: string;
     onChange: (newValue: string) => void;
+    allThemes: Record<string, Record<string, string>>;
 }
-let themeVarCache: string[] | null = null;
 
-export default function ColorPickerInput({ value, onChange }: Props) {
-    const [themeVars, setThemeVars] = useState<string[]>(themeVarCache || []);
+export default function ColorPickerInput({ value, onChange, allThemes }: Props) {
     const isThemeVar = value?.startsWith('var(');
 
-    useEffect(() => {
-        if (!themeVarCache) {
-            fetch('/api/admin/themes')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.variables) {
-                        themeVarCache = data.variables;
-                        setThemeVars(data.variables);
-                    }
-                })
-                .catch(err => console.error("Failed to fetch theme variables:", err));
-        }
-    }, []);
+    const themeVars = useMemo(() => Object.keys(allThemes[':root'] || {}), [allThemes]);
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -51,3 +38,4 @@ export default function ColorPickerInput({ value, onChange }: Props) {
         </div>
     );
 }
+
