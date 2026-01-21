@@ -6,6 +6,7 @@ import MainLogo from '@/components/icons/MainLogo';
 import ThemeControls from '@/components/ui/ThemeControls';
 import { useState } from 'react';
 import TermsModal from '@/components/TermsModal';
+import ContactModal from '@/components/ContactModal';
 
 interface Props {
     activePage?: 'dashboard' | 'profile';
@@ -14,7 +15,9 @@ interface Props {
 export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
     const { data: session, status } = useSession();
     const isGuest = status === 'unauthenticated';
+    
     const [showTerms, setShowTerms] = useState(false);
+    const [showContact, setShowContact] = useState(false); 
 
     const getProfileSrc = (img: string | null | undefined) => {
         if (!img) return null;
@@ -27,6 +30,7 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
     return (
         <div className="dashboard-header">
             <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+            <ContactModal isOpen={showContact} onClose={() => setShowContact(false)} /> 
             
             <div className="header-brand">
                 <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', color: 'inherit' }}>
@@ -61,6 +65,14 @@ export default function DashboardHeader({ activePage = 'dashboard' }: Props) {
                         <span>←</span> Exit
                     </Link>
                 )}
+
+                <button 
+                    onClick={() => setShowContact(true)} 
+                    className="header-link" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                    Support
+                </button>
 
                 <button 
                     onClick={() => setShowTerms(true)} 
