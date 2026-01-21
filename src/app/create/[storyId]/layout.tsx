@@ -6,9 +6,8 @@ import AdminSidebarFooter from '@/components/admin/AdminSidebarFooter';
 import { ToastProvider } from '@/providers/ToastProvider';
 import { useEffect, useState, use } from 'react';
 import { usePathname } from 'next/navigation';
-import RefactorModal from '@/components/admin/RefactorModal'; // [NEW]
+import RefactorModal from '@/components/admin/RefactorModal';
 
-// Icons
 const RefactorIcon = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '8px'}}>
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -22,7 +21,6 @@ export default function AdminLayout({ children, params }: { children: React.Reac
     const [showNav, setShowNav] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
     
-    // [NEW] Global Refactor State
     const [showRefactor, setShowRefactor] = useState(false);
     
     useEffect(() => {
@@ -141,6 +139,7 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                             <AdminLink href={`${base}/opportunities`} label="Cards" />
                             <SectionHeader label="Assets" />
                             <AdminLink href={`${base}/images`} label="Image Library" />
+                            <AdminLink href={`${base}/composer`} label="Image Composer" />
                             <AdminLink href={`${base}/audio`} label="Audio Engine" />
                             <AdminLink href={`${base}/assets`} label="Asset Manager" />
                             <SectionHeader label="Tools & Live" />

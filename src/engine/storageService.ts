@@ -1,8 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import sharp from 'sharp'; 
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { Readable } from 'stream';
+import sharp from 'sharp';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 const S3_ENDPOINT = process.env.S3_ENDPOINT;
@@ -131,5 +132,51 @@ export const deleteAsset = async (url: string): Promise<boolean> => {
     } catch (e) {
         console.error("Delete asset failed:", e);
         return false;
+    }
+};
+
+const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+        chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+};
+
+export const getAssetBuffer = async (url: string): Promise<Buffer | null> => {
+    const provider = process.env.STORAGE_PROVIDER || 'local';
+
+    try {
+        if (provider === 's3' && s3Client) {
+            let key = url;
+            const baseUrlWithBucket = `${S3_PUBLIC_URL}/${S3_BUCKET}/`;
+            
+            if (url.startsWith(baseUrlWithBucket)) {
+                key = url.replace(baseUrlWithBucket, '');
+            } else if (url.startsWith(`${S3_ENDPOINT}/${S3_BUCKET}/`)) {
+                key = url.replace(`${S3_ENDPOINT}/${S3_BUCKET}/`, '');
+            }
+
+            const command = new GetObjectCommand({
+                Bucket: S3_BUCKET,
+                Key: key
+            });
+            
+            const response = await s3Client.send(command);
+            if (!response.Body) return null;
+            
+            return streamToBuffer(response.Body as Readable);
+
+        } else {
+            const relativePath = url.startsWith('http') 
+                ? new URL(url).pathname 
+                : (url.startsWith('/') ? url.slice(1) : url);
+                
+            const fullPath = path.join(process.cwd(), 'public', relativePath);
+            return await fs.readFile(fullPath);
+        }
+    } catch (e) {
+        console.error(`Failed to retrieve asset: ${url}`, e);
+        return null;
     }
 };
