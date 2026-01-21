@@ -1,19 +1,30 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/providers/ToastProvider';
 
 interface Props {
     storyId: string;
+    initialOldId?: string; // Pre-fill ID
+    initialType?: string;  // Pre-select type (quality/standard)
+    onSuccess?: (newId: string) => void; // Callback on completion
+    onCancel?: () => void; // Callback to close
+    embedded?: boolean; // Visual mode
 }
 
-export default function RefactorTool({ storyId }: Props) {
+export default function RefactorTool({ storyId, initialOldId = '', initialType = 'quality', onSuccess, onCancel, embedded = false }: Props) {
     const { showToast } = useToast();
-    const [pattern, setPattern] = useState('quality');
+    const [pattern, setPattern] = useState(initialType);
     const [scope, setScope] = useState('all');
-    const [oldId, setOldId] = useState('');
+    const [oldId, setOldId] = useState(initialOldId);
     const [newId, setNewId] = useState('');
     const [previewData, setPreviewData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+    useEffect(() => {
+        setOldId(initialOldId);
+        setPattern(initialType);
+        setNewId('');
+        setPreviewData(null);
+    }, [initialOldId, initialType]);
     
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
@@ -35,8 +46,8 @@ export default function RefactorTool({ storyId }: Props) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     storyId, 
-                    type: pattern, // 'quality' or 'standard'
-                    scope,         // 'all', 'content', or 'settings'
+                    type: pattern, 
+                    scope,         
                     oldId, 
                     newId, 
                     mode 
@@ -50,9 +61,12 @@ export default function RefactorTool({ storyId }: Props) {
                     if (data.found === 0) showToast("No matches found.", "info");
                 } else {
                     showToast(`Refactor complete. Updated ${data.replaced} occurrences.`, "success");
-                    setPreviewData(null);
-                    setOldId('');
-                    setNewId('');
+                    if (onSuccess) onSuccess(newId);
+                    else {
+                        setPreviewData(null);
+                        setOldId('');
+                        setNewId('');
+                    }
                 }
             } else {
                 showToast(data.error || "Operation failed", "error");
@@ -62,12 +76,16 @@ export default function RefactorTool({ storyId }: Props) {
     };
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 style={{ color: 'var(--tool-text-header)' }}>Global ID Refactor</h3>
-            <p style={{ color: 'var(--warning-color)', fontSize: '0.9rem', marginBottom: '1.5rem', borderLeft: '3px solid var(--warning-color)', paddingLeft: '1rem' }}>
-                <strong>Warning:</strong> This tool performs a bulk find-and-replace across your database. 
-                Always use <strong>Scan</strong> first to verify changes.
-            </p>
+        <div style={{ maxWidth: '800px', margin: '0 auto', color: 'var(--tool-text-main)' }}>
+            {!embedded && (
+                <>
+                    <h3 style={{ color: 'var(--tool-text-header)' }}>Global ID Refactor</h3>
+                    <p style={{ color: 'var(--warning-color)', fontSize: '0.9rem', marginBottom: '1.5rem', borderLeft: '3px solid var(--warning-color)', paddingLeft: '1rem' }}>
+                        <strong>Warning:</strong> This tool performs a bulk find-and-replace across your database. 
+                        Always use <strong>Scan</strong> first to verify changes.
+                    </p>
+                </>
+            )}
 
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
@@ -76,11 +94,13 @@ export default function RefactorTool({ storyId }: Props) {
                         <option value="quality">Smart Variable (Qualities)</option>
                         <option value="standard">Standard ID (Exact Match)</option>
                     </select>
-                    <p className="property-hint" style={{ marginTop: '5px' }}>
-                        {pattern === 'quality' 
-                            ? `Matches: $${oldId || 'id'}, {${oldId || 'id'}}, and logic references.` 
-                            : `Matches: Exact word "${oldId || 'id'}". Use for Locations, Images, Decks.`}
-                    </p>
+                    {!embedded && (
+                        <p className="property-hint" style={{ marginTop: '5px' }}>
+                            {pattern === 'quality' 
+                                ? `Matches: $${oldId || 'id'}, {${oldId || 'id'}}, and logic references.` 
+                                : `Matches: Exact word "${oldId || 'id'}". Use for Locations, Images, Decks.`}
+                        </p>
+                    )}
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
                     <label className="form-label">Search Scope</label>
@@ -94,33 +114,44 @@ export default function RefactorTool({ storyId }: Props) {
 
             <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Find ID</label>
+                    <label className="form-label">Current ID</label>
                     <input className="form-input" value={oldId} onChange={e => setOldId(e.target.value)} placeholder="old_id" />
                 </div>
                 <div style={{ display:'flex', alignItems:'center', paddingTop:'1.5rem' }}>➜</div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Replace With</label>
+                    <label className="form-label">New ID</label>
                     <input className="form-input" value={newId} onChange={e => setNewId(e.target.value)} placeholder="new_id" />
                 </div>
             </div>
 
-            <button 
-                className="deck-button" 
-                onClick={() => runAction('preview')} 
-                disabled={isLoading}
-                style={{ width: '100%', marginTop: '1rem' }}
-            >
-                {isLoading ? "Scanning..." : "Scan for Changes"}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
+                {onCancel && (
+                    <button 
+                        onClick={onCancel}
+                        className="option-button" 
+                        style={{ flex: 1, background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}
+                    >
+                        Cancel
+                    </button>
+                )}
+                <button 
+                    className="deck-button" 
+                    onClick={() => runAction('preview')} 
+                    disabled={isLoading}
+                    style={{ flex: 2 }}
+                >
+                    {isLoading ? "Scanning..." : "Scan for Changes"}
+                </button>
+            </div>
 
             {previewData && (
                 <div style={{ marginTop: '2rem', background: 'var(--tool-bg-dark)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
-                    <h4 style={{ margin: '0 0 1rem 0' }}>Impact Preview</h4>
-                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-highlight)', marginBottom: '1rem' }}>
-                        {previewData.found} <span style={{fontSize:'1rem', color:'var(--tool-text-dim)', fontWeight:'normal'}}>matches found</span>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-header)' }}>Impact Preview</h4>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-highlight)', marginBottom: '1rem' }}>
+                        {previewData.found} <span style={{fontSize:'0.9rem', color:'var(--tool-text-dim)', fontWeight:'normal'}}>matches found</span>
                     </div>
                     
-                    <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1.5rem', background: '#111', border: '1px solid #333', borderRadius: '4px' }}>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1.5rem', background: '#111', border: '1px solid #333', borderRadius: '4px' }}>
                         <table style={{ width: '100%', fontSize: '0.85rem', textAlign: 'left', borderCollapse: 'collapse' }}>
                             <thead style={{ position: 'sticky', top: 0, background: '#222', zIndex: 1 }}>
                                 <tr style={{ borderBottom: '1px solid #444', color: '#888' }}>
@@ -145,7 +176,7 @@ export default function RefactorTool({ storyId }: Props) {
                                                     {isExpanded ? '▼' : '▶'}
                                                 </td>
                                                 <td style={{padding:'8px', color:'var(--tool-text-dim)'}}>{file.collection}</td>
-                                                <td style={{padding:'8px', fontWeight: 'bold'}}>{file.name || file.id}</td>
+                                                <td style={{padding:'8px', fontWeight: 'bold', color: 'var(--tool-text-main)'}}>{file.name || file.id}</td>
                                                 <td style={{padding:'8px', color:'var(--accent-highlight)', textAlign: 'right'}}>{file.matches}</td>
                                             </tr>
                                             
