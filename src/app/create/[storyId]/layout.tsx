@@ -1,17 +1,29 @@
 'use client'; 
 
 import Link from 'next/link';
-import CheatSheet from '../../../components/admin/CheatSheet';
-import AdminSidebarFooter from '../../../components/admin/AdminSidebarFooter';
+import CheatSheet from '@/components/admin/CheatSheet';
+import AdminSidebarFooter from '@/components/admin/AdminSidebarFooter';
 import { ToastProvider } from '@/providers/ToastProvider';
 import { useEffect, useState, use } from 'react';
 import { usePathname } from 'next/navigation';
+import RefactorModal from '@/components/admin/RefactorModal'; // [NEW]
+
+// Icons
+const RefactorIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '8px'}}>
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+);
 
 export default function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const pathname = usePathname();
     const [showNav, setShowNav] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    
+    // [NEW] Global Refactor State
+    const [showRefactor, setShowRefactor] = useState(false);
     
     useEffect(() => {
         setShowNav(false);
@@ -22,7 +34,7 @@ export default function AdminLayout({ children, params }: { children: React.Reac
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                e.stopPropagation(); // Stop browser save dialog
+                e.stopPropagation(); 
                 window.dispatchEvent(new Event('global-save-trigger'));
             }
         };
@@ -35,6 +47,16 @@ export default function AdminLayout({ children, params }: { children: React.Reac
     
     return (
         <ToastProvider>
+            {showRefactor && (
+                <RefactorModal 
+                    isOpen={showRefactor}
+                    onClose={() => setShowRefactor(false)}
+                    storyId={storyId}
+                    currentId="" 
+                    onSuccess={() => window.location.reload()} 
+                />
+            )}
+
             <div className="admin-layout">
                 <div className="admin-mobile-topbar">
                     <button className="admin-mobile-btn" onClick={() => setShowNav(true)}>
@@ -64,7 +86,7 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                     <nav className="admin-nav">
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                             
-                            <li style={{ marginBottom: '1.5rem', padding: '0 1rem' }}>
+                            <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
                                 <Link 
                                     href={`/play/${storyId}?playtest=true`}
                                     target="_blank"
@@ -83,6 +105,28 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                                     ▶ Playtest World
                                 </Link>
                             </li>
+
+                            <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
+                                <button 
+                                    onClick={() => setShowRefactor(true)}
+                                    className="admin-link"
+                                    style={{
+                                        width: '100%',
+                                        backgroundColor: 'var(--tool-bg-input)',
+                                        border: '1px solid var(--tool-border)',
+                                        color: 'var(--tool-text-main)',
+                                        textAlign: 'left',
+                                        display: 'flex', alignItems: 'center',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    <RefactorIcon /> Refactor ID...
+                                </button>
+                            </li>
+
                             <SectionHeader label="Game System" />
                             <AdminLink href={`${base}/settings`} label="Settings" />
                             <AdminLink href={`${base}/qualities`} label="Qualities" />
@@ -98,6 +142,7 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                             <SectionHeader label="Assets" />
                             <AdminLink href={`${base}/images`} label="Image Library" />
                             <AdminLink href={`${base}/audio`} label="Audio Engine" />
+                            <AdminLink href={`${base}/assets`} label="Asset Manager" />
                             <SectionHeader label="Tools & Live" />
                             <AdminLink href={`${base}/graph`} label="Narrative Graph" />
                             <AdminLink href={`${base}/players`} label="Player Monitor" />

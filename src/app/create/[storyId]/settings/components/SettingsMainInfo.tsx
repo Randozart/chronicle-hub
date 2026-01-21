@@ -17,10 +17,15 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
     const [showConfirmId, setShowConfirmId] = useState(false);
     
     const [localTags, setLocalTags] = useState(settings.tags?.join(', ') || '');
+    const [localTitle, setLocalTitle] = useState(settings.title || storyId); 
 
     useEffect(() => {
         setLocalTags(settings.tags?.join(', ') || '');
     }, [settings.tags]);
+
+    useEffect(() => {
+        setLocalTitle(settings.title || storyId);
+    }, [settings.title, storyId]);
 
     const handleIdChangeRequest = () => {
         if (tempId === storyId) { setIsEditingId(false); return; }
@@ -39,6 +44,12 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
         const arr = localTags.split(',').map(s => s.trim()).filter(Boolean);
         const unique = Array.from(new Set(arr));
         onChange('tags', unique);
+    };
+
+    const handleTitleBlur = () => {
+        if (localTitle.trim() !== settings.title) {
+            onChange('title', localTitle.trim()); 
+        }
     };
 
     const handleContentToggle = (type: 'mature' | 'erotica' | 'triggers', value: boolean) => {
@@ -71,6 +82,8 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
 
     const content = settings.contentConfig || {};
 
+    const playLink = typeof window !== 'undefined' ? `${window.location.origin}/play/${storyId}` : `/play/${storyId}`;
+
     return (
         <div style={{ marginBottom: '2rem' }}>
             
@@ -89,6 +102,19 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                             Publish
                         </label>
                     </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">World Title</label>
+                    <input 
+                        value={localTitle}
+                        onChange={e => setLocalTitle(e.target.value)}
+                        onBlur={handleTitleBlur}
+                        className="form-input"
+                        placeholder="My Awesome Game"
+                        style={{ fontSize: '1.2rem', fontWeight: 'bold' }}
+                    />
+                    <p className="special-desc">The public name of your game.</p>
                 </div>
 
                 <div className="form-group">
@@ -165,16 +191,16 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
             <div style={{ padding: '1.5rem', background: 'var(--tool-bg-sidebar)', borderRadius: 'var(--border-radius)', border: '1px dashed var(--warning-color)' }}>
                 <h3 style={{ marginTop: 0, color: 'var(--warning-color)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Content Ratings & Safety</h3>
                 <p className="special-desc" style={{ marginBottom: '1.5rem' }}>
-                    Accurately flagging your content ensures it reaches the right audience and protects your account.
+                    Accurately flagging your content ensures it reaches the right audience and protects your account. 
+                    Failing to tag your content accurately is a breach of the Terms of Service, and may result in your world being made unavailable or further actions being taken.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     
-                    {/* Toggle for Mature Content (16+) */}
                     <div>
                         <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--tool-text-main)' }}>
                             <input type="checkbox" checked={content.mature || false} onChange={e => handleContentToggle('mature', e.target.checked)} />
-                            Mature Content (16+)
+                            Mature Content (non-explicit 18+)
                         </label>
                         <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
                             Examples: Heavy violence, substance abuse, dark themes, non-explicit suggestive themes.
@@ -194,11 +220,10 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                         )}
                     </div>
 
-                    {/* Toggle for Trigger Warnings */}
                     <div>
                         <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--tool-text-main)' }}>
                             <input type="checkbox" checked={content.triggers || false} onChange={e => handleContentToggle('triggers', e.target.checked)} />
-                            Trigger Warnings
+                            Trigger/Content Warnings
                         </label>
                         <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
                             Content that may cause distress (e.g. self-harm, sexual assault references, phobias).
@@ -218,11 +243,10 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                         )}
                     </div>
 
-                    {/* Toggle for Erotica (18+) */}
                     <div>
                         <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--accent-highlight)' }}>
                             <input type="checkbox" checked={content.erotica || false} onChange={e => handleContentToggle('erotica', e.target.checked)} />
-                            Erotica / Explicit (18+)
+                            NSFW / Explicit (18+)
                         </label>
                         <p className="special-desc" style={{ marginLeft: '1.5rem' }}>
                             Contains explicit sexual descriptions or interactive sexual content.
@@ -240,8 +264,22 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                                         <strong>Restricted:</strong> This game will NOT appear in the public Community Arcade.
                                     </p>
                                     <p className="special-desc" style={{ marginTop: '5px' }}>
-                                        You may share the direct link anywhere. ChronicleHub will continue to host it.
+                                        ChronicleHub will host it, unless it violates the Terms of Service. You may share this direct link anywhere to allow access to your game:
                                     </p>
+                                    <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                                        <input 
+                                            className="form-input" 
+                                            value={playLink} 
+                                            readOnly 
+                                            style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.8rem', background: '#000', color: 'var(--accent-highlight)' }}
+                                        />
+                                        <button 
+                                            onClick={() => navigator.clipboard.writeText(playLink)}
+                                            style={{ padding: '4px 8px', cursor: 'pointer', background: 'var(--bg-item)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}

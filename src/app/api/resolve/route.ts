@@ -40,13 +40,20 @@ export async function POST(request: NextRequest) {
         }
 
         const storyletDef = await getEvent(storyId, storyletId);
+        
         if (!storyletDef) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+        
+        if (storyletDef.status === 'maintenance' && !canDebug) {
+            return NextResponse.json({ error: 'This content is currently undergoing maintenance.' }, { status: 403 });
+        }
+
         const isAutofire = storyletDef.urgency === 'Must' || !!storyletDef.autofire_if;
         if ('location' in storyletDef && storyletDef.location) {
             if (character.currentLocationId !== storyletDef.location && !isAutofire) {
                 return NextResponse.json({ error: 'You are not in the correct location.' }, { status: 403 });
             }
         }
+        
         if ('deck' in storyletDef) {
             const hand = character.opportunityHands?.[storyletDef.deck] || [];
             if (!hand.includes(storyletDef.id)) {

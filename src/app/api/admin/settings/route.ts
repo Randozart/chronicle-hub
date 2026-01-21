@@ -14,10 +14,11 @@ export async function GET(request: NextRequest) {
     
     const world = await db.collection('worlds').findOne(
         { worldId: storyId }, 
-        { projection: { published: 1 } }
+        { projection: { published: 1, title: 1 } }
     );
     return NextResponse.json({
         ...config.settings,
-        isPublished: world?.published || false
+        isPublished: world?.published || false,
+        title: world?.title || storyId 
     });
 }

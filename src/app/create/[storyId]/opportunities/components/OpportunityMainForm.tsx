@@ -69,14 +69,27 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                     <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
                     <select 
                         value={form.status || 'draft'} 
-                        onChange={e => handleChange('status', e.target.value)}
+                        onChange={e => handleChange('status', e.target.value)} 
                         style={{ 
-                            background: form.status === 'published' ? 'var(--success-color)' : 'var(--warning-color)', 
-                            color: '#000', fontWeight: 'bold', border: 'none', padding: '0.3rem', borderRadius: '4px' 
+                            background: 
+                                form.status === 'published' ? 'var(--success-color)' : 
+                                form.status === 'playtest' ? 'var(--tool-accent)' :
+                                form.status === 'review' ? 'var(--warning-color)' :
+                                form.status === 'maintenance' ? 'var(--danger-color)' :
+                                'var(--tool-bg-input)',
+                            color: form.status === 'draft' ? 'var(--tool-text-main)' : '#000', 
+                            fontWeight: 'bold', border: '1px solid var(--tool-border)', padding: '0.3rem', borderRadius: '4px' 
                         }}
                     >
-                        <option value="draft">DRAFT</option>
-                        <option value="published">PUBLISHED</option>
+                        <option value="draft">DRAFT (Hidden)</option>
+                        <option value="playtest">PLAYTEST (Testing)</option>
+                        <option value="review">REVIEW (Live, but Unfinished)</option>
+                        <option value="published">PUBLISHED (Live)</option>
+                        
+                        {/* Disabling maintenance for Storylets, as locking is functionally useless for cards */} 
+                        {/* <option value="maintenance">MAINTENANCE (Live, but Locked)</option> */}
+
+                        <option value="archived">ARCHIVED (Hidden)</option>
                     </select>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#666', fontFamily: 'monospace' }}>v{form.version || 1}</div>

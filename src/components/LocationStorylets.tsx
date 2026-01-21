@@ -79,8 +79,15 @@ export default function LocationStorylets({
                     const evaluatedShort = storylet.short ? engine.evaluateText(storylet.short, context) : "";
                     const evaluator = (text: string) => engine.evaluateText(text, context);
                     
-                    const isLocked = storylet.unlock_if ? !engine.evaluateCondition(storylet.unlock_if) : false;
-                    const lockReason = isLocked && storylet.unlock_if ? getLockReason(storylet.unlock_if) : null;
+                    const isMaintenance = storylet.status === 'maintenance';
+                    
+                    let isLocked = storylet.unlock_if ? !engine.evaluateCondition(storylet.unlock_if) : false;
+                    let lockReason = isLocked && storylet.unlock_if ? getLockReason(storylet.unlock_if) : null;
+
+                    if (isMaintenance) {
+                        isLocked = true;
+                        lockReason = "OPTION UNDER MAINTENANCE";
+                    }
 
                     const buttonStyle = isLocked ? { opacity: 0.7, cursor: 'not-allowed' } : {};
                     const clickHandler = isLocked ? undefined : () => onStoryletClick(storylet.id);

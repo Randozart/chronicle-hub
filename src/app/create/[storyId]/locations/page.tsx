@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use, useRef } from 'react';
-import { LocationDefinition, QualityDefinition } from '@/engine/models';
+import { LocationDefinition, QualityDefinition, Storylet } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import LocationMainForm from './components/LocationMainForm';
 import InputModal from '@/components/admin/InputModal';
@@ -9,9 +9,11 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import UnsavedChangesModal from '@/components/admin/UnsavedChangesModal';
 import { useToast } from '@/providers/ToastProvider';
 import { FormGuard } from '@/hooks/useCreatorForm';
+import { useRouter } from 'next/navigation';
 
 export default function LocationsAdmin({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const router = useRouter(); 
     const { showToast } = useToast();
     const [locations, setLocations] = useState<LocationDefinition[]>([]);
     const [qualities, setQualities] = useState<QualityDefinition[]>([]);
@@ -32,6 +34,7 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
         message: string;
         itemToDelete?: string;
     }>({ isOpen: false, title: '', message: '' });
+
     useEffect(() => {
         setIsLoading(true);
         Promise.all([
@@ -49,6 +52,7 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
             }
         }).finally(() => setIsLoading(false));
     }, [storyId]);
+
     const handleSelectAttempt = (newId: string) => {
         if (newId === selectedId) return;
         if (guardRef.current && guardRef.current.isDirty) {
@@ -75,6 +79,7 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
         if (pendingId) setSelectedId(pendingId);
         setPendingId(null);
     };
+
     const openCreateModal = () => setModalConfig({ isOpen: true, mode: 'create' });
     const openDuplicateModal = (source: LocationDefinition) => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: source });
 
@@ -170,6 +175,40 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
         setLocations(prev => prev.map(l => l.id === data.id ? data : l));
     };
 
+    const handleCreateLinkedStorylet = async (locationId: string) => {
+        const timestamp = Date.now();
+        const newId = `${locationId}_event_${timestamp}`;
+        
+        const newStorylet: Storylet = {
+            id: newId,
+            name: "New Event",
+            text: "Write your event here...",
+            location: locationId, 
+            options: [],
+            tags: [],
+            status: 'draft',
+            version: 1
+        };
+
+        try {
+            const res = await fetch('/api/admin/storylets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, data: newStorylet })
+            });
+
+            if (res.ok) {
+                showToast("Storylet created! Redirecting...", "success");
+                router.push(`/create/${storyId}/storylets?id=${newId}`);
+            } else {
+                showToast("Failed to create storylet.", "error");
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Network error.", "error");
+        }
+    };
+
     if (isLoading) return <div className="loading-container">Loading...</div>;
 
     return (
@@ -193,6 +232,7 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
                         storyId={storyId}
                         qualityDefs={qualities}
                         guardRef={guardRef}
+                        onCreateStoryletInLocation={handleCreateLinkedStorylet}
                     />
                 ) : (
                     <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select a location</div>
