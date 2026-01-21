@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
             if ('coverImage' in data) rootUpdates.coverImage = data.coverImage;
             if ('summary' in data) rootUpdates.summary = data.summary;
             if ('tags' in data) rootUpdates.tags = data.tags;
+            if ('title' in data) rootUpdates.title = data.title;
             if ('contentConfig' in data) rootUpdates.contentConfig = data.contentConfig;
 
             if (Object.keys(rootUpdates).length > 0) {

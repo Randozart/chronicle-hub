@@ -49,7 +49,7 @@ export type PublishStatus =
     | 'published'   // Live
     | 'maintenance' // Visible but Locked (Excuse our mess)
     | 'archived';   // Soft deleted
-    
+
 export interface VersionedEntity {
     version?: number;
     lastModifiedBy?: string;
@@ -139,6 +139,7 @@ export interface SystemMessage {
 }
 
 export interface WorldSettings {
+    title?: string;
     useActionEconomy: boolean;
     maxActions: number | string;
     actionId: string;

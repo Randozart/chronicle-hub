@@ -47,14 +47,13 @@ export default function AdminLayout({ children, params }: { children: React.Reac
     
     return (
         <ToastProvider>
-            {/* [NEW] Global Refactor Modal */}
             {showRefactor && (
                 <RefactorModal 
                     isOpen={showRefactor}
                     onClose={() => setShowRefactor(false)}
                     storyId={storyId}
-                    currentId="" // Empty start, user types it in
-                    onSuccess={() => window.location.reload()} // Brute force refresh ensures all lists update
+                    currentId="" 
+                    onSuccess={() => window.location.reload()} 
                 />
             )}
 
@@ -107,7 +106,6 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                                 </Link>
                             </li>
 
-                            {/* [NEW] Quick Refactor Button */}
                             <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
                                 <button 
                                     onClick={() => setShowRefactor(true)}

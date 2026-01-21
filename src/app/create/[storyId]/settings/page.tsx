@@ -174,7 +174,27 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
                 settings={form} 
                 onChange={handleGenericChange} 
                 storyId={storyId} 
-                onChangeWorldId={async (newId) => { return true; }}
+                onChangeWorldId={async (newId) => {
+                    try {
+                        const res = await fetch('/api/admin/world/change-id', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ currentId: storyId, newId })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            showToast("World renamed! Redirecting...", "success");
+                            router.push(`/create/${data.newId}/settings`);
+                            return true;
+                        } else {
+                            showToast(data.error || "Rename failed", "error");
+                            return false;
+                        }
+                    } catch (e) {
+                        showToast("Network error", "error");
+                        return false;
+                    }
+                }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '10px' }}>
                 <button onClick={() => setExpandAll('open')} style={{ fontSize: '0.8rem', background: 'none', border: '1px solid var(--tool-border)', color: 'var(--tool-text-dim)', borderRadius: '4px', cursor: 'pointer', padding: '2px 8px' }}>Expand All</button>
