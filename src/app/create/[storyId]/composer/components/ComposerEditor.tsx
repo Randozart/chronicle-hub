@@ -77,21 +77,54 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         }
     }, [browserTab]);
 
-    const addLayer = (assetId: string, name: string, isPreset: boolean) => {
-        const newLayer: CompositionLayer = {
-            id: uuidv4(),
-            assetId: assetId,
-            name: name,
-            zIndex: data.layers.length,
-            x: 0,
-            y: 0,
-            scale: 1,
-            rotation: 0,
-            opacity: 1,
-            enableThemeColor: isPreset 
-        };
-        handleChange('layers', [...data.layers, newLayer]);
-        setSelectedLayerId(newLayer.id);
+    const getImageDimensions = (url: string): Promise<{ width: number; height: number }> => {
+        return new Promise((resolve, reject) => {
+            if (imageElementCache.has(url)) {
+                const cachedImg = imageElementCache.get(url)!;
+                if (cachedImg.complete) {
+                    resolve({ width: cachedImg.width, height: cachedImg.height });
+                    return;
+                }
+            }
+            
+            const img = new Image();
+            img.onload = () => {
+                imageElementCache.set(url, img);
+                resolve({ width: img.width, height: img.height });
+            };
+            img.onerror = () => reject(new Error(`Could not load image: ${url}`));
+            img.src = url;
+        });
+    };
+
+    const addLayer = async (assetId: string, name: string, isPreset: boolean) => {
+        const url = isPreset ? `/${assetId}` : (assets.find(a => a.id === assetId)?.url || '');
+        if (!url) {
+            console.error("Asset URL not found for", assetId);
+            return; 
+        }
+
+        try {
+            const { width, height } = await getImageDimensions(url);
+            
+            const newLayer: CompositionLayer = {
+                id: uuidv4(),
+                assetId: assetId,
+                name: name,
+                zIndex: data.layers.length,
+                x: (data.width / 2) - (width / 2),
+                y: (data.height / 2) - (height / 2),
+                scale: 1,
+                rotation: 0,
+                opacity: 1,
+                enableThemeColor: isPreset 
+            };
+
+            handleChange('layers', [...data.layers, newLayer]);
+            setSelectedLayerId(newLayer.id);
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const updateLayer = (id: string, updates: Partial<CompositionLayer>) => {
@@ -122,6 +155,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             files: cat.files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
         })).filter(cat => cat.files.length > 0);
     }, [presets, searchTerm]);
+    
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -146,30 +180,29 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             }
             if (!url) return;
 
-            let imgToDraw: HTMLImageElement | HTMLCanvasElement | null = null;
+            let finalImageToDraw: HTMLImageElement | HTMLCanvasElement | null = null;
             if (imageElementCache.has(url)) {
                 const img = imageElementCache.get(url)!;
                 if (img.complete) {
-                    const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
-                    if (isSvg && layer.tintColor) {
-                        const worldTheme = 'default'; 
-                        const resolvedTint = resolveCssVariable(layer.tintColor, worldTheme, allThemes);
-                        const offscreenCanvas = document.createElement('canvas');
-                        offscreenCanvas.width = img.width;
-                        offscreenCanvas.height = img.height;
-                        const offCtx = offscreenCanvas.getContext('2d');
-                        
-                        if (offCtx) {
-                            offCtx.drawImage(img, 0, 0);
+                    const offscreenCanvas = document.createElement('canvas');
+                    offscreenCanvas.width = img.width;
+                    offscreenCanvas.height = img.height;
+                    const offCtx = offscreenCanvas.getContext('2d');
+
+                    if (offCtx) {
+                        offCtx.drawImage(img, 0, 0);
+                        const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
+                        if (isSvg && layer.tintColor) {
+                            const worldTheme = 'default'; 
+                            const resolvedTint = resolveCssVariable(layer.tintColor, worldTheme, allThemes);
                             offCtx.globalCompositeOperation = 'source-in';
                             offCtx.fillStyle = resolvedTint;
                             offCtx.fillRect(0, 0, img.width, img.height);
-                            imgToDraw = offscreenCanvas;
-                        } else {
-                            imgToDraw = img;
                         }
+                        finalImageToDraw = offscreenCanvas;
+
                     } else {
-                        imgToDraw = img;
+                        finalImageToDraw = img;
                     }
                 }
             } else {
@@ -180,23 +213,23 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 return;
             }
 
-            if (!imgToDraw) return;
+            if (!finalImageToDraw) return;
             ctx.save();
             ctx.globalAlpha = layer.opacity;
             ctx.translate(layer.x, layer.y);
             ctx.rotate((layer.rotation * Math.PI) / 180);
             ctx.scale(layer.scale, layer.scale);
-            ctx.drawImage(imgToDraw, 0, 0); 
+            ctx.drawImage(finalImageToDraw, 0, 0); 
             ctx.restore();
             if (layer.id === selectedLayerId) {
-                const w = imgToDraw.width;
-                const h = imgToDraw.height;
-                ctx.strokeStyle = '#61afef';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(layer.x, layer.y, w * layer.scale, h * layer.scale);
+                 const w = finalImageToDraw.width;
+                 const h = finalImageToDraw.height;
+                 ctx.strokeStyle = '#61afef';
+                 ctx.lineWidth = 2;
+                 ctx.strokeRect(layer.x, layer.y, w * layer.scale, h * layer.scale);
             }
         });
-    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded]);
+    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes]);
         
     const selectedLayer = data.layers.find(l => l.id === selectedLayerId);
 
