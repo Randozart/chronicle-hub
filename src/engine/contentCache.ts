@@ -101,12 +101,33 @@ export const getGlobalDynamicQualities = async (storyId: string, forceFresh = fa
     return getCachedDynamicIds(storyId);
 };
 
-export const getStorylets = async (storyId: string, forceFresh = false) => {
+export const getStorylets = async (storyId: string, isPlaytest = false, forceFresh = false) => {
+    let rawEvents: (Storylet | Opportunity)[];
+
     if (forceFresh) {
         console.log(`[ContentCache] Playtest: Forcing fresh storylets for ${storyId}`);
-        return fetchRawStorylets(storyId);
+        rawEvents = await fetchRawStorylets(storyId);
+    } else {
+        rawEvents = await getCachedStorylets(storyId);
     }
-    return getCachedStorylets(storyId);
+
+    return rawEvents.filter(e => {
+        // Default to playtest to reduce confusion as to why users can't see the content. Draft is still in there to actively hide it.
+        const status = e.status || 'playtest';
+
+        // Never show. Sort of a renamed draft? But mostly for labelling purposes. I.e.: Don't need to touch.
+        if (status === 'archived') return false; 
+        
+        // Published content is always visible
+        if (status === 'published' || status === 'review' || status === 'maintenance') return true;
+
+        // Playtest content is visible ONLY in playtest mode
+        if (status === 'playtest' && isPlaytest) return true;
+
+        if (status === 'draft') return false; 
+        
+        return false;
+    });
 };
 
 export const getContent = async (storyId: string, forceFresh = false) => {

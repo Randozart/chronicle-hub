@@ -42,8 +42,14 @@ export interface ResolveOption extends LogicGates {
     computed_action_cost?: number | string;
 }
 
-export type PublishStatus = 'draft' | 'published' | 'archived';
-
+export type PublishStatus = 
+    | 'draft'       // Hidden from players, visible in Playtest
+    | 'playtest'    // Explicitly for testing, visible in Playtest
+    | 'review'      // Functionally Published, but marked for creator review
+    | 'published'   // Live
+    | 'maintenance' // Visible but Locked (Excuse our mess)
+    | 'archived';   // Soft deleted
+    
 export interface VersionedEntity {
     version?: number;
     lastModifiedBy?: string;

@@ -122,7 +122,21 @@ export default function AdminListSidebar<T extends ListItem>({
                     >
                         {renderItem ? renderItem(item) : (
                             <>
-                                <span className="item-title">{item.name || item.id}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+=                                    <span 
+                                        title={item.status || 'draft'}
+                                        style={{
+                                            width: '8px', height: '8px', borderRadius: '50%',
+                                            backgroundColor: 
+                                                item.status === 'published' ? 'var(--success-color)' :
+                                                item.status === 'review' ? '#e5c07b' :
+                                                item.status === 'playtest' ? '#61afef' :
+                                                item.status === 'maintenance' ? '#e06c75' : 
+                                                '#555' 
+                                        }}
+                                    />
+                                    <span className="item-title">{item.name || item.id}</span>
+                                </div>
                                 <span className="item-subtitle" style={{ opacity: 0.5 }}>{item.id}</span>
                             </>
                         )}
