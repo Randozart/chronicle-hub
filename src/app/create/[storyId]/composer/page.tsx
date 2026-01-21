@@ -104,7 +104,7 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                 onCreate={() => setModalConfig({ isOpen: true, mode: 'create' })}
             />
             
-            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 0 }}>
+            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '90vh', maxHeight: '90vh', padding: 0 }}>
                 {activeItem ? (
                     <ComposerEditor 
                         initialData={activeItem}
