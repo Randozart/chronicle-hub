@@ -50,6 +50,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
     const [maxZoom, setMaxZoom] = useState(5);
+    const [usedAssetIds, setUsedAssetIds] = useState<Set<string>>(new Set());
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -157,6 +158,15 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
         setPan({ x: 0, y: 0 });
         setMaxZoom(Math.max(5, idealScale * 5)); 
     };
+
+    useEffect(() => {
+        if (activeTab === 'library') {
+            refreshLibrary();
+            fetch(`/api/admin/assets/usage?storyId=${storyId}`)
+                .then(r => r.json())
+                .then(data => setUsedAssetIds(new Set(data.usedIds || [])));
+        }
+    }, [activeTab, storyId]);
 
     useEffect(() => {
         if (originalImage) calculateAutoFit(originalImage, category);
@@ -579,42 +589,46 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                         <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>No uploads found.</div>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px' }}>
-                            {userAssets.map(asset => (
-                                <div 
-                                    key={asset.id} 
-                                    onClick={() => handleSelectFromLibrary(asset)}
-                                    style={{ 
-                                        border: '1px solid #333', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer',
-                                        background: '#111', transition: 'border-color 0.2s', position: 'relative'
-                                    }}
-                                    className="hover:border-[#61afef]"
-                                >
-                                    <div style={{ width: '100%', aspectRatio: '1/1' }}>
-                                        <img 
-                                            src={asset.url} 
-                                            alt={asset.id} 
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                        />
-                                    </div>
-                                    <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--tool-text-main)' }}>
-                                        {asset.id}
-                                    </div>
-                                    <button
-                                        onClick={(e) => handleDeleteFromLibrary(asset, e)}
-                                        style={{
-                                            position: 'absolute', top: 2, right: 2,
-                                            background: 'rgba(0,0,0,0.7)', border: 'none', color: '#e74c3c',
-                                            width: '20px', height: '20px', borderRadius: '3px',
-                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '12px'
+                            {userAssets.map(asset => {
+                                const isUsed = usedAssetIds.has(asset.id);
+                                return (
+                                    <div 
+                                        key={asset.id} 
+                                        onClick={() => handleSelectFromLibrary(asset)}
+                                        style={{ 
+                                            border: isUsed ? '2px solid var(--accent-highlight)' : '1px solid #333', 
+                                            borderRadius: '4px', overflow: 'hidden', cursor: 'pointer',
+                                            background: '#111', transition: 'border-color 0.2s', position: 'relative'
                                         }}
-                                        title="Delete Permanently"
+                                        className="hover:border-[#61afef]"
                                     >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
+                                        <div style={{ width: '100%', aspectRatio: '1/1' }}>
+                                            <img 
+                                                src={asset.url} 
+                                                alt={asset.id} 
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                            />
+                                        </div>
+                                        <div style={{ padding: '4px', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--tool-text-main)' }}>
+                                            {asset.id}
+                                        </div>
+                                        <button
+                                            onClick={(e) => handleDeleteFromLibrary(asset, e)}
+                                            style={{
+                                                position: 'absolute', top: 2, right: 2,
+                                                background: 'rgba(0,0,0,0.7)', border: 'none', color: '#e74c3c',
+                                                width: '20px', height: '20px', borderRadius: '3px',
+                                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '12px'
+                                            }}
+                                            title="Delete Permanently"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

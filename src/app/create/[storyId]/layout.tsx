@@ -98,6 +98,7 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                             <SectionHeader label="Assets" />
                             <AdminLink href={`${base}/images`} label="Image Library" />
                             <AdminLink href={`${base}/audio`} label="Audio Engine" />
+                            <AdminLink href={`${base}/assets`} label="Asset Manager" />
                             <SectionHeader label="Tools & Live" />
                             <AdminLink href={`${base}/graph`} label="Narrative Graph" />
                             <AdminLink href={`${base}/players`} label="Player Monitor" />
