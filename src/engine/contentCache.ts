@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { loadGameData } from './dataLoader'; 
-import { getAutofireStorylets as serviceGetAutofire } from './worldService';
+// import { getAutofireStorylets as serviceGetAutofire } from './worldService';
 import clientPromise from '@/engine/database';
 import { Storylet, Opportunity } from './models';
 
@@ -138,4 +138,7 @@ export const getContent = async (storyId: string, forceFresh = false) => {
     return getCachedWorld(storyId);
 };
 
-export const getAutofireStorylets = serviceGetAutofire;
+export const getAutofireStorylets = async (storyId: string, isPlaytest = false, forceFresh = false) => {
+    const all = await getStorylets(storyId, isPlaytest, forceFresh);
+    return all.filter(s => !!s.autofire_if || s.urgency === 'Must' || s.urgency === 'High');
+};
