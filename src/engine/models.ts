@@ -142,6 +142,7 @@ export interface WorldSettings {
     title?: string;
     publicationStatus?: 'private' | 'in_progress' | 'published';
     deletionScheduledAt?: string;
+    isOpenSource?: boolean;
     useActionEconomy: boolean;
     maxActions: number | string;
     actionId: string;

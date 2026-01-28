@@ -36,6 +36,9 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
     const isInProgress = pubStatus === 'in_progress';
     const deletionDate = settings.deletionScheduledAt;
 
+    // Open Source toggle
+    const isOpenSource = settings.isOpenSource === true;
+
     const closePanel = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -205,7 +208,7 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                             padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', 
                             boxShadow: '0 2px 4px rgba(0,0,0,0.3)', zIndex: 20 
                         }}>
-                            🚧 ACTIVE DEVELOPMENT
+                            🚧 IN DEVELOPMENT
                         </div>
                     )}
 
@@ -260,8 +263,23 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                         >
                             Play
                         </button>
-                        {isOwner && (
+                        {isOwner ? (
                             <Link href={`/create/${w.worldId}/settings`} className="return-button" style={{ flex: 1, textDecoration: 'none', padding: '0.6rem', textAlign: 'center', borderRadius: '4px', fontSize: '0.9rem', fontWeight: '500' }}>Edit</Link>
+                        ) : (
+                            isOpenSource && (
+                                <Link 
+                                    href={`/create/${w.worldId}/settings`} 
+                                    className="return-button" 
+                                    style={{ 
+                                        flex: 1, textDecoration: 'none', padding: '0.6rem', textAlign: 'center', 
+                                        borderRadius: '4px', fontSize: '0.9rem', fontWeight: '500',
+                                        background: 'var(--bg-subtle)', color: 'var(--text-secondary)'
+                                    }}
+                                    title="View Source (Read-Only)"
+                                >
+                                    Source
+                                </Link>
+                            )
                         )}
                     </div>
                 </div>

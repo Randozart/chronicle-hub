@@ -115,6 +115,23 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                     </div>
                 </div>
 
+                <div style={{ marginBottom: '1.5rem', background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px dashed var(--tool-border)' }}>
+                    <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--tool-text-header)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={settings.isOpenSource || false} 
+                            onChange={e => onChange('isOpenSource', e.target.checked)} 
+                        />
+                        Open Source Mode
+                    </label>
+                    <p className="special-desc" style={{ marginTop: '0.5rem', marginLeft: '1.8rem' }}>
+                        If enabled, <strong>anyone</strong> can view your Creator Studio (Read-Only) to see how your world is built. 
+                        Useful for templates, tutorials, or community learning. 
+                        <br/>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>(Only applies if world is In Progress or Published).</span>
+                    </p>
+                </div>
+
                 {settings.deletionScheduledAt && (
                     <div style={{ 
                         background: 'var(--danger-color)', color: 'white', padding: '1rem', 
