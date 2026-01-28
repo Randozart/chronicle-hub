@@ -226,6 +226,7 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
                 gridTemplateColumns: `repeat(auto-fill, minmax(${minColWidth}, 1fr))`, 
                 gap: '1rem' 
             }}>
+                
                 {options.map(opt => {
                     const isSelected = choices[qid] === opt.val;
                     const hasImage = ruleObj.type !== 'label_select' && imageLibrary[opt.val]; 
@@ -381,88 +382,103 @@ export default function CreationForm({ storyId, rules, qualityDefs, imageLibrary
         return <div style={{ color: '#777', padding: '2rem', textAlign: 'center' }}>Loading Character Creator...</div>;
     }
 
-    return (
-        <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '0 auto', background: 'var(--bg-panel)', padding: '2rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-            
-            {sections.map((section, idx) => {
-                const headerRule = section.headerKey ? rules[section.headerKey] : null;
-                const headerLabel = headerRule ? headerRule.rule : "";
-                if (headerRule && !isVisible(headerRule)) return null;
-                if (headerRule && headerRule.displayMode === 'modal') {
-                    const isOpen = openModalSection === section.headerKey;
-                    const cardFields = section.keys.filter(k => rules[k].showOnCard && isVisible(rules[k]));
+     return (
+        <>
+            {/* Background Overlay */}
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 0 }} />
 
-                    return (
-                        <div key={idx} style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <h3 style={{ margin: 0, color: 'var(--accent-highlight)', textTransform: 'uppercase', fontSize: '1rem', letterSpacing: '1px' }}>{headerLabel}</h3>
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ 
+                position: 'relative', 
+                zIndex: 1, 
+                maxWidth: '800px', 
+                margin: '0 auto', 
+                background: 'var(--bg-panel)', 
+                padding: '2rem', 
+                borderRadius: '8px', 
+                border: '1px solid var(--border-color)' 
+            }}>
+                
+                {sections.map((section, idx) => {
+                    const headerRule = section.headerKey ? rules[section.headerKey] : null;
+                    const headerLabel = headerRule ? headerRule.rule : "";
+                    if (headerRule && !isVisible(headerRule)) return null;
+                    if (headerRule && headerRule.displayMode === 'modal') {
+                        const isOpen = openModalSection === section.headerKey;
+                        const cardFields = section.keys.filter(k => rules[k].showOnCard && isVisible(rules[k]));
+
+                        return (
+                            <div key={idx} style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, color: 'var(--accent-highlight)', textTransform: 'uppercase', fontSize: '1rem', letterSpacing: '1px' }}>{headerLabel}</h3>
+                                    </div>
+                                    <button type="button" onClick={() => setOpenModalSection(section.headerKey)} className="option-button" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
+                                        Edit
+                                    </button>
                                 </div>
-                                <button type="button" onClick={() => setOpenModalSection(section.headerKey)} className="option-button" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
-                                    Edit
-                                </button>
-                            </div>
-                            {cardFields.length > 0 && (
-                                <div style={{ marginTop: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--border-color)' }}>
-                                    {cardFields.map(k => renderField(k, rules[k]))}
-                                </div>
-                            )}
-                            {isOpen && (
-                                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                                    <div style={{ background: 'var(--bg-panel)', padding: '2rem', borderRadius: '8px', border: '1px solid var(--border-color)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                                            <h2 style={{ margin: 0 }}>{headerLabel}</h2>
-                                            <button type="button" onClick={() => setOpenModalSection(null)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                            {section.keys.filter(k => isVisible(rules[k])).map(k => renderField(k, rules[k]))}
-                                        </div>
-                                        <div style={{ marginTop: '2rem', textAlign: 'right' }}>
-                                            <button type="button" onClick={() => setOpenModalSection(null)} className="save-btn" style={{ width: 'auto' }}>Done</button>
+                                {cardFields.length > 0 && (
+                                    <div style={{ marginTop: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--border-color)' }}>
+                                        {cardFields.map(k => renderField(k, rules[k]))}
+                                    </div>
+                                )}
+                                {isOpen && (
+                                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                                        <div style={{ background: 'var(--bg-panel)', padding: '2rem', borderRadius: '8px', border: '1px solid var(--border-color)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                                                <h2 style={{ margin: 0 }}>{headerLabel}</h2>
+                                                <button type="button" onClick={() => setOpenModalSection(null)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.5rem' }}>✕</button>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                {section.keys.filter(k => isVisible(rules[k])).map(k => renderField(k, rules[k]))}
+                                            </div>
+                                            <div style={{ marginTop: '2rem', textAlign: 'right' }}>
+                                                <button type="button" onClick={() => setOpenModalSection(null)} className="save-btn" style={{ width: 'auto' }}>Done</button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
+                            </div>
+                        );
+                    }
+                    return (
+                        <div key={idx} className="form-section" style={{ marginBottom: '2rem' }}>
+                            {headerRule && (
+                                <h3 style={{ marginTop: '0', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', color: 'var(--accent-highlight)', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px' }}>
+                                    {headerLabel}
+                                </h3>
                             )}
+                            {section.keys.map(k => renderField(k, rules[k]))}
                         </div>
                     );
-                }
-                return (
-                    <div key={idx} className="form-section" style={{ marginBottom: '2rem' }}>
-                        {headerRule && (
-                            <h3 style={{ marginTop: '0', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', color: 'var(--accent-highlight)', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px' }}>
-                                {headerLabel}
-                            </h3>
-                        )}
-                        {section.keys.map(k => renderField(k, rules[k]))}
-                    </div>
-                );
-            })}
-            
-            {error && <p style={{ color: 'var(--danger-color)', marginBottom: '1rem' }}>{error}</p>}
-            
-                        <button 
-                type="submit" 
-                disabled={isSubmitting} 
-                style={{ 
-                    width: '100%', 
-                    padding: '1.2rem', 
-                    fontSize: '1.2rem', 
-                    marginTop: '2rem',
-                    background: 'var(--accent-primary)',
-                    color: 'var(--accent-text, #fff)',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isSubmitting ? 'default' : 'pointer',
-                    opacity: isSubmitting ? 0.7 : 1,
-                    fontFamily: 'var(--font-main)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-                }}
-            >
-                {isSubmitting ? 'Building World...' : 'Begin Your Journey'}
-            </button>
-        </form>
+                })}
+                
+                {error && <p style={{ color: 'var(--danger-color)', marginBottom: '1rem' }}>{error}</p>}
+                
+                <button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    style={{ 
+                        width: '100%', 
+                        padding: '1.2rem', 
+                        fontSize: '1.2rem', 
+                        marginTop: '2rem',
+                        background: 'var(--accent-primary)',
+                        color: 'var(--accent-text, #fff)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: isSubmitting ? 'default' : 'pointer',
+                        opacity: isSubmitting ? 0.7 : 1,
+                        fontFamily: 'var(--font-main)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                    }}
+                >
+                    {isSubmitting ? 'Building World...' : 'Begin Your Journey'}
+                </button>
+            </form>
+        </>
     );
 }

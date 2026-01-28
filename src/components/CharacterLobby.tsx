@@ -104,14 +104,14 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
             className="theme-wrapper" 
             data-theme={theme} 
             style={{ 
-                minHeight: '100vh', 
+                height: '100vh', 
                 width: '100vw',
-                background: 'var(--bg-main)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
+                overflowY: 'auto', 
+                // background: 'var(--bg-main)',
+                // backgroundSize: 'cover',
+                // backgroundPosition: 'center',
                 display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
+                flexDirection: 'column',
                 position: 'fixed',
                 top: 0, left: 0
             }}
@@ -134,7 +134,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 onClose={() => setCharToDelete(null)}
             />
 
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 0 }} />
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 0 }} />
             
             <div style={{ 
                 width: '100%', maxWidth: '500px', padding: '2rem', 
@@ -142,7 +142,9 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 background: 'var(--bg-panel)', 
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--border-radius)',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                margin: 'auto', 
+                flexShrink: 0
             }}>
                 <h1 style={{ 
                     textAlign: 'center', marginBottom: '2rem', marginTop: 0,
@@ -165,7 +167,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                         >
                             <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)', fontSize: '1.1rem' }}>
-                                    {guestChar.name || "Guest Drifter"}
+                                    {guestChar.name || "Guest"}
                                 </h3>
                                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                                     Local Save • {props.locations[guestChar.currentLocationId]?.name || "Unknown Location"}
