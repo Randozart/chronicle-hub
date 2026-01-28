@@ -4,7 +4,7 @@ import CheatSheet from '@/components/admin/CheatSheet';
 import AdminSidebarFooter from '@/components/admin/AdminSidebarFooter';
 import { ToastProvider } from '@/providers/ToastProvider';
 import { useEffect, useState, use } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import RefactorModal from '@/components/admin/RefactorModal'; 
 
 const RefactorIcon = () => (
@@ -17,9 +17,29 @@ const RefactorIcon = () => (
 export default function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
     const pathname = usePathname();
+    const router = useRouter();
     const [showNav, setShowNav] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    
     const [showRefactor, setShowRefactor] = useState(false);
+    const [isVerified, setIsVerified] = useState(false);
+
+    useEffect(() => {
+        const checkAccess = async () => {
+            try {
+                const res = await fetch(`/api/admin/verify?storyId=${storyId}`);
+                if (!res.ok) {
+                    router.push('/'); 
+                    return;
+                }
+                setIsVerified(true);
+            } catch (e) {
+                console.error("Auth check failed", e);
+                router.push('/');
+            }
+        };
+        checkAccess();
+    }, [storyId, router]);
     
     useEffect(() => {
         setShowNav(false);
@@ -40,6 +60,14 @@ export default function AdminLayout({ children, params }: { children: React.Reac
     }, []);
 
     const base = `/create/${storyId}`;
+    
+    if (!isVerified) {
+        return (
+            <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0e0e0e', color: '#666' }}>
+                Verifying Access...
+            </div>
+        );
+    }
     
     return (
         <ToastProvider>
