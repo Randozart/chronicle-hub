@@ -44,7 +44,9 @@ export default function NexusLayout({ sidebarContent, mainContent, settings, isT
                 style={{ 
                     opacity: isTransitioning ? 0 : 1, 
                     transition: 'opacity 0.2s ease-in-out',
-                    transform: isTransitioning ? 'translateY(10px)' : 'none'
+                    transform: isTransitioning ? 'translateY(10px)' : 'none',
+                    overflowY: 'auto',
+                    height: '100%'
                 }}
             >
                 {mainContent}

@@ -23,46 +23,66 @@ function escapeRegExp(string: string) {
 function sanitizeId(id: string) {
     return id.replace(/[^a-zA-Z0-9-_]/g, '_');
 }
+
 function analyzeRelationship(container: any, searchId: string, containerJson: string): AnalysisResult | null {
     const cleanId = searchId.toLowerCase();
+    
+    // hasRef() helps prevent fuzzy matches by performing a boundary check to prevent false positives
+    // Not used for every check, just the ones sensitive to it, like "location_1" and "location_2" both matching "location_"
+    const hasRef = (text: string | undefined) => {
+        if (!text) return false;
+        const regex = new RegExp(`\\b${escapeRegExp(cleanId)}\\b`, 'i');
+        return regex.test(text);
+    };
+
+    // Specific check for Quality Modifications
     const modRegex = new RegExp(`\\$${escapeRegExp(cleanId)}\\s*(=|\\+=|-=|\\+\\+|--)`, 'i');
     if (modRegex.test(containerJson)) {
         return { role: 'provider', reason: "Modifies State", context: "Effects Field" };
     }
+
     if (container.options) {
         for (const opt of container.options) {
+            // We check redirectId strictly, as the parser also does this
             if (opt.pass_redirect?.toLowerCase() === cleanId) return { role: 'provider', reason: "Direct Redirect", context: `(Pass) ${opt.name}` };
             if (opt.fail_redirect?.toLowerCase() === cleanId) return { role: 'provider', reason: "Fail Redirect", context: `(Fail) ${opt.name}` };
         }
     }
-    if (container.visible_if?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Visibility Condition", context: "Main Visibility" };
-    if (container.unlock_if?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Unlock Requirement", context: "Main Unlock" };
+
+    // Strictly testing the conditions here, as these can be fuzzy match sensitive
+    if (hasRef(container.visible_if)) return { role: 'dependent', reason: "Visibility Condition", context: "Main Visibility" };
+    if (hasRef(container.unlock_if)) return { role: 'dependent', reason: "Unlock Requirement", context: "Main Unlock" };
+
     if (container.options) {
         for (const opt of container.options) {
-            const optJson = JSON.stringify(opt).toLowerCase();
-            if (optJson.includes(cleanId)) {
+            const optStringToCheck = (opt.visible_if || '') + (opt.unlock_if || '') + (opt.action_cost || '');
+            if (hasRef(optStringToCheck)) {
                 return { role: 'dependent', reason: "Option Logic", context: `Option: ${opt.name}` };
             }
         }
     }
+
     if (container.storylet === searchId) {
         return { role: 'provider', reason: "Item Use Event", context: "On Use Trigger" };
     }
-    if (container.bonus && container.bonus.toLowerCase().includes(cleanId)) {
+
+    if (hasRef(container.bonus)) {
         return { role: 'provider', reason: "Stat Bonus", context: "Equipment" };
     }
+
     if (container.stalls) {
         if (container.defaultCurrencyId === searchId) return { role: 'dependent', reason: "Market Currency", context: "Default Currency" };
         for(const stall of container.stalls) {
             for(const listing of stall.listings) {
                 if (listing.qualityId === searchId) return { role: 'provider', reason: "Sold/Bought Here", context: `Stall: ${stall.name}` };
                 if (listing.currencyId === searchId) return { role: 'dependent', reason: "Currency Used", context: `Stall: ${stall.name}` };
-                if (listing.price?.includes(cleanId)) return { role: 'dependent', reason: "Price Formula", context: `Stall: ${stall.name}` };
+                if (hasRef(listing.price)) return { role: 'dependent', reason: "Price Formula", context: `Stall: ${stall.name}` };
             }
         }
     }
-    if (container.text?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Text Interpolation", context: "Main Text" };
-    if (container.name?.toLowerCase().includes(cleanId)) return { role: 'dependent', reason: "Name Reference", context: "Header" };
+
+    if (hasRef(container.text)) return { role: 'dependent', reason: "Text Interpolation", context: "Main Text" };
+    if (hasRef(container.name)) return { role: 'dependent', reason: "Name Reference", context: "Header" };
 
     return null;
 }
@@ -95,6 +115,8 @@ export function findConnections(
         else if ((entity as any).stalls) entityType = 'market';
 
         const entityName = entity.name || entity.id;
+
+        // Pre-check with includes for performance, then deep check
         if (entityJson.includes(cleanTargetId)) {
             const analysis = analyzeRelationship(entity, targetId, entityJson);
             if (analysis) {
@@ -108,6 +130,8 @@ export function findConnections(
                 });
             }
         }
+
+        // Outbound checks (if the target refers to this entity)
         if (targetObj && targetJson.includes(entity.id.toLowerCase())) {
             const analysis = analyzeRelationship(targetObj, entity.id, targetJson);
             if (analysis) {
