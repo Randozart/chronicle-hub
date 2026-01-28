@@ -24,8 +24,21 @@ export async function verifyWorldAccess(
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+    
+    // 2. FETCH WORLD
+    const world = await db.collection('worlds').findOne({ worldId });
+    if (!world) return false;
 
-    // 2. DATABASE SYSTEM ROLE CHECK
+    // 3. OPEN SOURCE CHECK (The Guest/Alt Fix)
+    // This part does NOT require a session.
+    if (requiredPermission === 'reader') {
+        const settings = world.settings || {};
+        if (settings.isOpenSource && world.published) {
+            return true; // Grant access even if session is null
+        }
+    }
+
+    // 4. DATABASE SYSTEM ROLE CHECK
     // Check if the user has specific roles granted in the DB
     const userProfile = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     
@@ -35,25 +48,9 @@ export async function verifyWorldAccess(
         }
     }
 
-    // 3. FETCH WORLD
-    const world = await db.collection('worlds').findOne({ worldId });
-    if (!world) return false;
-
-    // 4. WORLD OWNER CHECK
+    // 5. WORLD OWNER CHECK
     if (world.ownerId === userId) {
         return true;
-    }
-
-    // 5. OPEN SOURCE CHECK (Reader Only)
-    if (requiredPermission === 'reader') {
-        const settings = world.settings || {};
-        
-        if (settings.isOpenSource) {
-            // Check legacy 'published' flag which is true for both Published and In Progress
-            if (world.published) {
-                return true;
-            }
-        }
     }
 
     // 6. COLLABORATOR CHECK

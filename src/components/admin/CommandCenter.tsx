@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { useCreator } from '@/providers/CreatorProvider';
 
 interface Props {
     isDirty: boolean;
@@ -15,7 +16,44 @@ interface Props {
 export default function CommandCenter({ 
     isDirty, isSaving, lastSaved, onSave, onRevert, onDuplicate, onDelete, itemType 
 }: Props) {
-    
+    const { isReadOnly } = useCreator();
+
+    // Read Only View
+    if (isReadOnly) {
+        return (
+            <div style={{
+                position: 'fixed',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '90%',
+                maxWidth: '600px',
+                backgroundColor: 'rgba(30, 33, 40, 0.95)',
+                border: '1px solid var(--tool-border)',
+                borderRadius: 'var(--border-radius)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                color: 'var(--tool-text-main)',
+                padding: '0.75rem 1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                backdropFilter: 'blur(10px)', 
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>👀</span>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 'bold', color: 'var(--tool-text-header)' }}>Read Only Mode</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>
+                            You are viewing the source code. Changes cannot be saved. Button functionality such as <em>"Schedule Deletion"</em> may still show modals, but are otherwise disabled.
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Normal View (Writers/Owners)
     return (
         <div style={{
             position: 'fixed',

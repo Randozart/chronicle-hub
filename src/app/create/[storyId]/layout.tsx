@@ -2,11 +2,13 @@
 import Link from 'next/link';
 import CheatSheet from '@/components/admin/CheatSheet';
 import AdminSidebarFooter from '@/components/admin/AdminSidebarFooter';
-import { ToastProvider } from '@/providers/ToastProvider';
+import { ToastProvider, useToast } from '@/providers/ToastProvider';
 import { useEffect, useState, use } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import RefactorModal from '@/components/admin/RefactorModal'; 
+import { CreatorProvider } from '@/providers/CreatorProvider';
 
+// Icons
 const RefactorIcon = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '8px'}}>
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -16,14 +18,28 @@ const RefactorIcon = () => (
 
 export default function AdminLayout({ children, params }: { children: React.ReactNode, params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    return (
+        <ToastProvider>
+            <InnerLayout storyId={storyId}>
+                {children}
+            </InnerLayout>
+        </ToastProvider>
+    );
+}
+
+// Separated inner layout to use Toast context
+function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId: string }) {
     const pathname = usePathname();
     const router = useRouter();
+    const { showToast } = useToast();
     const [showNav, setShowNav] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
-    
     const [showRefactor, setShowRefactor] = useState(false);
-    const [isVerified, setIsVerified] = useState(false);
+    
+    // Role State
+    const [role, setRole] = useState<'owner' | 'writer' | 'reader' | null>(null);
 
+    // Enhanced Security Check
     useEffect(() => {
         const checkAccess = async () => {
             try {
@@ -32,7 +48,8 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                     router.push('/'); 
                     return;
                 }
-                setIsVerified(true);
+                const data = await res.json();
+                setRole(data.role || 'reader');
             } catch (e) {
                 console.error("Auth check failed", e);
                 router.push('/');
@@ -40,37 +57,48 @@ export default function AdminLayout({ children, params }: { children: React.Reac
         };
         checkAccess();
     }, [storyId, router]);
-    
+
     useEffect(() => {
         setShowNav(false);
         setShowHelp(false);
     }, [pathname]);
 
+    // Global Shortcut Handler with Read-Only Guard
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 e.stopPropagation(); 
+                
+                if (role === 'reader') {
+                    showToast("Read Only Mode: Cannot Save", "info");
+                    return;
+                }
+
                 window.dispatchEvent(new Event('global-save-trigger'));
             }
         };
         
-        window.addEventListener('keydown', handleKeyDown, { capture: true });
+        // Only attach if role is loaded
+        if (role) {
+            window.addEventListener('keydown', handleKeyDown, { capture: true });
+        }
         return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-    }, []);
+    }, [role, showToast]);
 
     const base = `/create/${storyId}`;
     
-    if (!isVerified) {
+    if (!role) {
         return (
             <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0e0e0e', color: '#666' }}>
                 Verifying Access...
             </div>
         );
     }
-    
+
     return (
-        <ToastProvider>
+        // Wrap everything in CreatorProvider
+        <CreatorProvider storyId={storyId} initialRole={role}>
             {showRefactor && (
                 <RefactorModal 
                     isOpen={showRefactor}
@@ -82,38 +110,31 @@ export default function AdminLayout({ children, params }: { children: React.Reac
             )}
             <div className="admin-layout" style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div className="admin-mobile-topbar" style={{ flexShrink: 0 }}>
-                    <button className="admin-mobile-btn" onClick={() => setShowNav(true)}>
-                        ☰
-                    </button>
-                    <span className="admin-mobile-title">Creator Studio</span>
-                    <button className="admin-mobile-btn" onClick={() => setShowHelp(true)}>
-                        ?
-                    </button>
+                    <button className="admin-mobile-btn" onClick={() => setShowNav(true)}>☰</button>
+                    <span className="admin-mobile-title">Creator Studio {role === 'reader' && '(Read Only)'}</span>
+                    <button className="admin-mobile-btn" onClick={() => setShowHelp(true)}>?</button>
                 </div>
 
                 {(showNav || showHelp) && (
-                    <div 
-                        className="admin-mobile-backdrop" 
-                        onClick={() => { setShowNav(false); setShowHelp(false); }} 
-                    />
+                    <div className="admin-mobile-backdrop" onClick={() => { setShowNav(false); setShowHelp(false); }} />
                 )}
 
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
                     
-                    {/* Left Sidebar (Nav) */}
                     <aside className={`admin-sidebar ${showNav ? 'mobile-open' : ''}`} style={{ flexShrink: 0 }}>
                         <div className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             Creator Studio
-                            <button 
-                                className="mobile-close-btn" 
-                                onClick={() => setShowNav(false)}
-                                style={{ display: showNav ? 'block' : 'none' }}
-                            >✕</button>
+                            <button className="mobile-close-btn" onClick={() => setShowNav(false)} style={{ display: showNav ? 'block' : 'none' }}>✕</button>
                         </div>
                         
+                        {role === 'reader' && (
+                            <div style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-text-dim)', fontSize: '0.75rem', padding: '0.5rem', textAlign: 'center', borderBottom: '1px solid var(--tool-border)' }}>
+                                Read Only Mode
+                            </div>
+                        )}
+
                         <nav className="admin-nav" style={{ overflowY: 'auto', flex: 1 }}>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                
                                 <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
                                     <Link 
                                         href={`/play/${storyId}?playtest=true`}
@@ -134,26 +155,28 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                                     </Link>
                                 </li>
 
-                                <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
-                                    <button 
-                                        onClick={() => setShowRefactor(true)}
-                                        className="admin-link"
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: 'var(--tool-bg-input)',
-                                            border: '1px solid var(--tool-border)',
-                                            color: 'var(--tool-text-main)',
-                                            textAlign: 'left',
-                                            display: 'flex', alignItems: 'center',
-                                            padding: '0.5rem 1rem',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem'
-                                        }}
-                                    >
-                                        <RefactorIcon /> Refactor ID...
-                                    </button>
-                                </li>
+                                {role !== 'reader' && (
+                                    <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
+                                        <button 
+                                            onClick={() => setShowRefactor(true)}
+                                            className="admin-link"
+                                            style={{
+                                                width: '100%',
+                                                backgroundColor: 'var(--tool-bg-input)',
+                                                border: '1px solid var(--tool-border)',
+                                                color: 'var(--tool-text-main)',
+                                                textAlign: 'left',
+                                                display: 'flex', alignItems: 'center',
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.9rem'
+                                            }}
+                                        >
+                                            <RefactorIcon /> Refactor ID...
+                                        </button>
+                                    </li>
+                                )}
 
                                 <SectionHeader label="Game System" />
                                 <AdminLink href={`${base}/settings`} label="Settings" />
@@ -179,24 +202,14 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                         </nav>
                         <AdminSidebarFooter />
                     </aside>
-                    <main className="admin-main" style={{ display: 'flex', flexDirection: 'row', flex: 1, minWidth: 0, overflow: 'hidden' }}>
 
+                    <main className="admin-main" style={{ display: 'flex', flexDirection: 'row', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                         <div className="admin-content-wrapper" style={{ flex: 1, overflowY: 'auto', height: '100%', position: 'relative' }}>
                             {children}
-                        </div> 
-                        <aside 
-                            className={`admin-help-sidebar ${showHelp ? 'mobile-open' : ''}`}
-                            style={{ 
-                                borderLeft: '1px solid var(--tool-border)', 
-                                background: 'var(--tool-bg-sidebar)',
-                                zIndex: 30,
-                                flexShrink: 0
-                            }}
-                        >
-                            <div style={{ 
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                padding: '1rem', background: 'var(--tool-bg-header)', borderBottom: '1px solid var(--tool-border)',
-                            }} className="admin-mobile-only-header">
+                        </div>
+
+                        <aside className={`admin-help-sidebar ${showHelp ? 'mobile-open' : ''}`} style={{ borderLeft: '1px solid var(--tool-border)', background: 'var(--tool-bg-sidebar)', zIndex: 30, flexShrink: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--tool-bg-header)', borderBottom: '1px solid var(--tool-border)' }} className="admin-mobile-only-header">
                                 <span style={{fontWeight:'bold'}}>Reference</span>
                                 <button className="mobile-close-btn" onClick={() => setShowHelp(false)}>✕</button>
                             </div>
@@ -205,30 +218,14 @@ export default function AdminLayout({ children, params }: { children: React.Reac
                     </main>
                 </div>
             </div>
-        </ToastProvider>
+        </CreatorProvider>
     );
 }
 
 function AdminLink({ href, label }: { href: string, label: string }) {
-    return (
-        <li>
-            <Link href={href} className="admin-link">{label}</Link>
-        </li>
-    );
+    return <li><Link href={href} className="admin-link">{label}</Link></li>;
 }
 
 function SectionHeader({ label }: { label: string }) {
-    return (
-        <li style={{ 
-            margin: '1.5rem 0 0.5rem 1.2rem', 
-            fontSize: '0.7rem', 
-            textTransform: 'uppercase', 
-            color: '#5c6370', 
-            fontWeight: 'bold', 
-            letterSpacing: '1px', 
-            userSelect: 'none'
-        }}>
-            {label}
-        </li>
-    );
+    return <li style={{ margin: '1.5rem 0 0.5rem 1.2rem', fontSize: '0.7rem', textTransform: 'uppercase', color: '#5c6370', fontWeight: 'bold', letterSpacing: '1px', userSelect: 'none' }}>{label}</li>;
 }
