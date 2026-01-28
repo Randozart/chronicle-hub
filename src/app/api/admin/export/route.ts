@@ -37,11 +37,26 @@ export async function GET(request: NextRequest) {
 
         const exportData = {
             metadata: {
-                version: "1.0",
+                version: "2.0", 
                 exportDate: new Date().toISOString(),
                 sourceWorldId: storyId
             },
-            world: worldDoc,
+            world: {
+                ...worldDoc,
+                // Ensure the content object structure is explicitly defined for JSON readability
+                content: {
+                    qualities: worldDoc.content?.qualities || {},
+                    locations: worldDoc.content?.locations || {},
+                    decks: worldDoc.content?.decks || {},
+                    regions: worldDoc.content?.regions || {},
+                    markets: worldDoc.content?.markets || {},
+                    images: worldDoc.content?.images || {},
+                    categories: worldDoc.content?.categories || {},
+                    char_create: worldDoc.content?.char_create || {},
+                    instruments: worldDoc.content?.instruments || {},
+                    music: worldDoc.content?.music || {}
+                }
+            },
             storylets: storylets,
             opportunities: opportunities
         };
