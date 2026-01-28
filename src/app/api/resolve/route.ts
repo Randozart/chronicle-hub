@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         }
         const pendingAutofires = await getAutofireStorylets(storyId);
         const eligibleAutofires = pendingAutofires.filter(e => 
-            (!e.location || e.location === character.currentLocationId) && 
+            ((!e as any).location || (e as any).location === character.currentLocationId) && 
             engine.evaluateCondition(e.autofire_if || "")
         );
         eligibleAutofires.sort((a, b) => {
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
              Object.assign(postResolutionEngine.worldContent.qualities, character.dynamicQualities);
         }
         const newEligibleAutofires = pendingAutofires.filter(e => 
-            (!e.location || e.location === character.currentLocationId) && 
+            ((!e as any).location || (e as any).location === character.currentLocationId) && 
             postResolutionEngine.evaluateCondition(e.autofire_if || "")
         );
         newEligibleAutofires.sort((a, b) => {

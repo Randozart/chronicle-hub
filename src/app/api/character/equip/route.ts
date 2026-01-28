@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const pendingAutofires = await getAutofireStorylets(storyId);
     
     const eligibleAutofires = pendingAutofires.filter(e => 
-        (!e.location || e.location === character.currentLocationId) && 
+        ((!e as any).location || (e as any).location === character.currentLocationId) && 
         engine.evaluateCondition(e.autofire_if || "")
     );
     
