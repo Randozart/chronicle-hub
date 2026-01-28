@@ -23,7 +23,21 @@ export async function POST(request: NextRequest) {
             const db = client.db(DB_NAME);
             const rootUpdates: Record<string, any> = {};
             
-            if ('isPublished' in data) rootUpdates.published = data.isPublished;
+            // New toggle respecting the legacy "isPublished" status
+            // Private                  = published: false
+            // In Progress OR Published = published: true
+            if ('publicationStatus' in data) {
+                const status = data.publicationStatus;
+                rootUpdates.published = (status === 'published' || status === 'in_progress');
+                // Ensure legacy field is kept in sync within settings blob if provided
+                data.isPublished = rootUpdates.published;
+            } 
+            // Fallback for legacy toggle calls
+            else if ('isPublished' in data) {
+                rootUpdates.published = data.isPublished;
+                data.publicationStatus = data.isPublished ? 'published' : 'private';
+            }
+
             if ('coverImage' in data) rootUpdates.coverImage = data.coverImage;
             if ('summary' in data) rootUpdates.summary = data.summary;
             if ('tags' in data) rootUpdates.tags = data.tags;

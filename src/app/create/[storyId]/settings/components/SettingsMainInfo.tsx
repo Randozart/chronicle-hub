@@ -80,8 +80,8 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
         onChange('contentConfig', { ...currentConfig, [field]: val });
     };
 
+    const currentStatus = settings.publicationStatus || (settings.isPublished ? 'published' : 'private');
     const content = settings.contentConfig || {};
-
     const playLink = typeof window !== 'undefined' ? `${window.location.origin}/play/${storyId}` : `/play/${storyId}`;
 
     return (
@@ -92,17 +92,38 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                     <h2 style={{ margin: 0 }}>World Settings</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ 
-                            color: settings.isPublished ? 'var(--success-color)' : 'var(--warning-color)', 
+                            color: currentStatus === 'published' ? 'var(--success-color)' : 
+                                   currentStatus === 'in_progress' ? 'var(--tool-accent)' : 
+                                   'var(--text-muted)', 
                             fontWeight: 'bold', fontSize: '0.8rem', textTransform: 'uppercase' 
                         }}>
-                            {settings.isPublished ? 'LIVE' : 'PRIVATE'}
+                            {currentStatus === 'published' ? 'LIVE' : 
+                             currentStatus === 'in_progress' ? 'WIP' : 
+                             'PRIVATE'}
                         </span>
-                        <label className="toggle-label">
-                            <input type="checkbox" checked={settings.isPublished || false} onChange={e => onChange('isPublished', e.target.checked)} />
-                            Publish
-                        </label>
+                        
+                        <select 
+                            value={currentStatus}
+                            onChange={(e) => onChange('publicationStatus', e.target.value)}
+                            className="form-select"
+                            style={{ width: 'auto', padding: '4px 8px', fontSize: '0.85rem' }}
+                        >
+                            <option value="private">Draft (Private)</option>
+                            <option value="in_progress">In Progress (Public Beta)</option>
+                            <option value="published">Published (Live)</option>
+                        </select>
                     </div>
                 </div>
+
+                {settings.deletionScheduledAt && (
+                    <div style={{ 
+                        background: 'var(--danger-color)', color: 'white', padding: '1rem', 
+                        borderRadius: '4px', marginBottom: '1.5rem', textAlign: 'center', fontWeight: 'bold' 
+                    }}>
+                        ⚠️ THIS WORLD IS SCHEDULED FOR DELETION ON {new Date(settings.deletionScheduledAt).toLocaleDateString()}
+                    </div>
+                )}
+
 
                 <div className="form-group">
                     <label className="form-label">World Title</label>

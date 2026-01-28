@@ -31,6 +31,11 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
     const isMature = content.mature;
     const hasTriggers = content.triggers;
 
+    // Lifecycle Status
+    const pubStatus = settings.publicationStatus || (w.published ? 'published' : 'private');
+    const isInProgress = pubStatus === 'in_progress';
+    const deletionDate = settings.deletionScheduledAt;
+
     const closePanel = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -96,7 +101,6 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                                 <span style={{ fontSize: '0.9rem' }}>{content.triggerDetails || "Specific triggers not listed."}</span>
                             </div>
                         )}
-
                         <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>By continuing, you confirm you are of appropriate age and consent to view this content.</p>
                     </div>
                 }
@@ -118,6 +122,16 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)'; setActiveView(null); }}
             >
+                {deletionDate && (
+                    <div style={{ 
+                        position: 'absolute', top: 0, left: 0, right: 0, 
+                        background: 'var(--danger-color)', color: '#fff', 
+                        padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 60 
+                    }}>
+                        SCHEDULED FOR DELETION
+                    </div>
+                )}
+
                 <div 
                     onClick={closePanel}
                     style={{
@@ -184,6 +198,17 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                         </div>
                     )}
                     
+                    {isInProgress && (
+                        <div style={{ 
+                            position: 'absolute', top: 10, left: 10, 
+                            background: 'var(--tool-accent)', color: 'black', 
+                            padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', 
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)', zIndex: 20 
+                        }}>
+                            🚧 ACTIVE DEVELOPMENT
+                        </div>
+                    )}
+
                     {isOwner && w.ownerId && w.currentUserId && w.ownerId !== w.currentUserId && (
                         <div style={{ position: 'absolute', top: 10, right: 10, background: 'var(--success-color)', color: 'black', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.3)', zIndex: 20 }}>COLLABORATOR</div>
                     )}
@@ -222,7 +247,7 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                             ))}
                         </div>
                     )}
-
+                    
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', flex: 1, marginBottom: '1.5rem', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {w.summary || "No summary provided."}
                     </p>

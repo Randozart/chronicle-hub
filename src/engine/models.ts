@@ -140,6 +140,8 @@ export interface SystemMessage {
 
 export interface WorldSettings {
     title?: string;
+    publicationStatus?: 'private' | 'in_progress' | 'published';
+    deletionScheduledAt?: string;
     useActionEconomy: boolean;
     maxActions: number | string;
     actionId: string;

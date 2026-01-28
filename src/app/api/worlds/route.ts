@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
             { _id: { $in: objectIds } },
             { projection: { username: 1, image: 1 } }
         ).toArray();
-
         const userMap = new Map(users.map(u => [u._id.toString(), u]));
         return worlds.map(w => {
             const owner = userMap.get(w.ownerId);
@@ -54,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (mode === 'discover') {
         const rawWorlds = await db.collection('worlds')
             .find({ 
-                published: true,
+                published: true, // "Published" or "In Progress"
                 "contentConfig.erotica": { $ne: true } 
             })
             .sort({ playerCount: -1, createdAt: -1 })
@@ -62,12 +61,12 @@ export async function GET(request: NextRequest) {
             .project({ 
                 worldId: 1, title: 1, summary: 1, coverImage: 1, tags: 1, ownerId: 1, collaborators: 1,
                 contentConfig: 1, 
+                'settings.publicationStatus': 1,
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 
                 'settings.attributions': 1 
             })
             .toArray();
-
         const enriched = await enrichWorlds(rawWorlds);
         return NextResponse.json(enriched);
     }
@@ -87,6 +86,8 @@ export async function GET(request: NextRequest) {
             .project({ 
                 worldId: 1, title: 1, summary: 1, published: 1, coverImage: 1, tags: 1, ownerId: 1, collaborators: 1,
                 contentConfig: 1, 
+                'settings.publicationStatus': 1,
+                'settings.deletionScheduledAt': 1,
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 'settings.attributions': 1 
             })
@@ -121,6 +122,7 @@ export async function GET(request: NextRequest) {
             .project({ 
                 worldId: 1, title: 1, summary: 1, coverImage: 1, ownerId: 1,
                 contentConfig: 1, 
+                'settings.publicationStatus': 1,
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 'settings.attributions': 1 
             })
@@ -173,6 +175,8 @@ export async function POST(request: NextRequest) {
             actionId: "$actions",
             defaultActionCost: 1,
             currencyQualities: [],
+            publicationStatus: 'private', 
+            isPublished: false
         },
         content: {
             qualities: {},
