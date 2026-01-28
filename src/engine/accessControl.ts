@@ -4,19 +4,29 @@ import { authOptions } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 export async function verifyWorldAccess(
     worldId: string, 
     requiredPermission: 'reader' | 'writer' | 'owner' = 'writer'
 ): Promise<boolean> {
     const session = await getServerSession(authOptions);
-    if (!session?.user) return false;
+    if (!session?.user?.email) return false;
     
     const userId = (session.user as any).id;
+    const userEmail = session.user.email;
+
+    // 1. SYSADMIN MODE
+    // If this is the System Admin defined in .env, they can do ANYTHING.
+    if (ADMIN_EMAIL && userEmail === ADMIN_EMAIL) {
+        return true; 
+    }
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 1. GLOBAL SYSTEM CHECK (God Mode for SysAdmin to help with debugging)
+    // 2. DATABASE SYSTEM ROLE CHECK
+    // Check if the user has specific roles granted in the DB
     const userProfile = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     
     if (userProfile && userProfile.roles) {
@@ -25,34 +35,28 @@ export async function verifyWorldAccess(
         }
     }
 
-    // 2. FETCH WORLD
+    // 3. FETCH WORLD
     const world = await db.collection('worlds').findOne({ worldId });
     if (!world) return false;
 
-    // 3. WORLD OWNER CHECK
+    // 4. WORLD OWNER CHECK
     if (world.ownerId === userId) {
         return true;
     }
 
-    // 4. OPEN SOURCE CHECK
-    // If the user only needs read access, check if the world is Open Source
+    // 5. OPEN SOURCE CHECK (Reader Only)
     if (requiredPermission === 'reader') {
         const settings = world.settings || {};
         
-        // Must be flagged Open Source
         if (settings.isOpenSource) {
-            // Must be publicly visible (Published or In Progress)
-            // We check the root 'published' flag which is true for both statuses in the DB
-            // Or explicitly check the status string for clarity
-            const status = settings.publicationStatus || (world.published ? 'published' : 'private');
-            
-            if (status === 'published' || status === 'in_progress') {
+            // Check legacy 'published' flag which is true for both Published and In Progress
+            if (world.published) {
                 return true;
             }
         }
     }
 
-    // 5. COLLABORATOR CHECK
+    // 6. COLLABORATOR CHECK
     if (requiredPermission === 'owner') {
         return false; 
     }
@@ -67,6 +71,5 @@ export async function verifyWorldAccess(
         return true;
     }
 
-    // 6. DENY
     return false;
 }

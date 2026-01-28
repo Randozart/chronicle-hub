@@ -1,23 +1,5 @@
 'use client';
 
-/*
- * Chronicle Hub
- * Copyright (C) 2026 Randy Smits-Scheuder Goedheijt <randozart@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import WorldCard from '@/components/dashboard/WorldCard';
@@ -27,7 +9,7 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 export default function Dashboard() {
     const { status } = useSession();
-    const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | null>(null);
+    const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[], worlds?: any[], isSystemAdmin?: boolean } | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [activeTab, setActiveTab] = useState<'my' | 'discover'>('my');
     const [platformMsg, setPlatformMsg] = useState<any>(null);
@@ -64,7 +46,8 @@ export default function Dashboard() {
 
     const getCleanDisplayList = () => {
         if (!data) return [];
-        const sourceList = Array.isArray(data) ? data : (activeTab === 'my' ? data.myWorlds : data.playedWorlds);
+        const sourceList = Array.isArray(data) ? data : (activeTab === 'my' ? (data.myWorlds || []) : (data.worlds || data.playedWorlds || []));
+        
         if (!Array.isArray(sourceList)) return [];
 
         return sourceList.map(w => {
@@ -84,6 +67,7 @@ export default function Dashboard() {
 
     const displayList = getCleanDisplayList();
     const isGuest = status === 'unauthenticated';
+    const isSystemAdmin = data?.isSystemAdmin || false;
 
     return (
         <div className="theme-wrapper" data-theme="default" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
@@ -123,7 +107,13 @@ export default function Dashboard() {
 
                     <div className="dashboard-grid">
                         {displayList.map((w: any) => (
-                            <WorldCard key={w.worldId} w={w} isOwner={activeTab === 'my'} isGuest={isGuest} />
+                            <WorldCard 
+                                key={w.worldId} 
+                                w={w} 
+                                isOwner={activeTab === 'my' && w.ownerId === (data as any)?.myWorlds?.[0]?.currentUserId} 
+                                isGuest={isGuest} 
+                                isAdmin={isSystemAdmin} 
+                            />
                         ))}
                         
                         {displayList.length === 0 && (
@@ -138,7 +128,7 @@ export default function Dashboard() {
                             <h2 className="section-title">Recent Adventures</h2>
                             <div className="dashboard-grid">
                                 {data.playedWorlds.map((w: any) => (
-                                    <WorldCard key={w.worldId} w={w} isOwner={false} />
+                                    <WorldCard key={w.worldId} w={w} isOwner={false} isAdmin={isSystemAdmin} />
                                 ))}
                             </div>
                         </>

@@ -1,7 +1,8 @@
 
 # ChronicleHub
 
-**ChronicleHub is a modern, open-source platform for creating and playing rich, dynamic interactive fiction.** It is a spiritual successor to Quality-Based Narrative (QBN) systems like StoryNexus, designed to power interactive fiction similar to those found in games like *Fallen London* or *Sunless Sea*. Our goal is to provide writers, designers, and developers with a powerful, flexible, and accessible toolset to bring their narrative-driven games to life.
+**ChronicleHub is a modern, open-source platform for creating and playing rich, dynamic interactive fiction.** 
+It is a spiritual successor to Quality-Based Narrative (QBN) systems like StoryNexus, designed to power interactive fiction similar to those found in games like *Fallen London* or *Sunless Sea*. Our goal is to provide writers, designers, and developers with a powerful, flexible, and accessible toolset to bring their narrative-driven games to life.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![GitHub issues](https://img.shields.io/github/issues/Randozart/chronicle-hub)](https://github.com/Randozart/chronicle-hub/issues)
