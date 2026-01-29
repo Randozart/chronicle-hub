@@ -18,19 +18,23 @@ export async function GET(
 
     try {
         // 1. Reconstruct Qualities
-        // Group by ID, picking the most recently seen name/image, but keeping all descriptions for analysis
         const qualities = await db.collection('lazarus_quality_evidence').aggregate([
             { $match: { world: worldId } },
-            { $sort: { lastSeen: -1 } }, 
+            // Group by ID
             { $group: {
                 _id: "$qualityId",
-                name: { $first: "$name" },
-                image: { $first: "$image" },
-                nature: { $first: "$nature" }, // 1=Stat, 2=Item
-                category: { $first: "$category" },
-                cap: { $first: "$cap" },
-                tag: { $first: "$tag" },
-                // Collect unique descriptions mapped to levels
+                // Prefer the name from non-inferred sources (full definitions)
+                // We sort so that full definitions come first
+                name: { $first: "$name" }, 
+                
+                // Collect ALL seen images for this quality
+                images: { $addToSet: "$image" },
+                
+                nature: { $max: "$nature" },
+                category: { $max: "$category" },
+                cap: { $max: "$cap" },
+                tag: { $max: "$tag" },
+                
                 variations: { 
                     $addToSet: { 
                         level: "$observedLevel", 

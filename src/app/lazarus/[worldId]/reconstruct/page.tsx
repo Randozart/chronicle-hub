@@ -6,7 +6,7 @@ import { useToast } from '@/providers/ToastProvider';
 interface QualityData {
     _id: number;
     name: string;
-    image: string;
+    images: string[];
     nature: number;
     category: number;
     variations: { level: number, desc: string }[];
@@ -56,7 +56,7 @@ export default function ReconstructPage({ params }: { params: Promise<{ worldId:
             const exportData = qualities.map(q => ({
                 Id: q._id,
                 Name: q.name,
-                Image: q.image,
+                Image: q.images,
                 Description: q.variations[0]?.desc || "", // Pick most recent desc
                 Nature: q.nature,
                 Category: q.category,
@@ -114,10 +114,30 @@ export default function ReconstructPage({ params }: { params: Promise<{ worldId:
                             </tr>
                         </thead>
                         <tbody>
-                            {qualities.map(q => (
+                              {qualities.map(q => (
                                 <tr key={q._id} style={{ borderTop: '1px solid #333' }}>
                                     <td style={{ padding: '0.8rem 1rem', fontFamily: 'monospace', color: '#61afef' }}>{q._id}</td>
-                                    <td style={{ padding: '0.8rem 1rem', fontWeight: 'bold' }}>{q.name}</td>
+                                    
+                                    <td style={{ padding: '0.5rem 1rem' }}>
+                                        <div style={{ display: 'flex', gap: '5px' }}>
+                                            {q.images && q.images.length > 0 ? (
+                                                q.images.filter(Boolean).map((img, i) => (
+                                                    <div key={i} title={img} style={{ width: '32px', height: '32px', border: '1px solid #444', borderRadius: '4px', overflow: 'hidden', background: '#000' }}>
+                                                        <img 
+                                                            src={`https://images.storynexus.failbettergames.com.s3.amazonaws.com/icons/${img}.png`} 
+                                                            style={{ width: '100%', height: '100%' }} 
+                                                            alt=""
+                                                            onError={(e) => e.currentTarget.style.display = 'none'}
+                                                        />
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <span style={{ opacity: 0.3 }}>-</span>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    <td style={{ padding: '0.8rem 1rem', fontWeight: 'bold' }}>{q.name || <span style={{fontStyle:'italic', opacity:0.5}}>Unknown</span>}</td>
                                     <td style={{ padding: '0.8rem 1rem' }}>{q.nature === 1 ? 'Stat' : q.nature === 2 ? 'Item' : '?'}</td>
                                     <td style={{ padding: '0.8rem 1rem' }}>{q.category}</td>
                                     <td style={{ padding: '0.8rem 1rem' }}>{q.variations.length}</td>

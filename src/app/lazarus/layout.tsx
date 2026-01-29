@@ -8,8 +8,6 @@ export default function LazarusLayout({ children }: { children: React.ReactNode 
     const router = useRouter();
 
     useEffect(() => {
-        // We need a client-side check to verify the user has access to the tool generally
-        // A specific API endpoint for this check is cleanest.
         fetch('/api/lazarus/verify')
             .then(res => {
                 if (res.ok) setAuthorized(true);
@@ -34,9 +32,21 @@ export default function LazarusLayout({ children }: { children: React.ReactNode 
                     </h1>
                     <span style={{ background: '#282c34', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', color: '#abb2bf' }}>BETA</span>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <Link href="/lazarus/ingest" style={{ color: '#61afef', fontSize: '0.9rem', fontWeight: 'bold' }}>+ Ingest Data</Link>
-                    <Link href="/" style={{ color: '#abb2bf', textDecoration: 'none', fontSize: '0.9rem' }}>Back to Hub</Link>
+                
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                    <Link href="/lazarus" style={{ color: '#61afef', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>📂</span> All Archives
+                    </Link>
+
+                    <Link href="/lazarus/ingest" style={{ color: '#61afef', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'none' }}>
+                        + Ingest Data
+                    </Link>
+                    
+                    <div style={{ width: '1px', height: '20px', background: '#333' }} />
+
+                    <Link href="/" style={{ color: '#abb2bf', textDecoration: 'none', fontSize: '0.9rem' }}>
+                        Back to Hub
+                    </Link>
                 </div>
             </div>
             <main style={{ flex: 1, padding: '2rem' }}>

@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
         const client = await clientPromise;
         const db = client.db(DB_NAME);
         
-        // Collections
         const eventCol = db.collection('lazarus_evidence');
         const qualityCol = db.collection('lazarus_quality_evidence');
         const geoCol = db.collection('lazarus_geography');
@@ -50,10 +49,9 @@ export async function POST(request: NextRequest) {
 
             const payload = data.payload || {};
             const evt = payload.Event;
-            
-            // 1. SCAVENGE GEOGRAPHY
+
+            // 1. SCAVENGE GEOGRAPHY ---
             if (evt) {
-                // Area
                 if (evt.Area && evt.Area.Id) {
                     const areaHash = generateGeoHash(world, 'Area', evt.Area);
                     geoOps.push({
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
                                     image: normalizeImage(evt.Area.ImageName),
                                     contentHash: areaHash,
                                     firstSeen: new Date(),
-                                    raw: evt.Area // Store raw for safety
+                                    raw: evt.Area 
                                 },
                                 $set: { lastSeen: new Date() }
                             },
@@ -77,7 +75,6 @@ export async function POST(request: NextRequest) {
                         }
                     });
                 }
-                // Setting / Region
                 if (evt.Setting && evt.Setting.Id) {
                     const settingHash = generateGeoHash(world, 'Setting', evt.Setting);
                     geoOps.push({
@@ -103,7 +100,6 @@ export async function POST(request: NextRequest) {
             }
 
             // 2. SCAVENGE QUALITIES
-            // Helper to process a list of qualities from the dump
             const processQualities = (list: any[], sourceContext: string) => {
                 if (!list || !Array.isArray(list)) return;
                 for (const q of list) {
@@ -118,24 +114,19 @@ export async function POST(request: NextRequest) {
                                     world: world.toLowerCase(),
                                     qualityId: parseInt(q.Id),
                                     name: q.Name,
-                                    description: q.Description, // Capture level-specific descriptions here
+                                    description: q.Description, 
                                     image: normalizeImage(q.Image || q.ImageName),
-                                    nature: q.Nature, // 1=Stat, 2=Item?
+                                    nature: q.Nature, 
                                     category: q.Category,
                                     cap: q.Cap,
                                     tag: q.Tag,
-                                    
-                                    // Capture the level this description was seen at
                                     observedLevel: q.Level || q.EffectiveLevel || 0,
-                                    
                                     contentHash: qHash,
                                     firstSeen: new Date(),
                                     raw: q
                                 },
                                 $set: { lastSeen: new Date() },
-                                $addToSet: { 
-                                    observedContexts: sourceContext // Track where we saw it (inventory, stats, etc)
-                                }
+                                $addToSet: { observedContexts: sourceContext }
                             },
                             upsert: true
                         }
@@ -143,20 +134,66 @@ export async function POST(request: NextRequest) {
                 }
             };
 
-            // Scan all known quality locations in JSON
             processQualities(payload.MidPanelQualities, 'main_stats');
             processQualities(payload.OtherStatuses?.Story, 'story');
             processQualities(payload.OtherStatuses?.Accomplishment, 'accomplishment');
             processQualities(payload.InventoryItems, 'inventory');
             
-            // Scan Messages for Quality Changes (often contains change text/images)
-            if (payload.Messages && Array.isArray(payload.Messages)) {
-                // Messages are tricky, they don't have IDs usually. 
-                // We rely on the implicit link or just skip them for definition gathering 
-                // if they lack IDs. 
-                // However, Black Crown 'ChangeDescriptionText' suggests we might want to capture these strings later.
-                // For now, let's stick to the explicit definition arrays.
-            }
+            const branches = [
+                ...(payload.OpenBranches || []),
+                ...(payload.LockedBranches || [])
+            ];
+
+            branches.forEach((b: any) => {
+                const html = (b.BranchRequirementsDescription || "") + (b.BranchUnlockRequirementsDescription || "");
+                if (!html) return;
+
+                // Regex to capture src and data-edit ID.
+                // It handles attributes in flexible order.
+                const imgTagRegex = /<img\s+[^>]*>/g;
+                const srcRegex = /src=["']([^"']+)["']/;
+                const idRegex = /data-edit=["'](\d+)["']/;
+                const altRegex = /alt=["']([^"']+)["']/; // Capture name from alt tag
+
+                let match;
+                while ((match = imgTagRegex.exec(html)) !== null) {
+                    const imgTag = match[0];
+                    const srcMatch = srcRegex.exec(imgTag);
+                    const idMatch = idRegex.exec(imgTag);
+                    const altMatch = altRegex.exec(imgTag);
+
+                    if (srcMatch && idMatch) {
+                        const image = normalizeImage(srcMatch[1]);
+                        const qualityId = parseInt(idMatch[1]);
+                        const name = altMatch ? altMatch[1] : undefined;
+
+                        // Create a specific hash for this inferred connection
+                        // We use a different context "html_inference" so it doesn't collide with full definitions
+                        const inferenceHash = crypto.createHash('sha256').update(`${world}_inferred_${qualityId}_${image}`).digest('hex');
+
+                        qualityOps.push({
+                            updateOne: {
+                                filter: { contentHash: inferenceHash },
+                                update: {
+                                    $setOnInsert: {
+                                        world: world.toLowerCase(),
+                                        qualityId: qualityId,
+                                        name: name, // Might be partial or null
+                                        image: image,
+                                        // We don't know Nature/Category here, leave undefined
+                                        contentHash: inferenceHash,
+                                        firstSeen: new Date(),
+                                        isInferred: true // Flag this as scraped data
+                                    },
+                                    $set: { lastSeen: new Date() },
+                                    $addToSet: { observedContexts: 'html_inference' }
+                                },
+                                upsert: true
+                            }
+                        });
+                    }
+                }
+            });
 
 
             // 3. SCAVENGE EVENTS
@@ -194,7 +231,6 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Execute Bulk Ops
         const results = { events: 0, qualities: 0, geo: 0 };
         
         if (eventOps.length > 0) {
@@ -210,14 +246,12 @@ export async function POST(request: NextRequest) {
             results.geo = r.upsertedCount + r.matchedCount;
         }
 
-        return NextResponse.json({ 
-            success: true, 
-            ...results,
-            skipped 
-        });
+        return NextResponse.json({ success: true, ...results, skipped });
 
     } catch (e: any) {
         console.error("Lazarus Ingest Error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
+
+import crypto from 'crypto';

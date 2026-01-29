@@ -8,7 +8,12 @@ export default function IngestPage() {
     
     const [status, setStatus] = useState<'idle' | 'reading' | 'uploading' | 'complete' | 'error'>('idle');
     const [progress, setProgress] = useState(0);
-    const [stats, setStats] = useState({ totalLines: 0, inserted: 0, duplicates: 0 });
+    const [stats, setStats] = useState({ 
+        events: 0, 
+        qualities: 0, 
+        geo: 0, 
+        skipped: 0 
+    });
     const [worldName, setWorldName] = useState("");
     const [logs, setLogs] = useState<string[]>([]);
 
@@ -18,7 +23,6 @@ export default function IngestPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Auto-detect world name from filename (e.g. "sunless_sea_dump.jsonl")
         const nameMatch = file.name.match(/^([a-zA-Z0-9]+)/);
         if (nameMatch && !worldName) {
             setWorldName(nameMatch[1].toLowerCase());
@@ -28,27 +32,29 @@ export default function IngestPage() {
     const startIngest = async () => {
         const file = fileInputRef.current?.files?.[0];
         if (!file || !worldName) {
-            showToast("Please select a file and enter a World Name", "error");
+            showToast("Please select a file and enter a World ID", "error");
             return;
         }
 
         setStatus('reading');
-        setStats({ totalLines: 0, inserted: 0, duplicates: 0 });
+        setStats({ events: 0, qualities: 0, geo: 0, skipped: 0 });
         setLogs([]);
         
-        const CHUNK_SIZE = 1024 * 1024 * 2; // Read 2MB chunks from disk
-        const BATCH_SIZE = 250; // Send 200 JSON lines per API call
+        const CHUNK_SIZE = 1024 * 1024 * 2; 
+        const BATCH_SIZE = 250; 
 
         const reader = new FileReader();
         let offset = 0;
         let leftover = "";
         let lineBuffer: string[] = [];
         
-        let totalInserted = 0;
-        let totalMatched = 0;
+        // Accumulators
+        let accEvents = 0;
+        let accQualities = 0;
+        let accGeo = 0;
+        let accSkipped = 0;
 
-        // Helper to send a batch
-         const sendBatch = async (lines: string[]) => {
+        const sendBatch = async (lines: string[]) => {
             try {
                 const res = await fetch('/api/lazarus/ingest', {
                     method: 'POST',
@@ -63,13 +69,17 @@ export default function IngestPage() {
                 if (!res.ok) throw new Error(`API Error ${res.status}`);
                 
                 const data = await res.json();
-                totalInserted += data.inserted || 0;
-                totalMatched += data.matched || 0;
+                
+                accEvents += data.events || 0;
+                accQualities += data.qualities || 0;
+                accGeo += data.geo || 0;
+                accSkipped += data.skipped || 0;
                 
                 setStats({ 
-                    totalLines: offset, // approximate bytes read
-                    inserted: totalInserted, 
-                    duplicates: totalMatched 
+                    events: accEvents,
+                    qualities: accQualities,
+                    geo: accGeo,
+                    skipped: accSkipped
                 });
             } catch (err: any) {
                 addLog(`Batch Error: ${err.message}`);
@@ -85,24 +95,19 @@ export default function IngestPage() {
             if (!e.target?.result) return;
             const text = e.target.result as string;
             
-            // Combine leftover from previous chunk with new text
             const allText = leftover + text;
             const lines = allText.split('\n');
 
-            // The last line is likely incomplete, save it for next chunk
-            // UNLESS this is the very last chunk
             if (offset + CHUNK_SIZE < file.size) {
                 leftover = lines.pop() || "";
             } else {
                 leftover = "";
             }
 
-            // Add lines to buffer
             for (const line of lines) {
                 if (line.trim()) lineBuffer.push(line);
             }
 
-            // Process full batches
             while (lineBuffer.length >= BATCH_SIZE) {
                 const batch = lineBuffer.splice(0, BATCH_SIZE);
                 setStatus('uploading');
@@ -110,15 +115,12 @@ export default function IngestPage() {
             }
 
             offset += CHUNK_SIZE;
-            
-            // Update Progress UI
             const percent = Math.min(100, Math.round((offset / file.size) * 100));
             setProgress(percent);
 
             if (offset < file.size) {
                 readNextChunk();
             } else {
-                // Send remaining buffer
                 if (lineBuffer.length > 0) {
                     await sendBatch(lineBuffer);
                 }
@@ -143,19 +145,11 @@ export default function IngestPage() {
                 </h2>
                 <p style={{ fontSize: '0.9rem', marginBottom: '2rem' }}>
                     Upload raw <code>.jsonl</code> dumps from StoryNexus archives. 
-                    The system will automatically deduplicate entries based on content hashing.
+                    The system will automatically scavenge Events, Qualities, and Geography.
                 </p>
 
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ flex: 1 }}>
-                        <label className="form-label">World ID</label>
-                        <input 
-                            className="form-input" 
-                            value={worldName} 
-                            onChange={e => setWorldName(e.target.value)} 
-                            placeholder="e.g. fallen_london"
-                        />
-                    </div>
+                    
                     <div style={{ flex: 2 }}>
                         <label className="form-label">Source File</label>
                         <input 
@@ -165,6 +159,15 @@ export default function IngestPage() {
                             onChange={handleFileChange}
                             className="form-input"
                             style={{ paddingTop: '6px' }}
+                        />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <label className="form-label">World ID</label>
+                        <input 
+                            className="form-input" 
+                            value={worldName} 
+                            onChange={e => setWorldName(e.target.value)} 
+                            placeholder="Autofilled by file upload"
                         />
                     </div>
                 </div>
@@ -189,15 +192,11 @@ export default function IngestPage() {
                             <div style={{ width: `${progress}%`, height: '100%', background: '#61afef', transition: 'width 0.2s' }} />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
-                            <div style={{ background: 'rgba(46, 204, 113, 0.1)', border: '1px solid #2ecc71', padding: '1rem', borderRadius: '4px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2ecc71' }}>{stats.inserted}</div>
-                                <div style={{ fontSize: '0.8rem', textTransform: 'uppercase' }}>New Instances</div>
-                            </div>
-                            <div style={{ background: 'rgba(243, 156, 18, 0.1)', border: '1px solid #f39c12', padding: '1rem', borderRadius: '4px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f39c12' }}>{stats.duplicates}</div>
-                                <div style={{ fontSize: '0.8rem', textTransform: 'uppercase' }}>Duplicates Skipped</div>
-                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+                            <StatBox label="Events" count={stats.events} color="#2ecc71" border="rgba(46, 204, 113, 0.3)" />
+                            <StatBox label="Qualities" count={stats.qualities} color="#9b59b6" border="rgba(155, 89, 182, 0.3)" />
+                            <StatBox label="Geography" count={stats.geo} color="#e5c07b" border="rgba(229, 192, 123, 0.3)" />
+                            <StatBox label="Skipped" count={stats.skipped} color="#e74c3c" border="rgba(231, 76, 60, 0.3)" />
                         </div>
 
                         <div style={{ marginTop: '1rem', maxHeight: '150px', overflowY: 'auto', background: '#111', padding: '1rem', fontSize: '0.75rem', fontFamily: 'monospace', color: '#888' }}>
@@ -209,3 +208,16 @@ export default function IngestPage() {
         </div>
     );
 }
+
+const StatBox = ({ label, count, color, border }: any) => (
+    <div style={{ 
+        background: `color-mix(in srgb, ${color}, transparent 90%)`, 
+        border: `1px solid ${border}`, 
+        padding: '0.8rem', 
+        borderRadius: '4px', 
+        textAlign: 'center' 
+    }}>
+        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: color }}>{count}</div>
+        <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.8 }}>{label}</div>
+    </div>
+);
