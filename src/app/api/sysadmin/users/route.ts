@@ -36,13 +36,17 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    const { userId, role, action, reason } = await request.json(); 
+    const { userId, role, action, reason, tags } = await request.json();
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
     
-    if ((session.user as any).id === userId) return NextResponse.json({ error: "Cannot modify self." }, { status: 400 });
+    if ((session.user as any).id === userId) {
+        return NextResponse.json({ error: "Cannot modify self." }, { status: 400 });
+    }
 
     if (action === 'ban') {
         const shouldBan = role === 'banned'; 
@@ -50,7 +54,14 @@ export async function PATCH(request: NextRequest) {
             { _id: new ObjectId(userId) },
             { $set: { isBanned: shouldBan, banReason: reason || null } }
         );
-    } else {
+    } 
+    else if (action === 'update_tags') {
+        await db.collection('users').updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: { accessTags: tags || [] } }
+        );
+    }
+    else {
         let dbRoles: string[] = [];
         if (role === 'illuminator') dbRoles = ['premium', 'writer'];
         else if (role === 'archivist') dbRoles = ['archivist', 'writer'];

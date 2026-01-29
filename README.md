@@ -127,7 +127,7 @@ Additionally, this project includes data from caniuse-lite, which is licensed un
 
 **The AGPL-3.0 license for the engine DOES NOT apply to the games you create.**
 
-You, the creator, are the copyright holder of your game's story, text, and assets. You are free to license your game however you wish, whether for commercial or non-commercial purposes. ChronicleHub is merely the tool. Data exported from it is subject to the Terms of Service of the platform hosting the tool. In the case of the [main ChronicleHub website](https://chroniclehubgames.com/), the following points have been included in the terms of service, which can be found on the main page.
+You, the creator, are the copyright holder of your game's story, text, and assets. You are free to license your game however you wish, whether for commercial or non-commercial purposes. ChronicleHub is merely the tool. Data exported from it is subject to the Terms of Service of the platform hosting the tool. In the case of the [main ChronicleHub website](https://chroniclehubgames.com/), the following points have been included in the terms of service to further safeguard this, which can be found on the main page.
 
 > ## 4. User Generated Content (UGC) & Intellectual Property
 > 1.  **Your Ownership:** You retain full ownership and copyright of the stories, scripts, worlds, and original assets you create on ChronicleHub.
