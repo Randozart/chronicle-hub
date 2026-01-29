@@ -54,6 +54,17 @@ export default function WorldDataPage({ params }: { params: Promise<{ worldId: s
                 </h2>
                 
                 <div style={{ display: 'flex', gap: '10px' }}>
+                    <Link 
+                        href={`/lazarus/${worldId}/reconstruct`}
+                        style={{ 
+                            background: '#98c379', color: '#111', fontWeight: 'bold', 
+                            padding: '10px 16px', borderRadius: '4px', textDecoration: 'none',
+                            display: 'flex', alignItems: 'center', gap: '8px'
+                        }}
+                    >
+                        <span>🛠️</span> Reconstruct Data
+                    </Link>
+
                     <input 
                         className="form-input" 
                         placeholder="Search ID or Title..." 
