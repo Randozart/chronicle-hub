@@ -50,24 +50,27 @@ export async function POST(request: NextRequest) {
             const payload = data.payload || {};
             const evt = payload.Event;
 
-            // 1. SCAVENGE GEOGRAPHY ---
-            if (evt) {
-                if (evt.Area && evt.Area.Id) {
-                    const areaHash = generateGeoHash(world, 'Area', evt.Area);
+            // 1. RECURSIVE GEOGRAPHY SCAVENGER
+            const scavengeGeo = (obj: any) => {
+                if (!obj || typeof obj !== 'object') return;
+                if (obj.Id && obj.Name && (obj.ImageName || obj.Image)) {
+                    const isSetting = obj.hasOwnProperty('ItemsUsableHere') || obj.hasOwnProperty('MaxActionsAllowed');
+                    const type = isSetting ? 'Setting' : 'Area';
+                    const hash = generateGeoHash(world, type, obj);
                     geoOps.push({
                         updateOne: {
-                            filter: { contentHash: areaHash },
+                            filter: { contentHash: hash },
                             update: {
                                 $setOnInsert: {
                                     world: world.toLowerCase(),
-                                    type: 'Area',
-                                    id: parseInt(evt.Area.Id),
-                                    name: evt.Area.Name,
-                                    description: evt.Area.Description,
-                                    image: normalizeImage(evt.Area.ImageName),
-                                    contentHash: areaHash,
+                                    type,
+                                    id: parseInt(obj.Id),
+                                    name: obj.Name,
+                                    description: obj.Description || "",
+                                    image: normalizeImage(obj.ImageName || obj.Image),
+                                    contentHash: hash,
                                     firstSeen: new Date(),
-                                    raw: evt.Area 
+                                    raw: obj
                                 },
                                 $set: { lastSeen: new Date() }
                             },
@@ -75,37 +78,16 @@ export async function POST(request: NextRequest) {
                         }
                     });
                 }
-                if (evt.Setting && evt.Setting.Id) {
-                    const settingHash = generateGeoHash(world, 'Setting', evt.Setting);
-                    geoOps.push({
-                        updateOne: {
-                            filter: { contentHash: settingHash },
-                            update: {
-                                $setOnInsert: {
-                                    world: world.toLowerCase(),
-                                    type: 'Setting',
-                                    id: parseInt(evt.Setting.Id),
-                                    name: evt.Setting.Name,
-                                    itemsUsable: evt.Setting.ItemsUsableHere,
-                                    contentHash: settingHash,
-                                    firstSeen: new Date(),
-                                    raw: evt.Setting
-                                },
-                                $set: { lastSeen: new Date() }
-                            },
-                            upsert: true
-                        }
-                    });
-                }
-            }
+                Object.values(obj).forEach(val => { if (val && typeof val === 'object') scavengeGeo(val); });
+            };
+            scavengeGeo(payload);
 
-            // 2. SCAVENGE QUALITIES
+            // 2. QUALITY SCAVENGER
             const processQualities = (list: any[], sourceContext: string) => {
                 if (!list || !Array.isArray(list)) return;
                 for (const q of list) {
                     if (!q.Id) continue;
                     const qHash = generateQualityHash(world, q);
-                    
                     qualityOps.push({
                         updateOne: {
                             filter: { contentHash: qHash },
@@ -135,9 +117,16 @@ export async function POST(request: NextRequest) {
             };
 
             processQualities(payload.MidPanelQualities, 'main_stats');
-            processQualities(payload.OtherStatuses?.Story, 'story');
-            processQualities(payload.OtherStatuses?.Accomplishment, 'accomplishment');
+            processQualities(payload.MajorLaterals, 'major_laterals');
+            processQualities(payload.MinorLaterals, 'minor_laterals');
             processQualities(payload.InventoryItems, 'inventory');
+            
+            // Iterate over all categories in OtherStatuses (Circumstance, Companion, etc.)
+            if (payload.OtherStatuses) {
+                Object.entries(payload.OtherStatuses).forEach(([category, list]) => {
+                    processQualities(list as any[], category.toLowerCase());
+                });
+            }
             
             const branches = [
                 ...(payload.OpenBranches || []),
