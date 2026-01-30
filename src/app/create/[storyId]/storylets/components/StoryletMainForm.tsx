@@ -159,8 +159,30 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                 <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--tool-accent)', marginBottom: '0.5rem' }}>Requirements</label>
                     <div className="form-row">
-                        <div style={{ flex: 1 }}><SmartArea label="Visible If" value={form.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" qualityDefs={qualityDefs} /></div>
-                        <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={form.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" qualityDefs={qualityDefs} /></div>
+                        <div style={{ flex: 1 }}>
+                            <SmartArea 
+                                label="Visible If" 
+                                subLabel="Condition to unlock this Storylet, always visible if left empty"
+                                value={form.visible_if || ''} 
+                                onChange={v => handleChange('visible_if', v)} 
+                                storyId={storyId} 
+                                mode="condition" 
+                                placeholder="$gold > 0" 
+                                qualityDefs={qualityDefs} 
+                            />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <SmartArea 
+                                label="Unlock If" 
+                                subLabel="Condition to unlock this Storylet, always unlocked if left empty"
+                                value={form.unlock_if || ''} 
+                                onChange={v => handleChange('unlock_if', v)} 
+                                storyId={storyId} 
+                                mode="condition" 
+                                placeholder="$gold >= 10" 
+                                qualityDefs={qualityDefs} 
+                            />
+                        </div>
                     </div>
                 </div>
 
