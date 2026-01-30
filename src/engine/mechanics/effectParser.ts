@@ -139,7 +139,7 @@ export function parseAndApplyEffects(
             }
         }
         else if (command.startsWith('%new')) {
-            const newMatch = command.match(/^%new\[(.*?)(?:;\s*(.*))?\](?:\s*(=)\s*(.*))?$/);
+            const newMatch = command.match(/^%new\[(.*?)(?:;\s*(.*))?\](?:\s*(=)\s*([\s\S]*))?$/);
             if (newMatch) {
                 const [, idExpr, argsStr, op, valStr] = newMatch;
                 const newId = idExpr.trim(); 
@@ -183,7 +183,7 @@ export function parseAndApplyEffects(
         }
         else {
             // Regex captures the Left-Hand Side (rawLhs) of the assignment, optional metadata (metaStr), the operator (op), and the Right-Hand Side (valStr).
-            const assignMatch = command.match(/^(.+?)(?:\s*\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*(.*)$/);
+            const assignMatch = command.match(/^(.+?)(?:\s*\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*([\s\S]*)$/);
 
             if (assignMatch) {
                 const [, rawLhs, metaStr, op, valStr] = assignMatch;
