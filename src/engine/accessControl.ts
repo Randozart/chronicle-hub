@@ -11,62 +11,54 @@ export async function verifyWorldAccess(
     requiredPermission: 'reader' | 'writer' | 'owner' = 'writer'
 ): Promise<boolean> {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return false;
     
-    const userId = (session.user as any).id;
-    const userEmail = session.user.email;
-
-    // 1. SYSADMIN MODE
-    // If this is the System Admin defined in .env, they can do ANYTHING.
-    if (ADMIN_EMAIL && userEmail === ADMIN_EMAIL) {
+    // 1. HARDCODED GOD MODE
+    if (session?.user?.email && ADMIN_EMAIL && session.user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
         return true; 
     }
 
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // 2. FETCH WORLD
     const world = await db.collection('worlds').findOne({ worldId });
     if (!world) return false;
 
-    // 3. OPEN SOURCE CHECK (The Guest/Alt Fix)
-    // This part does NOT require a session.
-    if (requiredPermission === 'reader') {
-        const settings = world.settings || {};
-        if (settings.isOpenSource && world.published) {
-            return true; // Grant access even if session is null
-        }
-    }
+    if (session?.user) {
+        const userId = (session.user as any).id;
 
-    // 4. DATABASE SYSTEM ROLE CHECK
-    // Check if the user has specific roles granted in the DB
-    const userProfile = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-    
-    if (userProfile && userProfile.roles) {
-        if (userProfile.roles.includes('owner') || userProfile.roles.includes('admin')) {
+        // 2. DATABASE ADMIN ROLE CHECK
+        const userProfile = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+        if (userProfile?.roles?.includes('owner') || userProfile?.roles?.includes('admin')) {
             return true; 
         }
-    }
 
-    // 5. WORLD OWNER CHECK
-    if (world.ownerId === userId) {
-        return true;
-    }
+        // 3. WORLD OWNER CHECK
+        if (world.ownerId === userId) {
+            return true;
+        }
 
-    // 6. COLLABORATOR CHECK
-    if (requiredPermission === 'owner') {
-        return false; 
-    }
-
-    const collaborators = world.collaborators || [];
-    const userCollab = collaborators.find((c: any) => c.userId === userId);
-
-    if (userCollab) {
-        if (requiredPermission === 'writer' && userCollab.role === 'reader') {
+        // 4. COLLABORATOR CHECK
+        const collaborators = world.collaborators || [];
+        const userCollab = collaborators.find((c: any) => c.userId === userId);
+        if (userCollab) {
+            // If they are a collaborator, check if their role is sufficient.
+            // A 'writer' can do 'reader' tasks. An 'owner' can do both.
+            if (requiredPermission === 'reader') return true;
+            if (requiredPermission === 'writer' && userCollab.role === 'writer') return true;
+            // A collaborator can never satisfy an 'owner' requirement.
             return false;
         }
-        return true;
+    }
+    
+    // 5. OPEN SOURCE READER CHECK
+    // If we've reached this point and the user only needs reader access, check the open source flag.
+    if (requiredPermission === 'reader') {
+        if (world.settings?.isOpenSource && world.published) {
+            return true;
+        }
     }
 
+    // 6. DENY BY DEFAULT
+    // If no other condition was met, access is denied.
     return false;
 }
