@@ -44,16 +44,15 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
         // 3. Handles Complex Content:
         //    Support for pipes '|', backslashes '\', and other symbols inside the brackets.
 
-         processed = processed.replace(
+        processed = processed.replace(
             /(\\)?(!)?\[((?:[^\]\\]|\\.)+)\](?!\()/g, 
             (match, escapeChar, bangChar, content) => {
-                // If it was escaped (e.g. \[Text]), return as-is (literal)
                 if (escapeChar) return match;
-                
-                // If preceded by '!', insert Zero-Width Space to break Image Syntax
                 const prefix = bangChar ? '!\u200B' : '';
                 
-                return `${prefix}[${content}](#emphasis)`;
+                const cleanContent = content.replace(/\\/g, ''); 
+                
+                return `${prefix}[${cleanContent}](#emphasis)`;
             }
         );
         
@@ -131,7 +130,9 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
                             borderRadius: '3px', 
                             fontSize: '0.9em',
                             fontFamily: 'monospace',
-                            color: 'var(--text-primary)'
+                            color: 'var(--text-primary)',
+                            whiteSpace: 'pre-wrap', 
+                            wordBreak: 'break-word'
                         }}>
                             {children}
                         </code>

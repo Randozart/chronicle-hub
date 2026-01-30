@@ -12,7 +12,7 @@ const SEPARATORS: Record<string, string> = {
     'comma': ', ', 'pipe': ' | ', 'newline': '\n', 'break': '<br/>', 'and': ' and ', 'space': ' ' 
 };
 
-const VARIABLE_REGEX = /((?:\$\.)|[@#\$](?:\{.*?\}|[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g;
+const VARIABLE_REGEX = /((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g;
 
 /**
  * Removes `{ // comments }` from ScribeScript strings
@@ -128,7 +128,7 @@ function evaluateRecursive(
 
             const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, locals);
             
-            const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
+            const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
             
             if (logger && context === 'TEXT' && safeValue !== "") {
                  logger(`Result: "${safeValue}"`, depth, 'SUCCESS');
@@ -480,26 +480,40 @@ function evaluateConditional(
     depth: number = 0
 ): string {
     const branches = expr.split('|');
+    
     for (const branch of branches) {
         const colonIndex = branch.indexOf(':');
         
         if (colonIndex > -1) {
+            // This is an "If" or "Else If" branch
             const conditionStr = branch.substring(0, colonIndex).trim();
-            const resultStr = branch.substring(colonIndex + 1).trim();
-
-            const isMet = evaluateCondition(conditionStr, qualities, defs, self, resolutionRoll, aliases, errors);
+            
+            const isMet = evaluateCondition(conditionStr, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
             
             if (isMet) {
-                if (logger) logger(`Condition [${conditionStr}] TRUE`, depth, 'INFO');
-                return evaluateText(resultStr.replace(/^['"]|['"]$/g, ''), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+                if (logger) logger(`Condition [${conditionStr}] TRUE`, depth, 'SUCCESS');
+                
+                // Extract the result text
+                let resultStr = branch.substring(colonIndex + 1).trim();
+                
+                // Clean up quotes and .trim() again to prevent indentation bugs
+                const cleanedResult = resultStr.replace(/^['"]|['"]$/g, '').trim();
+                
+                return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
             }
+            // If condition is NOT met, the loop continues to the next branch (|)
         } else {
+            // This is the "Else" or "Default" branch because it has no colon
             if (logger) logger(`-> Default branch`, depth, 'INFO');
-            const resultStr = branch.trim();
-            return evaluateText(resultStr.replace(/^['"]|['"]$/g, ''), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+            
+            // Clean up quotes and .trim() again to prevent indentation bugs
+            const cleanedResult = branch.trim().replace(/^['"]|['"]$/g, '').trim();
+            
+            return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
         }
     }
-    return "";
+    
+    return ""; // Should only reach here if no branches match and no default exists
 }
 
 /**
