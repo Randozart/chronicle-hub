@@ -268,11 +268,20 @@ function resolveComplexExpression(
     }
 
     try {
+        // Handle self-references ($.) by replacing them with the actual quality ID
+        // Maintains level spoofing if applicable, e.g., `$.level` -> `$qualityId[level]`
+        // This was the source of an earlier bug where spoofed levels were not applied correctly
         let processedExpr = expr;
+        
         if (self && expr.includes('$.')) {
+            const level = (self.state && 'level' in self.state) ? self.state.level : 0;
+            const spoofedId = `$${self.qid}[${level}]`;
+
             processedExpr = processedExpr.replace(/\$\.(.?)/g, (match, nextChar) => {
-                if (nextChar && /[a-zA-Z0-9_]/.test(nextChar)) return `$${self.qid}.${nextChar}`;
-                return `$${self.qid}${nextChar}`;
+                if (nextChar && /[a-zA-Z0-9_]/.test(nextChar)) {
+                    return `${spoofedId}.${nextChar}`;
+                }
+                return `${spoofedId}${nextChar}`;
             });
         }
         
@@ -352,7 +361,7 @@ function resolveVariable(
         let qualityId: string | undefined;
         let contextQualities = qualities;
 
-        if (sigil === '$.') qualityId = self?.qid;
+        if (sigil === '$.') qualityId = self?.qid; 
         else if (sigil === '@') qualityId = aliases[identifier];
         else if (sigil === '$') qualityId = identifier;
         else if (sigil === '#') qualityId = identifier;
