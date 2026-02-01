@@ -260,6 +260,22 @@ function resolveComplexExpression(
 ): string | number | boolean {
     if(depth < 2 && logger) logger(`Expr: "${expr}"`, depth);
 
+    // Identify  $(...) early, resolve the content, and replace it with $RESULT.
+    // Example: $($.secret).implicated -> $handler.implicated
+    let expandedExpr = expr;
+    if (expandedExpr.includes('$(')) {
+        expandedExpr = expandedExpr.replace(/\$\(([^)]+)\)/g, (match, innerLogic) => {
+            // Recursively resolve the logic inside the parentheses
+            const resolvedId = resolveComplexExpression(
+                innerLogic, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, evaluator
+            );
+            // Clean up the result to be a valid ID
+            const cleanId = resolvedId.toString().replace(/['"]/g, '').trim();
+            // Prepend $ to make it a valid sigil for the next pass
+            return `$${cleanId}`;
+        });
+    }
+
     // If expression is a single variable, skip eval wrapping
     const simpleVarPattern = /^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/;
     if (simpleVarPattern.test(expr.trim())) {
