@@ -12,7 +12,7 @@ const SEPARATORS: Record<string, string> = {
     'comma': ', ', 'pipe': ' | ', 'newline': '\n', 'break': '<br/>', 'and': ' and ', 'space': ' ' 
 };
 
-const VARIABLE_REGEX = /((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g;
+const VARIABLE_REGEX = /((?<!\\)[@#\$](?:\{.*?\}|[a-zA-Z0-9_]+|\(.*?\))|(?<!\\)\$\.)(?:\[([\s\S]*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g;
 
 /**
  * Removes `{ // comments }` from ScribeScript strings
@@ -182,7 +182,7 @@ function evaluateExpression(
             }
         }
     }
-    const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
+    const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=(?!=)\s*(.*)$/);
     if (assignmentMatch) {
         const aliasKey = assignmentMatch[1];
         const rawValue = assignmentMatch[2];
@@ -367,18 +367,28 @@ function resolveVariable(
         }
         if (identifier.startsWith('{')) {
             const resolvedId = evaluateText(identifier, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
-            identifier = resolvedId.toString().trim();
+            identifier = resolvedId.toString().replace(/^['"]|['"]$/g, '').trim();
         } 
         else if (identifier.startsWith('(')) {
             const inner = identifier.slice(1, -1);
             const resolvedId = evaluateText(inner, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
-            identifier = resolvedId.toString().trim();
+            identifier = resolvedId.toString().replace(/^['"]|['"]$/g, '').trim();
         }
         let qualityId: string | undefined;
         let contextQualities = qualities;
 
         if (sigil === '$.') qualityId = self?.qid; 
-        else if (sigil === '@') qualityId = aliases[identifier];
+        else if (sigil === '@') {
+            const aliasValue = aliases[identifier];
+            
+            // If there is no property chain (.prop), return the alias value literally
+            // Important for aliases used for storing string values
+            if (!propChain || propChain === "") {
+                return aliasValue || 0;
+            }
+            
+            qualityId = aliasValue;
+        }
         else if (sigil === '$') qualityId = identifier;
         else if (sigil === '#') qualityId = identifier;
         
@@ -429,6 +439,7 @@ function resolveVariable(
             if (processed) continue;
             
             const currentQid = (typeof currentValue === 'object') ? (currentValue.qualityId || qualityId) : qualityId;
+            // The ID helps iterate over properties, to make property chains possible
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             const currentDef = defs[lookupId];
             
@@ -504,7 +515,8 @@ function evaluateConditional(
     logger?: TraceLogger,
     depth: number = 0
 ): string {
-    const branches = expr.split('|');
+
+    const branches = splitByPipe(expr);
     
     for (const branch of branches) {
         const colonIndex = branch.indexOf(':');
@@ -539,6 +551,25 @@ function evaluateConditional(
     }
     
     return ""; // Should only reach here if no branches match and no default exists
+}
+
+// Helper function to cleanly split pipes that are only relevant to the current depth.
+function splitByPipe(str: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let depth = 0;
+    for (let i = 0; i < str.length; i++) {
+        if (str[i] === '{') depth++;
+        if (str[i] === '}') depth--;
+        if (str[i] === '|' && depth === 0) {
+            result.push(current.trim());
+            current = "";
+        } else {
+            current += str[i];
+        }
+    }
+    if (current) result.push(current.trim());
+    return result;
 }
 
 /**
@@ -678,8 +709,29 @@ export function evaluateCondition(
         const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
         const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
 
-        if (operator === '==' || operator === '=') return leftVal == rightVal;
-        if (operator === '!=') return leftVal != rightVal;
+        // Some comparisons were failing, because the parser pipeline was turning numbers into strings 
+        // or trying to compare strings prepared for safeEval using multiple quotes.
+        // This operation tries to revert that by seeing if these are numbers, actually, or whether they compary without quotes.
+        if (operator === '==' || operator === '=' || operator === '!=') {
+            // 1. Convert both to strings and STRIP literal quotes
+            const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
+            const cleanRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
+
+            // 2. Perform a clean comparison
+            let isEqual = (cleanLeft === cleanRight);
+
+            // 3. Fallback for numbers (handles "1" == 1)
+            if (!isEqual) {
+                const lNum = Number(cleanLeft);
+                const rNum = Number(cleanRight);
+                if (!isNaN(lNum) && !isNaN(rNum)) {
+                    isEqual = (lNum === rNum);
+                }
+            }
+
+            if (operator === '!=') return !isEqual;
+            return isEqual;
+        }
         const lNum = Number(leftVal);
         const rNum = Number(rightVal);
         if (isNaN(lNum) || isNaN(rNum)) return false;
@@ -843,3 +895,4 @@ export function getChallengeDetails(
     }
     return { chance: Math.max(0, Math.min(100, chance)), text: `Test: ${text}` };
 }
+
