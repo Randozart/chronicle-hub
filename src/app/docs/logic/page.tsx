@@ -157,13 +157,14 @@ export default function LogicMathPage() {
                 <strong>The Parameter Block.</strong> Used to provide arguments to a macro (`%chance[...]`) or metadata to an effect (`$gold[desc:...]`).
             </p>
         </div>
-        <div className="docs-card" style={{borderColor: '#9b59b6'}}>
+        {/* Deprecated with the introduction of property chaining */}
+        {/* <div className="docs-card" style={{borderColor: '#9b59b6'}}>
             <h4 className="docs-h4" style={{color: '#9b59b6'}}>{`$( )`} Deferred Identifier</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>
                 <strong>The Context Protector.</strong> It tells the main parser to <strong>delay</strong> evaluating the logic inside the parentheses. The raw code is passed to the part of the engine that needs it (like a macro's filter), which then evaluates it in the correct context.
                 Note that this differs crucially from regular parentheses, in that the result of the evaluation inside of the parentheses is used as a dynamic variable call. 
             </p>
-        </div>
+        </div> */}
     </div>
 
     <h3 className="docs-h3">Edge Cases: When Braces Are Essential</h3>
@@ -231,7 +232,7 @@ export default function LogicMathPage() {
             </p>
             <div className="docs-pre" style={{marginTop:'0.5rem', fontSize:'0.85rem'}}>
                 <span style={{color:'var(--text-muted)'}}>// Incorrect Syntax</span><br/>
-                <code className="docs-code" style={{color:'#e06c75'}}>{`{%pick[Suspects; 1, {$.id}.ledger < 3]}`}</code>
+                <code className="docs-code" style={{color:'#e06c75'}}>{`{%pick[suspects; 1, $.id.ledger < 3]}`}</code>
                 <br/><br/>
                 <strong>How it Fails:</strong>
                 <br/>1. The outer parser sees <code>{`{$.id}`}</code> and resolves it immediately.

@@ -260,8 +260,9 @@ function resolveComplexExpression(
 ): string | number | boolean {
     if(depth < 2 && logger) logger(`Expr: "${expr}"`, depth);
 
-    // Identify  $(...) early, resolve the content, and replace it with $RESULT.
-    // Example: $($.secret).implicated -> $handler.implicated
+    // DEPRECATED: $(...) syntax. 
+    // Superseded by Property Chaining in resolveVariable.
+    // Keeping for backward compatibility with legacy world data.
     let expandedExpr = expr;
     if (expandedExpr.includes('$(')) {
         expandedExpr = expandedExpr.replace(/\$\(([^)]+)\)/g, (match, innerLogic) => {

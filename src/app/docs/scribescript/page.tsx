@@ -797,10 +797,88 @@ export default function ScribeScriptSyntaxPage() {
     </div>
     
 </section>
+<section id="property-chaining">
+    <h2 className="docs-h2">6. Property Chaining</h2>
+    <p className="docs-p">
+        ScribeScript supports property chaining. This allows a single variable access to "jump" across multiple different qualities by treating the result of one property as the ID for the next lookup.
+    </p>
 
-            {/* 6. CHALLENGES - THE BIG ONE */}
+    <div className="docs-syntax-box">
+        <code className="docs-code">$quality.property.sub_property</code>
+    </div>
+
+    <div className="docs-card">
+        <h4 className="docs-h4">The "Pointer" Mechanic</h4>
+        <p className="docs-p" style={{ fontSize: '0.9rem' }}>
+            When the engine encounters a dot, it evaluates the property. If the result of that evaluation is a <strong>String</strong>, and there is <em>another</em> dot following it, the engine treats that string as the ID of a <strong>new Quality</strong> and continues the chain there.
+        </p>
+        <div className="docs-pre">
+            <span style={{color:'#777'}}>// Setup:</span>
+            <br/>
+            <code className="docs-code">$suspect.secret = murderer</code>
+            <br/>
+            <code className="docs-code">$murderer.liar = 1</code>
+            <br/><br/>
+            <span style={{color:'#777'}}>// The Chain:</span>
+            <br/>
+            <code className="docs-code">{`{$suspect.secret.liar}`}</code>
+            <br/>
+            <span style={{color:'var(--docs-accent-green)'}}> =&gt; 1</span>
+        </div>
+        <p className="docs-p" style={{ fontSize: '0.9rem', marginTop: '1rem' }}>
+            <strong>How it resolves:</strong>
+            <br/>1. Engine looks up <code>$suspect</code>.
+            <br/>2. It finds the <code>.secret</code> property, which returns the string <code>"murderer"</code>.
+            <br/>3. Because the chain continues (<code>.liar</code>), the engine "jumps" context.
+            <br/>4. It performs a new lookup for a quality named <code>murderer</code>.
+            <br/>5. It finds the <code>.liar</code> property on the murderer and returns <code>1</code>.
+        </p>
+    </div>
+
+    <h3 className="docs-h3">Recursive Resolution</h3>
+    <p className="docs-p">
+        If a property in the middle of a chain contains more ScribeScript (like a Text Variant), the engine resolves that code <strong>completely</strong> before moving to the next link in the chain.
+    </p>
+    <div className="docs-callout">
+        <strong style={{color: 'var(--docs-text-main)'}}>The "Smart Variable" Pattern:</strong>
+        <p className="docs-p" style={{ fontSize: '0.9rem', margin: '0.5rem 0 0 0' }}>
+            You can create "Smart Variables" that calculate their own target. For example, a suspect's <code>.secret</code> property might be defined in the editor as: 
+            <br/>
+            <code className="docs-code">{`{ $s{$.index}_secret_role }`}</code>
+            <br/><br/>
+            When you call <code>$s1.secret.liar</code>, the engine solves that internal logic to get "murderer" and then proceeds to find the liar status of the murderer.
+        </p>
+    </div>
+
+    <h3 className="docs-h3">Property Chaining in Macros</h3>
+    <p className="docs-p">
+        Property chaining is essential for <code>%pick</code> or <code>%all</code> filters. Because macros iterate over many candidates, you must avoid "Pre-evaluation."
+    </p>
+    
+    <div className="docs-grid">
+        <div className="docs-card" style={{borderColor: '#e06c75'}}>
+            <h4 className="docs-h4" style={{color: '#e06c75'}}>Incorrect (Pre-evaluated)</h4>
+            <code className="docs-code" style={{fontSize: '0.8rem'}}>
+                {`%pick[involved; 1, {$.secret}.liar == 1]`}
+            </code>
+            <p className="docs-p" style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                The <code>{`{ }`}</code> forces the engine to solve the secret <strong>now</strong>, using the current speaker's context, before the macro even starts.
+            </p>
+        </div>
+        <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
+            <h4 className="docs-h4" style={{color: 'var(--docs-accent-green)'}}>Correct (Chained)</h4>
+            <code className="docs-code" style={{fontSize: '0.8rem'}}>
+                {`%pick[involved; 1, $.secret.liar == 1]`}
+            </code>
+            <p className="docs-p" style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                By using a raw chain, the logic stays "alive." The macro can evaluate <code>.secret.liar</code> individually for <strong>every candidate</strong> it checks.
+            </p>
+        </div>
+    </div>
+</section>
+            {/* 7. CHALLENGES */}
 <section id="challenges">
-    <h2 className="docs-h2">6. Challenges & Probability</h2>
+    <h2 className="docs-h2">7. Challenges & Probability</h2>
     <p className="docs-p">
         Chronicle Hub features a powerful system for handling outcomes that aren't guaranteed. This allows you to create "Soft" checks where player stats influence their odds of success, rather than just simple Pass/Fail gates.
     </p>
