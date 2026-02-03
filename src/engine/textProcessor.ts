@@ -709,25 +709,22 @@ export function evaluateCondition(
 
         const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
         const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
-        
-        // Clean up the strings for comparison, so that the strings are actually able to match if they are equal,
-        // without arbitrary quotation marks or whitespace.
-        const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
-        const cleanRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
-
-        //For good measure cast to a number early, in case string comparisons fall through.
-        const lNum = Number(cleanLeft);
-        const rNum = Number(cleanRight);
 
         // Some comparisons were failing, because the parser pipeline was turning numbers into strings 
         // or trying to compare strings prepared for safeEval using multiple quotes.
         // This operation tries to revert that by seeing if these are numbers, actually, or whether they compary without quotes.
         if (operator === '==' || operator === '=' || operator === '!=') {
-            // Perform a clean comparison
+            // 1. Convert both to strings and STRIP literal quotes
+            const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
+            const cleanRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
+
+            // 2. Perform a clean comparison
             let isEqual = (cleanLeft === cleanRight);
 
-            // Fallback for numbers (handles "1" == 1)
+            // 3. Fallback for numbers (handles "1" == 1)
             if (!isEqual) {
+                const lNum = Number(cleanLeft);
+                const rNum = Number(cleanRight);
                 if (!isNaN(lNum) && !isNaN(rNum)) {
                     isEqual = (lNum === rNum);
                 }
@@ -736,7 +733,8 @@ export function evaluateCondition(
             if (operator === '!=') return !isEqual;
             return isEqual;
         }
-
+        const lNum = Number(leftVal);
+        const rNum = Number(rightVal);
         if (isNaN(lNum) || isNaN(rNum)) return false;
         switch (operator) {
             case '>': return lNum > rNum;
