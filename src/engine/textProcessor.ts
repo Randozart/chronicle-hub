@@ -691,109 +691,62 @@ export function evaluateCondition(
     if (!expression) return true;
     const trimExpr = expression.trim();
     try {
-        // Handle Parentheses
-        if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) {
-            return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
-        }
+        if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
+        if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
+        if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
+        if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
 
-        // Handle Logical OR (||)
-        const orParts = splitByLogic(trimExpr, '||');
-        if (orParts.length > 1) {
-            return orParts.some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
-        }
-
-        // Handle Logical AND (&&)
-        const andParts = splitByLogic(trimExpr, '&&');
-        if (andParts.length > 1) {
-            return andParts.every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
-        }
-
-        // Handle NOT (!)
-        if (trimExpr.startsWith('!')) {
-            return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
-        }
-
-        // Handle Comparison Operators
         const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
         if (!operatorMatch) {
             const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
-            // Default truthiness: "true", true, or a number > 0
-            const sVal = String(val).replace(/^['"]|['"]$/g, '').trim().toLowerCase();
-            return sVal === 'true' || sVal === '1' || (!isNaN(Number(sVal)) && Number(sVal) > 0);
+            return val === 'true' || val === true || Number(val) > 0;
         }
         
         const operator = operatorMatch[0];
         const index = operatorMatch.index!;
         let leftRaw = trimExpr.substring(0, index).trim();
-        let rightRaw = trimExpr.substring(index + operator.length).trim();
-
-        // Implicit Self (e.g., "> 5" becomes "$. > 5")
         if (leftRaw === '' && self) leftRaw = '$.';
 
         const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
-        const rightVal = resolveComplexExpression(rightRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
+        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
 
-        // Convert to strings and strip literal quotes and extra spaces
-        const sLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
-        const sRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
-
-        // Attempt numeric conversion
-        const nLeft = Number(sLeft);
-        const nRight = Number(sRight);
-        const isNumLeft = (sLeft !== "" && !isNaN(nLeft));
-        const isNumRight = (sRight !== "" && !isNaN(nRight));
-
-        // Comparison Execution
+        // Some comparisons were failing, because the parser pipeline was turning numbers into strings 
+        // or trying to compare strings prepared for safeEval using multiple quotes.
+        // This operation tries to revert that by seeing if these are numbers, actually, or whether they compary without quotes.
         if (operator === '==' || operator === '=' || operator === '!=') {
-            const isEqual = (isNumLeft && isNumRight) ? (nLeft === nRight) : (sLeft === sRight);
-            return operator === '!=' ? !isEqual : isEqual;
+            // 1. Convert both to strings and STRIP literal quotes
+            const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
+            const cleanRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
+
+            // 2. Perform a clean comparison
+            let isEqual = (cleanLeft === cleanRight);
+
+            // 3. Fallback for numbers (handles "1" == 1)
+            if (!isEqual) {
+                const lNum = Number(cleanLeft);
+                const rNum = Number(cleanRight);
+                if (!isNaN(lNum) && !isNaN(rNum)) {
+                    isEqual = (lNum === rNum);
+                }
+            }
+
+            if (operator === '!=') return !isEqual;
+            return isEqual;
         }
-
-        // For math operators, both sides must be valid numbers
-        if (!isNumLeft || !isNumRight) return false;
-
+        const lNum = Number(leftVal);
+        const rNum = Number(rightVal);
+        if (isNaN(lNum) || isNaN(rNum)) return false;
         switch (operator) {
-            case '>':  return nLeft > nRight;
-            case '<':  return nLeft < nRight;
-            case '>=': return nLeft >= nRight;
-            case '<=': return nLeft <= nRight;
-            default:   return false;
+            case '>': return lNum > rNum;
+            case '<': return lNum < rNum;
+            case '>=': return lNum >= rNum;
+            case '<=': return lNum <= rNum;
+            default: return false;
         }
     } catch (e: any) {
         if (errors) errors.push(`Condition Error "${expression}": ${e.message}`);
         return false;
     }
-}
-
-/**
- * Splits a string by a logical operator (&& or ||) only at the current depth.
- * Respects { } and [ ] nesting.
- */
-function splitByLogic(str: string, op: '&&' | '||'): string[] {
-    const result: string[] = [];
-    let current = "";
-    let braceDepth = 0;
-    let bracketDepth = 0;
-
-    for (let i = 0; i < str.length; i++) {
-        if (str[i] === '{') braceDepth++;
-        else if (str[i] === '}') braceDepth--;
-        else if (str[i] === '[') bracketDepth++;
-        else if (str[i] === ']') bracketDepth--;
-
-        const isAtDepth = braceDepth === 0 && bracketDepth === 0;
-        const foundOp = str.substring(i, i + 2) === op;
-
-        if (isAtDepth && foundOp) {
-            result.push(current.trim());
-            current = "";
-            i++; // Skip the second char of the operator
-        } else {
-            current += str[i];
-        }
-    }
-    if (current) result.push(current.trim());
-    return result;
 }
 
 /**
