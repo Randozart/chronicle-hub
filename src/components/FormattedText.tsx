@@ -57,7 +57,8 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
         );
         
         // Preserve newlines as markdown hard breaks
-        processed = processed.replace(/\n/g, '  \n');
+        // Decided to take this out, as it was causing additional newlines to be created.
+        // processed = processed.replace(/\n/g, '  \n');
 
         return processed;
     }, [text]);
