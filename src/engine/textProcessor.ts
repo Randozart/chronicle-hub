@@ -691,48 +691,49 @@ export function evaluateCondition(
     if (!expression) return true;
     const trimExpr = expression.trim();
     try {
-        if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
+        if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) {
+            // Only strip parens if they wrap the WHOLE string, not just (a) && (b)
+            // We use our new helper to check if there is a top-level split first.
+            const opMatch = findBinaryOperator(trimExpr);
+            // If no operator found at depth 0, it means the parens are wrapping the whole thing
+            if (!opMatch && !trimExpr.includes('||') && !trimExpr.includes('&&')) {
+                return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
+            }
+        }
+        
         if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
         if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
         if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
 
-        const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
-        if (!operatorMatch) {
+        const opData = findBinaryOperator(trimExpr);
+        
+        if (!opData) {
             const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
             return val === 'true' || val === true || Number(val) > 0;
         }
         
-        const operator = operatorMatch[0];
-        const index = operatorMatch.index!;
+        const { operator, index } = opData;
+        
         let leftRaw = trimExpr.substring(0, index).trim();
         if (leftRaw === '' && self) leftRaw = '$.';
 
         const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
         const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
 
-        // Some comparisons were failing, because the parser pipeline was turning numbers into strings 
-        // or trying to compare strings prepared for safeEval using multiple quotes.
-        // This operation tries to revert that by seeing if these are numbers, actually, or whether they compary without quotes.
         if (operator === '==' || operator === '=' || operator === '!=') {
-            // 1. Convert both to strings and STRIP literal quotes
             const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
             const cleanRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
-
-            // 2. Perform a clean comparison
             let isEqual = (cleanLeft === cleanRight);
 
-            // 3. Fallback for numbers (handles "1" == 1)
             if (!isEqual) {
                 const lNum = Number(cleanLeft);
                 const rNum = Number(cleanRight);
-                if (!isNaN(lNum) && !isNaN(rNum)) {
-                    isEqual = (lNum === rNum);
-                }
+                if (!isNaN(lNum) && !isNaN(rNum)) isEqual = (lNum === rNum);
             }
-
             if (operator === '!=') return !isEqual;
             return isEqual;
         }
+        
         const lNum = Number(leftVal);
         const rNum = Number(rightVal);
         if (isNaN(lNum) || isNaN(rNum)) return false;
@@ -747,6 +748,63 @@ export function evaluateCondition(
         if (errors) errors.push(`Condition Error "${expression}": ${e.message}`);
         return false;
     }
+}
+
+// Helper to find the comparison operator at the top level ignoring parentheses
+function findBinaryOperator(str: string): { operator: string, index: number } | null {
+    let depth = 0;
+    let inQuote = false;
+    let quoteChar = '';
+
+    // Operators to look for. Order matters (longest first to match >= before >)
+    const operators = ['==', '!=', '>=', '<=', '>', '<', '='];
+
+    for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+
+        // Handle Quotes
+        if (inQuote) {
+            if (char === quoteChar) inQuote = false;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            inQuote = true;
+            quoteChar = char;
+            continue;
+        }
+
+        // Handle Parentheses/Brackets
+        if (char === '(' || char === '[' || char === '{') {
+            depth++;
+            continue;
+        }
+        if (char === ')' || char === ']' || char === '}') {
+            depth--;
+            continue;
+        }
+
+        // Check for Operators at Depth 0
+        if (depth === 0) {
+            // Special handling for bitwise confusion (>> vs > and << vs <)
+            const nextChar = str[i + 1];
+            const prevChar = str[i - 1];
+
+            // If we see < or >, ensure it's not part of << or >>
+            if (char === '>' && (nextChar === '>' || prevChar === '>')) continue;
+            if (char === '<' && (nextChar === '<' || prevChar === '<')) continue;
+
+            // Check against our list
+            for (const op of operators) {
+                if (str.startsWith(op, i)) {
+                    // Ensure we haven't matched the first part of a longer operator (e.g. matching > in >=)
+                    // The 'operators' array is sorted, but checking = vs == requires care.
+                    // Since '==' comes before '=', startsWith finds the longest match first.
+                    return { operator: op, index: i };
+                }
+            }
+        }
+    }
+    return null;
 }
 
 /**
