@@ -5,6 +5,7 @@ import SystemMessageBanner from "./SystemMessageBanner";
 import { useState, useEffect } from "react";
 import GameImage from "./GameImage";
 import GameModal from "./GameModal";
+import { useSearchParams } from "next/navigation";
 
 interface CharacterLobbyProps {
     settings: WorldSettings;
@@ -28,6 +29,11 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
     const [charToDelete, setCharToDelete] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [guestChar, setGuestChar] = useState<CharacterDocument | null>(null);
+    
+    const searchParams = useSearchParams();
+    const isPlaytest = searchParams.get('playtest') === 'true';
+    const urlSuffix = isPlaytest ? '&playtest=true' : '';
+
     useEffect(() => {
         if (props.isGuest) {
             const localKey = `chronicle_guest_${props.storyId}`;
@@ -84,9 +90,9 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
             if (data.success && data.character) {
                 if (props.isGuest) {
                     localStorage.setItem(`chronicle_guest_${props.storyId}`, JSON.stringify(data.character));
-                    window.location.href = `/play/${props.storyId}`; 
+                    window.location.href = `/play/${props.storyId}?guest=true${urlSuffix}`; 
                 } else {
-                    window.location.href = `/play/${props.storyId}?char=${data.character.characterId}`;
+                    window.location.href = `/play/${props.storyId}?char=${data.character.characterId}${urlSuffix}`;
                 }
             } else {
                 alert("Failed to create character: " + (data.error || "Unknown Error"));
@@ -157,7 +163,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 <div style={{ display: 'grid', gap: '1rem' }}>
                     {props.isGuest && guestChar && (
                         <button 
-                            onClick={() => window.location.href = `/play/${props.storyId}`} 
+                            onClick={() => window.location.href = `/play/${props.storyId}?guest=true${urlSuffix}`} 
                             className="option-button"
                             style={{ 
                                 padding: '1rem', 
@@ -196,7 +202,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                         return (
                             <button 
                                 key={c.characterId || index} 
-                                onClick={() => window.location.href = `/play/${props.storyId}?char=${c.characterId}`}
+                                onClick={() => window.location.href = `/play/${props.storyId}?char=${c.characterId}${urlSuffix}`}
                                 className="option-button"
                                 style={{ 
                                     padding: '1rem', 
@@ -248,7 +254,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                     })}
                     {(!props.isGuest || !guestChar) && (
                         <button 
-                            onClick={skipCreation ? handleStartGame : () => window.location.href = `/play/${props.storyId}/creation`}
+                            onClick={skipCreation ? handleStartGame : () => window.location.href = `/play/${props.storyId}/creation?${urlSuffix.replace('&', '')}`}
                             className="option-button"
                             disabled={isCreating}
                             style={{ 
@@ -275,7 +281,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                                     if (skipCreation) {
                                         handleStartGame();
                                     } else {
-                                        window.location.href = `/play/${props.storyId}/creation`;
+                                        window.location.href = `/play/${props.storyId}/creation?${urlSuffix.replace('&', '')}`;
                                     }
                                 }
                             }}
