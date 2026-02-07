@@ -290,7 +290,7 @@ export default function Possessions({
             let isInfinite = false;
             if (cat.endsWith('*')) { cat = cat.slice(0, -1); isInfinite = true; } 
             else if (cat.match(/\*\d+$/)) { const parts = cat.split('*'); count = parseInt(parts.pop() || "1", 10); cat = parts.join('*'); }
-
+            
             if (isInfinite) {
                 const usedIndices: number[] = [];
                 Object.keys(equipment).forEach(key => {
@@ -305,7 +305,10 @@ export default function Possessions({
                 const nextIdx = (usedIndices.length > 0 ? Math.max(...usedIndices) : 0) + 1;
                 slots.push({ id: `${cat}_${nextIdx}`, label: `${cat} ${nextIdx}`, category: cat });
             } else if (count > 1) {
-                for(let i=1; i<=count; i++) slots.push({ id: `${cat}_${i}`, label: `${cat} ${i}`, category: cat });
+                // First slot keeps base name to preserve equipment
+                slots.push({ id: cat, label: `${cat} 1`, category: cat });
+                // Subsequent slots use indexed IDs
+                for(let i=2; i<=count; i++) slots.push({ id: `${cat}_${i}`, label: `${cat} ${i}`, category: cat });
             } else {
                 slots.push({ id: cat, label: cat, category: cat });
             }
@@ -318,14 +321,17 @@ export default function Possessions({
         setIsLoading(true);
         let targetSlot = slot;
         if (itemId) {
-            const exactSlotExists = expandedSlots.some(s => s.id === slot);
-            if (!exactSlotExists) {
-                const emptySlot = expandedSlots.find(s => s.category === slot && !equipment[s.id]);
-                if (emptySlot) targetSlot = emptySlot.id;
-                else {
-                    const firstSlot = expandedSlots.find(s => s.category === slot);
-                    if (firstSlot) targetSlot = firstSlot.id;
-                }
+            // Find all valid slots for this category, either through an exact ID match or category match
+            const candidates = expandedSlots.filter(s => s.category === slot || s.id === slot);
+            
+            // Try to find the first empty candidate
+            const empty = candidates.find(s => !equipment[s.id]);
+            
+            if (empty) {
+                targetSlot = empty.id;
+            } else {
+                // If all are full, default to the first candidate, which will trigger a swap
+                if (candidates.length > 0) targetSlot = candidates[0].id;
             }
         }
         try {

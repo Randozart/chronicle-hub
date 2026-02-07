@@ -35,6 +35,7 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
     const [existingQIDs, setExistingQIDs] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [existingCategories, setExistingCategories] = useState<string[]>([]);
+    const [newEquipCat, setNewEquipCat] = useState("");
     
     const onSaveAll = async () => {
         if (!form) return;
@@ -221,17 +222,51 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
                     <p className="special-desc">Qualities with these categories appear in the main sidebar.</p>
                 </div>
 
-                <div className="form-group">
+                 <div className="form-group">
                     <label className="form-label">Equipment Slots</label>
-                    <input defaultValue={form.equipCategories.join(', ')} onBlur={e => handleArrayChange('equipCategories', e.target.value)} className="form-input" placeholder="head, body" />
+                    <input 
+                        key={form.equipCategories.join(',')} 
+                        defaultValue={form.equipCategories.join(', ')} 
+                        onBlur={e => handleArrayChange('equipCategories', e.target.value)} 
+                        className="form-input" 
+                        placeholder="head, body" 
+                    />
+                    
+                    <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                        <input 
+                            value={newEquipCat} 
+                            onChange={e => setNewEquipCat(e.target.value)} 
+                            className="form-input" 
+                            placeholder="New Category (e.g. Ring*2)" 
+                            style={{ fontSize: '0.8rem', padding: '4px' }}
+                            onKeyDown={e => { if(e.key === 'Enter') { 
+                                if(newEquipCat.trim()) {
+                                    handleChange('equipCategories', [...form.equipCategories, newEquipCat.trim()]);
+                                    setNewEquipCat("");
+                                }
+                            }}}
+                        />
+                        <button 
+                            onClick={() => {
+                                if(newEquipCat.trim()) {
+                                    handleChange('equipCategories', [...form.equipCategories, newEquipCat.trim()]);
+                                    setNewEquipCat("");
+                                }
+                            }}
+                            className="save-btn"
+                            style={{ width: 'auto', padding: '4px 12px' }}
+                        >
+                            +
+                        </button>
+                    </div>
+
                     {form.equipCategories.map(cat => {
-                        const cleanCat = cat.split('*')[0].split('_')[0];
+                        const cleanCat = cat.split('*')[0].replace(/_\d+$/, '');
                         if (!existingCategories.includes(cleanCat)) {
                             return <MissingEntityAlert key={cat} id={cleanCat} type="category" storyId={storyId} />;
                         }
                         return null;
                     })}
-
                     <p className="special-desc">Creates wearable slots for items matching these categories.</p>
                 </div>
 
