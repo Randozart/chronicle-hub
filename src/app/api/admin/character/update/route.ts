@@ -24,17 +24,28 @@ export async function POST(request: NextRequest) {
         if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         const client = await clientPromise;
         const db = client.db(DB_NAME);
-        const isStringUpdate = typeof value === 'string';
+         const isStringUpdate = typeof value === 'string';
         const updateDoc: any = {};
+
+        // Fetch existing quality state to preserve its Type (e.g. Item, Equipable)
+        const existingChar = await db.collection(COLLECTION_NAME).findOne(
+            { characterId, storyId },
+            { projection: { [`qualities.${qualityId}`]: 1 } }
+        );
+        
+        const existingType = existingChar?.qualities?.[qualityId]?.type;
 
         if (isStringUpdate) {
             updateDoc[`qualities.${qualityId}.stringValue`] = value;
             updateDoc[`qualities.${qualityId}.type`] = QualityType.String;
         } else {
             updateDoc[`qualities.${qualityId}.level`] = Number(value);
-            updateDoc[`qualities.${qualityId}.type`] = QualityType.Pyramidal;
+            // Use existing type if available, otherwise default to Pyramidal
+            updateDoc[`qualities.${qualityId}.type`] = existingType || QualityType.Pyramidal;
         }
+
         updateDoc[`qualities.${qualityId}.qualityId`] = qualityId;
+
         const result = await db.collection(COLLECTION_NAME).updateOne(
             { characterId, storyId },
             { 

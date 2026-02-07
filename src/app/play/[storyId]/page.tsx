@@ -40,11 +40,14 @@ export default async function PlayPage({ params, searchParams }: Props) {
     
     let initialLocation: LocationDefinition | null = null;
     let initialHand: Opportunity[] = [];
-    let activeEvent: Storylet | Opportunity | null = null;
+     let activeEvent: Storylet | Opportunity | null = null;
     let deckStates: Record<string, DeckState> = {};
 
-    if (userId && resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
-        const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
+    // Only load a character if the ID is explicitly provided in the URL.
+    // Otherwise, default to null so GameHub renders the CharacterLobby.
+    const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
+    
+    if (userId && charIdToLoad) {
         character = await getCharacter(userId, storyId, charIdToLoad);
     }
 
