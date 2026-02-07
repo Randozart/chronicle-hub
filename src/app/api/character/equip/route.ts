@@ -60,8 +60,11 @@ export async function POST(request: NextRequest) {
         const ownedState = character.qualities[itemId];
         const amountOwned = (ownedState && 'level' in ownedState) ? ownedState.level : 0;
         
-        if (amountOwned < 1) {
-            return NextResponse.json({ error: 'You do not own this item.' }, { status: 403 });
+        // Count how many of this specific item are already equipped in other slots
+        const currentlyEquippedCount = Object.values(character.equipment).filter(id => id === itemId).length;
+
+        if (amountOwned <= currentlyEquippedCount) {
+            return NextResponse.json({ error: `You only own ${amountOwned} of this item.` }, { status: 403 });
         }
 
         if (itemDef.type !== 'E') {

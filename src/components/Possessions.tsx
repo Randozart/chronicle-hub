@@ -283,37 +283,68 @@ export default function Possessions({
     } as React.CSSProperties;
 
     const expandedSlots = useMemo(() => {
-        const slots: { id: string, label: string, category: string }[] = [];
+        // Use a Map to deduplicate slots by ID to prevent React key collisions and ghost slots
+        // if the user accidentally defines overlapping categories (e.g. "Ring" and "Ring*2")
+        const slotMap = new Map<string, { id: string, label: string, category: string, order: number }>();
+        let globalOrder = 0;
+
         equipCategories.forEach(catRaw => {
             let cat = catRaw.trim();
             let count = 1;
             let isInfinite = false;
-            if (cat.endsWith('*')) { cat = cat.slice(0, -1); isInfinite = true; } 
-            else if (cat.match(/\*\d+$/)) { const parts = cat.split('*'); count = parseInt(parts.pop() || "1", 10); cat = parts.join('*'); }
+            
+            // Regex handles optional whitespace: "Ring * 2" or "Ring*2"
+            const infiniteMatch = cat.match(/^(.+?)\s*\*\s*$/);
+            const countedMatch = cat.match(/^(.+?)\s*\*\s*(\d+)$/);
+
+            if (infiniteMatch) {
+                cat = infiniteMatch[1];
+                isInfinite = true;
+            } else if (countedMatch) {
+                cat = countedMatch[1];
+                count = parseInt(countedMatch[2], 10);
+            }
             
             if (isInfinite) {
-                const usedIndices: number[] = [];
+                // Determine max index currently used
+                const indices = new Set<number>();
+                indices.add(1); 
+
+                // Check base/legacy
+                if (equipment[cat]) indices.add(1);
+                if (equipment[`${cat}_1`]) indices.add(1);
+                
+                // Check indexed slots
                 Object.keys(equipment).forEach(key => {
                     if (key.startsWith(`${cat}_`)) {
-                        const parts = key.split('_');
-                        const idx = parseInt(parts[parts.length - 1], 10);
-                        if (!isNaN(idx)) usedIndices.push(idx);
+                        const suffix = key.substring(cat.length + 1);
+                        const idx = parseInt(suffix, 10);
+                        if (!isNaN(idx)) indices.add(idx);
                     }
                 });
-                usedIndices.sort((a,b) => a - b);
-                usedIndices.forEach(i => slots.push({ id: `${cat}_${i}`, label: `${cat} ${i}`, category: cat }));
-                const nextIdx = (usedIndices.length > 0 ? Math.max(...usedIndices) : 0) + 1;
-                slots.push({ id: `${cat}_${nextIdx}`, label: `${cat} ${nextIdx}`, category: cat });
+
+                const max = Math.max(...Array.from(indices));
+                
+                // Render 1 to max + 1
+                for (let i = 1; i <= max + 1; i++) {
+                    const id = i === 1 ? cat : `${cat}_${i}`;
+                    slotMap.set(id, { id, label: `${cat} ${i}`, category: cat, order: globalOrder++ });
+                }
+
             } else if (count > 1) {
-                // First slot keeps base name to preserve equipment
-                slots.push({ id: cat, label: `${cat} 1`, category: cat });
-                // Subsequent slots use indexed IDs
-                for(let i=2; i<=count; i++) slots.push({ id: `${cat}_${i}`, label: `${cat} ${i}`, category: cat });
+                // Render 1 to count
+                for (let i = 1; i <= count; i++) {
+                    const id = i === 1 ? cat : `${cat}_${i}`;
+                    slotMap.set(id, { id, label: `${cat} ${i}`, category: cat, order: globalOrder++ });
+                }
             } else {
-                slots.push({ id: cat, label: cat, category: cat });
+                // Single slot
+                slotMap.set(cat, { id: cat, label: cat, category: cat, order: globalOrder++ });
             }
         });
-        return slots;
+
+        // Convert map back to array and sort by original definition order
+        return Array.from(slotMap.values()).sort((a, b) => a.order - b.order);
     }, [equipCategories, equipment]);
 
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
@@ -361,20 +392,32 @@ export default function Possessions({
     };
 
     const inventoryItems = useMemo(() => {
-        const equippedIds = new Set(Object.values(equipment).filter(Boolean));
+        // Count how many times each item ID is equipped
+        const equippedCounts: Record<string, number> = {};
+        Object.values(equipment).forEach(id => {
+            if (id) equippedCounts[id] = (equippedCounts[id] || 0) + 1;
+        });
+
         return Object.keys(qualities).map(qid => {
             if (currencyIds.includes(qid)) return null;
-            if (equippedIds.has(qid)) return null;
+            
             const def = qualityDefs[qid];
             const state = qualities[qid];
             if (!def || !state) return null;
 
             if (def.tags?.includes('hidden') && !showHidden) return null;
 
-            const level = ('level' in state) ? state.level : 0;
-            if (level <= 0) return null;
+            const totalLevel = ('level' in state) ? state.level : 0;
+            const numEquipped = equippedCounts[qid] || 0;
+            
+            // Subtract equipped items from inventory display count
+            // Note: Does not change the actual quality level, just visual "in bag" count
+            const inventoryLevel = totalLevel - numEquipped;
+
+            if (inventoryLevel <= 0) return null;
             if (def.type !== 'I' && def.type !== 'E') return null;
-            const merged = { ...def, ...state, level };
+            
+            const merged = { ...def, ...state, level: inventoryLevel };
             return engine.render(merged);
         }).filter(Boolean as any);
     }, [qualities, qualityDefs, equipment, currencyIds, engine, showHidden]); 
@@ -399,9 +442,21 @@ export default function Possessions({
                     <div className={`inventory-grid ${isList ? 'inv-mode-list' : ''}`} style={styleVariables}>
                         {expandedSlots.map(slotObj => {
                             const slotId = slotObj.id;
-                            const equippedId = equipment[slotId];
+                            
+                            // Visual Fallback: If this is slot 1 (base ID), checks if there's an item in the legacy `_1` slot
+                            // This ensures items don't disappear if data migration wasn't perfect.
+                            const effectiveEquipId = equipment[slotId] 
+                                || (slotId === slotObj.category ? equipment[`${slotId}_1`] : undefined);
+                            
+                            // Determine which key to actually target for unequip
+                            const actualSlotKey = (effectiveEquipId && !equipment[slotId] && slotId === slotObj.category) 
+                                ? `${slotId}_1` 
+                                : slotId;
+
                             let equippedItem = null;
-                            if (equippedId && qualityDefs[equippedId]) equippedItem = engine.render({ ...qualityDefs[equippedId], ...qualities[equippedId] });
+                            if (effectiveEquipId && qualityDefs[effectiveEquipId]) {
+                                equippedItem = engine.render({ ...qualityDefs[effectiveEquipId], ...qualities[effectiveEquipId] });
+                            }
 
                             if (equippedItem) {
                                 return (
@@ -410,7 +465,7 @@ export default function Possessions({
                                         item={equippedItem}
                                         isEquipped={true}
                                         slotName={slotObj.label}
-                                        onEquipToggle={() => handleEquipToggle(slotId, null)}
+                                        onEquipToggle={() => handleEquipToggle(actualSlotKey, null)}
                                         onUse={handleUse}
                                         isLoading={isLoading}
                                         qualityDefs={qualityDefs}
