@@ -93,11 +93,28 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        let resolvedName = choices['name'] || 'Drifter';
+        
+        if (gameData.settings.playerName) {
+            // Strip the $ if present to get raw ID
+            const nameQid = gameData.settings.playerName.replace('$', '').trim();
+            const nameState = tempEngine.getQualities()[nameQid];
+            
+            if (nameState) {
+                if ('stringValue' in nameState && nameState.stringValue) {
+                    resolvedName = nameState.stringValue;
+                    console.log(`[Character Create] Resolved name from ${nameQid}: ${resolvedName}`);
+                } else if ('level' in nameState) {
+                     resolvedName = nameState.level.toString();
+                }
+            }
+        }
+
         const guestCharacter: CharacterDocument = {
             characterId: `guest_${uuidv4()}`,
             userId: 'guest',
             storyId,
-            name: choices['name'] || 'Drifter',
+            name: resolvedName,
             qualities: tempEngine.getQualities(),
             currentLocationId: gameData.settings.startLocation || Object.keys(gameData.locations)[0],
             currentStoryletId: '',

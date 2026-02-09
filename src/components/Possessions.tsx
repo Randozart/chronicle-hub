@@ -115,10 +115,19 @@ const ItemDisplay = ({
         else if (canUse) onUse(item.storylet);
     };
 
-    return (
-        <div className={`inventory-item style-${activeStyle} ${capabilityClass} ${portraitVariantClass}`} style={{ 
-            borderColor: isEquipped ? 'var(--accent-highlight)' : undefined,
-        }}>
+   return (
+        <div 
+            className={`inventory-item style-${activeStyle} ${capabilityClass} ${portraitVariantClass}`} 
+            style={{ 
+                borderColor: isEquipped ? 'var(--accent-highlight)' : undefined,
+                display: isList ? 'grid' : undefined,
+                gridTemplateColumns: isList ? '180px 1fr auto' : undefined,
+                alignItems: isList ? 'center' : undefined,
+                gap: isList ? '1rem' : undefined,
+                height: isList ? 'auto' : undefined, 
+                padding: isList ? '0.75rem' : undefined
+            }}
+        >
             
             {isIconGrid && (
                 <>
@@ -150,7 +159,21 @@ const ItemDisplay = ({
             {!isIconGrid && (
                 <>
                     {slotName && (
-                        <div className="slot-header">
+                        <div className="slot-header" style={isList ? { 
+                            position: 'static', 
+                            width: 'auto',
+                            marginBottom: 0,
+                            paddingRight: '1rem',
+                            borderRight: '1px solid var(--border-color)',
+                            textAlign: 'right',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            height: '100%',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            color: 'var(--text-secondary)'
+                        } : {}}>
                             <FormattedText text={slotName} />
                         </div>
                     )}
@@ -195,17 +218,31 @@ const ItemDisplay = ({
                                     />
                                 </div>
                             )}
-                            <div className="item-text">
-                                <div className="item-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                    <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}><FormattedText text={item.name} /></div>
-                                    {!slotName && item.level > 1 && <span className="item-count" style={{ fontSize: '0.85rem', opacity: 0.7 }}>x{item.level}</span>}
+                            <div className="item-text" style={{ flex: 1 }}>
+                                <div className="item-header" style={{ 
+                                    display: 'flex', 
+                                    flexDirection: isList ? 'column' : 'row',
+                                    alignItems: isList ? 'flex-start' : 'baseline',
+                                    justifyContent: 'space-between',
+                                    marginBottom: isList ? '0.25rem' : '0'
+                                }}>
+                                    <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>
+                                        <FormattedText text={item.name} />
+                                    </div>
+                                    {!slotName && item.level > 1 && <span className="item-count">x{item.level}</span>}
                                 </div>
-                                {item.bonus && <div className="item-bonus"><FormatBonus bonusStr={item.bonus} engine={engine} /></div>}
+
+                                {item.bonus && <div className="item-bonus" style={{ marginBottom: isList ? '0.25rem' : '0' }}><FormatBonus bonusStr={item.bonus} engine={engine} /></div>}
                                 
                                 {fullDesc && (
-                                    <div className="item-desc" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                    <div className="item-desc" style={{ 
+                                        fontSize: '0.85rem', 
+                                        color: 'var(--text-secondary)', 
+                                        lineHeight: '1.4',
+                                        marginTop: '0.25rem',
+                                        display: 'block' 
+                                    }}>
                                         <FormattedText text={displayDesc} />
-                                        {showToggle && <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} style={{ background: 'none', border: 'none', color: 'var(--accent-highlight)', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '5px', padding: 0, textDecoration: 'underline' }}>{expanded ? "Less" : "More"}</button>}
                                     </div>
                                 )}
                             </div>
