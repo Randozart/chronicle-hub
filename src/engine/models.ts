@@ -258,6 +258,7 @@ export interface LocationDefinition extends VersionedEntity {
     unlockCondition?: string; 
     visibleCondition?: string; 
     marketId?: string; 
+    equipmentLockMessage?: string;
 }
 export interface ImageDefinition extends VersionedEntity{ 
     id: string; 

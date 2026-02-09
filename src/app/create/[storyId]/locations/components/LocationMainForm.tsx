@@ -204,6 +204,17 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                                 <input value={form.tags?.join(', ') || ''} onChange={e => handleRawTagsChange(e.target.value)} className="form-input" />
                             </div>
                         </div>
+                        <div style={{ marginTop: '1rem' }}>
+                            <SmartArea 
+                                label="Lock Message" 
+                                value={form.equipmentLockMessage || ''} 
+                                onChange={v => handleChange('equipmentLockMessage', v)} 
+                                storyId={storyId} 
+                                minHeight="38px" 
+                                qualityDefs={qualityDefs}
+                                placeholder="You cannot change equipment here."
+                            />
+                        </div>
                         <div className="form-row" style={{ marginTop: '1rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
                             <div className="form-group" style={{ flex: 1 }}>
                                 <label className="form-label">Map Region ID</label>

@@ -27,10 +27,15 @@ export async function POST(request: NextRequest) {
 
     const locationDef = gameData.locations[character.currentLocationId];
     if (locationDef?.tags?.includes('lock_equipment')) {
+        const customMessage = locationDef.equipmentLockMessage;
+        const msg = customMessage 
+            ? engine.evaluateText(customMessage) 
+            : 'You cannot change your equipment in this location.';
+        
          return NextResponse.json({ 
              success: false, 
              isLocked: true, 
-             error: 'You cannot change your equipment in this location.' 
+             error: msg
          });
     }
 

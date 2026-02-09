@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from "@/lib/auth";
 import { getCharacter, saveCharacterState } from '@/engine/characterService';
-import { getContent } from '@/engine/contentCache'; 
+import { getContent } from '@/engine/contentCache';
+import { GameEngine } from '@/engine/gameEngine';
+import { getWorldState } from '@/engine/worldService'; 
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -27,6 +29,25 @@ let character = null;
     
     if (!targetLoc) {
         return NextResponse.json({ error: 'Invalid location' }, { status: 404 });
+    }
+
+      const worldState = await getWorldState(storyId);
+    const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
+    
+    // Check strict lock condition
+    if (targetLoc.unlockCondition && !engine.evaluateCondition(targetLoc.unlockCondition)) {
+        return NextResponse.json({ 
+            error: 'You cannot travel to this location yet.', 
+            locked: true 
+        }, { status: 403 });
+    }
+
+    // Check visibility condition (implicitly required for travel)
+    if (targetLoc.visibleCondition && !engine.evaluateCondition(targetLoc.visibleCondition)) {
+        return NextResponse.json({ 
+            error: 'Location unknown.', 
+            locked: true 
+        }, { status: 404 });
     }
 
     const currentLoc = gameData.locations[character.currentLocationId];
