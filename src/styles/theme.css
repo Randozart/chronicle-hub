@@ -1312,6 +1312,7 @@ h1, h2, h3, h4, h5, h6 {
     --accent-primary: #2c241b; 
     --accent-hover: #000000;
     --accent-highlight: #8a0303;
+    --font-header: "Special Elite", "Courier New", monospace;
     --font-main: "Special Elite", "Courier New", monospace;
     --border-radius: 2px;
     --shadow-paper: 0 2px 4px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
@@ -1331,6 +1332,7 @@ h1, h2, h3, h4, h5, h6 {
     --accent-primary: #2c241b; 
     --accent-hover: #000000;
     --accent-highlight: #8a0303;
+    --font-header: "Special Elite", "Courier New", monospace;
     --font-main: "Special Elite", "Courier New", monospace;
     --border-radius: 2px;
     --shadow-paper: 0 2px 4px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.1);
