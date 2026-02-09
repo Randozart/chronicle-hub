@@ -171,7 +171,8 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                             <div className="form-row">
                                 <div style={{ flex: 1 }}>
                                     <SmartArea 
-                                        label="Visible If" 
+                                        label="Requirement for Visibility" 
+                                        subLabel="Condition to unlock this location. Leave blank for always visible."
                                         value={form.visibleCondition || ''} 
                                         onChange={v => handleChange('visibleCondition', v)} 
                                         storyId={storyId} 
@@ -182,7 +183,8 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <SmartArea 
-                                        label="Unlock If (Lock)" 
+                                        label="Requirement for Selectability" 
+                                        subLabel="Condition to enable interaction. Leave blank for always selectable."
                                         value={form.unlockCondition || ''} 
                                         onChange={v => handleChange('unlockCondition', v)} 
                                         storyId={storyId} 

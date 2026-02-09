@@ -182,24 +182,27 @@ const ItemDisplay = ({
                         </>
                     ) : (
                         <div className="item-main-body">
-                            <div className="item-image-container">
-                                <GameImage 
-                                    code={item.image || item.id} 
-                                    imageLibrary={imageLibrary} 
-                                    alt={item.name} 
-                                    type="icon" 
-                                    className="option-image" 
-                                    shapeOverride={shapeConfig} 
-                                    style={{ width:'100%', height:'100%' }}
-                                />
-                            </div>
+                            {!isList && (
+                                <div className="item-image-container">
+                                    <GameImage 
+                                        code={item.image || item.id} 
+                                        imageLibrary={imageLibrary} 
+                                        alt={item.name} 
+                                        type="icon" 
+                                        className="option-image" 
+                                        shapeOverride={shapeConfig} 
+                                        style={{ width:'100%', height:'100%' }}
+                                    />
+                                </div>
+                            )}
                             <div className="item-text">
                                 <div className="item-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                     <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}><FormattedText text={item.name} /></div>
                                     {!slotName && item.level > 1 && <span className="item-count" style={{ fontSize: '0.85rem', opacity: 0.7 }}>x{item.level}</span>}
                                 </div>
                                 {item.bonus && <div className="item-bonus"><FormatBonus bonusStr={item.bonus} engine={engine} /></div>}
-                                {!isList && fullDesc && (
+                                
+                                {fullDesc && (
                                     <div className="item-desc" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                                         <FormattedText text={displayDesc} />
                                         {showToggle && <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} style={{ background: 'none', border: 'none', color: 'var(--accent-highlight)', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '5px', padding: 0, textDecoration: 'underline' }}>{expanded ? "Less" : "More"}</button>}

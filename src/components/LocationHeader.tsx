@@ -47,7 +47,8 @@ export default function LocationHeader({
                 )}
                 
                 <div className="location-text">
-                    <h2>You are in...</h2>
+                    {/* Need to modify the logic for this one at a later point. */}
+                    {/* <h2>You are in...</h2> */}
                     <h1><FormattedText text={location.name} /></h1>
                     {location.description && (
                         <div className="location-description" style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic', maxWidth: '60ch' }}>

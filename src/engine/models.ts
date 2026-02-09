@@ -206,6 +206,8 @@ export interface WorldSettings {
     summary?: string;
     tags?: string[];
     skipCharacterCreation?: boolean;
+    disableForcedStyles?: boolean;
+
     livingStoriesConfig?: {
         enabled: boolean;
         position: 'sidebar' | 'column' | 'tab';

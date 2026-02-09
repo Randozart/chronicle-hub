@@ -90,8 +90,28 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
             </div>
             <div className="admin-panel-box">
                 <div className="form-row">
-                    <div style={{ flex: 1 }}><SmartArea label="Visible If" value={data.visible_if || ''} onChange={v => handleChange('visible_if', v)} storyId={storyId} mode="condition" placeholder="$gold > 0" qualityDefs={qualityDefs} /></div>
-                    <div style={{ flex: 1 }}><SmartArea label="Unlock If" value={data.unlock_if || ''} onChange={v => handleChange('unlock_if', v)} storyId={storyId} mode="condition" placeholder="$gold >= 10" qualityDefs={qualityDefs} /></div>
+                    <div style={{ flex: 1 }}>
+                        <SmartArea 
+                            label="Requirement for Visibility" 
+                            value={data.visible_if || ''} 
+                            onChange={v => handleChange('visible_if', v)} 
+                            storyId={storyId} 
+                            mode="condition" 
+                            placeholder="$gold > 0 (Leave blank for always visible)" 
+                            qualityDefs={qualityDefs} 
+                        />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <SmartArea 
+                            label="Requirement for Selectability" 
+                            value={data.unlock_if || ''} 
+                            onChange={v => handleChange('unlock_if', v)} 
+                            storyId={storyId} 
+                            mode="condition" 
+                            placeholder="$gold >= 10 (Leave blank for always selectable)" 
+                            qualityDefs={qualityDefs} 
+                        />
+                    </div>
                 </div>
             </div>
             <div className="special-field-group" style={{ 
