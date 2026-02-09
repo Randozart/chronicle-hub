@@ -171,7 +171,8 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                             <div className="form-row">
                                 <div style={{ flex: 1 }}>
                                     <SmartArea 
-                                        label="Visible If" 
+                                        label="Requirement for Visibility" 
+                                        subLabel="Condition to unlock this location. Leave blank for always visible."
                                         value={form.visibleCondition || ''} 
                                         onChange={v => handleChange('visibleCondition', v)} 
                                         storyId={storyId} 
@@ -182,7 +183,8 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <SmartArea 
-                                        label="Unlock If (Lock)" 
+                                        label="Requirement for Selectability" 
+                                        subLabel="Condition to enable interaction. Leave blank for always selectable."
                                         value={form.unlockCondition || ''} 
                                         onChange={v => handleChange('unlockCondition', v)} 
                                         storyId={storyId} 
@@ -203,6 +205,17 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Raw Tags</label>
                                 <input value={form.tags?.join(', ') || ''} onChange={e => handleRawTagsChange(e.target.value)} className="form-input" />
                             </div>
+                        </div>
+                        <div style={{ marginTop: '1rem' }}>
+                            <SmartArea 
+                                label="Lock Message" 
+                                value={form.equipmentLockMessage || ''} 
+                                onChange={v => handleChange('equipmentLockMessage', v)} 
+                                storyId={storyId} 
+                                minHeight="38px" 
+                                qualityDefs={qualityDefs}
+                                placeholder="You cannot change equipment here."
+                            />
                         </div>
                         <div className="form-row" style={{ marginTop: '1rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
                             <div className="form-group" style={{ flex: 1 }}>

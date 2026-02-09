@@ -166,7 +166,19 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
                             <option value="delver">Dungeon Delver</option>
                         </select>
                     </div>
-
+                    <div style={{ marginTop: '1rem' }}>
+                        <label className="toggle-label">
+                            <input 
+                                type="checkbox" 
+                                checked={settings.disableForcedStyles || false} 
+                                onChange={e => handleChange('disableForcedStyles', e.target.checked)} 
+                            />
+                            Disable Forced Stylized Fonts
+                        </label>
+                        <p className="special-desc">
+                            If enabled, the game will ignore theme-specific fonts for body text, ensuring maximum readability. Headers will remain stylized.
+                        </p>
+                    </div>
                     {isDynamicTheme && (
                         <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px dashed var(--border-color)', borderRadius: '4px', background: 'var(--bg-item)' }}>
                             <h4 style={{ marginTop: 0, fontSize: '0.95rem', color: 'var(--accent-primary)' }}>Dynamic Theme Logic</h4>

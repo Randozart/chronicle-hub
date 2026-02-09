@@ -161,8 +161,8 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                     <div className="form-row">
                         <div style={{ flex: 1 }}>
                             <SmartArea 
-                                label="Visible If" 
-                                subLabel="Condition to unlock this Storylet, always visible if left empty"
+                                label="Requirement for Visibility" 
+                                subLabel="Condition to unlock this Storylet. Leave blank for always visible." 
                                 value={form.visible_if || ''} 
                                 onChange={v => handleChange('visible_if', v)} 
                                 storyId={storyId} 
@@ -173,8 +173,8 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                         </div>
                         <div style={{ flex: 1 }}>
                             <SmartArea 
-                                label="Unlock If" 
-                                subLabel="Condition to unlock this Storylet, always unlocked if left empty"
+                                label="Requirement for Selectability" 
+                                subLabel="Condition to enable interaction. Leave blank for always selectable." 
                                 value={form.unlock_if || ''} 
                                 onChange={v => handleChange('unlock_if', v)} 
                                 storyId={storyId} 

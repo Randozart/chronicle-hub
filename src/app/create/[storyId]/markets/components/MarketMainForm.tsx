@@ -272,7 +272,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, onDuplic
                                         <div style={{ padding: '1rem', borderTop: '1px dashed var(--tool-border)', background: 'rgba(0,0,0,0.2)' }}>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                                 <SmartArea 
-                                                    label="Visible If" 
+                                                    label="Requirement for Visibility" 
                                                     value={listing.visible_if || ''} 
                                                     onChange={v => updateListing(lIdx, 'visible_if', v)} 
                                                     storyId={storyId} 
@@ -280,7 +280,7 @@ export default function MarketMainForm({ initialData, onSave, onDelete, onDuplic
                                                     qualityDefs={allQualities}
                                                 />
                                                 <SmartArea 
-                                                    label="Unlock If" 
+                                                    label="Requirement for Selectability" 
                                                     value={listing.unlock_if || ''} 
                                                     onChange={v => updateListing(lIdx, 'unlock_if', v)} 
                                                     storyId={storyId} 

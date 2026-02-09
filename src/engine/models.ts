@@ -206,6 +206,8 @@ export interface WorldSettings {
     summary?: string;
     tags?: string[];
     skipCharacterCreation?: boolean;
+    disableForcedStyles?: boolean;
+
     livingStoriesConfig?: {
         enabled: boolean;
         position: 'sidebar' | 'column' | 'tab';
@@ -258,6 +260,7 @@ export interface LocationDefinition extends VersionedEntity {
     unlockCondition?: string; 
     visibleCondition?: string; 
     marketId?: string; 
+    equipmentLockMessage?: string;
 }
 export interface ImageDefinition extends VersionedEntity{ 
     id: string; 
