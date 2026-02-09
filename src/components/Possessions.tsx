@@ -101,10 +101,12 @@ const ItemDisplay = ({
     const isIconGrid = activeStyle === 'icon-grid';
     const isPortrait = activeStyle === 'portrait';
     const isList = activeStyle === 'list';
+    
     let capabilityClass = "";
     if (isEquipable && hasStorylet) capabilityClass = "can-both";
     else if (isEquipable) capabilityClass = "can-equip";
     else if (hasStorylet) capabilityClass = "can-use";
+    
     const portraitVariantClass = isPortrait ? (portraitMode === 'cover' ? 'variant-cover' : 'variant-icon') : '';
     const canEquip = isEquipable;
     const canUse = hasStorylet;
@@ -115,17 +117,19 @@ const ItemDisplay = ({
         else if (canUse) onUse(item.storylet);
     };
 
-   return (
+    return (
         <div 
             className={`inventory-item style-${activeStyle} ${capabilityClass} ${portraitVariantClass}`} 
             style={{ 
                 borderColor: isEquipped ? 'var(--accent-highlight)' : undefined,
                 display: isList ? 'grid' : undefined,
-                gridTemplateColumns: isList ? '180px 1fr auto' : undefined,
+                gridTemplateColumns: isList 
+                    ? (slotName ? '150px 1fr auto' : '1fr auto') 
+                    : undefined,
                 alignItems: isList ? 'center' : undefined,
-                gap: isList ? '1rem' : undefined,
-                height: isList ? 'auto' : undefined, 
-                padding: isList ? '0.75rem' : undefined
+                gap: isList ? '1.5rem' : undefined,
+                height: isList ? 'auto' : undefined,
+                padding: isList ? '0.75rem 1rem' : undefined
             }}
         >
             
@@ -163,20 +167,19 @@ const ItemDisplay = ({
                             position: 'static', 
                             width: 'auto',
                             marginBottom: 0,
-                            paddingRight: '1rem',
-                            borderRight: '1px solid var(--border-color)',
+                            padding: 0,
+                            background: 'none',
                             textAlign: 'right',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            height: '100%',
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             fontWeight: 'bold',
-                            color: 'var(--text-secondary)'
+                            color: 'var(--text-muted)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
                         } : {}}>
                             <FormattedText text={slotName} />
                         </div>
                     )}
+
                     {isPortrait ? (
                         <>
                             <div className="item-image-container">
@@ -204,7 +207,14 @@ const ItemDisplay = ({
                             </div>
                         </>
                     ) : (
-                        <div className="item-main-body">
+                        <div className="item-main-body" style={isList ? { 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '2px',
+                            width: '100%',
+                            padding: '0 0.5rem'
+                        } : {}}>
+                            
                             {!isList && (
                                 <div className="item-image-container">
                                     <GameImage 
@@ -218,50 +228,73 @@ const ItemDisplay = ({
                                     />
                                 </div>
                             )}
+
                             <div className="item-text" style={{ flex: 1 }}>
                                 <div className="item-header" style={{ 
                                     display: 'flex', 
-                                    flexDirection: isList ? 'column' : 'row',
-                                    alignItems: isList ? 'flex-start' : 'baseline',
-                                    justifyContent: 'space-between',
-                                    marginBottom: isList ? '0.25rem' : '0'
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center', 
+                                    marginBottom: '4px',
+                                    flexWrap: 'wrap'
                                 }}>
-                                    <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>
-                                        <FormattedText text={item.name} />
+                                    <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                                        <div className="item-name" style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>
+                                            <FormattedText text={item.name} />
+                                        </div>
+                                        {item.level > 1 && <span className="item-count" style={{ fontSize: '0.85rem', opacity: 0.7 }}>x{item.level}</span>}
                                     </div>
-                                    {!slotName && item.level > 1 && <span className="item-count">x{item.level}</span>}
-                                </div>
 
-                                {item.bonus && <div className="item-bonus" style={{ marginBottom: isList ? '0.25rem' : '0' }}><FormatBonus bonusStr={item.bonus} engine={engine} /></div>}
+                                    {item.bonus && (
+                                        <div className="item-bonus" style={{ marginTop: 0 }}>
+                                            <FormatBonus bonusStr={item.bonus} engine={engine} />
+                                        </div>
+                                    )}
+                                </div>
                                 
                                 {fullDesc && (
                                     <div className="item-desc" style={{ 
                                         fontSize: '0.85rem', 
                                         color: 'var(--text-secondary)', 
                                         lineHeight: '1.4',
-                                        marginTop: '0.25rem',
-                                        display: 'block' 
+                                        maxWidth: '90%' 
                                     }}>
                                         <FormattedText text={displayDesc} />
+                                        {showToggle && <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} style={{ background: 'none', border: 'none', color: 'var(--accent-highlight)', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '5px', padding: 0, textDecoration: 'underline' }}>{expanded ? "Less" : "More"}</button>}
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
+
                     {(canEquip || canUse) && (
-                        <div className="item-actions">
+                        <div className="item-actions" style={isList ? { 
+                            marginTop: 0, borderTop: 'none', paddingTop: 0, 
+                            display: 'flex', flexDirection: 'row', gap: '0.5rem',
+                            justifyContent: 'flex-end', minWidth: 'auto'
+                        } : {}}>
                             {canEquip && (
                                 <button 
                                     className={isEquipped ? "unequip-btn" : "equip-btn"}
                                     onClick={onEquipToggle}
                                     disabled={isLoading}
-                                    style={{ flex: 1, cursor: (isEquipped && isCursed) ? 'not-allowed' : 'pointer', opacity: (isEquipped && isCursed) ? 0.8 : 1 }}
+                                    style={isList ? { 
+                                        width: 'auto', padding: '0.4rem 1rem', fontSize: '0.8rem', flex: 'none' 
+                                    } : { flex: 1, cursor: (isEquipped && isCursed) ? 'not-allowed' : 'pointer', opacity: (isEquipped && isCursed) ? 0.8 : 1 }}
                                 >
                                     {isEquipped ? (isCursed ? "🔒 Unequip" : "Unequip") : "Equip"}
                                 </button>
                             )}
                             {canUse && (
-                                <button className="option-button" onClick={() => onUse(item.storylet)} disabled={isLoading} style={{ flex: 1, width: 'auto', padding: '0.4rem 1rem', fontSize: '0.9rem' }}>Use</button>
+                                <button 
+                                    className="option-button" 
+                                    onClick={() => onUse(item.storylet)} 
+                                    disabled={isLoading} 
+                                    style={isList ? { 
+                                        width: 'auto', padding: '0.4rem 1rem', fontSize: '0.8rem', flex: 'none' 
+                                    } : { flex: 1, width: 'auto', padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                                >
+                                    Use
+                                </button>
                             )}
                         </div>
                     )}
