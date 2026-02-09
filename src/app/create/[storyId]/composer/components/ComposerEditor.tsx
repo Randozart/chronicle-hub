@@ -56,6 +56,13 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     const [isLoadingPresets, setIsLoadingPresets] = useState(false);
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
     const [imagesLoaded, setImagesLoaded] = useState(0);
+    const [dragState, setDragState] = useState<{
+        mode: 'move' | 'resize' | 'rotate';
+        startX: number;
+        startY: number;
+        startLayer: CompositionLayer;
+        handle?: string; // 'tl', 'tr', etc.
+    } | null>(null);
 
     if (!data) return <div className="loading-container">Loading editor...</div>;
 
@@ -161,6 +168,8 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
+
+        // 1. Background
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const s = 20;
         for(let i=0; i<canvas.width/s; i++) {
@@ -169,18 +178,21 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 ctx.fillRect(i*s, j*s, s, s);
             }
         }
+
         const sortedLayers = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
+
         sortedLayers.forEach(layer => {
-            let url = "";
-            if (layer.assetId.startsWith('presets/')) {
-                url = `/${layer.assetId}`;
-            } else {
+            if (layer.editorHidden) return; 
+             let url = "";
+            if (layer.assetId.startsWith('presets/')) url = `/${layer.assetId}`;
+            else {
                 const asset = assets.find(a => a.id === layer.assetId);
                 url = asset ? asset.url || "" : `/images/uploads/${layer.assetId}.png`;
             }
             if (!url) return;
 
             let finalImageToDraw: HTMLImageElement | HTMLCanvasElement | null = null;
+
             if (imageElementCache.has(url)) {
                 const img = imageElementCache.get(url)!;
                 if (img.complete) {
@@ -188,21 +200,18 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     offscreenCanvas.width = img.width;
                     offscreenCanvas.height = img.height;
                     const offCtx = offscreenCanvas.getContext('2d');
-
                     if (offCtx) {
                         offCtx.drawImage(img, 0, 0);
                         const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
                         if (isSvg && layer.tintColor) {
-                            const worldTheme = 'default'; 
-                            const resolvedTint = resolveCssVariable(layer.tintColor, worldTheme, allThemes);
+                            const resolvedTint = resolveCssVariable(layer.tintColor, 'default', allThemes);
                             offCtx.globalCompositeOperation = 'source-in';
                             offCtx.fillStyle = resolvedTint;
                             offCtx.fillRect(0, 0, img.width, img.height);
                         }
                         finalImageToDraw = offscreenCanvas;
-
                     } else {
-                        finalImageToDraw = img;
+                        finalImageToDraw = img; 
                     }
                 }
             } else {
@@ -210,27 +219,175 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 img.onload = () => setImagesLoaded(c => c + 1);
                 img.src = url;
                 imageElementCache.set(url, img);
-                return;
+                return; 
             }
 
             if (!finalImageToDraw) return;
+
+            // Draw image
             ctx.save();
-            ctx.globalAlpha = layer.opacity;
-            ctx.translate(layer.x, layer.y);
+            ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
             ctx.rotate((layer.rotation * Math.PI) / 180);
-            ctx.scale(layer.scale, layer.scale);
-            ctx.drawImage(finalImageToDraw, 0, 0); 
-            ctx.restore();
+            
+            // Draw centered
+            ctx.drawImage(
+                finalImageToDraw, 
+                -(finalImageToDraw.width * layer.scale)/2, 
+                -(finalImageToDraw.height * layer.scale)/2, 
+                finalImageToDraw.width * layer.scale, 
+                finalImageToDraw.height * layer.scale
+            );
+
+            // Draw controls if selected
             if (layer.id === selectedLayerId) {
-                 const w = finalImageToDraw.width;
-                 const h = finalImageToDraw.height;
-                 ctx.strokeStyle = '#61afef';
-                 ctx.lineWidth = 2;
-                 ctx.strokeRect(layer.x, layer.y, w * layer.scale, h * layer.scale);
+                const w = finalImageToDraw.width * layer.scale;
+                const h = finalImageToDraw.height * layer.scale;
+                const hw = w/2;
+                const hh = h/2;
+
+                ctx.strokeStyle = '#61afef';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-hw, -hh, w, h);
+
+                // Draw Handles
+                const handleSize = 8;
+                ctx.fillStyle = '#fff';
+                
+                // Corners
+                const corners = [
+                    {x: -hw, y: -hh}, {x: hw, y: -hh},
+                    {x: -hw, y: hh}, {x: hw, y: hh}
+                ];
+                corners.forEach(c => {
+                    ctx.fillRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
+                    ctx.strokeRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
+                });
+
+                // Rotate Handle
+                ctx.beginPath();
+                ctx.moveTo(0, -hh);
+                ctx.lineTo(0, -hh - 20);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, -hh - 20, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
             }
+
+            ctx.restore();
         });
+
     }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes]);
-        
+    
+    const handleCanvasMouseDown = (e: React.MouseEvent) => {
+        const rect = canvasRef.current!.getBoundingClientRect();
+        // Scale mouse pos to match canvas resolution (CSS size vs Attribute size)
+        const scaleX = data.width / rect.width;
+        const scaleY = data.height / rect.height;
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+
+        // 1. Check selected layer first
+        if (selectedLayerId) {
+            const layer = data.layers.find(l => l.id === selectedLayerId);
+            if (layer) {
+                const img = getCachedImage(layer); // Helper needed or inline check
+                if (img) {
+                    const local = toLocalSpace(mx, my, layer, img.width, img.height);
+                    const handle = hitTestHandles(local.x, local.y, img.width, img.height, layer.scale);
+                    
+                    if (handle) {
+                        setDragState({
+                            mode: handle === 'rot' ? 'rotate' : 'resize',
+                            startX: mx,
+                            startY: my,
+                            startLayer: { ...layer },
+                            handle
+                        });
+                        return;
+                    }
+                }
+            }
+        }
+
+        // 2. Check for body hits
+        const sortedReverse = [...data.layers].sort((a, b) => b.zIndex - a.zIndex);
+        for (const layer of sortedReverse) {
+            if (layer.editorHidden) continue;
+            const img = getCachedImage(layer);
+            if (!img) continue;
+
+            const local = toLocalSpace(mx, my, layer, img.width, img.height);
+            if (hitTestBody(local.x, local.y, img.width, img.height, layer.scale)) {
+                setSelectedLayerId(layer.id);
+                setDragState({
+                    mode: 'move',
+                    startX: mx,
+                    startY: my,
+                    startLayer: { ...layer }
+                });
+                return;
+            }
+        }
+
+        // 3. Clicked empty space
+        setSelectedLayerId(null);
+    };
+
+    const handleCanvasMouseMove = (e: React.MouseEvent) => {
+        if (!dragState || !selectedLayerId) return;
+        const rect = canvasRef.current!.getBoundingClientRect();
+        const scaleX = data.width / rect.width;
+        const scaleY = data.height / rect.height;
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+
+        const { startX, startY, startLayer, mode, handle } = dragState;
+        const dx = mx - startX;
+        const dy = my - startY;
+
+        if (mode === 'move') {
+            updateLayer(selectedLayerId, {
+                x: Math.round(startLayer.x + dx),
+                y: Math.round(startLayer.y + dy)
+            });
+        } 
+        else if (mode === 'resize') {
+            // Simplified Uniform Scaling logic
+            // A real implementation handles all 4 corners differently. 
+            // For now, dragging any corner scales relative to center for simplicity in this snippet.
+            // Or simple delta Y:
+            const sensitivity = 0.005;
+            const delta = (handle === 'br' || handle === 'tr') ? dx : -dx;
+            const newScale = Math.max(0.1, startLayer.scale + (delta * sensitivity));
+            updateLayer(selectedLayerId, { scale: newScale });
+        }
+        else if (mode === 'rotate') {
+            // Calculate angle relative to center
+            const img = getCachedImage(startLayer)!;
+            const cx = startLayer.x + (img.width * startLayer.scale)/2;
+            const cy = startLayer.y + (img.height * startLayer.scale)/2;
+            
+            const startAngle = Math.atan2(startY - cy, startX - cx);
+            const currentAngle = Math.atan2(my - cy, mx - cx);
+            
+            const degDelta = (currentAngle - startAngle) * (180 / Math.PI);
+            updateLayer(selectedLayerId, { rotation: Math.round(startLayer.rotation + degDelta) });
+        }
+    };
+
+    const handleCanvasMouseUp = () => {
+        setDragState(null);
+    };
+
+    // Helper to get image safely from cache
+    const getCachedImage = (layer: CompositionLayer) => {
+        let url = layer.assetId.startsWith('presets/') ? `/${layer.assetId}` : assets.find(a => a.id === layer.assetId)?.url;
+        if(!url) url = `/images/uploads/${layer.assetId}.png`;
+        const img = imageElementCache.get(url);
+        return (img && img.complete) ? img : null;
+    };
+
     const selectedLayer = data.layers.find(l => l.id === selectedLayerId);
 
     return (
@@ -374,7 +531,11 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                             ref={canvasRef}
                             width={data.width}
                             height={data.height}
-                            style={{ width: '100%', height: '100%' }}
+                            style={{ width: '100%', height: '100%', cursor: dragState ? 'grabbing' : 'auto' }}
+                            onMouseDown={handleCanvasMouseDown}
+                            onMouseMove={handleCanvasMouseMove}
+                            onMouseUp={handleCanvasMouseUp}
+                            onMouseLeave={handleCanvasMouseUp}
                         />
                     </div>
                 </div>
@@ -383,29 +544,38 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--tool-border)', minHeight: '200px' }}>
                         <div style={{ padding: '0.5rem', fontWeight:'bold', borderBottom:'1px solid var(--tool-border)', background:'var(--tool-bg-header)', flexShrink: 0 }}>Layers</div>
+                        {/* In the render block for Layer List */}
                         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-                            {[...data.layers].sort((a,b) => b.zIndex - a.zIndex).map((layer) => (
-                                <div 
-                                    key={layer.id}
-                                    onClick={() => setSelectedLayerId(layer.id)}
-                                    style={{ 
-                                        padding: '0.5rem', 
-                                        borderBottom: '1px solid var(--tool-border)',
-                                        background: selectedLayerId === layer.id ? 'var(--tool-accent)' : 'transparent',
-                                        color: selectedLayerId === layer.id ? '#000' : 'var(--tool-text-main)',
-                                        cursor: 'pointer',
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                                    }}
-                                >
-                                    <div style={{display:'flex', gap:'5px', alignItems:'center', overflow:'hidden'}}>
-                                        {layer.enableThemeColor && <span style={{fontSize:'0.6rem', background:'#000', color:'#fff', padding:'1px 3px', borderRadius:'2px', flexShrink:0}} title="Theme Bound">T</span>}
-                                        <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{layer.name}</span>
+                            {/* Group logic: We render flat list but check if header needs to be drawn */}
+                            {[...data.layers].sort((a,b) => b.zIndex - a.zIndex).reduce((acc, layer, idx, arr) => {
+                                // Simple logic: If it has a group, render it. 
+                                return acc.concat(
+                                    <div 
+                                        key={layer.id}
+                                        onClick={() => setSelectedLayerId(layer.id)}
+                                        style={{ 
+                                            padding: '0.5rem', 
+                                            borderBottom: '1px solid var(--tool-border)',
+                                            background: selectedLayerId === layer.id ? 'var(--tool-accent)' : 'transparent',
+                                            color: selectedLayerId === layer.id ? '#000' : 'var(--tool-text-main)',
+                                            cursor: 'pointer',
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            opacity: layer.editorHidden ? 0.5 : 1
+                                        }}
+                                    >
+                                        <div style={{display:'flex', gap:'5px', alignItems:'center', overflow:'hidden'}}>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { editorHidden: !layer.editorHidden }); }}
+                                                style={{ border:'none', background:'none', cursor:'pointer', color: 'inherit', fontSize: '0.8rem' }}
+                                            >
+                                                {layer.editorHidden ? '🙈' : '👁️'}
+                                            </button>
+                                            {layer.groupId && <span style={{fontSize:'0.6rem', border:'1px solid currentColor', padding:'0 2px', borderRadius:'2px'}}>{layer.groupId}</span>}
+                                            <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{layer.name}</span>
+                                        </div>
                                     </div>
-                                    <div style={{ fontSize: '0.8rem', flexShrink: 0 }}>
-                                        {layer.groupId ? `[${layer.groupId}]` : ''}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            }, [] as React.ReactNode[])}
                         </div>
                     </div>
 
@@ -507,3 +677,43 @@ const miniButtonStyle: React.CSSProperties = {
     cursor: 'pointer',
     padding: '2px 4px'
 };
+
+// Transform a point from Canvas Space to Layer Local Space
+function toLocalSpace(px: number, py: number, layer: CompositionLayer, imgW: number, imgH: number) {
+    // 1. Translate to center relative
+    const dx = px - (layer.x + (imgW * layer.scale) / 2);
+    const dy = py - (layer.y + (imgH * layer.scale) / 2);
+    
+    // 2. Rotate inverse
+    const rad = -layer.rotation * (Math.PI / 180);
+    const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+
+    return { x: lx, y: ly };
+}
+
+// Check if a point in Local Space hits the layer body
+function hitTestBody(lx: number, ly: number, imgW: number, imgH: number, scale: number) {
+    const halfW = (imgW * scale) / 2;
+    const halfH = (imgH * scale) / 2;
+    return lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH;
+}
+
+// Check handles (returns 'tl', 'tr', 'bl', 'br', 'rot' or null)
+function hitTestHandles(lx: number, ly: number, imgW: number, imgH: number, scale: number) {
+    const halfW = (imgW * scale) / 2;
+    const halfH = (imgH * scale) / 2;
+    const handleSize = 10 / scale; // Constant visual size logic
+
+    // Rotate Handle (placed above top center)
+    const rotY = -halfH - (20 / scale);
+    if (Math.abs(lx) <= handleSize && Math.abs(ly - rotY) <= handleSize) return 'rot';
+
+    // Corners
+    if (Math.abs(lx - -halfW) <= handleSize && Math.abs(ly - -halfH) <= handleSize) return 'tl';
+    if (Math.abs(lx - halfW) <= handleSize && Math.abs(ly - -halfH) <= handleSize) return 'tr';
+    if (Math.abs(lx - -halfW) <= handleSize && Math.abs(ly - halfH) <= handleSize) return 'bl';
+    if (Math.abs(lx - halfW) <= handleSize && Math.abs(ly - halfH) <= handleSize) return 'br';
+
+    return null;
+}

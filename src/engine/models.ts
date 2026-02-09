@@ -154,6 +154,8 @@ export interface CompositionLayer {
     
     tintColor?: string;
     enableThemeColor?: boolean;
+
+    editorHidden?: boolean; 
 }
 
 export interface ImageComposition extends VersionedEntity {

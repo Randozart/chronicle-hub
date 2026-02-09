@@ -10,22 +10,42 @@ interface Props {
 export default function ComposerOutput({ composition, onExport }: Props) {
 
     const dynamicUrl = useMemo(() => {
-        const params = Object.keys(composition.parameters || {}).map(key => {
+        // Auto-detect groups
+        const groups = new Set<string>();
+        composition.layers.forEach(l => {
+            if (l.groupId) groups.add(l.groupId);
+        });
+
+        const params = Array.from(groups).map(key => {
             return `${key}={$${key}}`;
         }).join('&');
-        return `/api/image-composer/render?id=${composition.id}${params ? '&' + params : ''}`;
+
+        // Add theme param if any layer uses theme binding
+        const usesTheme = composition.layers.some(l => l.enableThemeColor || l.tintColor?.startsWith('var('));
+        const themeParam = usesTheme ? `&theme={$user_theme}` : '';
+
+        return `image_composer/render?id=${composition.id}${params ? '&' + params : ''}${themeParam}`;
     }, [composition]);
     
     return (
         <div style={{ padding: '1rem', background: 'var(--tool-bg-header)', borderTop: '1px solid var(--tool-border)' }}>
-            <h4 style={{marginTop: 0}}>Output</h4>
+            <h4 style={{marginTop: 0, fontSize: '0.9rem'}}>Output</h4>
             <div className="form-group">
-                <label className="form-label">Dynamic ScribeScript URL</label>
-                <input readOnly value={dynamicUrl} className="form-input" style={{ fontFamily: 'monospace', fontSize: '0.8rem' }} />
-                <p className="special-desc">Use this string as an `image_code` in a storylet or quality.</p>
+                <label className="form-label">ScribeScript URL</label>
+                <div style={{display:'flex', gap:'5px'}}>
+                    <input readOnly value={dynamicUrl} className="form-input" style={{ fontFamily: 'monospace', fontSize: '0.8rem', flex: 1 }} />
+                    <button 
+                        className="save-btn" 
+                        style={{padding:'4px 8px', width:'auto', fontSize:'0.8rem'}}
+                        onClick={() => navigator.clipboard.writeText(dynamicUrl)}
+                    >
+                        Copy
+                    </button>
+                </div>
+                <p className="special-desc">Auto-generated based on Logic Groups used in layers.</p>
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button className="save-btn" onClick={onExport}>Export Current Preview as PNG</button>
+                <button className="option-button" onClick={onExport} style={{width:'100%'}}>📸 Export PNG Snapshot</button>
             </div>
         </div>
     );
