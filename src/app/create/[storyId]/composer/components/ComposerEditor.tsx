@@ -82,13 +82,26 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     if (!data) return <div className="loading-container">Loading editor...</div>;
     const [viewZoom, setViewZoom] = useState(1);
 
-    const handleWheel = (e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const delta = -e.deltaY * 0.001;
-            setViewZoom(z => Math.min(Math.max(0.1, z + delta), 5));
-        }
-    };
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const onWheel = (e: WheelEvent) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault(); // Stop Browser Zoom
+                e.stopPropagation();
+                
+                const delta = -e.deltaY * 0.001;
+                setViewZoom(z => Math.min(Math.max(0.1, z + delta), 5));
+            }
+        };
+
+        canvas.addEventListener('wheel', onWheel, { passive: false });
+        
+        return () => {
+            canvas.removeEventListener('wheel', onWheel);
+        };
+    }, []);
 
     const moveLayer = (index: number, direction: -1 | 1) => {
         const sorted = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
@@ -229,7 +242,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             }
         }
 
-        ctx.scale(viewZoom, viewZoom);
+        // ctx.scale(viewZoom, viewZoom);
 
         const sortedLayers = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -338,12 +351,11 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         // Handle 0 dimensions to avoid division by zero
         if (rect.width === 0 || rect.height === 0) return;
 
-        const cssScaleX = data.width / rect.width;
-        const cssScaleY = data.height / rect.height;
-        
-        // Account for View Zoom
-        const mx = ((e.clientX - rect.left) * cssScaleX) / viewZoom;
-        const my = ((e.clientY - rect.top) * cssScaleY) / viewZoom;
+        const scaleX = data.width / rect.width;
+        const scaleY = data.height / rect.height;
+
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
 
         // 1. Check handles on selected layer first
         if (selectedLayerId) {
@@ -396,11 +408,12 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
         if (!dragState || !selectedLayerId) return;
         const rect = canvasRef.current!.getBoundingClientRect();
-        
-        const cssScaleX = data.width / rect.width;
-        const cssScaleY = data.height / rect.height;
-        const mx = ((e.clientX - rect.left) * cssScaleX) / viewZoom;
-        const my = ((e.clientY - rect.top) * cssScaleY) / viewZoom;
+                
+        const scaleX = data.width / rect.width;
+        const scaleY = data.height / rect.height;
+
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
 
         const { startX, startY, startLayer, mode, handle } = dragState;
         const dx = mx - startX;
@@ -491,15 +504,20 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
                     
                     <label className="form-label" style={{marginBottom:0}}>Bg:</label>
-                    <div style={{width:'30px'}}>
+                    <div style={{flex: 1, minWidth:'120px'}}>
                         <ColorPickerInput 
                             value={data.backgroundColor || ''} 
                             onChange={c => handleChange('backgroundColor', c)} 
                             allThemes={allThemes}
                         />
                     </div>
-
-                    <label className="form-label" style={{marginBottom:0}}>Zoom: {(viewZoom * 100).toFixed(0)}%</label>
+                    <div 
+                        className="form-label" 
+                        style={{ marginBottom:0, minWidth: '80px', textAlign:'right', cursor:'help' }}
+                        title="Hold Ctrl + Scroll to Zoom"
+                    >
+                        Zoom: {(viewZoom * 100).toFixed(0)}%
+                    </div>                    
                     <button onClick={() => setViewZoom(1)} style={{fontSize:'0.7rem', cursor:'pointer', background:'var(--tool-bg-input)', border:'1px solid var(--tool-border)', padding:'2px 5px', borderRadius:'4px', color:'var(--tool-text-main)'}}>Reset</button>
                 </div>
             </div>
@@ -604,22 +622,22 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
 
                 <div style={{ flex: 1, background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '2rem', minWidth: 0 }}>
                     <div style={{ 
-                        width: data.width, 
-                        height: data.height, 
+                        width: data.width * viewZoom, 
+                        height: data.height * viewZoom,
                         boxShadow: '0 0 20px rgba(0,0,0,0.5)',
                         background: 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzIyMiIgZD0iTTAgMGgxMHYxMEgwem0xMCAxMGgxMHYxMEgxMHoiLz48L3N2Zz4=") repeat',
-                        flexShrink: 0 
+                        flexShrink: 0,
+                        transition: 'width 0.1s, height 0.1s'
                     }}>
                         <canvas 
                             ref={canvasRef}
                             width={data.width}
                             height={data.height}
-                            style={{ width: '100%', height: '100%', cursor: dragState ? 'grabbing' : 'auto' }}
+                            style={{ width: '100%', height: '100%', cursor: dragState ? 'grabbing' : 'auto', imageRendering: 'pixelated' }}
                             onMouseDown={handleCanvasMouseDown}
                             onMouseMove={handleCanvasMouseMove}
                             onMouseUp={handleCanvasMouseUp}
                             onMouseLeave={handleCanvasMouseUp}
-                            onWheel={handleWheel} 
                         />
                     </div>
                 </div>
