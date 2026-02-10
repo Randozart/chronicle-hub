@@ -22,12 +22,20 @@ export async function POST(request: NextRequest) {
 
     const gameData = await getContent(storyId);
     
+    // Instantiate Engine early to check ScribeScript evaluated tags on equipment
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+
     const locationDef = gameData.locations[character.currentLocationId];
     if (locationDef?.tags?.includes('lock_equipment')) {
+        const customMessage = locationDef.equipmentLockMessage;
+        const msg = customMessage 
+            ? engine.evaluateText(customMessage) 
+            : 'You cannot change your equipment in this location.';
+        
          return NextResponse.json({ 
              success: false, 
              isLocked: true, 
-             error: 'You cannot change your equipment in this location.' 
+             error: msg
          });
     }
 
@@ -36,7 +44,10 @@ export async function POST(request: NextRequest) {
         
         if (currentItem) {
             const currentDef = gameData.qualities[currentItem];
-            if (currentDef?.tags?.includes('bound')) {
+            // Evaluate tags using the engine to support ScribeScript conditions
+            const evaluatedTags = (currentDef?.tags || []).map(tag => engine.evaluateText(tag));
+            
+            if (evaluatedTags.includes('bound')) {
                  const msg = currentDef.lock_message || 'You cannot unequip this item.';
                  return NextResponse.json({ success: false, error: msg, isLocked: true });
             }
@@ -44,7 +55,6 @@ export async function POST(request: NextRequest) {
 
         character.equipment[slot] = null;
     } 
-
     else {
         const itemDef = gameData.qualities[itemId];
 
@@ -55,8 +65,11 @@ export async function POST(request: NextRequest) {
         const ownedState = character.qualities[itemId];
         const amountOwned = (ownedState && 'level' in ownedState) ? ownedState.level : 0;
         
-        if (amountOwned < 1) {
-            return NextResponse.json({ error: 'You do not own this item.' }, { status: 403 });
+        // Count how many of this specific item are already equipped in other slots
+        const currentlyEquippedCount = Object.values(character.equipment).filter(id => id === itemId).length;
+
+        if (amountOwned <= currentlyEquippedCount) {
+            return NextResponse.json({ error: `You only own ${amountOwned} of this item.` }, { status: 403 });
         }
 
         if (itemDef.type !== 'E') {
@@ -78,11 +91,11 @@ export async function POST(request: NextRequest) {
         character.equipment[slot] = itemId;
     }
     
-    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    // Try to find any autofires that are pending, since some items can redirect the character to a storylet. 
     const pendingAutofires = await getAutofireStorylets(storyId);
     
     const eligibleAutofires = pendingAutofires.filter(e => 
-        (!e.location || e.location === character.currentLocationId) && 
+        ((!e as any).location || (e as any).location === character.currentLocationId) && 
         engine.evaluateCondition(e.autofire_if || "")
     );
     

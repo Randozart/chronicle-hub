@@ -2,6 +2,7 @@
 
 import { safeEval } from '@/utils/safeEval';
 import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
+import { ScribeEvaluator } from './scribescript/types';
 
 export type TraceLogger = (message: string, depth: number, type?: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR') => void;
 
@@ -10,6 +11,8 @@ type EvaluationContext = 'LOGIC' | 'TEXT';
 const SEPARATORS: Record<string, string> = { 
     'comma': ', ', 'pipe': ' | ', 'newline': '\n', 'break': '<br/>', 'and': ' and ', 'space': ' ' 
 };
+
+const VARIABLE_REGEX = /((?<!\\)[@#\$](?:\{.*?\}|[a-zA-Z0-9_]+|\(.*?\))|(?<!\\)\$\.)(?:\[([\s\S]*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g;
 
 /**
  * Removes `{ // comments }` from ScribeScript strings
@@ -123,7 +126,10 @@ function evaluateRecursive(
                 logger(`Eval: ${blockWithBraces}`, depth);
             }
 
-            const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, locals);            const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString();
+            const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, locals);
+            
+            const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
+            
             if (logger && context === 'TEXT' && safeValue !== "") {
                  logger(`Result: "${safeValue}"`, depth, 'SUCCESS');
             }
@@ -132,7 +138,8 @@ function evaluateRecursive(
         }
 
         if (context === 'LOGIC') {
-            return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, locals).toString();        } else {
+            return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, locals).toString();        
+        } else {
             return currentText;
         }
     } catch (e: any) {
@@ -175,11 +182,12 @@ function evaluateExpression(
             }
         }
     }
-    const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=\s*(.*)$/);
+    const assignmentMatch = trimmedExpr.match(/^@([a-zA-Z0-9_]+)\s*=(?!=)\s*(.*)$/);
     if (assignmentMatch) {
         const aliasKey = assignmentMatch[1];
         const rawValue = assignmentMatch[2];
-        const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
+        
+        const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
         
         let storedValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
@@ -223,7 +231,7 @@ function evaluateExpression(
         return res;
     }
 
-    return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
+    return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
 }
 
 /**
@@ -245,31 +253,80 @@ function resolveComplexExpression(
     aliases: Record<string, string>, 
     self: { qid: string, state: QualityState } | null, 
     resolutionRoll: number, 
-    errors?: string[], 
-    logger?: TraceLogger, 
-    depth: number = 0
+    errors: string[] | undefined, 
+    logger: TraceLogger | undefined, 
+    depth: number = 0,
+    evaluator: ScribeEvaluator
 ): string | number | boolean {
-    const indent = '  '.repeat(depth);
     if(depth < 2 && logger) logger(`Expr: "${expr}"`, depth);
 
+    // DEPRECATED: $(...) syntax. 
+    // Superseded by Property Chaining in resolveVariable.
+    // Keeping for backward compatibility with legacy world data.
+    let expandedExpr = expr;
+    if (expandedExpr.includes('$(')) {
+        expandedExpr = expandedExpr.replace(/\$\(([^)]+)\)/g, (match, innerLogic) => {
+            // Recursively resolve the logic inside the parentheses
+            const resolvedId = resolveComplexExpression(
+                innerLogic, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, evaluator
+            );
+            // Clean up the result to be a valid ID
+            const cleanId = resolvedId.toString().replace(/['"]/g, '').trim();
+            // Prepend $ to make it a valid sigil for the next pass
+            return `$${cleanId}`;
+        });
+    }
+
+    // If expression is a single variable, skip eval wrapping
+    const simpleVarPattern = /^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/;
+    if (simpleVarPattern.test(expr.trim())) {
+         const result = resolveVariable(expr.trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
+         return result;
+    }
+
     try {
+        // Handle self-references ($.) by replacing them with the actual quality ID
+        // Maintains level spoofing if applicable, e.g., `$.level` -> `$qualityId[level]`
+        // This was the source of an earlier bug where spoofed levels were not applied correctly
         let processedExpr = expr;
+        
         if (self && expr.includes('$.')) {
+            const level = (self.state && 'level' in self.state) ? self.state.level : 0;
+            const spoofedId = `$${self.qid}[${level}]`;
+
             processedExpr = processedExpr.replace(/\$\.(.?)/g, (match, nextChar) => {
                 if (nextChar && /[a-zA-Z0-9_]/.test(nextChar)) {
-                    return `$${self.qid}.${nextChar}`;
+                    return `${spoofedId}.${nextChar}`;
                 }
-                return `$${self.qid}${nextChar}`;
+                return `${spoofedId}${nextChar}`;
             });
         }
-        const varReplacedExpr = processedExpr.replace(/((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g, 
-            (match) => { 
-                const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
-                if (typeof resolved === 'string') return `"${resolved}"`;
+        
+        const varReplacedExpr = processedExpr.replace(VARIABLE_REGEX, (match) => { 
+                const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
+                
+                if (typeof resolved === 'string') {
+                    // Pass pure numbers through
+                    if (!isNaN(Number(resolved)) && resolved.trim() !== "") {
+                        return resolved;
+                    }
+                    
+                    // Escape quotes/newlines for safeEval
+                    const safeStr = resolved
+                        .replace(/\\/g, '\\\\')
+                        .replace(/"/g, '\\"')
+                        .replace(/\n/g, '\\n')
+                        .replace(/\r/g, '');
+                    
+                    return `"${safeStr}"`;
+                }
                 return resolved.toString();
             }
         );
+
         if (/^[a-zA-Z0-9_]+$/.test(varReplacedExpr.trim())) return varReplacedExpr.trim();
+        if (!isNaN(Number(varReplacedExpr))) return Number(varReplacedExpr);
+
         return safeEval(varReplacedExpr);
     } catch (e: any) {
         if (errors) errors.push(`Expression Error "${expr}": ${e.message}`);
@@ -291,9 +348,10 @@ function resolveVariable(
     aliases: Record<string, string>, 
     self: { qid: string, state: QualityState } | null, 
     resolutionRoll: number, 
-    errors?: string[], 
-    logger?: TraceLogger, 
-    depth: number = 0
+    errors: string[] | undefined, 
+    logger: TraceLogger | undefined, 
+    depth: number = 0,
+    evaluator?: ScribeEvaluator 
 ): string | number {    
     try {
         const match = fullMatch.match(/^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
@@ -310,18 +368,28 @@ function resolveVariable(
         }
         if (identifier.startsWith('{')) {
             const resolvedId = evaluateText(identifier, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
-            identifier = resolvedId.toString().trim();
+            identifier = resolvedId.toString().replace(/^['"]|['"]$/g, '').trim();
         } 
         else if (identifier.startsWith('(')) {
             const inner = identifier.slice(1, -1);
             const resolvedId = evaluateText(inner, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
-            identifier = resolvedId.toString().trim();
+            identifier = resolvedId.toString().replace(/^['"]|['"]$/g, '').trim();
         }
         let qualityId: string | undefined;
         let contextQualities = qualities;
 
-        if (sigil === '$.') qualityId = self?.qid;
-        else if (sigil === '@') qualityId = aliases[identifier];
+        if (sigil === '$.') qualityId = self?.qid; 
+        else if (sigil === '@') {
+            const aliasValue = aliases[identifier];
+            
+            // If there is no property chain (.prop), return the alias value literally
+            // Important for aliases used for storing string values
+            if (!propChain || propChain === "") {
+                return aliasValue || 0;
+            }
+            
+            qualityId = aliasValue;
+        }
         else if (sigil === '$') qualityId = identifier;
         else if (sigil === '#') qualityId = identifier;
         
@@ -372,6 +440,7 @@ function resolveVariable(
             if (processed) continue;
             
             const currentQid = (typeof currentValue === 'object') ? (currentValue.qualityId || qualityId) : qualityId;
+            // The ID helps iterate over properties, to make property chains possible
             const lookupId = (typeof currentValue === 'string') ? currentValue : currentQid;
             const currentDef = defs[lookupId];
             
@@ -447,27 +516,61 @@ function evaluateConditional(
     logger?: TraceLogger,
     depth: number = 0
 ): string {
-    const branches = expr.split('|');
+
+    const branches = splitByPipe(expr);
+    
     for (const branch of branches) {
         const colonIndex = branch.indexOf(':');
         
         if (colonIndex > -1) {
+            // This is an "If" or "Else If" branch
             const conditionStr = branch.substring(0, colonIndex).trim();
-            const resultStr = branch.substring(colonIndex + 1).trim();
-
-            const isMet = evaluateCondition(conditionStr, qualities, defs, self, resolutionRoll, aliases, errors);
+            
+            const isMet = evaluateCondition(conditionStr, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
             
             if (isMet) {
-                if (logger) logger(`Condition [${conditionStr}] TRUE`, depth, 'INFO');
-                return evaluateText(resultStr.replace(/^['"]|['"]$/g, ''), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+                if (logger) logger(`Condition [${conditionStr}] TRUE`, depth, 'SUCCESS');
+                
+                // Extract the result text
+                let resultStr = branch.substring(colonIndex + 1).trim();
+                
+                // Clean up quotes and .trim() again to prevent indentation bugs
+                const cleanedResult = resultStr.replace(/^['"]|['"]$/g, '').trim();
+                
+                return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
             }
+            // If condition is NOT met, the loop continues to the next branch (|)
         } else {
+            // This is the "Else" or "Default" branch because it has no colon
             if (logger) logger(`-> Default branch`, depth, 'INFO');
-            const resultStr = branch.trim();
-            return evaluateText(resultStr.replace(/^['"]|['"]$/g, ''), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+            
+            // Clean up quotes and .trim() again to prevent indentation bugs
+            const cleanedResult = branch.trim().replace(/^['"]|['"]$/g, '').trim();
+            
+            return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
         }
     }
-    return "";
+    
+    return ""; // Should only reach here if no branches match and no default exists
+}
+
+// Helper function to cleanly split pipes that are only relevant to the current depth.
+function splitByPipe(str: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let depth = 0;
+    for (let i = 0; i < str.length; i++) {
+        if (str[i] === '{') depth++;
+        if (str[i] === '}') depth--;
+        if (str[i] === '|' && depth === 0) {
+            result.push(current.trim());
+            current = "";
+        } else {
+            current += str[i];
+        }
+    }
+    if (current) result.push(current.trim());
+    return result;
 }
 
 /**
@@ -574,31 +677,63 @@ function evaluateMacro(
  * 
  * @param expression The condition string, such as `$strength > 10`.
  */
-export function evaluateCondition(expression: string | undefined, qualities: PlayerQualities, defs: Record<string, QualityDefinition> = {}, self: { qid: string, state: QualityState } | null = null, resolutionRoll: number = 0, aliases: Record<string, string> = {}, errors?: string[]): boolean {
+export function evaluateCondition(
+    expression: string | undefined, 
+    qualities: PlayerQualities, 
+    defs: Record<string, QualityDefinition> = {}, 
+    self: { qid: string, state: QualityState } | null = null, 
+    resolutionRoll: number = 0, 
+    aliases: Record<string, string> = {}, 
+    errors?: string[],
+    logger?: TraceLogger,      
+    depth: number = 0          
+): boolean {
     if (!expression) return true;
     const trimExpr = expression.trim();
     try {
-        if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors);
-        if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors));
-        if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors));
-        if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors);
+        if (trimExpr.startsWith('(') && trimExpr.endsWith(')')) {
+            // Only strip parens if they wrap the WHOLE string, not just (a) && (b)
+            // We use our new helper to check if there is a top-level split first.
+            const opMatch = findBinaryOperator(trimExpr);
+            // If no operator found at depth 0, it means the parens are wrapping the whole thing
+            if (!opMatch && !trimExpr.includes('||') && !trimExpr.includes('&&')) {
+                return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
+            }
+        }
+        
+        if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
+        if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
+        if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
 
-        const operatorMatch = trimExpr.match(/(!=|>=|<=|==|=|>|<)/);
-        if (!operatorMatch) {
-            const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors);
+        const opData = findBinaryOperator(trimExpr);
+        
+        if (!opData) {
+            const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
             return val === 'true' || val === true || Number(val) > 0;
         }
         
-        const operator = operatorMatch[0];
-        const index = operatorMatch.index!;
+        const { operator, index } = opData;
+        
         let leftRaw = trimExpr.substring(0, index).trim();
         if (leftRaw === '' && self) leftRaw = '$.';
 
-        const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors);
-        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors);
+        const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
+        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
 
-        if (operator === '==' || operator === '=') return leftVal == rightVal;
-        if (operator === '!=') return leftVal != rightVal;
+        if (operator === '==' || operator === '=' || operator === '!=') {
+            const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
+            const cleanRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
+            let isEqual = (cleanLeft === cleanRight);
+
+            if (!isEqual) {
+                const lNum = Number(cleanLeft);
+                const rNum = Number(cleanRight);
+                if (!isNaN(lNum) && !isNaN(rNum)) isEqual = (lNum === rNum);
+            }
+            if (operator === '!=') return !isEqual;
+            return isEqual;
+        }
+        
         const lNum = Number(leftVal);
         const rNum = Number(rightVal);
         if (isNaN(lNum) || isNaN(rNum)) return false;
@@ -613,6 +748,63 @@ export function evaluateCondition(expression: string | undefined, qualities: Pla
         if (errors) errors.push(`Condition Error "${expression}": ${e.message}`);
         return false;
     }
+}
+
+// Helper to find the comparison operator at the top level ignoring parentheses
+function findBinaryOperator(str: string): { operator: string, index: number } | null {
+    let depth = 0;
+    let inQuote = false;
+    let quoteChar = '';
+
+    // Operators to look for. Order matters (longest first to match >= before >)
+    const operators = ['==', '!=', '>=', '<=', '>', '<', '='];
+
+    for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+
+        // Handle Quotes
+        if (inQuote) {
+            if (char === quoteChar) inQuote = false;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            inQuote = true;
+            quoteChar = char;
+            continue;
+        }
+
+        // Handle Parentheses/Brackets
+        if (char === '(' || char === '[' || char === '{') {
+            depth++;
+            continue;
+        }
+        if (char === ')' || char === ']' || char === '}') {
+            depth--;
+            continue;
+        }
+
+        // Check for Operators at Depth 0
+        if (depth === 0) {
+            // Special handling for bitwise confusion (>> vs > and << vs <)
+            const nextChar = str[i + 1];
+            const prevChar = str[i - 1];
+
+            // If we see < or >, ensure it's not part of << or >>
+            if (char === '>' && (nextChar === '>' || prevChar === '>')) continue;
+            if (char === '<' && (nextChar === '<' || prevChar === '<')) continue;
+
+            // Check against our list
+            for (const op of operators) {
+                if (str.startsWith(op, i)) {
+                    // Ensure we haven't matched the first part of a longer operator (e.g. matching > in >=)
+                    // The 'operators' array is sorted, but checking = vs == requires care.
+                    // Since '==' comes before '=', startsWith finds the longest match first.
+                    return { operator: op, index: i };
+                }
+            }
+        }
+    }
+    return null;
 }
 
 /**
@@ -762,3 +954,4 @@ export function getChallengeDetails(
     }
     return { chance: Math.max(0, Math.min(100, chance)), text: `Test: ${text}` };
 }
+

@@ -8,6 +8,7 @@ import { Storylet, Opportunity, LocationDefinition, CharacterDocument } from '@/
 import GameHub from '@/components/GameHub';
 import { regenerateAllDecks } from '@/engine/deckService';
 import { DeckState, getDeckStates } from '@/engine/deckLogic';
+import { GameEngine } from '@/engine/gameEngine';
 
 function serialize<T>(data: T): T {
     if (data === undefined) return null as unknown as T;
@@ -39,17 +40,22 @@ export default async function PlayPage({ params, searchParams }: Props) {
     
     let initialLocation: LocationDefinition | null = null;
     let initialHand: Opportunity[] = [];
-    let activeEvent: Storylet | Opportunity | null = null;
+     let activeEvent: Storylet | Opportunity | null = null;
     let deckStates: Record<string, DeckState> = {};
 
-    if (userId && resolvedSearchParams.menu !== 'true' && availableCharacters.length > 0) {
-        const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
+    // Only load a character if the ID is explicitly provided in the URL.
+    // Otherwise, default to null so GameHub renders the CharacterLobby.
+    const charIdToLoad = typeof resolvedSearchParams.char === 'string' ? resolvedSearchParams.char : undefined;
+    
+    if (userId && charIdToLoad) {
         character = await getCharacter(userId, storyId, charIdToLoad);
     }
 
     if (!character && !initialLocation && gameData.settings.startLocation) {
         initialLocation = gameData.locations[gameData.settings.startLocation] || null;
     }
+
+    const worldState = await getWorldState(storyId);
 
     if (character) {
         character = regenerateAllDecks(character, gameData);
@@ -70,16 +76,50 @@ export default async function PlayPage({ params, searchParams }: Props) {
         }
         
         if (character.currentStoryletId) {
-             const autofires = await getAutofireStorylets(storyId);
+             const autofires = await getAutofireStorylets(storyId, isPlaytest);
              const evt = autofires.find(s => s.id === character?.currentStoryletId) 
                  || allContent.find(s => s.id === character?.currentStoryletId);
              
             if (evt) activeEvent = evt;
+        } 
+        else if (character && !activeEvent) {
+            const autofires = await getAutofireStorylets(storyId, isPlaytest);
+            
+            const mergedQualityDefs = {
+                ...gameData.qualities,
+                ...(character?.dynamicQualities || {}) 
+            };
+            
+            const tempConfig = {
+                ...gameData,
+                qualities: mergedQualityDefs
+            };
+
+            const engine = new GameEngine(
+                character.qualities, 
+                tempConfig, 
+                character.equipment, 
+                worldState
+            );
+
+            const eligible = autofires.filter(s => {
+                if ((s as any).location && (s as any).location !== character!.currentLocationId) return false;
+                return engine.evaluateCondition(s.autofire_if || "false");
+            });
+
+            if (eligible.length > 0) {
+                eligible.sort((a, b) => {
+                    const pA = a.urgency === 'Must' ? 3 : (a.urgency === 'High' ? 2 : 1);
+                    const pB = b.urgency === 'Must' ? 3 : (b.urgency === 'High' ? 2 : 1);
+                    return pB - pA;
+                });
+                
+                activeEvent = eligible[0];
+            }
         }
+
         deckStates = getDeckStates(character, gameData, allContent);
     }
-
-    const worldState = await getWorldState(storyId);
 
     const mergedQualityDefs = {
         ...gameData.qualities,

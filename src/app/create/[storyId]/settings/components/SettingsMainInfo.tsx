@@ -80,8 +80,8 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
         onChange('contentConfig', { ...currentConfig, [field]: val });
     };
 
+    const currentStatus = settings.publicationStatus || (settings.isPublished ? 'published' : 'private');
     const content = settings.contentConfig || {};
-
     const playLink = typeof window !== 'undefined' ? `${window.location.origin}/play/${storyId}` : `/play/${storyId}`;
 
     return (
@@ -92,17 +92,55 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                     <h2 style={{ margin: 0 }}>World Settings</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ 
-                            color: settings.isPublished ? 'var(--success-color)' : 'var(--warning-color)', 
+                            color: currentStatus === 'published' ? 'var(--success-color)' : 
+                                   currentStatus === 'in_progress' ? 'var(--tool-accent)' : 
+                                   'var(--text-muted)', 
                             fontWeight: 'bold', fontSize: '0.8rem', textTransform: 'uppercase' 
                         }}>
-                            {settings.isPublished ? 'LIVE' : 'PRIVATE'}
+                            {currentStatus === 'published' ? 'LIVE' : 
+                             currentStatus === 'in_progress' ? 'WIP' : 
+                             'PRIVATE'}
                         </span>
-                        <label className="toggle-label">
-                            <input type="checkbox" checked={settings.isPublished || false} onChange={e => onChange('isPublished', e.target.checked)} />
-                            Publish
-                        </label>
+                        
+                        <select 
+                            value={currentStatus}
+                            onChange={(e) => onChange('publicationStatus', e.target.value)}
+                            className="form-select"
+                            style={{ width: 'auto', padding: '4px 8px', fontSize: '0.85rem' }}
+                        >
+                            <option value="private">Draft (Private)</option>
+                            <option value="in_progress">In Progress (Public Beta)</option>
+                            <option value="published">Published (Live)</option>
+                        </select>
                     </div>
                 </div>
+
+                <div style={{ marginBottom: '1.5rem', background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', border: '1px dashed var(--tool-border)' }}>
+                    <label className="toggle-label" style={{ fontWeight: 'bold', color: 'var(--tool-text-header)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={settings.isOpenSource || false} 
+                            onChange={e => onChange('isOpenSource', e.target.checked)} 
+                        />
+                        Open Source Mode
+                    </label>
+                    <p className="special-desc" style={{ marginTop: '0.5rem', marginLeft: '1.8rem' }}>
+                        If enabled, <strong>anyone</strong> can view your Creator Studio (Read-Only) to see how your world is built. 
+                        Useful for templates, tutorials, or community learning. 
+                        <br/>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>(Only applies if world is In Progress or Published).</span>
+                    </p>
+                </div>
+
+                {settings.deletionScheduledAt && (
+                    <div style={{ 
+                        background: 'var(--danger-color)', color: 'white', padding: '1rem', 
+                        borderRadius: '4px', marginBottom: '1.5rem', textAlign: 'center', fontWeight: 'bold' 
+                    }}>
+                        ⚠️ THIS WORLD IS SCHEDULED FOR DELETION ON {new Date(settings.deletionScheduledAt).toLocaleDateString()}
+                    </div>
+                )}
+
 
                 <div className="form-group">
                     <label className="form-label">World Title</label>

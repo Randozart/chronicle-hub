@@ -5,6 +5,7 @@ import clientPromise from '@/engine/database';
 import { ObjectId } from 'mongodb';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
@@ -16,8 +17,22 @@ export async function GET(request: NextRequest) {
     }
     
     const userId = (session?.user as any)?.id;
+    const userEmail = session?.user?.email;
+
+    let isSystemAdmin = false;
+    if (userEmail && ADMIN_EMAIL && userEmail === ADMIN_EMAIL) {
+        isSystemAdmin = true;
+    }
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+
+    if (!isSystemAdmin && userId) {
+        const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+        if (user?.roles?.includes('owner') || user?.roles?.includes('admin')) {
+            isSystemAdmin = true;
+        }
+    }
 
     const enrichWorlds = async (worlds: any[]) => {
         if (worlds.length === 0) return [];
@@ -33,7 +48,6 @@ export async function GET(request: NextRequest) {
             { _id: { $in: objectIds } },
             { projection: { username: 1, image: 1 } }
         ).toArray();
-
         const userMap = new Map(users.map(u => [u._id.toString(), u]));
         return worlds.map(w => {
             const owner = userMap.get(w.ownerId);
@@ -54,7 +68,7 @@ export async function GET(request: NextRequest) {
     if (mode === 'discover') {
         const rawWorlds = await db.collection('worlds')
             .find({ 
-                published: true,
+                published: true, 
                 "contentConfig.erotica": { $ne: true } 
             })
             .sort({ playerCount: -1, createdAt: -1 })
@@ -62,17 +76,21 @@ export async function GET(request: NextRequest) {
             .project({ 
                 worldId: 1, title: 1, summary: 1, coverImage: 1, tags: 1, ownerId: 1, collaborators: 1,
                 contentConfig: 1, 
+                'settings.publicationStatus': 1,
+                'settings.isOpenSource': 1, 
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 
                 'settings.attributions': 1 
             })
             .toArray();
-
         const enriched = await enrichWorlds(rawWorlds);
-        return NextResponse.json(enriched);
+        return NextResponse.json({ 
+            worlds: enriched, 
+            isSystemAdmin 
+        });
     }
 
-    if (!userId) {
+     if (!userId) {
         return NextResponse.json({ myWorlds: [], playedWorlds: [] });
     }
 
@@ -87,6 +105,9 @@ export async function GET(request: NextRequest) {
             .project({ 
                 worldId: 1, title: 1, summary: 1, published: 1, coverImage: 1, tags: 1, ownerId: 1, collaborators: 1,
                 contentConfig: 1, 
+                'settings.publicationStatus': 1,
+                'settings.deletionScheduledAt': 1,
+                'settings.isOpenSource': 1,
                 'settings.visualTheme': 1,
                 'settings.aiDisclaimer': 1, 'settings.attributions': 1 
             })
@@ -121,8 +142,11 @@ export async function GET(request: NextRequest) {
             .project({ 
                 worldId: 1, title: 1, summary: 1, coverImage: 1, ownerId: 1,
                 contentConfig: 1, 
+                'settings.publicationStatus': 1,
+                'settings.isOpenSource': 1,
                 'settings.visualTheme': 1,
-                'settings.aiDisclaimer': 1, 'settings.attributions': 1 
+                'settings.aiDisclaimer': 1, 
+                'settings.attributions': 1 
             })
             .toArray();
         const playedWorlds = await enrichWorlds(rawPlayedWorlds);
@@ -131,12 +155,13 @@ export async function GET(request: NextRequest) {
             ...w,
             characterName: charMap[w.worldId]
         }));
-        
+
         return NextResponse.json({ 
             myWorlds: myWorldsWithUser || [], 
-            playedWorlds: enrichedPlayedWorlds || [] 
+            playedWorlds: enrichedPlayedWorlds || [],
+            isSystemAdmin 
         });
-
+        
     } catch (error) {
         console.error("Error fetching worlds:", error);
         return NextResponse.json({ myWorlds: [], playedWorlds: [] }, { status: 500 });
@@ -173,6 +198,8 @@ export async function POST(request: NextRequest) {
             actionId: "$actions",
             defaultActionCost: 1,
             currencyQualities: [],
+            publicationStatus: 'private', 
+            isPublished: false
         },
         content: {
             qualities: {},

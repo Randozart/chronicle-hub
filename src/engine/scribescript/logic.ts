@@ -51,8 +51,30 @@ export function evaluateCondition(
         const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, undefined, depth, evaluator);
 
         let result = false;
-        if (operator === '==' || operator === '=') result = leftVal == rightVal;
-        else if (operator === '!=') result = leftVal != rightVal;
+        
+        // Some comparisons were failing, because the parser pipeline was turning numbers into strings 
+        // or trying to compare strings prepared for safeEval using multiple quotes.
+        // This operation tries to revert that by seeing if these are numbers, actually, or whether they compary without quotes.
+        if (operator === '==' || operator === '=' || operator === '!=') {
+            // 1. Convert both to strings and STRIP literal quotes
+            const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();
+            const cleanRight = String(rightVal).replace(/^['"]|['"]$/g, '').trim();
+
+            // 2. Perform a clean comparison
+            let isEqual = (cleanLeft === cleanRight);
+
+            // 3. Fallback for numbers (handles "1" == 1)
+            if (!isEqual) {
+                const lNum = Number(cleanLeft);
+                const rNum = Number(cleanRight);
+                if (!isNaN(lNum) && !isNaN(rNum)) {
+                    isEqual = (lNum === rNum);
+                }
+            }
+
+            if (operator === '!=') return !isEqual;
+            return isEqual;
+        }
         else {
             const lNum = Number(leftVal);
             const rNum = Number(rightVal);

@@ -9,7 +9,7 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 export default function Dashboard() {
     const { status } = useSession();
-    const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[] } | null>(null);
+    const [data, setData] = useState<{ myWorlds: any[], playedWorlds: any[], worlds?: any[], isSystemAdmin?: boolean } | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [activeTab, setActiveTab] = useState<'my' | 'discover'>('my');
     const [platformMsg, setPlatformMsg] = useState<any>(null);
@@ -46,7 +46,8 @@ export default function Dashboard() {
 
     const getCleanDisplayList = () => {
         if (!data) return [];
-        const sourceList = Array.isArray(data) ? data : (activeTab === 'my' ? data.myWorlds : data.playedWorlds);
+        const sourceList = Array.isArray(data) ? data : (activeTab === 'my' ? (data.myWorlds || []) : (data.worlds || data.playedWorlds || []));
+        
         if (!Array.isArray(sourceList)) return [];
 
         return sourceList.map(w => {
@@ -66,6 +67,7 @@ export default function Dashboard() {
 
     const displayList = getCleanDisplayList();
     const isGuest = status === 'unauthenticated';
+    const isSystemAdmin = data?.isSystemAdmin || false;
 
     return (
         <div className="theme-wrapper" data-theme="default" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
@@ -105,7 +107,13 @@ export default function Dashboard() {
 
                     <div className="dashboard-grid">
                         {displayList.map((w: any) => (
-                            <WorldCard key={w.worldId} w={w} isOwner={activeTab === 'my'} isGuest={isGuest} />
+                            <WorldCard 
+                                key={w.worldId} 
+                                w={w} 
+                                isOwner={activeTab === 'my' && w.ownerId === (data as any)?.myWorlds?.[0]?.currentUserId} 
+                                isGuest={isGuest} 
+                                isAdmin={isSystemAdmin} 
+                            />
                         ))}
                         
                         {displayList.length === 0 && (
@@ -120,7 +128,7 @@ export default function Dashboard() {
                             <h2 className="section-title">Recent Adventures</h2>
                             <div className="dashboard-grid">
                                 {data.playedWorlds.map((w: any) => (
-                                    <WorldCard key={w.worldId} w={w} isOwner={false} />
+                                    <WorldCard key={w.worldId} w={w} isOwner={false} isAdmin={isSystemAdmin} />
                                 ))}
                             </div>
                         </>

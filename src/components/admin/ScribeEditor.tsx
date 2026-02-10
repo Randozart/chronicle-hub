@@ -62,10 +62,11 @@ export default function ScribeEditor({
 
     const scopeClass = isLigature ? 'lang-ligature' : 'lang-scribescript';
     const displayGutter = showLineNumbers || visualErrors.length > 0;
-    const hasGutter = displayGutter; 
-    const effectiveWhiteSpace = isLigature || hasGutter ? 'pre' : 'pre-wrap';
-    const effectiveOverflowX = isLigature || hasGutter ? 'auto' : 'hidden';
-    const effectiveWordBreak = isLigature || hasGutter ? 'normal' : 'break-word';
+
+    const effectiveWhiteSpace = isLigature ? 'pre' : 'pre-wrap';
+    const effectiveOverflowX = isLigature ? 'auto' : 'hidden';
+    const effectiveWordBreak = isLigature ? 'normal' : 'break-word';
+    const effectiveMinWidth = isLigature ? 'max-content' : '100%';
 
     return (
         <div 
@@ -114,10 +115,10 @@ export default function ScribeEditor({
                     overflowX: isLigature ? 'auto' : 'hidden', 
                     position: 'relative',
                     
-                    width: '100%', 
-                    maxWidth: '100%', 
+                    // width: '100%', 
+                    // maxWidth: '100%', 
                     
-                    minWidth: isLigature ? 0 : '100%' 
+                    minWidth: 0
                 }}>
                     {visualErrors.length > 0 && (
                         <div style={{ position: 'absolute', top: '10px', left: 0, width: '100%', pointerEvents: 'none', zIndex: 0 }}>
@@ -158,7 +159,7 @@ export default function ScribeEditor({
                             whiteSpace: effectiveWhiteSpace,
                             wordBreak: effectiveWordBreak,
                             overflowWrap: isLigature ? 'normal' : 'anywhere',
-                            minWidth: (isLigature || displayGutter) ? 'max-content' : '100%',
+                            minWidth: effectiveMinWidth, 
                             lineHeight: '21px',
                             zIndex: 1
                         }}

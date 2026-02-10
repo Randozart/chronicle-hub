@@ -1,10 +1,20 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/providers/ToastProvider";
 
 export default function DataManagement({ storyId }: { storyId: string }) {
     const [isImporting, setIsImporting] = useState(false);
+    const [deletionDate, setDeletionDate] = useState<string | null>(null);
     const { showToast } = useToast();
+
+    // Check if scheduled
+    useEffect(() => {
+        fetch(`/api/admin/settings?storyId=${storyId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.deletionScheduledAt) setDeletionDate(data.deletionScheduledAt);
+            });
+    }, [storyId]);
 
     const handleExport = () => {
         window.open(`/api/admin/export?storyId=${storyId}`, '_blank');
@@ -47,6 +57,40 @@ export default function DataManagement({ storyId }: { storyId: string }) {
         }
     };
 
+    const handleToggleDeletion = async () => {
+        const action = deletionDate ? 'cancel' : 'schedule';
+        
+        if (action === 'schedule') {
+             const confirmMsg = "DANGER: You are about to schedule this world for deletion.\n\nIt will remain available for 30 days before being permanently removed.\n\nType 'DELETE' to confirm.";
+             const input = prompt(confirmMsg);
+             if (input !== 'DELETE') return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/world/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId, action })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                setDeletionDate(data.deletionScheduledAt);
+                // [FIX] Changed 'warning' to 'info' to satisfy ToastType definition
+                showToast(
+                    action === 'schedule' ? "Deletion scheduled." : "Deletion cancelled.", 
+                    action === 'schedule' ? "info" : "success"
+                );
+                // Refresh to update header banner if needed
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.error || "Action failed", "error");
+            }
+        } catch (e) {
+            showToast("Network error", "error");
+        }
+    };
+
     return (
         <div className="special-field-group" style={{ borderColor: '#555'}}>
             <label className="special-label" style={{ color: 'var(--tool-text-main)' }}>Data Management</label>
@@ -72,6 +116,30 @@ export default function DataManagement({ storyId }: { storyId: string }) {
                         }} 
                     />
                 </div>
+            </div>
+
+            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--tool-border)', paddingTop: '1.5rem' }}>
+                <h4 style={{ color: 'var(--danger-color)', margin: '0 0 0.5rem 0', textTransform: 'uppercase', fontSize: '0.8rem' }}>Danger Zone</h4>
+                
+                {deletionDate ? (
+                     <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--danger-color)', padding: '1rem', borderRadius: '4px' }}>
+                        <p style={{ color: 'var(--danger-color)', fontWeight: 'bold', margin: '0 0 1rem 0' }}>
+                            Deletion Scheduled for: {new Date(deletionDate).toLocaleDateString()}
+                        </p>
+                        <button onClick={handleToggleDeletion} className="save-btn" style={{ background: '#333', color: 'white', border: '1px solid #555' }}>
+                            Cancel Deletion
+                        </button>
+                     </div>
+                ) : (
+                    <div>
+                         <p className="special-desc" style={{ marginBottom: '1rem' }}>
+                            Flag this world for permanent deletion. You will have 30 days to cancel before data is wiped.
+                        </p>
+                        <button onClick={handleToggleDeletion} className="unequip-btn" style={{ width: 'auto', padding: '0.5rem 1rem' }}>
+                            Schedule Deletion (30 Days)
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

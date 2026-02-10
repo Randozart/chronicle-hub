@@ -9,8 +9,7 @@ import ReactMarkdown from 'react-markdown';
 // For now, I'm just including imgur and ChronicleHub.
 const IMAGE_HOSTNAME_WHITELIST = [
     'i.imgur.com',
-    'assets.chroniclehub.com', 
-
+    'assets.chroniclehubgames.com', 
 ];
 
 interface FormattedTextProps {
@@ -35,10 +34,31 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
         //                         This allows \[ and \] to exist inside the block without breaking it.
         // 4. \]                -> Closing bracket
         // 5. (?!\()            -> Negative lookahead (ensure it's not a standard Markdown link)
-        processed = processed.replace(/(^|[^\\])\[((?:[^\]\\]|\\.)+)\](?!\()/g, '$1[$2](#emphasis)');
+
+        // Additional safety measures (due to bug with specific text)
+        // 1. Handles '![...]' collision: 
+        //    If '!' precedes '[', it inserts a Zero-Width Space (\u200B) to prevent 
+        //    Markdown from interpreting it as an Image tag.
+        // 2. Handles Escaped Brackets:
+        //    '\[...]' is ignored and rendered literally.
+        // 3. Handles Complex Content:
+        //    Support for pipes '|', backslashes '\', and other symbols inside the brackets.
+
+        processed = processed.replace(
+            /(\\)?(!)?\[((?:[^\]\\]|\\.)+)\](?!\()/g, 
+            (match, escapeChar, bangChar, content) => {
+                if (escapeChar) return match;
+                const prefix = bangChar ? '!\u200B' : '';
+                
+                const cleanContent = content.replace(/\\/g, ''); 
+                
+                return `${prefix}[${cleanContent}](#emphasis)`;
+            }
+        );
         
-        // Preserve newlines
-        processed = processed.replace(/\n/g, '  \n');
+        // Preserve newlines as markdown hard breaks
+        // Decided to take this out, as it was causing additional newlines to be created.
+        // processed = processed.replace(/\n/g, '  \n');
 
         return processed;
     }, [text]);
@@ -49,6 +69,8 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
         <Wrapper className={inline ? "formatted-text-inline" : "formatted-text-block"}>
             <ReactMarkdown
                 components={{
+                    // HIJACKED LINK RENDERER
+                    // We interpret links pointing to '#emphasis' as custom styled spans
                     a: ({ href, children, ...props }) => {
                         if (href === '#emphasis') {
                             return <span className="text-emphasis">{children}</span>;
@@ -69,6 +91,7 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
                         );
                     },
                     
+                    // SECURE IMAGE RENDERER
                     img: ({ src, alt, ...props }) => {
                         if (typeof src !== 'string' || !src) return null;
 
@@ -87,6 +110,7 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
                             }
                         } catch (e) {
                             console.warn("Invalid image URL detected:", src);
+                            // This error will no longer appear for text like Clerk![|||/], which was an issue in the Black Crown port
                             return <em style={{color: 'var(--danger-color)'}}>[Invalid Image URL]</em>;
                         }
 
@@ -107,7 +131,9 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
                             borderRadius: '3px', 
                             fontSize: '0.9em',
                             fontFamily: 'monospace',
-                            color: 'var(--text-primary)'
+                            color: 'var(--text-primary)',
+                            whiteSpace: 'pre-wrap', 
+                            wordBreak: 'break-word'
                         }}>
                             {children}
                         </code>

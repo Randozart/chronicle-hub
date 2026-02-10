@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GameModal from './GameModal';
 import { useToast } from '@/providers/ToastProvider';
+import { useSession } from 'next-auth/react';
 
 interface Props {
     isOpen: boolean;
@@ -12,13 +13,24 @@ interface Props {
 
 export default function ContactModal({ isOpen, onClose, initialSubject = "" }: Props) {
     const { showToast } = useToast();
+    const { data: session } = useSession(); // Get session
     const [subject, setSubject] = useState(initialSubject);
     const [message, setMessage] = useState("");
     const [email, setEmail] = useState(""); 
     const [isSending, setIsSending] = useState(false);
 
+    // Pre-fill subject when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setSubject(initialSubject || "");
+        }
+    }, [isOpen, initialSubject]);
+
     const handleSubmit = async () => {
-        if (!message.trim()) return;
+        if (!message.trim() || (!session && !email.trim())) {
+            showToast("Please fill in all fields.", "error");
+            return;
+        }
         
         setIsSending(true);
         try {
@@ -33,6 +45,7 @@ export default function ContactModal({ isOpen, onClose, initialSubject = "" }: P
                 showToast(`Message sent! A confirmation has been sent to ${data.emailSentTo || "your email"}.`, "success");
                 onClose();
                 setMessage("");
+                setEmail(""); // Clear email field
             } else {
                 showToast("Failed to send message.", "error");
             }
@@ -52,6 +65,21 @@ export default function ContactModal({ isOpen, onClose, initialSubject = "" }: P
             confirmLabel={isSending ? "Sending..." : "Send Message"}
             message={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
+                    
+                    {!session && (
+                        <div>
+                            <label className="form-label" style={{display:'block', marginBottom:'5px', fontSize:'0.85rem'}}>Your Email*</label>
+                            <input 
+                                type="email"
+                                className="form-input"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                placeholder="So we can reply to you"
+                                style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-item)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                            />
+                        </div>
+                    )}
+
                     <div>
                         <label className="form-label" style={{display:'block', marginBottom:'5px', fontSize:'0.85rem'}}>Subject</label>
                         <select 
@@ -61,6 +89,7 @@ export default function ContactModal({ isOpen, onClose, initialSubject = "" }: P
                             style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-item)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
                         >
                             <option value="">-- Select Topic --</option>
+                            <option value="StoryNexus Revival Project">StoryNexus Revival Project</option>
                             <option value="Bug Report">Bug Report</option>
                             <option value="Account Issue">Account Issue</option>
                             <option value="Content Complaint">Content Complaint / Report Abuse</option>
@@ -69,13 +98,13 @@ export default function ContactModal({ isOpen, onClose, initialSubject = "" }: P
                     </div>
                     
                     <div>
-                        <label className="form-label" style={{display:'block', marginBottom:'5px', fontSize:'0.85rem'}}>Message</label>
+                        <label className="form-label" style={{display:'block', marginBottom:'5px', fontSize:'0.85rem'}}>Message*</label>
                         <textarea 
                             className="form-textarea"
                             value={message}
                             onChange={e => setMessage(e.target.value)}
                             rows={5}
-                            placeholder="Describe your issue..."
+                            placeholder="Describe your issue or inquiry..."
                             style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-item)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
                         />
                     </div>

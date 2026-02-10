@@ -173,6 +173,9 @@ export interface ImageComposition extends VersionedEntity {
 
 export interface WorldSettings {
     title?: string;
+    publicationStatus?: 'private' | 'in_progress' | 'published';
+    deletionScheduledAt?: string;
+    isOpenSource?: boolean;
     useActionEconomy: boolean;
     maxActions: number | string;
     actionId: string;
@@ -236,6 +239,8 @@ export interface WorldSettings {
     summary?: string;
     tags?: string[];
     skipCharacterCreation?: boolean;
+    disableForcedStyles?: boolean;
+
     livingStoriesConfig?: {
         enabled: boolean;
         position: 'sidebar' | 'column' | 'tab';
@@ -288,6 +293,7 @@ export interface LocationDefinition extends VersionedEntity {
     unlockCondition?: string; 
     visibleCondition?: string; 
     marketId?: string; 
+    equipmentLockMessage?: string;
 }
 export interface ImageDefinition extends VersionedEntity{ 
     id: string; 

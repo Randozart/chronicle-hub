@@ -42,11 +42,24 @@ export default async function CreationPage({ params, searchParams }: Props) {
     const allowScribeScript = gameData.settings.allowScribeScriptInInputs || false;
     
     return (
-        <div className="theme-wrapper" data-theme={gameData.settings.visualTheme || 'default'} style={{ minHeight: '100vh', background: 'var(--bg-main)', padding: '2rem' }}>
+        <div className="theme-wrapper" data-theme={gameData.settings.visualTheme || 'default'} 
+            style={{ 
+                minHeight: '100vh', 
+                padding: '2rem' }}
+            >
+
             <div className="container">
-                <h1 style={{ fontSize: '2rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', textAlign: 'center', color: 'var(--text-primary)' }}>
+                <h1 style={{ 
+                    fontSize: '2rem', 
+                    marginBottom: '2rem', 
+                    borderBottom: '1px solid var(--border-color)', 
+                    paddingBottom: '1rem', 
+                    textAlign: 'center', 
+                    color: 'var(--text-primary)' }}
+                >
                     Create Your Character
                 </h1>
+                
                 <CreationForm 
                     storyId={storyId} 
                     rules={rules} 
@@ -55,6 +68,8 @@ export default async function CreationPage({ params, searchParams }: Props) {
                     allowScribeScript={allowScribeScript}
                     settings={gameData.settings}
                 />
+
+                
             </div>
         </div>
     );

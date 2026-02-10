@@ -10,9 +10,10 @@ interface WorldCardProps {
     w: any;
     isOwner: boolean;
     isGuest?: boolean;
+    isAdmin?: boolean; 
 }
 
-export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProps) {
+export default function WorldCard({ w, isOwner, isGuest = false, isAdmin = false }: WorldCardProps) {
     const router = useRouter();
 
     const settings = w.settings || {}; 
@@ -30,6 +31,14 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
     const content = w.contentConfig || {};
     const isMature = content.mature;
     const hasTriggers = content.triggers;
+
+    // Lifecycle Status
+    const pubStatus = settings.publicationStatus || (w.published ? 'published' : 'private');
+    const isInProgress = pubStatus === 'in_progress';
+    const deletionDate = settings.deletionScheduledAt;
+    
+    // Open Source Check
+    const isOpenSource = settings.isOpenSource === true;
 
     const closePanel = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -96,7 +105,6 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                                 <span style={{ fontSize: '0.9rem' }}>{content.triggerDetails || "Specific triggers not listed."}</span>
                             </div>
                         )}
-
                         <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>By continuing, you confirm you are of appropriate age and consent to view this content.</p>
                     </div>
                 }
@@ -118,6 +126,16 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)'; setActiveView(null); }}
             >
+                {deletionDate && (
+                    <div style={{ 
+                        position: 'absolute', top: 0, left: 0, right: 0, 
+                        background: 'var(--danger-color)', color: '#fff', 
+                        padding: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 60 
+                    }}>
+                        SCHEDULED FOR DELETION
+                    </div>
+                )}
+
                 <div 
                     onClick={closePanel}
                     style={{
@@ -184,9 +202,28 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                         </div>
                     )}
                     
+                    <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 20 }}>
+                        {isInProgress && (
+                            <div style={{ background: 'var(--tool-accent)', color: 'black', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                                🚧 ACTIVE DEVELOPMENT
+                            </div>
+                        )}
+                        {isOpenSource && (
+                            <div style={{ background: 'var(--success-color)', color: 'black', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                                🔓 OPEN SOURCE
+                            </div>
+                        )}
+                    </div>
+
+
                     {isOwner && w.ownerId && w.currentUserId && w.ownerId !== w.currentUserId && (
                         <div style={{ position: 'absolute', top: 10, right: 10, background: 'var(--success-color)', color: 'black', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.3)', zIndex: 20 }}>COLLABORATOR</div>
                     )}
+                    
+                    {isAdmin && !isOwner && (
+                        <div style={{ position: 'absolute', top: 10, right: 10, background: 'var(--danger-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.3)', zIndex: 20 }}>SYSTEM ADMIN</div>
+                    )}
+
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '34px', background: 'linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0))', display: 'flex', alignItems: 'center', padding: '0 12px', gap: '8px', zIndex: 10 }}>
                         
                         {(hasTeam || hasAttributions) && (
@@ -222,7 +259,7 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                             ))}
                         </div>
                     )}
-
+                    
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', flex: 1, marginBottom: '1.5rem', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {w.summary || "No summary provided."}
                     </p>
@@ -235,8 +272,31 @@ export default function WorldCard({ w, isOwner, isGuest = false }: WorldCardProp
                         >
                             Play
                         </button>
-                        {isOwner && (
+
+                        {isOwner ? (
                             <Link href={`/create/${w.worldId}/settings`} className="return-button" style={{ flex: 1, textDecoration: 'none', padding: '0.6rem', textAlign: 'center', borderRadius: '4px', fontSize: '0.9rem', fontWeight: '500' }}>Edit</Link>
+                        ) : (
+                            <>
+                                {isAdmin ? (
+                                    <Link 
+                                        href={`/create/${w.worldId}/settings`} 
+                                        className="return-button" 
+                                        style={{ flex: 1, textDecoration: 'none', padding: '0.6rem', textAlign: 'center', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', background: 'var(--danger-color)', color: 'white', border: 'none' }}
+                                    >
+                                        Inspect
+                                    </Link>
+                                ) : (
+                                    isOpenSource && (
+                                        <Link 
+                                            href={`/create/${w.worldId}/settings`} 
+                                            className="return-button" 
+                                            style={{ flex: 1, textDecoration: 'none', padding: '0.6rem', textAlign: 'center', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', background: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
+                                        >
+                                            Source
+                                        </Link>
+                                    )
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

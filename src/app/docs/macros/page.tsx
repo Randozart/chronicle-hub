@@ -369,8 +369,8 @@ export default function MacrosPage() {
                                 <td>Only include qualities where a custom property 'cost' is less than 50.</td>
                             </tr>
                             <tr>
-                                <td><code>$($.id)_unlocked == 1</code></td>
-                                <td>Only include qualities where a *different* quality, whose name is based on the candidate's ID, is 1 (e.g., checks for `$sword_unlocked` when checking `$sword`).</td>
+                                <td><code>$.secret.implicated == 1</code></td>
+                                <td>Only include qualities where a *different* quality, whose name is based on the candidate's secret property, has a property <code>.implicated</code> which resolves to 1.</td>
                             </tr>
                         </tbody>
                     </table>

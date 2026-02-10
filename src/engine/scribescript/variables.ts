@@ -19,7 +19,21 @@ export function resolveComplexExpression(
     const indent = '  '.repeat(depth);
     if (logger) logger(`Expr: "${expr}"`, depth, 'INFO');
 
-    try {
+     try {
+        let processedExpr = expr;
+
+        if (self && expr.includes('$.')) {
+            const level = (self.state && 'level' in self.state) ? self.state.level : 0;
+            const spoofedId = `$${self.qid}[${level}]`;
+
+            processedExpr = processedExpr.replace(/\$\.(.?)/g, (match, nextChar) => {
+                if (nextChar && /[a-zA-Z0-9_]/.test(nextChar)) {
+                    return `${spoofedId}.${nextChar}`;
+                }
+                return `${spoofedId}${nextChar}`;
+            });
+        }
+        
         const varReplacedExpr = expr.replace(VARIABLE_REGEX, (match) => { 
             const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
             if (typeof resolved === 'string') {

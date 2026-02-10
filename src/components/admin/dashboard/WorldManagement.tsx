@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link'; // Added Link import
 
 export default function WorldManagement() {
     const [worlds, setWorlds] = useState([]);
@@ -30,7 +31,7 @@ export default function WorldManagement() {
                         <th style={{ padding: '1rem' }}>Owner</th>
                         <th style={{ padding: '1rem' }}>Safety</th>
                         <th style={{ padding: '1rem' }}>Status</th>
-                        <th style={{ padding: '1rem' }}>Action</th>
+                        <th style={{ padding: '1rem' }}>Admin Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -60,30 +61,54 @@ export default function WorldManagement() {
                                         : <span style={{ color: '#555' }}>○ Draft</span>
                                     }
                                 </td>
-                                 <td style={{ padding: '1rem', display: 'flex', gap: '10px' }}>
-                                    <button 
-                                        onClick={() => togglePublish(w.worldId, 'toggle_feature')}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', filter: w.featured ? 'none' : 'grayscale(1)' }}
-                                        title="Feature this world"
-                                    >
-                                        ⭐
-                                    </button>
-                                </td>
                                 <td style={{ padding: '1rem' }}>
-                                    {w.published && (
-                                        <button 
-                                            onClick={() => togglePublish(w.worldId)}
-                                            style={{ background: '#e06c75', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <Link 
+                                            href={`/create/${w.worldId}/settings`}
+                                            style={{ 
+                                                background: '#61afef', 
+                                                color: '#111', 
+                                                textDecoration: 'none', 
+                                                padding: '4px 10px', 
+                                                borderRadius: '4px', 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 'bold',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                            title="Open Creator Studio (God Mode)"
                                         >
-                                            Kill Switch
+                                            <span>🔍</span> Inspect
+                                        </Link>
+
+                                        <button 
+                                            onClick={() => togglePublish(w.worldId, 'toggle_feature')}
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', filter: w.featured ? 'none' : 'grayscale(1)' }}
+                                            title="Feature this world"
+                                        >
+                                            ⭐
                                         </button>
-                                    )}
+
+                                        {w.published && (
+                                            <button 
+                                                onClick={() => togglePublish(w.worldId)}
+                                                style={{ background: '#e06c75', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                                                title="Force Unpublish"
+                                            >
+                                                Kill Switch
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         );
                     })}
                 </tbody>
             </table>
+            {worlds.length === 0 && (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#555' }}>No worlds found in registry.</div>
+            )}
         </div>
     );
 }
