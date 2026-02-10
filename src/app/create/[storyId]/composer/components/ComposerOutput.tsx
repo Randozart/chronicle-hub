@@ -20,11 +20,7 @@ export default function ComposerOutput({ composition, onExport }: Props) {
             return `${key}={$${key}}`;
         }).join('&');
 
-        // Add theme param if any layer uses theme binding
-        const usesTheme = composition.layers.some(l => l.enableThemeColor || l.tintColor?.startsWith('var('));
-        const themeParam = usesTheme ? `&theme={$user_theme}` : '';
-
-        return `image_composer/render?id=${composition.id}${params ? '&' + params : ''}${themeParam}`;
+        return `image_composer/render?id=${composition.id}${params ? '&' + params : ''}`;
     }, [composition]);
     
     return (

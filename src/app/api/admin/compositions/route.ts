@@ -35,9 +35,12 @@ export async function POST(request: NextRequest) {
         const client = await clientPromise;
         const db = client.db(DB_NAME);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { _id, ...cleanData } = data;
+
         await db.collection('compositions').updateOne(
             { storyId, id: data.id },
-            { $set: { ...data, lastModified: new Date() } },
+            { $set: { ...cleanData, lastModified: new Date() } },
             { upsert: true }
         );
 

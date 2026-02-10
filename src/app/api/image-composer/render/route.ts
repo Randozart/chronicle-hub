@@ -10,15 +10,15 @@ const CACHE_SIZE_LIMIT = 50;
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const compositionId = searchParams.get('id');
-    const themeName = searchParams.get('theme') || 'default';
     
     if (!compositionId) {
         return NextResponse.json({ error: 'Missing composition ID' }, { status: 400 });
     }
+
     const cacheKey = request.url;
     if (RENDER_CACHE.has(cacheKey)) {
         const buffer = RENDER_CACHE.get(cacheKey)!;
-        return new NextResponse(buffer as any, {
+        return new NextResponse(buffer as any, { 
             headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=3600' }
         });
     }
@@ -26,13 +26,28 @@ export async function GET(request: NextRequest) {
     try {
         const client = await clientPromise;
         const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
+
         const composition = await db.collection<ImageComposition>('compositions').findOne({ id: compositionId });
 
         if (!composition) {
             return NextResponse.json({ error: 'Composition not found' }, { status: 404 });
         }
-        const allThemes = await getAllThemes();
-        const themeColors = { ...(allThemes[':root'] || {}), ...(allThemes[themeName] || {}) };        
+
+        let themeName = searchParams.get('theme');
+        
+        if (!themeName) {
+            const worldConfig = await db.collection('config').findOne({ 
+                storyId: composition.storyId, 
+                category: 'settings', 
+                itemId: 'settings' 
+            });
+            themeName = worldConfig?.data?.visualTheme || 'default';
+        }
+
+        const allThemes = getAllThemes();
+        // Ensure themeName is treated as a string. Fallback to 'default' if logic fails to prevent casting 'null'
+        const finalThemeName = themeName || 'default';
+        const themeColors = { ...(allThemes[':root'] || {}), ...(allThemes[finalThemeName] || {}) };
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
 
