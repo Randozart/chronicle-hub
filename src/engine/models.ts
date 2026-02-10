@@ -164,6 +164,7 @@ export interface ImageComposition extends VersionedEntity {
     name: string;
     width: number;
     height: number;
+    backgroundColor?: string;
     layers: CompositionLayer[];
     parameters: Record<string, 'hex' | 'variant' | 'number'>; 
     defaultParams?: Record<string, string>; 

@@ -78,8 +78,33 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         handle?: string; // 'tl', 'tr', etc.
     } | null>(null);
 
+    
     if (!data) return <div className="loading-container">Loading editor...</div>;
+    const [viewZoom, setViewZoom] = useState(1);
 
+    const handleWheel = (e: React.WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = -e.deltaY * 0.001;
+            setViewZoom(z => Math.min(Math.max(0.1, z + delta), 5));
+        }
+    };
+
+    const moveLayer = (index: number, direction: -1 | 1) => {
+        const sorted = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= sorted.length) return;
+        
+        const currentLayer = sorted[index];
+        const swapLayer = sorted[targetIndex];
+        
+        // Swap Z-Indices
+        const tempZ = currentLayer.zIndex;
+        currentLayer.zIndex = swapLayer.zIndex;
+        swapLayer.zIndex = tempZ;
+        
+        handleChange('layers', [...sorted]);
+    };
     useEffect(() => {
         if (browserTab === 'presets' && presets.length === 0 && !isLoadingPresets) {
             setIsLoadingPresets(true);
@@ -177,27 +202,40 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         })).filter(cat => cat.files.length > 0);
     }, [presets, searchTerm]);
     
+    // Canvas Rendering 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // 1. Background
+        // Reset transform to clear properly
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const s = 20;
-        for(let i=0; i<canvas.width/s; i++) {
-            for(let j=0; j<canvas.height/s; j++) {
-                ctx.fillStyle = (i+j)%2 === 0 ? '#1a1a1a' : '#222';
-                ctx.fillRect(i*s, j*s, s, s);
+
+        // Background
+        if (data.backgroundColor) {
+            const resolvedBg = resolveCssVariable(data.backgroundColor, 'default', allThemes);
+            ctx.fillStyle = resolvedBg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+            // Checkerboard
+            const s = 20;
+            for(let i=0; i<canvas.width/s; i++) {
+                for(let j=0; j<canvas.height/s; j++) {
+                    ctx.fillStyle = (i+j)%2 === 0 ? '#1a1a1a' : '#222';
+                    ctx.fillRect(i*s, j*s, s, s);
+                }
             }
         }
+
+        ctx.scale(viewZoom, viewZoom);
 
         const sortedLayers = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
 
         sortedLayers.forEach(layer => {
             if (layer.editorHidden) return; 
-             let url = "";
+            let url = "";
             if (layer.assetId.startsWith('presets/')) url = `/${layer.assetId}`;
             else {
                 const asset = assets.find(a => a.id === layer.assetId);
@@ -240,6 +278,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
 
             // Draw image
             ctx.save();
+            ctx.globalAlpha = layer.opacity;
             ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
             ctx.rotate((layer.rotation * Math.PI) / 180);
             
@@ -260,14 +299,13 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 const hh = h/2;
 
                 ctx.strokeStyle = '#61afef';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 2 / viewZoom; // Keep line width consistent visually
                 ctx.strokeRect(-hw, -hh, w, h);
 
                 // Draw Handles
-                const handleSize = 8;
+                const handleSize = 8 / viewZoom;
                 ctx.fillStyle = '#fff';
                 
-                // Corners
                 const corners = [
                     {x: -hw, y: -hh}, {x: hw, y: -hh},
                     {x: -hw, y: hh}, {x: hw, y: hh}
@@ -280,10 +318,10 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 // Rotate Handle
                 ctx.beginPath();
                 ctx.moveTo(0, -hh);
-                ctx.lineTo(0, -hh - 20);
+                ctx.lineTo(0, -hh - (20/viewZoom));
                 ctx.stroke();
                 ctx.beginPath();
-                ctx.arc(0, -hh - 20, 5, 0, Math.PI * 2);
+                ctx.arc(0, -hh - (20/viewZoom), 5/viewZoom, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
             }
@@ -291,21 +329,27 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             ctx.restore();
         });
 
-    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes]);
+    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes, viewZoom, data.backgroundColor]); 
+    
     
     const handleCanvasMouseDown = (e: React.MouseEvent) => {
         const rect = canvasRef.current!.getBoundingClientRect();
-        // Scale mouse pos to match canvas resolution (CSS size vs Attribute size)
-        const scaleX = data.width / rect.width;
-        const scaleY = data.height / rect.height;
-        const mx = (e.clientX - rect.left) * scaleX;
-        const my = (e.clientY - rect.top) * scaleY;
+        
+        // Handle 0 dimensions to avoid division by zero
+        if (rect.width === 0 || rect.height === 0) return;
 
-        // 1. Check selected layer first
+        const cssScaleX = data.width / rect.width;
+        const cssScaleY = data.height / rect.height;
+        
+        // Account for View Zoom
+        const mx = ((e.clientX - rect.left) * cssScaleX) / viewZoom;
+        const my = ((e.clientY - rect.top) * cssScaleY) / viewZoom;
+
+        // 1. Check handles on selected layer first
         if (selectedLayerId) {
             const layer = data.layers.find(l => l.id === selectedLayerId);
             if (layer) {
-                const img = getCachedImage(layer); // Helper needed or inline check
+                const img = getCachedImage(layer); 
                 if (img) {
                     const local = toLocalSpace(mx, my, layer, img.width, img.height);
                     const handle = hitTestHandles(local.x, local.y, img.width, img.height, layer.scale);
@@ -324,7 +368,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             }
         }
 
-        // 2. Check for body hits
+        // 2. Check for body hits (Reverse order: Top layers catch clicks first)
         const sortedReverse = [...data.layers].sort((a, b) => b.zIndex - a.zIndex);
         for (const layer of sortedReverse) {
             if (layer.editorHidden) continue;
@@ -332,6 +376,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             if (!img) continue;
 
             const local = toLocalSpace(mx, my, layer, img.width, img.height);
+            // Hit test body
             if (hitTestBody(local.x, local.y, img.width, img.height, layer.scale)) {
                 setSelectedLayerId(layer.id);
                 setDragState({
@@ -351,10 +396,11 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     const handleCanvasMouseMove = (e: React.MouseEvent) => {
         if (!dragState || !selectedLayerId) return;
         const rect = canvasRef.current!.getBoundingClientRect();
-        const scaleX = data.width / rect.width;
-        const scaleY = data.height / rect.height;
-        const mx = (e.clientX - rect.left) * scaleX;
-        const my = (e.clientY - rect.top) * scaleY;
+        
+        const cssScaleX = data.width / rect.width;
+        const cssScaleY = data.height / rect.height;
+        const mx = ((e.clientX - rect.left) * cssScaleX) / viewZoom;
+        const my = ((e.clientY - rect.top) * cssScaleY) / viewZoom;
 
         const { startX, startY, startLayer, mode, handle } = dragState;
         const dx = mx - startX;
@@ -367,18 +413,19 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             });
         } 
         else if (mode === 'resize') {
-            // Simplified Uniform Scaling logic
-            // A real implementation handles all 4 corners differently. 
-            // For now, dragging any corner scales relative to center for simplicity in this snippet.
-            // Or simple delta Y:
+            // Sensitivity factor for scaling
             const sensitivity = 0.005;
-            const delta = (handle === 'br' || handle === 'tr') ? dx : -dx;
+            // If dragging bottom/right, growing is positive delta. 
+            // If dragging top/left, growing is negative delta.
+            const direction = (handle === 'br' || handle === 'tr') ? 1 : -1;
+            const delta = dx * direction; 
+            
             const newScale = Math.max(0.1, startLayer.scale + (delta * sensitivity));
-            updateLayer(selectedLayerId, { scale: newScale });
+            updateLayer(selectedLayerId, { scale: parseFloat(newScale.toFixed(3)) });
         }
         else if (mode === 'rotate') {
-            // Calculate angle relative to center
             const img = getCachedImage(startLayer)!;
+            // Pivot point
             const cx = startLayer.x + (img.width * startLayer.scale)/2;
             const cy = startLayer.y + (img.height * startLayer.scale)/2;
             
@@ -396,8 +443,16 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
 
     // Helper to get image safely from cache
     const getCachedImage = (layer: CompositionLayer) => {
-        let url = layer.assetId.startsWith('presets/') ? `/${layer.assetId}` : assets.find(a => a.id === layer.assetId)?.url;
-        if(!url) url = `/images/uploads/${layer.assetId}.png`;
+        let url = "";
+        if (layer.assetId.startsWith('presets/')) {
+            url = `/${layer.assetId}`;
+        } else {
+            const asset = assets.find(a => a.id === layer.assetId);
+            url = asset ? asset.url || "" : `/images/uploads/${layer.assetId}.png`;
+        }
+        
+        if (!url) return null;
+        
         const img = imageElementCache.get(url);
         return (img && img.complete) ? img : null;
     };
@@ -432,6 +487,20 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     <input type="number" value={data.width} onChange={e => handleChange('width', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
                     <label className="form-label" style={{marginBottom:0}}>H:</label>
                     <input type="number" value={data.height} onChange={e => handleChange('height', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
+                    
+                    <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
+                    
+                    <label className="form-label" style={{marginBottom:0}}>Bg:</label>
+                    <div style={{width:'30px'}}>
+                        <ColorPickerInput 
+                            value={data.backgroundColor || ''} 
+                            onChange={c => handleChange('backgroundColor', c)} 
+                            allThemes={allThemes}
+                        />
+                    </div>
+
+                    <label className="form-label" style={{marginBottom:0}}>Zoom: {(viewZoom * 100).toFixed(0)}%</label>
+                    <button onClick={() => setViewZoom(1)} style={{fontSize:'0.7rem', cursor:'pointer', background:'var(--tool-bg-input)', border:'1px solid var(--tool-border)', padding:'2px 5px', borderRadius:'4px', color:'var(--tool-text-main)'}}>Reset</button>
                 </div>
             </div>
 
@@ -550,6 +619,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                             onMouseMove={handleCanvasMouseMove}
                             onMouseUp={handleCanvasMouseUp}
                             onMouseLeave={handleCanvasMouseUp}
+                            onWheel={handleWheel} 
                         />
                     </div>
                 </div>
@@ -578,6 +648,18 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                                         }}
                                     >
                                         <div style={{display:'flex', gap:'5px', alignItems:'center', overflow:'hidden'}}>
+                                            <div style={{ display:'flex', flexDirection:'column', gap:'1px', marginRight:'2px' }}>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); moveLayer(idx, -1); }} 
+                                                    disabled={idx === 0}
+                                                    style={{ fontSize:'0.5rem', lineHeight:1, cursor:'pointer', border:'none', background:'none', color:'inherit', opacity: idx === 0 ? 0.2 : 1 }}
+                                                >▲</button>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); moveLayer(idx, 1); }} 
+                                                    disabled={idx === data.layers.length - 1}
+                                                    style={{ fontSize:'0.5rem', lineHeight:1, cursor:'pointer', border:'none', background:'none', color:'inherit', opacity: idx === data.layers.length - 1 ? 0.2 : 1 }}
+                                                >▼</button>
+                                            </div>                                            
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { editorHidden: !layer.editorHidden }); }}
                                                 style={{ border:'none', background:'none', cursor:'pointer', color: 'inherit', padding: '0 4px', display:'flex', alignItems:'center' }}

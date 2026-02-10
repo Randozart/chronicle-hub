@@ -109,6 +109,29 @@ export async function GET(request: NextRequest) {
                 blend: 'over'
             });
         }
+
+        if (composition.backgroundColor) {
+            const bgKey = composition.backgroundColor.match(/--[\w-]+/)?.[0] || '';
+            const resolvedBg = composition.backgroundColor.startsWith('var(') 
+                ? (themeColors[bgKey] || '#000000') 
+                : composition.backgroundColor;
+
+            try {
+                const bgBuffer = await sharp({
+                    create: {
+                        width: composition.width,
+                        height: composition.height,
+                        channels: 4,
+                        background: resolvedBg
+                    }
+                }).png().toBuffer();
+
+                layersToRender.unshift({ input: bgBuffer, blend: 'dest-over' });
+            } catch (e) {
+                console.warn("Invalid background color:", resolvedBg);
+            }
+        }
+
         const base = sharp({
             create: {
                 width: composition.width,
