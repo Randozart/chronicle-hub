@@ -43,12 +43,12 @@ export interface ResolveOption extends LogicGates {
 }
 
 export type PublishStatus = 
-    | 'draft'       // Hidden from players, visible in Playtest
-    | 'playtest'    // Explicitly for testing, visible in Playtest
-    | 'review'      // Functionally Published, but marked for creator review
-    | 'published'   // Live
-    | 'maintenance' // Visible but Locked (Excuse our mess)
-    | 'archived';   // Soft deleted
+    | 'draft'
+    | 'playtest'
+    | 'review'
+    | 'published'
+    | 'maintenance'
+    | 'archived';
 
 export interface VersionedEntity {
     version?: number;
@@ -137,6 +137,39 @@ export interface SystemMessage {
     title: string;
     content: string;
 }
+
+export interface CompositionLayer {
+    id: string;
+    assetId: string;
+    name: string;
+    zIndex: number;
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+    opacity: number;
+    
+    groupId?: string;
+    variantValue?: string;
+    
+    tintColor?: string;
+    enableThemeColor?: boolean;
+
+    editorHidden?: boolean; 
+}
+
+export interface ImageComposition extends VersionedEntity {
+    id: string;
+    storyId: string;
+    name: string;
+    width: number;
+    height: number;
+    backgroundColor?: string;
+    layers: CompositionLayer[];
+    parameters: Record<string, 'hex' | 'variant' | 'number'>; 
+    defaultParams?: Record<string, string>; 
+}
+
 
 export interface WorldSettings {
     title?: string;

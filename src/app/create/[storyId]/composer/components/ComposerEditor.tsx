@@ -1,0 +1,834 @@
+'use client';
+
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { ImageComposition, CompositionLayer, GlobalAsset } from '@/engine/models';
+import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
+import CommandCenter from '@/components/admin/CommandCenter';
+import { v4 as uuidv4 } from 'uuid';
+import ColorPickerInput from './ColorPickerInput';
+import ComposerOutput from './ComposerOutput';
+import { resolveCssVariable } from '@/utils/themeUtils';
+
+const CANVAS_PRESETS = {
+    'Icon': { w: 512, h: 512 },
+    'Storylet (Portrait)': { w: 300, h: 400 },
+    'Card (Landscape)': { w: 400, h: 300 },
+    'Banner': { w: 1024, h: 300 },
+    'HD': { w: 1920, h: 1080 }
+};
+
+const EyeIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+);
+
+const EyeOffIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+);
+
+interface PresetFile {
+    path: string;
+    name: string;
+}
+
+interface PresetCategory {
+    name: string;
+    files: PresetFile[];
+}
+
+interface Props {
+    initialData: ImageComposition;
+    storyId: string;
+    assets: GlobalAsset[];
+    onSave: (data: ImageComposition) => void;
+    onDelete: () => void;
+    guardRef: { current: FormGuard | null };
+    allThemes: Record<string, Record<string, string>>;
+}
+const imageElementCache = new Map<string, HTMLImageElement>();
+
+export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes}: Props) {
+    const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
+        initialData,
+        '/api/admin/compositions',
+        { storyId },
+        guardRef,
+        undefined,
+        onSave
+    );
+
+    const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [browserTab, setBrowserTab] = useState<'project' | 'presets'>('project');
+    const [presets, setPresets] = useState<PresetCategory[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isLoadingPresets, setIsLoadingPresets] = useState(false);
+    const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+    const [imagesLoaded, setImagesLoaded] = useState(0);
+    const [dragState, setDragState] = useState<{
+        mode: 'move' | 'resize' | 'rotate';
+        startX: number;
+        startY: number;
+        startLayer: CompositionLayer;
+        handle?: string; // 'tl', 'tr', etc.
+    } | null>(null);
+
+    
+    if (!data) return <div className="loading-container">Loading editor...</div>;
+    const [viewZoom, setViewZoom] = useState(1);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const onWheel = (e: WheelEvent) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault(); // Stop Browser Zoom
+                e.stopPropagation();
+                
+                const delta = -e.deltaY * 0.001;
+                setViewZoom(z => Math.min(Math.max(0.1, z + delta), 5));
+            }
+        };
+
+        canvas.addEventListener('wheel', onWheel, { passive: false });
+        
+        return () => {
+            canvas.removeEventListener('wheel', onWheel);
+        };
+    }, []);
+
+    const moveLayer = (index: number, direction: -1 | 1) => {
+        const sorted = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= sorted.length) return;
+        
+        const currentLayer = sorted[index];
+        const swapLayer = sorted[targetIndex];
+        
+        // Swap Z-Indices
+        const tempZ = currentLayer.zIndex;
+        currentLayer.zIndex = swapLayer.zIndex;
+        swapLayer.zIndex = tempZ;
+        
+        handleChange('layers', [...sorted]);
+    };
+    useEffect(() => {
+        if (browserTab === 'presets' && presets.length === 0 && !isLoadingPresets) {
+            setIsLoadingPresets(true);
+            fetch('/api/admin/assets/presets')
+                .then(r => r.json())
+                .then((d: { categories?: PresetCategory[] }) => {                   
+                    const categories = d.categories || [];
+                    setPresets(categories);
+                    const allButFirst = new Set(categories.map((c: PresetCategory) => c.name));
+                    if (categories.length > 0) {
+                        allButFirst.delete(categories[0].name);
+                    }
+                    setCollapsedCategories(allButFirst);
+                })
+                .finally(() => setIsLoadingPresets(false));
+        }
+    }, [browserTab]);
+
+    const getImageDimensions = (url: string): Promise<{ width: number; height: number }> => {
+        return new Promise((resolve, reject) => {
+            if (imageElementCache.has(url)) {
+                const cachedImg = imageElementCache.get(url)!;
+                if (cachedImg.complete) {
+                    resolve({ width: cachedImg.width, height: cachedImg.height });
+                    return;
+                }
+            }
+            
+            const img = new Image();
+            img.onload = () => {
+                imageElementCache.set(url, img);
+                resolve({ width: img.width, height: img.height });
+            };
+            img.onerror = () => reject(new Error(`Could not load image: ${url}`));
+            img.src = url;
+        });
+    };
+
+    const addLayer = async (assetId: string, name: string, isPreset: boolean) => {
+        const url = isPreset ? `/${assetId}` : (assets.find(a => a.id === assetId)?.url || '');
+        if (!url) {
+            console.error("Asset URL not found for", assetId);
+            return; 
+        }
+
+        try {
+            const { width, height } = await getImageDimensions(url);
+            
+            const newLayer: CompositionLayer = {
+                id: uuidv4(),
+                assetId: assetId,
+                name: name,
+                zIndex: data.layers.length,
+                x: (data.width / 2) - (width / 2),
+                y: (data.height / 2) - (height / 2),
+                scale: 1,
+                rotation: 0,
+                opacity: 1,
+                enableThemeColor: isPreset 
+            };
+
+            handleChange('layers', [...data.layers, newLayer]);
+            setSelectedLayerId(newLayer.id);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const updateLayer = (id: string, updates: Partial<CompositionLayer>) => {
+        const newLayers = data.layers.map(l => l.id === id ? { ...l, ...updates } : l);
+        handleChange('layers', newLayers);
+    };
+
+    const removeLayer = (id: string) => {
+        handleChange('layers', data.layers.filter(l => l.id !== id));
+        if (selectedLayerId === id) setSelectedLayerId(null);
+    };
+
+    const toggleCategory = (catName: string) => {
+        const next = new Set(collapsedCategories);
+        if (next.has(catName)) next.delete(catName);
+        else next.add(catName);
+        setCollapsedCategories(next);
+    };
+
+    const filteredAssets = useMemo(() => {
+        return assets.filter(a => a.id.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [assets, searchTerm]);
+
+    const filteredPresets = useMemo(() => {
+        if (!searchTerm) return presets;
+        return presets.map(cat => ({
+            ...cat,
+            files: cat.files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        })).filter(cat => cat.files.length > 0);
+    }, [presets, searchTerm]);
+    
+    // Canvas Rendering 
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Reset transform to clear properly
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Background
+        if (data.backgroundColor) {
+            const resolvedBg = resolveCssVariable(data.backgroundColor, 'default', allThemes);
+            ctx.fillStyle = resolvedBg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+            // Checkerboard
+            const s = 20;
+            for(let i=0; i<canvas.width/s; i++) {
+                for(let j=0; j<canvas.height/s; j++) {
+                    ctx.fillStyle = (i+j)%2 === 0 ? '#1a1a1a' : '#222';
+                    ctx.fillRect(i*s, j*s, s, s);
+                }
+            }
+        }
+
+        // ctx.scale(viewZoom, viewZoom);
+
+        const sortedLayers = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
+
+        sortedLayers.forEach(layer => {
+            if (layer.editorHidden) return; 
+            let url = "";
+            if (layer.assetId.startsWith('presets/')) url = `/${layer.assetId}`;
+            else {
+                const asset = assets.find(a => a.id === layer.assetId);
+                url = asset ? asset.url || "" : `/images/uploads/${layer.assetId}.png`;
+            }
+            if (!url) return;
+
+            let finalImageToDraw: HTMLImageElement | HTMLCanvasElement | null = null;
+
+            if (imageElementCache.has(url)) {
+                const img = imageElementCache.get(url)!;
+                if (img.complete) {
+                    const offscreenCanvas = document.createElement('canvas');
+                    offscreenCanvas.width = img.width;
+                    offscreenCanvas.height = img.height;
+                    const offCtx = offscreenCanvas.getContext('2d');
+                    if (offCtx) {
+                        offCtx.drawImage(img, 0, 0);
+                        const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
+                        if (isSvg && layer.tintColor) {
+                            const resolvedTint = resolveCssVariable(layer.tintColor, 'default', allThemes);
+                            offCtx.globalCompositeOperation = 'source-in';
+                            offCtx.fillStyle = resolvedTint;
+                            offCtx.fillRect(0, 0, img.width, img.height);
+                        }
+                        finalImageToDraw = offscreenCanvas;
+                    } else {
+                        finalImageToDraw = img; 
+                    }
+                }
+            } else {
+                const img = new Image();
+                img.onload = () => setImagesLoaded(c => c + 1);
+                img.src = url;
+                imageElementCache.set(url, img);
+                return; 
+            }
+
+            if (!finalImageToDraw) return;
+
+            // Draw image
+            ctx.save();
+            ctx.globalAlpha = layer.opacity;
+            ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
+            ctx.rotate((layer.rotation * Math.PI) / 180);
+            
+            // Draw centered
+            ctx.drawImage(
+                finalImageToDraw, 
+                -(finalImageToDraw.width * layer.scale)/2, 
+                -(finalImageToDraw.height * layer.scale)/2, 
+                finalImageToDraw.width * layer.scale, 
+                finalImageToDraw.height * layer.scale
+            );
+
+            // Draw controls if selected
+            if (layer.id === selectedLayerId) {
+                const w = finalImageToDraw.width * layer.scale;
+                const h = finalImageToDraw.height * layer.scale;
+                const hw = w/2;
+                const hh = h/2;
+
+                ctx.strokeStyle = '#61afef';
+                ctx.lineWidth = 2 / viewZoom; // Keep line width consistent visually
+                ctx.strokeRect(-hw, -hh, w, h);
+
+                // Draw Handles
+                const handleSize = 8 / viewZoom;
+                ctx.fillStyle = '#fff';
+                
+                const corners = [
+                    {x: -hw, y: -hh}, {x: hw, y: -hh},
+                    {x: -hw, y: hh}, {x: hw, y: hh}
+                ];
+                corners.forEach(c => {
+                    ctx.fillRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
+                    ctx.strokeRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
+                });
+
+                // Rotate Handle
+                ctx.beginPath();
+                ctx.moveTo(0, -hh);
+                ctx.lineTo(0, -hh - (20/viewZoom));
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, -hh - (20/viewZoom), 5/viewZoom, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        });
+
+    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes, viewZoom, data.backgroundColor]); 
+    
+    
+    const handleCanvasMouseDown = (e: React.MouseEvent) => {
+        const rect = canvasRef.current!.getBoundingClientRect();
+        
+        // Handle 0 dimensions to avoid division by zero
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const scaleX = data.width / rect.width;
+        const scaleY = data.height / rect.height;
+
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+
+        // 1. Check handles on selected layer first
+        if (selectedLayerId) {
+            const layer = data.layers.find(l => l.id === selectedLayerId);
+            if (layer) {
+                const img = getCachedImage(layer); 
+                if (img) {
+                    const local = toLocalSpace(mx, my, layer, img.width, img.height);
+                    const handle = hitTestHandles(local.x, local.y, img.width, img.height, layer.scale);
+                    
+                    if (handle) {
+                        setDragState({
+                            mode: handle === 'rot' ? 'rotate' : 'resize',
+                            startX: mx,
+                            startY: my,
+                            startLayer: { ...layer },
+                            handle
+                        });
+                        return;
+                    }
+                }
+            }
+        }
+
+        // 2. Check for body hits (Reverse order: Top layers catch clicks first)
+        const sortedReverse = [...data.layers].sort((a, b) => b.zIndex - a.zIndex);
+        for (const layer of sortedReverse) {
+            if (layer.editorHidden) continue;
+            const img = getCachedImage(layer);
+            if (!img) continue;
+
+            const local = toLocalSpace(mx, my, layer, img.width, img.height);
+            // Hit test body
+            if (hitTestBody(local.x, local.y, img.width, img.height, layer.scale)) {
+                setSelectedLayerId(layer.id);
+                setDragState({
+                    mode: 'move',
+                    startX: mx,
+                    startY: my,
+                    startLayer: { ...layer }
+                });
+                return;
+            }
+        }
+
+        // 3. Clicked empty space
+        setSelectedLayerId(null);
+    };
+
+    const handleCanvasMouseMove = (e: React.MouseEvent) => {
+        if (!dragState || !selectedLayerId) return;
+        const rect = canvasRef.current!.getBoundingClientRect();
+                
+        const scaleX = data.width / rect.width;
+        const scaleY = data.height / rect.height;
+
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+
+        const { startX, startY, startLayer, mode, handle } = dragState;
+        const dx = mx - startX;
+        const dy = my - startY;
+
+        if (mode === 'move') {
+            updateLayer(selectedLayerId, {
+                x: Math.round(startLayer.x + dx),
+                y: Math.round(startLayer.y + dy)
+            });
+        } 
+        else if (mode === 'resize') {
+            // Sensitivity factor for scaling
+            const sensitivity = 0.005;
+            // If dragging bottom/right, growing is positive delta. 
+            // If dragging top/left, growing is negative delta.
+            const direction = (handle === 'br' || handle === 'tr') ? 1 : -1;
+            const delta = dx * direction; 
+            
+            const newScale = Math.max(0.1, startLayer.scale + (delta * sensitivity));
+            updateLayer(selectedLayerId, { scale: parseFloat(newScale.toFixed(3)) });
+        }
+        else if (mode === 'rotate') {
+            const img = getCachedImage(startLayer)!;
+            // Pivot point
+            const cx = startLayer.x + (img.width * startLayer.scale)/2;
+            const cy = startLayer.y + (img.height * startLayer.scale)/2;
+            
+            const startAngle = Math.atan2(startY - cy, startX - cx);
+            const currentAngle = Math.atan2(my - cy, mx - cx);
+            
+            const degDelta = (currentAngle - startAngle) * (180 / Math.PI);
+            updateLayer(selectedLayerId, { rotation: Math.round(startLayer.rotation + degDelta) });
+        }
+    };
+
+    const handleCanvasMouseUp = () => {
+        setDragState(null);
+    };
+
+    // Helper to get image safely from cache
+    const getCachedImage = (layer: CompositionLayer) => {
+        let url = "";
+        if (layer.assetId.startsWith('presets/')) {
+            url = `/${layer.assetId}`;
+        } else {
+            const asset = assets.find(a => a.id === layer.assetId);
+            url = asset ? asset.url || "" : `/images/uploads/${layer.assetId}.png`;
+        }
+        
+        if (!url) return null;
+        
+        const img = imageElementCache.get(url);
+        return (img && img.complete) ? img : null;
+    };
+
+    const selectedLayer = data.layers.find(l => l.id === selectedLayerId);
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            
+            <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+                    <h3 style={{margin:0}}>{data.name}</h3>
+                    <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
+                </div>
+                <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+                    <select 
+                        className="form-select" 
+                        style={{width:'auto', padding:'2px 8px'}}
+                        onChange={(e) => {
+                            const dims = CANVAS_PRESETS[e.target.value as keyof typeof CANVAS_PRESETS];
+                            if(dims) {
+                                handleChange('width', dims.w);
+                                handleChange('height', dims.h);
+                            }
+                        }}
+                        defaultValue=""
+                    >
+                        <option value="" disabled>Resize Canvas...</option>
+                        {Object.keys(CANVAS_PRESETS).map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                    <label className="form-label" style={{marginBottom:0}}>W:</label>
+                    <input type="number" value={data.width} onChange={e => handleChange('width', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
+                    <label className="form-label" style={{marginBottom:0}}>H:</label>
+                    <input type="number" value={data.height} onChange={e => handleChange('height', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
+                    
+                    <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
+                    
+                    <label className="form-label" style={{marginBottom:0}}>Bg:</label>
+                    <div style={{flex: 1, minWidth:'120px'}}>
+                        <ColorPickerInput 
+                            value={data.backgroundColor || ''} 
+                            onChange={c => handleChange('backgroundColor', c)} 
+                            allThemes={allThemes}
+                        />
+                    </div>
+                    <div 
+                        className="form-label" 
+                        style={{ marginBottom:0, minWidth: '80px', textAlign:'right', cursor:'help' }}
+                        title="Hold Ctrl + Scroll to Zoom"
+                    >
+                        Zoom: {(viewZoom * 100).toFixed(0)}%
+                    </div>                    
+                    <button onClick={() => setViewZoom(1)} style={{fontSize:'0.7rem', cursor:'pointer', background:'var(--tool-bg-input)', border:'1px solid var(--tool-border)', padding:'2px 5px', borderRadius:'4px', color:'var(--tool-text-main)'}}>Reset</button>
+                </div>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+                
+                <div style={{ width: '300px', minWidth: '300px', borderRight: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
+                    {/* Tabs */}
+                    <div style={{ display:'flex', borderBottom:'1px solid var(--tool-border)', flexShrink: 0 }}>
+                        <button 
+                            onClick={() => setBrowserTab('project')}
+                            style={{ flex:1, padding:'0.8rem', background: browserTab === 'project' ? 'var(--tool-bg-input)' : 'transparent', border:'none', color: browserTab === 'project' ? 'var(--tool-text-main)' : 'var(--tool-text-dim)', cursor:'pointer', fontWeight:'bold' }}
+                        >
+                            Project
+                        </button>
+                        <button 
+                            onClick={() => setBrowserTab('presets')}
+                            style={{ flex:1, padding:'0.8rem', background: browserTab === 'presets' ? 'var(--tool-bg-input)' : 'transparent', border:'none', color: browserTab === 'presets' ? 'var(--tool-text-main)' : 'var(--tool-text-dim)', cursor:'pointer', fontWeight:'bold' }}
+                        >
+                            Presets
+                        </button>
+                    </div>
+                    
+                    {/* Search & Actions */}
+                    <div style={{ padding: '0.5rem', borderBottom:'1px solid var(--tool-border)', flexShrink: 0 }}>
+                        <input 
+                            value={searchTerm} 
+                            onChange={e => setSearchTerm(e.target.value)} 
+                            className="form-input" 
+                            placeholder="Search..." 
+                            style={{ width: '100%', marginBottom: '5px' }} 
+                        />
+                        {browserTab === 'presets' && (
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button style={miniButtonStyle} onClick={() => setCollapsedCategories(new Set())}>Expand All</button>
+                                <button style={miniButtonStyle} onClick={() => setCollapsedCategories(new Set(presets.map(c => c.name)))}>Collapse All</button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem', minHeight: 0 }}>
+                        {browserTab === 'project' ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+                                {filteredAssets.map(asset => (
+                                    <div 
+                                        key={asset.id} 
+                                        onClick={() => addLayer(asset.id, asset.id, false)}
+                                        style={{ aspectRatio: '1/1', border: '1px solid var(--tool-border)', borderRadius: '4px', cursor: 'pointer', overflow:'hidden', position: 'relative' }}
+                                        className="hover:border-blue-500"
+                                    >
+                                        {asset.url && <img src={asset.url} style={{ width:'100%', height:'100%', objectFit:'contain', background:'#000' }} alt={asset.id} />}
+                                        <div style={{position:'absolute', bottom:0, background:'rgba(0,0,0,0.7)', width:'100%', fontSize:'0.6rem', padding:'2px', whiteSpace:'nowrap', overflow:'hidden'}}>{asset.id}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {filteredPresets.map(cat => (
+                                    <div key={cat.name} style={{border: '1px solid var(--tool-border)', borderRadius: '4px', overflow:'hidden'}}>
+                                        <div 
+                                            onClick={() => toggleCategory(cat.name)}
+                                            style={{ 
+                                                padding: '6px 8px', 
+                                                background: 'var(--tool-bg-header)', 
+                                                fontSize:'0.75rem', 
+                                                textTransform:'uppercase', 
+                                                color:'var(--tool-text-main)', 
+                                                fontWeight:'bold',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                justifyContent: 'space-between'
+                                            }}
+                                        >
+                                            <span>{cat.name}</span>
+                                            <span>{collapsedCategories.has(cat.name) ? '+' : '-'}</span>
+                                        </div>
+                                        
+                                        {!collapsedCategories.has(cat.name) && (
+                                            <div style={{ padding: '5px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(45px, 1fr))', gap: '5px', background: 'var(--tool-bg-input)' }}>
+                                                {cat.files.map(file => (
+                                                    <div 
+                                                        key={file.path}
+                                                        onClick={() => addLayer(file.path, file.name, true)}
+                                                        title={file.name}
+                                                        style={{ aspectRatio: '1/1', background: '#222', borderRadius: '4px', cursor: 'pointer', padding: '4px', border: '1px solid var(--tool-border)', display:'flex', alignItems:'center', justifyContent:'center' }}
+                                                        className="hover:border-blue-500"
+                                                    >
+                                                        <img src={`/${file.path}`} style={{ width:'100%', height:'100%', objectFit:'contain' }} alt={file.name} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                <div style={{ fontSize: '0.7rem', color: '#666', textAlign: 'center', marginTop: '10px', fontStyle: 'italic', paddingBottom: '20px' }}>
+                                    Icons via game-icons.net (CC BY 3.0)
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ flex: 1, background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '2rem', minWidth: 0 }}>
+                    <div style={{ 
+                        width: data.width * viewZoom, 
+                        height: data.height * viewZoom,
+                        boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+                        background: 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzIyMiIgZD0iTTAgMGgxMHYxMEgwem0xMCAxMGgxMHYxMEgxMHoiLz48L3N2Zz4=") repeat',
+                        flexShrink: 0,
+                        transition: 'width 0.1s, height 0.1s'
+                    }}>
+                        <canvas 
+                            ref={canvasRef}
+                            width={data.width}
+                            height={data.height}
+                            style={{ width: '100%', height: '100%', cursor: dragState ? 'grabbing' : 'auto', imageRendering: 'pixelated' }}
+                            onMouseDown={handleCanvasMouseDown}
+                            onMouseMove={handleCanvasMouseMove}
+                            onMouseUp={handleCanvasMouseUp}
+                            onMouseLeave={handleCanvasMouseUp}
+                        />
+                    </div>
+                </div>
+
+                <div style={{ width: '320px', minWidth: '320px', borderLeft: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
+                    
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--tool-border)', minHeight: '200px' }}>
+                        <div style={{ padding: '0.5rem', fontWeight:'bold', borderBottom:'1px solid var(--tool-border)', background:'var(--tool-bg-header)', flexShrink: 0 }}>Layers</div>
+                        {/* In the render block for Layer List */}
+                        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                            {/* Group logic: We render flat list but check if header needs to be drawn */}
+                            {[...data.layers].sort((a,b) => b.zIndex - a.zIndex).reduce((acc, layer, idx, arr) => {
+                                // Simple logic: If it has a group, render it. 
+                                return acc.concat(
+                                    <div 
+                                        key={layer.id}
+                                        onClick={() => setSelectedLayerId(layer.id)}
+                                        style={{ 
+                                            padding: '0.5rem', 
+                                            borderBottom: '1px solid var(--tool-border)',
+                                            background: selectedLayerId === layer.id ? 'var(--tool-accent)' : 'transparent',
+                                            color: selectedLayerId === layer.id ? '#000' : 'var(--tool-text-main)',
+                                            cursor: 'pointer',
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            opacity: layer.editorHidden ? 0.5 : 1
+                                        }}
+                                    >
+                                        <div style={{display:'flex', gap:'5px', alignItems:'center', overflow:'hidden'}}>
+                                            <div style={{ display:'flex', flexDirection:'column', gap:'1px', marginRight:'2px' }}>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); moveLayer(idx, -1); }} 
+                                                    disabled={idx === 0}
+                                                    style={{ fontSize:'0.5rem', lineHeight:1, cursor:'pointer', border:'none', background:'none', color:'inherit', opacity: idx === 0 ? 0.2 : 1 }}
+                                                >▲</button>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); moveLayer(idx, 1); }} 
+                                                    disabled={idx === data.layers.length - 1}
+                                                    style={{ fontSize:'0.5rem', lineHeight:1, cursor:'pointer', border:'none', background:'none', color:'inherit', opacity: idx === data.layers.length - 1 ? 0.2 : 1 }}
+                                                >▼</button>
+                                            </div>                                            
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { editorHidden: !layer.editorHidden }); }}
+                                                style={{ border:'none', background:'none', cursor:'pointer', color: 'inherit', padding: '0 4px', display:'flex', alignItems:'center' }}
+                                                title={layer.editorHidden ? "Show Layer" : "Hide Layer"}
+                                            >
+                                                {layer.editorHidden ? <EyeOffIcon /> : <EyeIcon />}
+                                            </button>
+                                            {layer.groupId && <span style={{fontSize:'0.6rem', border:'1px solid currentColor', padding:'0 2px', borderRadius:'2px'}}>{layer.groupId}</span>}
+                                            <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{layer.name}</span>
+                                        </div>
+                                    </div>
+                                );
+                            }, [] as React.ReactNode[])}
+                        </div>
+                    </div>
+
+                    <div style={{ height: '60%', overflowY: 'auto', background: 'var(--tool-bg-input)', padding: '1rem', flexShrink: 0 }}>
+                        {selectedLayer ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display:'flex', justifyContent:'space-between'}}>
+                                    <h4 style={{ margin: 0 }}>Properties</h4>
+                                    <button onClick={() => removeLayer(selectedLayer.id)} style={{ color: 'var(--danger-color)', border:'none', background:'none', cursor:'pointer' }}>Delete</button>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Name</label>
+                                    <input className="form-input" value={selectedLayer.name} onChange={e => updateLayer(selectedLayer.id, { name: e.target.value })} />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    <div><label className="form-label">X</label><input type="number" className="form-input" value={selectedLayer.x} onChange={e => updateLayer(selectedLayer.id, { x: parseInt(e.target.value) })} /></div>
+                                    <div><label className="form-label">Y</label><input type="number" className="form-input" value={selectedLayer.y} onChange={e => updateLayer(selectedLayer.id, { y: parseInt(e.target.value) })} /></div>
+                                    <div><label className="form-label">Scale</label><input type="number" step="0.1" className="form-input" value={selectedLayer.scale} onChange={e => updateLayer(selectedLayer.id, { scale: parseFloat(e.target.value) })} /></div>
+                                    <div><label className="form-label">Rotate</label><input type="number" className="form-input" value={selectedLayer.rotation} onChange={e => updateLayer(selectedLayer.id, { rotation: parseInt(e.target.value) })} /></div>
+                                </div>
+
+                                <hr style={{ borderColor: 'var(--tool-border)' }} />
+
+                                <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                                    <h5 style={{ marginTop: 0, marginBottom: '10px', color: 'var(--tool-text-header)' }}>Dynamic Layer Logic</h5>
+                                    <div className="form-group">
+                                        <label className="form-label">Logic Group ID</label>
+                                        <input className="form-input" placeholder="e.g. hair_style" value={selectedLayer.groupId || ''} onChange={e => updateLayer(selectedLayer.id, { groupId: e.target.value })} />
+                                        <p className="special-desc">If set, only one layer from this group will be shown at a time.</p>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Variant Value</label>
+                                        <input className="form-input" placeholder="e.g. long_braid" value={selectedLayer.variantValue || ''} onChange={e => updateLayer(selectedLayer.id, { variantValue: e.target.value })} />
+                                        <p className="special-desc">This layer is shown if the URL parameter for its group matches this value.</p>
+                                    </div>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="toggle-label">
+                                        <input type="checkbox" checked={selectedLayer.enableThemeColor || false} onChange={e => updateLayer(selectedLayer.id, { enableThemeColor: e.target.checked })} />
+                                        Bind SVG to Theme Colors
+                                    </label>
+                                    <p className="special-desc" style={{ color: 'var(--tool-accent-mauve)'}}>
+                                        Replaces all <code>var(--color)</code> properties in an SVG with theme colors on final render. Preview may not be accurate.
+                                    </p>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Manual Tint (Overrides Theme)</label>
+                                    <ColorPickerInput 
+                                        value={selectedLayer.tintColor || ''}
+                                        onChange={color => updateLayer(selectedLayer.id, { tintColor: color })}
+                                        allThemes={allThemes} 
+                                    />
+                                </div>
+
+                            </div>
+                        ) : (
+                            <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '2rem' }}>Select a layer</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <ComposerOutput 
+                composition={data}
+                onExport={() => {
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        const link = document.createElement('a');
+                        link.download = `${data.id}-preview.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    }
+                }}
+            />
+
+            <CommandCenter 
+                isDirty={isDirty}
+                isSaving={isSaving}
+                lastSaved={lastSaved}
+                onSave={handleSave}
+                onDelete={onDelete}
+                onRevert={revertChanges}
+                itemType="Composition"
+            />
+        </div>
+    );
+}
+
+const miniButtonStyle: React.CSSProperties = {
+    flex: 1,
+    fontSize: '0.7rem',
+    background: 'var(--tool-bg-input)',
+    border: '1px solid var(--tool-border)',
+    color: 'var(--tool-text-dim)',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    padding: '2px 4px'
+};
+
+// Transform a point from Canvas Space to Layer Local Space
+function toLocalSpace(px: number, py: number, layer: CompositionLayer, imgW: number, imgH: number) {
+    // 1. Translate to center relative
+    const dx = px - (layer.x + (imgW * layer.scale) / 2);
+    const dy = py - (layer.y + (imgH * layer.scale) / 2);
+    
+    // 2. Rotate inverse
+    const rad = -layer.rotation * (Math.PI / 180);
+    const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+
+    return { x: lx, y: ly };
+}
+
+// Check if a point in Local Space hits the layer body
+function hitTestBody(lx: number, ly: number, imgW: number, imgH: number, scale: number) {
+    const halfW = (imgW * scale) / 2;
+    const halfH = (imgH * scale) / 2;
+    return lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH;
+}
+
+// Check handles (returns 'tl', 'tr', 'bl', 'br', 'rot' or null)
+function hitTestHandles(lx: number, ly: number, imgW: number, imgH: number, scale: number) {
+    const halfW = (imgW * scale) / 2;
+    const halfH = (imgH * scale) / 2;
+    const handleSize = 10 / scale; // Constant visual size logic
+
+    // Rotate Handle (placed above top center)
+    const rotY = -halfH - (20 / scale);
+    if (Math.abs(lx) <= handleSize && Math.abs(ly - rotY) <= handleSize) return 'rot';
+
+    // Corners
+    if (Math.abs(lx - -halfW) <= handleSize && Math.abs(ly - -halfH) <= handleSize) return 'tl';
+    if (Math.abs(lx - halfW) <= handleSize && Math.abs(ly - -halfH) <= handleSize) return 'tr';
+    if (Math.abs(lx - -halfW) <= handleSize && Math.abs(ly - halfH) <= handleSize) return 'bl';
+    if (Math.abs(lx - halfW) <= handleSize && Math.abs(ly - halfH) <= handleSize) return 'br';
+
+    return null;
+}
