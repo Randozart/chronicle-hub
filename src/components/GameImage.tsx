@@ -26,12 +26,19 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
     let initialSrc = '';
     
     if (def && def.url) {
+        // 1. It's a defined asset in the library
         initialSrc = def.url;
-    } else if (resolvedCode?.toLowerCase().startsWith('http')) {
+    } else if (resolvedCode?.startsWith('image_composer')) {
+        // 2. It's a dynamic composition string (e.g. "image_composer/render?id=...")
+        initialSrc = `/api/${resolvedCode}`;
+    } else if (resolvedCode?.toLowerCase().startsWith('http') || resolvedCode?.startsWith('/')) {
+        // 3. It's a direct external or absolute URL
         initialSrc = resolvedCode;
     } else if (resolvedCode) {
+        // 4. Fallback: Assume it's a local upload ID
         initialSrc = `/images/uploads/${resolvedCode}.png`;
     }
+
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
         const img = e.currentTarget;
         const currentSrc = img.src;
@@ -99,6 +106,16 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
     }
 
     const objectPosition = def?.focus ? `${def.focus.x}% ${def.focus.y}%` : 'center';
+    const isThumbnailContext = type === 'icon'
+
+    let transformStyle = {};
+    if (isThumbnailContext && def?.thumbZoom && def.thumbZoom > 1) {
+        transformStyle = {
+            transform: `scale(${def.thumbZoom})`,
+            // Scale AROUND the focal point
+            transformOrigin: objectPosition
+        };
+    }
 
     return (
         <div 
@@ -107,7 +124,7 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
                 position: 'relative', 
                 width: '100%', 
                 height: '100%', 
-                overflow: 'hidden',
+                overflow: 'hidden', 
                 ...shapeStyles, 
                 ...style 
             }}
@@ -120,10 +137,10 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
                 style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover',
+                    objectFit: 'cover', 
                     objectPosition: objectPosition,
+                    ...transformStyle 
                 }}
-
             />
         </div>
     );

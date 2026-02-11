@@ -62,6 +62,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         undefined,
         onSave
     );
+    const [interactionMode, setInteractionMode] = useState<'edit' | 'focus'>('edit');
     const [previewTheme, setPreviewTheme] = useState(defaultTheme);
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -343,7 +344,28 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             ctx.restore();
         });
 
-    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes, viewZoom, data.backgroundColor, previewTheme]);
+        if (data.focus) {
+            const fx = (data.focus.x / 100) * data.width;
+            const fy = (data.focus.y / 100) * data.height;
+
+            ctx.beginPath();
+            ctx.arc(fx, fy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.8)';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw crosshair lines
+            ctx.beginPath();
+            ctx.moveTo(fx - 10, fy);
+            ctx.lineTo(fx + 10, fy);
+            ctx.moveTo(fx, fy - 10);
+            ctx.lineTo(fx, fy + 10);
+            ctx.stroke();
+        }
+
+    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes, viewZoom, data.backgroundColor, previewTheme, data.focus]);
     
     
     const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -357,6 +379,16 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
 
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
+        
+        if (interactionMode === 'focus') {
+            const xPct = Math.round((mx / data.width) * 100);
+            const yPct = Math.round((my / data.height) * 100);
+            handleChange('focus', { x: xPct, y: yPct });
+            
+            // Visual feedback handled by canvas render loop below
+            setInteractionMode('edit'); // Switch back to edit mode automatically
+            return;
+        }
 
         // 1. Check handles on selected layer first
         if (selectedLayerId) {
@@ -503,7 +535,21 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     <input type="number" value={data.width} onChange={e => handleChange('width', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
                     <label className="form-label" style={{marginBottom:0}}>H:</label>
                     <input type="number" value={data.height} onChange={e => handleChange('height', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
-                    
+                    <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
+
+                    <button 
+                        onClick={() => setInteractionMode(interactionMode === 'edit' ? 'focus' : 'edit')}
+                        style={{
+                            fontSize:'0.75rem', padding:'4px 8px', borderRadius:'4px', cursor:'pointer',
+                            background: interactionMode === 'focus' ? 'var(--tool-accent)' : 'var(--tool-bg-input)',
+                            color: interactionMode === 'focus' ? '#000' : 'var(--tool-text-main)',
+                            border: '1px solid var(--tool-border)',
+                            fontWeight: 'bold'
+                        }}
+                        title="Click to set the focal point (center) of the composition"
+                    >
+                        {interactionMode === 'focus' ? '◎ Set Focus' : '◎ Focus'}
+                    </button>
                     <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
                     <select 
                     value={previewTheme} 

@@ -168,6 +168,8 @@ export interface ImageComposition extends VersionedEntity {
     layers: CompositionLayer[];
     parameters: Record<string, 'hex' | 'variant' | 'number'>; 
     defaultParams?: Record<string, string>; 
+    focus?: { x: number; y: number };
+    thumbZoom?: number; 
 }
 
 
@@ -302,6 +304,7 @@ export interface ImageDefinition extends VersionedEntity{
     category?: ImageCategory; 
     size?: number; 
     focus?: { x: number; y: number }; 
+    thumbZoom?: number;
 }
 export interface CategoryDefinition extends VersionedEntity{ 
     id: string; 

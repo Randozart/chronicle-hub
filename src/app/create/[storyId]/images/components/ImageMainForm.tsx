@@ -161,64 +161,114 @@ export default function ImageMainForm({ initialData, onSave, onDelete, onDuplica
                     />
                 </div>
                 <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--tool-bg-input)', borderRadius: '8px', border: '1px solid var(--tool-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <label className="form-label" style={{ color: 'var(--tool-accent)' }}>
-                            Context Preview: {form.category?.toUpperCase() || 'RAW'}
-                        </label>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
-                            Click image to set Focus Point <Accessor code="$.focus" />
-                        </span>
+                    <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem' }}>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                <label className="form-label" style={{ color: 'var(--tool-accent)' }}>
+                                    Context Preview: {form.category?.toUpperCase() || 'RAW'}
+                                </label>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
+                                    Click image to set Focus Point <Accessor code="$.focus" />
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ width: '150px' }}>
+                                <label className="form-label" style={{ color: 'var(--tool-accent)' }}>Icon Context</label>
+                        </div>
                     </div>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div 
-                            style={{ position: 'relative', border: '2px solid var(--tool-border)', cursor: 'crosshair', display: 'inline-block', maxWidth: '100%', overflow: 'hidden' }}
-                            onClick={handleImageClick}
-                        >
-                            {form.category === 'background' ? (
-                                 <div onMouseMove={handleMouseMove} style={{ width: '500px', height: '300px', position: 'relative', overflow: 'hidden' }}>
-                                    <img 
+
+                    <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                        
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                            <div 
+                                style={{ 
+                                    position: 'relative', 
+                                    border: '2px solid var(--tool-border)', 
+                                    cursor: 'crosshair', 
+                                    display: 'inline-block', 
+                                    maxWidth: '100%', 
+                                    overflow: 'hidden' 
+                                }}
+                                onClick={handleImageClick}
+                            >
+                                {form.category === 'background' ? (
+                                        <div onMouseMove={handleMouseMove} style={{ width: '500px', height: '300px', position: 'relative', overflow: 'hidden' }}>
+                                        <img 
+                                            src={form.url} 
+                                            alt="Preview"
+                                            style={{ 
+                                                width: '110%', height: '110%', objectFit: 'cover',
+                                                transform: `translate(calc(-5% + ${-moveX}px), calc(-5% + ${-moveY}px))`
+                                            }} 
+                                        />
+                                        <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
+                                            Move mouse to test parallax
+                                        </div>
+                                        </div>
+                                ) : (
+                                        <img 
                                         src={form.url} 
                                         alt="Preview"
                                         style={{ 
-                                            width: '110%', height: '110%', objectFit: 'cover',
-                                            transform: `translate(calc(-5% + ${-moveX}px), calc(-5% + ${-moveY}px))`
+                                            maxWidth: '100%', maxHeight: '500px', display: 'block',
+                                            objectFit: 'contain' 
                                         }} 
                                     />
-                                    <div style={{ position: 'absolute', bottom: 10, right: 10, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
-                                        Move mouse to test parallax
+                                )}
+                                
+                                {form.focus && (
+                                    <div style={{ 
+                                        position: 'absolute', 
+                                        left: `${form.focus.x}%`, 
+                                        top: `${form.focus.y}%`, 
+                                        width: '20px', height: '20px', 
+                                        border: '2px solid rgba(255,255,255,0.9)',
+                                        boxShadow: '0 0 4px rgba(0,0,0,0.8)',
+                                        borderRadius: '50%', 
+                                        transform: 'translate(-50%, -50%)', 
+                                        pointerEvents: 'none'
+                                    }} >
+                                        <div style={{width:'2px', height:'2px', background:'red', position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)'}}/>
                                     </div>
-                                 </div>
-                            ) : (
-                                 <img 
-                                    src={form.url} 
-                                    alt="Preview"
-                                    style={{ 
-                                        maxWidth: '100%', maxHeight: '500px', display: 'block',
-                                        objectFit: 'contain' 
-                                    }} 
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{ width: '150px', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                            
+                            <div style={{ width: '100px', height: '100px', border: '2px solid var(--tool-accent)', borderRadius: '50%', overflow: 'hidden', background: '#000', position: 'relative' }}>
+                                <img 
+                                    src={form.url}
+                                    style={{
+                                        width: '100%', height: '100%', objectFit: 'cover',
+                                        objectPosition: form.focus ? `${form.focus.x}% ${form.focus.y}%` : 'center',
+                                        transform: `scale(${form.thumbZoom || 1})`,
+                                        transformOrigin: form.focus ? `${form.focus.x}% ${form.focus.y}%` : 'center'
+                                    }}
                                 />
-                            )}
-                            {form.focus && (
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    left: `${form.focus.x}%`, 
-                                    top: `${form.focus.y}%`, 
-                                    width: '12px', height: '12px', 
-                                    background: 'rgba(255, 0, 0, 0.8)', 
-                                    border: '2px solid white',
-                                    borderRadius: '50%', 
-                                    transform: 'translate(-50%, -50%)', 
-                                    pointerEvents: 'none',
-                                    boxShadow: '0 0 4px rgba(0,0,0,0.5)'
-                                }} />
-                            )}
+                            </div>
+
+                            <div style={{ width: '100%' }}>
+                                <label className="form-label" style={{ textAlign: 'center', marginBottom: '5px' }}>
+                                    Zoom: {(form.thumbZoom || 1).toFixed(1)}x
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="1" max="5" step="0.1"
+                                    value={form.thumbZoom || 1} 
+                                    onChange={e => handleChange('thumbZoom', parseFloat(e.target.value))}
+                                    style={{ width: '100%', accentColor: 'var(--tool-accent)' }}
+                                />
+                                <p style={{ fontSize: '0.7rem', color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '5px', lineHeight: '1.2' }}>
+                                    Zoom applied only when used as an icon/thumbnail.
+                                </p>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: 'var(--tool-text-main)' }}>
-                        Focus Point: {form.focus ? `X: ${form.focus.x}%, Y: ${form.focus.y}%` : 'Center (50%, 50%)'}
-                    </div>
+                </div>
+                
+                <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: 'var(--tool-text-main)' }}>
+                    Focus Point: {form.focus ? `X: ${form.focus.x}%, Y: ${form.focus.y}%` : 'Center (50%, 50%)'}
                 </div>
             </div>
             <CommandCenter 
