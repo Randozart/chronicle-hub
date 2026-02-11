@@ -67,6 +67,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const thumbCanvasRef = useRef<HTMLCanvasElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const [browserTab, setBrowserTab] = useState<'project' | 'presets'>('project');
     const [presets, setPresets] = useState<PresetCategory[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -85,13 +86,13 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     if (!data) return <div className="loading-container">Loading editor...</div>;
     const [viewZoom, setViewZoom] = useState(1);
 
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+     useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
 
         const onWheel = (e: WheelEvent) => {
             if (e.ctrlKey || e.metaKey) {
-                e.preventDefault(); // Stop Browser Zoom
+                e.preventDefault(); 
                 e.stopPropagation();
                 
                 const delta = -e.deltaY * 0.001;
@@ -99,10 +100,10 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             }
         };
 
-        canvas.addEventListener('wheel', onWheel, { passive: false });
+        container.addEventListener('wheel', onWheel, { passive: false });
         
         return () => {
-            canvas.removeEventListener('wheel', onWheel);
+            container.removeEventListener('wheel', onWheel);
         };
     }, []);
 
@@ -403,6 +404,8 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     }, [data, assets, imagesLoaded, allThemes, previewTheme]);
 
     const handleCanvasMouseDown = (e: React.MouseEvent) => {
+        e.stopPropagation();
+
         const rect = canvasRef.current!.getBoundingClientRect();
         
         // Handle 0 dimensions to avoid division by zero
@@ -720,7 +723,20 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     </div>
                 </div>
 
-                <div style={{ flex: 1, background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '2rem', minWidth: 0 }}>
+                    <div 
+                        ref={containerRef}
+                        onMouseDown={() => setSelectedLayerId(null)} // Click black space to deselect
+                        style={{ 
+                            flex: 1, 
+                            background: '#0a0a0a', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            overflow: 'auto', 
+                            padding: '2rem', 
+                            minWidth: 0 
+                        }}
+                    >                    
                     <div style={{ 
                         width: data.width * viewZoom, 
                         height: data.height * viewZoom,
