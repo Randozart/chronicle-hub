@@ -66,6 +66,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     const [previewTheme, setPreviewTheme] = useState(defaultTheme);
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const thumbCanvasRef = useRef<HTMLCanvasElement>(null);
     const [browserTab, setBrowserTab] = useState<'project' | 'presets'>('project');
     const [presets, setPresets] = useState<PresetCategory[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -106,7 +107,8 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     }, []);
 
     const moveLayer = (index: number, direction: -1 | 1) => {
-        const sorted = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
+        // Sort Descending (High Z to Low Z) to match UI list
+        const sorted = [...data.layers].sort((a, b) => b.zIndex - a.zIndex);
         const targetIndex = index + direction;
         if (targetIndex < 0 || targetIndex >= sorted.length) return;
         
@@ -118,8 +120,10 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         currentLayer.zIndex = swapLayer.zIndex;
         swapLayer.zIndex = tempZ;
         
-        handleChange('layers', [...sorted]);
+        // Update state
+        handleChange('layers', [...data.layers]);
     };
+
     useEffect(() => {
         if (browserTab === 'presets' && presets.length === 0 && !isLoadingPresets) {
             setIsLoadingPresets(true);
@@ -137,6 +141,100 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 .finally(() => setIsLoadingPresets(false));
         }
     }, [browserTab]);
+    
+    // Shared renderer for both Main and Thumbnail canvases
+    const renderScene = (
+        ctx: CanvasRenderingContext2D, 
+        w: number, 
+        h: number, 
+        drawBg: boolean,
+        transformFn?: (ctx: CanvasRenderingContext2D) => void
+    ) => {
+        ctx.clearRect(0, 0, w, h);
+
+        // Background
+        if (drawBg) {
+            if (data.backgroundColor) {
+                // Use previewTheme
+                const resolvedBg = resolveCssVariable(data.backgroundColor, previewTheme, allThemes);
+                ctx.fillStyle = resolvedBg;
+                ctx.fillRect(0, 0, w, h);
+            } else {
+                const s = 20;
+                for(let i=0; i<w/s; i++) {
+                    for(let j=0; j<h/s; j++) {
+                        ctx.fillStyle = (i+j)%2 === 0 ? '#1a1a1a' : '#222';
+                        ctx.fillRect(i*s, j*s, s, s);
+                    }
+                }
+            }
+        }
+
+        ctx.save();
+        if (transformFn) transformFn(ctx);
+
+        const sortedLayers = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
+
+        sortedLayers.forEach(layer => {
+            if (layer.editorHidden) return; 
+            let url = "";
+            if (layer.assetId.startsWith('presets/')) url = `/${layer.assetId}`;
+            else {
+                const asset = assets.find(a => a.id === layer.assetId);
+                url = asset ? asset.url || "" : `/images/uploads/${layer.assetId}.png`;
+            }
+            if (!url) return;
+
+            // Get Image
+            let finalImageToDraw: HTMLImageElement | HTMLCanvasElement | null = null;
+            if (imageElementCache.has(url)) {
+                const img = imageElementCache.get(url)!;
+                if (img.complete) {
+                    const offscreenCanvas = document.createElement('canvas');
+                    offscreenCanvas.width = img.width;
+                    offscreenCanvas.height = img.height;
+                    const offCtx = offscreenCanvas.getContext('2d');
+                    if (offCtx) {
+                        offCtx.drawImage(img, 0, 0);
+                        const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
+                        if (isSvg && layer.tintColor) {
+                            const resolvedTint = resolveCssVariable(layer.tintColor, previewTheme, allThemes);
+                            offCtx.globalCompositeOperation = 'source-in';
+                            offCtx.fillStyle = resolvedTint;
+                            offCtx.fillRect(0, 0, img.width, img.height);
+                        }
+                        finalImageToDraw = offscreenCanvas;
+                    } else {
+                        finalImageToDraw = img; 
+                    }
+                }
+            } else {
+                const img = new Image();
+                img.onload = () => setImagesLoaded(c => c + 1);
+                img.src = url;
+                imageElementCache.set(url, img);
+                return; 
+            }
+
+            if (!finalImageToDraw) return;
+
+            // Draw Layer
+            ctx.save();
+            ctx.globalAlpha = layer.opacity;
+            ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
+            ctx.rotate((layer.rotation * Math.PI) / 180);
+            ctx.drawImage(
+                finalImageToDraw, 
+                -(finalImageToDraw.width * layer.scale)/2, 
+                -(finalImageToDraw.height * layer.scale)/2, 
+                finalImageToDraw.width * layer.scale, 
+                finalImageToDraw.height * layer.scale
+            );
+            ctx.restore();
+        });
+        
+        ctx.restore(); // Restore transformFn
+    };
 
     const getImageDimensions = (url: string): Promise<{ width: number; height: number }> => {
         return new Promise((resolve, reject) => {
@@ -217,157 +315,93 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         })).filter(cat => cat.files.length > 0);
     }, [presets, searchTerm]);
     
-    // Canvas Rendering 
+    // Main Canvas Render
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        if (!canvas || !canvas.getContext('2d')) return;
+        const ctx = canvas.getContext('2d')!;
 
-        // Reset transform to clear properly
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Render Scene (No transform needed, CSS handles zoom)
+        renderScene(ctx, canvas.width, canvas.height, true);
 
-        // Background
-        if (data.backgroundColor) {
-            const resolvedBg = resolveCssVariable(data.backgroundColor, 'default', allThemes);
-            ctx.fillStyle = resolvedBg;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        } else {
-            // Checkerboard
-            const s = 20;
-            for(let i=0; i<canvas.width/s; i++) {
-                for(let j=0; j<canvas.height/s; j++) {
-                    ctx.fillStyle = (i+j)%2 === 0 ? '#1a1a1a' : '#222';
-                    ctx.fillRect(i*s, j*s, s, s);
-                }
-            }
-        }
+        // Render Selection Overlay (On top)
+        if (selectedLayer) {
+            const layer = selectedLayer;
+            // Re-resolve image for selection box dimensions
+            let w = 100, h = 100;
+            const url = layer.assetId.startsWith('presets/') 
+                ? `/${layer.assetId}` 
+                : (assets.find(a => a.id === layer.assetId)?.url || `/images/uploads/${layer.assetId}.png`);
+            
+            const img = imageElementCache.get(url);
+            if (img && img.complete) { w = img.width; h = img.height; }
 
-        // ctx.scale(viewZoom, viewZoom);
-
-        const sortedLayers = [...data.layers].sort((a, b) => a.zIndex - b.zIndex);
-
-        sortedLayers.forEach(layer => {
-            if (layer.editorHidden) return; 
-            let url = "";
-            if (layer.assetId.startsWith('presets/')) url = `/${layer.assetId}`;
-            else {
-                const asset = assets.find(a => a.id === layer.assetId);
-                url = asset ? asset.url || "" : `/images/uploads/${layer.assetId}.png`;
-            }
-            if (!url) return;
-
-            let finalImageToDraw: HTMLImageElement | HTMLCanvasElement | null = null;
-
-            if (imageElementCache.has(url)) {
-                const img = imageElementCache.get(url)!;
-                if (img.complete) {
-                    const offscreenCanvas = document.createElement('canvas');
-                    offscreenCanvas.width = img.width;
-                    offscreenCanvas.height = img.height;
-                    const offCtx = offscreenCanvas.getContext('2d');
-                    if (offCtx) {
-                        offCtx.drawImage(img, 0, 0);
-                        const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
-                        if (isSvg && layer.tintColor) {
-                            const resolvedTint = resolveCssVariable(layer.tintColor, previewTheme, allThemes);
-                            offCtx.globalCompositeOperation = 'source-in';
-                            offCtx.fillStyle = resolvedTint;
-                            offCtx.fillRect(0, 0, img.width, img.height);
-                        }
-                        finalImageToDraw = offscreenCanvas;
-                    } else {
-                        finalImageToDraw = img; 
-                    }
-                }
-            } else {
-                const img = new Image();
-                img.onload = () => setImagesLoaded(c => c + 1);
-                img.src = url;
-                imageElementCache.set(url, img);
-                return; 
-            }
-
-            if (!finalImageToDraw) return;
-
-            // Draw image
+            // Draw Box
             ctx.save();
-            ctx.globalAlpha = layer.opacity;
-            ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
+            ctx.translate(layer.x + (w*layer.scale)/2, layer.y + (h*layer.scale)/2);
             ctx.rotate((layer.rotation * Math.PI) / 180);
             
-            // Draw centered
-            ctx.drawImage(
-                finalImageToDraw, 
-                -(finalImageToDraw.width * layer.scale)/2, 
-                -(finalImageToDraw.height * layer.scale)/2, 
-                finalImageToDraw.width * layer.scale, 
-                finalImageToDraw.height * layer.scale
-            );
+            const hw = (w * layer.scale) / 2;
+            const hh = (h * layer.scale) / 2;
+            
+            ctx.strokeStyle = '#61afef';
+            ctx.lineWidth = 2 / viewZoom;
+            ctx.strokeRect(-hw, -hh, w*layer.scale, h*layer.scale);
 
-            // Draw controls if selected
-            if (layer.id === selectedLayerId) {
-                const w = finalImageToDraw.width * layer.scale;
-                const h = finalImageToDraw.height * layer.scale;
-                const hw = w/2;
-                const hh = h/2;
-
-                ctx.strokeStyle = '#61afef';
-                ctx.lineWidth = 2 / viewZoom; // Keep line width consistent visually
-                ctx.strokeRect(-hw, -hh, w, h);
-
-                // Draw Handles
-                const handleSize = 8 / viewZoom;
-                ctx.fillStyle = '#fff';
-                
-                const corners = [
-                    {x: -hw, y: -hh}, {x: hw, y: -hh},
-                    {x: -hw, y: hh}, {x: hw, y: hh}
-                ];
-                corners.forEach(c => {
-                    ctx.fillRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
-                    ctx.strokeRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
-                });
-
-                // Rotate Handle
-                ctx.beginPath();
-                ctx.moveTo(0, -hh);
-                ctx.lineTo(0, -hh - (20/viewZoom));
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.arc(0, -hh - (20/viewZoom), 5/viewZoom, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-            }
-
-            ctx.restore();
-        });
-
-        if (data.focus) {
-            const fx = (data.focus.x / 100) * data.width;
-            const fy = (data.focus.y / 100) * data.height;
-
+            // Draw Handles
+            const handleSize = 8 / viewZoom;
+            ctx.fillStyle = '#fff';
+            const corners = [{x: -hw, y: -hh}, {x: hw, y: -hh}, {x: -hw, y: hh}, {x: hw, y: hh}];
+            corners.forEach(c => {
+                ctx.fillRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
+                ctx.strokeRect(c.x - handleSize/2, c.y - handleSize/2, handleSize, handleSize);
+            });
+            // Rotate Handle
             ctx.beginPath();
-            ctx.arc(fx, fy, 5, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255, 50, 50, 0.8)';
+            ctx.moveTo(0, -hh);
+            ctx.lineTo(0, -hh - (20/viewZoom));
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, -hh - (20/viewZoom), 5/viewZoom, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
             ctx.stroke();
             
-            // Draw crosshair lines
-            ctx.beginPath();
-            ctx.moveTo(fx - 10, fy);
-            ctx.lineTo(fx + 10, fy);
-            ctx.moveTo(fx, fy - 10);
-            ctx.lineTo(fx, fy + 10);
-            ctx.stroke();
+            ctx.restore();
         }
 
-    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes, viewZoom, data.backgroundColor, previewTheme, data.focus]);
+        // Focal Point Overlay
+        if (data.focus && interactionMode === 'focus') {
+            const fx = (data.focus.x / 100) * data.width;
+            const fy = (data.focus.y / 100) * data.height;
+            ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255, 50, 50, 0.8)'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(fx-10, fy); ctx.lineTo(fx+10, fy); ctx.moveTo(fx, fy-10); ctx.lineTo(fx, fy+10); ctx.stroke();
+        }
+
+    }, [data, selectedLayerId, assets, imagesLoaded, allThemes, viewZoom, previewTheme]);
     
-    
+    // Thumbnail Canvas Render
+    useEffect(() => {
+        const canvas = thumbCanvasRef.current;
+        if (!canvas || !canvas.getContext('2d')) return;
+        const ctx = canvas.getContext('2d')!;
+
+        const zoom = data.thumbZoom || 1;
+        const focusX = (data.focus?.x || 50) / 100 * data.width;
+        const focusY = (data.focus?.y || 50) / 100 * data.height;
+
+        renderScene(ctx, data.width, data.height, true, (context) => {
+            // Apply Thumbnail Crop Logic
+            // 1. Move focus point to center of canvas
+            context.translate(data.width / 2, data.height / 2);
+            // 2. Scale
+            context.scale(zoom, zoom);
+            // 3. Move back relative to focus point
+            context.translate(-focusX, -focusY);
+        });
+        
+    }, [data, assets, imagesLoaded, allThemes, previewTheme]);
+
     const handleCanvasMouseDown = (e: React.MouseEvent) => {
         const rect = canvasRef.current!.getBoundingClientRect();
         
@@ -510,7 +544,6 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             
             <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
 
-                <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
                 <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
                     <h3 style={{margin:0}}>{data.name}</h3>
                     <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
@@ -577,10 +610,11 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                             allThemes={allThemes}
                         />
                     </div>
+                    <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
                     <div 
                         className="form-label" 
                         style={{ marginBottom:0, minWidth: '80px', textAlign:'right', cursor:'help' }}
-                        title="Hold Ctrl + Scroll to Zoom"
+                        title="Hold Ctrl + Scroll on the CANVAS to Zoom"
                     >
                         Zoom: {(viewZoom * 100).toFixed(0)}%
                     </div>                    
@@ -831,7 +865,59 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
 
                             </div>
                         ) : (
-                            <div style={{ color: 'var(--tool-text-dim)', textAlign: 'center', marginTop: '2rem' }}>Select a layer</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <h4 style={{ margin: 0, color: 'var(--tool-accent)' }}>Composition Settings</h4>
+                            
+                            <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', textAlign: 'center' }}>
+                                <label className="form-label" style={{marginBottom:'0.5rem'}}>Icon Preview</label>
+                                <div style={{ 
+                                    width: '120px', height: '120px', margin: '0 auto', 
+                                    borderRadius: '50%', border: '2px solid var(--tool-accent)', 
+                                    overflow: 'hidden', background: '#000', position: 'relative' 
+                                }}>
+                                    <canvas 
+                                        ref={thumbCanvasRef} 
+                                        width={data.width} 
+                                        height={data.height}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                </div>
+                                <p className="special-desc" style={{marginTop:'0.5rem'}}>
+                                    Preview of how this looks when used as a circle icon.
+                                </p>
+                            </div>
+
+                            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                                <label className="form-label" style={{display:'flex', justifyContent:'space-between'}}>
+                                    <span>Thumbnail Zoom</span>
+                                    <span>{(data.thumbZoom || 1).toFixed(1)}x</span>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="1" max="5" step="0.1"
+                                    value={data.thumbZoom || 1} 
+                                    onChange={e => handleChange('thumbZoom', parseFloat(e.target.value))}
+                                    style={{ width: '100%', accentColor: 'var(--tool-accent)', margin: '5px 0' }}
+                                />
+                                <p className="special-desc">
+                                    Zooms in on the Focal Point for small icons.
+                                </p>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Focal Point</label>
+                                <div style={{display:'flex', gap:'10px'}}>
+                                    <input className="form-input" disabled value={data.focus ? `${data.focus.x}%` : '50%'} title="X" />
+                                    <input className="form-input" disabled value={data.focus ? `${data.focus.y}%` : '50%'} title="Y" />
+                                </div>
+                                <button 
+                                    onClick={() => handleChange('focus', {x:50, y:50})}
+                                    style={{marginTop:'5px', fontSize:'0.7rem', cursor:'pointer', border:'none', background:'none', color:'var(--danger-color)'}}
+                                >
+                                    Reset to Center
+                                </button>
+                            </div>
+                        </div>
                         )}
                     </div>
                 </div>
