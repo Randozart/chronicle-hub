@@ -343,7 +343,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             ctx.restore();
         });
 
-    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes, viewZoom, data.backgroundColor]); 
+    }, [data.layers, selectedLayerId, assets, data.width, data.height, imagesLoaded, allThemes, viewZoom, data.backgroundColor, previewTheme]);
     
     
     const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -740,13 +740,28 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                                     <h5 style={{ marginTop: 0, marginBottom: '10px', color: 'var(--tool-text-header)' }}>Dynamic Layer Logic</h5>
                                     <div className="form-group">
                                         <label className="form-label">Logic Group ID</label>
-                                        <input className="form-input" placeholder="e.g. hair_style" value={selectedLayer.groupId || ''} onChange={e => updateLayer(selectedLayer.id, { groupId: e.target.value })} />
-                                        <p className="special-desc">If set, only one layer from this group will be shown at a time.</p>
+                                        <input 
+                                            className="form-input" 
+                                            placeholder="e.g. hair_style" 
+                                            value={selectedLayer.groupId || ''} 
+                                            onChange={e => updateLayer(selectedLayer.id, { groupId: e.target.value })} 
+                                        />
+                                        <p className="special-desc">
+                                            Assigns this layer to a variable. Layers sharing this ID are toggled together.
+                                        </p>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Variant Value</label>
-                                        <input className="form-input" placeholder="e.g. long_braid" value={selectedLayer.variantValue || ''} onChange={e => updateLayer(selectedLayer.id, { variantValue: e.target.value })} />
-                                        <p className="special-desc">This layer is shown if the URL parameter for its group matches this value.</p>
+                                        <input 
+                                            className="form-input" 
+                                            placeholder="e.g. long_braid" 
+                                            value={selectedLayer.variantValue || ''} 
+                                            onChange={e => updateLayer(selectedLayer.id, { variantValue: e.target.value })} 
+                                        />
+                                        <p className="special-desc">
+                                            This layer appears when the Group Variable matches this value. 
+                                            (Multiple layers can share the same value to create complex composite states).
+                                        </p>
                                     </div>
                                 </div>
 
