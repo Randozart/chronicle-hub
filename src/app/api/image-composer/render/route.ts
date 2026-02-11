@@ -10,9 +10,10 @@ const CACHE_SIZE_LIMIT = 50;
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const compositionId = searchParams.get('id');
+    const storyId = searchParams.get('storyId'); 
     
-    if (!compositionId) {
-        return NextResponse.json({ error: 'Missing composition ID' }, { status: 400 });
+    if (!compositionId || !storyId) {
+        return NextResponse.json({ error: 'Missing ID or StoryID' }, { status: 400 });
     }
 
     const cacheKey = request.url;
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
         const client = await clientPromise;
         const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
 
-        const composition = await db.collection<ImageComposition>('compositions').findOne({ id: compositionId });
+        const composition = await db.collection<ImageComposition>('compositions').findOne({ id: compositionId, storyId });
 
         if (!composition) {
             return NextResponse.json({ error: 'Composition not found' }, { status: 404 });

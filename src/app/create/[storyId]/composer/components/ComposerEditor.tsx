@@ -49,11 +49,12 @@ interface Props {
     onDelete: () => void;
     guardRef: { current: FormGuard | null };
     allThemes: Record<string, Record<string, string>>;
+    defaultTheme: string; 
 }
 const imageElementCache = new Map<string, HTMLImageElement>();
 
-export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes}: Props) {
-    const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
+export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes, defaultTheme }: Props) {
+        const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
         '/api/admin/compositions',
         { storyId },
@@ -61,7 +62,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         undefined,
         onSave
     );
-
+    const [previewTheme, setPreviewTheme] = useState(defaultTheme);
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [browserTab, setBrowserTab] = useState<'project' | 'presets'>('project');
@@ -269,7 +270,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                         offCtx.drawImage(img, 0, 0);
                         const isSvg = layer.assetId.toLowerCase().endsWith('.svg');
                         if (isSvg && layer.tintColor) {
-                            const resolvedTint = resolveCssVariable(layer.tintColor, 'default', allThemes);
+                            const resolvedTint = resolveCssVariable(layer.tintColor, previewTheme, allThemes);
                             offCtx.globalCompositeOperation = 'source-in';
                             offCtx.fillStyle = resolvedTint;
                             offCtx.fillRect(0, 0, img.width, img.height);
@@ -476,6 +477,8 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             
             <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+
+                <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
                 <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
                     <h3 style={{margin:0}}>{data.name}</h3>
                     <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
@@ -502,7 +505,24 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     <input type="number" value={data.height} onChange={e => handleChange('height', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
                     
                     <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
-                    
+                    <select 
+                    value={previewTheme} 
+                    onChange={(e) => setPreviewTheme(e.target.value)}
+                    className="form-select"
+                    style={{ width: 'auto', padding: '2px 8px', fontSize: '0.8rem', maxWidth: '120px' }}
+                    title="Preview Theme Context"
+                >
+                    {Object.keys(allThemes).map(key => {
+                        // Clean up selector names for display
+                        // e.g. ":root" -> "Default", "[data-theme='noir']" -> "Noir"
+                        let label = key;
+                        if (key === ':root') label = 'Default';
+                        if (key.includes('data-theme=')) label = key.match(/'([^']+)'/)?.[1] || key;
+                        if (key.includes('data-global-theme=')) label = key.match(/'([^']+)'/)?.[1] || key;
+                        
+                        return <option key={key} value={label.toLowerCase() === 'default' ? 'default' : label}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
+                    })}
+                </select>
                     <label className="form-label" style={{marginBottom:0}}>Bg:</label>
                     <div style={{flex: 1, minWidth:'120px'}}>
                         <ColorPickerInput 
@@ -758,6 +778,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
 
             <ComposerOutput 
                 composition={data}
+                storyId={storyId} 
                 onExport={() => {
                     const canvas = canvasRef.current;
                     if (canvas) {

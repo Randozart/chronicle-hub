@@ -4,10 +4,11 @@ import { useMemo } from 'react';
 
 interface Props {
     composition: ImageComposition;
+    storyId: string; 
     onExport: () => void;
 }
 
-export default function ComposerOutput({ composition, onExport }: Props) {
+export default function ComposerOutput({ composition, storyId, onExport }: Props) {
 
     const dynamicUrl = useMemo(() => {
         // Auto-detect groups
@@ -16,11 +17,8 @@ export default function ComposerOutput({ composition, onExport }: Props) {
             if (l.groupId) groups.add(l.groupId);
         });
 
-        const params = Array.from(groups).map(key => {
-            return `${key}={$${key}}`;
-        }).join('&');
-
-        return `image_composer/render?id=${composition.id}${params ? '&' + params : ''}`;
+        const params = Array.from(groups).map(key => `${key}={$${key}}`).join('&');
+        return `image_composer/render?storyId=${storyId}&id=${composition.id}${params ? '&' + params : ''}`;
     }, [composition]);
     
     return (

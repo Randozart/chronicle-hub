@@ -17,6 +17,7 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
     const { showToast } = useToast();
     
     const [allThemes, setAllThemes] = useState<Record<string, Record<string, string>>>({});
+    const [defaultTheme, setDefaultTheme] = useState('default');
 
     const [items, setItems] = useState<ImageComposition[]>([]);
     const [assets, setAssets] = useState<GlobalAsset[]>([]);
@@ -39,8 +40,9 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
         Promise.all([
             fetch(`/api/admin/compositions?storyId=${storyId}`),
             fetch(`/api/admin/assets/mine`),
-            fetch(`/api/admin/themes`) 
-        ]).then(async ([compRes, assetRes, themeRes]) => { 
+            fetch(`/api/admin/themes`),
+            fetch(`/api/admin/settings?storyId=${storyId}`) 
+        ]).then(async ([compRes, assetRes, themeRes, settingRes]) => {
             if (compRes.ok) setItems(await compRes.json());
             if (assetRes.ok) {
                 const data = await assetRes.json();
@@ -49,6 +51,11 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
             if (themeRes.ok) {
                 const data = await themeRes.json();
                 setAllThemes(data.themes || {});
+            }
+            // Set default theme
+            if (settingRes.ok) {
+                const data = await settingRes.json();
+                if (data.visualTheme) setDefaultTheme(data.visualTheme);
             }
         }).finally(() => setIsLoading(false));
     }, [storyId]);
@@ -120,6 +127,7 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                         storyId={storyId}
                         assets={assets}
                         allThemes={allThemes}
+                        defaultTheme={defaultTheme} 
                         onSave={handleSave}
                         onDelete={() => setConfirmModal({ isOpen: true, id: activeItem.id })}
                         guardRef={guardRef}
