@@ -50,10 +50,11 @@ interface Props {
     guardRef: { current: FormGuard | null };
     allThemes: Record<string, Record<string, string>>;
     defaultTheme: string; 
+    canImportPsd?: boolean; 
 }
 const imageElementCache = new Map<string, HTMLImageElement>();
 
-export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes, defaultTheme }: Props) {
+export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes, defaultTheme, canImportPsd }: Props) {
         const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
         '/api/admin/compositions',
@@ -62,6 +63,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         undefined,
         onSave
     );
+    const [isImporting, setIsImporting] = useState(false);
     const [interactionMode, setInteractionMode] = useState<'edit' | 'focus'>('edit');
     const [previewTheme, setPreviewTheme] = useState(defaultTheme);
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
@@ -86,7 +88,64 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     if (!data) return <div className="loading-container">Loading editor...</div>;
     const [viewZoom, setViewZoom] = useState(1);
 
-     useEffect(() => {
+
+    const handlePsdImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0]) return;
+        const file = e.target.files[0];
+        
+        if (!confirm("Importing a PSD will append layers to your current composition. Continue?")) return;
+
+        setIsImporting(true);
+
+        try {
+            const queryParams = new URLSearchParams({
+                storyId,
+                compositionId: data.id
+            });
+
+            const res = await fetch(`/api/admin/compositions/import-psd?${queryParams.toString()}`, {
+                method: 'POST',
+                body: file, 
+                headers: {
+                    'Content-Type': 'application/octet-stream'
+                }
+            });
+            
+            const result = await res.json();
+            if (res.ok) {
+                // Merge new layers (add to top)
+                // We need to adjust zIndex of new layers to sit on top of existing ones
+                const currentMaxZ = data.layers.length > 0 ? Math.max(...data.layers.map(l => l.zIndex)) : -1;
+                
+                const adjustedNewLayers = result.layers.map((l: CompositionLayer, idx: number) => ({
+                    ...l,
+                    zIndex: currentMaxZ + 1 + idx
+                }));
+
+                handleChange('layers', [...data.layers, ...adjustedNewLayers]);
+                
+                // Resize canvas if PSD was bigger
+                if (result.width > data.width || result.height > data.height) {
+                    if(confirm(`Resize canvas to match PSD (${result.width}x${result.height})?`)) {
+                        handleChange('width', result.width);
+                        handleChange('height', result.height);
+                    }
+                }
+                alert(`Imported ${result.layers.length} layers successfully.`);
+            } else {
+                alert(`Import failed: ${result.error}`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Network error during import.");
+        } finally {
+            setIsImporting(false);
+            e.target.value = ''; // Reset input
+        }
+    };
+
+
+    useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
@@ -622,6 +681,33 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     <h3 style={{margin:0}}>{data.name}</h3>
                     <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
                 </div>
+                {canImportPsd && (
+                    <div style={{ display: 'flex', alignItems: 'center', marginRight: '20px' }}>
+                        <label 
+                            className="save-btn" 
+                            style={{ 
+                                cursor: isImporting ? 'wait' : 'pointer', 
+                                background: isImporting ? '#444' : 'var(--success-color)',
+                                color: '#fff',
+                                padding: '4px 10px',
+                                fontSize: '0.8rem',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                            }}
+                        >
+                            {isImporting ? 'Parsing PSD...' : '⬆ Import PSD'}
+                            <input 
+                                type="file" 
+                                accept=".psd,.psb" 
+                                onChange={handlePsdImport} 
+                                disabled={isImporting} 
+                                style={{ display: 'none' }} 
+                            />
+                        </label>
+                    </div>
+                )}
                 <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
                     <select 
                         className="form-select" 

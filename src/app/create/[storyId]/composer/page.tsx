@@ -27,6 +27,8 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
     const guardRef = useRef<FormGuard | null>(null);
     const [pendingId, setPendingId] = useState<string | null>(null);
     const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+    const [canImportPsd, setCanImportPsd] = useState(false); 
     
     const [modalConfig, setModalConfig] = useState<{
         isOpen: boolean;
@@ -41,8 +43,9 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
             fetch(`/api/admin/compositions?storyId=${storyId}`),
             fetch(`/api/admin/assets/mine`),
             fetch(`/api/admin/themes`),
-            fetch(`/api/admin/settings?storyId=${storyId}`) 
-        ]).then(async ([compRes, assetRes, themeRes, settingRes]) => {
+            fetch(`/api/admin/settings?storyId=${storyId}`),
+            fetch(`/api/admin/usage`) 
+        ]).then(async ([compRes, assetRes, themeRes, settingRes, usageRes]) => {
             if (compRes.ok) setItems(await compRes.json());
             if (assetRes.ok) {
                 const data = await assetRes.json();
@@ -57,9 +60,13 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                 const data = await settingRes.json();
                 if (data.visualTheme) setDefaultTheme(data.visualTheme);
             }
+            if (usageRes.ok) {
+                const usageData = await usageRes.json();
+                // Allow if Premium or Admin (isPremium is true for both in usage API)
+                setCanImportPsd(!!usageData.isPremium); 
+            }
         }).finally(() => setIsLoading(false));
     }, [storyId]);
-
     const handleSelectAttempt = (newId: string) => {
         if (newId === selectedId) return;
         if (guardRef.current && guardRef.current.isDirty) {
@@ -131,6 +138,7 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                         onSave={handleSave}
                         onDelete={() => setConfirmModal({ isOpen: true, id: activeItem.id })}
                         guardRef={guardRef}
+                        canImportPsd={canImportPsd}
                     />
                 ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--tool-text-dim)' }}>

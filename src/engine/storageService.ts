@@ -12,6 +12,7 @@ const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY;
 const S3_SECRET_KEY = process.env.S3_SECRET_KEY;
 const S3_BUCKET = process.env.S3_BUCKET_NAME || 'chronicle-assets';
 const S3_PUBLIC_URL = process.env.S3_PUBLIC_URL || S3_ENDPOINT;
+
 const s3Client = (S3_ENDPOINT && S3_ACCESS_KEY && S3_SECRET_KEY) 
     ? new S3Client({
         region: S3_REGION,
@@ -27,27 +28,49 @@ const s3Client = (S3_ENDPOINT && S3_ACCESS_KEY && S3_SECRET_KEY)
 export type QualityPreset = 'high' | 'balanced' | 'icon';
 
 export const uploadAsset = async (
-    file: File,
-    folder: string = 'misc',
+    file: File | Buffer, 
+    folder: string = 'misc', 
     options: { 
         optimize?: boolean; 
         preset?: QualityPreset;
         maxWidth?: number;
         qualityOverride?: number;
+        filename?: string; 
     } = {}
 ): Promise<{ url: string; size: number }> => {
     
-    let buffer = Buffer.from(await file.arrayBuffer()) as Buffer;
-    let ext = file.name.split('.').pop() || 'bin';
-    let contentType = file.type;
-    const isSvg = file.type === 'image/svg+xml';
-    if (!isSvg && options.optimize !== false && file.type.startsWith('image/')) {
+    let buffer: Buffer;
+    let originalName = "upload.bin";
+    let contentType = "application/octet-stream";
+
+    // Unpack input with explicit Type Checks
+    if (Buffer.isBuffer(file)) {
+        buffer = file;
+        originalName = options.filename ? `${options.filename}.png` : "upload.png";
+        contentType = "image/png"; 
+    } else {
+        const f = file as File; 
+        buffer = Buffer.from(await f.arrayBuffer());
+        originalName = f.name;
+        contentType = f.type;
+    }
+
+    let ext = originalName.split('.').pop() || 'bin';
+    
+    // Optimization & WebP Conversion
+    const isSvg = contentType === 'image/svg+xml' || ext === 'svg';
+    // Optimize if it's an image, not an SVG, and optimization isn't disabled
+    const shouldOptimize = options.optimize !== false && (contentType.startsWith('image/') || ['.png', '.jpg', '.jpeg'].includes(`.${ext}`));
+
+    if (!isSvg && shouldOptimize) {
         try {
             let pipeline = sharp(buffer);
             const meta = await pipeline.metadata();
+            
             const preset = options.preset || 'balanced';
             let maxWidth = options.maxWidth || 1920;
             let quality = 80;
+
             if (preset === 'high') { 
                 maxWidth = 4096;
                 quality = 90;
@@ -58,29 +81,38 @@ export const uploadAsset = async (
             if (options.qualityOverride) {
                 quality = options.qualityOverride;
             }
+
             if (meta.width && meta.width > maxWidth) {
                 pipeline = pipeline.resize(maxWidth, null, { withoutEnlargement: true });
             }
+
+            // Force WebP Conversion
             pipeline = pipeline.webp({ 
                 quality: quality,
                 effort: 4, 
                 smartSubsample: true
             });
-            buffer = await pipeline.toBuffer() as Buffer;
+
+            buffer = await pipeline.toBuffer();
             ext = 'webp';
             contentType = 'image/webp';
 
         } catch (e) {
             console.error("Image optimization failed, using original:", e);
         }
-    } else if (isSvg) {
-        ext = 'svg';
-        contentType = 'image/svg+xml';
     }
 
+    // Save Logic
     const size = buffer.byteLength;
-    const filename = `${uuidv4()}.${ext}`; 
+    
+    // Use provided filename (sanitized) or generate UUID
+    const cleanName = options.filename 
+        ? options.filename.replace(/[^a-z0-9_-]/gi, '_').toLowerCase() 
+        : uuidv4();
+        
+    const filename = `${cleanName}.${ext}`; 
     const provider = process.env.STORAGE_PROVIDER || 'local';
+
     if (provider === 's3' && s3Client) {
         const key = `${folder}/${filename}`;
         
@@ -95,6 +127,8 @@ export const uploadAsset = async (
         const url = `${S3_PUBLIC_URL}/${S3_BUCKET}/${key}`;
         return { url, size };
     } 
+
+    // Local Provider
     const targetDir = path.join(UPLOAD_DIR, folder);
     try { await fs.access(targetDir); } catch { await fs.mkdir(targetDir, { recursive: true }); }
     
