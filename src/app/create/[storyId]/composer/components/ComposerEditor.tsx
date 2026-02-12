@@ -50,10 +50,11 @@ interface Props {
     guardRef: { current: FormGuard | null };
     allThemes: Record<string, Record<string, string>>;
     defaultTheme: string; 
+    canImportPsd?: boolean; 
 }
 const imageElementCache = new Map<string, HTMLImageElement>();
 
-export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes, defaultTheme }: Props) {
+export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes, defaultTheme, canImportPsd }: Props) {
         const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
         '/api/admin/compositions',
@@ -62,6 +63,7 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         undefined,
         onSave
     );
+    const [isImporting, setIsImporting] = useState(false);
     const [interactionMode, setInteractionMode] = useState<'edit' | 'focus'>('edit');
     const [previewTheme, setPreviewTheme] = useState(defaultTheme);
     const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
@@ -86,7 +88,87 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
     if (!data) return <div className="loading-container">Loading editor...</div>;
     const [viewZoom, setViewZoom] = useState(1);
 
-     useEffect(() => {
+
+    const handlePsdImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0]) return;
+        const file = e.target.files[0];
+        
+        if (!confirm(`Import "${file.name}"? This will append layers to your composition.`)) return;
+
+        setIsImporting(true);
+        
+        try {
+            // Generate a unique ID for this upload session
+            const uploadId = `${storyId}_${uuidv4()}`;
+            const chunkSize = 4 * 1024 * 1024; // 4MB chunks (safe limit)
+            const totalChunks = Math.ceil(file.size / chunkSize);
+
+            // Upload Chunks
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(file.size, start + chunkSize);
+                const chunk = file.slice(start, end);
+
+                // Update UI or Console with progress
+                // console.log(`Uploading chunk ${i + 1}/${totalChunks}`);
+
+                const res = await fetch(`/api/admin/compositions/import-psd?step=upload&uploadId=${uploadId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                    body: chunk
+                });
+
+                if (!res.ok) throw new Error(`Chunk ${i} upload failed`);
+            }
+
+            // Trigger Processing
+            const queryParams = new URLSearchParams({
+                step: 'finish',
+                uploadId: uploadId,
+                storyId: storyId,
+                compositionId: data.id,
+                filename: file.name
+            });
+
+            const res = await fetch(`/api/admin/compositions/import-psd?${queryParams.toString()}`, {
+                method: 'POST'
+            });
+            
+            const result = await res.json();
+            
+            if (res.ok) {
+                // Merge new layers (add to top)
+                const currentMaxZ = data.layers.length > 0 ? Math.max(...data.layers.map(l => l.zIndex)) : -1;
+                
+                const adjustedNewLayers = result.layers.map((l: CompositionLayer, idx: number) => ({
+                    ...l,
+                    zIndex: currentMaxZ + 1 + idx
+                }));
+
+                handleChange('layers', [...data.layers, ...adjustedNewLayers]);
+                
+                if (result.width > data.width || result.height > data.height) {
+                    if(confirm(`Resize canvas to match PSD (${result.width}x${result.height})?`)) {
+                        handleChange('width', result.width);
+                        handleChange('height', result.height);
+                    }
+                }
+                alert(`Imported ${result.layers.length} layers successfully.`);
+            } else {
+                alert(`Processing failed: ${result.error}`);
+            }
+
+        } catch (e: any) {
+            console.error(e);
+            alert(`Import error: ${e.message}`);
+        } finally {
+            setIsImporting(false);
+            e.target.value = ''; 
+        }
+    };
+
+
+    useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
@@ -218,12 +300,66 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             }
 
             if (!finalImageToDraw) return;
+            
+            const effects = [];
+            
+            let strokeStyle = null;
+            if (layer.effects?.stroke?.enabled) {
+                const st = layer.effects.stroke;
+                const sColor = resolveCssVariable(st.color, previewTheme, allThemes);
+                strokeStyle = `drop-shadow(${st.width}px 0px 0px ${sColor}) 
+                               drop-shadow(-${st.width}px 0px 0px ${sColor}) 
+                               drop-shadow(0px ${st.width}px 0px ${sColor}) 
+                               drop-shadow(0px -${st.width}px 0px ${sColor})`;
+            }
 
+            // Glow
+            if (layer.effects?.glow?.enabled) {
+                const g = layer.effects.glow;
+                const color = resolveCssVariable(g.color, previewTheme, allThemes);
+                // Simulate glow using 0-offset drop-shadow
+                effects.push(`drop-shadow(0px 0px ${g.blur}px ${color})`);
+            }
+
+            // Shadow
+            if (layer.effects?.shadow?.enabled) {
+                const s = layer.effects.shadow;
+                const color = resolveCssVariable(s.color, previewTheme, allThemes);
+                effects.push(`drop-shadow(${s.x}px ${s.y}px ${s.blur}px ${color})`);
+            }
             // Draw Layer
             ctx.save();
             ctx.globalAlpha = layer.opacity;
+
+            if (layer.blendMode && layer.blendMode !== 'over') {
+                 // Map Sharp modes to Canvas modes where possible
+                 // Canvas: source-over, multiply, screen, overlay, darken, lighten, color-dodge, color-burn, hard-light, soft-light, difference, exclusion
+                 ctx.globalCompositeOperation = layer.blendMode;
+            }
+            
             ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
             ctx.rotate((layer.rotation * Math.PI) / 180);
+            
+            if (strokeStyle) {
+                ctx.save();
+                ctx.filter = strokeStyle;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(
+                    finalImageToDraw, 
+                    -(finalImageToDraw.width * layer.scale)/2, 
+                    -(finalImageToDraw.height * layer.scale)/2, 
+                    finalImageToDraw.width * layer.scale, 
+                    finalImageToDraw.height * layer.scale
+                );
+                ctx.restore();
+            }
+            
+            // Draw Effects (Shadow/Glow)
+            if (effects.length > 0) {
+                ctx.filter = effects.join(' ');
+            }
+
+            // Draw Main Image
             ctx.drawImage(
                 finalImageToDraw, 
                 -(finalImageToDraw.width * layer.scale)/2, 
@@ -303,6 +439,23 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         else next.add(catName);
         setCollapsedCategories(next);
     };
+
+    const BlendModeSelect = ({ value, onChange, label }: { value: string, onChange: (v: string) => void, label?: string }) => (
+        <div style={{flex:1}}>
+            {label && <label className="form-label" style={{margin:0}}>{label}</label>}
+            <select value={value || 'over'} onChange={e => onChange(e.target.value)} className="form-select" style={{padding:'2px', fontSize:'0.8rem'}}>
+                <option value="over">Normal</option>
+                <option value="multiply">Multiply</option>
+                <option value="screen">Screen</option>
+                <option value="overlay">Overlay</option>
+                <option value="darken">Darken</option>
+                <option value="lighten">Lighten</option>
+                <option value="color-dodge">Color Dodge</option>
+                <option value="hard-light">Hard Light</option>
+                <option value="difference">Difference</option>
+            </select>
+        </div>
+    );
 
     const filteredAssets = useMemo(() => {
         return assets.filter(a => a.id.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -551,6 +704,33 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                     <h3 style={{margin:0}}>{data.name}</h3>
                     <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
                 </div>
+                {canImportPsd && (
+                    <div style={{ display: 'flex', alignItems: 'center', marginRight: '20px' }}>
+                        <label 
+                            className="save-btn" 
+                            style={{ 
+                                cursor: isImporting ? 'wait' : 'pointer', 
+                                background: isImporting ? '#444' : 'var(--success-color)',
+                                color: '#fff',
+                                padding: '4px 10px',
+                                fontSize: '0.8rem',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                            }}
+                        >
+                            {isImporting ? 'Parsing PSD...' : '⬆ Import PSD'}
+                            <input 
+                                type="file" 
+                                accept=".psd,.psb" 
+                                onChange={handlePsdImport} 
+                                disabled={isImporting} 
+                                style={{ display: 'none' }} 
+                            />
+                        </label>
+                    </div>
+                )}
                 <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
                     <select 
                         className="form-select" 
@@ -878,8 +1058,132 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                                         allThemes={allThemes} 
                                     />
                                 </div>
+                                <div className="form-group">
+                                    <BlendModeSelect 
+                                        label="Layer Blend Mode" 
+                                        value={selectedLayer.blendMode as any} 
+                                        onChange={v => updateLayer(selectedLayer.id, { blendMode: v as any })} 
+                                    />
+                                </div>
+                                <hr style={{ borderColor: 'var(--tool-border)' }} />
+                                
+                                {/* Drop Shadow Controls */}
+                                <div style={{ marginBottom: '10px' }}>
+                                    <label className="toggle-label" style={{ fontWeight:'bold', marginBottom:'5px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedLayer.effects?.shadow?.enabled || false} 
+                                            onChange={e => {
+                                                const current = selectedLayer.effects || {};
+                                                const shadow = { 
+                                                    color: '#000000', blur: 10, x: 5, y: 5, ...current.shadow, 
+                                                    enabled: e.target.checked 
+                                                };
+                                                updateLayer(selectedLayer.id, { effects: { ...current, shadow } });
+                                            }} 
+                                        />
+                                        Drop Shadow
+                                    </label>
+                                    
+                                    {selectedLayer.effects?.shadow?.enabled && (
+                                        <div style={{ paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                                <label className="form-label" style={{width:'30px', margin:0}}>Col:</label>
+                                                <div style={{flex:1}}>
+                                                    <ColorPickerInput 
+                                                        value={selectedLayer.effects.shadow.color} 
+                                                        onChange={c => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, color: c } } })} 
+                                                        allThemes={allThemes}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div style={{display:'flex', gap:'5px'}}>
+                                                <div style={{flex:1}}><label className="form-label" style={{margin:0}}>Blur</label><input type="number" className="form-input" value={selectedLayer.effects.shadow.blur} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, blur: parseInt(e.target.value) } } })} /></div>
+                                                <div style={{flex:1}}><label className="form-label" style={{margin:0}}>X</label><input type="number" className="form-input" value={selectedLayer.effects.shadow.x} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, x: parseInt(e.target.value) } } })} /></div>
+                                                <div style={{flex:1}}><label className="form-label" style={{margin:0}}>Y</label><input type="number" className="form-input" value={selectedLayer.effects.shadow.y} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, y: parseInt(e.target.value) } } })} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Glow Controls */}
+                                <div>
+                                    <label className="toggle-label" style={{ fontWeight:'bold', marginBottom:'5px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedLayer.effects?.glow?.enabled || false} 
+                                            onChange={e => {
+                                                const current = selectedLayer.effects || {};
+                                                const glow = { 
+                                                    color: 'var(--accent-highlight)', blur: 10, ...current.glow, 
+                                                    enabled: e.target.checked 
+                                                };
+                                                updateLayer(selectedLayer.id, { effects: { ...current, glow } });
+                                            }} 
+                                        />
+                                        Glow
+                                    </label>
+                                    
+                                    {selectedLayer.effects?.glow?.enabled && (
+                                        <div style={{ paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                                <label className="form-label" style={{width:'30px', margin:0}}>Col:</label>
+                                                <div style={{flex:1}}>
+                                                    <ColorPickerInput 
+                                                        value={selectedLayer.effects.glow.color} 
+                                                        onChange={c => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, glow: { ...selectedLayer.effects!.glow!, color: c } } })} 
+                                                        allThemes={allThemes}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="form-label" style={{margin:0}}>Blur Radius</label>
+                                                <input type="range" min="1" max="50" style={{width:'100%', accentColor:'var(--tool-accent)'}} value={selectedLayer.effects.glow.blur} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, glow: { ...selectedLayer.effects!.glow!, blur: parseInt(e.target.value) } } })} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Stroke Controls */}
+                                <div>
+                                    <label className="toggle-label" style={{ fontWeight:'bold', marginBottom:'5px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedLayer.effects?.stroke?.enabled || false} 
+                                            onChange={e => {
+                                                const current = selectedLayer.effects || {};
+                                                const stroke = { 
+                                                    color: '#ffffff', width: 2, opacity: 1, ...current.stroke, 
+                                                    enabled: e.target.checked 
+                                                };
+                                                updateLayer(selectedLayer.id, { effects: { ...current, stroke } });
+                                            }} 
+                                        />
+                                        Outline / Stroke
+                                    </label>
+                                    
+                                    {selectedLayer.effects?.stroke?.enabled && (
+                                        <div style={{ paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                                <label className="form-label" style={{width:'30px', margin:0}}>Col:</label>
+                                                <div style={{flex:1}}>
+                                                    <ColorPickerInput 
+                                                        value={selectedLayer.effects.stroke.color} 
+                                                        onChange={c => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, stroke: { ...selectedLayer.effects!.stroke!, color: c } } })} 
+                                                        allThemes={allThemes}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="form-label" style={{margin:0}}>Width</label>
+                                                <input type="range" min="1" max="20" style={{width:'100%', accentColor:'var(--tool-accent)'}} value={selectedLayer.effects.stroke.width} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, stroke: { ...selectedLayer.effects!.stroke!, width: parseInt(e.target.value) } } })} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
                             </div>
+                            
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <h4 style={{ margin: 0, color: 'var(--tool-accent)' }}>Composition Settings</h4>
@@ -979,11 +1283,11 @@ const miniButtonStyle: React.CSSProperties = {
 
 // Transform a point from Canvas Space to Layer Local Space
 function toLocalSpace(px: number, py: number, layer: CompositionLayer, imgW: number, imgH: number) {
-    // 1. Translate to center relative
+    // Translate to center relative
     const dx = px - (layer.x + (imgW * layer.scale) / 2);
     const dy = py - (layer.y + (imgH * layer.scale) / 2);
     
-    // 2. Rotate inverse
+    // Rotate inverse
     const rad = -layer.rotation * (Math.PI / 180);
     const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
     const ly = dx * Math.sin(rad) + dy * Math.cos(rad);

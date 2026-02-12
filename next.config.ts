@@ -13,8 +13,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-        bodySizeLimit: '10mb',
-    }
+        bodySizeLimit: '50mb',
+    },
+    largePageDataBytes: 128 * 100000,
   }
 };
 

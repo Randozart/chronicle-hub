@@ -138,6 +138,8 @@ export interface SystemMessage {
     content: string;
 }
 
+export type BlendMode = 'over' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten' | 'color-dodge' | 'color-burn' | 'hard-light' | 'soft-light' | 'difference' | 'exclusion';
+
 export interface CompositionLayer {
     id: string;
     assetId: string;
@@ -156,6 +158,14 @@ export interface CompositionLayer {
     enableThemeColor?: boolean;
 
     editorHidden?: boolean; 
+
+    blendMode?: BlendMode; 
+    
+    effects?: {
+        shadow?: { enabled: boolean; color: string; blur: number; x: number; y: number; blendMode?: BlendMode };
+        glow?: { enabled: boolean; color: string; blur: number; blendMode?: BlendMode }; 
+        stroke?: { enabled: boolean; color: string; width: number; opacity: number }; 
+    };
 }
 
 export interface ImageComposition extends VersionedEntity {

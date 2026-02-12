@@ -102,12 +102,67 @@ export async function GET(request: NextRequest) {
             }
             
             const layerBuffer = await pipeline.toBuffer();
+            
+            if (layer.effects?.stroke?.enabled) {
+                const st = layer.effects.stroke;
+                const strokeColor = st.color.startsWith('var(') 
+                    ? (themeColors[st.color.match(/--[\w-]+/)?.[0] || ''] || '#ffffff') 
+                    : st.color;
+                
+                try {
+                    const strokeBuffer = await createStrokeLayer(layerBuffer, strokeColor, st.width);
+                    // Stroke is larger than original, so offset position
+                    layersToRender.push({
+                        input: strokeBuffer,
+                        top: Math.round(layer.y - st.width),
+                        left: Math.round(layer.x - st.width),
+                        blend: 'over',
+                    });
+                } catch(e) { console.error("Stroke error", e); }
+            }
+            
+            // Glow
+            if (layer.effects?.glow?.enabled) {
+                const g = layer.effects.glow;
+                const glowColor = g.color.startsWith('var(') 
+                    ? (themeColors[g.color.match(/--[\w-]+/)?.[0] || ''] || '#ffffff') 
+                    : g.color;
+                
+                try {
+                    const glowBuffer = await createShadowLayer(layerBuffer, glowColor, g.blur);
+                    layersToRender.push({
+                        input: glowBuffer,
+                        top: Math.round(layer.y), // No offset for glow
+                        left: Math.round(layer.x),
+                        blend: 'screen'
+                    });
+                } catch (e) { console.error("Glow error", e); }
+            }
 
+            // Drop Shadow
+            if (layer.effects?.shadow?.enabled) {
+                const s = layer.effects.shadow;
+                const shadowColor = s.color.startsWith('var(') 
+                    ? (themeColors[s.color.match(/--[\w-]+/)?.[0] || ''] || '#000000') 
+                    : s.color;
+
+                try {
+                    const shadowBuffer = await createShadowLayer(layerBuffer, shadowColor, s.blur);
+                    layersToRender.push({
+                        input: shadowBuffer,
+                        top: Math.round(layer.y + s.y),
+                        left: Math.round(layer.x + s.x),
+                        blend: 'multiply' // Shadows darken
+                    });
+                } catch (e) { console.error("Shadow error", e); }
+            }
+
+            // Main Layer
             layersToRender.push({
                 input: layerBuffer,
                 top: Math.round(layer.y),
                 left: Math.round(layer.x),
-                blend: 'over'
+                blend: (layer.blendMode as any) || 'over' 
             });
         }
 
@@ -163,4 +218,96 @@ export async function GET(request: NextRequest) {
         console.error("Composer Error:", error);
         return NextResponse.json({ error: 'Rendering failed' }, { status: 500 });
     }
+}
+
+async function createShadowLayer(
+    inputBuffer: Buffer, 
+    color: string, 
+    blurRadius: number
+): Promise<Buffer> {
+    // Get dimensions
+    const meta = await sharp(inputBuffer).metadata();
+    
+    // Create a solid color canvas of the same size
+    const solidColor = await sharp({
+        create: {
+            width: meta.width || 100,
+            height: meta.height || 100,
+            channels: 4,
+            background: color
+        }
+    })
+    .png()
+    .toBuffer();
+
+    // Composite the solid color In to the input image
+    // This keeps the input's alpha channel but replaces pixels with the solid color
+    const silhouette = await sharp(solidColor)
+        .composite([{ input: inputBuffer, blend: 'dest-in' }])
+        .png()
+        .toBuffer();
+
+    // Apply Blur
+    // Sigma calculation: Sharp's blur is sigma, CSS is radius. Approx sigma = radius / 2
+    const sigma = Math.max(0.3, blurRadius / 2);
+    
+    return sharp(silhouette).blur(sigma).toBuffer();
+}
+
+async function createStrokeLayer(
+    inputBuffer: Buffer,
+    color: string,
+    width: number
+): Promise<Buffer> {
+    // Create a solid color silhouette (same as shadow)
+    const meta = await sharp(inputBuffer).metadata();
+    const solidColor = await sharp({
+        create: {
+            width: meta.width || 100,
+            height: meta.height || 100,
+            channels: 4,
+            background: color
+        }
+    }).png().toBuffer();
+
+    const silhouette = await sharp(solidColor)
+        .composite([{ input: inputBuffer, blend: 'dest-in' }])
+        .png()
+        .toBuffer();
+
+    // Dilate the silhouette to create the stroke
+    // Sharp's 'extend' or 'linear' won't work well for arbitrary shapes.
+    // A robust trick is to blur the solid silhouette heavily, then threshold the alpha.
+    // Or, simply create 4-8 copies offset in a circle for a cheap stroke.
+    // For performance and quality, the "Multi-Offset" method is standard for backend stroke without GPU.
+    
+    // We'll generate a larger buffer to hold the stroke
+    const strokeCanvas = sharp({
+        create: {
+            width: (meta.width || 100) + width * 2,
+            height: (meta.height || 100) + width * 2,
+            channels: 4,
+            background: { r: 0, g: 0, b: 0, alpha: 0 }
+        }
+    });
+
+    const offsets = [
+        { top: 0, left: width }, { top: width * 2, left: width }, 
+        { top: width, left: 0 }, { top: width, left: width * 2 },
+        // Diagonals for smoother corners
+        { top: width/2, left: width/2 }, { top: width*1.5, left: width*1.5 },
+        { top: width/2, left: width*1.5 }, { top: width*1.5, left: width/2 }
+    ];
+
+    const composites = offsets.map(o => ({
+        input: silhouette,
+        top: Math.round(o.top),
+        left: Math.round(o.left),
+        blend: 'over' as const
+    }));
+
+    return strokeCanvas
+        .composite(composites)
+        .png()
+        .toBuffer();
 }

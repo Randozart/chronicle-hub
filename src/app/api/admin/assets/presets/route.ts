@@ -12,7 +12,8 @@ export async function GET() {
 
         const categories: { name: string, files: { path: string, name: string }[] }[] = [];
         const sources = fs.readdirSync(presetsDir, { withFileTypes: true })
-            .filter(dirent => dirent.isDirectory());
+            .filter(dirent => dirent.isDirectory())
+            .filter(dirent => dirent.name !== 'uploads' && dirent.name !== 'tmp');
 
         for (const source of sources) {
             const sourcePath = path.join(presetsDir, source.name);
