@@ -133,6 +133,7 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                         initialData={activeItem}
                         storyId={storyId}
                         assets={assets}
+                        setAssets={setAssets} 
                         allThemes={allThemes}
                         defaultTheme={defaultTheme} 
                         onSave={handleSave}
