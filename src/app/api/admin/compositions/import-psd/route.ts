@@ -95,26 +95,37 @@ export async function POST(request: NextRequest) {
 
             const newLayers: CompositionLayer[] = [];
             let totalUploadSize = 0;
+            let zIndexCounter = 0;
 
             const processNode = async (children: any[], parentGroupId?: string) => {
-                for (let i = children.length - 1; i >= 0; i--) {
+                for (let i = 0; i < children.length; i++) {
                     const node = children[i];
+                    
                     if (node.children) {
                         const groupId = node.name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-                        const effectiveGroupId = groupId.includes('group') ? parentGroupId : groupId;
+                        const effectiveGroupId = (groupId.includes('group') || groupId === 'base') ? parentGroupId : groupId;
                         await processNode(node.children, effectiveGroupId || parentGroupId);
-                        continue;
+                        continue; 
                     }
 
                     const nodeWidth = (node.right ?? 0) - (node.left ?? 0);
                     const nodeHeight = (node.bottom ?? 0) - (node.top ?? 0);
 
-                    // Extract pixels from either the native imageData OR our Mock Canvas
+                    // Skip common meta-layers that shouldn't be imported
+                    if (node.name.includes('Adjustment') || nodeWidth <= 1 || nodeHeight <= 1) {
+                        continue;
+                    }
+
+                    // Skip if the layer is completely transparent (common in exports)
+                    if (node.opacity === 0) {
+                        continue;
+                    }
+                    
                     let pixels = node.imageData?.data;
+
                     if (!pixels && node.canvas) {
                         const ctx = node.canvas.getContext('2d');
-                        const imgData = ctx.getImageData();
-                        pixels = imgData?.data;
+                        pixels = ctx.getImageData()?.data;
                     }
 
                     if (pixels && pixels.length > 0 && nodeWidth > 0 && nodeHeight > 0) {
@@ -140,7 +151,7 @@ export async function POST(request: NextRequest) {
                                 id: uuidv4(),
                                 assetId: uniqueAssetId,
                                 name: node.name,
-                                zIndex: newLayers.length,
+                                zIndex: 0,
                                 x: node.left || 0,
                                 y: node.top || 0,
                                 scale: 1,
@@ -151,15 +162,19 @@ export async function POST(request: NextRequest) {
                                 variantValue: parentGroupId ? layerNameClean : undefined,
                                 blendMode: 'over'
                             });
-                            console.log(`  [OK] Processed: ${node.name} (${nodeWidth}x${nodeHeight})`);
-                        } catch (sharpError: any) {
-                            console.error(`  [ERR] Sharp failed on ${node.name}:`, sharpError.message);
-                        }
-                    } else {
-                         console.log(`  [SKIP] ${node.name}: No pixel data found.`);
+                        } catch (e) { console.error(e); }
                     }
                 }
             };
+
+            if (psd.children) {
+                await processNode(psd.children);
+            }
+
+            newLayers.reverse();
+            newLayers.forEach((layer, index) => {
+                layer.zIndex = index;
+            });
 
             if (psd.children) await processNode(psd.children);
             if (user) await db.collection('users').updateOne({ _id: new ObjectId(userId) }, { $inc: { storageUsage: totalUploadSize } });
