@@ -221,6 +221,16 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             
             const effects = [];
             
+            let strokeStyle = null;
+            if (layer.effects?.stroke?.enabled) {
+                const st = layer.effects.stroke;
+                const sColor = resolveCssVariable(st.color, previewTheme, allThemes);
+                strokeStyle = `drop-shadow(${st.width}px 0px 0px ${sColor}) 
+                               drop-shadow(-${st.width}px 0px 0px ${sColor}) 
+                               drop-shadow(0px ${st.width}px 0px ${sColor}) 
+                               drop-shadow(0px -${st.width}px 0px ${sColor})`;
+            }
+
             // Glow
             if (layer.effects?.glow?.enabled) {
                 const g = layer.effects.glow;
@@ -238,13 +248,36 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             // Draw Layer
             ctx.save();
             ctx.globalAlpha = layer.opacity;
+
+            if (layer.blendMode && layer.blendMode !== 'over') {
+                 // Map Sharp modes to Canvas modes where possible
+                 // Canvas: source-over, multiply, screen, overlay, darken, lighten, color-dodge, color-burn, hard-light, soft-light, difference, exclusion
+                 ctx.globalCompositeOperation = layer.blendMode;
+            }
+            
             ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
             ctx.rotate((layer.rotation * Math.PI) / 180);
             
+            if (strokeStyle) {
+                ctx.save();
+                ctx.filter = strokeStyle;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(
+                    finalImageToDraw, 
+                    -(finalImageToDraw.width * layer.scale)/2, 
+                    -(finalImageToDraw.height * layer.scale)/2, 
+                    finalImageToDraw.width * layer.scale, 
+                    finalImageToDraw.height * layer.scale
+                );
+                ctx.restore();
+            }
+            
+            // Draw Effects (Shadow/Glow)
             if (effects.length > 0) {
                 ctx.filter = effects.join(' ');
             }
-            
+
+            // Draw Main Image
             ctx.drawImage(
                 finalImageToDraw, 
                 -(finalImageToDraw.width * layer.scale)/2, 
@@ -324,6 +357,23 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         else next.add(catName);
         setCollapsedCategories(next);
     };
+
+    const BlendModeSelect = ({ value, onChange, label }: { value: string, onChange: (v: string) => void, label?: string }) => (
+        <div style={{flex:1}}>
+            {label && <label className="form-label" style={{margin:0}}>{label}</label>}
+            <select value={value || 'over'} onChange={e => onChange(e.target.value)} className="form-select" style={{padding:'2px', fontSize:'0.8rem'}}>
+                <option value="over">Normal</option>
+                <option value="multiply">Multiply</option>
+                <option value="screen">Screen</option>
+                <option value="overlay">Overlay</option>
+                <option value="darken">Darken</option>
+                <option value="lighten">Lighten</option>
+                <option value="color-dodge">Color Dodge</option>
+                <option value="hard-light">Hard Light</option>
+                <option value="difference">Difference</option>
+            </select>
+        </div>
+    );
 
     const filteredAssets = useMemo(() => {
         return assets.filter(a => a.id.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -899,6 +949,13 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                                         allThemes={allThemes} 
                                     />
                                 </div>
+                                <div className="form-group">
+                                    <BlendModeSelect 
+                                        label="Layer Blend Mode" 
+                                        value={selectedLayer.blendMode as any} 
+                                        onChange={v => updateLayer(selectedLayer.id, { blendMode: v as any })} 
+                                    />
+                                </div>
                                 <hr style={{ borderColor: 'var(--tool-border)' }} />
                                 
                                 {/* Drop Shadow Controls */}
@@ -978,7 +1035,46 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                                     )}
                                 </div>
 
+                                {/* Stroke Controls */}
+                                <div>
+                                    <label className="toggle-label" style={{ fontWeight:'bold', marginBottom:'5px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedLayer.effects?.stroke?.enabled || false} 
+                                            onChange={e => {
+                                                const current = selectedLayer.effects || {};
+                                                const stroke = { 
+                                                    color: '#ffffff', width: 2, opacity: 1, ...current.stroke, 
+                                                    enabled: e.target.checked 
+                                                };
+                                                updateLayer(selectedLayer.id, { effects: { ...current, stroke } });
+                                            }} 
+                                        />
+                                        Outline / Stroke
+                                    </label>
+                                    
+                                    {selectedLayer.effects?.stroke?.enabled && (
+                                        <div style={{ paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                                <label className="form-label" style={{width:'30px', margin:0}}>Col:</label>
+                                                <div style={{flex:1}}>
+                                                    <ColorPickerInput 
+                                                        value={selectedLayer.effects.stroke.color} 
+                                                        onChange={c => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, stroke: { ...selectedLayer.effects!.stroke!, color: c } } })} 
+                                                        allThemes={allThemes}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="form-label" style={{margin:0}}>Width</label>
+                                                <input type="range" min="1" max="20" style={{width:'100%', accentColor:'var(--tool-accent)'}} value={selectedLayer.effects.stroke.width} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, stroke: { ...selectedLayer.effects!.stroke!, width: parseInt(e.target.value) } } })} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                             </div>
+                            
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <h4 style={{ margin: 0, color: 'var(--tool-accent)' }}>Composition Settings</h4>
