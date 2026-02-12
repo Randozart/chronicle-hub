@@ -173,23 +173,23 @@ export async function POST(request: NextRequest) {
                 await processNode(psd.children);
             }
 
-            newLayers.reverse();
-            newLayers.forEach((layer, index) => {
-                layer.zIndex = index;
-            });
+            // newLayers.reverse();
+            // newLayers.forEach((layer, index) => {
+            //     layer.zIndex = index;
+            // });
 
-            if (psd.children) await processNode(psd.children);
-            if (user) await db.collection('users').updateOne({ _id: new ObjectId(userId) }, { $inc: { storageUsage: totalUploadSize } });
+            if (user) {
+                await db.collection('users').updateOne(
+                    { _id: new ObjectId(userId) }, 
+                    { $inc: { storageUsage: totalUploadSize } }
+                );
+            }
 
-             const newAssetEntries = newLayers.map(layer => {
-                return {
-                    id: layer.assetId,
-                };
-            });
-            
-            // Fetch all assets for this composition folder to be sure
+            // Fetch new assets to sync the frontend library
             const folderPath = `compositions/${compositionId}`;
-            const assetsForComposition = await db.collection('assets').find({ folder: { $regex: new RegExp(`^${folderPath}`) } }).toArray();
+            const assetsForComposition = await db.collection('assets')
+                .find({ folder: { $regex: new RegExp(`^${folderPath}`) } })
+                .toArray();
 
             return NextResponse.json({ 
                 success: true, 
