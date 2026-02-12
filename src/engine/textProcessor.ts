@@ -114,7 +114,7 @@ function evaluateRecursive(
     let currentBlock = ""; 
 
     try {
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 500; i++) {
             const innermostBlockMatch = currentText.match(/\{([^{}]*?)\}/);
             if (!innermostBlockMatch) break;
 
