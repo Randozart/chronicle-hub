@@ -45,6 +45,7 @@ interface Props {
     initialData: ImageComposition;
     storyId: string;
     assets: GlobalAsset[];
+    setAssets: React.Dispatch<React.SetStateAction<GlobalAsset[]>>; 
     onSave: (data: ImageComposition) => void;
     onDelete: () => void;
     guardRef: { current: FormGuard | null };
@@ -54,8 +55,11 @@ interface Props {
 }
 const imageElementCache = new Map<string, HTMLImageElement>();
 
-export default function ComposerEditor({ initialData, storyId, assets, onSave, onDelete, guardRef, allThemes, defaultTheme, canImportPsd }: Props) {
-        const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
+export default function ComposerEditor({ 
+    initialData, storyId, assets, setAssets, 
+    onSave, onDelete, guardRef, allThemes, defaultTheme, canImportPsd 
+}: Props) {        
+    const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
         '/api/admin/compositions',
         { storyId },
@@ -93,77 +97,84 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         if (!e.target.files?.[0]) return;
         const file = e.target.files[0];
         
-        if (!confirm(`Import "${file.name}"? This will append layers to your composition.`)) return;
-
+        if (!confirm(`Import "${file.name}"?`)) return;
         setIsImporting(true);
         
         try {
-            // Generate a unique ID for this upload session
             const uploadId = `${storyId}_${uuidv4()}`;
-            const chunkSize = 4 * 1024 * 1024; // 4MB chunks (safe limit)
-            const totalChunks = Math.ceil(file.size / chunkSize);
+            const CHUNK_THRESHOLD = 8 * 1024 * 1024; // 8MB
 
-            // Upload Chunks
-            for (let i = 0; i < totalChunks; i++) {
-                const start = i * chunkSize;
-                const end = Math.min(file.size, start + chunkSize);
-                const chunk = file.slice(start, end);
-
-                // Update UI or Console with progress
-                // console.log(`Uploading chunk ${i + 1}/${totalChunks}`);
-
-                const res = await fetch(`/api/admin/compositions/import-psd?step=upload&uploadId=${uploadId}`, {
+            if (file.size < CHUNK_THRESHOLD) {
+                const queryParams = new URLSearchParams({
+                    storyId: storyId,
+                    compositionId: data.id,
+                    uploadId
+                });
+                const res = await fetch(`/api/admin/compositions/import-psd?${queryParams.toString()}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/octet-stream' },
-                    body: chunk
+                    body: file,
+                    headers: { 'Content-Type': 'application/octet-stream' }
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || "Upload failed");
+                handleImportSuccess(result);
+            } else {
+                const chunkSize = 4 * 1024 * 1024;
+                const totalChunks = Math.ceil(file.size / chunkSize);
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(file.size, start + chunkSize);
+                    const chunk = file.slice(start, end);
+
+                    // Pass chunkIndex so server can handle file initialization
+                    const res = await fetch(`/api/admin/compositions/import-psd?step=upload&uploadId=${uploadId}&chunkIndex=${i}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/octet-stream' },
+                        body: chunk
+                    });
+                    if (!res.ok) throw new Error(`Chunk ${i} failed`);
+                }
+
+                // Proceed to finish
+                const res = await fetch(`/api/admin/compositions/import-psd?step=finish&uploadId=${uploadId}&storyId=${storyId}&compositionId=${data.id}`, {
+                    method: 'POST'
                 });
 
-                if (!res.ok) throw new Error(`Chunk ${i} upload failed`);
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || "Processing failed");
+                handleImportSuccess(result);
             }
-
-            // Trigger Processing
-            const queryParams = new URLSearchParams({
-                step: 'finish',
-                uploadId: uploadId,
-                storyId: storyId,
-                compositionId: data.id,
-                filename: file.name
-            });
-
-            const res = await fetch(`/api/admin/compositions/import-psd?${queryParams.toString()}`, {
-                method: 'POST'
-            });
-            
-            const result = await res.json();
-            
-            if (res.ok) {
-                // Merge new layers (add to top)
-                const currentMaxZ = data.layers.length > 0 ? Math.max(...data.layers.map(l => l.zIndex)) : -1;
-                
-                const adjustedNewLayers = result.layers.map((l: CompositionLayer, idx: number) => ({
-                    ...l,
-                    zIndex: currentMaxZ + 1 + idx
-                }));
-
-                handleChange('layers', [...data.layers, ...adjustedNewLayers]);
-                
-                if (result.width > data.width || result.height > data.height) {
-                    if(confirm(`Resize canvas to match PSD (${result.width}x${result.height})?`)) {
-                        handleChange('width', result.width);
-                        handleChange('height', result.height);
-                    }
-                }
-                alert(`Imported ${result.layers.length} layers successfully.`);
-            } else {
-                alert(`Processing failed: ${result.error}`);
-            }
-
         } catch (e: any) {
-            console.error(e);
-            alert(`Import error: ${e.message}`);
+            alert(e.message);
         } finally {
             setIsImporting(false);
-            e.target.value = ''; 
+            e.target.value = '';
+        }
+    };
+
+    const handleImportSuccess = (result: any) => {
+        // Update Layers
+        const currentMaxZ = data.layers.length > 0 ? Math.max(...data.layers.map(l => l.zIndex)) : -1;
+        const adjustedNewLayers = result.layers.map((l: CompositionLayer, idx: number) => ({
+            ...l,
+            zIndex: currentMaxZ + 1 + idx
+        }));
+        handleChange('layers', [...data.layers, ...adjustedNewLayers]);
+
+        if (result.newAssets) {
+            setAssets((prev: GlobalAsset[]) => {
+                const existingIds = new Set(prev.map(a => a.id));
+                const uniqueNew = result.newAssets.filter((a: GlobalAsset) => !existingIds.has(a.id));
+                return [...prev, ...uniqueNew];
+            });
+        }
+
+        if (result.width > data.width || result.height > data.height) {
+            if(confirm("Resize canvas to match PSD?")) {
+                handleChange('width', result.width);
+                handleChange('height', result.height);
+            }
         }
     };
 
@@ -344,13 +355,15 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 ctx.save();
                 ctx.filter = strokeStyle;
                 ctx.globalCompositeOperation = 'source-over';
-                ctx.drawImage(
-                    finalImageToDraw, 
-                    -(finalImageToDraw.width * layer.scale)/2, 
-                    -(finalImageToDraw.height * layer.scale)/2, 
-                    finalImageToDraw.width * layer.scale, 
-                    finalImageToDraw.height * layer.scale
-                );
+                if (finalImageToDraw.width > 0 && finalImageToDraw.height > 0) {
+                    ctx.drawImage(
+                        finalImageToDraw, 
+                        -(finalImageToDraw.width * layer.scale)/2, 
+                        -(finalImageToDraw.height * layer.scale)/2, 
+                        finalImageToDraw.width * layer.scale, 
+                        finalImageToDraw.height * layer.scale
+                    );
+                }
                 ctx.restore();
             }
             
@@ -475,10 +488,10 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         if (!canvas || !canvas.getContext('2d')) return;
         const ctx = canvas.getContext('2d')!;
 
-        // Render Scene (No transform needed, CSS handles zoom)
+        // Render Scene
         renderScene(ctx, canvas.width, canvas.height, true);
 
-        // Render Selection Overlay (On top)
+        // Render Selection Overlay
         if (selectedLayer) {
             const layer = selectedLayer;
             // Re-resolve image for selection box dimensions
@@ -684,11 +697,11 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             url = `/${layer.assetId}`;
         } else {
             const asset = assets.find(a => a.id === layer.assetId);
-            url = asset ? asset.url || "" : `/images/uploads/${layer.assetId}.png`;
+            // Use path from /images/uploads/ to /uploads/ 
+            url = asset ? asset.url || "" : `/uploads/misc/${layer.assetId}.webp`;
         }
         
         if (!url) return null;
-        
         const img = imageElementCache.get(url);
         return (img && img.complete) ? img : null;
     };
