@@ -156,6 +156,11 @@ export interface CompositionLayer {
     enableThemeColor?: boolean;
 
     editorHidden?: boolean; 
+
+    effects?: {
+        shadow?: { enabled: boolean; color: string; blur: number; x: number; y: number };
+        glow?: { enabled: boolean; color: string; blur: number }; 
+    };
 }
 
 export interface ImageComposition extends VersionedEntity {

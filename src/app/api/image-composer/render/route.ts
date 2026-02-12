@@ -103,6 +103,42 @@ export async function GET(request: NextRequest) {
             
             const layerBuffer = await pipeline.toBuffer();
 
+            if (layer.effects?.glow?.enabled) {
+                const g = layer.effects.glow;
+                const glowColor = g.color.startsWith('var(') 
+                    ? (themeColors[g.color.match(/--[\w-]+/)?.[0] || ''] || '#ffffff') 
+                    : g.color;
+                
+                try {
+                    const glowBuffer = await createShadowLayer(layerBuffer, glowColor, g.blur);
+                    layersToRender.push({
+                        input: glowBuffer,
+                        top: Math.round(layer.y), // No offset for glow
+                        left: Math.round(layer.x),
+                        blend: 'screen'
+                    });
+                } catch (e) { console.error("Glow error", e); }
+            }
+
+            // Drop Shadow
+            if (layer.effects?.shadow?.enabled) {
+                const s = layer.effects.shadow;
+                const shadowColor = s.color.startsWith('var(') 
+                    ? (themeColors[s.color.match(/--[\w-]+/)?.[0] || ''] || '#000000') 
+                    : s.color;
+
+                try {
+                    const shadowBuffer = await createShadowLayer(layerBuffer, shadowColor, s.blur);
+                    layersToRender.push({
+                        input: shadowBuffer,
+                        top: Math.round(layer.y + s.y),
+                        left: Math.round(layer.x + s.x),
+                        blend: 'multiply' // Shadows darken
+                    });
+                } catch (e) { console.error("Shadow error", e); }
+            }
+
+            // Main Layer
             layersToRender.push({
                 input: layerBuffer,
                 top: Math.round(layer.y),
@@ -163,4 +199,38 @@ export async function GET(request: NextRequest) {
         console.error("Composer Error:", error);
         return NextResponse.json({ error: 'Rendering failed' }, { status: 500 });
     }
+}
+
+async function createShadowLayer(
+    inputBuffer: Buffer, 
+    color: string, 
+    blurRadius: number
+): Promise<Buffer> {
+    // Get dimensions
+    const meta = await sharp(inputBuffer).metadata();
+    
+    // Create a solid color canvas of the same size
+    const solidColor = await sharp({
+        create: {
+            width: meta.width || 100,
+            height: meta.height || 100,
+            channels: 4,
+            background: color
+        }
+    })
+    .png()
+    .toBuffer();
+
+    // Composite the solid color In to the input image
+    // This keeps the input's alpha channel but replaces pixels with the solid color
+    const silhouette = await sharp(solidColor)
+        .composite([{ input: inputBuffer, blend: 'dest-in' }])
+        .png()
+        .toBuffer();
+
+    // Apply Blur
+    // Sigma calculation: Sharp's blur is sigma, CSS is radius. Approx sigma = radius / 2
+    const sigma = Math.max(0.3, blurRadius / 2);
+    
+    return sharp(silhouette).blur(sigma).toBuffer();
 }

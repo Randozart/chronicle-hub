@@ -218,12 +218,33 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
             }
 
             if (!finalImageToDraw) return;
+            
+            const effects = [];
+            
+            // Glow
+            if (layer.effects?.glow?.enabled) {
+                const g = layer.effects.glow;
+                const color = resolveCssVariable(g.color, previewTheme, allThemes);
+                // Simulate glow using 0-offset drop-shadow
+                effects.push(`drop-shadow(0px 0px ${g.blur}px ${color})`);
+            }
 
+            // Shadow
+            if (layer.effects?.shadow?.enabled) {
+                const s = layer.effects.shadow;
+                const color = resolveCssVariable(s.color, previewTheme, allThemes);
+                effects.push(`drop-shadow(${s.x}px ${s.y}px ${s.blur}px ${color})`);
+            }
             // Draw Layer
             ctx.save();
             ctx.globalAlpha = layer.opacity;
             ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
             ctx.rotate((layer.rotation * Math.PI) / 180);
+            
+            if (effects.length > 0) {
+                ctx.filter = effects.join(' ');
+            }
+            
             ctx.drawImage(
                 finalImageToDraw, 
                 -(finalImageToDraw.width * layer.scale)/2, 
@@ -877,6 +898,84 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                                         onChange={color => updateLayer(selectedLayer.id, { tintColor: color })}
                                         allThemes={allThemes} 
                                     />
+                                </div>
+                                <hr style={{ borderColor: 'var(--tool-border)' }} />
+                                
+                                {/* Drop Shadow Controls */}
+                                <div style={{ marginBottom: '10px' }}>
+                                    <label className="toggle-label" style={{ fontWeight:'bold', marginBottom:'5px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedLayer.effects?.shadow?.enabled || false} 
+                                            onChange={e => {
+                                                const current = selectedLayer.effects || {};
+                                                const shadow = { 
+                                                    color: '#000000', blur: 10, x: 5, y: 5, ...current.shadow, 
+                                                    enabled: e.target.checked 
+                                                };
+                                                updateLayer(selectedLayer.id, { effects: { ...current, shadow } });
+                                            }} 
+                                        />
+                                        Drop Shadow
+                                    </label>
+                                    
+                                    {selectedLayer.effects?.shadow?.enabled && (
+                                        <div style={{ paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                                <label className="form-label" style={{width:'30px', margin:0}}>Col:</label>
+                                                <div style={{flex:1}}>
+                                                    <ColorPickerInput 
+                                                        value={selectedLayer.effects.shadow.color} 
+                                                        onChange={c => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, color: c } } })} 
+                                                        allThemes={allThemes}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div style={{display:'flex', gap:'5px'}}>
+                                                <div style={{flex:1}}><label className="form-label" style={{margin:0}}>Blur</label><input type="number" className="form-input" value={selectedLayer.effects.shadow.blur} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, blur: parseInt(e.target.value) } } })} /></div>
+                                                <div style={{flex:1}}><label className="form-label" style={{margin:0}}>X</label><input type="number" className="form-input" value={selectedLayer.effects.shadow.x} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, x: parseInt(e.target.value) } } })} /></div>
+                                                <div style={{flex:1}}><label className="form-label" style={{margin:0}}>Y</label><input type="number" className="form-input" value={selectedLayer.effects.shadow.y} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, shadow: { ...selectedLayer.effects!.shadow!, y: parseInt(e.target.value) } } })} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Glow Controls */}
+                                <div>
+                                    <label className="toggle-label" style={{ fontWeight:'bold', marginBottom:'5px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedLayer.effects?.glow?.enabled || false} 
+                                            onChange={e => {
+                                                const current = selectedLayer.effects || {};
+                                                const glow = { 
+                                                    color: 'var(--accent-highlight)', blur: 10, ...current.glow, 
+                                                    enabled: e.target.checked 
+                                                };
+                                                updateLayer(selectedLayer.id, { effects: { ...current, glow } });
+                                            }} 
+                                        />
+                                        Glow
+                                    </label>
+                                    
+                                    {selectedLayer.effects?.glow?.enabled && (
+                                        <div style={{ paddingLeft: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                            <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                                <label className="form-label" style={{width:'30px', margin:0}}>Col:</label>
+                                                <div style={{flex:1}}>
+                                                    <ColorPickerInput 
+                                                        value={selectedLayer.effects.glow.color} 
+                                                        onChange={c => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, glow: { ...selectedLayer.effects!.glow!, color: c } } })} 
+                                                        allThemes={allThemes}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="form-label" style={{margin:0}}>Blur Radius</label>
+                                                <input type="range" min="1" max="50" style={{width:'100%', accentColor:'var(--tool-accent)'}} value={selectedLayer.effects.glow.blur} onChange={e => updateLayer(selectedLayer.id, { effects: { ...selectedLayer.effects, glow: { ...selectedLayer.effects!.glow!, blur: parseInt(e.target.value) } } })} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                             </div>
