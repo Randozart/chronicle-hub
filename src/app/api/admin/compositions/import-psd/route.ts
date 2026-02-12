@@ -101,36 +101,33 @@ export async function POST(request: NextRequest) {
                 for (let i = 0; i < children.length; i++) {
                     const node = children[i];
                     
-                    if (node.children) {
+                    if (node.children && node.children.length > 0) {
                         const groupId = node.name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
                         const effectiveGroupId = (groupId.includes('group') || groupId === 'base') ? parentGroupId : groupId;
+                        
+                        console.log(`[PSD Import] Entering Group: ${node.name}`);
                         await processNode(node.children, effectiveGroupId || parentGroupId);
+                        
                         continue; 
                     }
 
                     const nodeWidth = (node.right ?? 0) - (node.left ?? 0);
                     const nodeHeight = (node.bottom ?? 0) - (node.top ?? 0);
 
-                    // Skip common meta-layers that shouldn't be imported
-                    if (node.name.includes('Adjustment') || nodeWidth <= 1 || nodeHeight <= 1) {
+                    if (nodeWidth <= 1 || nodeHeight <= 1 || node.name.includes('Adjustment')) {
                         continue;
                     }
 
-                    // Skip if the layer is completely transparent (common in exports)
-                    if (node.opacity === 0) {
-                        continue;
-                    }
-                    
+                    // Extract pixels
                     let pixels = node.imageData?.data;
-
                     if (!pixels && node.canvas) {
                         const ctx = node.canvas.getContext('2d');
                         pixels = ctx.getImageData()?.data;
                     }
 
-                    if (pixels && pixels.length > 0 && nodeWidth > 0 && nodeHeight > 0) {
+                    if (pixels && pixels.length > 0) {
                         const layerNameClean = node.name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-                        const uniqueAssetId = `${compositionId}_${layerNameClean.slice(0,10)}_${uuidv4().slice(0,4)}`;
+                        const uniqueAssetId = `${compositionId}_${layerNameClean.slice(0,15)}`;
                         
                         try {
                             const imageBuffer = await sharp(Buffer.from(pixels), {
@@ -141,6 +138,7 @@ export async function POST(request: NextRequest) {
                             const { url, size } = await uploadAsset(imageBuffer, folderPath, { filename: layerNameClean });
 
                             totalUploadSize += size;
+                            
                             await db.collection('assets').updateOne(
                                 { id: uniqueAssetId },
                                 { $set: { id: uniqueAssetId, url, size, category: 'composition_part', folder: folderPath, uploadedAt: new Date(), type: 'image' } },
@@ -151,9 +149,9 @@ export async function POST(request: NextRequest) {
                                 id: uuidv4(),
                                 assetId: uniqueAssetId,
                                 name: node.name,
-                                zIndex: 0,
-                                x: node.left || 0,
-                                y: node.top || 0,
+                                zIndex: 0, 
+                                x: node.left || 0, 
+                                y: node.top || 0,  
                                 scale: 1,
                                 rotation: 0,
                                 opacity: node.opacity ?? 1,
@@ -162,7 +160,11 @@ export async function POST(request: NextRequest) {
                                 variantValue: parentGroupId ? layerNameClean : undefined,
                                 blendMode: 'over'
                             });
-                        } catch (e) { console.error(e); }
+                            
+                            console.log(`  [OK] Processed: ${node.name}`);
+                        } catch (err: any) {
+                            console.error(`  [ERR] Sharp failed on ${node.name}:`, err.message);
+                        }
                     }
                 }
             };
