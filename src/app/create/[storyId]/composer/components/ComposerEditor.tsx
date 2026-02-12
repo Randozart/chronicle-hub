@@ -93,28 +93,51 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
         if (!e.target.files?.[0]) return;
         const file = e.target.files[0];
         
-        if (!confirm("Importing a PSD will append layers to your current composition. Continue?")) return;
+        if (!confirm(`Import "${file.name}"? This will append layers to your composition.`)) return;
 
         setIsImporting(true);
-
+        
         try {
+            // Generate a unique ID for this upload session
+            const uploadId = `${storyId}_${uuidv4()}`;
+            const chunkSize = 4 * 1024 * 1024; // 4MB chunks (safe limit)
+            const totalChunks = Math.ceil(file.size / chunkSize);
+
+            // Upload Chunks
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(file.size, start + chunkSize);
+                const chunk = file.slice(start, end);
+
+                // Update UI or Console with progress
+                // console.log(`Uploading chunk ${i + 1}/${totalChunks}`);
+
+                const res = await fetch(`/api/admin/compositions/import-psd?step=upload&uploadId=${uploadId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                    body: chunk
+                });
+
+                if (!res.ok) throw new Error(`Chunk ${i} upload failed`);
+            }
+
+            // Trigger Processing
             const queryParams = new URLSearchParams({
-                storyId,
-                compositionId: data.id
+                step: 'finish',
+                uploadId: uploadId,
+                storyId: storyId,
+                compositionId: data.id,
+                filename: file.name
             });
 
             const res = await fetch(`/api/admin/compositions/import-psd?${queryParams.toString()}`, {
-                method: 'POST',
-                body: file, 
-                headers: {
-                    'Content-Type': 'application/octet-stream'
-                }
+                method: 'POST'
             });
             
             const result = await res.json();
+            
             if (res.ok) {
                 // Merge new layers (add to top)
-                // We need to adjust zIndex of new layers to sit on top of existing ones
                 const currentMaxZ = data.layers.length > 0 ? Math.max(...data.layers.map(l => l.zIndex)) : -1;
                 
                 const adjustedNewLayers = result.layers.map((l: CompositionLayer, idx: number) => ({
@@ -124,7 +147,6 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
 
                 handleChange('layers', [...data.layers, ...adjustedNewLayers]);
                 
-                // Resize canvas if PSD was bigger
                 if (result.width > data.width || result.height > data.height) {
                     if(confirm(`Resize canvas to match PSD (${result.width}x${result.height})?`)) {
                         handleChange('width', result.width);
@@ -133,14 +155,15 @@ export default function ComposerEditor({ initialData, storyId, assets, onSave, o
                 }
                 alert(`Imported ${result.layers.length} layers successfully.`);
             } else {
-                alert(`Import failed: ${result.error}`);
+                alert(`Processing failed: ${result.error}`);
             }
-        } catch (e) {
+
+        } catch (e: any) {
             console.error(e);
-            alert("Network error during import.");
+            alert(`Import error: ${e.message}`);
         } finally {
             setIsImporting(false);
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
         }
     };
 
@@ -1260,11 +1283,11 @@ const miniButtonStyle: React.CSSProperties = {
 
 // Transform a point from Canvas Space to Layer Local Space
 function toLocalSpace(px: number, py: number, layer: CompositionLayer, imgW: number, imgH: number) {
-    // 1. Translate to center relative
+    // Translate to center relative
     const dx = px - (layer.x + (imgW * layer.scale) / 2);
     const dy = py - (layer.y + (imgH * layer.scale) / 2);
     
-    // 2. Rotate inverse
+    // Rotate inverse
     const rad = -layer.rotation * (Math.PI / 180);
     const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
     const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
