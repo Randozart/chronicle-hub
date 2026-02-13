@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 import ColorPickerInput from './ColorPickerInput';
 import ComposerOutput from './ComposerOutput';
 import { resolveCssVariable } from '@/utils/themeUtils';
+import AssetExplorer from '@/components/admin/assets/AssetExplorer';
+
 
 const CANVAS_PRESETS = {
     'Icon': { w: 512, h: 512 },
@@ -52,12 +54,13 @@ interface Props {
     allThemes: Record<string, Record<string, string>>;
     defaultTheme: string; 
     canImportPsd?: boolean; 
+    refreshAssets: () => void; 
 }
 const imageElementCache = new Map<string, HTMLImageElement>();
 
 export default function ComposerEditor({ 
     initialData, storyId, assets, setAssets, 
-    onSave, onDelete, guardRef, allThemes, defaultTheme, canImportPsd 
+    onSave, onDelete, guardRef, allThemes, defaultTheme, canImportPsd, refreshAssets
 }: Props) {        
     const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
@@ -820,55 +823,36 @@ export default function ComposerEditor({
 
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
                 
-                <div style={{ width: '300px', minWidth: '300px', borderRight: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
-                    {/* Tabs */}
+                {/* Left: Asset Browser - Fixed width, no grow/shrink */}
+                <div style={{ width: '500px', minWidth: '300px', borderRight: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
+                    
+                    {/* Browser Tabs */}
                     <div style={{ display:'flex', borderBottom:'1px solid var(--tool-border)', flexShrink: 0 }}>
                         <button 
                             onClick={() => setBrowserTab('project')}
-                            style={{ flex:1, padding:'0.8rem', background: browserTab === 'project' ? 'var(--tool-bg-input)' : 'transparent', border:'none', color: browserTab === 'project' ? 'var(--tool-text-main)' : 'var(--tool-text-dim)', cursor:'pointer', fontWeight:'bold' }}
+                            style={{ flex:1, padding:'0.6rem', background: browserTab === 'project' ? 'var(--tool-bg-input)' : 'transparent', borderBottom: browserTab === 'project' ? '2px solid var(--tool-accent)' : 'none', color: browserTab === 'project' ? 'var(--tool-text-main)' : 'var(--tool-text-dim)', cursor:'pointer', fontWeight:'bold', fontSize:'0.8rem' }}
                         >
-                            Project
+                            Project Files
                         </button>
                         <button 
                             onClick={() => setBrowserTab('presets')}
-                            style={{ flex:1, padding:'0.8rem', background: browserTab === 'presets' ? 'var(--tool-bg-input)' : 'transparent', border:'none', color: browserTab === 'presets' ? 'var(--tool-text-main)' : 'var(--tool-text-dim)', cursor:'pointer', fontWeight:'bold' }}
+                            style={{ flex:1, padding:'0.6rem', background: browserTab === 'presets' ? 'var(--tool-bg-input)' : 'transparent', borderBottom: browserTab === 'presets' ? '2px solid var(--tool-accent)' : 'none', color: browserTab === 'presets' ? 'var(--tool-text-main)' : 'var(--tool-text-dim)', cursor:'pointer', fontWeight:'bold', fontSize:'0.8rem' }}
                         >
                             Presets
                         </button>
                     </div>
-                    
-                    {/* Search & Actions */}
-                    <div style={{ padding: '0.5rem', borderBottom:'1px solid var(--tool-border)', flexShrink: 0 }}>
-                        <input 
-                            value={searchTerm} 
-                            onChange={e => setSearchTerm(e.target.value)} 
-                            className="form-input" 
-                            placeholder="Search..." 
-                            style={{ width: '100%', marginBottom: '5px' }} 
-                        />
-                        {browserTab === 'presets' && (
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                                <button style={miniButtonStyle} onClick={() => setCollapsedCategories(new Set())}>Expand All</button>
-                                <button style={miniButtonStyle} onClick={() => setCollapsedCategories(new Set(presets.map(c => c.name)))}>Collapse All</button>
-                            </div>
-                        )}
-                    </div>
 
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem', minHeight: 0 }}>
+                    <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         {browserTab === 'project' ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
-                                {filteredAssets.map(asset => (
-                                    <div 
-                                        key={asset.id} 
-                                        onClick={() => addLayer(asset.id, asset.id, false)}
-                                        style={{ aspectRatio: '1/1', border: '1px solid var(--tool-border)', borderRadius: '4px', cursor: 'pointer', overflow:'hidden', position: 'relative' }}
-                                        className="hover:border-blue-500"
-                                    >
-                                        {asset.url && <img src={asset.url} style={{ width:'100%', height:'100%', objectFit:'contain', background:'#000' }} alt={asset.id} />}
-                                        <div style={{position:'absolute', bottom:0, background:'rgba(0,0,0,0.7)', width:'100%', fontSize:'0.6rem', padding:'2px', whiteSpace:'nowrap', overflow:'hidden'}}>{asset.id}</div>
-                                    </div>
-                                ))}
-                            </div>
+                            <AssetExplorer 
+                                assets={assets} 
+                                onSelect={(asset) => addLayer(asset.id, asset.id, false)}
+                                onRefresh={refreshAssets}
+                                storyId={storyId}
+                                mode="picker"
+                                className="border-0 rounded-none h-full"
+                                style={{ border: 'none', background: 'transparent' }}
+                            />
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {filteredPresets.map(cat => (

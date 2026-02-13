@@ -77,6 +77,12 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
         }
     };
 
+    const fetchAssets = () => {
+        fetch(`/api/admin/assets/mine`)
+            .then(r => r.json())
+            .then(data => setAssets(data.assets || []));
+    };
+
     const handleCreate = async (id: string) => {
         const cleanId = id.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         if (items.find(i => i.id === cleanId)) return showToast("ID exists", "error");
@@ -140,6 +146,7 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                         onDelete={() => setConfirmModal({ isOpen: true, id: activeItem.id })}
                         guardRef={guardRef}
                         canImportPsd={canImportPsd}
+                        refreshAssets={fetchAssets}
                     />
                 ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--tool-text-dim)' }}>
