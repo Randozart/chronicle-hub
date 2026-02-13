@@ -1,22 +1,66 @@
 'use client';
 import { use } from 'react';
+import { useState, useEffect } from 'react';
+import AssetExplorer from '@/components/admin/assets/AssetExplorer';
 import RefactorTool from '@/components/admin/assets/RefactorTool';
+import { GlobalAsset } from '@/engine/models';
 
 export default function AssetManagementPage({ params }: { params: Promise<{ storyId: string }> }) {
     const { storyId } = use(params);
+    const [assets, setAssets] = useState<GlobalAsset[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchAssets = () => {
+        fetch('/api/admin/assets/mine')
+            .then(r => r.json())
+            .then(data => setAssets(data.assets || []))
+            .catch(console.error)
+            .finally(() => setIsLoading(false));
+    };
+
+    useEffect(() => {
+        setIsLoading(true);
+        fetchAssets();
+    }, []);
 
     return (
-        <div style={{ padding: '2rem', height: '100%', overflowY: 'auto', background: 'var(--tool-bg-sidebar)' }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{ marginBottom: '3rem', borderBottom: '1px solid var(--tool-border)', paddingBottom: '1rem' }}>
-                    <h1 style={{ color: 'var(--tool-text-header)', margin: 0 }}>Asset Management</h1>
-                    <p style={{ color: 'var(--tool-text-dim)', marginTop: '0.5rem' }}>
-                        Tools for refactoring, cleaning, and auditing your world's data.
-                    </p>
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Header */}
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)' }}>
+                <h2 style={{ margin: 0 }}>Asset Management</h2>
+                <p style={{ margin: '5px 0 0 0', color: 'var(--tool-text-dim)', fontSize: '0.9rem' }}>
+                    Manage uploads, organize folders, and clean up unused files.
+                </p>
+            </div>
+            
+            {/* Main Content: Split View */}
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
                 
-                <div style={{ background: 'var(--tool-bg-header)', padding: '2rem', borderRadius: '8px', border: '1px solid var(--tool-border)', marginBottom: '3rem' }}>
-                    <RefactorTool storyId={storyId} />
+                {/* Left: Asset Explorer (70% width) */}
+                <div style={{ flex: 7, borderRight: '1px solid var(--tool-border)' }}>
+                    <AssetExplorer 
+                        assets={assets}
+                        onRefresh={fetchAssets}
+                        storyId={storyId}
+                        mode="manager"
+                        className="h-full border-0 rounded-none"
+                        style={{ border: 'none' }}
+                    />
+                </div>
+
+                {/* Right: Tools & Refactor (30% width) */}
+                <div style={{ flex: 3, padding: '1rem', overflowY: 'auto', background: 'var(--tool-bg-sidebar)' }}>
+                    <div style={{ marginBottom: '2rem' }}>
+                        <h4 style={{marginTop:0, color:'var(--tool-text-header)'}}>Storage</h4>
+                        {/* Placeholder for Storage Meter - can use data from fetchAssets if API returns it */}
+                        <div style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>
+                            {assets.length} assets
+                        </div>
+                    </div>
+
+                    <div style={{ background: 'var(--tool-bg-header)', padding: '1rem', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
+                         <RefactorTool storyId={storyId} />
+                    </div>
                 </div>
             </div>
         </div>

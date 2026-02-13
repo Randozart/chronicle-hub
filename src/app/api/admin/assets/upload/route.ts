@@ -18,9 +18,16 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const storyId = formData.get('storyId') as string;
+
+        let targetFolder = formData.get('folder') as string || 'misc';
+        // Basic sanitization to prevent directory traversal attacks or messy paths
+        targetFolder = targetFolder.replace(/\.\./g, '').replace(/^\/+|\/+$/g, '').trim();
+        if (!targetFolder) targetFolder = 'misc';
+
         const category = formData.get('category') as string || 'uncategorized';
         const altText = formData.get('alt') as string || '';
         const qualityRaw = formData.get('quality');
+
         console.log(`[API: POST /admin/assets/upload] User ${userId} uploading file '${file.name}' to story '${storyId}' in category '${category}'.`);
         if (!file || !storyId) {
             return NextResponse.json({ error: 'Missing file or storyId' }, { status: 400 });
@@ -50,15 +57,17 @@ export async function POST(request: NextRequest) {
         }
         const qualityOverride = qualityRaw ? parseInt(qualityRaw as string) : undefined;
         
-        const { url, size } = await uploadAsset(file, 'images', { 
+        const { url, size } = await uploadAsset(file, targetFolder, { 
             optimize: true, 
             preset,
             qualityOverride
         });
+
         const assetEntry = {
             id: uuidId(file.name),
             url,
             category,
+            folder: targetFolder, 
             uploadedAt: new Date(),
             size
         };
