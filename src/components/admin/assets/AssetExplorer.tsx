@@ -17,9 +17,11 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
     const [currentPath, setCurrentPath] = useState<string>(''); // "" is root
     const [search, setSearch] = useState("");
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isMovingInfo, setIsMovingInfo] = useState<{ count: number } | null>(null); 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // --- Build Virtual Folder Tree ---
+    // Build Virtual Folder Tree
     const { tree, currentFolderAssets } = useMemo(() => {
         const root: any = { _subfolders: {}, _files: [] };
         let filteredFiles: GlobalAsset[] = [];
@@ -53,7 +55,7 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         return { tree: root, currentFolderAssets: filteredFiles };
     }, [assets, search, currentPath]);
 
-    // --- 2. Navigation Helper ---
+    // Navigation Helper
     const navigateTo = (path: string) => {
         setCurrentPath(path);
         setSearch(""); // Clear search when changing folders
@@ -66,7 +68,7 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         setCurrentPath(parts.join('/'));
     };
 
-    // --- Upload Logic ---
+    // Upload Logic
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
         const file = e.target.files[0];
@@ -111,7 +113,7 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         e.target.value = '';
     };
 
-    // --- Sub-Component: Folder Tree Render ---
+    // Sub-Component: Folder Tree Render
     const renderFolderTree = (node: any, pathPrefix: string = "") => {
         const folders = Object.keys(node._subfolders).sort();
         return (
@@ -120,7 +122,19 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                     const fullPath = pathPrefix ? `${pathPrefix}/${folder}` : folder;
                     const isActive = currentPath === fullPath;
                     return (
-                        <li key={fullPath}>
+                        <li key={fullPath}
+                            onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+                            onDragLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                const data = e.dataTransfer.getData('asset-ids');
+                                if (data) {
+                                    handleMoveAssets(fullPath, JSON.parse(data));
+                                }
+                            }}
+                        >
                             <button 
                                 onClick={() => navigateTo(fullPath)}
                                 style={{
@@ -135,7 +149,8 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                                     fontSize: '0.85rem',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px'
+                                    gap: '6px',
+                                    // pointerEvents: 'none'
                                 }}
                             >
                                 <span>📁</span> {folder}
@@ -161,6 +176,61 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         return Object.keys(pointer._subfolders).sort();
     };
     
+    const toggleSelection = (id: string, multi: boolean) => {
+        const next = new Set(multi ? selectedIds : []);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedIds(next);
+        if (onSelect && !multi) {
+             // If in picker mode, immediate select
+             const asset = assets.find(a => a.id === id);
+             if (asset) onSelect(asset);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`Delete ${selectedIds.size} assets? This cannot be undone.`)) return;
+        await fetch('/api/admin/assets/manage', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete', assetIds: Array.from(selectedIds) })
+        });
+        setSelectedIds(new Set());
+        onRefresh();
+    };
+
+    const handleMoveAssets = async (targetFolder: string, idsToMove: string[]) => {
+        // Fallback to selectedIds if specific IDs aren't passed
+        const assetsToProcess = idsToMove || Array.from(selectedIds);
+        
+        if (assetsToProcess.length === 0) return;
+        
+        await fetch('/api/admin/assets/manage', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                action: 'move', 
+                assetIds: assetsToProcess, 
+                targetFolder: targetFolder 
+            })
+        });
+        
+        // Clear selection
+        setSelectedIds(new Set());
+        onRefresh();
+    };
+
+    const handleRename = async (assetId: string) => {
+        const newId = prompt("Rename asset ID:", assetId);
+        if (!newId || newId === assetId) return;
+        
+        const res = await fetch('/api/admin/assets/manage', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'rename', assetId, newId: newId.toLowerCase().replace(/[^a-z0-9_]/g, '_') })
+        });
+        
+        if (res.ok) onRefresh();
+        else alert("Rename failed. ID might exist.");
+    };
+
     const visibleSubfolders = getCurrentSubfolders();
 
     return (
@@ -181,7 +251,7 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                             borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '5px'
                         }}
                     >
-                        🏠 Root
+                        Root
                     </button>
                     {renderFolderTree(tree)}
                 </div>
@@ -222,12 +292,23 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                             accept="image/*"
                         />
                     </div>
+                    
                 </div>
 
                 {/* Progress Bar */}
                 {uploadProgress !== null && (
                     <div style={{ height: '4px', width: '100%', background: '#333' }}>
                         <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'var(--success-color)', transition: 'width 0.2s' }} />
+                    </div>
+                )}
+                {mode === 'manager' && selectedIds.size > 0 && (
+                    <div style={{ padding: '0.5rem', background: 'var(--tool-accent)', color: '#000', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 'bold' }}>{selectedIds.size} selected</span>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button onClick={() => setSelectedIds(new Set())} style={{ cursor: 'pointer', background: 'none', border: '1px solid #000', borderRadius: '4px', padding: '2px 8px' }}>Clear</button>
+                            <button onClick={handleBulkDelete} style={{ cursor: 'pointer', background: '#fff', border: 'none', borderRadius: '4px', padding: '2px 8px', color: 'var(--danger-color)', fontWeight: 'bold' }}>Delete</button>
+                            <span style={{ fontSize: '0.8rem', alignSelf: 'center' }}>Drag to folder to move</span>
+                        </div>
                     </div>
                 )}
 
@@ -266,21 +347,41 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                         {currentFolderAssets.map(asset => (
                             <div 
                                 key={asset.id}
-                                onClick={() => onSelect && onSelect(asset)}
-                                style={{ 
-                                    aspectRatio: '1/1', border: '1px solid var(--tool-border)', borderRadius: '4px', 
-                                    background: '#000', cursor: onSelect ? 'pointer' : 'default', overflow: 'hidden',
-                                    position: 'relative'
+                                onClick={(e) => mode === 'manager' ? toggleSelection(asset.id, e.ctrlKey || e.metaKey) : onSelect?.(asset)}
+                                draggable={mode === 'manager'}
+                                onDragStart={(e) => {
+                                    const idsToDrag = selectedIds.has(asset.id) ? Array.from(selectedIds) : [asset.id];
+                                    e.dataTransfer.setData('asset-ids', JSON.stringify(idsToDrag));
+                                    e.dataTransfer.effectAllowed = 'move';
                                 }}
-                                className={onSelect ? "hover:border-blue-500" : ""}
+                                style={{ 
+                                    aspectRatio: '1/1', 
+                                    border: selectedIds.has(asset.id) ? '2px solid var(--tool-accent)' : '1px solid var(--tool-border)', 
+                                    borderRadius: '4px', 
+                                    background: '#000', 
+                                    cursor: 'pointer', 
+                                    overflow: 'hidden',
+                                    position: 'relative',
+                                    opacity: selectedIds.has(asset.id) ? 0.8 : 1
+                                }}
                             >
                                 <img src={asset.url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={asset.id} />
+                                
                                 <div style={{ 
                                     position: 'absolute', bottom: 0, left: 0, right: 0, 
                                     background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: '0.7rem', 
-                                    padding: '2px 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' 
+                                    padding: '2px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                                 }}>
-                                    {asset.id}
+                                    <span style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '80%'}}>{asset.id}</span>
+                                    {mode === 'manager' && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleRename(asset.id); }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '0.8rem', padding: 0 }}
+                                            title="Rename"
+                                        >
+                                            ✎
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
