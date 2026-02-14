@@ -183,18 +183,27 @@ export async function POST(request: NextRequest) {
             finalRedirectId = undefined; 
         }
         else if (!('deck' in storyletDef)) {
-            finalRedirectId = character.currentStoryletId; 
+            // Determine if this is a "Root" storylet which is attached to the location
+            // or a "Transient" storylet (a redirect/result event).
+            const isLocationRoot = 'location' in storyletDef && storyletDef.location === character.currentLocationId;
             
-            if (isAutofire) {
-                 const stillEligible = newEligibleAutofires.some(e => e.id === storyletDef.id);
-                 if (!stillEligible) {
-                     finalRedirectId = undefined;
-                 }
+            // We only stick to the current storylet if it's a Root location 
+            // or it's an Autofire event that keeps triggering.
+            if (isLocationRoot || isAutofire) {
+                finalRedirectId = character.currentStoryletId; 
+                
+                if (isAutofire) {
+                     const stillEligible = newEligibleAutofires.some(e => e.id === storyletDef.id);
+                     if (!stillEligible) {
+                         // Autofire condition no longer met, release the player
+                         finalRedirectId = undefined;
+                     }
+                }
+            } else {
+                // If it's a Transient event and the option didn't specify a new destination,
+                // we assume the interaction is over and return to the Hub and clear the redirect ID.
+                finalRedirectId = undefined;
             }
-        }
-        
-        if (newLocationId && !engineResult.redirectId && !newAutofire) {
-             finalRedirectId = undefined;
         }
         
         character.currentStoryletId = finalRedirectId || "";
