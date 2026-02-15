@@ -97,7 +97,7 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                             onChange={v => handleChange('visible_if', v)} 
                             storyId={storyId} 
                             mode="condition" 
-                            placeholder="$gold > 0 (Leave blank for always visible)" 
+                            placeholder="Leave blank for always visible" 
                             qualityDefs={qualityDefs} 
                         />
                     </div>
@@ -108,10 +108,31 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                             onChange={v => handleChange('unlock_if', v)} 
                             storyId={storyId} 
                             mode="condition" 
-                            placeholder="$gold >= 10 (Leave blank for always selectable)" 
+                            placeholder="Leave blank for always selectable" 
                             qualityDefs={qualityDefs} 
                         />
                     </div>
+                </div>
+
+                {/* Custom Lock Message & Preview */}
+                <div style={{ marginTop: '1rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
+                    <SmartArea 
+                        label="Custom Lock Message" 
+                        subLabel="Override the default requirement text. Supports {ScribeScript}."
+                        value={(data as any).lock_message || ''} 
+                        onChange={v => handleChange('lock_message' as any, v)} 
+                        storyId={storyId} 
+                        minHeight="38px" 
+                        placeholder="e.g. You need {5 - $evidence} more evidence." 
+                        qualityDefs={qualityDefs} 
+                    />
+                    
+                    {/* Only show preview if there is a requirement but NO custom message */}
+                    {data.unlock_if && !(data as any).lock_message && (
+                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--tool-text-dim)', background: 'var(--tool-bg-dark)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--tool-border)' }}>
+                            <strong style={{ color: 'var(--tool-accent)' }}>Default Preview:</strong> {getLockPreview(data.unlock_if, qualityDefs)}
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="special-field-group" style={{ 
@@ -401,4 +422,21 @@ const tabStyle: React.CSSProperties = {
 
 const miniLabel: React.CSSProperties = {
     display: 'block', fontSize: '0.7rem', color: 'var(--tool-text-dim)', marginBottom: '2px'
+};
+
+
+const getLockPreview = (condition: string, defs: QualityDefinition[]) => {
+    if (!condition) return "";
+    const opMap: Record<string, string> = { '>': 'more than', '>=': 'at least', '<': 'less than', '<=': 'at most', '==': 'exactly', '!=': 'not' };
+    
+    // Naive replacement for preview purposes. Doesn't have live values, but allows for basic logic.
+    let readable = condition.replace(/(\$?[a-zA-Z0-9_]+)\s*(>=|<=|==|!=|>|<)\s*([0-9]+|'[^']+'|"[^"]+")/g, (match, rawQid, op, val) => {
+        const qid = rawQid.startsWith('$') ? rawQid.substring(1) : rawQid;
+        const def = defs.find(d => d.id === qid);
+        const name = def?.name || qid;
+        const cleanVal = val.replace(/^['"]|['"]$/g, '');
+        return `${name} ${opMap[op] || op} ${cleanVal}`;
+    });
+    
+    return `Requires: ${readable.replace(/&&|,/g, ' AND ').replace(/\|\|/g, ' OR ').replace(/\$/g, '')}`;
 };
