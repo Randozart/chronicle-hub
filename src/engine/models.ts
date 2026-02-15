@@ -39,6 +39,7 @@ export interface ResolveOption extends LogicGates {
     fail_redirect?: string;
     fail_move_to?: string;
 
+    lock_message?: string;
     computed_action_cost?: number | string;
 }
 
