@@ -83,6 +83,8 @@ export default function ComposerEditor({
     const [isLoadingPresets, setIsLoadingPresets] = useState(false);
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
     const [imagesLoaded, setImagesLoaded] = useState(0);
+    const [importProgress, setImportProgress] = useState<number | null>(null);
+    const [importStatus, setImportStatus] = useState<string>("");
     const [dragState, setDragState] = useState<{
         mode: 'move' | 'resize' | 'rotate';
         startX: number;
@@ -129,8 +131,12 @@ export default function ComposerEditor({
                     const start = i * chunkSize;
                     const end = Math.min(file.size, start + chunkSize);
                     const chunk = file.slice(start, end);
+                    
+                    // Update Progress
+                    const percent = Math.round((i / totalChunks) * 100);
+                    setImportProgress(percent);
+                    setImportStatus(`Uploading ${percent}%`);
 
-                    // Pass chunkIndex so server can handle file initialization
                     const res = await fetch(`/api/admin/compositions/import-psd?step=upload&uploadId=${uploadId}&chunkIndex=${i}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/octet-stream' },
@@ -138,6 +144,9 @@ export default function ComposerEditor({
                     });
                     if (!res.ok) throw new Error(`Chunk ${i} failed`);
                 }
+                
+                setImportProgress(100);
+                setImportStatus("Processing layers...");
 
                 // Proceed to finish
                 const res = await fetch(`/api/admin/compositions/import-psd?step=finish&uploadId=${uploadId}&storyId=${storyId}&compositionId=${data.id}`, {
@@ -717,9 +726,25 @@ export default function ComposerEditor({
             <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
 
                 <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
-                    <h3 style={{margin:0}}>{data.name}</h3>
+                    {/* Editable Name */}
+                    <input 
+                        value={data.name} 
+                        onChange={e => handleChange('name', e.target.value)}
+                        className="form-input"
+                        style={{ fontWeight:'bold', fontSize:'1rem', background:'transparent', border:'none', borderBottom:'1px dashed #555', width:'200px' }}
+                    />
                     <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
                 </div>
+
+                {/* Import Progress Overlay */}
+                {importProgress !== null && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '300px', background: '#333', borderRadius: '4px', overflow: 'hidden', height: '10px', marginBottom: '10px' }}>
+                            <div style={{ width: `${importProgress}%`, background: 'var(--success-color)', height: '100%', transition: 'width 0.2s' }}/>
+                        </div>
+                        <span style={{ color: '#fff' }}>{importStatus}</span>
+                    </div>
+                )}
                 {canImportPsd && (
                     <div style={{ display: 'flex', alignItems: 'center', marginRight: '20px' }}>
                         <label 
