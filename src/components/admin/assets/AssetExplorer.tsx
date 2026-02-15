@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { GlobalAsset } from '@/engine/models';
+import AssetEditModal from './AssetEditModal';
 
 interface Props {
     assets: GlobalAsset[];
@@ -18,7 +19,11 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
     const [search, setSearch] = useState("");
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [isMovingInfo, setIsMovingInfo] = useState<{ count: number } | null>(null); 
+    
+    // Modal State
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingAsset, setEditingAsset] = useState<GlobalAsset | undefined>(undefined);
+    const [pendingUpload, setPendingUpload] = useState<File | undefined>(undefined);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Build Virtual Folder Tree
@@ -45,8 +50,6 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
             pointer._files.push(asset);
 
             // Check if this file belongs in the Current View
-            // (If we are at root, we might want to show everything or just root files? 
-            // Standard explorer behavior: show files in this exact folder)
             if (folderPath === (currentPath || 'misc')) {
                 filteredFiles.push(asset);
             }
@@ -68,114 +71,53 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         setCurrentPath(parts.join('/'));
     };
 
-    // Upload Logic
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
-        const file = e.target.files[0];
-        
-        // Use XMLHttpRequest for progress tracking
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('storyId', storyId);
-        // Upload to current path (defaulting to 'misc' if root)
-        formData.append('folder', currentPath || 'misc'); 
-        formData.append('category', 'uncategorized');
-
-        setUploadProgress(0);
-
-        xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-                const percent = Math.round((event.loaded / event.total) * 100);
-                setUploadProgress(percent);
-            }
-        };
-
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                setUploadProgress(null);
-                onRefresh(); // Reload assets
-            } else {
-                alert("Upload failed");
-                setUploadProgress(null);
-            }
-        };
-
-        xhr.onerror = () => {
-            alert("Network error");
-            setUploadProgress(null);
-        };
-
-        xhr.open('POST', '/api/admin/assets/upload');
-        xhr.send(formData);
-        
-        // Reset input
-        e.target.value = '';
+        setPendingUpload(e.target.files[0]);
+        setEditingAsset(undefined);
+        setEditModalOpen(true);
+        e.target.value = ''; // Reset
     };
 
-    // Sub-Component: Folder Tree Render
-    const renderFolderTree = (node: any, pathPrefix: string = "") => {
-        const folders = Object.keys(node._subfolders).sort();
-        return (
-            <ul style={{ listStyle: 'none', paddingLeft: pathPrefix ? '1rem' : 0, margin: 0 }}>
-                {folders.map(folder => {
-                    const fullPath = pathPrefix ? `${pathPrefix}/${folder}` : folder;
-                    const isActive = currentPath === fullPath;
-                    return (
-                        <li key={fullPath}
-                            onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-                            onDragLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                            onDrop={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                const data = e.dataTransfer.getData('asset-ids');
-                                if (data) {
-                                    handleMoveAssets(fullPath, JSON.parse(data));
-                                }
-                            }}
-                        >
-                            <button 
-                                onClick={() => navigateTo(fullPath)}
-                                style={{
-                                    background: isActive ? 'var(--tool-accent)' : 'transparent',
-                                    color: isActive ? '#000' : 'var(--tool-text-main)',
-                                    border: 'none',
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.85rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    // pointerEvents: 'none'
-                                }}
-                            >
-                                <span>📁</span> {folder}
-                            </button>
-                            {(currentPath.startsWith(fullPath) || !pathPrefix) && 
-                                renderFolderTree(node._subfolders[folder], fullPath)
-                            }
-                        </li>
-                    );
-                })}
-            </ul>
-        );
-    };
-
-    // Get subfolders of current path for the Main View
-    const getCurrentSubfolders = () => {
-        const parts = currentPath ? currentPath.split('/') : [];
-        let pointer = tree;
-        for (const p of parts) {
-            if (pointer._subfolders[p]) pointer = pointer._subfolders[p];
-            else return [];
+    const handleModalSave = async (id: string, folder: string, file?: File) => {
+        // Upload new
+        if (file) {
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('storyId', storyId);
+            formData.append('folder', folder);
+            formData.append('category', 'uncategorized');
+            formData.append('alt', id); // Use ID as alt/name for now
+            
+            setUploadProgress(0);
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    setUploadProgress(Math.round((event.loaded / event.total) * 100));
+                }
+            };
+            xhr.onload = () => {
+                setUploadProgress(null);
+                onRefresh();
+            };
+            xhr.open('POST', '/api/admin/assets/upload');
+            xhr.send(formData);
+        } 
+        // Edit existing
+        else if (editingAsset) {
+            // Handle Folder Move
+            if (folder !== editingAsset.folder) {
+                await fetch('/api/admin/assets/manage', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'move', assetIds: [editingAsset.id], targetFolder: folder })
+                });
+            }
+            // Add rename logic here if needed
+            
+            onRefresh();
         }
-        return Object.keys(pointer._subfolders).sort();
     };
-    
+
     const toggleSelection = (id: string, multi: boolean) => {
         const next = new Set(multi ? selectedIds : []);
         if (next.has(id)) next.delete(id);
@@ -229,6 +171,67 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         
         if (res.ok) onRefresh();
         else alert("Rename failed. ID might exist.");
+    };
+
+    // Sub-Component: Folder Tree Render
+    const renderFolderTree = (node: any, pathPrefix: string = "") => {
+        const folders = Object.keys(node._subfolders).sort();
+        return (
+            <ul style={{ listStyle: 'none', paddingLeft: pathPrefix ? '1rem' : 0, margin: 0 }}>
+                {folders.map(folder => {
+                    const fullPath = pathPrefix ? `${pathPrefix}/${folder}` : folder;
+                    const isActive = currentPath === fullPath;
+                    return (
+                        <li key={fullPath}
+                            onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+                            onDragLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                const data = e.dataTransfer.getData('asset-ids');
+                                if (data) {
+                                    handleMoveAssets(fullPath, JSON.parse(data));
+                                }
+                            }}
+                        >
+                            <button 
+                                onClick={() => navigateTo(fullPath)}
+                                style={{
+                                    background: isActive ? 'var(--tool-accent)' : 'transparent',
+                                    color: isActive ? '#000' : 'var(--tool-text-main)',
+                                    border: 'none',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                }}
+                            >
+                                <span>📁</span> {folder}
+                            </button>
+                            {(currentPath.startsWith(fullPath) || !pathPrefix) && 
+                                renderFolderTree(node._subfolders[folder], fullPath)
+                            }
+                        </li>
+                    );
+                })}
+            </ul>
+        );
+    };
+
+    const getCurrentSubfolders = () => {
+        const parts = currentPath ? currentPath.split('/') : [];
+        let pointer = tree;
+        for (const p of parts) {
+            if (pointer._subfolders[p]) pointer = pointer._subfolders[p];
+            else return [];
+        }
+        return Object.keys(pointer._subfolders).sort();
     };
 
     const visibleSubfolders = getCurrentSubfolders();
@@ -287,12 +290,11 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                         <input 
                             ref={fileInputRef} 
                             type="file" 
-                            onChange={handleUpload} 
+                            onChange={handleFileSelect} 
                             style={{ display: 'none' }} 
                             accept="image/*"
                         />
                     </div>
-                    
                 </div>
 
                 {/* Progress Bar */}
@@ -301,12 +303,22 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                         <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'var(--success-color)', transition: 'width 0.2s' }} />
                     </div>
                 )}
+                
                 {mode === 'manager' && selectedIds.size > 0 && (
                     <div style={{ padding: '0.5rem', background: 'var(--tool-accent)', color: '#000', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontWeight: 'bold' }}>{selectedIds.size} selected</span>
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button onClick={() => setSelectedIds(new Set())} style={{ cursor: 'pointer', background: 'none', border: '1px solid #000', borderRadius: '4px', padding: '2px 8px' }}>Clear</button>
                             <button onClick={handleBulkDelete} style={{ cursor: 'pointer', background: '#fff', border: 'none', borderRadius: '4px', padding: '2px 8px', color: 'var(--danger-color)', fontWeight: 'bold' }}>Delete</button>
+                            <button 
+                                onClick={() => {
+                                    const newFolder = prompt("Enter new folder path (e.g. icons/spells):");
+                                    if (newFolder) handleMoveAssets(newFolder, Array.from(selectedIds));
+                                }}
+                                style={{ cursor: 'pointer', background: 'var(--tool-bg-input)', border: '1px solid #999', borderRadius: '4px', padding: '2px 8px', color: '#fff' }}
+                            >
+                                Move to...
+                            </button>
                             <span style={{ fontSize: '0.8rem', alignSelf: 'center' }}>Drag to folder to move</span>
                         </div>
                     </div>
@@ -374,13 +386,22 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                                 }}>
                                     <span style={{overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '80%'}}>{asset.id}</span>
                                     {mode === 'manager' && (
+                                        <div style={{display:'flex', gap:'4px'}}>
+                                         <button 
+                                            onClick={(e) => { e.stopPropagation(); setEditingAsset(asset); setEditModalOpen(true); }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '1rem', padding: 0 }}
+                                            title="Edit Settings"
+                                        >
+                                            ⚙️
+                                        </button>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleRename(asset.id); }}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '0.8rem', padding: 0 }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '1rem', padding: 0 }}
                                             title="Rename"
                                         >
                                             ✎
                                         </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -388,6 +409,15 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                     </div>
                 </div>
             </div>
+            
+            <AssetEditModal 
+                isOpen={editModalOpen}
+                onClose={() => setEditModalOpen(false)}
+                onSave={handleModalSave}
+                initialAsset={editingAsset}
+                uploadFile={pendingUpload}
+                existingFolders={Object.keys(tree._subfolders || {})}
+            />
         </div>
     );
 }

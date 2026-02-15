@@ -525,7 +525,10 @@ export default function GameHub(props: GameHubProps) {
     const actionQid = props.settings.actionId.replace('$', '');
     const actionState = character.qualities[actionQid];
     const currentActions = (actionState && 'level' in actionState) ? actionState.level : 0;
-    const maxActions = typeof props.settings.maxActions === 'number' ? props.settings.maxActions : 20;
+    
+    // Ensure maxActions are ScribeScript evaluated
+    const rawMaxActions = props.settings.maxActions ?? 20;
+    const maxActions = parseInt(renderEngine.evaluateText(`{${rawMaxActions}}`), 10) || 20;    
     
     const TabBar = () => {
         const showLivingStoriesTab = lsConfig?.position === 'tab' && character?.pendingEvents && character.pendingEvents.length > 0;

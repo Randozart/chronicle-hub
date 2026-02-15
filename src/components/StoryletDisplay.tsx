@@ -362,7 +362,20 @@ export default function StoryletDisplay({
         .filter(option => evaluateCondition(option.visible_if, qualities, qualityDefs, null, 0))
         .map(option => {
             const isLocked = option.unlock_if ? !engine.evaluateCondition(option.unlock_if) : false;
-            const lockReason = isLocked && option.unlock_if ? getLockReason(option.unlock_if) : '';
+            
+            let lockReason = '';
+            
+            if (isLocked) {
+                // Check for custom lock message first
+                if ((option as any).lock_message) {
+                    // Evaluate ScribeScript in the custom message
+                    lockReason = engine.evaluateText((option as any).lock_message);
+                } else if (option.unlock_if) {
+                    // Fallback to auto-generated default
+                    lockReason = getLockReason(option.unlock_if);
+                }
+            }
+
             const { chance, text } = getChallengeDetails(option.challenge, qualities, qualityDefs);
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}%]` : '';
             return { ...option, isLocked, lockReason, skillCheckText, chance };
