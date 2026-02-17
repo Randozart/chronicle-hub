@@ -125,9 +125,99 @@ export default function DocsPage() {
                 </div>
                 
                 <p className="docs-p" style={{ marginTop: '2rem' }}>
-                    This loop allows for <strong>emergent complexity</strong>. You can add a new Storylet to the "Village" bag 
+                    This loop allows for <strong>emergent complexity</strong>. You can add a new Storylet to the "Village" bag
                     months after the game launches, and it will automatically appear for eligible players without breaking existing paths.
                 </p>
+            </section>
+
+            {/* SECTION 4: EXAMPLE GAMES */}
+            <section id="examples">
+                <h2 className="docs-h2">4. See It In Action</h2>
+                <p className="docs-p">
+                    The best way to understand QBN is to examine real games. These open-source examples demonstrate the system at different complexity levels:
+                </p>
+
+                <div className="docs-grid">
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-green)'}}>Mystery at the Manor</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            A simple detective game that demonstrates the fundamentals: qualities, skill checks, and conditional visibility.
+                        </p>
+                        <a
+                            href="/create/mystery_at_the_manor"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                display: 'inline-block',
+                                padding: '0.5rem 1rem',
+                                background: 'var(--docs-accent-green)',
+                                color: 'black',
+                                textDecoration: 'none',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            View Source →
+                        </a>
+                    </div>
+
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-blue)'}}>Cloak of Darkness</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            A classic IF puzzle adapted to QBN by Hanon Ondricek, showing location-based exploration and gating.
+                        </p>
+                        <a
+                            href="/create/cloak_of_darkness"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                display: 'inline-block',
+                                padding: '0.5rem 1rem',
+                                background: 'var(--docs-accent-blue)',
+                                color: 'black',
+                                textDecoration: 'none',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            View Source →
+                        </a>
+                    </div>
+
+                    <div className="docs-card" style={{borderColor: '#c678dd'}}>
+                        <h4 className="docs-h4" style={{color: '#c678dd'}}>Concrete Requiem</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            An advanced procedural mystery showcasing ScribeScript&apos;s full power: bitwise flags, dynamic quality creation, and complex probability systems.
+                        </p>
+                        <a
+                            href="/create/concrete_requiem"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                display: 'inline-block',
+                                padding: '0.5rem 1rem',
+                                background: '#c678dd',
+                                color: 'black',
+                                textDecoration: 'none',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            View Source →
+                        </a>
+                    </div>
+                </div>
+
+                <div className="docs-callout" style={{marginTop: '2rem'}}>
+                    <strong>Ready to Build?</strong>
+                    <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem'}}>
+                        Head to the <a href="/docs/quickstart" className="docs-link">Quick Start</a> guide to build your first game in 30 minutes,
+                        or browse the <a href="/docs/interface" className="docs-link">Interface Guide</a> to explore all the tools at your disposal.
+                    </p>
+                </div>
             </section>
         </div>
     );

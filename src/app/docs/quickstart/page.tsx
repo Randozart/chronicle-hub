@@ -483,6 +483,122 @@ Everything points to one person. Who do you accuse?
                     </p>
                 </div>
             </section>
+
+            {/* EXAMPLE GAMES */}
+            <section id="examples">
+                <h2 className="docs-h2">Example Games to Study</h2>
+                <p className="docs-p">
+                    Learn by examining real games built with Chronicle. These open-source examples showcase different complexity levels and techniques:
+                </p>
+
+                <div className="docs-grid">
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-green)'}}>Mystery at the Manor</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            <strong>Complexity:</strong> Beginner
+                            <br/>
+                            <strong>What it demonstrates:</strong> The tutorial game from this Quick Start guide, fully implemented.
+                        </p>
+                        <a
+                            href="/create/mystery_at_the_manor"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                display: 'inline-block',
+                                marginTop: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                background: 'var(--docs-accent-green)',
+                                color: 'black',
+                                textDecoration: 'none',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            View Source →
+                        </a>
+                    </div>
+
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-blue)'}}>Cloak of Darkness</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            <strong>Complexity:</strong> Simple
+                            <br/>
+                            <strong>Author:</strong> Hanon Ondricek
+                            <br/>
+                            <strong>What it demonstrates:</strong> A classic IF puzzle adapted to QBN, showing how to create atmospheric exploration with location-based gating.
+                        </p>
+                        <a
+                            href="/create/cloak_of_darkness"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                display: 'inline-block',
+                                marginTop: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                background: 'var(--docs-accent-blue)',
+                                color: 'black',
+                                textDecoration: 'none',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            View Source →
+                        </a>
+                    </div>
+
+                    <div className="docs-card" style={{borderColor: '#c678dd'}}>
+                        <h4 className="docs-h4" style={{color: '#c678dd'}}>Concrete Requiem</h4>
+                        <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                            <strong>Complexity:</strong> Advanced
+                            <br/>
+                            <strong>What it demonstrates:</strong> Extremely advanced ScribeScript usage, using the language to program complex game mechanics including:
+                        </p>
+                        <ul className="docs-list" style={{fontSize: '0.85rem', marginTop: '0.5rem'}}>
+                            <li>Procedural suspect generation with RMO (Relation/Motive/Opportunity) flags</li>
+                            <li>Bitwise operations for state management</li>
+                            <li>Advanced probability math for evidence evaluation</li>
+                            <li>Dynamic quality creation and manipulation</li>
+                        </ul>
+                        <a
+                            href="/create/concrete_requiem"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                display: 'inline-block',
+                                marginTop: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                background: '#c678dd',
+                                color: 'black',
+                                textDecoration: 'none',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            View Source →
+                        </a>
+                        <p className="docs-p" style={{fontSize: '0.8rem', marginTop: '1rem', fontStyle: 'italic', opacity: 0.8}}>
+                            Note: This is a highly complex implementation. We recommend studying it only after you're comfortable with the basics.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="docs-callout" style={{marginTop: '2rem', borderColor: '#f1c40f'}}>
+                    <strong style={{color: '#f1c40f'}}>How to Study Example Games:</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
+                        When viewing source for these games, you'll have <strong>read-only access</strong> to all editors. You can:
+                        <br/>• Examine storylet structures and logic
+                        <br/>• Review quality definitions and their usage
+                        <br/>• See how ScribeScript is used in context
+                        <br/>• Use the Graph tool to visualize narrative flow
+                        <br/>• Play the game to see how mechanics work in practice
+                        <br/><br/>
+                        To experiment with modifications, create your own project and recreate the patterns you see!
+                    </p>
+                </div>
+            </section>
         </div>
     );
 }
