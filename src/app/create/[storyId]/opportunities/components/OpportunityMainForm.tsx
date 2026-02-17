@@ -9,6 +9,7 @@ import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
+import GameImage from '@/components/GameImage';
 
 interface Props {
     initialData: Opportunity;
@@ -139,15 +140,44 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                 </div>
                 <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
-                        <label className="form-label">Deck ID</label>
-                        <input value={form.deck || ''} onChange={e => handleChange('deck', e.target.value)} className="form-input" placeholder="Basic_Deck" />
+                        <SmartArea
+                            label="Deck ID"
+                            subLabel="Which deck this card belongs to."
+                            value={form.deck || ''}
+                            onChange={v => handleChange('deck', v)}
+                            storyId={storyId}
+                            minHeight="38px"
+                            placeholder="basic_deck or { $.vip : premium_deck | basic_deck }"
+                            qualityDefs={qualityDefs}
+                            entityType="deck"
+                        />
                         {isDeckMissing && (
                             <MissingEntityAlert id={form.deck} type="deck" storyId={storyId} />
                         )}
                     </div>
-                    
+
                     <div className="form-group" style={{ flex: 1 }}>
-                        <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" placeholder="image_id or { $logic }" qualityDefs={qualityDefs} />
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <div style={{ flex: 1 }}>
+                                <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" placeholder="image_id or { $.level > 5 : special_img | normal_img }" qualityDefs={qualityDefs} />
+                            </div>
+                            {form.image_code && !form.image_code.includes('{') && (
+                                <div style={{width: 38, height: 38, border: '1px solid var(--tool-border)', borderRadius: '4px', overflow: 'hidden'}}>
+                                    <GameImage code={form.image_code} imageLibrary={{}} type="icon" className="option-image"/>
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>Shape:</label>
+                            <select value={form.image_style || 'default'} onChange={e => handleChange('image_style', e.target.value)} className="form-select" style={{ fontSize: '0.75rem', padding: '2px', width: 'auto' }}>
+                                <option value="default">Global Default</option>
+                                <option value="square">Square</option>
+                                <option value="landscape">Landscape</option>
+                                <option value="portrait">Portrait</option>
+                                <option value="circle">Circle</option>
+                                <option value="wide">Wide</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -198,11 +228,50 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                         qualityDefs={qualityDefs}
                     />
                 </div>
+                <div className="special-field-group" style={{ borderColor: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-border)', marginTop: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="special-label" style={{ color: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-text-dim)', margin: 0 }}>Autofire on Draw</label>
+                        <label className="toggle-label">
+                            <input
+                                type="checkbox"
+                                checked={!!form.autofire_if}
+                                onChange={e => handleChange('autofire_if', e.target.checked ? 'true' : '')}
+                            />
+                            Enable
+                        </label>
+                    </div>
+                    {form.autofire_if !== undefined && (
+                        <SmartArea
+                            label="Condition"
+                            subLabel="Card auto-plays immediately when drawn into hand if condition is true."
+                            value={form.autofire_if}
+                            onChange={v => handleChange('autofire_if', v)}
+                            storyId={storyId}
+                            mode="condition"
+                            qualityDefs={qualityDefs}
+                            placeholder="$emergency > 0"
+                        />
+                    )}
+                </div>
+
                 <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Card Behavior</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                         <BehaviorCard checked={form.can_discard !== false} onChange={() => handleChange('can_discard', !form.can_discard)} label="Discardable" desc="Player can remove this card." />
                         <BehaviorCard checked={!!form.keep_if_invalid} onChange={() => handleChange('keep_if_invalid', !form.keep_if_invalid)} label="Sticky" desc="Keep in hand even if invalid." />
+                    </div>
+                    <div className="form-group">
+                        <SmartArea
+                            label="Dynamic Behaviors (Advanced)"
+                            subLabel="Add conditional behavior tags. Comma-separated for multiple tags."
+                            value={(form as any).dynamic_behavior || ''}
+                            onChange={v => handleChange('dynamic_behavior' as any, v)}
+                            storyId={storyId}
+                            minHeight="38px"
+                            mode="text"
+                            placeholder="{ $.urgent : instant_play }, clear_hand"
+                            qualityDefs={qualityDefs}
+                        />
                     </div>
                 </div>
 

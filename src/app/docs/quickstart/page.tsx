@@ -179,7 +179,7 @@ export default function QuickStartPage() {
                         <ul style={{marginTop: '0.5rem'}}>
                             <li><strong>ID:</strong> <code>intro</code></li>
                             <li><strong>Title:</strong> "A Call in the Night"</li>
-                            <li><strong>Location:</strong> Select "The Crime Scene" from the dropdown</li>
+                            <li><strong>Location ID:</strong> Type <code>crime_scene</code> (or click the "🔗 Locations" button to browse and select from available locations)</li>
                         </ul>
                     </li>
                     <li>In the <strong>Teaser</strong> field (the short description shown on the button):
