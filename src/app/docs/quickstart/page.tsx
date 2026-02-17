@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image'; 
 
 export default function QuickStartPage() {
     return (
@@ -27,11 +28,19 @@ export default function QuickStartPage() {
                     From the main dashboard, click <strong>"New Project"</strong> and give it a name (e.g., "Mystery at the Manor").
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show the "New Project" button on the dashboard and the project creation dialog with a name filled in.
-                    </p>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <Image 
+                        src="/images/docs/create_world.jpeg" 
+                        alt="The New Project dialog box"
+                        width={800} 
+                        height={500}
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            borderRadius: '8px',
+                            border: '1px solid var(--docs-border-color, #e0e0e0)'
+                        }}
+                    />
                 </div>
 
                 <p className="docs-p" style={{marginTop: '1.5rem'}}>
@@ -68,11 +77,19 @@ export default function QuickStartPage() {
                     <li>Click <strong>"Save"</strong></li>
                 </ol>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show the Quality Editor with these fields filled in for the Investigation quality. Highlight the Type dropdown showing "Pyramidal (P)" selected.
-                    </p>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <Image 
+                        src="/images/docs/add_skill.jpeg" 
+                        alt="The Investigation Skill Quality"
+                        width={800} 
+                        height={500}
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            borderRadius: '8px',
+                            border: '1px solid var(--docs-border-color, #e0e0e0)'
+                        }}
+                    />
                 </div>
 
                 <h3 className="docs-h3" style={{marginTop: '2rem'}}>Create the Clues Counter</h3>
@@ -131,11 +148,19 @@ export default function QuickStartPage() {
                     <li>Click <strong>"Save"</strong></li>
                 </ol>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show the Location Editor with the crime scene details filled in. Point out where to find the "Locations" tab in the sidebar.
-                    </p>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <Image 
+                        src="/images/docs/create_location.jpeg" 
+                        alt="The Intro Location"
+                        width={800} 
+                        height={500}
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            borderRadius: '8px',
+                            border: '1px solid var(--docs-border-color, #e0e0e0)'
+                        }}
+                    />
                 </div>
             </section>
 
@@ -200,11 +225,19 @@ You arrive at the scene. The study is eerily quiet. Where do you begin?
                     </p>
                 </div>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1.5rem'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show the Storylet Editor with the "intro" storylet open. Highlight the Options section with one option expanded, showing all the fields filled in.
-                    </p>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <Image 
+                        src="/images/docs/add_intro.jpeg" 
+                        alt="The New Project dialog box"
+                        width={800} 
+                        height={500}
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            borderRadius: '8px',
+                            border: '1px solid var(--docs-border-color, #e0e0e0)'
+                        }}
+                    />
                 </div>
 
                 <p className="docs-p" style={{marginTop: '2rem'}}>
@@ -281,11 +314,19 @@ Will you press him for the truth?
                     </p>
                 </div>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1.5rem'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show an option with the "Difficulty" checkbox enabled, revealing the Challenge field and separate Success/Failure outcome sections. Highlight where the challenge expression is entered.
-                    </p>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <Image 
+                        src="/images/docs/add_skillcheck.jpg" 
+                        alt="The New Project dialog box"
+                        width={800} 
+                        height={500}
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            borderRadius: '8px',
+                            border: '1px solid var(--docs-border-color, #e0e0e0)'
+                        }}
+                    />
                 </div>
             </section>
 
@@ -348,11 +389,19 @@ Everything points to one person. Who do you accuse?
                     </p>
                 </div>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1.5rem'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show a storylet editor with the "Visible If" field highlighted and filled in with <code>$clues &gt;= 5</code>. Also show where this field is located in the editor interface.
-                    </p>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <Image 
+                        src="/images/docs/add_conclusion.jpg" 
+                        alt="The New Project dialog box"
+                        width={800} 
+                        height={500}
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            borderRadius: '8px',
+                            border: '1px solid var(--docs-border-color, #e0e0e0)'
+                        }}
+                    />
                 </div>
             </section>
 
@@ -386,11 +435,19 @@ Everything points to one person. Who do you accuse?
                     This ensures all new players start with Investigation level 1, 0 clues, and spawn at the crime scene.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show the Admin panel with the Character Initialization section expanded, showing multiple initialization entries and the Starting Location dropdown.
-                    </p>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <Image 
+                        src="/images/docs/setup_character.jpg" 
+                        alt="The Character Creation Form"
+                        width={800} 
+                        height={500}
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            borderRadius: '8px',
+                            border: '1px solid var(--docs-border-color, #e0e0e0)'
+                        }}
+                    />
                 </div>
             </section>
 
@@ -427,15 +484,8 @@ Everything points to one person. Who do you accuse?
                     </ul>
                 </div>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1.5rem'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
-                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
-                        Show the game in play mode with:
-                        1. The location view showing multiple storylet buttons
-                        2. An open storylet with options visible
-                        3. The character sheet sidebar showing the Investigation and Clues qualities
-                    </p>
-                </div>
+                <ScreenshotGrid />
+
             </section>
 
             {/* NEXT STEPS */}
@@ -602,3 +652,43 @@ Everything points to one person. Who do you accuse?
         </div>
     );
 }
+
+const ScreenshotGrid = () => {
+    const screenshots = [
+        { src: "/images/docs/review_options.jpeg", alt: "In-Game Option" },
+        { src: "/images/docs/name_skillcheck.jpeg", alt: "In-Game SkillCheck" },
+        { src: "/images/docs/game_skills.jpg", alt: "In-Game Qualities" },
+        { src: "/images/docs/resolve.jpg", alt: "In-Game Option Resolution" },
+    ];
+
+    return (
+        <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', 
+            gap: '1.5rem', 
+            marginTop: '2rem' 
+        }}>
+            {screenshots.map((img, idx) => (
+                <div key={idx} style={{ 
+                    aspectRatio: '16/10', 
+                    background: '#1c1c21', 
+                    borderRadius: '8px', 
+                    border: '1px solid #333',
+                    overflow: 'hidden',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                }}>
+                    {/* Fallback to a styled div if image is missing, otherwise show img */}
+                    <img 
+                        src={img.src} 
+                        alt={img.alt} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as any).parentElement.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#444;font-style:italic;">Screenshot ${idx + 1}</div>`;
+                        }}
+                    />
+                </div>
+            ))}
+        </div>
+    );
+};
