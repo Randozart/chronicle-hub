@@ -33,7 +33,7 @@ interface Props {
     initialTab?: 'variable' | 'conditional' | 'challenge' | 'random' | 'effect' | 'timer';
     contextQualityId?: string;
     qualityDefs?: QualityDefinition[];
-    entityType?: 'location' | 'deck' | 'storylet' | 'quality';
+    entityType?: 'location' | 'deck' | 'storylet' | 'quality' | 'market';
 }
 
 export default function SmartArea({
@@ -61,6 +61,7 @@ export default function SmartArea({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Fetch entities initially and when picker is opened (to refresh)
     useEffect(() => {
         if (!entityType || !storyId) return;
 
@@ -69,6 +70,7 @@ export default function SmartArea({
         else if (entityType === 'deck') endpoint = `/api/admin/decks?storyId=${storyId}`;
         else if (entityType === 'storylet') endpoint = `/api/admin/storylets?storyId=${storyId}`;
         else if (entityType === 'quality') endpoint = `/api/admin/qualities?storyId=${storyId}`;
+        else if (entityType === 'market') endpoint = `/api/admin/config?storyId=${storyId}&category=markets`;
 
         if (!endpoint) return;
 
@@ -80,6 +82,11 @@ export default function SmartArea({
                     items = Object.values(data.locations || {}).map((loc: any) => ({
                         id: loc.id,
                         name: loc.name || loc.id
+                    }));
+                } else if (entityType === 'market') {
+                    items = Object.values(data.markets || {}).map((market: any) => ({
+                        id: market.id,
+                        name: market.name || market.id
                     }));
                 } else if (Array.isArray(data)) {
                     items = data.map((item: any) => ({
@@ -95,7 +102,7 @@ export default function SmartArea({
                 setEntities(items);
             })
             .catch(err => console.error(`Failed to load ${entityType}s`, err));
-    }, [entityType, storyId]);
+    }, [entityType, storyId, showEntityPicker]);
     useEffect(() => {
         const timer = setTimeout(() => {
             if (!value) {
@@ -211,7 +218,7 @@ export default function SmartArea({
                         ▶
                     </button>
 
-                    {entityType && entities.length > 0 && (
+                    {entityType && (
                         <button
                             onClick={() => setShowEntityPicker(!showEntityPicker)}
                             style={{
