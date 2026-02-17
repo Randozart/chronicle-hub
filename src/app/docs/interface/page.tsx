@@ -19,7 +19,7 @@ export default function InterfacePage() {
                 </p>
             </div>
 
-            {/* THE DASHBOARD */}
+            {/* Dashboard - Main project selection screen */}
             <section id="dashboard">
                 <h2 className="docs-h2">The Dashboard</h2>
                 <p className="docs-p">
@@ -45,7 +45,7 @@ export default function InterfacePage() {
                 </ul>
             </section>
 
-            {/* THE PROJECT WORKSPACE */}
+            {/* Project workspace - Main editing environment with sidebar navigation */}
             <section id="workspace">
                 <h2 className="docs-h2">The Project Workspace</h2>
                 <p className="docs-p">
@@ -131,7 +131,7 @@ export default function InterfacePage() {
                 </ul>
             </section>
 
-            {/* QUALITY EDITOR */}
+            {/* Quality editor - Define variables, stats, items, and resources */}
             <section id="quality-editor">
                 <h2 className="docs-h2">The Quality Editor</h2>
                 <p className="docs-p">
@@ -205,7 +205,7 @@ export default function InterfacePage() {
                 </div>
             </section>
 
-            {/* STORYLET EDITOR */}
+            {/* Storylet editor - Write narrative content, dialogue, and branching choices */}
             <section id="storylet-editor">
                 <h2 className="docs-h2">The Storylet Editor</h2>
                 <p className="docs-p">
@@ -341,7 +341,7 @@ export default function InterfacePage() {
                 </div>
             </section>
 
-            {/* LOCATION EDITOR */}
+            {/* Location editor - Create and configure physical/conceptual spaces */}
             <section id="location-editor">
                 <h2 className="docs-h2">The Location Editor</h2>
                 <p className="docs-p">
@@ -377,7 +377,7 @@ export default function InterfacePage() {
                 </ul>
             </section>
 
-            {/* ADMIN PANEL */}
+            {/* Admin panel - Global settings, character creation, and game rules */}
             <section id="admin">
                 <h2 className="docs-h2">The Admin Panel</h2>
                 <p className="docs-p">
@@ -448,7 +448,7 @@ export default function InterfacePage() {
                 </div>
             </section>
 
-            {/* GRAPH VIEWER */}
+            {/* Graph viewer - Visual debugging tool for storylet connections and quality flow */}
             <section id="graph">
                 <h2 className="docs-h2">The Narrative Graph</h2>
                 <p className="docs-p">
@@ -482,7 +482,7 @@ export default function InterfacePage() {
                 </ul>
             </section>
 
-            {/* ASSET MANAGER */}
+            {/* Asset manager - Upload and organize images for your game */}
             <section id="assets">
                 <h2 className="docs-h2">The Asset Manager</h2>
                 <p className="docs-p">
@@ -509,7 +509,7 @@ export default function InterfacePage() {
                 </ol>
             </section>
 
-            {/* PLAY MODE */}
+            {/* Play mode - Test your game as players experience it */}
             <section id="playmode">
                 <h2 className="docs-h2">Play Mode (Testing Your Game)</h2>
                 <p className="docs-p">
@@ -545,7 +545,7 @@ export default function InterfacePage() {
                 </div>
             </section>
 
-            {/* KEYBOARD SHORTCUTS */}
+            {/* Keyboard shortcuts and workflow tips for efficient editing */}
             <section id="shortcuts">
                 <h2 className="docs-h2">Keyboard Shortcuts & Tips</h2>
 

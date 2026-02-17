@@ -21,7 +21,7 @@ export default function ChallengesPage() {
                 </p>
             </header>
 
-            {/* CORE CONCEPTS */}
+            {/* Core concepts - How the probability system resolves success/failure */}
             <section id="overview">
                 <h2 className="docs-h2">1. The Probability System</h2>
                 <p className="docs-p">
@@ -67,7 +67,7 @@ export default function ChallengesPage() {
                 </div>
             </section>
 
-            {/* CHALLENGE EXPRESSIONS */}
+            {/* Challenge expressions - How ScribeScript resolves to success percentages */}
             <section id="expressions">
                 <h2 className="docs-h2">2. Challenge Expressions</h2>
                 <p className="docs-p">
@@ -95,7 +95,7 @@ export default function ChallengesPage() {
                 </div>
             </section>
 
-            {/* PROBABILITY SHORTHANDS */}
+            {/* Probability shorthands - Using % syntax and the single-roll rule */}
             <section id="shorthands">
                 <h2 className="docs-h2">3. Probability Shorthands and The Single Roll</h2>
                 <p className="docs-p">
@@ -228,7 +228,7 @@ You cast your line... {
                 </div>
             </section>
 
-            {/* DIFFICULTY CURVES */}
+            {/* Difficulty curves - Modifiers for shaping probability with margin, pivot, min/max */}
             <section id="curves">
                 <h2 className="docs-h2">4. Dynamic Difficulty Curves and Modifiers</h2>
                 <p className="docs-p">
@@ -318,7 +318,7 @@ You cast your line... {
                 </div>
             </section>
 
-            {/* INTERACTIVE PLAYGROUND */}
+            {/* Interactive playground - Live visualization tool for testing difficulty curves */}
             <section id="playground">
                 <h2 className="docs-h2">5. Interactive Probability Playground</h2>
                 <p className="docs-p">
@@ -386,7 +386,7 @@ You cast your line... {
                 </div>
             </section>
 
-            {/* PRACTICAL EXAMPLES */}
+            {/* Practical examples - Common challenge patterns and their use cases */}
             <section id="examples">
                 <h2 className="docs-h2">6. Practical Examples</h2>
                 <p className="docs-p">

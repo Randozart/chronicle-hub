@@ -26,7 +26,7 @@ export default function PatternsDocs() {
 
             <section id="patterns">
                 
-                {/* PATTERN 1: THE CAROUSEL */}
+                {/* Pattern 1 - The Carousel: Repeatable resource-gathering loops */}
                 <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: 'var(--docs-accent-green)'}}>1. The Carousel (The Grind)</h3>
                     <p className="docs-p">
@@ -49,7 +49,7 @@ export default function PatternsDocs() {
                     </ol>
                 </div>
 
-                {/* PATTERN 2: THE MENACE */}
+                {/* Pattern 2 - The Menace: Negative stat that triggers punishment at threshold */}
                 <div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: 'var(--danger-color)'}}>2. The Menace (The Trap)</h3>
                     <p className="docs-p">
@@ -73,7 +73,7 @@ export default function PatternsDocs() {
                 </div>
 
 
-                {/* PATTERN 3: VISUAL NOVEL */}
+                {/* Pattern 3 - Visual Novel: Linear story progression with instant redirects */}
 <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: 'var(--docs-accent-blue)'}}>3. The Simple Chain (Visual Novel)</h3>
     <p className="docs-p">
@@ -102,7 +102,7 @@ export default function PatternsDocs() {
     </ol>
 </div>
 
-                {/* PATTERN 4: THE HUB */}
+                {/* Pattern 4 - The Hub: Exploration map that grows as player discovers routes */}
                 <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>4. The Hub (Exploration)</h3>
                     <p className="docs-p">
@@ -123,8 +123,7 @@ export default function PatternsDocs() {
                     </ol>
                 </div>
 
-                {/* PATTERN 5: TIME */}
-                {/* PATTERN 5: TIME */}
+                {/* Pattern 5 - The Appointment: Real-time delays using Living Stories timers */}
 <div className="docs-card" style={{borderColor: '#c678dd', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: '#c678dd'}}>5. The Appointment (Time Delay)</h3>
     <p className="docs-p">
@@ -147,8 +146,7 @@ export default function PatternsDocs() {
     </ol>
 </div>
 
-                {/* PATTERN 6: THE EXPEDITION */}
-                {/* PATTERN 6: THE EXPEDITION */}
+                {/* Pattern 6 - The Expedition: Survival mode with finite deck and win/fail states */}
 <div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: 'var(--danger-color)'}}>6. The Expedition (Deck-Driven)</h3>
     <p className="docs-p">
@@ -178,8 +176,7 @@ export default function PatternsDocs() {
     </ol>
 </div>
 
-                {/* PATTERN 7: PERSONALIZATION */}
-                {/* PATTERN 7: PERSONALIZATION */}
+                {/* Pattern 7 - Personalization: Adaptive text and options based on player identity */}
 <div className="docs-card" style={{borderColor: '#9b59b6', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: '#9b59b6'}}>7. The Road with Many Faces</h3>
     <p className="docs-p">
@@ -199,7 +196,7 @@ export default function PatternsDocs() {
     </p>
 </div>
 
-                {/* PATTERN 8: PYTHON */}
+                {/* Pattern 8 - The Python: Non-linear mystery with multiple paths to one conclusion */}
                 <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>8. The Python (Non-Linear Mystery)</h3>
                     <p className="docs-p">
@@ -218,7 +215,7 @@ export default function PatternsDocs() {
                     </ul>
                 </div>
 
-                {/* PATTERN 9: MIDNIGHT STAIRCASE */}
+                {/* Pattern 9 - Midnight Staircase: Push-your-luck with escalating risk/reward */}
                 <div className="docs-card" style={{borderColor: '#34495e', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#95a5a6'}}>9. The Midnight Staircase</h3>
                     <p className="docs-p">
@@ -239,7 +236,7 @@ export default function PatternsDocs() {
                     </ol>
                 </div>
 
-                {/* PATTERN 10: GRANDFATHER CLOCK */}
+                {/* Pattern 10 - Grandfather Clock: Meta-progression where small loops feed large loops */}
                 <div className="docs-card" style={{borderColor: '#2c3e50', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#34495e'}}>10. The Grandfather Clock</h3>
                     <p className="docs-p">

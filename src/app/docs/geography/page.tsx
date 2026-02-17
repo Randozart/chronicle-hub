@@ -12,7 +12,7 @@ export default function GeographyDocs() {
                 </p>
             </header>
 
-            {/* SECTION 1: HIERARCHY */}
+            {/* Hierarchy - How worlds, areas, and locations relate to each other */}
             <section id="hierarchy">
                 <h2 className="docs-h2">1. The Hierarchy</h2>
                 <p className="docs-p">
@@ -57,7 +57,7 @@ export default function GeographyDocs() {
                 </div>
             </section>
 
-            {/* SECTION 2: TRAVEL LOGIC */}
+            {/* Travel logic - Movement systems and location unlock conditions */}
             <section id="travel">
                 <h2 className="docs-h2">2. Travel Logic</h2>
                 <p className="docs-p">
@@ -119,7 +119,7 @@ export default function GeographyDocs() {
                 </ol>
             </section>
 
-            {/* SECTION 2.5: MARKETS */}
+            {/* Markets - Shop interface for trading items and currencies */}
             <section id="markets">
                 <h2 className="docs-h2">3. Markets</h2>
                 <p className="docs-p">
@@ -150,7 +150,7 @@ export default function GeographyDocs() {
                 </div>
             </section>
 
-            {/* SECTION 3: BEHAVIOR */}
+            {/* Behavior tags - Special location properties like equipment locking and routing */}
             <section id="behavior">
                 <h2 className="docs-h2">4. Location Properties</h2>
                 <p className="docs-p">
@@ -194,7 +194,7 @@ export default function GeographyDocs() {
                 </div>
             </section>
 
-            {/* SECTION 4: THE MAP EDITOR */}
+            {/* Map editor - Visual tool for managing location relationships */}
             <section id="editor">
                 <h2 className="docs-h2">5. Using the Map Editor</h2>
                 <p className="docs-p">

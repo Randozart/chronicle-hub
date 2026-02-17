@@ -21,7 +21,7 @@ export default function QuickStartPage() {
                 </p>
             </div>
 
-            {/* STEP 1: PROJECT SETUP */}
+            {/* Step 1 - Creating your first project and initial setup */}
             <section id="setup">
                 <h2 className="docs-h2">Step 1: Create Your Project</h2>
                 <p className="docs-p">

@@ -12,7 +12,7 @@ export default function DocsPage() {
                 </p>
             </header>
                     
-            {/* SECTION 1: THE PHILOSOPHY */}
+            {/* Philosophy - What makes Chronicle Hub unique as a narrative engine */}
             <section id="philosophy">
                 <h2 className="docs-h2">1. Beyond Branching</h2>
                 <p className="docs-p">
@@ -43,7 +43,7 @@ export default function DocsPage() {
                 </div>
             </section>
 
-            {/* SECTION 2: THE METAPHOR */}
+            {/* The metaphor - Understanding cards, decks, and storylets */}
             <section id="metaphor">
                 <h2 className="docs-h2">2. The "Bag of Marbles"</h2>
                 <p className="docs-p">
@@ -91,7 +91,7 @@ export default function DocsPage() {
                 </div>
             </section>
 
-            {/* SECTION 3: THE CORE LOOP */}
+            {/* Core loop - The basic player experience cycle */}
             <section id="loop">
                 <h2 className="docs-h2">3. The Engine Loop</h2>
                 <p className="docs-p">
@@ -130,7 +130,7 @@ export default function DocsPage() {
                 </p>
             </section>
 
-            {/* SECTION 4: EXAMPLE GAMES */}
+            {/* Example games - Open-source reference implementations */}
             <section id="examples">
                 <h2 className="docs-h2">4. See It In Action</h2>
                 <p className="docs-p">

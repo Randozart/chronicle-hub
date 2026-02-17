@@ -12,7 +12,7 @@ export default function LogicMathPage() {
                 </p>
             </header>
 
-            {/* SECTION 1: LOGIC */}
+            {/* Logic fundamentals - How ScribeScript evaluates conditions and expressions */}
             <section id="logic">
                 <h2 className="docs-h2">1. Logic (Requirements)</h2>
                 <p className="docs-p">
@@ -127,7 +127,7 @@ export default function LogicMathPage() {
 </div>
             </section>
 
-            {/* SECTION 2: EFFECTS */}
+            {/* Effects - How to modify quality values and trigger state changes */}
                 
             
 
@@ -137,7 +137,7 @@ export default function LogicMathPage() {
         ScribeScript uses four specific bracket patterns. Understanding the difference is key to mastering complex logic.
     </p>
 
-    {/* DEFINITIONS */}
+    {/* Property definitions for .level and .cp access on qualities */}
     <div className="docs-grid">
         <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
             <h4 className="docs-h4" style={{color: 'var(--docs-accent-gold)'}}>{`{ }`} Logic Blocks</h4>
@@ -157,7 +157,7 @@ export default function LogicMathPage() {
                 <strong>The Parameter Block.</strong> Used to provide arguments to a macro (`%chance[...]`) or metadata to an effect (`$gold[desc:...]`).
             </p>
         </div>
-        {/* Deprecated with the introduction of property chaining */}
+        {/* The following card is deprecated - .get() syntax replaced by property chaining */}
         {/* <div className="docs-card" style={{borderColor: '#9b59b6'}}>
             <h4 className="docs-h4" style={{color: '#9b59b6'}}>{`$( )`} Deferred Identifier</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>

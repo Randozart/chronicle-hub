@@ -12,7 +12,7 @@ export default function AdminDocs() {
                 </p>
             </header>
 
-            {/* SECTION 1: GLOBAL SETTINGS */}
+            {/* Global settings - Action economy, regeneration, and UI layout configuration */}
             <section id="settings">
                 <h2 className="docs-h2">1. Global Settings</h2>
                 <p className="docs-p">
@@ -58,7 +58,7 @@ export default function AdminDocs() {
                 </table>
             </section>
 
-            {/* SECTION 2: SYSTEM BINDINGS */}
+            {/* System bindings - Mapping engine concepts to your specific quality IDs */}
             <section id="bindings">
                 <h2 className="docs-h2">2. System Bindings</h2>
                 <p className="docs-p">
@@ -75,7 +75,7 @@ export default function AdminDocs() {
                 </ul>
             </section>
 
-            {/* SECTION 3: CHARACTER INITIALIZATION */}
+            {/* Character initialization - Setup wizard for new player creation flow */}
             <section id="init">
                 <h2 className="docs-h2">3. Character Initialization</h2>
                 <p className="docs-p">
@@ -128,7 +128,7 @@ export default function AdminDocs() {
                 </p>
             </section>
 
-            {/* SECTION 4: TEAM & PUBLISHING */}
+            {/* Team & publishing - Collaboration roles and visibility settings */}
             <section id="access">
                 <h2 className="docs-h2">4. Team & Access</h2>
 

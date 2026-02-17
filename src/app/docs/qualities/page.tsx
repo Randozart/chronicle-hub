@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 
-// A small dummy component to render progress bars for examples
+// Visual component for displaying progress bars in the quality type examples
+// Helps illustrate how Pyramidal and Tracker qualities appear in-game
 const ProgressBar = ({ percent, color = 'var(--accent-highlight)' }: { percent: number, color?: string }) => (
     <div style={{ height: '12px', background: 'var(--bg-item)', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
         <div style={{ width: `${percent}%`, height: '100%', background: color, borderRadius: '6px' }} />
