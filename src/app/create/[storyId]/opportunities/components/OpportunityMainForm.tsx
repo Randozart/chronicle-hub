@@ -10,6 +10,7 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
 import GameImage from '@/components/GameImage';
+import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 
 interface Props {
     initialData: Opportunity;
@@ -56,11 +57,16 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
 
     if (!form) return <div className="loading-container">Loading...</div>;
 
+    const handleTagToggle = (tag: string) => {
+        const newTags = toggleProperty(form.tags, tag);
+        handleChange('tags', newTags);
+    };
+
     const onSaveClick = async () => {
         const success = await handleSave();
         if (success && form) onSave(form);
     };
-    
+
     const isDeckMissing = form.deck && !form.deck.includes('{') && !knownDecks.includes(form.deck);
 
     return (
@@ -228,37 +234,12 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                         qualityDefs={qualityDefs}
                     />
                 </div>
-                <div className="special-field-group" style={{ borderColor: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-border)', marginTop: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label className="special-label" style={{ color: form.autofire_if ? 'var(--danger-color)' : 'var(--tool-text-dim)', margin: 0 }}>Autofire on Draw</label>
-                        <label className="toggle-label">
-                            <input
-                                type="checkbox"
-                                checked={!!form.autofire_if}
-                                onChange={e => handleChange('autofire_if', e.target.checked ? 'true' : '')}
-                            />
-                            Enable
-                        </label>
-                    </div>
-                    {form.autofire_if !== undefined && (
-                        <SmartArea
-                            label="Condition"
-                            subLabel="Card auto-plays immediately when drawn into hand if condition is true."
-                            value={form.autofire_if}
-                            onChange={v => handleChange('autofire_if', v)}
-                            storyId={storyId}
-                            mode="condition"
-                            qualityDefs={qualityDefs}
-                            placeholder="$emergency > 0"
-                        />
-                    )}
-                </div>
-
                 <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Card Behavior</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                         <BehaviorCard checked={form.can_discard !== false} onChange={() => handleChange('can_discard', !form.can_discard)} label="Discardable" desc="Player can remove this card." />
                         <BehaviorCard checked={!!form.keep_if_invalid} onChange={() => handleChange('keep_if_invalid', !form.keep_if_invalid)} label="Sticky" desc="Keep in hand even if invalid." />
+                        <BehaviorCard checked={hasProperty(form.tags, 'play_on_draw')} onChange={() => handleTagToggle('play_on_draw')} label="Play on Draw" desc="Auto-plays when drawn." />
                     </div>
                     <div className="form-group">
                         <SmartArea
