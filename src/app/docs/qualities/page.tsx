@@ -130,10 +130,11 @@ export default function QualitiesDocs() {
                 <ul className="docs-props-list">
                     <li>
                         <code>Singular Name</code> / <code>Plural Name</code>
-                        <span>These fields power the <code>.singular</code> and <code>.plural</code> properties, allowing ScribeScript to choose the correct grammar.</span>
+                        <span>These fields power the <code>.singular</code> and <code>.plural</code> properties, allowing ScribeScript to choose the correct grammar. You can also chain the <code>.capital</code> modifier to capitalize the first letter.</span>
                         <div className="docs-code" style={{marginTop:'5px', fontSize:'0.8rem'}}>
                             <strong>Editor:</strong> Singular="Coin", Plural="Coins"<br/>
-                            <strong>ScribeScript:</strong> You find {`{$coin_pouch}`} {`{$coin_pouch.plural}`}.
+                            <strong>ScribeScript:</strong> You find {`{$coin_pouch}`} {`{$coin_pouch.plural}`}.<br/>
+                            <strong>With Capitalization:</strong> {`{$coin_pouch.plural.capital}`} are valuable. → "Coins are valuable."
                         </div>
                     </li>
                     <li>
@@ -177,16 +178,29 @@ export default function QualitiesDocs() {
 
                 <h3 className="docs-h3">Bonus (Equipable)</h3>
                 <p className="docs-p">
-                    The <code>Bonus</code> field on an Equipable quality grants a passive buff while worn. You can use ScribeScript to make the bonus conditional.
+                    The <code>Bonus</code> field on an Equipable quality grants a passive buff while worn.
                 </p>
                 <div className="docs-pre">
                     <span style={{color:'#777'}}>// A simple bonus:</span>
                     <br/>
                     <code className="docs-code">$strength + 5</code>
                     <br/><br/>
-                    <span style={{color:'#777'}}>// A bonus with a drawback, conditional on another skill:</span>
+                    <span style={{color:'#777'}}>// Multiple bonuses:</span>
                     <br/>
-                    <code className="docs-code">{`{ $heavy_armor_training >= 1 : $defense + 10 | $defense + 10, $agility - 5 }`}</code>
+                    <code className="docs-code">$strength + 3, $defense + 2</code>
+                </div>
+
+                <div className="docs-callout" style={{borderColor:'#f1c40f', background:'rgba(241, 196, 15, 0.1)', marginTop:'1rem'}}>
+                    <strong style={{color:'#f1c40f'}}>⚠️ Bonus Field Limitations</strong>
+                    <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
+                        The Bonus field uses a simplified parser and only supports basic syntax:
+                        <br/>• <code>$stat + number</code> (e.g., <code>$strength + 5</code>)
+                        <br/>• <code>$stat - number</code> (e.g., <code>$agility - 2</code>)
+                        <br/>• Multiple bonuses separated by commas
+                        <br/><br/>
+                        <strong>Not supported:</strong> Complex ScribeScript expressions, conditionals, or dynamic calculations.
+                        For advanced bonus systems, use the item's <code>Use Event</code> to trigger a storylet with full effect logic.
+                    </p>
                 </div>
 
                 <h3 className="docs-h3">Behavior Tags</h3>

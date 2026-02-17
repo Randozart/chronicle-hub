@@ -16,9 +16,9 @@ export default function PatternsDocs() {
                 <strong style={{color: 'var(--docs-accent-blue)'}}>See Patterns in Action:</strong>
                 <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem', fontSize: '0.9rem'}}>
                     These patterns are demonstrated in our open-source example games:
-                    <br/>• <a href="/create/mystery_at_the_manor" className="docs-link" target="_blank">Mystery at the Manor</a> - Simple implementations
-                    <br/>• <a href="/create/cloak_of_darkness" className="docs-link" target="_blank">Cloak of Darkness</a> - Classic puzzle patterns
-                    <br/>• <a href="/create/concrete_requiem" className="docs-link" target="_blank">Concrete Requiem</a> - Advanced techniques
+                    <br/>• <a href="/create/mystery_at_the_manor/settings" className="docs-link" target="_blank">Mystery at the Manor</a> - Simple implementations
+                    <br/>• <a href="/create/cloak_of_darkness/settings" className="docs-link" target="_blank">Cloak of Darkness</a> - Classic puzzle patterns
+                    <br/>• <a href="/create/concrete_requiem/settings" className="docs-link" target="_blank">Concrete Requiem</a> - Advanced techniques
                 </p>
             </div>
 

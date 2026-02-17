@@ -147,11 +147,13 @@ export default function StoryletsDocs() {
                         <tr><td><strong>Rare</strong></td><td>2</td><td>Special rewards.</td></tr>
                         <tr>
                             <td><strong style={{color: '#e06c75'}}>Always</strong></td>
-                            <td>∞</td>
+                            <td>1000</td>
                             <td>
-                                <strong>Infinite Weight.</strong> If an "Always" card meets its requirements, 
-                                it is drawn immediately, bypassing the lottery. 
-                                Use for urgent plot developments in a deck.
+                                <strong>Near-Guaranteed Draw.</strong> If an "Always" card meets its requirements,
+                                it receives a weight of 1000, giving it overwhelming advantage in the lottery.
+                                In practice, this means it will almost always be drawn immediately. If multiple "Always"
+                                cards meet requirements simultaneously, one is randomly selected from among them.
+                                Use for urgent plot developments.
                             </td>
                         </tr>
                     </tbody>

@@ -144,7 +144,7 @@ export default function DocsPage() {
                             A simple detective game that demonstrates the fundamentals: qualities, skill checks, and conditional visibility.
                         </p>
                         <a
-                            href="/create/mystery_at_the_manor"
+                            href="/create/mystery_at_the_manor/settings"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -168,7 +168,7 @@ export default function DocsPage() {
                             A classic IF puzzle adapted to QBN by Hanon Ondricek, showing location-based exploration and gating.
                         </p>
                         <a
-                            href="/create/cloak_of_darkness"
+                            href="/create/cloak_of_darkness/settings"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -192,7 +192,7 @@ export default function DocsPage() {
                             An advanced procedural mystery showcasing ScribeScript&apos;s full power: bitwise flags, dynamic quality creation, and complex probability systems.
                         </p>
                         <a
-                            href="/create/concrete_requiem"
+                            href="/create/concrete_requiem/settings"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{

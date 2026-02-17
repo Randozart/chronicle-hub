@@ -206,7 +206,19 @@ export default function LogicMathPage() {
     </div>
 
     <div className="docs-card" style={{marginTop:'1.5rem', borderColor:'#9b59b6'}}>
-        <h4 className="docs-h4">Edge Case 3: Variable-from-Variable (The <code>$.</code>Problem)</h4>
+        <h4 className="docs-h4">Edge Case 3: Variable-from-Variable (The <code>$.</code> Problem)</h4>
+
+        <div className="docs-callout" style={{borderColor:'#e74c3c', background:'rgba(231, 76, 60, 0.1)', marginBottom:'1rem'}}>
+            <strong style={{color:'#e74c3c'}}>⚠️ DEPRECATED SYNTAX</strong>
+            <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
+                The <code>$(...)</code> syntax shown in this section is <strong>deprecated</strong> and maintained only for backward compatibility with legacy projects.
+                <br/><br/>
+                <strong>Modern Alternative:</strong> Use property chaining with direct evaluation: <code>{`$.id.ledger`}</code> instead of <code>{`$($.id).ledger`}</code>
+                <br/><br/>
+                While this syntax still works, it may be removed in future versions. New projects should use property chaining wherever possible.
+            </p>
+        </div>
+
         <p className="docs-p">
             In advanced macros like <code>%pick</code>, you often iterate over a list of items. Sometimes, you need to use the properties of the <em>current</em> item (<code>$.</code>) to look up a <em>different</em> variable.
         </p>

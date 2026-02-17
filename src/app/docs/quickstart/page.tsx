@@ -500,7 +500,7 @@ Everything points to one person. Who do you accuse?
                             <strong>What it demonstrates:</strong> The tutorial game from this Quick Start guide, fully implemented.
                         </p>
                         <a
-                            href="/create/mystery_at_the_manor"
+                            href="/create/mystery_at_the_manor/settings"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -529,7 +529,7 @@ Everything points to one person. Who do you accuse?
                             <strong>What it demonstrates:</strong> A classic IF puzzle adapted to QBN, showing how to create atmospheric exploration with location-based gating.
                         </p>
                         <a
-                            href="/create/cloak_of_darkness"
+                            href="/create/cloak_of_darkness/settings"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -562,7 +562,7 @@ Everything points to one person. Who do you accuse?
                             <li>Dynamic quality creation and manipulation</li>
                         </ul>
                         <a
-                            href="/create/concrete_requiem"
+                            href="/create/concrete_requiem/settings"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
