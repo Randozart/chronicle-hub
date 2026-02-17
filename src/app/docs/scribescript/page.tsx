@@ -91,7 +91,7 @@ export default function ScribeScriptSyntaxPage() {
                         These fields are literal. ScribeScript is used here for <strong>Adaptive Text</strong>.
                     </p>
                     <div className="docs-pre">
-                        <span style={{color:'#777'}}>// Adaptive Title</span>
+                        <span style={{color:'var(--text-muted)'}}>// Adaptive Title</span>
                         <br/>
                         <code className="docs-code">
                             {`{ $reputation > 50 : The Captain | The Stranger }`} Arrives
@@ -118,13 +118,13 @@ export default function ScribeScriptSyntaxPage() {
                         <li><code>( )</code> <strong>(Grouping)</strong>: Use parentheses to control the order of checks.</li>
                     </ul>
                     <div className="docs-pre">
-                        <span style={{color:'#777'}}>// Using comma as AND</span>
+                        <span style={{color:'var(--text-muted)'}}>// Using comma as AND</span>
                         <br/>
                         <code className="docs-code">
                             $has_key == 1, $stamina &gt; 0
                         </code>
                         <br/><br/>
-                        <span style={{color:'#777'}}>// Complex Logic with grouping</span>
+                        <span style={{color:'var(--text-muted)'}}>// Complex Logic with grouping</span>
                         <br/>
                         <code className="docs-code">
                             ($has_key == 1 || $lockpicking &gt; 5) && $stamina &gt; 0
@@ -138,13 +138,13 @@ export default function ScribeScriptSyntaxPage() {
                         The <code>Challenge</code> field on an option determines the chance of success. The ScribeScript inside this field must resolve to a single number between 0 and 100.
                     </p>
                     <div className="docs-pre">
-                        <span style={{color:'#777'}}>// A simple, static chance</span>
+                        <span style={{color:'var(--text-muted)'}}>// A simple, static chance</span>
                         <br/>
                         <code className="docs-code">
                             50
                         </code>
                         <br/><br/>
-                        <span style={{color:'#777'}}>// A dynamic chance based on a skill check</span>
+                        <span style={{color:'var(--text-muted)'}}>// A dynamic chance based on a skill check</span>
                         <br/>
                         <code className="docs-code">
                             {`{ $strength >> { $enemy_level * 10 } }`}
@@ -161,7 +161,7 @@ export default function ScribeScriptSyntaxPage() {
                         These fields expect a list of <strong>Instructions</strong> separated by commas. An instruction can be a mathematical assignment OR a standalone Logic Block.
                     </p>
                     <div className="docs-pre">
-                        <span style={{color:'#777'}}>// Calculating a variable once, then using it twice:</span>
+                        <span style={{color:'var(--text-muted)'}}>// Calculating a variable once, then using it twice:</span>
                         <br/>
                         <code className="docs-code">
                             {`{@roll = { 1 ~ 6 } }`}, $gold += @roll, $xp += @roll
@@ -174,8 +174,8 @@ export default function ScribeScriptSyntaxPage() {
                         <br/>3. <strong>Second Item:</strong> It adds that alias value to Gold.
                         <br/>4. <strong>Third Item:</strong> It adds that <em>same</em> alias value to XP.
                     </p>
-                    <div className="docs-callout" style={{marginTop:'1rem', borderColor: '#e06c75'}}>
-                        <strong style={{color: '#e06c75'}}>Warning:</strong> Because the Engine splits by comma <em>after</em> ScribeScript runs, 
+                    <div className="docs-callout" style={{marginTop:'1rem', borderColor: 'var(--danger-color)'}}>
+                        <strong style={{color: 'var(--danger-color)'}}>Warning:</strong> Because the Engine splits by comma <em>after</em> ScribeScript runs, 
                         be careful not to generate commas inside your ScribeScript blocks unless they are inside quotes!
                     </div>
                 </div>
@@ -185,7 +185,7 @@ export default function ScribeScriptSyntaxPage() {
                     Instead of making two separate Storylets for Day and Night, you can use one Storylet with an adaptive image by using ScribeScript in the image field.
                     </p>
                     <div className="docs-pre">
-                    <span style={{color:'#777'}}>// Image Code Field</span>
+                    <span style={{color:'var(--text-muted)'}}>// Image Code Field</span>
                     <br/>
                     <code className="docs-code">
                     {`{ #is_night : town_square_night | town_square_day }`}
@@ -221,7 +221,7 @@ export default function ScribeScriptSyntaxPage() {
     </p>
     
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// Initial Input in the Editor</span>
+        <span style={{color:'var(--text-muted)'}}>// Initial Input in the Editor</span>
         <br/>
         <code className="docs-code" style={{display:'block'}}>
             $gold += {`{ { $level * 10 } + { 1 ~ 6 } }`}
@@ -428,7 +428,7 @@ export default function ScribeScriptSyntaxPage() {
         In its simplest form, <code>$.</code> accesses the quality's current level.
     </p>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// In the Description field for a 'Wounds' quality:</span>
+        <span style={{color:'var(--text-muted)'}}>// In the Description field for a 'Wounds' quality:</span>
         <br/>
         <code className="docs-code">
             {`{ $. > 5 : You are gravely injured. | You have a few scratches. }`}
@@ -441,7 +441,7 @@ export default function ScribeScriptSyntaxPage() {
         You can use <code>$.</code> to make a quality describe itself dynamically.
     </p>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// In the Description for a 'Renown' quality:</span>
+        <span style={{color:'var(--text-muted)'}}>// In the Description for a 'Renown' quality:</span>
         <br/>
         <code className="docs-code">
             Your {`{$.name}`} is currently {`{$.level}`}.
@@ -456,7 +456,7 @@ export default function ScribeScriptSyntaxPage() {
         You can even change a quality's public-facing name based on its own level.
     </p>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// In the Name field for a 'Suspicion' quality:</span>
+        <span style={{color:'var(--text-muted)'}}>// In the Name field for a 'Suspicion' quality:</span>
         <br/>
         <code className="docs-code">
             {`{ $. > 50 : Notoriety | $. > 10 : Infamy | Suspicion }`}
@@ -471,13 +471,13 @@ export default function ScribeScriptSyntaxPage() {
         <h4 className="docs-h4">@ (Alias)</h4>
         <p className="docs-p" style={{fontSize:'0.9rem'}}>Creates a temporary shorthand for a longer variable name. The alias is valid throughout the <strong>entire text field</strong> in which it is defined, making complex logic much cleaner.</p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// This is long and repetitive:</span>
+            <span style={{color:'var(--text-muted)'}}>// This is long and repetitive:</span>
             <br/>
             <code className="docs-code">
                 {`{ $reputation_with_the_court > 10 && $reputation_with_the_court < 50 }`}
             </code>
             <br/><br/>
-            <span style={{color:'#777'}}>// This is cleaner with an alias:</span>
+            <span style={{color:'var(--text-muted)'}}>// This is cleaner with an alias:</span>
             <br/>
             <code className="docs-code">
                 {`{ @rep = $reputation_with_the_court } { @rep > 10 && @rep < 50 }`}
@@ -693,7 +693,7 @@ export default function ScribeScriptSyntaxPage() {
             <li><code>.plural</code> is smarter: if the quality's level is exactly 1, it returns the singular name; otherwise, it returns the plural name.</li>
         </ul>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// In Quality Editor: Singular="Coin", Plural="Coins"</span>
+            <span style={{color:'var(--text-muted)'}}>// In Quality Editor: Singular="Coin", Plural="Coins"</span>
             <br/>
             <code className="docs-code">
                 You gain {`{$gold_coins}`} {`{$gold_coins.plural}`}.
@@ -712,9 +712,9 @@ export default function ScribeScriptSyntaxPage() {
             In the Quality Editor, you can define a dictionary of <strong>Text Variants</strong>. This is an advanced feature for creating qualities that act as containers for related pieces of text, like a set of pronouns.
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// In a 'pronouns' quality with Text Variants:</span>
+            <span style={{color:'var(--text-muted)'}}>// In a 'pronouns' quality with Text Variants:</span>
             <br/>
-            <span style={{color:'#777'}}>// key: "subject", value: "{`{ $.stringValue == 'he/him' : 'he' | 'they' }`}"</span>
+            <span style={{color:'var(--text-muted)'}}>// key: "subject", value: "{`{ $.stringValue == 'he/him' : 'he' | 'they' }`}"</span>
             <br/>
             <code className="docs-code">
                 {`{$pronouns.subject.capital}`} goes to the market.
@@ -731,13 +731,13 @@ export default function ScribeScriptSyntaxPage() {
         When accessed in text, it will share the oldest stored source on that item.
     </p>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// Setting a source when gaining an item:</span>
+        <span style={{color:'var(--text-muted)'}}>// Setting a source when gaining an item:</span>
         <br/>
         <code className="docs-code">
             $strange_coin[source:found it in a dusty chest] += 1
         </code>
         <br/><br/>
-        <span style={{color:'#777'}}>// Recalling the source later in the story:</span>
+        <span style={{color:'var(--text-muted)'}}>// Recalling the source later in the story:</span>
         <br/>
         <code className="docs-code">
             You inspect the strange coin. You remember that you {`{$strange_coin.source}`}.
@@ -814,13 +814,13 @@ export default function ScribeScriptSyntaxPage() {
             When the engine encounters a dot, it evaluates the property. If the result of that evaluation is a <strong>String</strong>, and there is <em>another</em> dot following it, the engine treats that string as the ID of a <strong>new Quality</strong> and continues the chain there.
         </p>
         <div className="docs-pre">
-            <span style={{color:'#777'}}>// Setup:</span>
+            <span style={{color:'var(--text-muted)'}}>// Setup:</span>
             <br/>
             <code className="docs-code">$suspect.secret = murderer</code>
             <br/>
             <code className="docs-code">$murderer.liar = 1</code>
             <br/><br/>
-            <span style={{color:'#777'}}>// The Chain:</span>
+            <span style={{color:'var(--text-muted)'}}>// The Chain:</span>
             <br/>
             <code className="docs-code">{`{$suspect.secret.liar}`}</code>
             <br/>

@@ -65,7 +65,7 @@ export default function AdminDocs() {
                     The Engine is agnostic—it doesn't know what "Health" or "Name" is until you tell it.
                 </p>
                 <div className="docs-callout">
-                    <strong style={{color: '#f1c40f'}}>The Mapping Layer:</strong><br/>
+                    <strong style={{color: 'var(--docs-accent-gold)'}}>The Mapping Layer:</strong><br/>
                     In the Settings page, you must map Engine Concepts to your specific Quality IDs.
                 </div>
                 <ul className="docs-list">
@@ -149,8 +149,8 @@ export default function AdminDocs() {
                         </tr>
                     </tbody>
                 </table>
-                <div className="docs-callout" style={{borderColor: '#e74c3c'}}>
-                    <strong style={{color: '#e74c3c'}}>Note on Locking:</strong><br/>
+                <div className="docs-callout" style={{borderColor: 'var(--danger-color)'}}>
+                    <strong style={{color: 'var(--danger-color)'}}>Note on Locking:</strong><br/>
                     Chronicle does not currently support real-time locking. If two writers edit the exact same Storylet at the same time, the last save wins. Communicate with your team!
                 </div>
 
@@ -188,7 +188,7 @@ export default function AdminDocs() {
         </p>
     </div>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// Use the console to create these variables:</span>
+        <span style={{color:'var(--text-muted)'}}>// Use the console to create these variables:</span>
         <br/>
         <code className="docs-code">
             #season = Summer
@@ -196,7 +196,7 @@ export default function AdminDocs() {
             #war_progress = 25
         </code>
         <br/><br/>
-        <span style={{color:'#777'}}>// Then, any player can see them in-game:</span>
+        <span style={{color:'var(--text-muted)'}}>// Then, any player can see them in-game:</span>
         <br/>
         <code className="docs-code">
             "It is currently {`{#season}`}. The war effort is at {`{#war_progress}`}%."

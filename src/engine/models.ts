@@ -93,23 +93,24 @@ export interface QualityDefinition extends VersionedEntity {
     name?: string;
     description?: string;
     type: QualityType;
-    category?: string; 
-    folder?: string; 
-    editor_name?: string; 
+    category?: string;
+    folder?: string;
+    editor_name?: string;
     image?: string;
     ordering?: number;
-    max?: string;              
-    grind_cap?: string;        
-    cp_cap?: string;           
+    max?: string;
+    grind_cap?: string;
+    cp_cap?: string;
     singular_name?: string;
     plural_name?: string;
     increase_description?: string;
     decrease_description?: string;
-    text_variants?: Record<string, string>; 
+    text_variants?: Record<string, string>;
     tags?: string[];
     bonus?: string;
+    hideAsBonus?: boolean;
     storylet?: string;
-    lock_message?: string;   
+    lock_message?: string;
     [key: string]: any;
 }
 

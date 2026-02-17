@@ -56,12 +56,12 @@ export default function QualitiesDocs() {
                             A simple, linear number. <code>+1</code> always adds exactly 1 level. Used for currency, quest progress, and simple counters.
                         </p>
                     </div>
-                     <div className="docs-card" style={{borderColor: '#f1c40f'}}>
-                        <h4 className="docs-h4" style={{color: '#f1c40f'}}>Tracker (T)</h4>
+                     <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-gold)'}}>Tracker (T)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                            Functionally identical to a Counter, but designed for UI elements that show progress towards a goal (e.g., a progress bar that fills up).
                         </p>
-                        <ProgressBar percent={75} color="#f1c40f" />
+                        <ProgressBar percent={75} color="var(--docs-accent-gold)" />
                     </div>
                     <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
                         <h4 className="docs-h4" style={{color: 'var(--docs-accent-green)'}}>Item (I)</h4>
@@ -117,7 +117,7 @@ export default function QualitiesDocs() {
                 <h3 className="docs-h3">Dynamic Naming & Descriptions</h3>
                 <p className="docs-p">You can use ScribeScript in the <strong>Name</strong> and <strong>Description</strong> fields to make them reactive.</p>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>// In the 'Name' field of a 'Suspicion' quality:</span>
+                    <span style={{color:'var(--text-muted)'}}>// In the 'Name' field of a 'Suspicion' quality:</span>
                     <br/>
                     <code className="docs-code">
                         {`{ $. > 50 : Notoriety | $. > 10 : Infamy | Suspicion }`}
@@ -151,13 +151,13 @@ export default function QualitiesDocs() {
                 <h3 className="docs-h3">Text Variants</h3>
                 <p className="docs-p">This is a powerful feature for creating qualities that act as dictionaries for related pieces of text. In the Quality Editor, you can add key-value pairs.</p>
                  <div className="docs-pre">
-                    <span style={{color:'#777'}}>// In a 'pronouns' quality with Text Variants:</span>
+                    <span style={{color:'var(--text-muted)'}}>// In a 'pronouns' quality with Text Variants:</span>
                     <br/>
-                    <span style={{color:'#777'}}>key: "subject", value: "{`{ $.stringValue == 'he/him' : 'he' | 'they' }`}"</span>
+                    <span style={{color:'var(--text-muted)'}}>key: "subject", value: "{`{ $.stringValue == 'he/him' : 'he' | 'they' }`}"</span>
                     <br/>
-                    <span style={{color:'#777'}}>key: "object", value: "{`{ $.stringValue == 'he/him' : 'him' | 'them' }`}"</span>
+                    <span style={{color:'var(--text-muted)'}}>key: "object", value: "{`{ $.stringValue == 'he/him' : 'him' | 'them' }`}"</span>
                     <br/><br/>
-                    <span style={{color:'#777'}}>// Then, in your story text:</span>
+                    <span style={{color:'var(--text-muted)'}}>// Then, in your story text:</span>
                     <br/>
                     <code className="docs-code">
                         You see {`{$pronouns.object}`}. {`{$pronouns.subject.capital}`} is wearing a hat.
@@ -178,29 +178,24 @@ export default function QualitiesDocs() {
 
                 <h3 className="docs-h3">Bonus (Equipable)</h3>
                 <p className="docs-p">
-                    The <code>Bonus</code> field on an Equipable quality grants a passive buff while worn.
+                    The <code>Bonus</code> field on an Equipable quality grants a passive buff while worn. It supports full ScribeScript syntax for complex, conditional bonuses.
                 </p>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>// A simple bonus:</span>
+                    <span style={{color:'var(--text-muted)'}}>// Simple bonuses:</span>
                     <br/>
                     <code className="docs-code">$strength + 5</code>
                     <br/><br/>
-                    <span style={{color:'#777'}}>// Multiple bonuses:</span>
+                    <span style={{color:'var(--text-muted)'}}>// Multiple bonuses:</span>
                     <br/>
                     <code className="docs-code">$strength + 3, $defense + 2</code>
-                </div>
-
-                <div className="docs-callout" style={{borderColor:'#f1c40f', background:'rgba(241, 196, 15, 0.1)', marginTop:'1rem'}}>
-                    <strong style={{color:'#f1c40f'}}>⚠️ Bonus Field Limitations</strong>
-                    <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
-                        The Bonus field uses a simplified parser and only supports basic syntax:
-                        <br/>• <code>$stat + number</code> (e.g., <code>$strength + 5</code>)
-                        <br/>• <code>$stat - number</code> (e.g., <code>$agility - 2</code>)
-                        <br/>• Multiple bonuses separated by commas
-                        <br/><br/>
-                        <strong>Not supported:</strong> Complex ScribeScript expressions, conditionals, or dynamic calculations.
-                        For advanced bonus systems, use the item's <code>Use Event</code> to trigger a storylet with full effect logic.
-                    </p>
+                    <br/><br/>
+                    <span style={{color:'var(--text-muted)'}}>// Complex ScribeScript expressions:</span>
+                    <br/>
+                    <code className="docs-code">{`$strength + { $level * 2 }`}</code>
+                    <br/><br/>
+                    <span style={{color:'var(--text-muted)'}}>// Conditional bonuses:</span>
+                    <br/>
+                    <code className="docs-code">{`{ $has_training : $defense + 10 | $defense + 5 }, $agility - 2`}</code>
                 </div>
 
                 <h3 className="docs-h3">Behavior Tags</h3>
@@ -221,6 +216,315 @@ export default function QualitiesDocs() {
                         </tr>
                     </tbody>
                 </table>
+            </section>
+
+            {/* SECTION 6: PRACTICAL EXAMPLES */}
+            <section id="examples">
+                <h2 className="docs-h2">6. Practical Examples</h2>
+                <p className="docs-p">
+                    Complete examples showing how to use each quality type for common game mechanics.
+                </p>
+
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--docs-accent-green)'}}>Example 1: Currency (Counter)</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create a basic currency system with gold coins.
+                    </p>
+
+                    <h4 className="docs-h4">Quality Setup</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>gold</code></li>
+                        <li><strong>Name:</strong> Gold</li>
+                        <li><strong>Type:</strong> Counter (C)</li>
+                        <li><strong>Description:</strong> "Shining coins that make the world go round"</li>
+                        <li><strong>Singular Name:</strong> "Gold Coin"</li>
+                        <li><strong>Plural Name:</strong> "Gold Coins"</li>
+                        <li><strong>Category:</strong> Currency</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Usage in ScribeScript</h4>
+                    <div className="docs-pre">
+                        <span style={{color:'var(--text-muted)'}}>// Award gold for completing a quest:</span>
+                        <br/>
+                        <code className="docs-code">$gold += 50</code>
+                        <br/><br/>
+                        <span style={{color:'var(--text-muted)'}}>// Purchase check:</span>
+                        <br/>
+                        <code className="docs-code">unlock_if: $gold &gt;= 100</code>
+                        <br/><br/>
+                        <span style={{color:'var(--text-muted)'}}>// Display with proper grammar:</span>
+                        <br/>
+                        <code className="docs-code">{`You have {$gold} {$gold.plural}.`}</code>
+                        <br/>
+                        <small style={{color: 'var(--text-muted)'}}>→ "You have 1 Gold Coin" or "You have 50 Gold Coins"</small>
+                    </div>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Why Counter:</strong> Counters provide direct 1:1 math. Adding 10 gives you exactly 10. Perfect for resources where "1 level = 1 item."
+                    </div>
+                </div>
+
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--docs-accent-blue)'}}>Example 2: A Skill (Pyramidal)</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create a Swordfighting skill that gets progressively harder to level.
+                    </p>
+
+                    <h4 className="docs-h4">Quality Setup</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>swordfighting</code></li>
+                        <li><strong>Name:</strong> Swordfighting</li>
+                        <li><strong>Type:</strong> Pyramidal (P)</li>
+                        <li><strong>Description:</strong> "Your prowess with a blade"</li>
+                        <li><strong>Category:</strong> Combat Skills</li>
+                        <li><strong>Max:</strong> 20 (optional cap)</li>
+                        <li><strong>CP Cap:</strong> 10 (flattens curve at high levels)</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Progression Example</h4>
+                    <table className="docs-table" style={{fontSize: '0.85rem', marginTop: '1rem'}}>
+                        <thead><tr><th>Starting Level</th><th>CP Gained</th><th>Result</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>Level 0 (0 CP)</td>
+                                <td>+1 CP</td>
+                                <td>→ Level 1 (Requires 1 CP)</td>
+                            </tr>
+                            <tr>
+                                <td>Level 2 (0 CP)</td>
+                                <td>+2 CP</td>
+                                <td>→ Level 3 (Requires 3 CP)</td>
+                            </tr>
+                            <tr>
+                                <td>Level 5 (3 CP)</td>
+                                <td>+2 CP</td>
+                                <td>→ Level 5 (5 CP) - Not enough!</td>
+                            </tr>
+                            <tr>
+                                <td>Level 5 (5 CP)</td>
+                                <td>+1 CP</td>
+                                <td>→ Level 6 (Requires 6 CP)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 className="docs-h4">Usage in Game</h4>
+                    <div className="docs-pre">
+                        <span style={{color:'var(--text-muted)'}}>// Award CP for training:</span>
+                        <br/>
+                        <code className="docs-code">$swordfighting += 2</code>
+                        <br/><br/>
+                        <span style={{color:'var(--text-muted)'}}>// Use in skill check:</span>
+                        <br/>
+                        <code className="docs-code">{`challenge: { $swordfighting >> 50 }`}</code>
+                        <br/><br/>
+                        <span style={{color:'var(--text-muted)'}}>// Force a specific level (quest reward):</span>
+                        <br/>
+                        <code className="docs-code">$swordfighting = 10</code>
+                    </div>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Why Pyramidal:</strong> Skills should feel meaningful to level up. The pyramid formula prevents players from grinding from 0 to max in an afternoon, while the CP Cap keeps high-level progression from becoming glacial.
+                    </div>
+                </div>
+
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>Example 3: Unique Items with Memory (Item)</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create a sword that remembers where the player found it.
+                    </p>
+
+                    <h4 className="docs-h4">Quality Setup</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>ancestral_blade</code></li>
+                        <li><strong>Name:</strong> Ancestral Blade</li>
+                        <li><strong>Type:</strong> Item (I)</li>
+                        <li><strong>Description:</strong> "A sword with a storied past"</li>
+                        <li><strong>Category:</strong> Weapons</li>
+                        <li><strong>Singular/Plural:</strong> "Ancestral Blade" / "Ancestral Blades"</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Granting with Source Metadata</h4>
+                    <div className="docs-pre">
+                        <span style={{color:'var(--text-muted)'}}>// In a dungeon:</span>
+                        <br/>
+                        <code className="docs-code">
+                            $ancestral_blade[source: pulled it from a stone in the ancient tomb] = 1
+                        </code>
+                        <br/><br/>
+                        <span style={{color:'var(--text-muted)'}}>// In a shop:</span>
+                        <br/>
+                        <code className="docs-code">
+                            $ancestral_blade[source: purchased it from a mysterious merchant] = 1
+                        </code>
+                    </div>
+
+                    <h4 className="docs-h4">Recalling the Memory Later</h4>
+                    <div className="docs-pre">
+                        <span style={{color:'var(--text-muted)'}}>// In story text:</span>
+                        <br/>
+                        <code className="docs-code">
+                            {`You examine the blade. You remember that you {$ancestral_blade.source}.`}
+                        </code>
+                        <br/><br/>
+                        <small style={{color: 'var(--text-muted)'}}>
+                            → If from dungeon: "You remember that you pulled it from a stone in the ancient tomb."
+                            <br/>
+                            → If from shop: "You remember that you purchased it from a mysterious merchant."
+                        </small>
+                    </div>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Why Items Track Source:</strong> This creates emergent storytelling. The same item can have different significance based on how the player acquired it, making their journey feel unique.
+                    </div>
+                </div>
+
+                <div className="docs-card" style={{borderColor: '#c678dd', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: '#c678dd'}}>Example 4: Character Attributes (String + Text Variants)</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Let players choose pronouns and have them used correctly throughout the game.
+                    </p>
+
+                    <h4 className="docs-h4">Quality Setup</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>pronouns</code></li>
+                        <li><strong>Name:</strong> Pronouns</li>
+                        <li><strong>Type:</strong> String (S)</li>
+                        <li><strong>Description:</strong> "How others refer to you"</li>
+                        <li><strong>Category:</strong> Character</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Text Variants Configuration</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        Add these key-value pairs in the Text Variants section:
+                    </p>
+                    <table className="docs-table" style={{fontSize: '0.85rem', marginTop: '0.5rem'}}>
+                        <thead><tr><th>Key</th><th>Value (ScribeScript)</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td><code>subject</code></td>
+                                <td><code>{`{ $.stringValue == 'he/him' : 'he' | $.stringValue == 'she/her' : 'she' | 'they' }`}</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>object</code></td>
+                                <td><code>{`{ $.stringValue == 'he/him' : 'him' | $.stringValue == 'she/her' : 'her' | 'them' }`}</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>possessive</code></td>
+                                <td><code>{`{ $.stringValue == 'he/him' : 'his' | $.stringValue == 'she/her' : 'her' | 'their' }`}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 className="docs-h4">Character Creation</h4>
+                    <div className="docs-pre">
+                        <span style={{color:'var(--text-muted)'}}>// In Admin → Character Initialization:</span>
+                        <br/>
+                        <code className="docs-code">
+                            Type: label_select
+                            <br/>
+                            Rule: $pronouns = @input
+                            <br/>
+                            Options: "he/him", "she/her", "they/them"
+                        </code>
+                    </div>
+
+                    <h4 className="docs-h4">Usage in Story</h4>
+                    <div className="docs-pre">
+                        <span style={{color:'var(--text-muted)'}}>// Adaptive text:</span>
+                        <br/>
+                        <code className="docs-code">
+                            {`You see the guard. {$pronouns.subject.capital} draws {$pronouns.possessive} sword.`}
+                        </code>
+                        <br/><br/>
+                        <small style={{color: 'var(--text-muted)'}}>
+                            → he/him: "He draws his sword."
+                            <br/>
+                            → she/her: "She draws her sword."
+                            <br/>
+                            → they/them: "They draw their sword."
+                        </small>
+                    </div>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Why Text Variants:</strong> Instead of writing conditional text everywhere, you define the logic once. Then you can use <code>{`{$pronouns.subject}`}</code> hundreds of times and it always adapts correctly.
+                    </div>
+                </div>
+
+                <div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--danger-color)'}}>Example 5: Quest-Critical Equipable with Advanced Bonus</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create magic armor that grants different bonuses based on whether you're trained to use it.
+                    </p>
+
+                    <h4 className="docs-h4">Quality Setup</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>dragon_plate</code></li>
+                        <li><strong>Name:</strong> Dragon Plate Armor</li>
+                        <li><strong>Type:</strong> Equipable (E)</li>
+                        <li><strong>Description:</strong> "Forged from dragon scales, it requires great strength to wear properly"</li>
+                        <li><strong>Category:</strong> Armor</li>
+                        <li><strong>Equipment Slot:</strong> body</li>
+                        <li><strong>Bonus:</strong> <code>{`{ $heavy_armor_training >= 1 : $defense + 15, $is_wearing_dragon_armor + 1 | $defense + 8, $agility - 3, $is_wearing_dragon_armor + 1 }`}</code></li>
+                        <li><strong>Tags:</strong> <code>bound</code> (can only be removed via story event)</li>
+                    </ul>
+
+                    <h4 className="docs-h4">How the Bonus Works</h4>
+                    <div className="docs-pre" style={{fontSize: '0.85rem'}}>
+                        <strong>If trained ($heavy_armor_training &gt;= 1):</strong>
+                        <br/>
+                        • +15 Defense
+                        <br/>
+                        • +1 to hidden state ($is_wearing_dragon_armor)
+                        <br/><br/>
+                        <strong>If untrained:</strong>
+                        <br/>
+                        • +8 Defense (still useful)
+                        <br/>
+                        • -3 Agility (penalty for wearing it wrong)
+                        <br/>
+                        • +1 to hidden state ($is_wearing_dragon_armor)
+                    </div>
+
+                    <h4 className="docs-h4">Setup: Hidden State Quality</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        Create a quality <code>$is_wearing_dragon_armor</code> (Counter, Category: Hidden States).
+                        <br/>
+                        Set <code>hideAsBonus: true</code> in the quality's properties.
+                    </p>
+
+                    <h4 className="docs-h4">Using the Hidden State</h4>
+                    <div className="docs-pre">
+                        <span style={{color:'var(--text-muted)'}}>// Special storylet only appears while wearing the armor:</span>
+                        <br/>
+                        <code className="docs-code">
+                            visible_if: $is_wearing_dragon_armor &gt;= 1
+                        </code>
+                        <br/><br/>
+                        <span style={{color:'var(--text-muted)'}}>// NPC reacts to your armor:</span>
+                        <br/>
+                        <code className="docs-code">
+                            {`{ $is_wearing_dragon_armor >= 1 : "The wizard's eyes widen. 'Dragon armor! Where did you get that?'" | }`}
+                        </code>
+                    </div>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Why This Pattern:</strong>
+                        <br/>• Full ScribeScript support allows conditional bonuses based on player skills
+                        <br/>• Hidden bonus qualities (<code>hideAsBonus: true</code>) let you track "wearing X" without cluttering the character sheet
+                        <br/>• The <code>bound</code> tag prevents removing quest-critical items accidentally
+                    </div>
+                </div>
+
+                <div className="docs-callout" style={{marginTop: '3rem', borderColor: 'var(--docs-accent-green)'}}>
+                    <strong style={{color: 'var(--docs-accent-green)'}}>Want More Examples?</strong>
+                    <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem'}}>
+                        Study real implementations in the open-source example games:
+                        <br/>• <a href="/create/mystery_at_the_manor/settings" className="docs-link" target="_blank">Mystery at the Manor</a> - Basic quality usage
+                        <br/>• <a href="/create/cloak_of_darkness/settings" className="docs-link" target="_blank">Cloak of Darkness</a> - Tracker-based progression
+                        <br/>• <a href="/create/concrete_requiem/settings" className="docs-link" target="_blank">Concrete Requiem</a> - Advanced patterns with bitwise flags and dynamic quality creation
+                    </p>
+                </div>
             </section>
         </div>
     );

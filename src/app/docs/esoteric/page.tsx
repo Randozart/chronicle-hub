@@ -64,7 +64,7 @@ export default function EsotericPatternsPage() {
                     Remove the concept of "Actions" entirely. The game is played by setting tasks and waiting for them to finish.
                 </p>
 
-                <div className="docs-card" style={{borderColor: '#f1c40f'}}>
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
     <h3>Setup</h3>
     <ul className="docs-props-list">
         <li><strong>Settings:</strong> Disable Action Economy.</li>
@@ -148,7 +148,7 @@ export default function EsotericPatternsPage() {
                 </p>
 
                 <div className="docs-grid">
-                    <div className="docs-card" style={{borderColor: '#2ecc71'}}>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
                         <h4>The Gym (Buying Stats)</h4>
                         <p>
                             Instead of leveling up automatically, the player must visit a trainer and spend XP to increase a Pyramidal Stat.
@@ -165,7 +165,7 @@ export default function EsotericPatternsPage() {
                         </p>
                     </div>
 
-                    <div className="docs-card" style={{borderColor: '#e74c3c'}}>
+                    <div className="docs-card" style={{borderColor: 'var(--danger-color)'}}>
                         <h4>The Soul Trader (Selling Yourself)</h4>
                         <p>
                             A dark market where you sell parts of your humanity for gold.
@@ -199,7 +199,7 @@ export default function EsotericPatternsPage() {
                         </p>
                     </div>
 
-                    <div className="docs-card" style={{borderColor: '#f1c40f'}}>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
                         <h4>The Heist Planner (Buying Intel)</h4>
                         <p>
                             "Buy" knowledge or unlock routes using money.

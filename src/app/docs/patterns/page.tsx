@@ -33,7 +33,7 @@ export default function PatternsDocs() {
                         A repeatable activity loop used to gather resources. 
                         The player enters, performs actions to build a tracker, claims a reward, and resets.
                     </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
                     <ol className="docs-list">
                         <li><strong>The Tracker:</strong> Create a quality <code>$progress</code> (Counter).</li>
                         <li>
@@ -50,12 +50,12 @@ export default function PatternsDocs() {
                 </div>
 
                 {/* PATTERN 2: THE MENACE */}
-                <div className="docs-card" style={{borderColor: '#e74c3c', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#e74c3c'}}>2. The Menace (The Trap)</h3>
+                <div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: 'var(--danger-color)'}}>2. The Menace (The Trap)</h3>
                     <p className="docs-p">
                         A negative stat (Wounds, Suspicion) that punishes the player if it gets too high.
                     </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
                     <ol className="docs-list">
                         <li><strong>The Stat:</strong> Create a Pyramidal quality <code>$suspicion</code>.</li>
                         <li>
@@ -79,7 +79,7 @@ export default function PatternsDocs() {
     <p className="docs-p">
         A traditional, linear story where the player moves from Scene A to B to C without interruption.
     </p>
-    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
     <ol className="docs-list">
         <li><strong>Tracker:</strong> Create a quality <code>$chapter</code>.</li>
         <li>
@@ -103,12 +103,12 @@ export default function PatternsDocs() {
 </div>
 
                 {/* PATTERN 4: THE HUB */}
-                <div className="docs-card" style={{borderColor: '#f1c40f', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#f1c40f'}}>4. The Hub (Exploration)</h3>
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>4. The Hub (Exploration)</h3>
                     <p className="docs-p">
                         A map that grows as the player explores.
                     </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
                     <ol className="docs-list">
                         <li><strong>The Route:</strong> Create a quality <code>$route_to_forest</code>.</li>
                         <li>
@@ -130,7 +130,7 @@ export default function PatternsDocs() {
     <p className="docs-p">
         Mechanics that require waiting for real-time to pass, powered by Living Stories.
     </p>
-    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
     <ol className="docs-list">
         <li>
             <strong>The Trigger:</strong> An option "Plant Seeds".
@@ -149,12 +149,12 @@ export default function PatternsDocs() {
 
                 {/* PATTERN 6: THE EXPEDITION */}
                 {/* PATTERN 6: THE EXPEDITION */}
-<div className="docs-card" style={{borderColor: '#e06c75', marginTop: '2rem'}}>
-    <h3 style={{marginTop: 0, color: '#e74c75'}}>6. The Expedition (Deck-Driven)</h3>
+<div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
+    <h3 style={{marginTop: 0, color: 'var(--danger-color)'}}>6. The Expedition (Deck-Driven)</h3>
     <p className="docs-p">
         A high-stakes mode where the player must survive a random deck to reach a destination.
     </p>
-    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
     <ol className="docs-list">
         <li>
             Create a specialized <strong>Deck</strong> (e.g., "Desert Deck").
@@ -186,7 +186,7 @@ export default function PatternsDocs() {
         A story that adapts its text and options based on the player's identity.
     </p>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// Adaptive Text</span>
+        <span style={{color:'var(--text-muted)'}}>// Adaptive Text</span>
         <br/>
         <code className="docs-code">
             "You approach the gate. {`{ $class == Noble : The guards bow to you. | The guards block your path. }`}"
@@ -200,8 +200,8 @@ export default function PatternsDocs() {
 </div>
 
                 {/* PATTERN 8: PYTHON */}
-                <div className="docs-card" style={{borderColor: '#f39c12', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#f39c12'}}>8. The Python (Non-Linear Mystery)</h3>
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>8. The Python (Non-Linear Mystery)</h3>
                     <p className="docs-p">
                         Gather clues in any order, leading to one conclusion.
                     </p>

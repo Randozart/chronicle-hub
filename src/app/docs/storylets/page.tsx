@@ -45,8 +45,8 @@ export default function StoryletsDocs() {
                             Use for: Hubs, Travel, Main Quests.
                         </div>
                     </div>
-                    <div className="docs-card" style={{borderColor: '#f1c40f'}}>
-                        <h4 className="docs-h4" style={{color:'#f1c40f'}}>Opportunity (Card)</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
+                        <h4 className="docs-h4" style={{color:'var(--docs-accent-gold)'}}>Opportunity (Card)</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>Lives in:</strong> A Deck.
                         </p>
@@ -146,7 +146,7 @@ export default function StoryletsDocs() {
                         <tr><td><strong>Infrequent</strong></td><td>5</td><td>Uncommon events.</td></tr>
                         <tr><td><strong>Rare</strong></td><td>2</td><td>Special rewards.</td></tr>
                         <tr>
-                            <td><strong style={{color: '#e06c75'}}>Always</strong></td>
+                            <td><strong style={{color: 'var(--danger-color)'}}>Always</strong></td>
                             <td>1000</td>
                             <td>
                                 <strong>Near-Guaranteed Draw.</strong> If an "Always" card meets its requirements,
@@ -278,7 +278,193 @@ export default function StoryletsDocs() {
 </p>
             </section>
 
-            
+            {/* SECTION 6: PRACTICAL EXAMPLES */}
+            <section id="examples">
+                <h2 className="docs-h2">7. Practical Examples</h2>
+                <p className="docs-p">
+                    Here are complete, step-by-step examples of common storylet patterns you'll use in your games.
+                </p>
+
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--docs-accent-green)'}}>Example 1: A Simple Shop</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create a merchant who sells healing potions for 10 gold.
+                    </p>
+
+                    <h4 className="docs-h4">Step 1: Create the Storylet</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>merchant_shop</code></li>
+                        <li><strong>Title:</strong> The Merchant's Stall</li>
+                        <li><strong>Location:</strong> marketplace</li>
+                        <li><strong>Teaser:</strong> "A weathered merchant sells remedies and supplies"</li>
+                        <li><strong>Body:</strong> "The merchant gestures to their wares. 'Healing potions, 10 gold each. Fresh this morning!'"</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Step 2: Add the Purchase Option</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>Title:</strong> Buy a healing potion</li>
+                        <li><strong>Description:</strong> Costs 10 gold</li>
+                        <li><strong>Unlock If:</strong> <code>$gold &gt;= 10</code> (grays out if player can't afford it)</li>
+                        <li><strong>Lock Message:</strong> "You don't have enough gold"</li>
+                        <li><strong>Success Text:</strong> "You hand over the coins and receive a small vial of red liquid"</li>
+                        <li><strong>Pass Quality Change:</strong> <code>$gold -= 10, $healing_potion++</code></li>
+                    </ul>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Key Concept:</strong> Using <code>unlock_if</code> creates a "soft gate" - the option is visible but locked. This is better UX than hiding it with <code>visible_if</code>, because the player can see what they need.
+                    </div>
+                </div>
+
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--docs-accent-blue)'}}>Example 2: A Branching Conversation</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create a guard who lets you pass if you have a bribe or a high persuasion skill.
+                    </p>
+
+                    <h4 className="docs-h4">Step 1: Create the Main Storylet</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>guard_checkpoint</code></li>
+                        <li><strong>Title:</strong> The City Gate</li>
+                        <li><strong>Location:</strong> city_entrance</li>
+                        <li><strong>Body:</strong> "A stern guard blocks the gate. 'No one enters without proper authorization.'"</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Step 2: Add Multiple Approaches</h4>
+
+                    <div className="docs-pre" style={{marginTop: '1rem'}}>
+                        <strong style={{color: 'var(--docs-accent-green)'}}>Option 1: Bribe</strong>
+                    </div>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>Title:</strong> Offer 50 gold</li>
+                        <li><strong>Unlock If:</strong> <code>$gold &gt;= 50</code></li>
+                        <li><strong>Success Text:</strong> "The guard's eyes light up. They pocket the coins and step aside"</li>
+                        <li><strong>Pass Quality Change:</strong> <code>$gold -= 50, $inside_city = 1</code></li>
+                        <li><strong>Pass Move To:</strong> <code>city_interior</code></li>
+                    </ul>
+
+                    <div className="docs-pre" style={{marginTop: '1rem'}}>
+                        <strong style={{color: 'var(--docs-accent-blue)'}}>Option 2: Persuasion Check</strong>
+                    </div>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>Title:</strong> Talk your way in</li>
+                        <li><strong>Challenge:</strong> <code>{`{ $persuasion >> 40 }`}</code></li>
+                        <li><strong>Success Text:</strong> "Your smooth words and confident manner convince them you're legitimate. They wave you through"</li>
+                        <li><strong>Pass Quality Change:</strong> <code>$inside_city = 1</code></li>
+                        <li><strong>Pass Move To:</strong> <code>city_interior</code></li>
+                        <li><strong>Failure Text:</strong> "They see through your act. 'Nice try. Now leave.'"</li>
+                    </ul>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Why This Works:</strong> Offering multiple paths to the same goal (entering the city) creates meaningful player choice. Rich players use gold, charismatic players use persuasion.
+                    </div>
+                </div>
+
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>Example 3: A Progressive Quest Chain</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create a 3-step quest where each step reveals the next.
+                    </p>
+
+                    <h4 className="docs-h4">Setup: Create the Quest Tracker</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        First, create a quality <code>$missing_child_quest</code> (Counter type) to track progress.
+                    </p>
+
+                    <h4 className="docs-h4">Step 1: The Request (Quest Start)</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>quest_start</code></li>
+                        <li><strong>Location:</strong> village_square</li>
+                        <li><strong>Visible If:</strong> <code>$missing_child_quest == 0</code></li>
+                        <li><strong>Body:</strong> "A distraught mother approaches you. 'Please, my child wandered into the forest and hasn't returned!'"</li>
+                        <li><strong>Option:</strong> "I'll help you find them"</li>
+                        <li><strong>Pass Quality Change:</strong> <code>$missing_child_quest = 1</code></li>
+                    </ul>
+
+                    <h4 className="docs-h4">Step 2: The Search</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>quest_investigate</code></li>
+                        <li><strong>Location:</strong> dark_forest</li>
+                        <li><strong>Visible If:</strong> <code>$missing_child_quest == 1</code></li>
+                        <li><strong>Body:</strong> "You find small footprints leading deeper into the woods"</li>
+                        <li><strong>Option:</strong> "Follow the tracks"</li>
+                        <li><strong>Pass Quality Change:</strong> <code>$missing_child_quest = 2</code></li>
+                        <li><strong>Pass Redirect:</strong> <code>quest_resolution</code></li>
+                        <li><strong>Tags:</strong> <code>instant_redirect</code> (for smooth flow)</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Step 3: The Resolution</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>quest_resolution</code></li>
+                        <li><strong>Location:</strong> dark_forest</li>
+                        <li><strong>Visible If:</strong> <code>$missing_child_quest == 2</code></li>
+                        <li><strong>Body:</strong> "You find the child safe in a hollow tree, frightened but unharmed"</li>
+                        <li><strong>Option:</strong> "Return them to their mother"</li>
+                        <li><strong>Pass Quality Change:</strong> <code>$missing_child_quest = 3, $gold += 20, $reputation++</code></li>
+                        <li><strong>Pass Move To:</strong> <code>village_square</code></li>
+                    </ul>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Pattern:</strong> Each storylet only appears when the tracker equals a specific value. As you increment the tracker, one storylet hides and the next appears. This creates a linear progression without manual linking.
+                    </div>
+                </div>
+
+                <div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
+                    <h3 className="docs-h3" style={{marginTop: 0, color: 'var(--danger-color)'}}>Example 4: A Random Encounter (Opportunity Card)</h3>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        <strong>Goal:</strong> Create a random ambush encounter that can appear while traveling.
+                    </p>
+
+                    <h4 className="docs-h4">Step 1: Create the Deck</h4>
+                    <p className="docs-p" style={{fontSize: '0.9rem'}}>
+                        In the Decks tab, create a deck called <code>travel_events</code> with hand size 3.
+                    </p>
+
+                    <h4 className="docs-h4">Step 2: Create the Opportunity</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>ID:</strong> <code>bandit_ambush</code></li>
+                        <li><strong>Type:</strong> Opportunity (not Storylet)</li>
+                        <li><strong>Deck:</strong> travel_events</li>
+                        <li><strong>Title:</strong> Ambush!</li>
+                        <li><strong>Frequency:</strong> Infrequent (weight 5)</li>
+                        <li><strong>Draw Condition:</strong> <code>$in_wilderness == 1</code></li>
+                        <li><strong>Can Discard:</strong> Unchecked (sticky - must be dealt with)</li>
+                        <li><strong>Body:</strong> "Bandits leap from the bushes! 'Your coin or your life!'"</li>
+                    </ul>
+
+                    <h4 className="docs-h4">Step 3: Add Response Options</h4>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>Option 1:</strong> "Fight them" (Challenge: <code>{`{ $combat >> 50 }`}</code>)
+                            <ul style={{marginTop: '0.5rem'}}>
+                                <li>Success: "You drive them off!" → <code>$combat++</code></li>
+                                <li>Failure: "They overpower you!" → <code>$gold -= 20, $wounds++</code></li>
+                            </ul>
+                        </li>
+                        <li style={{marginTop: '0.5rem'}}><strong>Option 2:</strong> "Surrender your gold"
+                            <ul style={{marginTop: '0.5rem'}}>
+                                <li>Unlock If: <code>$gold &gt;= 15</code></li>
+                                <li>Effect: <code>$gold -= 15</code></li>
+                                <li>Text: "They take your money and disappear into the forest"</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <div className="docs-callout" style={{marginTop: '1rem'}}>
+                        <strong>Why Use Opportunities:</strong> Random events create unpredictability. Players draw cards into their hand, and must deal with what fate gives them. The <code>draw_condition</code> ensures this only appears in the wilderness, not in safe cities.
+                    </div>
+                </div>
+
+                <div className="docs-callout" style={{marginTop: '3rem', borderColor: 'var(--docs-accent-green)'}}>
+                    <strong style={{color: 'var(--docs-accent-green)'}}>Learn by Example:</strong>
+                    <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem'}}>
+                        Want to see these patterns in action? Check out the open-source example games:
+                        <br/>• <a href="/create/mystery_at_the_manor/settings" className="docs-link" target="_blank">Mystery at the Manor</a> - Simple quest chains and skill checks
+                        <br/>• <a href="/create/cloak_of_darkness/settings" className="docs-link" target="_blank">Cloak of Darkness</a> - Location-based progression
+                        <br/>• <a href="/create/concrete_requiem/settings" className="docs-link" target="_blank">Concrete Requiem</a> - Complex conditional flows
+                    </p>
+                </div>
+            </section>
+
+
         </div>
     );
 }

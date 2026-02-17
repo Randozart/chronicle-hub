@@ -42,7 +42,7 @@ export default function ChallengesPage() {
                             The simplest challenge is a fixed percentage. You can just type a number directly into the field.
                         </p>
                         <div className="docs-pre">
-                            <span style={{color:'#777'}}>// In the Challenge field:</span>
+                            <span style={{color:'var(--text-muted)'}}>// In the Challenge field:</span>
                             <br/>
                             <code className="docs-code">50</code>
                         </div>
@@ -56,7 +56,7 @@ export default function ChallengesPage() {
                             To make the chance depend on a player's quality, you use a ScribeScript logic block. This is where the real power lies.
                         </p>
                         <div className="docs-pre">
-                            <span style={{color:'#777'}}>// In the Challenge field:</span>
+                            <span style={{color:'var(--text-muted)'}}>// In the Challenge field:</span>
                             <br/>
                             <code className="docs-code">{`{ $strength >> 50 }`}</code>
                         </div>
@@ -86,7 +86,7 @@ export default function ChallengesPage() {
                     <code className="docs-code">
                         $gold_reward += {`{ 10 * { $negotiation >> 40 } }`}
                     </code>
-                    <br/><small style={{color:'#777'}}>The reward scales based on your success chance. A 70% chance would yield 700 gold.</small>
+                    <br/><small style={{color:'var(--text-muted)'}}>The reward scales based on your success chance. A 70% chance would yield 700 gold.</small>
                 </div>
                  <div className="docs-callout">
                     <strong style={{color: 'var(--docs-text-main)'}}>Anonymous vs. Explicit Macros:</strong>
@@ -138,7 +138,7 @@ export default function ChallengesPage() {
                     The <code>!</code> operator inverts the result of a boolean check. For a probability check, this effectively turns "roll under" into "roll over".
                 </p>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>// In a Storylet's 'Text' field:</span>
+                    <span style={{color:'var(--text-muted)'}}>// In a Storylet's 'Text' field:</span>
                     <br/>
                     <code className="docs-code">
                         You attempt to pick the lock. {`{ !{ 70% } : Your hands tremble; this lock is beyond your skill. | }`}
@@ -183,11 +183,11 @@ export default function ChallengesPage() {
                     To do this, we first calculate the main success chance and store it in an <strong>alias</strong>. Then, we use that alias to create tiered probability checks.
                 </p>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>
+                    <span style={{color:'var(--text-muted)'}}>
                         // Define a "critical" as the best 20% of all possible successful outcomes.
                     </span>
                     <br/>
-                    <span style={{color:'#777'}}>
+                    <span style={{color:'var(--text-muted)'}}>
                         // Technically the failure state is not even required here, as that only shows up if you did not use the challenge field.
                     </span>
                     <br/>
@@ -308,11 +308,11 @@ You cast your line... {
                     You can provide arguments by name or by position. Positional arguments are faster to type but must be in the correct order: `margin`, `min`, `max`, `pivot`.
                 </p>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>// Positional: Sets margin=20, min=10, max=90</span>
+                    <span style={{color:'var(--text-muted)'}}>// Positional: Sets margin=20, min=10, max=90</span>
                     <br/>
                     <code className="docs-code">{`{ $stat >> 50 ; 20, 10, 90 }`}</code>
                     <br/><br/>
-                    <span style={{color:'#777'}}>// Named: Sets only the pivot, leaving others at default</span>
+                    <span style={{color:'var(--text-muted)'}}>// Named: Sets only the pivot, leaving others at default</span>
                     <br/>
                     <code className="docs-code">{`{ $stat >> 50 ; pivot:30 }`}</code>
                 </div>
@@ -344,7 +344,7 @@ You cast your line... {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem' }}>
                         <div>
-                            <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Operator</label>
+                            <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '4px' }}>Operator</label>
                             <select
                                 value={op}
                                 onChange={(e) => setOp(e.target.value)}
@@ -357,25 +357,25 @@ You cast your line... {
                             </select>
                         </div>
                         <div>
-                            <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Target Level ({target})</label>
+                            <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '4px' }}>Target Level ({target})</label>
                             <input type="range" min="0" max="100" value={target} onChange={(e) => setTarget(parseInt(e.target.value))} style={{ width: '100%' }} />
                         </div>
 
                         <div>
-                            <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Pivot Chance ({pivot}%)</label>
+                            <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '4px' }}>Pivot Chance ({pivot}%)</label>
                             <input type="range" min="1" max="99" value={pivot} onChange={(e) => setPivot(parseInt(e.target.value))} style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', color: '#aaa', marginBottom: '4px' }}>Margin (+/- {margin})</label>
+                            <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '4px' }}>Margin (+/- {margin})</label>
                             <input type="range" min="0" max="50" value={margin} onChange={(e) => setMargin(parseInt(e.target.value))} style={{ width: '100%' }} />
                         </div>
 
                         <div>
-                            <label style={{ display: 'block', color: '#e74c3c', marginBottom: '4px' }}>Min Cap ({min}%)</label>
+                            <label style={{ display: 'block', color: 'var(--danger-color)', marginBottom: '4px' }}>Min Cap ({min}%)</label>
                             <input type="range" min="0" max="50" value={min} onChange={(e) => setMin(parseInt(e.target.value))} style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', color: '#e74c3c', marginBottom: '4px' }}>Max Cap ({max}%)</label>
+                            <label style={{ display: 'block', color: 'var(--danger-color)', marginBottom: '4px' }}>Max Cap ({max}%)</label>
                             <input type="range" min="50" max="100" value={max} onChange={(e) => setMax(parseInt(e.target.value))} style={{ width: '100%' }} />
                         </div>
                     </div>

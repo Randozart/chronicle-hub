@@ -230,11 +230,13 @@ export class GameEngine implements EngineContext {
     /**
      * Calculates the final value of a quality by taking the base level
      * and summing up bonuses from all equipped items.
+     *
+     * Supports both simple syntax ($stat + number) and full ScribeScript effects.
      */
     public getEffectiveLevel(qid: string): number {
         const baseState = this.qualities[qid];
         let total = (baseState && 'level' in baseState) ? baseState.level : 0;
-        
+
         if (!baseState && this.worldQualities[qid]) {
              const worldState = this.worldQualities[qid];
              total = ('level' in worldState) ? worldState.level : 0;
@@ -245,26 +247,58 @@ export class GameEngine implements EngineContext {
             if (!itemId) continue;
             const itemDef = this.worldContent.qualities[itemId];
             if (!itemDef || !itemDef.bonus) continue;
-            
+
             const evaluatedBonus = evaluateScribeText(
-                itemDef.bonus, 
+                itemDef.bonus,
                 this.qualities,
-                this.worldContent.qualities, 
-                null, 
-                this.resolutionRoll, 
-                this.tempAliases, 
+                this.worldContent.qualities,
+                null,
+                this.resolutionRoll,
+                this.tempAliases,
                 []
             );
 
-            const bonuses = evaluatedBonus.split(',');
+            // Split effects string properly to handle complex ScribeScript
+            const bonuses = this.splitEffectsString(evaluatedBonus);
             for (const bonus of bonuses) {
-                const match = bonus.trim().match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
-                if (match) {
-                    const [, targetQid, op, value] = match;
+                const trimmed = bonus.trim();
+                if (!trimmed) continue;
+
+                // Try simple syntax first for backward compatibility
+                const simpleMatch = trimmed.match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
+                if (simpleMatch) {
+                    const [, targetQid, op, value] = simpleMatch;
                     if (targetQid === qid) {
                         const numVal = parseInt(value, 10);
                         if (op === '+') total += numVal;
                         if (op === '-') total -= numVal;
+                    }
+                } else {
+                    // Parse as full ScribeScript effect (e.g., $strength += { $level * 2 })
+                    const effectMatch = trimmed.match(/^\$([a-zA-Z0-9_]+)\s*(\+\+|--|[\+\-\*\/%]=|=)\s*([\s\S]*)$/);
+                    if (effectMatch) {
+                        const [, targetQid, op, valueExpr] = effectMatch;
+                        if (targetQid === qid) {
+                            // Evaluate the value expression (might be complex ScribeScript)
+                            const evaluatedValue = evaluateScribeText(
+                                valueExpr,
+                                this.qualities,
+                                this.worldContent.qualities,
+                                null,
+                                this.resolutionRoll,
+                                this.tempAliases,
+                                []
+                            );
+
+                            const numVal = parseInt(evaluatedValue, 10);
+                            if (!isNaN(numVal)) {
+                                if (op === '+' || op === '+=') total += numVal;
+                                else if (op === '-' || op === '-=') total -= numVal;
+                                else if (op === '++') total += 1;
+                                else if (op === '--') total -= 1;
+                                else if (op === '=') total = numVal;
+                            }
+                        }
                     }
                 }
             }
@@ -273,8 +307,48 @@ export class GameEngine implements EngineContext {
     }
 
     /**
+     * Helper method to split effects string while respecting nested braces and brackets.
+     * Mirrors the logic from effectParser.ts for consistency.
+     */
+    private splitEffectsString(str: string): string[] {
+        const result: string[] = [];
+        let current = '';
+        let bracketDepth = 0;
+        let braceDepth = 0;
+        let inQuote = false;
+        let quoteChar = '';
+
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (inQuote) {
+                current += char;
+                if (char === quoteChar) inQuote = false;
+            } else {
+                if (char === '"' || char === "'") {
+                    inQuote = true; quoteChar = char; current += char;
+                } else if (char === '[') {
+                    bracketDepth++; current += char;
+                } else if (char === ']') {
+                    if (bracketDepth > 0) bracketDepth--; current += char;
+                } else if (char === '{') {
+                    braceDepth++; current += char;
+                } else if (char === '}') {
+                    if (braceDepth > 0) braceDepth--; current += char;
+                } else if (char === ',' && bracketDepth === 0 && braceDepth === 0) {
+                    result.push(current.trim()); current = '';
+                } else {
+                    current += char;
+                }
+            }
+        }
+        if (current.trim()) result.push(current.trim());
+        return result;
+    }
+
+    /**
      * Scans currently equipped items to find which Qualities they are modifying.
      * Used to ensure these qualities appear in the UI even if the player has 0 base level.
+     * Filters out qualities marked with hideAsBonus: true.
      */
     public getBonusQualities(): string[] {
         const affectedQids = new Set<string>();
@@ -285,7 +359,12 @@ export class GameEngine implements EngineContext {
             if (itemDef && itemDef.bonus) {
                 const matches = itemDef.bonus.matchAll(/[\$#]([a-zA-Z0-9_]+)/g);
                 for (const m of matches) {
-                    affectedQids.add(m[1]);
+                    const targetQid = m[1];
+                    const targetDef = this.worldContent.qualities[targetQid];
+                    // Only include if not marked as hideAsBonus
+                    if (!targetDef?.hideAsBonus) {
+                        affectedQids.add(targetQid);
+                    }
                 }
             }
         }

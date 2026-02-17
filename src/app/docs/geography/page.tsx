@@ -43,8 +43,8 @@ export default function GeographyDocs() {
                             <li>Has X/Y coordinates to place a pin on the Region map.</li>
                         </ul>
                     </div>
-                    <div className="docs-card" style={{borderColor: '#f1c40f'}}>
-                        <h4 className="docs-h4" style={{color:'#f1c40f'}}>3. Systems</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
+                        <h4 className="docs-h4" style={{color:'var(--docs-accent-gold)'}}>3. Systems</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             Attached to Locations via IDs.
                         </p>
@@ -171,8 +171,8 @@ export default function GeographyDocs() {
 
                 <h3 className="docs-h3">Behavior Tags</h3>
                 <div className="docs-grid">
-                    <div className="docs-card" style={{borderColor: '#e74c3c'}}>
-                        <h4 className="docs-h4" style={{color: '#e74c3c'}}>Lock Equipment</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--danger-color)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--danger-color)'}}>Lock Equipment</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>Tag:</strong> <code>lock_equipment</code>
                         </p>
@@ -181,8 +181,8 @@ export default function GeographyDocs() {
                             <br/><em>Useful for: Prisons, Undercover Missions, or Dream States.</em>
                         </p>
                     </div>
-                    <div className="docs-card" style={{borderColor: '#2ecc71'}}>
-                        <h4 className="docs-h4" style={{color: '#2ecc71'}}>Safe Zone</h4>
+                    <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)'}}>
+                        <h4 className="docs-h4" style={{color: 'var(--docs-accent-green)'}}>Safe Zone</h4>
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>Tag:</strong> <code>safe_zone</code>
                         </p>
