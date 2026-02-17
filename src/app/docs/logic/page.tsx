@@ -12,7 +12,7 @@ export default function LogicMathPage() {
                 </p>
             </header>
 
-            {/* SECTION 1: LOGIC */}
+            {/* Logic fundamentals - How ScribeScript evaluates conditions and expressions */}
             <section id="logic">
                 <h2 className="docs-h2">1. Logic (Requirements)</h2>
                 <p className="docs-p">
@@ -127,7 +127,7 @@ export default function LogicMathPage() {
 </div>
             </section>
 
-            {/* SECTION 2: EFFECTS */}
+            {/* Effects - How to modify quality values and trigger state changes */}
                 
             
 
@@ -137,10 +137,10 @@ export default function LogicMathPage() {
         ScribeScript uses four specific bracket patterns. Understanding the difference is key to mastering complex logic.
     </p>
 
-    {/* DEFINITIONS */}
+    {/* Property definitions for .level and .cp access on qualities */}
     <div className="docs-grid">
-        <div className="docs-card" style={{borderColor: '#f1c40f'}}>
-            <h4 className="docs-h4" style={{color: '#f1c40f'}}>{`{ }`} Logic Blocks</h4>
+        <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
+            <h4 className="docs-h4" style={{color: 'var(--docs-accent-gold)'}}>{`{ }`} Logic Blocks</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>
                 <strong>The Engine Switch.</strong> Tells the parser to "stop reading text and start calculating." This is how you inject dynamic values into a string.
             </p>
@@ -157,7 +157,7 @@ export default function LogicMathPage() {
                 <strong>The Parameter Block.</strong> Used to provide arguments to a macro (`%chance[...]`) or metadata to an effect (`$gold[desc:...]`).
             </p>
         </div>
-        {/* Deprecated with the introduction of property chaining */}
+        {/* The following card is deprecated - .get() syntax replaced by property chaining */}
         {/* <div className="docs-card" style={{borderColor: '#9b59b6'}}>
             <h4 className="docs-h4" style={{color: '#9b59b6'}}>{`$( )`} Deferred Identifier</h4>
             <p className="docs-p" style={{fontSize: '0.9rem'}}>
@@ -180,7 +180,7 @@ export default function LogicMathPage() {
         <div className="docs-pre">
             <span style={{color:'var(--text-muted)'}}>// INCORRECT: The parser will break trying to read this.</span>
             <br/>
-            <code className="docs-code" style={{color: '#e06c75'}}>$gold &gt; $level * 50</code>
+            <code className="docs-code" style={{color: 'var(--danger-color)'}}>$gold &gt; $level * 50</code>
             <br/><br/>
             <span style={{color:'var(--text-muted)'}}>// CORRECT: The "Russian Doll" model solves the inner block first.</span>
             <br/>
@@ -206,7 +206,19 @@ export default function LogicMathPage() {
     </div>
 
     <div className="docs-card" style={{marginTop:'1.5rem', borderColor:'#9b59b6'}}>
-        <h4 className="docs-h4">Edge Case 3: Variable-from-Variable (The <code>$.</code>Problem)</h4>
+        <h4 className="docs-h4">Edge Case 3: Variable-from-Variable (The <code>$.</code> Problem)</h4>
+
+        <div className="docs-callout" style={{borderColor:'var(--danger-color)', background:'rgba(231, 76, 60, 0.1)', marginBottom:'1rem'}}>
+            <strong style={{color:'var(--danger-color)'}}>⚠️ DEPRECATED SYNTAX</strong>
+            <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
+                The <code>$(...)</code> syntax shown in this section is <strong>deprecated</strong> and maintained only for backward compatibility with legacy projects.
+                <br/><br/>
+                <strong>Modern Alternative:</strong> Use property chaining with direct evaluation: <code>{`$.id.ledger`}</code> instead of <code>{`$($.id).ledger`}</code>
+                <br/><br/>
+                While this syntax still works, it may be removed in future versions. New projects should use property chaining wherever possible.
+            </p>
+        </div>
+
         <p className="docs-p">
             In advanced macros like <code>%pick</code>, you often iterate over a list of items. Sometimes, you need to use the properties of the <em>current</em> item (<code>$.</code>) to look up a <em>different</em> variable.
         </p>
@@ -225,14 +237,14 @@ export default function LogicMathPage() {
             <br/>2. The engine then uses that string to look up the variable <code>$s1</code>.
             <br/>3. Finally, it checks <code>$s1.ledger</code>.
         </p>
-        <div className="docs-callout" style={{marginTop:'1rem', borderColor:'#e06c75'}}>
-            <strong style={{color:'#e06c75'}}>Why Braces <code>{`{}`}</code> Fail Inside a Macro Filter</strong>
+        <div className="docs-callout" style={{marginTop:'1rem', borderColor:'var(--danger-color)'}}>
+            <strong style={{color:'var(--danger-color)'}}>Why Braces <code>{`{}`}</code> Fail Inside a Macro Filter</strong>
             <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
                 The engine's "Russian Doll" model resolves the innermost <code>{`{}`}</code> blocks <strong>before the macro runs</strong>.
             </p>
             <div className="docs-pre" style={{marginTop:'0.5rem', fontSize:'0.85rem'}}>
                 <span style={{color:'var(--text-muted)'}}>// Incorrect Syntax</span><br/>
-                <code className="docs-code" style={{color:'#e06c75'}}>{`{%pick[suspects; 1, $.id.ledger < 3]}`}</code>
+                <code className="docs-code" style={{color:'var(--danger-color)'}}>{`{%pick[suspects; 1, $.id.ledger < 3]}`}</code>
                 <br/><br/>
                 <strong>How it Fails:</strong>
                 <br/>1. The outer parser sees <code>{`{$.id}`}</code> and resolves it immediately.

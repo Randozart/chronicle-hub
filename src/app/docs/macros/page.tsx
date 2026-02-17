@@ -27,8 +27,8 @@ export default function MacrosPage() {
                     All macros start with <code>{`%`}</code> and their arguments are contained in square brackets <code>[...]</code>.
                 </p>
 
-                <div className="docs-callout" style={{borderColor: '#f1c40f'}}>
-                    <strong style={{color: '#f1c40f'}}>The Percent Shorthand:</strong>
+                <div className="docs-callout" style={{borderColor: 'var(--docs-accent-gold)'}}>
+                    <strong style={{color: 'var(--docs-accent-gold)'}}>The Percent Shorthand:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
                         As explained in the <Link href="/docs/scribescript#challenges" className="docs-link">main syntax guide</Link>, the 
                         engine recognizes a special shorthand: <code>{`{...}%`}</code>. When the parser sees a number followed by a percent sign, 
@@ -154,7 +154,7 @@ export default function MacrosPage() {
                     </li>
                 </ul>
                 <div className="docs-pre">
-                    <span style={{color:'#777'}}>// Used in a conditional</span>
+                    <span style={{color:'var(--text-muted)'}}>// Used in a conditional</span>
                     <br/>
                     <code className="docs-code">{`{ {%random[40]} : You find a loose coin! | You find nothing. }`}</code>
                 </div>
@@ -164,11 +164,11 @@ export default function MacrosPage() {
                         While you can write the full macro, it's far more common to use the <code>{`{...}%`}</code> shorthand. The engine recognizes a number inside braces followed by a percent sign and treats it as a <code>true/false</code> check against the Resolution Roll.
                     </p>
                     <div className="docs-pre">
-                        <span style={{color:'#777'}}>// This shorthand...</span>
+                        <span style={{color:'var(--text-muted)'}}>// This shorthand...</span>
                         <br/>
                         <code className="docs-code">{`{40%}`}</code>
                         <br/><br/>
-                        <span style={{color:'#777'}}>// ...is identical to writing this full macro:</span>
+                        <span style={{color:'var(--text-muted)'}}>// ...is identical to writing this full macro:</span>
                         <br/>
                         <code className="docs-code">{`{%random[40]}`}</code>
                     </div>
@@ -200,13 +200,13 @@ export default function MacrosPage() {
                     The result of this macro is a <strong>Number (0-100)</strong>, which you can then use in a Challenge field or with the <code>%</code> shorthand. See the <Link href="/docs/scribescript#challenges" className="docs-link">main syntax guide</Link> for a full breakdown of modifiers.
                 </p>
 
-                <div className="docs-callout" style={{borderColor: '#f1c40f', marginTop: '1.5rem'}}>
-                    <strong style={{color: '#f1c40f'}}>The Anonymous Challenge Shorthand</strong>
+                <div className="docs-callout" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '1.5rem'}}>
+                    <strong style={{color: 'var(--docs-accent-gold)'}}>The Anonymous Challenge Shorthand</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', margin: '0.5rem 0 0 0'}}>
                         While <code>%chance</code> is explicit, ScribeScript provides a powerful shorthand. If you place a challenge expression directly inside a logic block, the engine will automatically calculate the success chance as a number. This allows you to use probability calculations within other logic.
                     </p>
                     <div className="docs-pre" style={{marginTop:'1rem'}}>
-                        <span style={{color:'#777'}}>// In a Text Field, check if your odds are good before acting:</span>
+                        <span style={{color:'var(--text-muted)'}}>// In a Text Field, check if your odds are good before acting:</span>
                         <br/>
                         <code className="docs-code">
                             {`"You assess the jump. { { $agility >> 50 } > 75 : You feel confident. | You feel a tremor of doubt. }"`}
@@ -389,7 +389,7 @@ export default function MacrosPage() {
             Think of each character having a list of "appointments" for each quality. When you use <code>%schedule</code>, you add a new appointment to the bottom of the list for that quality.
         </p>
         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
-            <span style={{color:'#777'}}>// Player has two research projects queued</span>
+            <span style={{color:'var(--text-muted)'}}>// Player has two research projects queued</span>
             <br/>
             <code className="docs-code" style={{color: '#c8ccd4'}}>
                 <strong>$research Stack:</strong>
@@ -408,7 +408,7 @@ export default function MacrosPage() {
         <code className="docs-code">{`{%schedule[ EFFECT : TIME ; MODIFIERS ]}`}</code>
     </div>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// After 4 hours, your 'Research' will increase by 1.</span>
+        <span style={{color:'var(--text-muted)'}}>// After 4 hours, your 'Research' will increase by 1.</span>
         <br/>
         <code className="docs-code">
             {`{%schedule[$research += 1 : 4h]}`}
@@ -421,13 +421,13 @@ export default function MacrosPage() {
         <code className="docs-code">{`{%cancel[ $QUALITY_ID ; MODIFIERS ]}`}</code>
     </div>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// Cancel all pending 'Research' timers.</span>
+        <span style={{color:'var(--text-muted)'}}>// Cancel all pending 'Research' timers.</span>
         <br/>
         <code className="docs-code">
             {`{%cancel[$research ; all]}`}
         </code>
         <br/><br/>
-        <span style={{color:'#777'}}>// Cancel only the single oldest 'Rations' timer from the stack.</span>
+        <span style={{color:'var(--text-muted)'}}>// Cancel only the single oldest 'Rations' timer from the stack.</span>
         <br/>
         <code className="docs-code">
             {`{%cancel[$rations ; first]}`}

@@ -93,10 +93,12 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
                 
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {/* ... (Keep existing nav items) ... */}
                         <NavItem href="/docs" label="Introduction" />
+                        <NavItem href="/docs/quickstart" label="Quick Start: Your First Game" />
+                        <NavItem href="/docs/interface" label="Understanding the Interface" />
                         <Section title="The Language" />
                         <NavItem href="/docs/scribescript" label="ScribeScript Syntax" />
+                        <NavItem href="/docs/challenges" label="Challenges & Probability" />
                         <NavItem href="/docs/logic" label="Logic & Conditions" />
                         <NavItem href="/docs/effects" label="Effects & State Changes" />
                         <NavItem href="/docs/macros" label="Macros & Functions" />

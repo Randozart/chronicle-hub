@@ -19,8 +19,8 @@ export default function EffectsPage() {
                     Effects are the "verbs" of your story. They are instructions that modify the state of the game world and are primarily used in the <strong>Quality Changes</strong> field of an option.
                 </p>
                 
-                <div className="docs-callout" style={{borderColor: '#e06c75'}}>
-                    <strong style={{color: '#e06c75'}}>The Core Rule: L-Value vs. R-Value</strong>
+                <div className="docs-callout" style={{borderColor: 'var(--danger-color)'}}>
+                    <strong style={{color: 'var(--danger-color)'}}>The Core Rule: L-Value vs. R-Value</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', margin:'0.5rem 0 0 0'}}>
                         An effect is an <strong>Instruction</strong>, not an equation. It must always have a variable on the left (the "L-Value" or address) and the data on the right (the "R-Value" or value).
                     </p>
@@ -29,7 +29,7 @@ export default function EffectsPage() {
                             $gold += 10  // Correct!
                         </code>
                         <br/><br/>
-                        <code className="docs-code" style={{color:'#e06c75'}}>
+                        <code className="docs-code" style={{color:'var(--danger-color)'}}>
                             {`{ $gold }`} += 10 // Incorrect! This becomes "50 += 10", which is nonsense.
                         </code>
                     </div>
@@ -211,8 +211,8 @@ export default function EffectsPage() {
         <p className="docs-p">
             This metadata tag tells the engine *where* an item came from. This "memory" is stored with the item and can be recalled later in your story using the <code>.source</code> property.
         </p>
-        <div className="docs-callout" style={{borderColor:'#f1c40f', padding:'1rem'}}>
-            <strong style={{color:'#f1c40f'}}>Write for Recall:</strong>
+        <div className="docs-callout" style={{borderColor:'var(--docs-accent-gold)', padding:'1rem'}}>
+            <strong style={{color:'var(--docs-accent-gold)'}}>Write for Recall:</strong>
             <p className="docs-p" style={{fontSize:'0.85rem', margin:'0.5rem 0 0 0'}}>
                 The text you provide for the source will be inserted verbatim when you call <code>.source</code>. You should write it in the grammatical context you intend to use it.
             </p>
@@ -269,8 +269,8 @@ export default function EffectsPage() {
                 <strong>Delayed Outcome (Inline Metadata):</strong> The <code>[desc:...]</code> inside the effect is attached to the scheduled event. 8 hours later, when <code>$rations</code> decreases, the text "An hour passes..." is intended to appear in the player's log.
             </li>
         </ul>
-        <div className="docs-callout" style={{borderColor: '#e06c75', marginTop: '1rem'}}>
-             <strong style={{color: '#e06c75'}}>Note:</strong> The display of the delayed <code>desc</code> text (the one inside the brackets) is a planned feature and may not be fully implemented in the current version.
+        <div className="docs-callout" style={{borderColor: 'var(--danger-color)', marginTop: '1rem'}}>
+             <strong style={{color: 'var(--danger-color)'}}>Note:</strong> The display of the delayed <code>desc</code> text (the one inside the brackets) is a planned feature and may not be fully implemented in the current version.
         </div>
     </div>
 </section>

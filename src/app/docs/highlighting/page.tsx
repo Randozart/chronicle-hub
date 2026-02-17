@@ -4,7 +4,8 @@ import React from 'react';
 
 export default function SyntaxHighlightingPage() {
     
-    // Helper to simulate the Editor look
+    // Wrapper component that mimics the ScribeScript editor's monospace styling
+    // Used throughout this page to display syntax-highlighted code examples
     const CodeBlock = ({ children }: { children: React.ReactNode }) => (
         <div className="docs-pre" style={{ lineHeight: '1.6', fontSize: '0.95rem' }}>
             <code style={{ fontFamily: 'Consolas, "Courier New", monospace', background: 'transparent' }}>
@@ -13,22 +14,22 @@ export default function SyntaxHighlightingPage() {
         </div>
     );
 
-    // Color Constants (Matched to your CSS)
+    // Color constants pulled from theme.css for reactive highlighting
+    // These match the actual ScribeScript editor's theme-aware color scheme
     const C = {
-        text: '#bec0c5',     // Base Text
-        brace1: 'var(--docs-accent-gold)',   // Gold
-        brace2: '#df8749',   // Copper
-        varLocal: 'var(--docs-accent-blue)', // Electric Blue
-        varAlias: 'var(--docs-accent-green)', // Green
-        varWorld: '#ff3b90', // Pink
-        macro: '#6361ff',    // Royal Blue
-        bracket: '#5646ff',  // Deep Blue
-        num: '#7cee7a',      // Lime
-        math: '#bec0c5',     // Text Grey (Math)
-        operator: '#9ba1ad', // Grey (Operator)
-        flow: '#f77e6e',     // Soft Pink
-        comment: '#6A9955',  // Olive Green
-        js: '#ff79c6'        // Magenta
+        text: 'var(--ss-text-prose)',           // Base text in prose mode
+        brace1: 'var(--ss-brace-outer)',        // Outer brace nesting
+        brace2: 'var(--ss-brace-inner)',        // Inner brace nesting
+        varLocal: 'var(--ss-var-local)',        // $ prefix (player qualities)
+        varAlias: 'var(--ss-var-alias)',        // @ prefix (temporary aliases)
+        varWorld: 'var(--ss-var-world)',        // # prefix (global state)
+        macro: 'var(--ss-macro)',               // % prefix (engine commands)
+        bracket: 'var(--ss-bracket)',           // [ ] for macro arguments
+        num: 'var(--ss-number)',                // Numeric literals
+        math: 'var(--ss-operator-math)',        // Mathematical operators (+, -, *, /)
+        operator: 'var(--ss-operator)',         // Assignment and separators (=, ,)
+        flow: 'var(--ss-flow)',                 // Control flow symbols (:, |)
+        comment: 'var(--ss-comment)',           // // comments
     };
 
     return (
@@ -39,7 +40,7 @@ export default function SyntaxHighlightingPage() {
                     A visual guide to the ScribeScript editor. Understand what the colors mean and how they help you write cleaner code.
                 </p>
             </header>
-            {/* 1. CONTEXT MODES */}
+            {/* Context modes - How the editor behaves differently in prose vs logic fields */}
             <section id="modes">
                 <h2 className="docs-h2">1. Context Modes</h2>
                 <p className="docs-p">
@@ -220,7 +221,7 @@ export default function SyntaxHighlightingPage() {
                 </div>
             </section>
 
-            {/* 2. COLOR LEGEND */}
+            {/* Color legend - Complete reference for all syntax highlighting colors */}
             <section id="legend">
                 <h2 className="docs-h2">2. The Color Legend</h2>
                 <p className="docs-p">
@@ -285,7 +286,7 @@ export default function SyntaxHighlightingPage() {
                 </table>
             </section>
 
-            {/* 1. STRUCTURE */}
+            {/* Structure - Braces and their nesting behavior */}
             <section id="structure">
                 <h2>3. Structure (Braces)</h2>
                 <p className="docs-p">
@@ -311,7 +312,7 @@ export default function SyntaxHighlightingPage() {
                 </div>
             </section>
 
-            {/* 2. DATA */}
+            {/* Data - Variable types and their scope sigils ($, @, #) */}
             <section id="data">
                 <h2 className="docs-h2" >4. Data (Variables)</h2>
                 <p className="docs-p">
@@ -354,7 +355,7 @@ export default function SyntaxHighlightingPage() {
                 </div>
             </section>
 
-            {/* 3. ACTIONS */}
+            {/* Actions - Macro commands and their bracket syntax */}
             <section id="actions">
                 <h2 className="docs-h2">5. Actions (Macros)</h2>
                 <p className="docs-p">
@@ -379,7 +380,7 @@ export default function SyntaxHighlightingPage() {
                 </div>
             </section>
 
-            {/* 4. LOGIC & MATH */}
+            {/* Logic & Math - Operators for calculations and flow control */}
             <section id="math">
                 <h2 className="docs-h2">6. Logic & Math</h2>
                 <p className="docs-p">
@@ -431,7 +432,7 @@ export default function SyntaxHighlightingPage() {
                 </div>
             </section>
 
-            {/* 5. SPECIAL ELEMENTS */}
+            {/* Special elements - Comments and ghost blocks */}
             <section id="special">
                 <h2 className="docs-h2">7. Special Elements</h2>
                 

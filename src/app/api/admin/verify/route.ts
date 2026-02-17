@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
 
     // 3. CHECK OPEN SOURCE
     // Only reachable if the user is NOT an owner/writer/admin
-    if (world.settings?.isOpenSource && world.published) {
+    // Open source worlds are accessible via hyperlink regardless of publication status.
+    if (world.settings?.isOpenSource) {
         return NextResponse.json({ allowed: true, role: 'reader' });
     }
 

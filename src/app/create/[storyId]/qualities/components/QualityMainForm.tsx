@@ -359,7 +359,17 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                             </div>
                         )}
                         <div className="form-group">
-                            <SmartArea label="Use Event (Storylet ID)" value={form.storylet || ''} onChange={v => handleChange('storylet', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
+                            <SmartArea
+                                label="Use Event (Storylet ID)"
+                                subLabel="Storylet that fires when this item is used."
+                                value={form.storylet || ''}
+                                onChange={v => handleChange('storylet', v)}
+                                storyId={storyId}
+                                minHeight="38px"
+                                qualityDefs={qualityDefs}
+                                placeholder="use_potion or { $.cursed : cursed_event | normal_event }"
+                                entityType="storylet"
+                            />
                         </div>
                     </div>
                 )}

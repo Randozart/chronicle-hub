@@ -12,18 +12,28 @@ export default function PatternsDocs() {
                 </p>
             </header>
 
+            <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)'}}>
+                <strong style={{color: 'var(--docs-accent-blue)'}}>See Patterns in Action:</strong>
+                <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem', fontSize: '0.9rem'}}>
+                    These patterns are demonstrated in our open-source example games:
+                    <br/>• <a href="/create/mystery_at_the_manor/settings" className="docs-link" target="_blank">Mystery at the Manor</a> - Simple implementations
+                    <br/>• <a href="/create/cloak_of_darkness/settings" className="docs-link" target="_blank">Cloak of Darkness</a> - Classic puzzle patterns
+                    <br/>• <a href="/create/concrete_requiem/settings" className="docs-link" target="_blank">Concrete Requiem</a> - Advanced techniques
+                </p>
+            </div>
+
             <hr className="docs-divider" />
 
             <section id="patterns">
                 
-                {/* PATTERN 1: THE CAROUSEL */}
+                {/* Pattern 1 - The Carousel: Repeatable resource-gathering loops */}
                 <div className="docs-card" style={{borderColor: 'var(--docs-accent-green)', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: 'var(--docs-accent-green)'}}>1. The Carousel (The Grind)</h3>
                     <p className="docs-p">
                         A repeatable activity loop used to gather resources. 
                         The player enters, performs actions to build a tracker, claims a reward, and resets.
                     </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
                     <ol className="docs-list">
                         <li><strong>The Tracker:</strong> Create a quality <code>$progress</code> (Counter).</li>
                         <li>
@@ -39,13 +49,13 @@ export default function PatternsDocs() {
                     </ol>
                 </div>
 
-                {/* PATTERN 2: THE MENACE */}
-                <div className="docs-card" style={{borderColor: '#e74c3c', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#e74c3c'}}>2. The Menace (The Trap)</h3>
+                {/* Pattern 2 - The Menace: Negative stat that triggers punishment at threshold */}
+                <div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: 'var(--danger-color)'}}>2. The Menace (The Trap)</h3>
                     <p className="docs-p">
                         A negative stat (Wounds, Suspicion) that punishes the player if it gets too high.
                     </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
                     <ol className="docs-list">
                         <li><strong>The Stat:</strong> Create a Pyramidal quality <code>$suspicion</code>.</li>
                         <li>
@@ -63,13 +73,13 @@ export default function PatternsDocs() {
                 </div>
 
 
-                {/* PATTERN 3: VISUAL NOVEL */}
+                {/* Pattern 3 - Visual Novel: Linear story progression with instant redirects */}
 <div className="docs-card" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: 'var(--docs-accent-blue)'}}>3. The Simple Chain (Visual Novel)</h3>
     <p className="docs-p">
         A traditional, linear story where the player moves from Scene A to B to C without interruption.
     </p>
-    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
     <ol className="docs-list">
         <li><strong>Tracker:</strong> Create a quality <code>$chapter</code>.</li>
         <li>
@@ -92,13 +102,13 @@ export default function PatternsDocs() {
     </ol>
 </div>
 
-                {/* PATTERN 4: THE HUB */}
-                <div className="docs-card" style={{borderColor: '#f1c40f', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#f1c40f'}}>4. The Hub (Exploration)</h3>
+                {/* Pattern 4 - The Hub: Exploration map that grows as player discovers routes */}
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>4. The Hub (Exploration)</h3>
                     <p className="docs-p">
                         A map that grows as the player explores.
                     </p>
-                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+                    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
                     <ol className="docs-list">
                         <li><strong>The Route:</strong> Create a quality <code>$route_to_forest</code>.</li>
                         <li>
@@ -113,14 +123,13 @@ export default function PatternsDocs() {
                     </ol>
                 </div>
 
-                {/* PATTERN 5: TIME */}
-                {/* PATTERN 5: TIME */}
+                {/* Pattern 5 - The Appointment: Real-time delays using Living Stories timers */}
 <div className="docs-card" style={{borderColor: '#c678dd', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: '#c678dd'}}>5. The Appointment (Time Delay)</h3>
     <p className="docs-p">
         Mechanics that require waiting for real-time to pass, powered by Living Stories.
     </p>
-    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
     <ol className="docs-list">
         <li>
             <strong>The Trigger:</strong> An option "Plant Seeds".
@@ -137,14 +146,13 @@ export default function PatternsDocs() {
     </ol>
 </div>
 
-                {/* PATTERN 6: THE EXPEDITION */}
-                {/* PATTERN 6: THE EXPEDITION */}
-<div className="docs-card" style={{borderColor: '#e06c75', marginTop: '2rem'}}>
-    <h3 style={{marginTop: 0, color: '#e74c75'}}>6. The Expedition (Deck-Driven)</h3>
+                {/* Pattern 6 - The Expedition: Survival mode with finite deck and win/fail states */}
+<div className="docs-card" style={{borderColor: 'var(--danger-color)', marginTop: '2rem'}}>
+    <h3 style={{marginTop: 0, color: 'var(--danger-color)'}}>6. The Expedition (Deck-Driven)</h3>
     <p className="docs-p">
         A high-stakes mode where the player must survive a random deck to reach a destination.
     </p>
-    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: '#777', marginTop: '1rem'}}>Recipe</h4>
+    <h4 style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '1rem'}}>Recipe</h4>
     <ol className="docs-list">
         <li>
             Create a specialized <strong>Deck</strong> (e.g., "Desert Deck").
@@ -168,15 +176,14 @@ export default function PatternsDocs() {
     </ol>
 </div>
 
-                {/* PATTERN 7: PERSONALIZATION */}
-                {/* PATTERN 7: PERSONALIZATION */}
+                {/* Pattern 7 - Personalization: Adaptive text and options based on player identity */}
 <div className="docs-card" style={{borderColor: '#9b59b6', marginTop: '2rem'}}>
     <h3 style={{marginTop: 0, color: '#9b59b6'}}>7. The Road with Many Faces</h3>
     <p className="docs-p">
         A story that adapts its text and options based on the player's identity.
     </p>
     <div className="docs-pre">
-        <span style={{color:'#777'}}>// Adaptive Text</span>
+        <span style={{color:'var(--text-muted)'}}>// Adaptive Text</span>
         <br/>
         <code className="docs-code">
             "You approach the gate. {`{ $class == Noble : The guards bow to you. | The guards block your path. }`}"
@@ -189,9 +196,9 @@ export default function PatternsDocs() {
     </p>
 </div>
 
-                {/* PATTERN 8: PYTHON */}
-                <div className="docs-card" style={{borderColor: '#f39c12', marginTop: '2rem'}}>
-                    <h3 style={{marginTop: 0, color: '#f39c12'}}>8. The Python (Non-Linear Mystery)</h3>
+                {/* Pattern 8 - The Python: Non-linear mystery with multiple paths to one conclusion */}
+                <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: 'var(--docs-accent-gold)'}}>8. The Python (Non-Linear Mystery)</h3>
                     <p className="docs-p">
                         Gather clues in any order, leading to one conclusion.
                     </p>
@@ -208,7 +215,7 @@ export default function PatternsDocs() {
                     </ul>
                 </div>
 
-                {/* PATTERN 9: MIDNIGHT STAIRCASE */}
+                {/* Pattern 9 - Midnight Staircase: Push-your-luck with escalating risk/reward */}
                 <div className="docs-card" style={{borderColor: '#34495e', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#95a5a6'}}>9. The Midnight Staircase</h3>
                     <p className="docs-p">
@@ -229,7 +236,7 @@ export default function PatternsDocs() {
                     </ol>
                 </div>
 
-                {/* PATTERN 10: GRANDFATHER CLOCK */}
+                {/* Pattern 10 - Grandfather Clock: Meta-progression where small loops feed large loops */}
                 <div className="docs-card" style={{borderColor: '#2c3e50', marginTop: '2rem'}}>
                     <h3 style={{marginTop: 0, color: '#34495e'}}>10. The Grandfather Clock</h3>
                     <p className="docs-p">

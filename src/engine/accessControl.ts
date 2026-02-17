@@ -52,8 +52,9 @@ export async function verifyWorldAccess(
     
     // 5. OPEN SOURCE READER CHECK
     // If we've reached this point and the user only needs reader access, check the open source flag.
+    // Open source worlds are accessible via hyperlink regardless of publication status.
     if (requiredPermission === 'reader') {
-        if (world.settings?.isOpenSource && world.published) {
+        if (world.settings?.isOpenSource) {
             return true;
         }
     }

@@ -143,25 +143,27 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                             <label className="special-label" style={{ color: 'var(--tool-text-dim)', marginBottom: '0.5rem' }}>Configuration</label>
                             <div className="form-row">
                                 <div style={{ flex: 1 }}>
-                                    <SmartArea 
-                                        label="Deck ID" 
-                                        value={form.deck || ''} 
-                                        onChange={v => handleChange('deck', v)} 
-                                        storyId={storyId} 
-                                        minHeight="38px" 
+                                    <SmartArea
+                                        label="Deck ID"
+                                        value={form.deck || ''}
+                                        onChange={v => handleChange('deck', v)}
+                                        storyId={storyId}
+                                        minHeight="38px"
                                         qualityDefs={qualityDefs}
-                                        placeholder="village_deck"
+                                        placeholder="village_deck or { $.danger_level > 5 : dangerous_deck | safe_deck }"
+                                        entityType="deck"
                                     />
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <SmartArea 
-                                        label="Market ID" 
-                                        value={form.marketId || ''} 
-                                        onChange={v => handleChange('marketId', v)} 
-                                        storyId={storyId} 
-                                        minHeight="38px" 
+                                    <SmartArea
+                                        label="Market ID"
+                                        value={form.marketId || ''}
+                                        onChange={v => handleChange('marketId', v)}
+                                        storyId={storyId}
+                                        minHeight="38px"
                                         qualityDefs={qualityDefs}
-                                        placeholder="grand_bazaar"
+                                        placeholder="grand_bazaar or { $.vip : premium_market | basic_market }"
+                                        entityType="market"
                                     />
                                 </div>
                             </div>

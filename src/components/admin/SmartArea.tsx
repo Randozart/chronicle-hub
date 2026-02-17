@@ -29,32 +29,80 @@ interface Props {
     placeholder?: string;
     minHeight?: string;
     mode?: 'text' | 'condition' | 'effect';
-    subLabel?: React.ReactNode; 
+    subLabel?: React.ReactNode;
     initialTab?: 'variable' | 'conditional' | 'challenge' | 'random' | 'effect' | 'timer';
-    contextQualityId?: string; 
+    contextQualityId?: string;
     qualityDefs?: QualityDefinition[];
+    entityType?: 'location' | 'deck' | 'storylet' | 'quality' | 'market';
 }
 
-export default function SmartArea({ 
-    label, value, onChange, storyId, placeholder, 
-    minHeight = "38px", mode = 'text', subLabel, initialTab, 
-    contextQualityId, qualityDefs = [] 
+export default function SmartArea({
+    label, value, onChange, storyId, placeholder,
+    minHeight = "38px", mode = 'text', subLabel, initialTab,
+    contextQualityId, qualityDefs = [], entityType
 }: Props) {
     const [showAssistant, setShowAssistant] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
+    const [showEntityPicker, setShowEntityPicker] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const [errors, setErrors] = useState<LintError[]>([]);
     const [previewResult, setPreviewResult] = useState<string>("");
     const dynamicIds = useDynamicQualities(storyId);
+    const [entities, setEntities] = useState<Array<{id: string, name: string}>>([]);
+    const [entityFilter, setEntityFilter] = useState("");
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setShowAssistant(false);
+                setShowEntityPicker(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Fetch entities initially and when picker is opened (to refresh)
+    useEffect(() => {
+        if (!entityType || !storyId) return;
+
+        let endpoint = '';
+        if (entityType === 'location') endpoint = `/api/admin/config?storyId=${storyId}&category=locations`;
+        else if (entityType === 'deck') endpoint = `/api/admin/decks?storyId=${storyId}`;
+        else if (entityType === 'storylet') endpoint = `/api/admin/storylets?storyId=${storyId}`;
+        else if (entityType === 'quality') endpoint = `/api/admin/qualities?storyId=${storyId}`;
+        else if (entityType === 'market') endpoint = `/api/admin/config?storyId=${storyId}&category=markets`;
+
+        if (!endpoint) return;
+
+        fetch(endpoint)
+            .then(res => res.json())
+            .then(data => {
+                let items: Array<{id: string, name: string}> = [];
+                if (entityType === 'location') {
+                    items = Object.values(data.locations || {}).map((loc: any) => ({
+                        id: loc.id,
+                        name: loc.name || loc.id
+                    }));
+                } else if (entityType === 'market') {
+                    items = Object.values(data.markets || {}).map((market: any) => ({
+                        id: market.id,
+                        name: market.name || market.id
+                    }));
+                } else if (Array.isArray(data)) {
+                    items = data.map((item: any) => ({
+                        id: item.id,
+                        name: item.name || item.id
+                    }));
+                } else {
+                    items = Object.values(data).map((item: any) => ({
+                        id: item.id,
+                        name: item.name || item.id
+                    }));
+                }
+                setEntities(items);
+            })
+            .catch(err => console.error(`Failed to load ${entityType}s`, err));
+    }, [entityType, storyId, showEntityPicker]);
     useEffect(() => {
         const timer = setTimeout(() => {
             if (!value) {
@@ -147,20 +195,20 @@ export default function SmartArea({
                 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto' }}>
                     {errors.length > 0 && (
-                        <span style={{ 
-                            color: hasVisualErrors ? 'var(--danger-color)' : 'var(--info-color)', 
-                            fontSize: '0.7rem', 
-                            fontWeight: 'bold' 
+                        <span style={{
+                            color: hasVisualErrors ? 'var(--danger-color)' : 'var(--info-color)',
+                            fontSize: '0.7rem',
+                            fontWeight: 'bold'
                         }}>
                             {hasVisualErrors ? `${visualErrors.length} Issue${visualErrors.length > 1 ? 's' : ''}` : 'Valid'}
                         </span>
                     )}
-                    <button 
+                    <button
                         onClick={() => setShowPreview(!showPreview)}
-                        style={{ 
-                            background: showPreview ? 'var(--success-color)' : 'transparent', 
+                        style={{
+                            background: showPreview ? 'var(--success-color)' : 'transparent',
                             color: showPreview ? '#000' : 'var(--success-color)',
-                            border: '1px solid var(--success-color)', borderRadius: '4px', 
+                            border: '1px solid var(--success-color)', borderRadius: '4px',
                             cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold',
                             padding: '2px 6px', transition: 'all 0.1s'
                         }}
@@ -170,12 +218,29 @@ export default function SmartArea({
                         ▶
                     </button>
 
-                    <button 
+                    {entityType && (
+                        <button
+                            onClick={() => setShowEntityPicker(!showEntityPicker)}
+                            style={{
+                                background: showEntityPicker ? 'var(--warning-color)' : 'transparent',
+                                color: showEntityPicker ? '#000' : 'var(--warning-color)',
+                                border: '1px solid var(--warning-color)', borderRadius: '4px',
+                                cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold',
+                                padding: '2px 8px', transition: 'all 0.1s'
+                            }}
+                            type="button"
+                            title={`Browse ${entityType}s`}
+                        >
+                            🔗 {entityType.charAt(0).toUpperCase() + entityType.slice(1)}s
+                        </button>
+                    )}
+
+                    <button
                         onClick={() => setShowAssistant(!showAssistant)}
-                        style={{ 
-                            background: showAssistant ? 'var(--tool-accent-fade)' : 'transparent', 
-                            border: '1px solid var(--tool-accent)', borderRadius: '4px', 
-                            color: 'var(--tool-accent)', 
+                        style={{
+                            background: showAssistant ? 'var(--tool-accent-fade)' : 'transparent',
+                            border: '1px solid var(--tool-accent)', borderRadius: '4px',
+                            color: 'var(--tool-accent)',
                             cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold',
                             display: 'flex', alignItems: 'center', gap: '5px', padding: '2px 8px',
                             transition: 'all 0.1s'
@@ -189,14 +254,98 @@ export default function SmartArea({
             </div>
 
             {showAssistant && (
-                <ScribeAssistant 
-                    storyId={storyId} 
-                    mode={mode} 
-                    onInsert={handleInsert} 
+                <ScribeAssistant
+                    storyId={storyId}
+                    mode={mode}
+                    onInsert={handleInsert}
                     onClose={() => setShowAssistant(false)}
                     initialTab={initialTab}
                     contextQualityId={contextQualityId}
                 />
+            )}
+
+            {showEntityPicker && entityType && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '5px',
+                    background: 'var(--tool-bg-sidebar)',
+                    border: '1px solid var(--warning-color)',
+                    borderRadius: '4px',
+                    padding: '0.5rem',
+                    minWidth: '300px',
+                    maxWidth: '400px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    zIndex: 100,
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <input
+                            type="text"
+                            placeholder={`Search ${entityType}s...`}
+                            value={entityFilter}
+                            onChange={e => setEntityFilter(e.target.value)}
+                            className="form-input"
+                            style={{ fontSize: '0.85rem', padding: '4px 8px' }}
+                            autoFocus
+                        />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {entities
+                            .filter(e =>
+                                !entityFilter ||
+                                e.id.toLowerCase().includes(entityFilter.toLowerCase()) ||
+                                e.name.toLowerCase().includes(entityFilter.toLowerCase())
+                            )
+                            .map(entity => (
+                                <button
+                                    key={entity.id}
+                                    type="button"
+                                    onClick={() => {
+                                        const newValue = value ? value + ' ' + entity.id : entity.id;
+                                        onChange(newValue);
+                                        setShowEntityPicker(false);
+                                        setEntityFilter('');
+                                    }}
+                                    style={{
+                                        background: 'var(--tool-bg-input)',
+                                        border: '1px solid var(--tool-border)',
+                                        borderRadius: '4px',
+                                        padding: '0.5rem',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        transition: 'all 0.1s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'var(--tool-accent-fade)';
+                                        e.currentTarget.style.borderColor = 'var(--tool-accent)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'var(--tool-bg-input)';
+                                        e.currentTarget.style.borderColor = 'var(--tool-border)';
+                                    }}
+                                >
+                                    <div style={{ fontWeight: 'bold', color: 'var(--tool-text-header)', fontSize: '0.85rem' }}>
+                                        {entity.name}
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--tool-text-dim)', fontFamily: 'monospace' }}>
+                                        {entity.id}
+                                    </div>
+                                </button>
+                            ))}
+                        {entities.filter(e =>
+                            !entityFilter ||
+                            e.id.toLowerCase().includes(entityFilter.toLowerCase()) ||
+                            e.name.toLowerCase().includes(entityFilter.toLowerCase())
+                        ).length === 0 && (
+                            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--tool-text-dim)', fontSize: '0.85rem' }}>
+                                No {entityType}s found
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
             <div 
                 className={hasVisualErrors ? 'editor-has-errors' : ''}

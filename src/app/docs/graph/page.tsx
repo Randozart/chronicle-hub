@@ -12,7 +12,7 @@ export default function GraphDocs() {
                 </p>
             </header>
 
-            {/* SECTION 1: THE TWO MODES */}
+            {/* Visualization modes - Redirect view vs Quality Logic view */}
             <section id="modes">
                 <h2 className="docs-h2">1. Visualization Modes</h2>
                 <p className="docs-p">
@@ -58,7 +58,7 @@ export default function GraphDocs() {
                 </ul>
             </section>
 
-            {/* SECTION 2: READING THE GRAPH */}
+            {/* Reading the graph - Understanding node colors and the inspector panel */}
             <section id="reading">
                 <h2 className="docs-h2">3. Reading the Graph</h2>
                 <p className="docs-p">
@@ -100,7 +100,7 @@ export default function GraphDocs() {
                 </div>
             </section>
 
-            {/* SECTION 3: THE BUILDER */}
+            {/* The builder - Rapid prototyping with right-click context menu */}
             <section id="builder">
                 <h2 className="docs-h2">4. Rapid Prototyping (The Builder)</h2>
                 <p className="docs-p">

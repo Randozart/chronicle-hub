@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Storylet, QualityDefinition } from '@/engine/models';
 import OptionList from './OptionList';
-import SmartArea from '@/components/admin/SmartArea'; 
+import SmartArea from '@/components/admin/SmartArea';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
+import GameImage from '@/components/GameImage';
+import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
 
 interface Props {
     initialData: Storylet;
@@ -21,18 +23,18 @@ interface Props {
 }
 
 export default function StoryletMainForm({ initialData, onSave, onDelete, onDuplicate, qualityDefs, storyId, guardRef }: Props) {
-    
-    const { 
-        data: form, 
-        handleChange, 
-        handleSave, 
-        revertChanges, 
-        isDirty, 
-        isSaving, 
-        lastSaved 
+
+    const {
+        data: form,
+        handleChange,
+        handleSave,
+        revertChanges,
+        isDirty,
+        isSaving,
+        lastSaved
     } = useCreatorForm<Storylet>(
-        initialData, 
-        '/api/admin/storylets', 
+        initialData,
+        '/api/admin/storylets',
         { storyId },
         guardRef,
         undefined,
@@ -40,6 +42,17 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
     );
 
     const [showRevertModal, setShowRevertModal] = useState(false);
+    const [knownLocations, setKnownLocations] = useState<string[]>([]);
+
+    useEffect(() => {
+        fetch(`/api/admin/config?storyId=${storyId}&category=locations`)
+            .then(res => res.json())
+            .then(data => {
+                const locs = Object.values(data.locations || {}).map((loc: any) => loc.id);
+                setKnownLocations(locs);
+            })
+            .catch(err => console.error("Failed to load locations", err));
+    }, [storyId]);
 
     if (!form) return <div className="loading-container">Loading editor state...</div>;
 
@@ -47,6 +60,8 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
         const newTags = toggleProperty(form.tags, tag);
         handleChange('tags', newTags);
     };
+
+    const isLocationMissing = form.location && !form.location.includes('{') && !knownLocations.includes(form.location);
 
     const onSaveClick = async () => {
         const success = await handleSave();
@@ -129,17 +144,33 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                 </div>
                 <div className="form-row">
                     <div className="form-group" style={{ flex:1 }}>
-                        <label className="form-label">Location ID</label>
-                        <input 
-                            value={form.location || ''} 
-                            onChange={e => handleChange('location', e.target.value)} 
-                            className="form-input" 
-                            placeholder="Global if empty"
+                        <SmartArea
+                            label="Location ID"
+                            subLabel="Where this storylet appears. Leave blank for global access."
+                            value={form.location || ''}
+                            onChange={v => handleChange('location', v)}
+                            storyId={storyId}
+                            minHeight="38px"
+                            placeholder="village_square or { $.discovered : secret_area | village_square }"
+                            qualityDefs={qualityDefs}
+                            entityType="location"
                         />
+                        {isLocationMissing && form.location && (
+                            <MissingEntityAlert id={form.location} type="location" storyId={storyId} />
+                        )}
                     </div>
-                    
+
                     <div className="form-group" style={{ flex: 1 }}>
-                        <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" />
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <div style={{ flex: 1 }}>
+                                <SmartArea label="Image Code" value={form.image_code || ''} onChange={v => handleChange('image_code', v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
+                            </div>
+                            {form.image_code && !form.image_code.includes('{') && (
+                                <div style={{width: 38, height: 38, border: '1px solid var(--tool-border)', borderRadius: '4px', overflow: 'hidden'}}>
+                                    <GameImage code={form.image_code} imageLibrary={{}} type="icon" className="option-image"/>
+                                </div>
+                            )}
+                        </div>
                         <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <label style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>Shape:</label>
                             <select value={form.image_style || 'default'} onChange={e => handleChange('image_style', e.target.value)} className="form-select" style={{ fontSize: '0.75rem', padding: '2px', width: 'auto' }}>
@@ -229,12 +260,29 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                         <BehaviorCard checked={hasProperty(form.tags, 'instant_redirect')} onChange={() => handleTagToggle('instant_redirect')} label="Instant Redirect" desc="Skip to first option." />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Return Target</label>
-                        <input 
-                            value={form.return || ''} 
-                            onChange={e => handleChange('return', e.target.value)} 
-                            className="form-input" 
-                            placeholder="Default: Location Hub" 
+                        <SmartArea
+                            label="Return Destination"
+                            subLabel="Where the 'Go Back' button leads. Leave blank for previous location."
+                            value={form.return || ''}
+                            onChange={v => handleChange('return', v)}
+                            storyId={storyId}
+                            minHeight="38px"
+                            placeholder="location_hub or { $.quest_active : quest_zone | location_hub }"
+                            qualityDefs={qualityDefs}
+                            entityType="location"
+                        />
+                    </div>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                        <SmartArea
+                            label="Dynamic Behaviors (Advanced)"
+                            subLabel="Add conditional behavior tags. Comma-separated for multiple tags."
+                            value={(form as any).dynamic_behavior || ''}
+                            onChange={v => handleChange('dynamic_behavior' as any, v)}
+                            storyId={storyId}
+                            minHeight="38px"
+                            mode="text"
+                            placeholder="{ $.stress > 10 : no_return }, instant_redirect"
+                            qualityDefs={qualityDefs}
                         />
                     </div>
                 </div>

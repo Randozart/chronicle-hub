@@ -47,8 +47,15 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                     />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                    <label className="form-label">Image</label>
-                    <input value={data.image_code || ''} onChange={e => handleChange('image_code', e.target.value)} className="form-input" />
+                    <SmartArea
+                        label="Image"
+                        value={data.image_code || ''}
+                        onChange={v => handleChange('image_code', v)}
+                        storyId={storyId}
+                        minHeight="38px"
+                        placeholder="icon_id or { $.vip : gold_icon | normal_icon }"
+                        qualityDefs={qualityDefs}
+                    />
                 </div>
             </div>
             <div className="form-row">
@@ -408,8 +415,32 @@ function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityD
             </div>
 
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                <div style={{ flex: 1 }}><label className="form-label">Move To</label><input className="form-input" value={data[`${prefix}_move_to`] || ''} onChange={e => onChange(`${prefix}_move_to`, e.target.value)} placeholder="Loc ID" /></div>
-                <div style={{ flex: 1 }}><label className="form-label">Redirect</label><input className="form-input" value={data[`${prefix}_redirect`] || ''} onChange={e => onChange(`${prefix}_redirect`, e.target.value)} placeholder="Storylet ID" /></div>
+                <div style={{ flex: 1 }}>
+                    <SmartArea
+                        label="Change Location"
+                        subLabel="Moves player to a different location."
+                        value={data[`${prefix}_move_to`] || ''}
+                        onChange={v => onChange(`${prefix}_move_to`, v)}
+                        storyId={storyId}
+                        minHeight="38px"
+                        placeholder="village_square or { $.banished : exile_zone | village_square }"
+                        qualityDefs={qualityDefs}
+                        entityType="location"
+                    />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <SmartArea
+                        label="Fire Storylet"
+                        subLabel="Opens a specific storylet immediately."
+                        value={data[`${prefix}_redirect`] || ''}
+                        onChange={v => onChange(`${prefix}_redirect`, v)}
+                        storyId={storyId}
+                        minHeight="38px"
+                        placeholder="special_event or { $.urgent : emergency_storylet | normal_storylet }"
+                        qualityDefs={qualityDefs}
+                        entityType="storylet"
+                    />
+                </div>
             </div>
         </div>
     );
