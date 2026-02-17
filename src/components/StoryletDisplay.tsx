@@ -94,11 +94,23 @@ export default function StoryletDisplay({
     const [showDebug, setShowDebug] = useState(false);
     const [showHidden, setShowHidden] = useState(false);
     
-    const storylet = eventData; 
-    
+    const storylet = eventData;
+
     const evalText = (text: string | undefined) => {
         return engine.evaluateText(text, { qid: storylet.id, state: qualities[storylet.id] });
     };
+
+    // Evaluate tags, resolving any ScribeScript expressions within them
+    const getEffectiveTags = (): string[] => {
+        const rawTags = storylet.tags || [];
+        return rawTags.map(tag => {
+            if (tag.includes('{')) {
+                return evalText(tag).trim();
+            }
+            return tag;
+        }).filter(Boolean);
+    };
+    const effectiveTags = getEffectiveTags();
 
     const handleOptionClick = async (option: ResolveOption) => {
         if (isLoading) return;
@@ -174,7 +186,7 @@ export default function StoryletDisplay({
         onFinish(resolution.qualities, resolution.redirectId, resolution.moveToId, resolution.equipment, resolution.pendingEvents);
     };
 
-    const disableReturn = storylet.tags?.includes('no_return');
+    const disableReturn = effectiveTags.includes('no_return');
     const getReturnTarget = (): string | null | undefined => {
         if (disableReturn) return null;
         const explicitReturn = storylet.return;

@@ -243,15 +243,14 @@ export default function OpportunityMainForm({ initialData, onSave, onDelete, onD
                     </div>
                     <div className="form-group">
                         <SmartArea
-                            label="Dynamic Behaviors (Advanced)"
-                            subLabel="Add conditional behavior tags. Comma-separated for multiple tags."
-                            value={(form as any).dynamic_behavior || ''}
-                            onChange={v => handleChange('dynamic_behavior' as any, v)}
+                            label="Raw Tags"
+                            subLabel="Comma-separated. Supports ScribeScript for conditional tags."
+                            value={(form.tags || []).join(', ')}
+                            onChange={v => handleChange('tags', v.split(',').map(t => t.trim()).filter(Boolean))}
                             storyId={storyId}
                             minHeight="38px"
-                            mode="text"
-                            placeholder="{ $.urgent : instant_play }, clear_hand"
                             qualityDefs={qualityDefs}
+                            placeholder="play_on_draw, { $.urgent : instant_play }"
                         />
                     </div>
                 </div>

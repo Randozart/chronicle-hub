@@ -71,8 +71,8 @@ interface ContentCommon extends VersionedEntity {
     folder?: string;
     return?: string;
     ordering?: number;
-    urgency?: 'Must' | 'High' | 'Normal'; 
-    image_style?: 'default' | 'square' | 'landscape' | 'portrait' | 'circle' | 'wide'; 
+    urgency?: 'Must' | 'High' | 'Normal';
+    image_style?: 'default' | 'square' | 'landscape' | 'portrait' | 'circle' | 'wide';
 }
 
 export interface Storylet extends ContentCommon, LogicGates {

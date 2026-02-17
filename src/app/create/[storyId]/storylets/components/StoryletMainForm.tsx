@@ -45,10 +45,11 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
     const [knownLocations, setKnownLocations] = useState<string[]>([]);
 
     useEffect(() => {
-        fetch(`/api/admin/config?storyId=${storyId}&category=locations`)
+        fetch(`/api/admin/locations?storyId=${storyId}`)
             .then(res => res.json())
             .then(data => {
-                const locs = Object.values(data.locations || {}).map((loc: any) => loc.id);
+                const locObj = data || {};
+                const locs = Object.values(locObj).map((loc: any) => loc.id);
                 setKnownLocations(locs);
             })
             .catch(err => console.error("Failed to load locations", err));
@@ -274,15 +275,14 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                     </div>
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                         <SmartArea
-                            label="Dynamic Behaviors (Advanced)"
-                            subLabel="Add conditional behavior tags. Comma-separated for multiple tags."
-                            value={(form as any).dynamic_behavior || ''}
-                            onChange={v => handleChange('dynamic_behavior' as any, v)}
+                            label="Raw Tags"
+                            subLabel="Comma-separated. Supports ScribeScript for conditional tags."
+                            value={(form.tags || []).join(', ')}
+                            onChange={v => handleChange('tags', v.split(',').map(t => t.trim()).filter(Boolean))}
                             storyId={storyId}
                             minHeight="38px"
-                            mode="text"
-                            placeholder="{ $.stress > 10 : no_return }, instant_redirect"
                             qualityDefs={qualityDefs}
+                            placeholder="no_return, { $.stress > 10 : instant_redirect }"
                         />
                     </div>
                 </div>
