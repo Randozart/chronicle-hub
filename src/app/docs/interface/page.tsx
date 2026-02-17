@@ -26,7 +26,7 @@ export default function InterfacePage() {
                     This is your home screen. From here, you can create new projects, access existing ones, and manage your account.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Full dashboard view showing:
@@ -35,7 +35,7 @@ export default function InterfacePage() {
                         - Navigation menu (account settings, theme controls)
                         - Project search/filter options
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">Key Elements</h3>
                 <ul className="docs-list">
@@ -52,7 +52,7 @@ export default function InterfacePage() {
                     Once you open a project, you'll see the main workspace. This is where you'll spend most of your time building your game.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Full workspace view with annotations pointing to:
@@ -61,7 +61,7 @@ export default function InterfacePage() {
                         - Top bar (project name, Play button, settings)
                         - Filter/search bar (if visible)
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">The Sidebar Navigation</h3>
                 <p className="docs-p">
@@ -138,7 +138,7 @@ export default function InterfacePage() {
                     This is where you define all the variables that power your game's state and mechanics.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Quality editor interface with annotations for:
@@ -148,7 +148,7 @@ export default function InterfacePage() {
                         - All major field sections (Basic Info, Display, Progression, Behavior)
                         - Save/Cancel buttons
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">Field Sections</h3>
 
@@ -194,7 +194,7 @@ export default function InterfacePage() {
                     </ul>
                 </div>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1rem'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1rem'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED (Detail View):</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Close-up of the Quality editor showing:
@@ -202,7 +202,7 @@ export default function InterfacePage() {
                         - Example of ScribeScript in the Name field
                         - Text Variants section (if visible)
                     </p>
-                </div>
+                </div> */}
             </section>
 
             {/* Storylet editor - Write narrative content, dialogue, and branching choices */}
@@ -212,7 +212,7 @@ export default function InterfacePage() {
                     This is your narrative workspace where you write the scenes, dialogue, and events that make up your story.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Full storylet editor with annotations for:
@@ -222,7 +222,7 @@ export default function InterfacePage() {
                         - Logic fields (Visible If, Unlock If, Autofire If)
                         - Save button
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">Top Section: Storylet Properties</h3>
 
@@ -329,7 +329,7 @@ export default function InterfacePage() {
                     </ul>
                 </div>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1.5rem'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)', marginTop: '1.5rem'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED (Detail View):</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Close-up showing:
@@ -338,7 +338,7 @@ export default function InterfacePage() {
                         - The Challenge field with an example expression
                         - Option tags section
                     </p>
-                </div>
+                </div> */}
             </section>
 
             {/* Location editor - Create and configure physical/conceptual spaces */}
@@ -348,7 +348,7 @@ export default function InterfacePage() {
                     Locations are the "containers" where your storylets live. They represent physical or conceptual spaces in your game.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Location editor showing:
@@ -357,7 +357,7 @@ export default function InterfacePage() {
                         - All major fields visible (Name, Description, Image, Settings)
                         - Travel/Map configuration section
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">Key Fields</h3>
                 <ul className="docs-list">
@@ -384,7 +384,7 @@ export default function InterfacePage() {
                     This is your control center for game-wide settings and rules.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Admin panel overview showing major sections:
@@ -394,7 +394,7 @@ export default function InterfacePage() {
                         - Visual/Layout selector
                         - Publishing options
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">Important Sections</h3>
 
@@ -455,7 +455,7 @@ export default function InterfacePage() {
                     The Graph is a visual debugging tool that shows how your storylets connect and what qualities they modify.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Graph view showing:
@@ -465,7 +465,7 @@ export default function InterfacePage() {
                         - Inspector panel (right side) showing a selected node's details
                         - Right-click context menu visible
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">Navigation Controls</h3>
                 <ul className="docs-list">
@@ -489,7 +489,7 @@ export default function InterfacePage() {
                     Upload and organize images for your game here.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Asset manager interface showing:
@@ -498,7 +498,7 @@ export default function InterfacePage() {
                         - Search/filter options
                         - Image preview on selection
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">How to Use</h3>
                 <ol className="docs-list">
@@ -516,7 +516,7 @@ export default function InterfacePage() {
                     Click the "Play" button in the top bar to test your game as a player would experience it.
                 </p>
 
-                <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
+                {/* <div className="docs-card" style={{background: 'rgba(97, 175, 239, 0.1)', borderLeft: '4px solid var(--docs-accent-blue)'}}>
                     <strong style={{color: 'var(--docs-accent-blue)'}}>📸 SCREENSHOT NEEDED:</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0}}>
                         Play mode interface showing:
@@ -526,7 +526,7 @@ export default function InterfacePage() {
                         - Navigation (location selector, opportunity deck)
                         - Messages log
                     </p>
-                </div>
+                </div> */}
 
                 <h3 className="docs-h3">Play Mode Features</h3>
                 <ul className="docs-list">
