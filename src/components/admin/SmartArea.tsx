@@ -66,11 +66,11 @@ export default function SmartArea({
         if (!entityType || !storyId) return;
 
         let endpoint = '';
-        if (entityType === 'location') endpoint = `/api/admin/config?storyId=${storyId}&category=locations`;
+        if (entityType === 'location') endpoint = `/api/admin/locations?storyId=${storyId}`;
         else if (entityType === 'deck') endpoint = `/api/admin/decks?storyId=${storyId}`;
         else if (entityType === 'storylet') endpoint = `/api/admin/storylets?storyId=${storyId}`;
         else if (entityType === 'quality') endpoint = `/api/admin/qualities?storyId=${storyId}`;
-        else if (entityType === 'market') endpoint = `/api/admin/config?storyId=${storyId}&category=markets`;
+        else if (entityType === 'market') endpoint = `/api/admin/markets?storyId=${storyId}`;
 
         if (!endpoint) return;
 
@@ -78,22 +78,12 @@ export default function SmartArea({
             .then(res => res.json())
             .then(data => {
                 let items: Array<{id: string, name: string}> = [];
-                if (entityType === 'location') {
-                    items = Object.values(data.locations || {}).map((loc: any) => ({
-                        id: loc.id,
-                        name: loc.name || loc.id
-                    }));
-                } else if (entityType === 'market') {
-                    items = Object.values(data.markets || {}).map((market: any) => ({
-                        id: market.id,
-                        name: market.name || market.id
-                    }));
-                } else if (Array.isArray(data)) {
+                if (Array.isArray(data)) {
                     items = data.map((item: any) => ({
                         id: item.id,
                         name: item.name || item.id
                     }));
-                } else {
+                } else if (typeof data === 'object' && data !== null) {
                     items = Object.values(data).map((item: any) => ({
                         id: item.id,
                         name: item.name || item.id
@@ -183,7 +173,7 @@ export default function SmartArea({
     const infoCount = errors.length - visualErrors.length;
 
     return (
-        <div className="form-group" ref={containerRef} style={{ position: 'relative', zIndex: showAssistant ? 50 : 1 }}>
+        <div className="form-group" ref={containerRef} style={{ position: 'relative', zIndex: (showAssistant || showEntityPicker) ? 50 : 1 }}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.25rem', minHeight: '20px' }}>
                 {(label || subLabel) ? (
