@@ -20,7 +20,7 @@ export default function EsotericPatternsPage() {
                 <div className="docs-grid">
                     <div className="docs-card">
                         <h4>Configuration</h4>
-                        <ul className="docs-props-list">
+                        <ul className="docs-list">
                             <li><strong>Action ID:</strong> <code>$stamina</code></li>
                             <li><strong>Max Actions:</strong> <code>{`{ 10 + $endurance }`}</code> <br/><small>(Cap grows with stats)</small></li>
                             <li><strong>Regen Amount:</strong> <code>0</code> <br/><small>(Stamina does not regen automatically)</small></li>
@@ -66,7 +66,7 @@ export default function EsotericPatternsPage() {
 
                 <div className="docs-card" style={{borderColor: 'var(--docs-accent-gold)'}}>
     <h3>Setup</h3>
-    <ul className="docs-props-list">
+    <ul className="docs-list">
         <li><strong>Settings:</strong> Disable Action Economy.</li>
         <li><strong>Mechanic:</strong> Every major action uses <strong>Living Stories (Timers)</strong>.</li>
     </ul>
@@ -153,7 +153,7 @@ export default function EsotericPatternsPage() {
                         <p>
                             Instead of leveling up automatically, the player must visit a trainer and spend XP to increase a Pyramidal Stat.
                         </p>
-                        <ul className="docs-props-list">
+                        <ul className="docs-list">
                             <li><strong>Mode:</strong> Player Buys</li>
                             <li><strong>Item:</strong> <code>$strength</code> (Pyramidal)</li>
                             <li><strong>Currency:</strong> <code>$experience_points</code></li>
@@ -170,7 +170,7 @@ export default function EsotericPatternsPage() {
                         <p>
                             A dark market where you sell parts of your humanity for gold.
                         </p>
-                        <ul className="docs-props-list">
+                        <ul className="docs-list">
                             <li><strong>Mode:</strong> Player Sells</li>
                             <li><strong>Item:</strong> <code>$humanity</code> (Pyramidal)</li>
                             <li><strong>Currency:</strong> <code>$gold</code></li>
@@ -187,7 +187,7 @@ export default function EsotericPatternsPage() {
                         <p>
                             Convert influence from one group to another.
                         </p>
-                        <ul className="docs-props-list">
+                        <ul className="docs-list">
                             <li><strong>Mode:</strong> Player Sells</li>
                             <li><strong>Item:</strong> <code>$favours_hell</code></li>
                             <li><strong>Currency Override:</strong> <code>$favours_church</code></li>
@@ -204,7 +204,7 @@ export default function EsotericPatternsPage() {
                         <p>
                             "Buy" knowledge or unlock routes using money.
                         </p>
-                        <ul className="docs-props-list">
+                        <ul className="docs-list">
                             <li><strong>Mode:</strong> Player Buys</li>
                             <li><strong>Item:</strong> <code>$route_to_vault</code> (Tracker/String)</li>
                             <li><strong>Currency:</strong> <code>$secrets</code></li>
@@ -219,21 +219,6 @@ export default function EsotericPatternsPage() {
                 </div>
             </section>
 
-            <style jsx>{`
-                .docs-content { max-width: 900px; margin: 0 auto; color: #ccc; line-height: 1.7; }
-                .docs-h1 { font-size: 3rem; color: var(--docs-text-main); margin-bottom: 0.5rem; line-height: 1.1; margin-top: 0; }
-                .lead { font-size: 1.3rem; color: #777; margin-bottom: 2rem; font-weight: 300; }
-                .docs-divider { border: 0; border-bottom: 1px solid #333; margin: 4rem 0; }
-                .docs-h2 { color: var(--docs-accent-blue); font-size: 2.2rem; margin-top: 4rem; margin-bottom: 1.5rem; border-bottom: 1px solid #2c313a; padding-bottom: 0.5rem; scroll-margin-top: 2rem; }
-                .docs-p { margin-bottom: 1rem; color: #c8ccd4; }
-                .docs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
-                .docs-card { background: #21252b; padding: 1.5rem; border-radius: 8px; border: 1px solid #333; }
-                .docs-card h4 { color: var(--docs-accent-gold); margin-top: 0; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
-                .docs-props-list { list-style: none; padding: 0; }
-                .docs-props-list li { margin-bottom: 1rem; background: #181a1f; padding: 0.5rem 1rem; border-radius: 4px; border-left: 3px solid var(--docs-accent-blue); }
-                .docs-code { font-family: 'Consolas', monospace; color: var(--docs-accent-green); background: rgba(0,0,0,0.3); padding: 2px 6px; borderRadius: 4px; }
-                .docs-syntax-box { background: #1e2127; border: 1px dashed #5c6370; padding: 1.5rem; margin: 2rem 0; border-radius: 8px; font-family: monospace; color: #abb2bf; }
-            `}</style>
         </div>
     );
 }
