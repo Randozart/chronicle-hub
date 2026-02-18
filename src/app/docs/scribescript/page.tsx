@@ -113,10 +113,22 @@ export default function ScribeScriptSyntaxPage() {
                     </p>
                     <ul className="docs-list" style={{fontSize: '0.9rem'}}>
                         <li><code>&&</code> <strong>(AND)</strong>: Both sides must be true.</li>
-                        <li><code>,</code> <strong>(Comma as AND)</strong>: A convenient shorthand for `&&`. Both sides must be true.</li>
+                        <li><code>,</code> <strong>(Comma as AND)</strong>: A convenient shorthand for <code>&&</code>. Both sides must be true.</li>
                         <li><code>||</code> <strong>(OR)</strong>: At least one side must be true.</li>
                         <li><code>( )</code> <strong>(Grouping)</strong>: Use parentheses to control the order of checks.</li>
                     </ul>
+                    <table className="docs-table" style={{marginTop: '1rem', fontSize: '0.85rem'}}>
+                        <thead><tr><th>Operator</th><th>Meaning</th><th>Example</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>==</code></td><td>Equals</td><td><code>$faction == rebel</code></td></tr>
+                            <tr><td><code>!=</code></td><td>Not Equal</td><td><code>$faction != none</code></td></tr>
+                            <tr><td><code>&gt;</code></td><td>Greater Than</td><td><code>$gold &gt; 0</code></td></tr>
+                            <tr><td><code>&gt;=</code></td><td>Greater or Equal</td><td><code>$level &gt;= 5</code></td></tr>
+                            <tr><td><code>&lt;</code></td><td>Less Than</td><td><code>$wounds &lt; 3</code></td></tr>
+                            <tr><td><code>&lt;=</code></td><td>Less or Equal</td><td><code>$notoriety &lt;= 10</code></td></tr>
+                            <tr><td><code>&gt;&gt;</code></td><td>Probabilistic (Skill Check)</td><td><code>$agility &gt;&gt; 60</code></td></tr>
+                        </tbody>
+                    </table>
                     <div className="docs-pre">
                         <span style={{color:'var(--text-muted)'}}>// Using comma as AND</span>
                         <br/>
@@ -175,9 +187,20 @@ export default function ScribeScriptSyntaxPage() {
                         <br/>4. <strong>Third Item:</strong> It adds that <em>same</em> alias value to XP.
                     </p>
                     <div className="docs-callout" style={{marginTop:'1rem', borderColor: 'var(--danger-color)'}}>
-                        <strong style={{color: 'var(--danger-color)'}}>Warning:</strong> Because the Engine splits by comma <em>after</em> ScribeScript runs, 
+                        <strong style={{color: 'var(--danger-color)'}}>Warning:</strong> Because the Engine splits by comma <em>after</em> ScribeScript runs,
                         be careful not to generate commas inside your ScribeScript blocks unless they are inside quotes!
                     </div>
+                    <table className="docs-table" style={{marginTop: '1rem', fontSize: '0.85rem'}}>
+                        <thead><tr><th>Operator</th><th>Behaviour</th><th>Example</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>+=</code></td><td>Add to current value</td><td><code>$gold += 10</code></td></tr>
+                            <tr><td><code>-=</code></td><td>Subtract from current value</td><td><code>$wounds -= 1</code></td></tr>
+                            <tr><td><code>:=</code></td><td>Set (overrides current value)</td><td><code>$status := alive</code></td></tr>
+                            <tr><td><code>*=</code></td><td>Multiply current value</td><td><code>$gold *= 2</code></td></tr>
+                            <tr><td><code>/=</code></td><td>Divide current value</td><td><code>$gold /= 2</code></td></tr>
+                            <tr><td><code>!</code> prefix</td><td>Delete / remove the quality entirely</td><td><code>!$temp_flag</code></td></tr>
+                        </tbody>
+                    </table>
                 </div>
                 <div className="docs-card">
                     <h4 className="docs-h4">E: Image Fields</h4>

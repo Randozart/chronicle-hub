@@ -80,7 +80,7 @@
         z-index: 100 !important; transform: translateX(-100%); transition: transform 0.3s ease-in-out;
         box-shadow: 5px 0 15px rgba(0,0,0,0.5); display: flex !important; flex-direction: column;
     }
-    .admin-sidebar.mobile-open { transform: translateX(0); }
+    .admin-sidebar.mobile-open { transform: translateX(0); z-index: 1001 !important; }
     .admin-help-sidebar {
         position: fixed !important; top: 0; bottom: 0; right: 0; width: 320px !important; max-width: 85vw;
         z-index: 100 !important; transform: translateX(100%); transition: transform 0.3s ease-in-out;
@@ -118,7 +118,7 @@
     .cheat-toggle-btn { display: none !important; }
     .admin-mobile-only-header { display: flex !important; background: var(--tool-bg-sidebar); border-bottom: 1px solid var(--tool-border); padding: 1rem; justify-content: space-between; align-items: center; }
 
-    .admin-content-wrapper { padding: 1rem !important; width: 100vw; overflow-x: hidden; }
+    .admin-content-wrapper { padding: 1rem 1rem 80px 1rem !important; width: 100vw; overflow-x: hidden; }
     .form-row { flex-direction: column !important; gap: 1rem !important; }
     .form-group { width: 100% !important; min-width: 0 !important; }
     
@@ -146,10 +146,10 @@
         display: flex !important;
         position: fixed;
         top: 0; bottom: 0; left: 0;
-        width: 85vw; 
+        width: 85vw;
         max-width: 400px;
         right: auto;
-        
+
         z-index: 2000;
         background: var(--tool-bg-sidebar);
         margin: 0;
@@ -158,8 +158,13 @@
         max-height: none !important;
         padding: 0;
         border-right: 1px solid var(--tool-border);
-        box-shadow: 
-            5px 0 20px rgba(0,0,0,0.2), 
+        box-shadow:
+            5px 0 20px rgba(0,0,0,0.2),
             0 0 0 100vmax rgba(0,0,0,0.6);
     }
+
+    .text-variant-row { flex-direction: column !important; gap: 8px !important; }
+    .text-variant-label { min-width: unset !important; max-width: 100% !important; text-align: left !important; align-items: flex-start !important; padding-top: 0 !important; }
 }
+
+.text-variant-row { display: flex; gap: 10px; align-items: flex-start; }

@@ -295,13 +295,13 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     
                     <div style={{ display: 'grid', gap: '10px', marginTop: '1rem' }}>
                         {Object.entries(form.text_variants || {}).map(([key, val]) => (
-                            <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                <div style={{ 
-                                    minWidth: '120px', 
+                            <div key={key} className="text-variant-row">
+                                <div className="text-variant-label" style={{
+                                    minWidth: '120px',
                                     maxWidth: '150px',
-                                    paddingTop: '10px', 
-                                    textAlign: 'right', 
-                                    display: 'flex', 
+                                    paddingTop: '10px',
+                                    textAlign: 'right',
+                                    display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'flex-end',
                                     wordBreak: 'break-word'
