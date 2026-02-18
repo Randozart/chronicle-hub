@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
         if (action === 'schedule') {
             const date = new Date();
-            date.setDate(date.getDate() + 30); // 30 days from now
+            date.setDate(date.getDate() + 3); // 3 days from now
             resultDate = date;
             updateOp = { 
                 $set: { 
