@@ -177,7 +177,7 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
                         checked={isSaved} 
                         onChange={toggleSaved} 
                         label="Persistent (Saved)" 
-                        desc="Cards drawn from this deck stay in the hand when the player leaves the location." 
+                        desc="Drawn cards are remembered. They'll still be in hand when the player returns to any location using this deck."
                     />
                     <BehaviorCard 
                         checked={!!form.always_show} 
