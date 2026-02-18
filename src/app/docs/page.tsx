@@ -6,7 +6,7 @@ export default function DocsPage() {
     return (
         <div className="docs-content">
             <header>
-                <h1 className="docs-h1">The Chronicle Engine</h1>
+                <h1 className="docs-h1">The ScribeScript Engine</h1>
                 <p className="docs-lead">
                     The Architect&apos;s Guide to sculpting narrative possibility space.
                 </p>
@@ -95,7 +95,7 @@ export default function DocsPage() {
             <section id="loop">
                 <h2 className="docs-h2">3. The Engine Loop</h2>
                 <p className="docs-p">
-                    To make this work, the Chronicle Engine performs a specific cycle every time the player interacts with the world.
+                    To make this work, the ScribeScript Engine performs a specific cycle every time the player interacts with the world.
                 </p>
 
                 <div className="docs-card" style={{ borderLeft: '4px solid #f1c40f' }}>

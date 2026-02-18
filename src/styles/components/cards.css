@@ -237,7 +237,10 @@
 }
 
 .card-container.mode-tarot .card-image {
-    height: 75%;
+    flex: 3;
+    height: auto;
+    aspect-ratio: unset;
+    min-height: 0;
     object-fit: cover;
 }
 

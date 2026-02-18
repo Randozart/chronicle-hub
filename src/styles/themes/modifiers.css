@@ -335,7 +335,7 @@ html[data-theme='revolutionary']::before {
     border-right: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
     color: #e0e0e0 !important;
-    transform: none !important; 
+    transform: none !important;
     height: 100%;
 }
 [data-theme='detective-noir'] .layout-grid-tabletop .content-area,

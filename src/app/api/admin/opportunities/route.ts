@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id');
     
     if (!storyId) return NextResponse.json({ error: 'Missing storyId' }, { status: 400 });
-    if (!await verifyWorldAccess(storyId, 'writer')) {
+    if (!await verifyWorldAccess(storyId, 'reader')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

@@ -293,26 +293,17 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Text Variants</label>
                     <p className="special-desc">Custom properties accessed via accessor syntax.</p>
                     
-                    <div style={{ display: 'grid', gap: '10px', marginTop: '1rem' }}>
+                    <div className="text-variant-container">
                         {Object.entries(form.text_variants || {}).map(([key, val]) => (
-                            <div key={key} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                                <div style={{ 
-                                    minWidth: '120px', 
-                                    maxWidth: '150px',
-                                    paddingTop: '10px', 
-                                    textAlign: 'right', 
-                                    display: 'flex', 
-                                    flexDirection: 'column',
-                                    alignItems: 'flex-end',
-                                    wordBreak: 'break-word'
-                                }}>
+                            <div key={key} className="text-variant-row">
+                                <div className="text-variant-label">
                                     <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-main)', fontWeight: 'bold', lineHeight: '1.2' }}>{key}</span>
                                     <div style={{ marginTop: '2px' }}><Accessor code={`$.${key}`} /></div>
                                 </div>
-                                <div style={{ flex: 1 }}>
+                                <div className="text-variant-body">
                                     <SmartArea value={val as string} onChange={v => updateVariant(key, v)} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} />
                                 </div>
-                                <button onClick={() => removeVariant(key)} style={{ color: 'var(--danger-color)', background: 'none', border: 'none', cursor: 'pointer', marginTop: '8px' }}>✕</button>
+                                <button onClick={() => removeVariant(key)} className="text-variant-delete">✕</button>
                             </div>
                         ))}
                     </div>
