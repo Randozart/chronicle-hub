@@ -1,12 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
-import GameModal from '@/components/GameModal';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import InputModal from '@/components/admin/InputModal';
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
     const [search, setSearch] = useState("");
-    const [inspectData, setInspectData] = useState<any>(null); 
+    const [inspectData, setInspectData] = useState<any>(null);
     const [tagInput, setTagInput] = useState("");
+    const [banState, setBanState] = useState<{ user: any } | null>(null);
+    const [roleState, setRoleState] = useState<{ user: any; newRole: string } | null>(null);
 
     const fetchUsers = () => {
         fetch(`/api/sysadmin/users?search=${search}`).then(r => r.json()).then(setUsers);
@@ -14,28 +17,44 @@ export default function UserManagement() {
 
     useEffect(() => { fetchUsers(); }, []);
 
-    const toggleBan = async (user: any) => {
-        const action = user.isBanned ? "Unban" : "Ban";
-        const reason = user.isBanned ? null : prompt("Reason for suspension?");
-        if (user.isBanned || reason) {
-            await fetch('/api/sysadmin/users', {
+    const toggleBan = (user: any) => {
+        if (user.isBanned) {
+            // Unban directly — no reason needed
+            fetch('/api/sysadmin/users', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user._id, action: 'ban', role: !user.isBanned ? 'banned' : 'active', reason })
-            });
-            fetchUsers();
+                body: JSON.stringify({ userId: user._id, action: 'ban', role: 'active', reason: null })
+            }).then(() => fetchUsers());
+        } else {
+            setBanState({ user });
         }
     };
 
-    const updateRole = async (user: any, newRole: string) => {
-        if (!confirm(`Change role to ${newRole}?`)) return;
+    const handleConfirmBan = async (reason: string) => {
+        if (!banState) return;
         await fetch('/api/sysadmin/users', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user._id, role: newRole })
+            body: JSON.stringify({ userId: banState.user._id, action: 'ban', role: 'banned', reason })
         });
+        setBanState(null);
         fetchUsers();
-        setInspectData(null); 
+    };
+
+    const updateRole = (user: any, newRole: string) => {
+        setRoleState({ user, newRole });
+    };
+
+    const handleConfirmRole = async () => {
+        if (!roleState) return;
+        await fetch('/api/sysadmin/users', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: roleState.user._id, role: roleState.newRole })
+        });
+        setRoleState(null);
+        fetchUsers();
+        setInspectData(null);
     };
 
     const addTag = async () => {
@@ -70,6 +89,23 @@ export default function UserManagement() {
 
     return (
         <div>
+            <InputModal
+                isOpen={!!banState}
+                title="Suspend User"
+                description={`Enter the reason for suspending ${banState?.user?.username}.`}
+                label="Reason"
+                confirmLabel="Suspend"
+                onClose={() => setBanState(null)}
+                onSubmit={handleConfirmBan}
+            />
+            <ConfirmationModal
+                isOpen={!!roleState}
+                title="Change Role"
+                message={`Change ${roleState?.user?.username}'s role to "${roleState?.newRole}"?`}
+                variant="info"
+                onConfirm={handleConfirmRole}
+                onCancel={() => setRoleState(null)}
+            />
             <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
                 <input className="form-input" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchUsers()} />
                 <button className="deck-button" onClick={fetchUsers}>Search</button>

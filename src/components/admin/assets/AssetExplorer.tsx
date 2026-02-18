@@ -3,6 +3,8 @@
 import { useState, useMemo, useRef } from 'react';
 import { GlobalAsset } from '@/engine/models';
 import AssetEditModal from './AssetEditModal';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import InputModal from '@/components/admin/InputModal';
 
 interface Props {
     assets: GlobalAsset[];
@@ -25,6 +27,10 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
     const [editingAsset, setEditingAsset] = useState<GlobalAsset | undefined>(undefined);
     const [pendingUpload, setPendingUpload] = useState<File | undefined>(undefined);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [renameState, setRenameState] = useState<{ assetId: string } | null>(null);
+    const [moveOpen, setMoveOpen] = useState(false);
+    const [errorOpen, setErrorOpen] = useState(false);
 
     // Build Virtual Folder Tree
     const { tree, currentFolderAssets } = useMemo(() => {
@@ -130,12 +136,16 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         }
     };
 
-    const handleBulkDelete = async () => {
-        if (!confirm(`Delete ${selectedIds.size} assets? This cannot be undone.`)) return;
+    const handleBulkDelete = () => {
+        setBulkDeleteOpen(true);
+    };
+
+    const confirmBulkDelete = async () => {
         await fetch('/api/admin/assets/manage', {
             method: 'POST',
             body: JSON.stringify({ action: 'delete', assetIds: Array.from(selectedIds) })
         });
+        setBulkDeleteOpen(false);
         setSelectedIds(new Set());
         onRefresh();
     };
@@ -160,17 +170,19 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
         onRefresh();
     };
 
-    const handleRename = async (assetId: string) => {
-        const newId = prompt("Rename asset ID:", assetId);
-        if (!newId || newId === assetId) return;
-        
+    const handleRename = (assetId: string) => {
+        setRenameState({ assetId });
+    };
+
+    const confirmRename = async (newId: string) => {
+        if (!renameState || !newId || newId === renameState.assetId) { setRenameState(null); return; }
         const res = await fetch('/api/admin/assets/manage', {
             method: 'POST',
-            body: JSON.stringify({ action: 'rename', assetId, newId: newId.toLowerCase().replace(/[^a-z0-9_]/g, '_') })
+            body: JSON.stringify({ action: 'rename', assetId: renameState.assetId, newId: newId.toLowerCase().replace(/[^a-z0-9_]/g, '_') })
         });
-        
+        setRenameState(null);
         if (res.ok) onRefresh();
-        else alert("Rename failed. ID might exist.");
+        else setErrorOpen(true);
     };
 
     // Sub-Component: Folder Tree Render
@@ -238,6 +250,42 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
 
     return (
         <div className={className} style={{ display: 'flex', height: '100%', border: '1px solid var(--tool-border)', borderRadius: '4px', background: 'var(--tool-bg-dark)', overflow: 'hidden', ...style }}>
+            <ConfirmationModal
+                isOpen={bulkDeleteOpen}
+                title="Delete Assets"
+                message={`Delete ${selectedIds.size} asset(s)? This cannot be undone.`}
+                variant="danger"
+                onConfirm={confirmBulkDelete}
+                onCancel={() => setBulkDeleteOpen(false)}
+            />
+            <InputModal
+                isOpen={!!renameState}
+                title="Rename Asset"
+                description="Enter the new asset ID. Only lowercase letters, numbers, and underscores are allowed."
+                label="New ID"
+                defaultValue={renameState?.assetId ?? ''}
+                confirmLabel="Rename"
+                onClose={() => setRenameState(null)}
+                onSubmit={confirmRename}
+            />
+            <InputModal
+                isOpen={moveOpen}
+                title="Move Assets"
+                description={`Move ${selectedIds.size} asset(s) to a new folder.`}
+                label="Target folder (e.g. icons/spells)"
+                defaultValue={currentPath}
+                confirmLabel="Move"
+                onClose={() => setMoveOpen(false)}
+                onSubmit={(folder) => { setMoveOpen(false); handleMoveAssets(folder, Array.from(selectedIds)); }}
+            />
+            <ConfirmationModal
+                isOpen={errorOpen}
+                title="Rename Failed"
+                message="Could not rename asset. The ID may already be in use."
+                variant="danger"
+                onConfirm={() => setErrorOpen(false)}
+                onCancel={() => setErrorOpen(false)}
+            />
             
             {/* LEFT: Sidebar Tree */}
             <div style={{ width: '200px', borderRight: '1px solid var(--tool-border)', background: 'var(--tool-bg-sidebar)', display: 'flex', flexDirection: 'column' }}>
@@ -310,11 +358,8 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button onClick={() => setSelectedIds(new Set())} style={{ cursor: 'pointer', background: 'none', border: '1px solid #000', borderRadius: '4px', padding: '2px 8px' }}>Clear</button>
                             <button onClick={handleBulkDelete} style={{ cursor: 'pointer', background: '#fff', border: 'none', borderRadius: '4px', padding: '2px 8px', color: 'var(--danger-color)', fontWeight: 'bold' }}>Delete</button>
-                            <button 
-                                onClick={() => {
-                                    const newFolder = prompt("Enter new folder path (e.g. icons/spells):");
-                                    if (newFolder) handleMoveAssets(newFolder, Array.from(selectedIds));
-                                }}
+                            <button
+                                onClick={() => setMoveOpen(true)}
                                 style={{ cursor: 'pointer', background: 'var(--tool-bg-input)', border: '1px solid #999', borderRadius: '4px', padding: '2px 8px', color: '#fff' }}
                             >
                                 Move to...

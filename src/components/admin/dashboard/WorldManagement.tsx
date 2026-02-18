@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Link from 'next/link'; // Added Link import
+import Link from 'next/link';
+import ConfirmationModal from '@/components/admin/ConfirmationModal';
 
 export default function WorldManagement() {
     const [worlds, setWorlds] = useState([]);
+    const [confirmState, setConfirmState] = useState<{ worldId: string } | null>(null);
 
     const fetchWorlds = () => {
         fetch('/api/sysadmin/worlds').then(r => r.json()).then(setWorlds);
@@ -12,7 +14,10 @@ export default function WorldManagement() {
     useEffect(() => { fetchWorlds(); }, []);
 
     const togglePublish = async (worldId: string, action: string = 'unpublish') => {
-        if (action === 'unpublish' && !confirm("Are you sure you want to FORCE UNPUBLISH this world?")) return;
+        if (action === 'unpublish') {
+            setConfirmState({ worldId });
+            return;
+        }
         
         await fetch('/api/sysadmin/worlds', {
             method: 'PATCH',
@@ -22,7 +27,27 @@ export default function WorldManagement() {
         fetchWorlds();
     };
 
+    const handleConfirmUnpublish = async () => {
+        if (!confirmState) return;
+        await fetch('/api/sysadmin/worlds', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ worldId: confirmState.worldId, action: 'unpublish' })
+        });
+        setConfirmState(null);
+        fetchWorlds();
+    };
+
     return (
+        <>
+        <ConfirmationModal
+            isOpen={!!confirmState}
+            title="Force Unpublish World"
+            message="Are you sure you want to FORCE UNPUBLISH this world? This will make it inaccessible to players immediately."
+            variant="danger"
+            onConfirm={handleConfirmUnpublish}
+            onCancel={() => setConfirmState(null)}
+        />
         <div style={{ overflowX: 'auto', background: '#21252b', borderRadius: '8px', border: '1px solid #333' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
@@ -110,5 +135,6 @@ export default function WorldManagement() {
                 <div style={{ padding: '2rem', textAlign: 'center', color: '#555' }}>No worlds found in registry.</div>
             )}
         </div>
+        </>
     );
 }
