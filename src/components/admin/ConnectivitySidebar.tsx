@@ -19,6 +19,7 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
     const [connections, setConnections] = useState<GraphConnection[]>([]);
     const [expanded, setExpanded] = useState<Set<string>>(new Set(['inbound', 'outbound', 'requirements']));
     const [targetType, setTargetType] = useState<'storylet' | 'quality' | 'market' | null>(null);
+    const [mobileOpen, setMobileOpen] = useState(false);
     useEffect(() => {
         let isMounted = true;
         const fetchData = async () => {
@@ -149,16 +150,31 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
     const isQuality = targetType === 'quality';
 
     return (
-        <aside style={{ 
-            width: '280px', 
+        <>
+        <button className="connections-mobile-tab" onClick={() => setMobileOpen(true)}>
+            Connections
+            {connections.length > 0 && (
+                <span style={{ background: 'var(--tool-accent)', color: 'var(--tool-key-black)', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                    {connections.length}
+                </span>
+            )}
+            <span>▲</span>
+        </button>
+        {mobileOpen && <div className="connections-mobile-backdrop" onClick={() => setMobileOpen(false)} />}
+        <aside className={`connections-aside${mobileOpen ? ' mobile-open' : ''}`} style={{
+            width: '280px',
             minWidth: '280px',
-            borderLeft: '1px solid var(--tool-border)', 
-            background: 'var(--tool-bg-sidebar)', 
-            display: 'flex', 
+            borderLeft: '1px solid var(--tool-border)',
+            background: 'var(--tool-bg-sidebar)',
+            display: 'flex',
             flexDirection: 'column',
             color: 'var(--tool-text-main)',
             height: '100%'
         }}>
+            <div className="connections-mobile-handle" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', borderRadius: '12px 12px 0 0', cursor: 'pointer' }} onClick={() => setMobileOpen(false)}>
+                <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--tool-text-header)' }}>Connections</span>
+                <span style={{ fontSize: '1rem', color: 'var(--tool-text-dim)' }}>✕</span>
+            </div>
             <div style={{ 
                 padding: '0.75rem', 
                 borderBottom: '1px solid var(--tool-border)', 
@@ -256,6 +272,7 @@ export default function ConnectivitySidebar({ storyId, currentItemId }: Props) {
                 )}
             </div>
         </aside>
+        </>
     );
 }
 
