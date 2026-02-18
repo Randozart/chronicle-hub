@@ -881,7 +881,7 @@ export default function ScribeScriptSyntaxPage() {
             <section id="challenges">
                 <h2 className="docs-h2">7. Challenges & Probability</h2>
                 <p className="docs-p">
-                    The Chronicle Engine features a sophisticated probability system for skill checks and random outcomes.
+                    The ScribeScript Engine features a sophisticated probability system for skill checks and random outcomes.
                     Due to the depth and complexity of this topic, it has been moved to its own dedicated chapter.
                 </p>
                 <div className="docs-callout">

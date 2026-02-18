@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/providers/ThemeProvider';
 import ThemeControls from '@/components/ui/ThemeControls';
+import MainLogo from '@/components/icons/MainLogo';
 
 interface TocItem { id: string; label: string; level: number; }
 
@@ -85,9 +86,12 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             {/* SIDEBAR DRAWER */}
             <aside className={`docs-nav ${showNav ? 'mobile-open' : ''}`}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <h2 style={{ margin: 0, color: 'var(--docs-text-header)', fontSize: '1.2rem' }}>
-                        <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Chronicle Engine</Link>
-                    </h2>
+                    <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', color: 'inherit' }}>
+                        <MainLogo width={32} height={32} />
+                        <h2 style={{ margin: 0, color: 'var(--docs-text-header)', fontSize: '1.2rem' }}>
+                            Chronicle<span style={{ color: 'var(--docs-accent-blue)' }}>Hub</span>
+                        </h2>
+                    </Link>
                     <button className="mobile-close-btn" onClick={() => setShowNav(false)}>✕</button>
                 </div>
                 

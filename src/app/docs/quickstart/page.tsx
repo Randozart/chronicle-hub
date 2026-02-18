@@ -24,7 +24,7 @@ export default function QuickStartPage() {
             <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)'}}>
                 <strong style={{color: 'var(--docs-accent-blue)'}}>Tip: Follow Along Side-by-Side</strong>
                 <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem'}}>
-                    Open the Chronicle Hub in a separate tab or window so you can follow these instructions while building. On most browsers: right-click the Chronicle logo or dashboard link → <strong>Open in New Tab</strong>.
+                    Open ChronicleHub in a separate tab or window so you can follow these instructions while building. On most browsers: right-click the Chronicle logo or dashboard link → <strong>Open in New Tab</strong>.
                 </p>
             </div>
 
