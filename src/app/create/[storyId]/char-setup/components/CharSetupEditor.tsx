@@ -69,6 +69,12 @@ export default function CharSetupEditor({
 }: CharSetupEditorProps) {
     const [newKey, setNewKey] = useState('');
     const [draggedKey, setDraggedKey] = useState<string | null>(null);
+    const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
+
+    const toggleCollapse = (key: string) =>
+        setCollapsedKeys(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
+    const collapseAll = () => setCollapsedKeys(new Set(sortedKeys));
+    const expandAll   = () => setCollapsedKeys(new Set());
 
     const qualityDefsArray = useMemo(() => Object.values(qualityDefs), [qualityDefs]);
 
@@ -335,9 +341,19 @@ export default function CharSetupEditor({
                 <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--tool-text-dim)', fontWeight: 'bold', letterSpacing: '1px' }}>
                     Initialization Rules
                 </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>
-                    {sortedKeys.length} field{sortedKeys.length !== 1 ? 's' : ''}
-                </span>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>
+                        {sortedKeys.length} field{sortedKeys.length !== 1 ? 's' : ''}
+                    </span>
+                    {sortedKeys.length > 0 && (<>
+                        <button onClick={collapseAll} style={{ fontSize: '0.68rem', padding: '2px 8px', background: 'var(--tool-bg-input)', border: '1px solid var(--tool-border)', color: 'var(--tool-text-dim)', borderRadius: '3px', cursor: 'pointer' }}>
+                            Collapse All
+                        </button>
+                        <button onClick={expandAll} style={{ fontSize: '0.68rem', padding: '2px 8px', background: 'var(--tool-bg-input)', border: '1px solid var(--tool-border)', color: 'var(--tool-text-dim)', borderRadius: '3px', cursor: 'pointer' }}>
+                            Expand All
+                        </button>
+                    </>)}
+                </div>
             </div>
 
             {/* Rule rows */}
@@ -356,6 +372,8 @@ export default function CharSetupEditor({
                             imageLibrary={imageLibrary}
                             storyId={storyId}
                             qualityDefs={qualityDefsArray}
+                            isCollapsed={collapsedKeys.has(key)}
+                            onToggleCollapse={() => toggleCollapse(key)}
                             onUpdate={handleUpdate}
                             onDelete={handleDelete}
                             onDragStart={onDragStart}
@@ -407,13 +425,14 @@ interface RuleRowProps {
     qualityDefs: QualityDefinition[];
     onUpdate: (key: string, field: keyof CharCreateRule, val: any) => void;
     onDelete: (key: string) => void;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
     onDragStart: (e: React.DragEvent, key: string) => void;
     onDragOver: (e: React.DragEvent) => void;
     onDrop: (e: React.DragEvent, key: string) => void;
 }
 
-function RuleRow({ ruleKey, rule, isDragged, showSkippedWarning, imageLibrary, storyId, qualityDefs, onUpdate, onDelete, onDragStart, onDragOver, onDrop }: RuleRowProps) {
-    const [isCollapsed, setIsCollapsed] = useState(false);
+function RuleRow({ ruleKey, rule, isDragged, showSkippedWarning, imageLibrary, storyId, qualityDefs, isCollapsed, onToggleCollapse, onUpdate, onDelete, onDragStart, onDragOver, onDrop }: RuleRowProps) {
 
     const isSelectType = SELECT_TYPES.includes(rule.type);
     const isSection    = rule.type === 'header';
@@ -484,7 +503,7 @@ function RuleRow({ ruleKey, rule, isDragged, showSkippedWarning, imageLibrary, s
 
                 {/* Collapse toggle */}
                 <button
-                    onClick={() => setIsCollapsed(c => !c)}
+                    onClick={onToggleCollapse}
                     title={isCollapsed ? 'Expand' : 'Collapse'}
                     style={{ color: 'var(--tool-text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', lineHeight: 1, flexShrink: 0, fontSize: '0.75rem' }}
                 >
