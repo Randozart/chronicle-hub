@@ -535,7 +535,23 @@ html[data-theme='revolutionary']::before {
     background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.05) 100%);
     border: 1px solid rgba(255,255,255,0.4); pointer-events: none; z-index: 10;
 }
-
+[data-theme='detective-noir'] .item-actions .equip-btn {
+    color: #ffffff !important;
+}
+[data-theme='detective-noir'] .item-text span {
+    color: var(--accent-highlight) !important;
+    border-color: var(--accent-highlight) !important;
+}
+[data-theme='detective-noir'] .slot-header .formatted-text-block p{
+    font-weight: bold;
+    padding-top: 0.3rem !important;
+        padding-bottom: 0rem !important;
+font-size: 0.9rem !important;
+    padding-left: 0.5rem !important;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-highlight) !important;
+}
 .dashboard-grid [data-theme='detective-noir'].card h3 { 
     opacity: 0.85;
     color: #ffffff !important;
