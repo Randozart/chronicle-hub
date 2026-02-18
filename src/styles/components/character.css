@@ -39,7 +39,7 @@
 .profile-header {
     display: flex;
     gap: 2rem;
-    align-items: center;
+    align-items: top;
     padding: 2rem;
     margin-bottom: 2rem;
     background: var(--bg-panel);
@@ -48,8 +48,8 @@
 }
 
 .profile-portrait {
-    width: 100px;
-    height: 100px;
+    width: 70px;
+    min-height: 100%;
     overflow: hidden;
     border: 3px solid var(--accent-primary);
     box-shadow: 0 0 15px rgba(0,0,0,0.5);
@@ -62,7 +62,6 @@
 }
 
 .profile-portrait[data-shape='rect'] {
-    height: 133px;
     border-radius: 8px;
 }
 
