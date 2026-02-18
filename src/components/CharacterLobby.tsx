@@ -29,6 +29,8 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
     const [charToDelete, setCharToDelete] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [guestChar, setGuestChar] = useState<CharacterDocument | null>(null);
+    const [errorModal, setErrorModal] = useState<string | null>(null);
+    const [startOverConfirm, setStartOverConfirm] = useState(false);
     
     const searchParams = useSearchParams();
     const isPlaytest = searchParams.get('playtest') === 'true';
@@ -95,12 +97,12 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                     window.location.href = `/play/${props.storyId}?char=${data.character.characterId}${urlSuffix}`;
                 }
             } else {
-                alert("Failed to create character: " + (data.error || "Unknown Error"));
+                setErrorModal("Failed to create character: " + (data.error || "Unknown Error"));
                 setIsCreating(false);
             }
         } catch (e) {
             console.error(e);
-            alert("Network error occurred.");
+            setErrorModal("Network error occurred.");
             setIsCreating(false);
         }
     };
@@ -138,6 +140,31 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 confirmLabel="Delete Forever"
                 onConfirm={confirmDelete}
                 onClose={() => setCharToDelete(null)}
+            />
+            <GameModal
+                isOpen={!!errorModal}
+                title="Error"
+                message={errorModal || ""}
+                confirmLabel="Dismiss"
+                onConfirm={() => setErrorModal(null)}
+                onClose={() => setErrorModal(null)}
+            />
+            <GameModal
+                isOpen={startOverConfirm}
+                type="danger"
+                title="Start Over?"
+                message="Starting a new game will overwrite your current Guest save. Continue?"
+                confirmLabel="Start Over"
+                onConfirm={() => {
+                    setStartOverConfirm(false);
+                    localStorage.removeItem(`chronicle_guest_${props.storyId}`);
+                    if (skipCreation) {
+                        handleStartGame();
+                    } else {
+                        window.location.href = `/play/${props.storyId}/creation?${urlSuffix.replace('&', '')}`;
+                    }
+                }}
+                onClose={() => setStartOverConfirm(false)}
             />
 
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 0 }} />
@@ -274,17 +301,7 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                     )}
                     {props.isGuest && guestChar && (
                         <button
-                            onClick={() => {
-                                if (confirm("Starting a new game will overwrite your current Guest save. Continue?")) {
-                                    localStorage.removeItem(`chronicle_guest_${props.storyId}`);
-                                    
-                                    if (skipCreation) {
-                                        handleStartGame();
-                                    } else {
-                                        window.location.href = `/play/${props.storyId}/creation?${urlSuffix.replace('&', '')}`;
-                                    }
-                                }
-                            }}
+                            onClick={() => setStartOverConfirm(true)}
                             className="option-button"
                             style={{ 
                                 padding: '0.8rem', 

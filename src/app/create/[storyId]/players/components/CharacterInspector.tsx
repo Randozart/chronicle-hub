@@ -245,7 +245,7 @@ export default function CharacterInspector({ characterId, storyId, worldQualitie
                                                                                 className="form-input"
                                                                                 defaultValue={hasLevel ? state.level : 0} 
                                                                                 onBlur={(e) => { const val = parseFloat(e.target.value); if (!isNaN(val) && val !== (state as any).level) handleUpdateQuality(qid, val); }} 
-                                                                                style={{ width: '100px', color: 'var(--success-color)', textAlign: 'right', fontWeight: 'bold' }}
+                                                                                style={{ width: '100px', color: 'var(--success-color)', textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem' }}
                                                                             />
                                                                             {(state as any).type === 'P' && hasCP && <span style={{ fontSize: '0.8rem', color: 'var(--tool-text-dim)' }}>CP: {(state as any).changePoints}</span>}
                                                                         </div>

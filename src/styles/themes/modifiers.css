@@ -541,8 +541,13 @@ html[data-theme='revolutionary']::before {
     color: #ffffff !important;
 }
 .dashboard-grid [data-theme='detective-noir'].card span { 
-    font-weight: bold;
-    background-color: var(--bg-item) !important;
+    /* font-weight: bold; */
+    color: #ffffff !important;
+        opacity: 0.85;
+
+    font-size: 0.8rem !important;
+    padding-top: 0.2rem !important;
+    /* background-color: var(--bg-item) !important; */
 }
 @media (max-width: 900px) {
     [data-theme='detective-noir'] .layout-grid-nexus,
@@ -1041,6 +1046,13 @@ html[data-theme='revolutionary']::before {
 .dashboard-grid [data-theme='masquerade'].card {
     color: #f1e4c7;
     text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.dashboard-grid [data-theme='masquerade'].card .continue-button,
+.dashboard-grid [data-theme='masquerade'].card .return-button { 
+    color: #422505 !important;
+    text-shadow: none;
+    /* background-color: var(--bg-item) !important; */
 }
 
 [data-theme='delver'] *,
