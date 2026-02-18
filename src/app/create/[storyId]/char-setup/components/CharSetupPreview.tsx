@@ -66,7 +66,7 @@ export default function CharSetupPreview({ rules, qualityDefs, imageLibrary, hid
                 const expr = trimmed.startsWith('{') && trimmed.endsWith('}') ? trimmed : `{${trimmed}}`;
                 const result = evaluateText(expr, q, allDefs, null, 0, {});
                 const isNum = result.trim() !== '' && !isNaN(Number(result));
-                q[qid] = { ...q[qid], stringValue: result, level: isNum ? Number(result) : 0 };
+                q[qid] = { ...q[qid], stringValue: result, level: isNum ? Number(result) : 0 } as any;
             } catch (_) {}
         });
 
@@ -164,7 +164,7 @@ export default function CharSetupPreview({ rules, qualityDefs, imageLibrary, hid
 
         // Static / read-only
         if (rule.type === 'static' || rule.readOnly) {
-            const val = mockQ[qid]?.stringValue ?? rule.rule;
+            const val = (mockQ[qid] as any)?.stringValue ?? rule.rule;
             if (rule.hideIfZero && (val === '0' || (val !== '' && !isNaN(Number(val)) && Number(val) === 0))) return null;
             const img = imageLibrary[val];
             return (
