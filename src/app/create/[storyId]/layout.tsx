@@ -179,6 +179,7 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
 
                                 <SectionHeader label="Game System" />
                                 <AdminLink href={`${base}/settings`} label="Settings" />
+                                <AdminLink href={`${base}/char-setup`} label="Character Setup" />
                                 <AdminLink href={`${base}/qualities`} label="Qualities" />
                                 <AdminLink href={`${base}/categories`} label="Categories" />
                                 <SectionHeader label="World & Economy" />
