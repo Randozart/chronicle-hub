@@ -39,6 +39,7 @@ export function changeQuality(
     const qState = targetState[effectiveQid] as any;
     const levelBefore = qState.level || 0;
     const cpBefore = qState.changePoints || 0;
+    let resolvedMax: number | undefined;
 
     if (qState.type !== def.type) {
         qState.type = def.type;
@@ -101,7 +102,6 @@ export function changeQuality(
             }
         }
         
-        let resolvedMax: number | undefined;
         if (def.max) {
             const max = Number(ctx.evaluateText(`{${def.max}}`)) || Infinity;
             if (isFinite(max)) resolvedMax = max;
