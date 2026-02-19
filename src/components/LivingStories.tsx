@@ -37,7 +37,7 @@ export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary
 
     const activeStories = pendingEvents || [];
 
-    const hideWhenEmpty = settings.livingStoriesConfig?.hideWhenEmpty;
+    const hideWhenEmpty = settings.livingStoriesConfig?.hideWhenEmpty !== false;
     if (activeStories.length === 0 && hideWhenEmpty) return null;
 
     const title = settings.livingStoriesConfig?.title || "Living Stories";

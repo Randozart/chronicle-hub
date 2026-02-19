@@ -387,7 +387,7 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
                                 <label className="toggle-label">
                                     <input
                                         type="checkbox"
-                                        checked={settings.livingStoriesConfig?.hideWhenEmpty || false}
+                                        checked={settings.livingStoriesConfig?.hideWhenEmpty !== false}
                                         onChange={e => handleDeepChange('livingStoriesConfig', 'hideWhenEmpty', e.target.checked)}
                                     />
                                     Hide component when no timers are active

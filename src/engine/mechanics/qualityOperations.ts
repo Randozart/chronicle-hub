@@ -101,11 +101,13 @@ export function changeQuality(
             }
         }
         
+        let resolvedMax: number | undefined;
         if (def.max) {
             const max = Number(ctx.evaluateText(`{${def.max}}`)) || Infinity;
-            if (qState.level > max) { 
-                qState.level = max; 
-                if (qState.type === QualityType.Pyramidal) qState.changePoints = 0; 
+            if (isFinite(max)) resolvedMax = max;
+            if (qState.level > max) {
+                qState.level = max;
+                if (qState.type === QualityType.Pyramidal) qState.changePoints = 0;
             }
         }
         qState.level = Math.floor(qState.level);
@@ -146,10 +148,11 @@ export function changeQuality(
             category: def.category,
             levelBefore: levelBefore, 
             cpBefore: cpBefore,
-            levelAfter: qState.level, 
+            levelAfter: qState.level,
             cpAfter: qState.changePoints,
-            stringValue: qState.stringValue, 
-            changeText, 
+            maxLevel: resolvedMax,
+            stringValue: qState.stringValue,
+            changeText,
             scope: qid.startsWith('world.') ? 'world' : 'character',
             overrideDescription: metadata.desc ? changeText : undefined,
             hidden: isHidden 

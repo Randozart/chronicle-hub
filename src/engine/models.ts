@@ -453,9 +453,10 @@ export interface QualityChangeInfo {
     cpBefore: number;
     levelAfter: number;
     cpAfter: number;
+    maxLevel?: number;
     stringValue?: string;
-    changeText: string; 
-    overrideDescription?: string; 
+    changeText: string;
+    overrideDescription?: string;
     scope?: 'character' | 'world';
     hidden?: boolean; 
 }

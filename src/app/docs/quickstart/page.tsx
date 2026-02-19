@@ -555,24 +555,34 @@ Everything points to one person. Who do you accuse?
                     { src: '/images/docs/character_setup.jpg', alt: 'Character Setup showing the Initialization Rules section with the investigation rule set to 1' },
                 ]} />
 
-                <h3 className="docs-h3" style={{marginTop: '2rem'}}>Set the Starting Location</h3>
+                <h3 className="docs-h3" style={{marginTop: '2rem'}}>Configure Interface &amp; Categories</h3>
                 <p className="docs-p">
-                    The starting location is a world setting, not a character rule.
+                    Two other settings relating to setup live in the same section — the starting location and which quality categories appear in the sidebar during play.
                 </p>
                 <ol className="docs-list">
                     <li>Click <strong>Settings</strong> in the left sidebar</li>
                     <li>Scroll to the <strong>Interface &amp; Categories</strong> section</li>
                     <li>In the <strong>Starting Location ID</strong> field, enter: <code>crime_scene</code></li>
+                    <li>In the <strong>Sidebar Categories</strong> field, enter: <code>Skills, Progress</code></li>
                     <li>Save</li>
                 </ol>
 
                 <ScreenshotDisplay screenshots={[
-                    { src: '/images/docs/location_settings.jpg', alt: 'Settings showing the Starting Location ID field set to crime_scene' },
+                    { src: '/images/docs/interface_and_categories.JPG', alt: 'Settings — Interface & Categories section showing Starting Location ID and Sidebar Categories filled in' },
                 ]} />
 
                 <p className="docs-p">
-                    All new players will spawn at the crime scene when they begin a new game.
-</p>
+                    All new players will spawn at the crime scene. The Investigation skill and Clues tracker will now appear in the sidebar while playing.
+                </p>
+
+                <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)'}}>
+                    <strong style={{color: 'var(--docs-accent-blue)'}}>Categories don't need to be defined</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
+                        The Sidebar Categories field just takes a comma-separated list of IDs. The engine uses them to group and filter qualities with no extra setup required.
+                        <br/><br/>
+                        Defining a category (via the <strong>Categories</strong> tab) is optional — you only need to if you want to customise the display name shown in the sidebar header, set a color for quality bars, or configure other visual options.
+                    </p>
+                </div>
 
                 <div className="docs-callout">
                     <strong>Advanced: Dynamic Starting Location</strong>

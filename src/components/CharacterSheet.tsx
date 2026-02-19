@@ -83,17 +83,17 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     const isTracker = q.type === QualityType.Tracker;
                     
                     let barPercent = 0;
-                    
+                    let trackerMax = 100;
+
                     if (isPyramidal) {
                         const cpNeeded = getCPforNextLevel(q.baseLevel);
                         barPercent = cpNeeded > 0 ? (changePoints / cpNeeded) * 100 : 0;
                     } else if (isTracker) {
-                        let maxVal = 100; 
                         if (q.max) {
                             const evalMax = engine.evaluateText(`{${q.max}}`);
-                            maxVal = parseInt(evalMax, 10) || 100;
+                            trackerMax = parseInt(evalMax, 10) || 100;
                         }
-                        barPercent = Math.min(100, Math.max(0, (q.effectiveLevel / maxVal) * 100));
+                        barPercent = Math.min(100, Math.max(0, (q.effectiveLevel / trackerMax) * 100));
                     }
 
                     const bonusDiff = q.effectiveLevel - q.baseLevel;
@@ -103,22 +103,31 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                     let subText: React.ReactNode = null;
 
                     if (!hideLevel) {
-                        displayValue = q.baseLevel;
-                        
-                        if (bonusDiff !== 0) {
-                            const sign = bonusDiff > 0 ? '+' : '';
-                            const colorVar = bonusDiff > 0 ? 'var(--success-color)' : 'var(--danger-color)';
-                            
-                            displayValue = <span>{q.baseLevel}</span>;
-                            
-                            subText = (
-                                <span 
-                                    style={{ color: colorVar, marginLeft: '4px', fontWeight: 'bold' }} 
-                                    title={`Effective Level: ${q.effectiveLevel}`}
-                                >
-                                    {sign}{bonusDiff}
+                        if (isTracker) {
+                            displayValue = (
+                                <span>
+                                    {q.baseLevel}
+                                    <span style={{ opacity: 0.5, fontWeight: 'normal', fontSize: '0.85em' }}>/{trackerMax}</span>
                                 </span>
                             );
+                        } else {
+                            displayValue = q.baseLevel;
+
+                            if (bonusDiff !== 0) {
+                                const sign = bonusDiff > 0 ? '+' : '';
+                                const colorVar = bonusDiff > 0 ? 'var(--success-color)' : 'var(--danger-color)';
+
+                                displayValue = <span>{q.baseLevel}</span>;
+
+                                subText = (
+                                    <span
+                                        style={{ color: colorVar, marginLeft: '4px', fontWeight: 'bold' }}
+                                        title={`Effective Level: ${q.effectiveLevel}`}
+                                    >
+                                        {sign}{bonusDiff}
+                                    </span>
+                                );
+                            }
                         }
                     }
                     
