@@ -7,46 +7,74 @@ interface ScreenshotItem {
     alt: string;
 }
 
+const zoomPopupStyle = `
+@keyframes fadeInRight {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+` as string;
+
 const ZoomableImage = ({ src, alt, fillContainer }: { src: string; alt: string; fillContainer?: boolean }) => {
     const [hovered, setHovered] = React.useState(false);
 
     return (
         <div
             style={{
-                background: '#1c1c21',
                 borderRadius: '8px',
                 border: '1px solid #333',
                 boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                background: '#1c1c21',
                 position: 'relative',
-                overflow: hovered ? 'visible' : 'hidden',
-                zIndex: hovered ? 100 : 1,
+                // No overflow:hidden here — the popup needs to escape to the right
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            <img
-                src={src}
-                alt={alt}
-                style={{
-                    width: '100%',
-                    height: fillContainer ? '100%' : 'auto',
-                    objectFit: fillContainer ? 'cover' : undefined,
-                    display: 'block',
-                    transform: hovered ? 'scale(2)' : 'scale(1)',
-                    transition: 'transform 0.3s ease',
-                    transformOrigin: 'top center',
-                    cursor: hovered ? 'zoom-out' : 'zoom-in',
-                    position: 'relative',
-                    zIndex: hovered ? 100 : 1,
-                }}
-                onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = 'none';
-                    const parent = img.parentElement as HTMLElement;
-                    parent.style.overflow = 'hidden';
-                    parent.innerHTML = `<div style="padding:2rem;text-align:center;color:#444;font-style:italic;">${alt}</div>`;
-                }}
-            />
+            {/* Inner clip wrapper so the original image respects border-radius */}
+            <div style={{ borderRadius: '7px', overflow: 'hidden', cursor: 'zoom-in' }}>
+                <img
+                    src={src}
+                    alt={alt}
+                    style={{
+                        width: '100%',
+                        height: fillContainer ? '100%' : 'auto',
+                        objectFit: fillContainer ? 'cover' : undefined,
+                        display: 'block',
+                    }}
+                    onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                        const wrapper = img.parentElement as HTMLElement;
+                        wrapper.innerHTML = `<div style="padding:2rem;text-align:center;color:#444;font-style:italic;">${alt}</div>`;
+                    }}
+                />
+            </div>
+
+            {/* Popup: appears to the right in the empty doc margin */}
+            {hovered && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        left: 'calc(100% + 14px)',
+                        top: 0,
+                        width: '1280px',
+                        zIndex: 1000,
+                        borderRadius: '8px',
+                        border: '1px solid #555',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.85)',
+                        background: '#1c1c21',
+                        overflow: 'hidden',
+                        pointerEvents: 'none',
+                        animation: 'fadeInRight 0.15s ease',
+                    }}
+                >
+                    <img
+                        src={src}
+                        alt=""
+                        style={{ width: '100%', height: 'auto', display: 'block' }}
+                    />
+                </div>
+            )}
         </div>
     );
 };
@@ -88,6 +116,7 @@ const ScreenshotDisplay = ({ screenshots }: { screenshots: ScreenshotItem[] }) =
 export default function QuickStartPage() {
     return (
         <div className="docs-content">
+            <style dangerouslySetInnerHTML={{ __html: zoomPopupStyle }} />
             <header>
                 <h1 className="docs-h1">Quick Start: Your First Game</h1>
                 <p className="docs-lead">
@@ -160,14 +189,15 @@ export default function QuickStartPage() {
                     { src: '/images/docs/add_skill.jpeg', alt: 'The Investigation Skill Quality' },
                 ]} />
 
-                <h3 className="docs-h3" style={{marginTop: '2rem'}}>Create the Clues Counter</h3>
+                <h3 className="docs-h3" style={{marginTop: '2rem'}}>Create the Clues Tracker</h3>
                 <p className="docs-p">
-                    Repeat the process to create a counter for tracking clues:
+                    Repeat the process to create a tracker for clues:
                 </p>
                 <ul className="docs-list">
                     <li><strong>ID:</strong> <code>clues</code></li>
                     <li><strong>Name:</strong> Clues Discovered</li>
-                    <li><strong>Type:</strong> Counter (C)</li>
+                    <li><strong>Type:</strong> Tracker (T)</li>
+                    <li><strong>Max:</strong> 5 — the total clues needed to solve the case</li>
                     <li><strong>Description:</strong> "Evidence you've gathered about the crime."</li>
                     <li><strong>Category:</strong> Create a new category called "Progress"</li>
                 </ul>
@@ -193,12 +223,18 @@ export default function QuickStartPage() {
                     <li>Check the <strong>Hidden</strong> checkbox — this keeps it out of the player's quality list</li>
                 </ul>
 
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/intro_seen.jpg', alt: 'The Intro Seen Quality' },
+                ]} />
+
                 <div className="docs-callout">
                     <strong>Quality Types at a Glance</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
                         <strong>Pyramidal:</strong> Gets progressively harder to level up — ideal for skills with meaningful long-term progression.
                         <br/>
-                        <strong>Counter:</strong> A plain integer. Used here for <code>clues</code> (accumulating total) and <code>intro_seen</code> (a boolean flag: 0 = not seen, 1 = seen).
+                        <strong>Tracker:</strong> An integer with a defined maximum — displays as a progress bar. Used here for <code>clues</code>, capped at 5 so players can see exactly how close they are to solving the case.
+                        <br/>
+                        <strong>Counter:</strong> A plain unbounded integer. Used here for <code>intro_seen</code> as a simple boolean flag (0 = not seen, 1 = seen).
                         <br/>
                         <strong>String:</strong> Stores text rather than a number — used to record a suspect's name.
                         <br/><br/>
@@ -246,16 +282,16 @@ export default function QuickStartPage() {
                     <li>Fill in the <strong>Basic Info</strong>:
                         <ul style={{marginTop: '0.5rem'}}>
                             <li><strong>ID:</strong> <code>intro</code></li>
-                            <li><strong>Display Name:</strong> "A Call in the Night"</li>
+                            <li><strong>Title:</strong> "A Call in the Night"</li>
                             <li><strong>Location ID:</strong> Type <code>crime_scene</code>, or use the "🔗 Locations" button to browse and select</li>
                         </ul>
                     </li>
-                    <li>In the <strong>Teaser</strong> field (the short description shown on the card):
+                    <li>In the <strong>Teaser Text</strong> field (the short description shown on the card):
                         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
                             <code className="docs-code">Begin your investigation</code>
                         </div>
                     </li>
-                    <li>In the <strong>Body</strong> field:
+                    <li>In the <strong>Main Text</strong> field:
                         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
                             <code className="docs-code" style={{whiteSpace: 'pre-wrap'}}>
 The phone rings at 3 AM. A body has been discovered at Thornfield Manor.
@@ -265,9 +301,9 @@ You arrive at the scene. The study is eerily quiet. Where do you begin?
                             </code>
                         </div>
                     </li>
-                    <li>Enable <strong>Autofire</strong> — the storylet will trigger automatically when the player enters the location, placing them directly into the scene rather than requiring them to find and click a card.</li>
-                    <li>Set <strong>Visible If</strong> to: <code>$intro_seen == 0</code>
-                        <br/><span style={{fontSize: '0.85rem', opacity: 0.75}}>This gates the autofire to a single trigger. Once the player picks an option and sets <code>$intro_seen = 1</code>, the storylet becomes invisible and won't fire again.</span>
+                    <li>Scroll to the <strong>Must-Event (Autofire)</strong> section and click <strong>Enable</strong> — the storylet will trigger automatically when the player enters the location. Change the condition from <code>true</code> to <code>$intro_seen == 0</code> so it only fires before the player has seen the intro.</li>
+                    <li>Set <strong>Requirement for Visibility</strong> to: <code>$intro_seen == 0</code>
+                        <br/><span style={{fontSize: '0.85rem', opacity: 0.75}}>This also hides the card once seen — so the storylet neither appears on the board nor autofires after the player's first visit.</span>
                     </li>
                 </ol>
 
@@ -285,10 +321,10 @@ You arrive at the scene. The study is eerily quiet. Where do you begin?
                 </div>
 
                 <ul className="docs-list">
-                    <li><strong>Display Name:</strong> Search the desk</li>
-                    <li><strong>Description:</strong> Look for clues among the papers and drawers.</li>
-                    <li><strong>Success Text:</strong> You find a letter hidden beneath a false bottom in the drawer. It's a threatening note demanding payment. A valuable clue!</li>
-                    <li><strong>Pass Quality Change:</strong> <code>$clues += 2, $investigation++, $intro_seen = 1</code></li>
+                    <li><strong>Label:</strong> Search the desk</li>
+                    <li><strong>Teaser (Option Card):</strong> Look for clues among the papers and drawers.</li>
+                    <li><strong>Resolution Body</strong> (Success column): You find a letter hidden beneath a false bottom in the drawer. It's a threatening note demanding payment. A valuable clue!</li>
+                    <li><strong>Changes</strong> (Success column): <code>$clues += 2, $investigation++, $intro_seen = 1</code></li>
                 </ul>
 
                 <div className="docs-callout" style={{marginTop: '1.5rem'}}>
@@ -317,11 +353,19 @@ You arrive at the scene. The study is eerily quiet. Where do you begin?
                 </div>
 
                 <ul className="docs-list">
-                    <li><strong>Display Name:</strong> Examine the wine glass</li>
-                    <li><strong>Description:</strong> Analyze the shattered glass for traces of poison.</li>
-                    <li><strong>Success Text:</strong> You detect a faint almond scent—cyanide. The wine was poisoned. This narrows down the suspects considerably.</li>
-                    <li><strong>Pass Quality Change:</strong> <code>$clues += 3, $investigation++, $intro_seen = 1</code></li>
+                    <li><strong>Label:</strong> Examine the wine glass</li>
+                    <li><strong>Teaser (Option Card):</strong> Analyze the shattered glass for traces of poison.</li>
+                    <li><strong>Resolution Body</strong> (Success column): You detect a faint almond scent—cyanide. The wine was poisoned. This narrows down the suspects considerably.</li>
+                    <li><strong>Changes</strong> (Success column): <code>$clues += 3, $investigation++, $intro_seen = 1</code></li>
                 </ul>
+
+                <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '1.5rem'}}>
+                    <strong style={{color: 'var(--docs-accent-blue)'}}>Storylet Status</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
+                        New storylets default to <strong>Playtest</strong> status — visible only when using the Playtest World button, not in a published game. That's exactly what you want while building.
+                        Once ready to go live, change the status to <strong>Published</strong> from the dropdown at the top of the storylet editor.
+                    </p>
+                </div>
 
                 <p className="docs-p">
                     Click <strong>"Save"</strong>.
@@ -338,10 +382,10 @@ You arrive at the scene. The study is eerily quiet. Where do you begin?
                 <h3 className="docs-h3">Create the "Interrogate Butler" Storylet</h3>
                 <ol className="docs-list">
                     <li>Create a new storylet with ID: <code>interrogate_butler</code></li>
-                    <li><strong>Display Name:</strong> "The Butler's Story"</li>
-                    <li><strong>Location:</strong> The Crime Scene</li>
-                    <li><strong>Teaser:</strong> "Question the manor's butler"</li>
-                    <li><strong>Body:</strong>
+                    <li><strong>Title:</strong> "The Butler's Story"</li>
+                    <li><strong>Location ID:</strong> <code>crime_scene</code></li>
+                    <li><strong>Teaser Text:</strong> "Question the manor's butler"</li>
+                    <li><strong>Main Text:</strong>
                         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
                             <code className="docs-code" style={{whiteSpace: 'pre-wrap'}}>
 The butler, Mr. Graves, stands nervously by the door. He claims he was in the kitchen all evening.
@@ -356,23 +400,23 @@ Will you press him for the truth?
                 <h3 className="docs-h3" style={{marginTop: '2rem'}}>Create a Challenge Option</h3>
                 <ol className="docs-list">
                     <li>Add a new option: <strong>"Press him for answers"</strong></li>
-                    <li><strong>Description:</strong> Use your investigative skills to break through his lies.</li>
+                    <li><strong>Teaser (Option Card):</strong> Use your investigative skills to break through his lies.</li>
                     <li>In the <strong>Skill Check (Difficulty)</strong> section, check <strong>"Enable Failure State"</strong>. Scroll down slightly — the skill check fields will appear below once the checkbox is ticked.</li>
                     <li>In the revealed <strong>Skill Check (Difficulty)</strong> section, click the <strong>Manual Code</strong> tab, then enter:
                         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
                             <code className="docs-code">{`{ $investigation >> 1 }`}</code>
                         </div>
                     </li>
-                    <li>Fill in the <strong>Success</strong> outcome:
+                    <li>Fill in the <strong>Success/Default</strong> outcome column:
                         <ul style={{marginTop: '0.5rem'}}>
-                            <li><strong>Success Text:</strong> "I... I heard arguing," he stammers. "Lord Ashworth and his nephew were shouting about the will. I didn't want to get involved!"</li>
-                            <li><strong>Pass Quality Change:</strong> <code>$clues += 4</code></li>
+                            <li><strong>Resolution Body:</strong> "I... I heard arguing," he stammers. "Lord Ashworth and his nephew were shouting about the will. I didn't want to get involved!"</li>
+                            <li><strong>Changes:</strong> <code>$clues += 4</code></li>
                         </ul>
                     </li>
-                    <li>Fill in the <strong>Failure</strong> outcome:
+                    <li>Fill in the <strong>Failure</strong> outcome column:
                         <ul style={{marginTop: '0.5rem'}}>
-                            <li><strong>Failure Text:</strong> He clams up completely, crossing his arms. "I've told you everything I know." You'll get nothing more from him.</li>
-                            <li><strong>Fail Quality Change:</strong> <code>$investigation++</code></li>
+                            <li><strong>Resolution Body:</strong> He clams up completely, crossing his arms. "I've told you everything I know." You'll get nothing more from him.</li>
+                            <li><strong>Changes:</strong> <code>$investigation++</code></li>
                         </ul>
                     </li>
                 </ol>
@@ -417,11 +461,11 @@ Will you press him for the truth?
                 <h3 className="docs-h3">Create the "Solve the Mystery" Storylet</h3>
                 <ol className="docs-list">
                     <li>Create a new storylet with ID: <code>solve_mystery</code></li>
-                    <li><strong>Display Name:</strong> "The Solution"</li>
-                    <li><strong>Location:</strong> The Crime Scene</li>
-                    <li><strong>Teaser:</strong> "You have enough evidence to solve this case"</li>
-                    <li><strong>Visible If:</strong> <code>$clues &gt;= 5</code></li>
-                    <li><strong>Body:</strong>
+                    <li><strong>Title:</strong> "The Solution"</li>
+                    <li><strong>Location ID:</strong> <code>crime_scene</code></li>
+                    <li><strong>Teaser Text:</strong> "You have enough evidence to solve this case"</li>
+                    <li><strong>Requirement for Visibility:</strong> <code>$clues &gt;= 5</code></li>
+                    <li><strong>Main Text:</strong>
                         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
                             <code className="docs-code" style={{whiteSpace: 'pre-wrap'}}>
 You review your evidence. The threatening letter. The poison in the wine. The butler's testimony about the argument over the will.
@@ -438,20 +482,20 @@ Everything points to one person. Who do you accuse?
                     <strong>Option 1: "Accuse the Nephew"</strong>
                 </div>
                 <ul className="docs-list">
-                    <li><strong>Display Name:</strong> Accuse the nephew</li>
-                    <li><strong>Description:</strong> He had motive and opportunity.</li>
-                    <li><strong>Success Text:</strong> The nephew's face goes white. He confesses—he poisoned the wine to inherit the estate. Justice is served.</li>
-                    <li><strong>Pass Quality Change:</strong> <code>$accused_suspect = nephew</code></li>
+                    <li><strong>Label:</strong> Accuse the nephew</li>
+                    <li><strong>Teaser (Option Card):</strong> He had motive and opportunity.</li>
+                    <li><strong>Resolution Body</strong> (Success column): The nephew's face goes white. He confesses—he poisoned the wine to inherit the estate. Justice is served.</li>
+                    <li><strong>Changes</strong> (Success column): <code>$accused_suspect = nephew</code></li>
                 </ul>
 
                 <div className="docs-pre" style={{marginTop: '1.5rem'}}>
                     <strong>Option 2: "Accuse the Butler"</strong>
                 </div>
                 <ul className="docs-list">
-                    <li><strong>Display Name:</strong> Accuse the butler</li>
-                    <li><strong>Description:</strong> His nervous behavior is suspicious.</li>
-                    <li><strong>Success Text:</strong> The butler protests his innocence. Later, you learn the nephew fled the country. You accused the wrong person.</li>
-                    <li><strong>Pass Quality Change:</strong> <code>$accused_suspect = butler</code></li>
+                    <li><strong>Label:</strong> Accuse the butler</li>
+                    <li><strong>Teaser (Option Card):</strong> His nervous behavior is suspicious.</li>
+                    <li><strong>Resolution Body</strong> (Success column): The butler protests his innocence. Later, you learn the nephew fled the country. You accused the wrong person.</li>
+                    <li><strong>Changes</strong> (Success column): <code>$accused_suspect = butler</code></li>
                 </ul>
 
                 <div className="docs-callout" style={{marginTop: '1.5rem'}}>
@@ -474,14 +518,21 @@ Everything points to one person. Who do you accuse?
                     Before players start the game, set their starting quality values and spawn location.
                 </p>
 
+                <h3 className="docs-h3">Character Creation Options</h3>
+                <ol className="docs-list">
+                    <li>Click <strong>Character Setup</strong> in the left sidebar (under <strong>Game System</strong>)</li>
+                    <li>At the top of the page, check <strong>Skip Character Creation Screen</strong></li>
+                    <li>Also check <strong>Anonymous Protagonist</strong></li>
+                </ol>
+
                 <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)'}}>
-                    <strong style={{color: 'var(--docs-accent-blue)'}}>Skip &amp; Anonymous Options</strong>
+                    <strong style={{color: 'var(--docs-accent-blue)'}}>Why these two options?</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        At the top of <strong>Character Setup</strong> you'll find two checkboxes:
-                        <br/>• <strong>Skip Character Creation Screen</strong> — Players bypass the creation form entirely. Calc initialization rules still run; interactive fields default to empty. Useful for games with a fixed protagonist.
-                        <br/>• <strong>Anonymous Protagonist</strong> — Hides the player's name and portrait throughout the game. Useful for nameless or predetermined characters.
+                        This tutorial has a fixed detective protagonist — there's no character customization for the player to do, and the character doesn't have a meaningful name.
                         <br/><br/>
-                        Leave both unchecked for this tutorial.
+                        <strong>Skip Character Creation Screen</strong> — Players bypass the creation form entirely and go straight to the game. Initialization rules (set below) still run as normal; interactive fields just default to empty.
+                        <br/><br/>
+                        <strong>Anonymous Protagonist</strong> — Hides the player's name and portrait throughout the game. Use this for predetermined or nameless protagonists where showing a blank name field would look broken.
                     </p>
                 </div>
 
@@ -490,7 +541,6 @@ Everything points to one person. Who do you accuse?
                     Initialization rules run once when a new character is created, setting their starting quality values.
                 </p>
                 <ol className="docs-list">
-                    <li>Click <strong>Character Setup</strong> in the left sidebar (under <strong>Game System</strong>)</li>
                     <li>Scroll to the <strong>Initialization Rules</strong> section</li>
                     <li>In the quality field at the bottom of the section, type <code>investigation</code> and click <strong>Add Rule</strong></li>
                     <li>In the rule card that appears, click the <strong>Calc</strong> tab</li>

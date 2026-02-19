@@ -128,6 +128,9 @@
 .docs-link { color: var(--docs-accent-blue); text-decoration: none; border-bottom: 1px dotted var(--docs-accent-blue); }
 .docs-link:hover { border-bottom: 1px solid var(--docs-accent-blue); }
 
+.docs-content a { color: var(--docs-accent-gold); text-decoration: none; border-bottom: 1px dotted var(--docs-accent-gold); }
+.docs-content a:hover { border-bottom: 1px solid var(--docs-accent-gold); }
+
 .docs-props-list li { 
     margin-bottom: 1.5rem; 
     background: var(--bg-panel);

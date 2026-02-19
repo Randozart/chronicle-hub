@@ -77,7 +77,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: 'var(--tool-text-header)' }}>{form.id}</h2>
                     <select 
-                        value={form.status || 'draft'} 
+                        value={form.status || 'playtest'}
                         onChange={e => handleChange('status', e.target.value)} 
                         style={{ 
                             background: 
