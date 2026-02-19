@@ -1,7 +1,89 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image'; 
+
+interface ScreenshotItem {
+    src: string;
+    alt: string;
+}
+
+const ZoomableImage = ({ src, alt, fillContainer }: { src: string; alt: string; fillContainer?: boolean }) => {
+    const [hovered, setHovered] = React.useState(false);
+
+    return (
+        <div
+            style={{
+                background: '#1c1c21',
+                borderRadius: '8px',
+                border: '1px solid #333',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                position: 'relative',
+                overflow: hovered ? 'visible' : 'hidden',
+                zIndex: hovered ? 100 : 1,
+            }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            <img
+                src={src}
+                alt={alt}
+                style={{
+                    width: '100%',
+                    height: fillContainer ? '100%' : 'auto',
+                    objectFit: fillContainer ? 'cover' : undefined,
+                    display: 'block',
+                    transform: hovered ? 'scale(2)' : 'scale(1)',
+                    transition: 'transform 0.3s ease',
+                    transformOrigin: 'top center',
+                    cursor: hovered ? 'zoom-out' : 'zoom-in',
+                    position: 'relative',
+                    zIndex: hovered ? 100 : 1,
+                }}
+                onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                    const parent = img.parentElement as HTMLElement;
+                    parent.style.overflow = 'hidden';
+                    parent.innerHTML = `<div style="padding:2rem;text-align:center;color:#444;font-style:italic;">${alt}</div>`;
+                }}
+            />
+        </div>
+    );
+};
+
+/**
+ * Reusable screenshot display component.
+ * Single screenshot: full-width. Multiple: responsive grid with 16:10 aspect ratio per cell.
+ * All images support hover-to-zoom (2x, anchored to top centre).
+ */
+const ScreenshotDisplay = ({ screenshots }: { screenshots: ScreenshotItem[] }) => {
+    if (screenshots.length === 1) {
+        return (
+            <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                <ZoomableImage src={screenshots[0].src} alt={screenshots[0].alt} />
+            </div>
+        );
+    }
+
+    return (
+        <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+            gap: '1.5rem',
+            marginTop: '2rem',
+            marginBottom: '1.5rem',
+            position: 'relative',
+        }}>
+            {screenshots.map((img, idx) => (
+                <div key={idx} style={{ aspectRatio: '16/10', position: 'relative' }}>
+                    <div style={{ position: 'absolute', inset: 0 }}>
+                        <ZoomableImage src={img.src} alt={img.alt} fillContainer />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
 
 export default function QuickStartPage() {
     return (
@@ -17,62 +99,52 @@ export default function QuickStartPage() {
                 <strong style={{color: 'var(--docs-accent-gold)'}}>What You'll Build:</strong>
                 <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem'}}>
                     A detective game where the player investigates a crime scene, gathers clues, interrogates suspects, and solves the mystery.
-                    This tutorial covers the essential concepts: creating qualities, writing storylets, using skill checks, and implementing win conditions.
+                    The tutorial covers qualities, storylets, skill checks, autofire scenes, and win conditions.
                 </p>
             </div>
 
             <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)'}}>
                 <strong style={{color: 'var(--docs-accent-blue)'}}>Tip: Follow Along Side-by-Side</strong>
                 <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem'}}>
-                    Open ChronicleHub in a separate tab or window so you can follow these instructions while building. On most browsers: right-click the Chronicle logo or dashboard link → <strong>Open in New Tab</strong>.
+                    Open ChronicleHub in a separate tab or window while reading this guide. On most browsers: right-click the Chronicle logo or dashboard link → <strong>Open in New Tab</strong>.
                 </p>
             </div>
 
-            {/* Step 1 - Creating your first project and initial setup */}
+            {/* STEP 1 */}
             <section id="setup">
                 <h2 className="docs-h2">Step 1: Create Your Project</h2>
                 <p className="docs-p">
                     From the main dashboard, click <strong>"New Project"</strong> and give it a name (e.g., "Mystery at the Manor").
                 </p>
 
-                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <Image 
-                        src="/images/docs/create_world.jpeg" 
-                        alt="The New Project dialog box"
-                        width={800} 
-                        height={500}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '8px',
-                            border: '1px solid var(--docs-border-color, #e0e0e0)'
-                        }}
-                    />
-                </div>
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/create_world.jpeg', alt: 'The New Project dialog box' },
+                ]} />
 
                 <p className="docs-p" style={{marginTop: '1.5rem'}}>
-                    Once created, you'll be taken to the Project Editor. This is your workspace. On the left sidebar, you'll see tabs for:
+                    Once created, you'll be taken to the Project Editor. The left sidebar contains:
                 </p>
                 <ul className="docs-list">
-                    <li><strong>Qualities:</strong> Your game's variables (stats, items, counters)</li>
-                    <li><strong>Storylets:</strong> The scenes and events in your game</li>
-                    <li><strong>Locations:</strong> The places your player can visit</li>
-                    <li><strong>Admin:</strong> Global settings and configuration</li>
+                    <li><strong>Qualities:</strong> Your game's variables — stats, items, counters</li>
+                    <li><strong>Storylets:</strong> The scenes and events players encounter</li>
+                    <li><strong>Locations:</strong> The places players can visit</li>
+                    <li><strong>Settings:</strong> Global configuration, starting location, and world bindings</li>
+                    <li><strong>Character Setup:</strong> Character creation flow and initialization rules</li>
                 </ul>
             </section>
 
-            {/* STEP 2: CREATE QUALITIES */}
+            {/* STEP 2 */}
             <section id="qualities">
                 <h2 className="docs-h2">Step 2: Define Your Qualities</h2>
                 <p className="docs-p">
-                    Qualities are the foundation of your game's state. Let's create the qualities we'll need for our mystery game.
+                    Qualities are variables that store everything about a player's state. See the <a href="/docs/qualities">Qualities reference</a> for a full breakdown of types and options.
                 </p>
 
                 <h3 className="docs-h3">Create the Investigation Skill</h3>
                 <ol className="docs-list">
                     <li>Click the <strong>"Qualities"</strong> tab in the left sidebar</li>
                     <li>Click <strong>"+ New Quality"</strong></li>
-                    <li>Fill in the following fields:
+                    <li>Fill in:
                         <ul style={{marginTop: '0.5rem'}}>
                             <li><strong>ID:</strong> <code>investigation</code></li>
                             <li><strong>Name:</strong> Investigation</li>
@@ -84,24 +156,13 @@ export default function QuickStartPage() {
                     <li>Click <strong>"Save"</strong></li>
                 </ol>
 
-                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <Image 
-                        src="/images/docs/add_skill.jpeg" 
-                        alt="The Investigation Skill Quality"
-                        width={800} 
-                        height={500}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '8px',
-                            border: '1px solid var(--docs-border-color, #e0e0e0)'
-                        }}
-                    />
-                </div>
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/add_skill.jpeg', alt: 'The Investigation Skill Quality' },
+                ]} />
 
                 <h3 className="docs-h3" style={{marginTop: '2rem'}}>Create the Clues Counter</h3>
                 <p className="docs-p">
-                    Repeat the process above to create a counter for tracking clues:
+                    Repeat the process to create a counter for tracking clues:
                 </p>
                 <ul className="docs-list">
                     <li><strong>ID:</strong> <code>clues</code></li>
@@ -112,9 +173,6 @@ export default function QuickStartPage() {
                 </ul>
 
                 <h3 className="docs-h3" style={{marginTop: '2rem'}}>Create the Suspect Quality</h3>
-                <p className="docs-p">
-                    Finally, create a quality to track which suspect the player accuses:
-                </p>
                 <ul className="docs-list">
                     <li><strong>ID:</strong> <code>accused_suspect</code></li>
                     <li><strong>Name:</strong> Accused</li>
@@ -123,23 +181,37 @@ export default function QuickStartPage() {
                     <li><strong>Category:</strong> Progress</li>
                 </ul>
 
+                <h3 className="docs-h3" style={{marginTop: '2rem'}}>Create the Intro Scene Tracker</h3>
+                <p className="docs-p">
+                    A hidden flag quality that tracks whether the player has seen the opening scene, preventing it from repeating on every visit.
+                </p>
+                <ul className="docs-list">
+                    <li><strong>ID:</strong> <code>intro_seen</code></li>
+                    <li><strong>Name:</strong> Intro Seen</li>
+                    <li><strong>Type:</strong> Counter (C)</li>
+                    <li><strong>Category:</strong> Progress</li>
+                    <li>Check the <strong>Hidden</strong> checkbox — this keeps it out of the player's quality list</li>
+                </ul>
+
                 <div className="docs-callout">
-                    <strong>Why These Types?</strong>
+                    <strong>Quality Types at a Glance</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        <strong>Pyramidal:</strong> Investigation is a skill that should get harder to level up over time, creating meaningful progression.
+                        <strong>Pyramidal:</strong> Gets progressively harder to level up — ideal for skills with meaningful long-term progression.
                         <br/>
-                        <strong>Counter:</strong> Clues are a simple accumulating number.
+                        <strong>Counter:</strong> A plain integer. Used here for <code>clues</code> (accumulating total) and <code>intro_seen</code> (a boolean flag: 0 = not seen, 1 = seen).
                         <br/>
-                        <strong>String:</strong> We'll store the suspect's name as text, not a number.
+                        <strong>String:</strong> Stores text rather than a number — used to record a suspect's name.
+                        <br/><br/>
+                        <a href="/docs/qualities">Full quality type reference →</a>
                     </p>
                 </div>
             </section>
 
-            {/* STEP 3: CREATE YOUR FIRST LOCATION */}
+            {/* STEP 3 */}
             <section id="location">
                 <h2 className="docs-h2">Step 3: Create Your First Location</h2>
                 <p className="docs-p">
-                    Locations are where storylets live. Let's create the crime scene.
+                    Locations are containers for storylets. Players visit locations to discover and interact with the content inside them.
                 </p>
 
                 <ol className="docs-list">
@@ -155,27 +227,16 @@ export default function QuickStartPage() {
                     <li>Click <strong>"Save"</strong></li>
                 </ol>
 
-                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <Image 
-                        src="/images/docs/create_location.jpeg" 
-                        alt="The Intro Location"
-                        width={800} 
-                        height={500}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '8px',
-                            border: '1px solid var(--docs-border-color, #e0e0e0)'
-                        }}
-                    />
-                </div>
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/create_location.jpeg', alt: 'The Crime Scene location' },
+                ]} />
             </section>
 
-            {/* STEP 4: CREATE STORYLETS */}
+            {/* STEP 4 */}
             <section id="storylets">
                 <h2 className="docs-h2">Step 4: Write Your First Storylet</h2>
                 <p className="docs-p">
-                    Storylets are the narrative building blocks of your game. Let's create the opening scene.
+                    Storylets are the narrative building blocks of your game — each one is a self-contained scene with body text and player options. See the <a href="/docs/storylets">Storylets reference</a> for the full set of options.
                 </p>
 
                 <h3 className="docs-h3">The Introduction</h3>
@@ -185,16 +246,16 @@ export default function QuickStartPage() {
                     <li>Fill in the <strong>Basic Info</strong>:
                         <ul style={{marginTop: '0.5rem'}}>
                             <li><strong>ID:</strong> <code>intro</code></li>
-                            <li><strong>Title:</strong> "A Call in the Night"</li>
-                            <li><strong>Location ID:</strong> Type <code>crime_scene</code> (or click the "🔗 Locations" button to browse and select from available locations)</li>
+                            <li><strong>Display Name:</strong> "A Call in the Night"</li>
+                            <li><strong>Location ID:</strong> Type <code>crime_scene</code>, or use the "🔗 Locations" button to browse and select</li>
                         </ul>
                     </li>
-                    <li>In the <strong>Teaser</strong> field (the short description shown on the button):
+                    <li>In the <strong>Teaser</strong> field (the short description shown on the card):
                         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
                             <code className="docs-code">Begin your investigation</code>
                         </div>
                     </li>
-                    <li>In the <strong>Body</strong> field (the main narrative text):
+                    <li>In the <strong>Body</strong> field:
                         <div className="docs-pre" style={{marginTop: '0.5rem'}}>
                             <code className="docs-code" style={{whiteSpace: 'pre-wrap'}}>
 The phone rings at 3 AM. A body has been discovered at Thornfield Manor.
@@ -204,51 +265,51 @@ You arrive at the scene. The study is eerily quiet. Where do you begin?
                             </code>
                         </div>
                     </li>
+                    <li>Enable <strong>Autofire</strong> — the storylet will trigger automatically when the player enters the location, placing them directly into the scene rather than requiring them to find and click a card.</li>
+                    <li>Set <strong>Visible If</strong> to: <code>$intro_seen == 0</code>
+                        <br/><span style={{fontSize: '0.85rem', opacity: 0.75}}>This gates the autofire to a single trigger. Once the player picks an option and sets <code>$intro_seen = 1</code>, the storylet becomes invisible and won't fire again.</span>
+                    </li>
                 </ol>
+
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/intro_storylet.JPG', alt: 'The intro storylet with Autofire enabled and Visible If set' },
+                ]} />
 
                 <h3 className="docs-h3" style={{marginTop: '2rem'}}>Add Your First Option</h3>
                 <p className="docs-p">
-                    Now we need to give the player something to do. Scroll down to the <strong>"Options"</strong> section and click <strong>"+ Add Option"</strong>.
+                    Scroll down to the <strong>"Options"</strong> section and click <strong>"+ Add Option"</strong>.
                 </p>
 
                 <div className="docs-pre">
                     <strong>Option 1: "Search the Desk"</strong>
                 </div>
 
-                <p className="docs-p">Fill in the option fields:</p>
                 <ul className="docs-list">
-                    <li><strong>Title:</strong> Search the desk</li>
+                    <li><strong>Display Name:</strong> Search the desk</li>
                     <li><strong>Description:</strong> Look for clues among the papers and drawers.</li>
                     <li><strong>Success Text:</strong> You find a letter hidden beneath a false bottom in the drawer. It's a threatening note demanding payment. A valuable clue!</li>
-                    <li><strong>Pass Quality Change:</strong> <code>$clues += 2, $investigation++</code></li>
+                    <li><strong>Pass Quality Change:</strong> <code>$clues += 2, $investigation++, $intro_seen = 1</code></li>
                 </ul>
 
                 <div className="docs-callout" style={{marginTop: '1.5rem'}}>
-                    <strong>Understanding the Effect:</strong>
+                    <strong>Quality Change Syntax</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        <code>$clues += 2</code> adds 2 to your Clues counter (linear, direct addition).
+                        <code>$clues += 2</code> — adds 2 to the Clues counter directly.
                         <br/>
-                        <code>$investigation++</code> adds 1 Change Point to your Investigation skill (pyramidal, gradual leveling).
+                        <code>$investigation++</code> — adds 1 Change Point to the Investigation skill (pyramidal leveling — the level increases once enough points accumulate).
+                        <br/>
+                        <code>$intro_seen = 1</code> — sets the flag so the autofire intro doesn't repeat.
+                        <br/><br/>
+                        <a href="/docs/effects">Full effects & quality change reference →</a>
                     </p>
                 </div>
 
-                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <Image 
-                        src="/images/docs/add_intro.jpeg" 
-                        alt="The New Project dialog box"
-                        width={800} 
-                        height={500}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '8px',
-                            border: '1px solid var(--docs-border-color, #e0e0e0)'
-                        }}
-                    />
-                </div>
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/add_intro.jpeg', alt: 'The intro storylet with options configured' },
+                ]} />
 
                 <p className="docs-p" style={{marginTop: '2rem'}}>
-                    Add a second option to give the player a choice:
+                    Add a second option:
                 </p>
 
                 <div className="docs-pre">
@@ -256,28 +317,28 @@ You arrive at the scene. The study is eerily quiet. Where do you begin?
                 </div>
 
                 <ul className="docs-list">
-                    <li><strong>Title:</strong> Examine the wine glass</li>
+                    <li><strong>Display Name:</strong> Examine the wine glass</li>
                     <li><strong>Description:</strong> Analyze the shattered glass for traces of poison.</li>
                     <li><strong>Success Text:</strong> You detect a faint almond scent—cyanide. The wine was poisoned. This narrows down the suspects considerably.</li>
-                    <li><strong>Pass Quality Change:</strong> <code>$clues += 3, $investigation++</code></li>
+                    <li><strong>Pass Quality Change:</strong> <code>$clues += 3, $investigation++, $intro_seen = 1</code></li>
                 </ul>
 
                 <p className="docs-p">
-                    Click <strong>"Save"</strong> to save your storylet.
+                    Click <strong>"Save"</strong>.
                 </p>
             </section>
 
-            {/* STEP 5: ADD A SKILL CHECK */}
+            {/* STEP 5 */}
             <section id="challenge">
                 <h2 className="docs-h2">Step 5: Add a Skill Check (Challenge)</h2>
                 <p className="docs-p">
-                    Not all actions should be guaranteed to succeed. Let's create a storylet with a skill check that can fail.
+                    Not every action should be guaranteed to succeed. Skill checks introduce risk and reward, and make player stats matter.
                 </p>
 
                 <h3 className="docs-h3">Create the "Interrogate Butler" Storylet</h3>
                 <ol className="docs-list">
                     <li>Create a new storylet with ID: <code>interrogate_butler</code></li>
-                    <li><strong>Title:</strong> "The Butler's Story"</li>
+                    <li><strong>Display Name:</strong> "The Butler's Story"</li>
                     <li><strong>Location:</strong> The Crime Scene</li>
                     <li><strong>Teaser:</strong> "Question the manor's butler"</li>
                     <li><strong>Body:</strong>
@@ -296,8 +357,12 @@ Will you press him for the truth?
                 <ol className="docs-list">
                     <li>Add a new option: <strong>"Press him for answers"</strong></li>
                     <li><strong>Description:</strong> Use your investigative skills to break through his lies.</li>
-                    <li>Check the <strong>"Difficulty"</strong> checkbox. This reveals the challenge fields.</li>
-                    <li>In the <strong>Challenge</strong> field, enter: <code>{`{ $investigation >> 30 }`}</code></li>
+                    <li>In the <strong>Skill Check (Difficulty)</strong> section, check <strong>"Enable Failure State"</strong>. Scroll down slightly — the skill check fields will appear below once the checkbox is ticked.</li>
+                    <li>In the revealed <strong>Skill Check (Difficulty)</strong> section, click the <strong>Manual Code</strong> tab, then enter:
+                        <div className="docs-pre" style={{marginTop: '0.5rem'}}>
+                            <code className="docs-code">{`{ $investigation >> 1 }`}</code>
+                        </div>
+                    </li>
                     <li>Fill in the <strong>Success</strong> outcome:
                         <ul style={{marginTop: '0.5rem'}}>
                             <li><strong>Success Text:</strong> "I... I heard arguing," he stammers. "Lord Ashworth and his nephew were shouting about the will. I didn't want to get involved!"</li>
@@ -312,42 +377,47 @@ Will you press him for the truth?
                     </li>
                 </ol>
 
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/skill_check1.JPG', alt: 'Manual Code tab with the skill check expression entered' },
+                    { src: '/images/docs/skill_check2.JPG', alt: 'The Logic Builder showing the probability curve for the skill check' },
+                ]} />
+
                 <div className="docs-callout" style={{marginTop: '1.5rem'}}>
-                    <strong>Understanding the Challenge:</strong>
+                    <strong>Understanding the Challenge</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        <code>{`{ $investigation >> 30 }`}</code> means: "Calculate the player's success chance based on their Investigation skill compared to a difficulty of 30."
+                        <code>{`{ $investigation >> 1 }`}</code> compares the player's Investigation level against a difficulty of 1.
+                        At the starting level of 1, this gives roughly a 50–60% chance of success.
+                        Higher Investigation increases the odds; lower decreases them. The engine rolls a d100 to determine the result.
                         <br/><br/>
-                        If the player's Investigation is 30, they have a default ~60% chance. Higher skill increases the chance, lower skill decreases it. The engine rolls a d100 to determine success.
+                        Keep early-game difficulty values low — a difficulty of 30 would be nearly unreachable at starting stats.
+                        <br/><br/>
+                        <a href="/docs/challenges">Challenges & Probability — full reference →</a>
                     </p>
                 </div>
 
-                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <Image 
-                        src="/images/docs/add_skillcheck.jpg" 
-                        alt="The New Project dialog box"
-                        width={800} 
-                        height={500}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '8px',
-                            border: '1px solid var(--docs-border-color, #e0e0e0)'
-                        }}
-                    />
+                <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)', marginTop: '1rem'}}>
+                    <strong style={{color: 'var(--docs-accent-blue)'}}>Logic Builder</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
+                        The <strong>Logic Builder</strong> tab (next to Manual Code) lets you construct skill checks visually — pick a stat, set a target and function, and watch the probability curve update in real time.
+                        It's a good way to sanity-check whether your difficulty values produce the success rates you intend before committing to a number.
+                        <br/><br/>
+                        <a href="/docs/challenges">Learn more about skill check math and the Logic Builder →</a>
+                    </p>
                 </div>
             </section>
 
-            {/* STEP 6: CONDITIONAL VISIBILITY */}
+            {/* STEP 6 */}
             <section id="conditions">
                 <h2 className="docs-h2">Step 6: Gate Content with Requirements</h2>
                 <p className="docs-p">
-                    The final storylet should only appear once the player has gathered enough clues. This is where <code>visible_if</code> comes in.
+                    The final storylet should only appear once the player has gathered enough clues. The <code>visible_if</code> field controls when a storylet is shown.
+                    See <a href="/docs/storylets">Storylets</a> for the full set of visibility and requirement options.
                 </p>
 
                 <h3 className="docs-h3">Create the "Solve the Mystery" Storylet</h3>
                 <ol className="docs-list">
                     <li>Create a new storylet with ID: <code>solve_mystery</code></li>
-                    <li><strong>Title:</strong> "The Solution"</li>
+                    <li><strong>Display Name:</strong> "The Solution"</li>
                     <li><strong>Location:</strong> The Crime Scene</li>
                     <li><strong>Teaser:</strong> "You have enough evidence to solve this case"</li>
                     <li><strong>Visible If:</strong> <code>$clues &gt;= 5</code></li>
@@ -363,16 +433,12 @@ Everything points to one person. Who do you accuse?
                 </ol>
 
                 <h3 className="docs-h3" style={{marginTop: '2rem'}}>Add Accusation Options</h3>
-                <p className="docs-p">
-                    Create two options, each accusing a different suspect:
-                </p>
 
                 <div className="docs-pre">
                     <strong>Option 1: "Accuse the Nephew"</strong>
                 </div>
-
                 <ul className="docs-list">
-                    <li><strong>Title:</strong> Accuse the nephew</li>
+                    <li><strong>Display Name:</strong> Accuse the nephew</li>
                     <li><strong>Description:</strong> He had motive and opportunity.</li>
                     <li><strong>Success Text:</strong> The nephew's face goes white. He confesses—he poisoned the wine to inherit the estate. Justice is served.</li>
                     <li><strong>Pass Quality Change:</strong> <code>$accused_suspect = nephew</code></li>
@@ -381,126 +447,134 @@ Everything points to one person. Who do you accuse?
                 <div className="docs-pre" style={{marginTop: '1.5rem'}}>
                     <strong>Option 2: "Accuse the Butler"</strong>
                 </div>
-
                 <ul className="docs-list">
-                    <li><strong>Title:</strong> Accuse the butler</li>
+                    <li><strong>Display Name:</strong> Accuse the butler</li>
                     <li><strong>Description:</strong> His nervous behavior is suspicious.</li>
                     <li><strong>Success Text:</strong> The butler protests his innocence. Later, you learn the nephew fled the country. You accused the wrong person.</li>
                     <li><strong>Pass Quality Change:</strong> <code>$accused_suspect = butler</code></li>
                 </ul>
 
                 <div className="docs-callout" style={{marginTop: '1.5rem'}}>
-                    <strong>How visible_if Works:</strong>
+                    <strong>How <code>visible_if</code> Works</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        This storylet will be completely hidden until the player has at least 5 clues. Once they reach that threshold, it will automatically appear in the location. This creates a natural progression: gather clues → solve mystery.
+                        This storylet stays completely hidden until the player has at least 5 clues.
+                        Once the threshold is reached, it appears automatically in the location — giving players a clear goal before the ending unlocks.
                     </p>
                 </div>
 
-                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <Image 
-                        src="/images/docs/add_conclusion.jpg" 
-                        alt="The New Project dialog box"
-                        width={800} 
-                        height={500}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '8px',
-                            border: '1px solid var(--docs-border-color, #e0e0e0)'
-                        }}
-                    />
-                </div>
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/add_conclusion.jpg', alt: 'The conclusion storylet with a visible_if condition' },
+                ]} />
             </section>
 
-            {/* STEP 7: SETUP CHARACTER CREATION */}
+            {/* STEP 7 */}
             <section id="chargen">
-                <h2 className="docs-h2">Step 7: Configure Character Creation</h2>
+                <h2 className="docs-h2">Step 7: Configure Character Setup</h2>
                 <p className="docs-p">
-                    Before players can start your game, they need to create a character. Let's set up a simple character creation flow.
+                    Before players start the game, set their starting quality values and spawn location.
                 </p>
 
+                <div className="docs-callout" style={{borderColor: 'var(--docs-accent-blue)'}}>
+                    <strong style={{color: 'var(--docs-accent-blue)'}}>Skip &amp; Anonymous Options</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
+                        At the top of <strong>Character Setup</strong> you'll find two checkboxes:
+                        <br/>• <strong>Skip Character Creation Screen</strong> — Players bypass the creation form entirely. Calc initialization rules still run; interactive fields default to empty. Useful for games with a fixed protagonist.
+                        <br/>• <strong>Anonymous Protagonist</strong> — Hides the player's name and portrait throughout the game. Useful for nameless or predetermined characters.
+                        <br/><br/>
+                        Leave both unchecked for this tutorial.
+                    </p>
+                </div>
+
+                <h3 className="docs-h3" style={{marginTop: '1.5rem'}}>Set an Initialization Rule</h3>
+                <p className="docs-p">
+                    Initialization rules run once when a new character is created, setting their starting quality values.
+                </p>
                 <ol className="docs-list">
-                    <li>Go to the <strong>Admin</strong> tab</li>
-                    <li>Scroll to <strong>"Character Initialization"</strong></li>
-                    <li>Click <strong>"+ Add Entry"</strong></li>
-                    <li>Fill in the fields:
-                        <ul style={{marginTop: '0.5rem'}}>
-                            <li><strong>Type:</strong> Static</li>
-                            <li><strong>Effect:</strong> <code>$investigation = 1</code></li>
-                        </ul>
-                    </li>
-                    <li>Add another entry:
-                        <ul style={{marginTop: '0.5rem'}}>
-                            <li><strong>Type:</strong> Static</li>
-                            <li><strong>Effect:</strong> <code>$clues = 0</code></li>
-                        </ul>
-                    </li>
-                    <li>Scroll to <strong>"Starting Location"</strong> and select <code>crime_scene</code></li>
+                    <li>Click <strong>Character Setup</strong> in the left sidebar (under <strong>Game System</strong>)</li>
+                    <li>Scroll to the <strong>Initialization Rules</strong> section</li>
+                    <li>In the quality field at the bottom of the section, type <code>investigation</code> and click <strong>Add Rule</strong></li>
+                    <li>In the rule card that appears, click the <strong>Calc</strong> tab</li>
+                    <li>Enter <code>1</code> in the value field</li>
                 </ol>
 
                 <p className="docs-p">
-                    This ensures all new players start with Investigation level 1, 0 clues, and spawn at the crime scene.
+                    That's all. Qualities default to <code>0</code>, so <code>$clues</code> and <code>$intro_seen</code> don't need explicit rules — they'll start at zero automatically.
                 </p>
 
-                <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <Image 
-                        src="/images/docs/setup_character.jpg" 
-                        alt="The Character Creation Form"
-                        width={800} 
-                        height={500}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '8px',
-                            border: '1px solid var(--docs-border-color, #e0e0e0)'
-                        }}
-                    />
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/character_setup.jpg', alt: 'Character Setup showing the Initialization Rules section with the investigation rule set to 1' },
+                ]} />
+
+                <h3 className="docs-h3" style={{marginTop: '2rem'}}>Set the Starting Location</h3>
+                <p className="docs-p">
+                    The starting location is a world setting, not a character rule.
+                </p>
+                <ol className="docs-list">
+                    <li>Click <strong>Settings</strong> in the left sidebar</li>
+                    <li>Scroll to the <strong>Interface &amp; Categories</strong> section</li>
+                    <li>In the <strong>Starting Location ID</strong> field, enter: <code>crime_scene</code></li>
+                    <li>Save</li>
+                </ol>
+
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/location_settings.jpg', alt: 'Settings showing the Starting Location ID field set to crime_scene' },
+                ]} />
+
+                <p className="docs-p">
+                    All new players will spawn at the crime scene when they begin a new game.
+</p>
+
+                <div className="docs-callout">
+                    <strong>Advanced: Dynamic Starting Location</strong>
+                    <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
+                        To track location as a readable quality (so ScribeScript can inspect or change it), configure a <strong>Current Location ID</strong> binding in Settings under <strong>System Bindings</strong>, then initialize that quality in Character Setup.
+                        This is optional for most games.
+                    </p>
                 </div>
             </section>
 
-            {/* STEP 8: PLAYTEST */}
+            {/* STEP 8 */}
             <section id="playtest">
                 <h2 className="docs-h2">Step 8: Playtest Your Game</h2>
-                <p className="docs-p">
-                    You've built a complete (if small) game! Let's test it.
-                </p>
 
                 <ol className="docs-list">
-                    <li>Click the <strong>"Play"</strong> button in the top-right corner</li>
-                    <li>Create a new character (it should start you at the crime scene)</li>
-                    <li>Try playing through different paths:
+                    <li>Click the <strong>"Playtest World"</strong> button in the <strong>top-left corner</strong></li>
+                    <li>Create a new character — the game should place you at the crime scene with the intro scene firing automatically</li>
+                    <li>Work through the game:
                         <ul style={{marginTop: '0.5rem'}}>
-                            <li>Search the desk and examine the wine glass to gather clues</li>
-                            <li>Try interrogating the butler—you might fail if your Investigation is still low</li>
-                            <li>Once you have 5+ clues, the "Solution" storylet should appear</li>
+                            <li>The opening scene fires on arrival — pick an option to collect your first clues</li>
+                            <li>Try the butler interrogation — failure is possible at low Investigation, but earns you XP toward the next level</li>
+                            <li>Once you have 5+ clues, the Solution storylet appears</li>
                             <li>Accuse someone and see the outcome</li>
                         </ul>
                     </li>
                 </ol>
 
                 <div className="docs-callout" style={{marginTop: '1.5rem', borderColor: 'var(--docs-accent-green)'}}>
-                    <strong style={{color: 'var(--docs-accent-green)'}}>🎉 Congratulations!</strong>
+                    <strong style={{color: 'var(--docs-accent-green)'}}>Done!</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        You've just created your first Quality-Based Narrative game! You now understand:
+                        You've built a working Quality-Based Narrative game. Along the way you covered:
                     </p>
                     <ul className="docs-list" style={{fontSize: '0.9rem', marginTop: '0.5rem'}}>
-                        <li>How to create Qualities (variables)</li>
-                        <li>How to write Storylets (narrative content)</li>
-                        <li>How to use skill checks for uncertain outcomes</li>
-                        <li>How to gate content based on player state</li>
+                        <li>Creating <a href="/docs/qualities">Qualities</a> as game variables</li>
+                        <li>Writing <a href="/docs/storylets">Storylets</a> with options and outcomes</li>
+                        <li>Using Autofire for automatic scene triggering</li>
+                        <li>Adding <a href="/docs/challenges">skill checks</a> for uncertain outcomes</li>
+                        <li>Gating content with <code>visible_if</code> conditions</li>
                     </ul>
                 </div>
 
-                <ScreenshotGrid />
-
+                <ScreenshotDisplay screenshots={[
+                    { src: '/images/docs/review_options.jpeg', alt: 'In-Game Option' },
+                    { src: '/images/docs/name_skillcheck.jpeg', alt: 'In-Game SkillCheck' },
+                    { src: '/images/docs/game_skills.jpg', alt: 'In-Game Qualities' },
+                    { src: '/images/docs/resolve.jpg', alt: 'In-Game Option Resolution' },
+                ]} />
             </section>
 
             {/* NEXT STEPS */}
             <section id="next">
                 <h2 className="docs-h2">Next Steps</h2>
-                <p className="docs-p">
-                    Now that you've built your first game, here are some ways to expand your skills:
-                </p>
 
                 <div className="docs-grid">
                     <div className="docs-card">
@@ -508,35 +582,35 @@ Everything points to one person. Who do you accuse?
                         <ul className="docs-list" style={{fontSize: '0.9rem'}}>
                             <li>Create multiple locations (the victim's bedroom, the garden, etc.)</li>
                             <li>Add more suspects with unique interrogation storylets</li>
-                            <li>Use <code>unlock_if</code> to create locked options that require specific items or stats</li>
+                            <li>Use <code>unlock_if</code> to lock options behind specific items or stats</li>
                         </ul>
                     </div>
                     <div className="docs-card">
                         <h4 className="docs-h4">Learn Advanced Mechanics</h4>
                         <ul className="docs-list" style={{fontSize: '0.9rem'}}>
-                            <li>Explore the ScribeScript syntax for conditional text and dynamic values</li>
-                            <li>Use Macros like <code>%pick</code> to randomize loot or encounters</li>
-                            <li>Implement timers with <code>%schedule</code> for time-based events</li>
+                            <li>Read the <a href="/docs/scribescript">ScribeScript</a> reference for conditional text and dynamic values</li>
+                            <li>Use <a href="/docs/macros">Macros</a> like <code>%pick</code> to randomize loot or encounters</li>
+                            <li>Build <a href="/docs/patterns">common patterns</a> like timers, inventories, and reputation systems</li>
                         </ul>
                     </div>
                     <div className="docs-card">
                         <h4 className="docs-h4">Polish Your Game</h4>
                         <ul className="docs-list" style={{fontSize: '0.9rem'}}>
-                            <li>Add images to your storylets for atmosphere</li>
-                            <li>Use the Graph tool to visualize your narrative structure</li>
-                            <li>Customize your game's layout and colors in Admin settings</li>
+                            <li>Add images to storylets for atmosphere</li>
+                            <li>Use the <a href="/docs/graph">Narrative Graph</a> to visualize your story structure</li>
+                            <li>Customize layout and colors in Settings</li>
                         </ul>
                     </div>
                 </div>
 
                 <div className="docs-callout" style={{marginTop: '2rem'}}>
-                    <strong>Recommended Reading Order:</strong>
+                    <strong>Recommended Reading Order</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        1. <strong>Understanding the Interface</strong> - Get familiar with all the editors
-                        <br/>2. <strong>Qualities, Variables & Resources</strong> - Deep dive into quality types
-                        <br/>3. <strong>Storylets & Opportunities</strong> - Master the narrative system
-                        <br/>4. <strong>ScribeScript Basics</strong> - Learn the language for dynamic content
-                        <br/>5. <strong>Challenges & Probability</strong> - Perfect your skill check curves
+                        1. <a href="/docs/interface"><strong>Understanding the Interface</strong></a> — get familiar with all the editors
+                        <br/>2. <a href="/docs/qualities"><strong>Qualities, Variables &amp; Resources</strong></a> — deep dive into quality types
+                        <br/>3. <a href="/docs/storylets"><strong>Storylets &amp; Opportunities</strong></a> — master the narrative system
+                        <br/>4. <a href="/docs/scribescript"><strong>ScribeScript Basics</strong></a> — learn the language for dynamic content
+                        <br/>5. <a href="/docs/challenges"><strong>Challenges &amp; Probability</strong></a> — fine-tune your skill check curves
                     </p>
                 </div>
             </section>
@@ -545,7 +619,7 @@ Everything points to one person. Who do you accuse?
             <section id="examples">
                 <h2 className="docs-h2">Example Games to Study</h2>
                 <p className="docs-p">
-                    Learn by examining real games built with Chronicle. These open-source examples showcase different complexity levels and techniques:
+                    These open-source examples showcase different complexity levels and techniques:
                 </p>
 
                 <div className="docs-grid">
@@ -554,7 +628,7 @@ Everything points to one person. Who do you accuse?
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>Complexity:</strong> Beginner
                             <br/>
-                            <strong>What it demonstrates:</strong> The tutorial game from this Quick Start guide, fully implemented.
+                            <strong>What it demonstrates:</strong> The tutorial game from this guide, fully implemented.
                         </p>
                         <a
                             href="/create/mystery_at_the_manor/settings"
@@ -583,7 +657,7 @@ Everything points to one person. Who do you accuse?
                             <br/>
                             <strong>Author:</strong> Hanon Ondricek
                             <br/>
-                            <strong>What it demonstrates:</strong> A classic IF puzzle adapted to QBN, showing how to create atmospheric exploration with location-based gating.
+                            <strong>What it demonstrates:</strong> A classic IF puzzle adapted to QBN, with atmospheric exploration and location-based gating.
                         </p>
                         <a
                             href="/create/cloak_of_darkness/settings"
@@ -610,7 +684,7 @@ Everything points to one person. Who do you accuse?
                         <p className="docs-p" style={{fontSize: '0.9rem'}}>
                             <strong>Complexity:</strong> Advanced
                             <br/>
-                            <strong>What it demonstrates:</strong> Extremely advanced ScribeScript usage, using the language to program complex game mechanics including:
+                            <strong>What it demonstrates:</strong> Deep ScribeScript usage across complex game mechanics:
                         </p>
                         <ul className="docs-list" style={{fontSize: '0.85rem', marginTop: '0.5rem'}}>
                             <li>Procedural suspect generation with RMO (Relation/Motive/Opportunity) flags</li>
@@ -637,65 +711,25 @@ Everything points to one person. Who do you accuse?
                             View Source →
                         </a>
                         <p className="docs-p" style={{fontSize: '0.8rem', marginTop: '1rem', fontStyle: 'italic', opacity: 0.8}}>
-                            Note: This is a highly complex implementation. We recommend studying it only after you're comfortable with the basics.
+                            Best approached after you're comfortable with the basics.
                         </p>
                     </div>
                 </div>
 
                 <div className="docs-callout" style={{marginTop: '2rem', borderColor: '#f1c40f'}}>
-                    <strong style={{color: '#f1c40f'}}>How to Study Example Games:</strong>
+                    <strong style={{color: '#f1c40f'}}>How to Study Example Games</strong>
                     <p className="docs-p" style={{fontSize: '0.9rem', marginBottom: 0, marginTop: '0.5rem'}}>
-                        When viewing source for these games, you'll have <strong>read-only access</strong> to all editors. You can:
+                        Example games give you <strong>read-only access</strong> to all editors:
                         <br/>• Examine storylet structures and logic
                         <br/>• Review quality definitions and their usage
-                        <br/>• See how ScribeScript is used in context
-                        <br/>• Use the Graph tool to visualize narrative flow
-                        <br/>• Play the game to see how mechanics work in practice
+                        <br/>• See ScribeScript used in context
+                        <br/>• Use the <a href="/docs/graph">Narrative Graph</a> to visualize story flow
+                        <br/>• Play the game to see mechanics in practice
                         <br/><br/>
-                        To experiment with modifications, create your own project and recreate the patterns you see!
+                        To experiment, create your own project and recreate the patterns you find.
                     </p>
                 </div>
             </section>
         </div>
     );
 }
-
-const ScreenshotGrid = () => {
-    const screenshots = [
-        { src: "/images/docs/review_options.jpeg", alt: "In-Game Option" },
-        { src: "/images/docs/name_skillcheck.jpeg", alt: "In-Game SkillCheck" },
-        { src: "/images/docs/game_skills.jpg", alt: "In-Game Qualities" },
-        { src: "/images/docs/resolve.jpg", alt: "In-Game Option Resolution" },
-    ];
-
-    return (
-        <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', 
-            gap: '1.5rem', 
-            marginTop: '2rem' 
-        }}>
-            {screenshots.map((img, idx) => (
-                <div key={idx} style={{ 
-                    aspectRatio: '16/10', 
-                    background: '#1c1c21', 
-                    borderRadius: '8px', 
-                    border: '1px solid #333',
-                    overflow: 'hidden',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-                }}>
-                    {/* Fallback to a styled div if image is missing, otherwise show img */}
-                    <img 
-                        src={img.src} 
-                        alt={img.alt} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            (e.target as any).parentElement.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#444;font-style:italic;">Screenshot ${idx + 1}</div>`;
-                        }}
-                    />
-                </div>
-            ))}
-        </div>
-    );
-};
