@@ -625,10 +625,10 @@ Everything points to one person. Who do you accuse?
                 </div>
 
                 <ScreenshotDisplay screenshots={[
-                    { src: '/images/docs/review_options.jpeg', alt: 'In-Game Option' },
-                    { src: '/images/docs/name_skillcheck.jpeg', alt: 'In-Game SkillCheck' },
-                    { src: '/images/docs/game_skills.jpg', alt: 'In-Game Qualities' },
-                    { src: '/images/docs/resolve.jpg', alt: 'In-Game Option Resolution' },
+                    { src: '/images/docs/gameplay1.JPG', alt: 'Opening Storylet' },
+                    { src: '/images/docs/gameplay2.JPG', alt: 'Resolution' },
+                    { src: '/images/docs/gameplay3.JPG', alt: 'Skill Check' },
+                    { src: '/images/docs/gameplay5.JPG', alt: 'Qualities Panel' },
                 ]} />
             </section>
 
