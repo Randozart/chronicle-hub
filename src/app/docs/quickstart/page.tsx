@@ -197,7 +197,7 @@ export default function QuickStartPage() {
                     <li><strong>ID:</strong> <code>clues</code></li>
                     <li><strong>Name:</strong> Clues Discovered</li>
                     <li><strong>Type:</strong> Tracker (T)</li>
-                    <li><strong>Max:</strong> 5 — the total clues needed to solve the case</li>
+                    <li><strong>Progression Limits {'>'} Hard Cap:</strong> 5 — the total clues needed to solve the case</li>
                     <li><strong>Description:</strong> "Evidence you've gathered about the crime."</li>
                     <li><strong>Category:</strong> Create a new category called "Progress"</li>
                 </ul>
