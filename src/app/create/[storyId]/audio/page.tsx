@@ -150,7 +150,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
               }
             : { 
                 id, name: "New Track", category: 'track', scope: 'local', folder: 'Project Tracks', version: 1,
-                source: "[CONFIG]\nBPM: 120\nGrid: 4\n" 
+                source: 'note("c3 e3 g3 c4").s("piano").slow(2)'
               };
         
         setItems(prev => [...prev, newItem]);

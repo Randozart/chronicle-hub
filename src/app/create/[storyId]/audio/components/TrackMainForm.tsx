@@ -6,7 +6,7 @@ import { LigatureTrack, InstrumentDefinition } from '@/engine/audio/models';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
-import TrackEditor from './TrackEditor'; 
+import StrudelEditor from './StrudelEditor';
 
 interface Props {
     initialData: LigatureTrack;
@@ -63,15 +63,9 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
             position: 'relative'
         }}>
             <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
-                <TrackEditor 
-                    data={form} 
-                    onSave={() => {}} 
-                    onDelete={() => {}} 
-                    availableInstruments={availableInstruments}
-                    onUpdateInstrument={() => {}} 
+                <StrudelEditor
+                    data={form}
                     onChange={(newSource) => handleChange('source', newSource)}
-                    isPlayground={true}
-                    hideSaveButton={true}
                 />
             </div>
             <div style={{ flexShrink: 0, height: '80px', position: 'relative', zIndex: 100 }}>
