@@ -430,7 +430,7 @@ export interface UserDocument {
     isBanned?: Boolean;
     banReason?: string;
 }
-export type AssetType = 'instrument' | 'track' | 'image';
+export type AssetType = 'instrument' | 'track' | 'image' | 'sample';
 
 export interface GlobalAsset {
     id: string;

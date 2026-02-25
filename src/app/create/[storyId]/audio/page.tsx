@@ -239,19 +239,18 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
 
     return (
         <div className="admin-split-view">
-            <AdminListSidebar 
+            <AdminListSidebar
                 title="Audio"
-                items={items}
+                items={items.filter(i => i.category === 'track')}
                 selectedId={selectedId}
                 onSelect={handleSelectAttempt}
-                onCreate={() => openCreateModal('instrument')} 
-                groupOptions={[{ label: "Folder", key: "folder" }, { label: "Type", key: "category" }]}
+                onCreate={() => openCreateModal('track')}
+                groupOptions={[{ label: "Folder", key: "folder" }]}
                 defaultGroupByKey="folder"
             />
-            
+
             <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--tool-border)', display: 'flex', gap: '10px' }}>
-                    <button className="new-btn" onClick={() => openCreateModal('instrument')}>+ New Instrument</button>
                     <button className="new-btn" onClick={() => openCreateModal('track')}>+ New Track</button>
                 </div>
 
