@@ -31,6 +31,7 @@ import GameModal from './GameModal';
 import LivingStories from './LivingStories';
 import { useTheme } from '@/providers/ThemeProvider';
 import { DeckState, getDeckStates } from '@/engine/deckLogic';
+import AudioSettingsModal from './AudioSettingsModal';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -170,6 +171,7 @@ export default function GameHub(props: GameHubProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [logs, setLogs] = useState<{ message: string, type: 'EVAL' | 'COND' | 'FX', timestamp: number }[]>([]);
     const [showLogger, setShowLogger] = useState(false);
+    const [showAudioSettings, setShowAudioSettings] = useState(false);
     const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
     
     const handleLog = useCallback((message: string, type: 'EVAL' | 'COND' | 'FX') => {
@@ -246,6 +248,9 @@ export default function GameHub(props: GameHubProps) {
             const data = await response.json();
             if (data.success) {
                 const newCards = (data.hand || []) as Opportunity[];
+                // Play draw sound if the deck has one configured
+                const deckDef = props.deckDefs?.[deckId];
+                if (deckDef?.drawSoundId) playSample(deckDef.drawSoundId);
                 setHand(prev => {
                     const currentHand = prev || [];
                     const otherDecksCards = currentHand.filter(c => c.deck !== deckId);
@@ -298,6 +303,9 @@ export default function GameHub(props: GameHubProps) {
             const data = await res.json();
             if (data.success) {
                 setShowMap(false);
+                // Play travel sting for the destination location (if configured)
+                const destLocation = props.locations?.[targetId];
+                if (destLocation?.travelSoundId) playSample(destLocation.travelSoundId);
                 if (data.newLocation) {
                     setLocation(data.newLocation);
                     setCharacter(prev => prev ? { ...prev, currentLocationId: data.currentLocationId, opportunityHands: data.handCleared ? {} : prev.opportunityHands } : null);
@@ -429,9 +437,15 @@ export default function GameHub(props: GameHubProps) {
     }, [character, location, props.locations]);
     
     useEffect(() => {
-        const trackId = location?.musicTrackId;
+        // Resolve best music track: location → region → world default
+        const locTrackId = location?.musicTrackId;
+        const regionId = location?.regionId;
+        const regionTrackId = regionId ? props.regions?.[regionId]?.musicTrackId : undefined;
+        const worldTrackId = props.settings?.defaultMusicTrackId;
+
+        const trackId = locTrackId || regionTrackId || worldTrackId;
         if (!trackId || !props.musicTracks?.[trackId]) {
-            // No music for this location — leave whatever was playing
+            stopStrudelTrack();
             return;
         }
         const track = props.musicTracks[trackId];
@@ -444,7 +458,6 @@ export default function GameHub(props: GameHubProps) {
             const instrumentList = props.instruments ? Object.values(props.instruments) : [];
             playTrack(source, instrumentList, character?.qualities);
         } else {
-            // Strudel track — preprocess ScribeScript and play via hidden iframe
             playStrudelTrack(source, character?.qualities ?? {});
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -639,7 +652,16 @@ export default function GameHub(props: GameHubProps) {
                     </div>
                     <div className="sidebar-footer">
                         <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
-                        <ZoomControls />
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <button
+                                onClick={() => setShowAudioSettings(true)}
+                                title="Audio Settings"
+                                style={{ background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', padding: 0 }}
+                            >
+                                🔊
+                            </button>
+                            <ZoomControls />
+                        </div>
                     </div>
                 </div>
             );
@@ -781,28 +803,29 @@ export default function GameHub(props: GameHubProps) {
             innerContent = (
                 <div className="event-view">
                     {showHeaderInStorylet && renderHeader()}
-                    <StoryletDisplay 
-                        eventData={activeEvent} 
-                        qualities={character.qualities} 
-                        resolution={activeResolution} 
-                        onResolve={setActiveResolution} 
-                        onFinish={handleEventFinish} 
-                        onQualitiesUpdate={handleQualitiesUpdate} 
-                        onCardPlayed={handleCardPlayed} 
-                        qualityDefs={mergedQualityDefs} 
-                        storyletDefs={props.storyletDefs} 
-                        opportunityDefs={props.opportunityDefs} 
-                        settings={props.settings} 
-                        imageLibrary={props.imageLibrary} 
-                        categories={props.categories} 
-                        storyId={props.storyId} 
-                        characterId={character.characterId} 
-                        engine={renderEngine} 
-                        isPlaytesting={props.isPlaytesting} 
-                        onLog={props.isPlaytesting ? handleLog : undefined} 
-                        eventSource={eventSource} 
+                    <StoryletDisplay
+                        eventData={activeEvent}
+                        qualities={character.qualities}
+                        resolution={activeResolution}
+                        onResolve={setActiveResolution}
+                        onFinish={handleEventFinish}
+                        onQualitiesUpdate={handleQualitiesUpdate}
+                        onCardPlayed={handleCardPlayed}
+                        qualityDefs={mergedQualityDefs}
+                        storyletDefs={props.storyletDefs}
+                        opportunityDefs={props.opportunityDefs}
+                        settings={props.settings}
+                        imageLibrary={props.imageLibrary}
+                        categories={props.categories}
+                        storyId={props.storyId}
+                        characterId={character.characterId}
+                        engine={renderEngine}
+                        isPlaytesting={props.isPlaytesting}
+                        onLog={props.isPlaytesting ? handleLog : undefined}
+                        eventSource={eventSource}
                         isGuestMode={isGuestMode}
                         character={character}
+                        onPlaySound={playSample}
                     />
                 </div>
             );
@@ -990,6 +1013,8 @@ export default function GameHub(props: GameHubProps) {
                 })()}
 
                 {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
+
+                <AudioSettingsModal isOpen={showAudioSettings} onClose={() => setShowAudioSettings(false)} />
                 
                 {isMounted && props.isPlaytesting && showInspector && character && createPortal(
                     <CharacterInspector 

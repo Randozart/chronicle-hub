@@ -7,6 +7,7 @@ import GameImage from '@/components/GameImage';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
+import { AudioTrackPicker } from '@/components/admin/AudioTrackPicker';
 
 interface Props {
     initialData: MapRegion;
@@ -106,16 +107,22 @@ export default function RegionMainForm({ initialData, onSave, onDelete, onDuplic
                 </div>
 
                 <div className="form-group">
-                    <SmartArea 
-                        label="Default Market ID" 
-                        value={form.marketId || ''} 
-                        onChange={v => handleChange('marketId', v)} 
-                        storyId={storyId} 
-                        minHeight="38px" 
-                        qualityDefs={qualityDefs} 
+                    <SmartArea
+                        label="Default Market ID"
+                        value={form.marketId || ''}
+                        onChange={v => handleChange('marketId', v)}
+                        storyId={storyId}
+                        minHeight="38px"
+                        qualityDefs={qualityDefs}
                         placeholder="region_market"
                     />
                     <p className="special-desc">Used if a specific Location doesn't have its own market defined.</p>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Background Music</label>
+                    <AudioTrackPicker storyId={storyId} value={form.musicTrackId} onChange={v => handleChange('musicTrackId', v)} />
+                    <p className="special-desc">Plays when entering a location within this region that has no music of its own.</p>
                 </div>
 
             </div>

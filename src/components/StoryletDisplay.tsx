@@ -62,6 +62,8 @@ interface StoryletDisplayProps {
     eventSource?: 'story' | 'item';
     isGuestMode?: boolean;
     character?: CharacterDocument;
+    /** Called with the resolved pass/fail sound URL (if any) just before onResolve fires. */
+    onPlaySound?: (url: string) => void;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -87,7 +89,8 @@ export default function StoryletDisplay({
     onLog,
     eventSource = 'story',
     isGuestMode,
-    character
+    character,
+    onPlaySound
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
     
@@ -162,12 +165,20 @@ export default function StoryletDisplay({
 
             const isInstant = option.tags?.includes('instant_redirect');
 
+            // Play pass or fail sound sting if configured on the option
+            if (onPlaySound) {
+                const soundUrl = data.result?.wasSuccess !== false
+                    ? option.passSoundId
+                    : option.failSoundId;
+                if (soundUrl) onPlaySound(soundUrl);
+            }
+
             if (isInstant) {
                 onFinish(data.newQualities, data.result.redirectId, data.result.moveToId, data.equipment, data.pendingEvents);
             } else {
-                onResolve({ 
-                    ...data.result, 
-                    image_code: option.image_code, 
+                onResolve({
+                    ...data.result,
+                    image_code: option.image_code,
                     qualities: data.newQualities,
                     pendingEvents: data.pendingEvents,
                     equipment: data.equipment

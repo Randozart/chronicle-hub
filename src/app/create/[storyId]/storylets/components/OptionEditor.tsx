@@ -8,6 +8,7 @@ import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import ProbabilityChart from '@/components/admin/ProbabilityChart';
+import { SamplePicker } from '@/components/admin/AudioTrackPicker';
 
 interface Props {
     data: ResolveOption;
@@ -441,6 +442,13 @@ function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityD
                         entityType="storylet"
                     />
                 </div>
+            </div>
+            <div style={{ marginTop: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--tool-text-dim)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sound Sting</label>
+                <SamplePicker
+                    value={data[`${prefix}SoundId`] || ''}
+                    onChange={v => onChange(`${prefix}SoundId`, v)}
+                />
             </div>
         </div>
     );
