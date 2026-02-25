@@ -41,6 +41,8 @@ export interface ResolveOption extends LogicGates {
 
     lock_message?: string;
     computed_action_cost?: number | string;
+    passSoundId?: string;
+    failSoundId?: string;
 }
 
 export type PublishStatus = 
@@ -73,6 +75,8 @@ interface ContentCommon extends VersionedEntity {
     ordering?: number;
     urgency?: 'Must' | 'High' | 'Normal';
     image_style?: 'default' | 'square' | 'landscape' | 'portrait' | 'circle' | 'wide';
+    musicTrackId?: string;
+    musicMode?: 'replace' | 'duck';
 }
 
 export interface Storylet extends ContentCommon, LogicGates {
@@ -273,6 +277,8 @@ export interface WorldSettings {
         triggers?: boolean;
         triggerDetails?: string;
     };
+    defaultMusicTrackId?: string;
+    musicFadeDuration?: number;
 }
 
 export interface DeckDefinition extends VersionedEntity { 
@@ -286,13 +292,15 @@ export interface DeckDefinition extends VersionedEntity {
     ordering?: number; 
     card_style?: 'default' | 'cards' | 'rows' | 'scrolling';
     always_show?: boolean;
+    drawSoundId?: string;
 }
 
-export interface MapRegion extends VersionedEntity{ 
-    id: string; 
-    name: string; 
-    image?: string; 
-    marketId?: string; 
+export interface MapRegion extends VersionedEntity{
+    id: string;
+    name: string;
+    image?: string;
+    marketId?: string;
+    musicTrackId?: string;
 }
 
 export interface LocationDefinition extends VersionedEntity {
@@ -309,6 +317,7 @@ export interface LocationDefinition extends VersionedEntity {
     marketId?: string;
     equipmentLockMessage?: string;
     musicTrackId?: string;
+    travelSoundId?: string;
 }
 export interface ImageDefinition extends VersionedEntity{ 
     id: string; 

@@ -36,6 +36,13 @@ interface AudioContextType {
     isStrudelPlaying: boolean;
     /** Play a one-shot audio sample by URL (for sound stings / UI effects). */
     playSample: (url: string, volume?: number) => void;
+    /** Player audio preferences — persisted to localStorage. */
+    musicMuted: boolean;
+    setMusicMuted: (muted: boolean) => void;
+    sfxMuted: boolean;
+    setSfxMuted: (muted: boolean) => void;
+    sfxVolume: number;
+    setSfxVolume: (v: number) => void;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -56,6 +63,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const [limiterSettings, setLimiterSettings] = useState<LimiterSettings>({ enabled: true, threshold: -1 });
     const [masterVolume, setMasterVolumeState] = useState(0);
+
+    // Player audio preferences — loaded from localStorage on first render
+    const [musicMuted, setMusicMutedState] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return localStorage.getItem('chronicle-audio-musicMuted') === 'true';
+    });
+    const [sfxMuted, setSfxMutedState] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return localStorage.getItem('chronicle-audio-sfxMuted') === 'true';
+    });
+    const [sfxVolume, setSfxVolumeState] = useState<number>(() => {
+        if (typeof window === 'undefined') return 0.8;
+        const stored = localStorage.getItem('chronicle-audio-sfxVolume');
+        return stored !== null ? parseFloat(stored) : 0.8;
+    });
+
+    const setMusicMuted = (muted: boolean) => {
+        setMusicMutedState(muted);
+        localStorage.setItem('chronicle-audio-musicMuted', String(muted));
+        if (muted) {
+            if (strudelIframeRef.current) strudelIframeRef.current.src = 'about:blank';
+            setIsStrudelPlaying(false);
+        }
+    };
+    const setSfxMuted = (muted: boolean) => {
+        setSfxMutedState(muted);
+        localStorage.setItem('chronicle-audio-sfxMuted', String(muted));
+    };
+    const setSfxVolume = (v: number) => {
+        const clamped = Math.max(0, Math.min(1, v));
+        setSfxVolumeState(clamped);
+        localStorage.setItem('chronicle-audio-sfxVolume', String(clamped));
+    };
 
     const currentTrackRef = useRef<ParsedTrack | null>(null);
     const instrumentDefsRef = useRef<InstrumentDefinition[]>([]);
@@ -250,9 +290,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     /** Play an audio file by URL once. Uses HTMLAudioElement — independent of
      *  Tone.js, so it works even before the audio graph is initialised. */
     const playSample = (url: string, volume: number = 1) => {
+        if (sfxMuted) return;
         try {
             const audio = new Audio(url);
-            audio.volume = Math.max(0, Math.min(1, volume));
+            audio.volume = Math.max(0, Math.min(1, volume * sfxVolume));
             audio.play().catch(e => console.warn('[AudioProvider] Sample playback failed:', e));
         } catch (e) {
             console.warn('[AudioProvider] playSample error:', e);
@@ -353,6 +394,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             playPreviewNote, startPreviewNote, stopPreviewNote,
             playStrudelTrack, stopStrudelTrack, isStrudelPlaying,
             playSample,
+            musicMuted, setMusicMuted,
+            sfxMuted, setSfxMuted,
+            sfxVolume, setSfxVolume,
         }}>
             {children}
 
