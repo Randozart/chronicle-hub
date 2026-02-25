@@ -384,7 +384,7 @@ interface SamplesPanelProps {
     uploadingName: string;
     selectedFileName: string;
     uploadError: string;
-    fileInputRef: React.RefObject<HTMLInputElement>;
+    fileInputRef: React.RefObject<HTMLInputElement | null>;
     onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onNameChange: (name: string) => void;
     onUpload: () => void;

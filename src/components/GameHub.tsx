@@ -161,7 +161,7 @@ export default function GameHub(props: GameHubProps) {
     const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
     const [deckStates, setDeckStates] = useState<Record<string, DeckState>>(props.deckStates || {});
 
-    const { playTrack } = useAudio();
+    const { playTrack, playStrudelTrack, stopStrudelTrack, isStrudelPlaying, playSample } = useAudio();
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -429,13 +429,26 @@ export default function GameHub(props: GameHubProps) {
     }, [character, location, props.locations]);
     
     useEffect(() => {
-        const trackId = (location as any)?.musicTrackId; 
-        if (trackId && props.musicTracks?.[trackId]) {
-            const trackSource = props.musicTracks[trackId].source;
-            const instrumentList = props.instruments ? Object.values(props.instruments) : [];
-            playTrack(trackSource, instrumentList);
+        const trackId = location?.musicTrackId;
+        if (!trackId || !props.musicTracks?.[trackId]) {
+            // No music for this location — leave whatever was playing
+            return;
         }
-    }, [location, props.musicTracks, props.instruments, playTrack]);
+        const track = props.musicTracks[trackId];
+        const source = track.source || '';
+
+        // Detect Strudel vs Ligature: Ligature source begins with a [CONFIG] section.
+        const isLigature = source.trimStart().startsWith('[');
+
+        if (isLigature) {
+            const instrumentList = props.instruments ? Object.values(props.instruments) : [];
+            playTrack(source, instrumentList, character?.qualities);
+        } else {
+            // Strudel track — preprocess ScribeScript and play via hidden iframe
+            playStrudelTrack(source, character?.qualities ?? {});
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location?.id]);
     
     useEffect(() => {
         if (!character) return;
@@ -924,7 +937,58 @@ export default function GameHub(props: GameHubProps) {
                 )}
                 
                 {renderLayout()}
-                
+
+                {/* Music widget — shown when current location has a Strudel track */}
+                {isMounted && (() => {
+                    const trackId = location?.musicTrackId;
+                    const track = trackId ? props.musicTracks?.[trackId] : undefined;
+                    if (!track) return null;
+                    const isStrudel = !track.source?.trimStart().startsWith('[');
+                    if (!isStrudel) return null;
+                    return createPortal(
+                        <div style={{
+                            position: 'fixed',
+                            bottom: '1rem',
+                            right: '1rem',
+                            zIndex: 9000,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            background: 'rgba(0,0,0,0.7)',
+                            backdropFilter: 'blur(6px)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            borderRadius: '999px',
+                            padding: '0.3rem 0.75rem 0.3rem 0.5rem',
+                            fontSize: '0.72rem',
+                            color: 'rgba(255,255,255,0.7)',
+                            userSelect: 'none',
+                        }}>
+                            <span style={{ fontSize: '0.9rem' }}>{isStrudelPlaying ? '♪' : '♩'}</span>
+                            <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {track.name || trackId}
+                            </span>
+                            {isStrudelPlaying ? (
+                                <button
+                                    onClick={stopStrudelTrack}
+                                    title="Stop music"
+                                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.85rem', lineHeight: 1 }}
+                                >
+                                    ⏹
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => playStrudelTrack(track.source, character?.qualities ?? {})}
+                                    title="Play music"
+                                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.85rem', lineHeight: 1 }}
+                                >
+                                    ▶
+                                </button>
+                            )}
+                        </div>,
+                        document.body
+                    );
+                })()}
+
                 {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
                 
                 {isMounted && props.isPlaytesting && showInspector && character && createPortal(

@@ -7,8 +7,9 @@ import { getOrMakeInstrument, disposeInstruments, AnySoundSource } from '@/engin
 import { LigatureParser } from '@/engine/audio/parser';
 import { PlayerQualities } from '@/engine/models';
 import { AudioGraph, initializeAudioGraph, stopAllSound, setMasterVolume } from '@/engine/audio/graph';
-import { scheduleSequence } from '@/engine/audio/scheduler'; 
+import { scheduleSequence } from '@/engine/audio/scheduler';
 import { PolySampler } from '@/engine/audio/polySampler';
+import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
 
 interface LimiterSettings {
     enabled: boolean;
@@ -27,6 +28,14 @@ interface AudioContextType {
     playPreviewNote: (instrumentDef: InstrumentDefinition, note: string, duration?: Tone.Unit.Time) => void;
     startPreviewNote: (instrumentDef: InstrumentDefinition, note: string) => void;
     stopPreviewNote: (note?: string) => void;
+    /** Play a Strudel code string via the embedded Strudel REPL iframe. */
+    playStrudelTrack: (source: string, qualities?: PlayerQualities, sampleMap?: Record<string, string>) => void;
+    /** Stop Strudel playback. */
+    stopStrudelTrack: () => void;
+    /** True while the Strudel iframe has an active track loaded. */
+    isStrudelPlaying: boolean;
+    /** Play a one-shot audio sample by URL (for sound stings / UI effects). */
+    playSample: (url: string, volume?: number) => void;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -36,6 +45,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
+    const [isStrudelPlaying, setIsStrudelPlaying] = useState(false);
+    const strudelIframeRef = useRef<HTMLIFrameElement | null>(null);
     
     const playbackRequestIdRef = useRef(0);
     const previewSynthRef = useRef<AnySoundSource | null>(null);
@@ -189,8 +200,67 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(false);
     };
 
+    // ------------------------------------------------------------------
+    // Strudel iframe-based playback
+    // ------------------------------------------------------------------
+
+    /** Build a Strudel embed URL that auto-evaluates on load. */
+    const buildStrudelUrl = (code: string): string => {
+        try {
+            return `https://strudel.cc/?embed&autoevaluate=1#${btoa(code)}`;
+        } catch {
+            return 'about:blank';
+        }
+    };
+
+    const playStrudelTrack = (
+        source: string,
+        qualities: PlayerQualities = {},
+        sampleMap: Record<string, string> = {}
+    ) => {
+        // Preprocess any {{...}} ScribeScript templates with the character's current qualities
+        const processed = preprocessStrudelSource(source, qualities);
+
+        // Prepend a samples({}) preamble when the sample map is non-empty
+        let finalCode = processed;
+        if (Object.keys(sampleMap).length > 0) {
+            const entries = Object.entries(sampleMap)
+                .map(([name, url]) => `  "${name}": "${url}"`)
+                .join(',\n');
+            finalCode = `samples({\n${entries}\n})\n\n${processed}`;
+        }
+
+        if (strudelIframeRef.current) {
+            strudelIframeRef.current.src = buildStrudelUrl(finalCode);
+        }
+        setIsStrudelPlaying(true);
+    };
+
+    const stopStrudelTrack = () => {
+        if (strudelIframeRef.current) {
+            strudelIframeRef.current.src = 'about:blank';
+        }
+        setIsStrudelPlaying(false);
+    };
+
+    // ------------------------------------------------------------------
+    // One-shot sample playback (sound stings / UI effects)
+    // ------------------------------------------------------------------
+
+    /** Play an audio file by URL once. Uses HTMLAudioElement — independent of
+     *  Tone.js, so it works even before the audio graph is initialised. */
+    const playSample = (url: string, volume: number = 1) => {
+        try {
+            const audio = new Audio(url);
+            audio.volume = Math.max(0, Math.min(1, volume));
+            audio.play().catch(e => console.warn('[AudioProvider] Sample playback failed:', e));
+        } catch (e) {
+            console.warn('[AudioProvider] playSample error:', e);
+        }
+    };
+
     const playTrack = async (
-        ligatureSource: string, 
+        ligatureSource: string,
         instruments: InstrumentDefinition[],
         mockQualities: PlayerQualities = {}
     ) => {
@@ -275,14 +345,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AudioContext.Provider value={{ 
-            playTrack, stop, isPlaying, initializeAudio, 
-            limiterSettings, setLimiterSettings, 
-            masterVolume: masterVolume, 
+        <AudioContext.Provider value={{
+            playTrack, stop, isPlaying, initializeAudio,
+            limiterSettings, setLimiterSettings,
+            masterVolume,
             setMasterVolume: (db) => { setMasterVolumeState(db); setMasterVolume(db); },
-            playPreviewNote, startPreviewNote, stopPreviewNote 
+            playPreviewNote, startPreviewNote, stopPreviewNote,
+            playStrudelTrack, stopStrudelTrack, isStrudelPlaying,
+            playSample,
         }}>
             {children}
+
+            {/* Hidden Strudel REPL iframe for in-game music playback.
+                Positioned off-screen so it stays in the DOM (display:none
+                prevents iframe scripts from running). The autoevaluate=1
+                query param tells Strudel to start playing as soon as it
+                loads — this works after any prior user interaction. */}
+            <iframe
+                ref={strudelIframeRef}
+                title="Strudel Music Player"
+                allow="autoplay; microphone"
+                src="about:blank"
+                style={{
+                    position: 'fixed',
+                    top: '-2px',
+                    left: '-2px',
+                    width: '1px',
+                    height: '1px',
+                    border: 'none',
+                    pointerEvents: 'none',
+                    opacity: 0,
+                }}
+            />
+
             {isLoadingSamples && (
                 <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999, background: '#111', color: '#61afef', padding: '10px 20px', borderRadius: '4px', border: '1px solid #61afef', fontSize: '0.8rem', boxShadow: '0 0 10px rgba(97, 175, 239, 0.2)' }}>
                     Loading Instruments...

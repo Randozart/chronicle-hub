@@ -296,18 +296,19 @@ export interface MapRegion extends VersionedEntity{
 }
 
 export interface LocationDefinition extends VersionedEntity {
-    id: string; 
-    name: string; 
+    id: string;
+    name: string;
     description?: string;
-    image: string; 
-    deck: string; 
-    regionId?: string; 
-    tags?: string[]; 
-    coordinates: { x: number, y: number }; 
-    unlockCondition?: string; 
-    visibleCondition?: string; 
-    marketId?: string; 
+    image: string;
+    deck: string;
+    regionId?: string;
+    tags?: string[];
+    coordinates: { x: number, y: number };
+    unlockCondition?: string;
+    visibleCondition?: string;
+    marketId?: string;
     equipmentLockMessage?: string;
+    musicTrackId?: string;
 }
 export interface ImageDefinition extends VersionedEntity{ 
     id: string; 
