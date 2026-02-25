@@ -175,6 +175,14 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                     />
                 )}
             </div>
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Click Sound</label>
+                <SamplePicker
+                    value={(data as any).clickSoundId || ''}
+                    onChange={v => handleChange('clickSoundId' as any, v)}
+                    placeholder="None (plays on click)"
+                />
+            </div>
             <div style={{ marginTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                     <h4 style={{ margin: 0, color: 'var(--tool-text-dim)', textTransform: 'uppercase', fontSize: '0.8rem' }}>Outcomes</h4>

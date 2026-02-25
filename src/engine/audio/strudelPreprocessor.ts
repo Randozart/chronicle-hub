@@ -43,6 +43,44 @@ function evaluateExpression(expression: string, ctx: Record<string, unknown>): s
 }
 
 /**
+ * Resolves an audio reference string, which may be:
+ *  - A plain ID/URL:  "track_a"
+ *  - A comma-separated playlist:  "track_a, track_b, track_c"  (one picked at random)
+ *  - A ScribeScript conditional:  "{ $combat > 5 : combat_track | ambient_track }"
+ *  - Any combination of the above after conditional resolution
+ *
+ * Returns a single resolved string (the chosen ID/URL), or undefined when the
+ * input is empty or resolves to an empty value.
+ */
+export function resolveAudioRef(
+    ref: string | undefined,
+    qualities: PlayerQualities
+): string | undefined {
+    if (!ref) return undefined;
+    const ctx = buildContext(qualities);
+
+    // Evaluate { condition : branch_a | branch_b } blocks (single-level)
+    const resolved = ref.replace(/\{([^{}]*)\}/g, (_match, content: string) => {
+        const colonIdx = content.indexOf(':');
+        if (colonIdx === -1) return _match;
+        const condition = content.slice(0, colonIdx).trim();
+        const branches = content.slice(colonIdx + 1).split('|');
+        try {
+            const condResult = evaluateExpression(condition, ctx);
+            const isTrue = condResult !== 'false' && condResult !== '0' && condResult.trim() !== '';
+            return (isTrue ? (branches[0] ?? '') : (branches[1] ?? '')).trim();
+        } catch {
+            return _match;
+        }
+    });
+
+    // Split by comma, trim, filter empty, then pick one at random
+    const options = resolved.split(',').map(s => s.trim()).filter(Boolean);
+    if (options.length === 0) return undefined;
+    return options[Math.floor(Math.random() * options.length)];
+}
+
+/**
  * Replaces all {{expression}} placeholders in the given Strudel source with
  * the evaluated value of each expression, using the provided player qualities
  * as the variable context.

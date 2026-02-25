@@ -117,6 +117,8 @@ export default function StoryletDisplay({
 
     const handleOptionClick = async (option: ResolveOption) => {
         if (isLoading) return;
+        // Play the immediate action sound (sword slash, spell cast, etc.)
+        if (onPlaySound && option.clickSoundId) onPlaySound(option.clickSoundId);
         setIsLoading(true);
         try {
             const response = await fetch('/api/resolve', {

@@ -41,7 +41,11 @@ export interface ResolveOption extends LogicGates {
 
     lock_message?: string;
     computed_action_cost?: number | string;
+    /** Sound URL played immediately when the player clicks this option (before resolution). */
+    clickSoundId?: string;
+    /** Sound URL played when the option resolves as a success. */
     passSoundId?: string;
+    /** Sound URL played when the option resolves as a failure. */
     failSoundId?: string;
 }
 

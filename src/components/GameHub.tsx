@@ -21,6 +21,7 @@ import WalletHeader from './WalletHeader';
 import MarketInterface from './MarketInterface';
 import GameImage from '@/components/GameImage';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
+import { resolveAudioRef } from '@/engine/audio/strudelPreprocessor';
 import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
@@ -162,7 +163,7 @@ export default function GameHub(props: GameHubProps) {
     const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
     const [deckStates, setDeckStates] = useState<Record<string, DeckState>>(props.deckStates || {});
 
-    const { playTrack, playStrudelTrack, stopStrudelTrack, isStrudelPlaying, playSample } = useAudio();
+    const { playTrack, playStrudelTrack, stopStrudelTrack, isStrudelPlaying, updateStrudelQualities, playSample } = useAudio();
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -248,9 +249,10 @@ export default function GameHub(props: GameHubProps) {
             const data = await response.json();
             if (data.success) {
                 const newCards = (data.hand || []) as Opportunity[];
-                // Play draw sound if the deck has one configured
+                // Play draw sound if the deck has one configured (ScribeScript/playlist resolved)
                 const deckDef = props.deckDefs?.[deckId];
-                if (deckDef?.drawSoundId) playSample(deckDef.drawSoundId);
+                const drawSoundUrl = resolveAudioRef(deckDef?.drawSoundId, character?.qualities ?? {});
+                if (drawSoundUrl) playSample(drawSoundUrl);
                 setHand(prev => {
                     const currentHand = prev || [];
                     const otherDecksCards = currentHand.filter(c => c.deck !== deckId);
@@ -303,9 +305,10 @@ export default function GameHub(props: GameHubProps) {
             const data = await res.json();
             if (data.success) {
                 setShowMap(false);
-                // Play travel sting for the destination location (if configured)
+                // Play travel sting for the destination location (ScribeScript/playlist resolved)
                 const destLocation = props.locations?.[targetId];
-                if (destLocation?.travelSoundId) playSample(destLocation.travelSoundId);
+                const travelSoundUrl = resolveAudioRef(destLocation?.travelSoundId, character?.qualities ?? {});
+                if (travelSoundUrl) playSample(travelSoundUrl);
                 if (data.newLocation) {
                     setLocation(data.newLocation);
                     setCharacter(prev => prev ? { ...prev, currentLocationId: data.currentLocationId, opportunityHands: data.handCleared ? {} : prev.opportunityHands } : null);
@@ -437,13 +440,18 @@ export default function GameHub(props: GameHubProps) {
     }, [character, location, props.locations]);
     
     useEffect(() => {
-        // Resolve best music track: location → region → world default
-        const locTrackId = location?.musicTrackId;
+        // Resolve best music track: location → region → world default.
+        // Each field may be a plain ID, a comma-separated playlist, or a ScribeScript expression.
+        const qualities = character?.qualities ?? {};
+        const locRef = location?.musicTrackId;
         const regionId = location?.regionId;
-        const regionTrackId = regionId ? props.regions?.[regionId]?.musicTrackId : undefined;
-        const worldTrackId = props.settings?.defaultMusicTrackId;
+        const regionRef = regionId ? props.regions?.[regionId]?.musicTrackId : undefined;
+        const worldRef = props.settings?.defaultMusicTrackId;
 
-        const trackId = locTrackId || regionTrackId || worldTrackId;
+        const trackId = resolveAudioRef(locRef, qualities)
+            || resolveAudioRef(regionRef, qualities)
+            || resolveAudioRef(worldRef, qualities);
+
         if (!trackId || !props.musicTracks?.[trackId]) {
             stopStrudelTrack();
             return;
@@ -462,6 +470,21 @@ export default function GameHub(props: GameHubProps) {
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location?.id]);
+
+    // Debounced quality-change effect: re-evaluate ScribeScript in the current Strudel track.
+    // Uses a ref to avoid re-creating the timeout on every render.
+    const qualityUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (!character?.qualities) return;
+        if (qualityUpdateTimerRef.current) clearTimeout(qualityUpdateTimerRef.current);
+        qualityUpdateTimerRef.current = setTimeout(() => {
+            updateStrudelQualities(character.qualities);
+        }, 3000); // 3-second debounce — avoids restarting on every individual quality tick
+        return () => {
+            if (qualityUpdateTimerRef.current) clearTimeout(qualityUpdateTimerRef.current);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [character?.qualities]);
     
     useEffect(() => {
         if (!character) return;

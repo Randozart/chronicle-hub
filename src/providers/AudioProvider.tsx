@@ -34,6 +34,9 @@ interface AudioContextType {
     stopStrudelTrack: () => void;
     /** True while the Strudel iframe has an active track loaded. */
     isStrudelPlaying: boolean;
+    /** Re-evaluate the current Strudel track's ScribeScript templates against new quality values.
+     *  Attempts a live postMessage update first; falls back to an iframe src reload if the code changed. */
+    updateStrudelQualities: (newQualities: PlayerQualities) => void;
     /** Play a one-shot audio sample by URL (for sound stings / UI effects). */
     playSample: (url: string, volume?: number) => void;
     /** Player audio preferences — persisted to localStorage. */
@@ -54,6 +57,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
     const [isStrudelPlaying, setIsStrudelPlaying] = useState(false);
     const strudelIframeRef = useRef<HTMLIFrameElement | null>(null);
+    /** Raw (unprocessed) Strudel source last passed to playStrudelTrack. */
+    const currentStrudelSourceRef = useRef<string>('');
+    /** Last fully-evaluated code sent to the Strudel iframe. */
+    const lastStrudelCodeRef = useRef<string>('');
     
     const playbackRequestIdRef = useRef(0);
     const previewSynthRef = useRef<AnySoundSource | null>(null);
@@ -253,22 +260,25 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const buildFinalCode = (source: string, qualities: PlayerQualities, sampleMap: Record<string, string>): string => {
+        const processed = preprocessStrudelSource(source, qualities);
+        if (Object.keys(sampleMap).length === 0) return processed;
+        const entries = Object.entries(sampleMap)
+            .map(([name, url]) => `  "${name}": "${url}"`)
+            .join(',\n');
+        return `samples({\n${entries}\n})\n\n${processed}`;
+    };
+
     const playStrudelTrack = (
         source: string,
         qualities: PlayerQualities = {},
         sampleMap: Record<string, string> = {}
     ) => {
-        // Preprocess any {{...}} ScribeScript templates with the character's current qualities
-        const processed = preprocessStrudelSource(source, qualities);
+        if (musicMuted) return;
+        const finalCode = buildFinalCode(source, qualities, sampleMap);
 
-        // Prepend a samples({}) preamble when the sample map is non-empty
-        let finalCode = processed;
-        if (Object.keys(sampleMap).length > 0) {
-            const entries = Object.entries(sampleMap)
-                .map(([name, url]) => `  "${name}": "${url}"`)
-                .join(',\n');
-            finalCode = `samples({\n${entries}\n})\n\n${processed}`;
-        }
+        currentStrudelSourceRef.current = source;
+        lastStrudelCodeRef.current = finalCode;
 
         if (strudelIframeRef.current) {
             strudelIframeRef.current.src = buildStrudelUrl(finalCode);
@@ -276,10 +286,47 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setIsStrudelPlaying(true);
     };
 
+    /**
+     * Re-evaluates the currently playing Strudel track's ScribeScript templates
+     * against new player qualities. Attempts a live postMessage update so the
+     * pattern keeps playing without restarting; falls back to an iframe src
+     * reload only if the evaluated code actually changed.
+     */
+    const updateStrudelQualities = (newQualities: PlayerQualities) => {
+        const source = currentStrudelSourceRef.current;
+        if (!source || !isStrudelPlaying) return;
+
+        const newCode = buildFinalCode(source, newQualities, {});
+        if (newCode === lastStrudelCodeRef.current) return; // no change
+
+        lastStrudelCodeRef.current = newCode;
+
+        // Attempt a seamless live-code update via postMessage.
+        // Strudel's REPL listens for { type: 'strudel-eval', code } messages —
+        // this works with self-hosted Strudel and may work with strudel.cc.
+        if (strudelIframeRef.current?.contentWindow) {
+            try {
+                strudelIframeRef.current.contentWindow.postMessage(
+                    { type: 'strudel-eval', code: newCode },
+                    '*'
+                );
+            } catch {
+                // postMessage failed — fall through to src reload
+            }
+        }
+
+        // Reload the iframe as a reliable fallback (restarts the track with new values).
+        if (strudelIframeRef.current) {
+            strudelIframeRef.current.src = buildStrudelUrl(newCode);
+        }
+    };
+
     const stopStrudelTrack = () => {
         if (strudelIframeRef.current) {
             strudelIframeRef.current.src = 'about:blank';
         }
+        currentStrudelSourceRef.current = '';
+        lastStrudelCodeRef.current = '';
         setIsStrudelPlaying(false);
     };
 
@@ -392,7 +439,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             masterVolume,
             setMasterVolume: (db) => { setMasterVolumeState(db); setMasterVolume(db); },
             playPreviewNote, startPreviewNote, stopPreviewNote,
-            playStrudelTrack, stopStrudelTrack, isStrudelPlaying,
+            playStrudelTrack, stopStrudelTrack, isStrudelPlaying, updateStrudelQualities,
             playSample,
             musicMuted, setMusicMuted,
             sfxMuted, setSfxMuted,
