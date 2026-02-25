@@ -238,7 +238,7 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
     const allAvailableInstruments = [...projectInstruments, ...systemInstruments];
 
     return (
-        <div className="admin-split-view">
+        <div className="admin-split-view" style={{ height: '100%', alignItems: 'stretch' }}>
             <AdminListSidebar
                 title="Audio"
                 items={items.filter(i => i.category === 'track')}
@@ -249,35 +249,38 @@ export default function AudioAdmin({ params }: { params: Promise<{ storyId: stri
                 defaultGroupByKey="folder"
             />
 
-            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--tool-border)', display: 'flex', gap: '10px' }}>
+            <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--tool-border)', display: 'flex', gap: '10px', flexShrink: 0 }}>
                     <button className="new-btn" onClick={() => openCreateModal('track')}>+ New Track</button>
                 </div>
 
-                {selectedItem ? (
-                    selectedItem.category === 'instrument' ? (
-                        <InstrumentMainForm 
-                            initialData={selectedItem as InstrumentDefinition}
-                            onSave={handleListUpdate as (d: InstrumentDefinition) => void}
-                            onDelete={handleDeleteRequest}
-                            onDuplicate={openDuplicateModal as (d: InstrumentDefinition) => void}
-                            storyId={storyId}
-                            guardRef={guardRef}
-                        />
+                {/* flex: 1 + minHeight: 0 ensures the form fills exactly the remaining height after the toolbar */}
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    {selectedItem ? (
+                        selectedItem.category === 'instrument' ? (
+                            <InstrumentMainForm
+                                initialData={selectedItem as InstrumentDefinition}
+                                onSave={handleListUpdate as (d: InstrumentDefinition) => void}
+                                onDelete={handleDeleteRequest}
+                                onDuplicate={openDuplicateModal as (d: InstrumentDefinition) => void}
+                                storyId={storyId}
+                                guardRef={guardRef}
+                            />
+                        ) : (
+                            <TrackMainForm
+                                initialData={selectedItem as LigatureTrack}
+                                onSave={handleListUpdate as (d: LigatureTrack) => void}
+                                onDelete={handleDeleteRequest}
+                                onDuplicate={openDuplicateModal as (d: LigatureTrack) => void}
+                                storyId={storyId}
+                                availableInstruments={allAvailableInstruments}
+                                guardRef={guardRef}
+                            />
+                        )
                     ) : (
-                        <TrackMainForm 
-                            initialData={selectedItem as LigatureTrack}
-                            onSave={handleListUpdate as (d: LigatureTrack) => void}
-                            onDelete={handleDeleteRequest}
-                            onDuplicate={openDuplicateModal as (d: LigatureTrack) => void}
-                            storyId={storyId}
-                            availableInstruments={allAvailableInstruments}
-                            guardRef={guardRef}
-                        />
-                    )
-                ) : (
-                    <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select an asset</div>
-                )}
+                        <div style={{ color: 'var(--tool-text-dim)', marginTop: '20%', textAlign: 'center' }}>Select an asset</div>
+                    )}
+                </div>
             </div>
             <InputModal
                 isOpen={modalConfig.isOpen}

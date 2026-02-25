@@ -54,15 +54,16 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
         if (success && form) onSave(form);
     };
     return (
-        <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: '100%', 
-            width: '100%', 
-            overflow: 'auto',
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0,
+            width: '100%',
+            overflow: 'hidden',
             position: 'relative'
         }}>
-            <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative' }}>
+            <div style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
                 <StrudelEditor
                     data={form}
                     onChange={(newSource) => handleChange('source', newSource)}

@@ -62,7 +62,7 @@ export default function StrudelEditor({ data, onChange }: Props) {
     const [bottomTab, setBottomTab] = useState<'source' | 'samples'>('source');
 
     // Resizable split — topPct is the percentage the REPL occupies
-    const [topPct, setTopPct] = useState(55);
+    const [topPct, setTopPct] = useState(68);
     const containerRef = useRef<HTMLDivElement>(null);
     const isDraggingRef = useRef(false);
 
@@ -70,6 +70,7 @@ export default function StrudelEditor({ data, onChange }: Props) {
     const [samples, setSamples] = useState<StrudelSample[]>([]);
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
     const [uploadingName, setUploadingName] = useState('');
+    const [selectedFileName, setSelectedFileName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +153,8 @@ export default function StrudelEditor({ data, onChange }: Props) {
     // ------------------------------------------------------------------
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (!file) { setSelectedFileName(''); return; }
+        setSelectedFileName(file.name);
         // Pre-fill the name field from the filename (without extension)
         const baseName = file.name.split('.').slice(0, -1).join('_') || file.name;
         setUploadingName(baseName.replace(/[^a-z0-9_-]/gi, '_').toLowerCase());
@@ -178,6 +180,7 @@ export default function StrudelEditor({ data, onChange }: Props) {
             } else {
                 setSamples(prev => [...prev, json.sample]);
                 setUploadingName('');
+                setSelectedFileName('');
                 if (fileInputRef.current) fileInputRef.current.value = '';
             }
         } catch {
@@ -212,7 +215,8 @@ export default function StrudelEditor({ data, onChange }: Props) {
             style={{
                 display: 'flex',
                 flexDirection: 'column',
-                height: '100%',
+                flex: 1,
+                minHeight: 0,
                 width: '100%',
                 background: 'var(--tool-bg)',
                 overflow: 'hidden',
@@ -252,7 +256,7 @@ export default function StrudelEditor({ data, onChange }: Props) {
             </div>
 
             {/* ── Strudel REPL (top, resizable) ───────────────────────── */}
-            <div style={{ height: `${topPct}%`, minHeight: 0, flexShrink: 0, position: 'relative' }}>
+            <div style={{ flex: topPct, minHeight: 0, position: 'relative' }}>
                 <iframe
                     key={iframeSrc}
                     src={iframeSrc}
@@ -293,8 +297,8 @@ export default function StrudelEditor({ data, onChange }: Props) {
                 }} />
             </div>
 
-            {/* ── Bottom panel (source + samples, flex: 1) ────────────── */}
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* ── Bottom panel (source + samples) ─────────────────────── */}
+            <div style={{ flex: 100 - topPct, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
                 {/* Tab bar */}
                 <div style={{
@@ -354,6 +358,7 @@ export default function StrudelEditor({ data, onChange }: Props) {
                             isLoading={isLoadingSamples}
                             isUploading={isUploading}
                             uploadingName={uploadingName}
+                            selectedFileName={selectedFileName}
                             uploadError={uploadError}
                             fileInputRef={fileInputRef}
                             onFileSelect={handleFileSelect}
@@ -377,6 +382,7 @@ interface SamplesPanelProps {
     isLoading: boolean;
     isUploading: boolean;
     uploadingName: string;
+    selectedFileName: string;
     uploadError: string;
     fileInputRef: React.RefObject<HTMLInputElement>;
     onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -386,7 +392,7 @@ interface SamplesPanelProps {
 }
 
 function SamplesPanel({
-    samples, isLoading, isUploading, uploadingName, uploadError,
+    samples, isLoading, isUploading, uploadingName, selectedFileName, uploadError,
     fileInputRef, onFileSelect, onNameChange, onUpload, onDelete,
 }: SamplesPanelProps) {
     const cell: React.CSSProperties = {
@@ -398,10 +404,12 @@ function SamplesPanel({
     };
     const dimCell: React.CSSProperties = { ...cell, color: 'var(--tool-text-dim)' };
 
-    return (
-        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', boxSizing: 'border-box' }}>
+    const canUpload = !!selectedFileName && !!uploadingName.trim() && !isUploading;
 
-            {/* Upload row */}
+    return (
+        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
+
+            {/* Upload form — always visible */}
             <div style={{
                 background: 'rgba(97,175,239,0.05)',
                 border: '1px dashed #61afef55',
@@ -409,14 +417,15 @@ function SamplesPanel({
                 padding: '0.75rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.5rem',
+                gap: '0.6rem',
+                flexShrink: 0,
             }}>
                 <span style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Upload Sample
                 </span>
 
+                {/* Row 1: file picker */}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {/* Hidden file input */}
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -440,51 +449,50 @@ function SamplesPanel({
                     >
                         Choose file…
                     </button>
-
-                    <span style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)' }}>
-                        {fileInputRef.current?.files?.[0]?.name || 'wav · mp3 · ogg · flac · aiff'}
+                    <span style={{ fontSize: '0.72rem', color: selectedFileName ? 'var(--tool-text-header)' : 'var(--tool-text-dim)', fontFamily: 'monospace' }}>
+                        {selectedFileName || 'wav · mp3 · ogg · flac · aiff · webm'}
                     </span>
                 </div>
 
-                {fileInputRef.current?.files?.[0] && (
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <label style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', whiteSpace: 'nowrap' }}>
-                            Sample name:
-                        </label>
-                        <input
-                            value={uploadingName}
-                            onChange={e => onNameChange(e.target.value)}
-                            placeholder="e.g. kick"
-                            style={{
-                                background: '#1a1a1a',
-                                border: '1px solid var(--tool-border)',
-                                borderRadius: '4px',
-                                color: 'var(--tool-text-header)',
-                                padding: '0.3rem 0.5rem',
-                                fontSize: '0.78rem',
-                                fontFamily: 'monospace',
-                                width: '140px',
-                            }}
-                        />
-                        <button
-                            onClick={onUpload}
-                            disabled={isUploading || !uploadingName.trim()}
-                            style={{
-                                background: isUploading ? 'rgba(98,198,84,0.1)' : 'rgba(98,198,84,0.2)',
-                                border: '1px solid #98c379',
-                                color: '#98c379',
-                                borderRadius: '4px',
-                                padding: '0.3rem 0.75rem',
-                                cursor: isUploading ? 'default' : 'pointer',
-                                fontSize: '0.78rem',
-                                fontFamily: 'inherit',
-                                opacity: !uploadingName.trim() ? 0.5 : 1,
-                            }}
-                        >
-                            {isUploading ? 'Uploading…' : '↑ Upload'}
-                        </button>
-                    </div>
-                )}
+                {/* Row 2: name + upload button — always visible */}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', whiteSpace: 'nowrap' }}>
+                        Name in Strudel:
+                    </label>
+                    <input
+                        value={uploadingName}
+                        onChange={e => onNameChange(e.target.value)}
+                        placeholder="e.g. kick"
+                        style={{
+                            background: '#1a1a1a',
+                            border: '1px solid var(--tool-border)',
+                            borderRadius: '4px',
+                            color: 'var(--tool-text-header)',
+                            padding: '0.3rem 0.5rem',
+                            fontSize: '0.78rem',
+                            fontFamily: 'monospace',
+                            width: '140px',
+                        }}
+                    />
+                    <button
+                        onClick={onUpload}
+                        disabled={!canUpload}
+                        title={!selectedFileName ? 'Choose a file first' : !uploadingName.trim() ? 'Enter a name' : 'Upload'}
+                        style={{
+                            background: canUpload ? 'rgba(98,198,84,0.2)' : 'rgba(98,198,84,0.07)',
+                            border: '1px solid #98c379',
+                            color: '#98c379',
+                            borderRadius: '4px',
+                            padding: '0.3rem 0.75rem',
+                            cursor: canUpload ? 'pointer' : 'default',
+                            fontSize: '0.78rem',
+                            fontFamily: 'inherit',
+                            opacity: canUpload ? 1 : 0.4,
+                        }}
+                    >
+                        {isUploading ? 'Uploading…' : '↑ Upload'}
+                    </button>
+                </div>
 
                 {uploadError && (
                     <span style={{ fontSize: '0.72rem', color: '#e06c75' }}>{uploadError}</span>
