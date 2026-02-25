@@ -19,10 +19,13 @@ interface Props {
 }
 
 function buildStrudelUrl(code: string): string {
+    // Strudel decodes its URL hash with atob() directly (no decodeURIComponent).
+    // Strudel code is ASCII JavaScript, so btoa(code) is correct.
     try {
-        return `https://strudel.cc/?embed#${btoa(encodeURIComponent(code))}`;
-    } catch {
         return `https://strudel.cc/?embed#${btoa(code)}`;
+    } catch {
+        // Non-latin1 characters in code — open an empty REPL
+        return `https://strudel.cc/?embed#`;
     }
 }
 
