@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
@@ -28,18 +28,31 @@ function listDirs(dir: string): string[] {
 
 /**
  * Serves a strudel.json-compatible banks object for use with samples('url').
- * Format: { bankId: ["/sounds/relative/path.ext", ...] }
  *
- * The paths are absolute from the server root so that Strudel resolves them
- * correctly regardless of which URL this endpoint is called from.
+ * Paths are returned as fully-qualified absolute URLs (using the request origin)
+ * to avoid any ambiguity about how Strudel resolves relative paths when the
+ * endpoint is not at the server root.
+ *
+ * Format: { "bankId": ["https://app.com/sounds/path/file.ext", ...] }
  *
  * CORS headers are required so the strudel.cc embed iframe can fetch this.
- *
  * This route is public (no auth required) so the strudel.cc embed can reach
  * it even when third-party cookies are blocked.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const { origin } = new URL(request.url);
     const banks: Record<string, string[]> = {};
+
+    const abs = (path: string) => `${origin}/sounds/${path}`;
+
+    // ── Bittersweet Sleep Trumpet ────────────────────────────────────────────
+    const bittersweet = join(SOUNDS_DIR, 'custom', 'bittersweet_trumpet');
+    const bittersweetFiles = listAudioFiles(bittersweet);
+    if (bittersweetFiles.length > 0) {
+        banks['bittersweet_trumpet'] = bittersweetFiles
+            .sort()
+            .map(f => abs(`custom/bittersweet_trumpet/${f}`));
+    }
 
     // ── Jazz Kit ────────────────────────────────────────────────────────────
     const jazzDir = join(SOUNDS_DIR, 'custom', 'jazz_kit');
@@ -56,7 +69,7 @@ export async function GET() {
     for (const [prefix, id] of Object.entries(jazzPrefixMap)) {
         const files = jazzFiles.filter(f => f.startsWith(prefix));
         if (files.length > 0) {
-            banks[id] = files.map(f => `/sounds/custom/jazz_kit/${f}`);
+            banks[id] = files.map(f => abs(`custom/jazz_kit/${f}`));
         }
     }
 
@@ -66,7 +79,7 @@ export async function GET() {
         const id = dir.replace(/-mp3$/, '');
         const files = listAudioFiles(join(musyng, dir));
         if (files.length > 0) {
-            banks[id] = files.map(f => `/sounds/musyng_kite/${dir}/${f}`);
+            banks[id] = files.map(f => abs(`musyng_kite/${dir}/${f}`));
         }
     }
 
@@ -75,7 +88,7 @@ export async function GET() {
     for (const dir of listDirs(stdDir).filter(d => d !== 'tonejs')) {
         const files = listAudioFiles(join(stdDir, dir));
         if (files.length > 0) {
-            banks[dir] = files.map(f => `/sounds/standard/${dir}/${f}`);
+            banks[dir] = files.map(f => abs(`standard/${dir}/${f}`));
         }
     }
 
