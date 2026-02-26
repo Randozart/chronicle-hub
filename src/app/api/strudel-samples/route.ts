@@ -34,6 +34,9 @@ function listDirs(dir: string): string[] {
  * correctly regardless of which URL this endpoint is called from.
  *
  * CORS headers are required so the strudel.cc embed iframe can fetch this.
+ *
+ * This route is public (no auth required) so the strudel.cc embed can reach
+ * it even when third-party cookies are blocked.
  */
 export async function GET() {
     const banks: Record<string, string[]> = {};

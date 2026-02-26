@@ -24,6 +24,7 @@ export async function proxy(req: NextRequest) {
 
         pathname.startsWith('/playground/ligature')  ||
         pathname.startsWith('/sounds') ||
+        pathname.startsWith('/api/strudel-samples') ||
 
         pathname.startsWith('/play') ||
         pathname.startsWith('/api/character/create') ||

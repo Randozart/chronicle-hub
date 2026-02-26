@@ -547,7 +547,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
         // Local library samples — load via URL endpoint so Strudel fetches the strudel.json
         // format at runtime. This avoids inline URL strings with slashes that trigger
         // Strudel's mini-notation parser on the source code.
-        lines.push(`samples('${origin}/api/admin/strudel-samples');`);
+        lines.push(`samples('${origin}/api/strudel-samples');`);
 
         // Cloud-uploaded samples — inline as single-string entries (only referenced ones)
         const cloudEntries: string[] = [];
