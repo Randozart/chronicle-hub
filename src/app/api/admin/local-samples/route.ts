@@ -62,19 +62,35 @@ export async function GET() {
             }
         }
 
+        const jazzInstruments = Object.values(prefixMap)
+            .filter(e => e.files.length > 0)
+            .map(e => ({
+                id: e.strudelId,
+                label: e.label,
+                preview: toUrl(join(jazzDir, e.files[0])),
+                files: e.files.map(f => toUrl(join(jazzDir, f))),
+                type: 'percussion',
+            }));
+
+        // ── Bittersweet Trumpet ──────────────────────────────────────────────
+        const bittersweetDir = join(SOUNDS_DIR, 'custom', 'bittersweet_trumpet');
+        const bittersweetFiles = listAudioFiles(bittersweetDir).sort();
+        if (bittersweetFiles.length > 0) {
+            const preview = pickPreview(bittersweetFiles) ?? bittersweetFiles[0];
+            jazzInstruments.push({
+                id: 'bittersweet_trumpet',
+                label: 'Bittersweet Trumpet',
+                preview: toUrl(join(bittersweetDir, preview)),
+                files: bittersweetFiles.map(f => toUrl(join(bittersweetDir, f))),
+                type: 'melodic',
+            });
+        }
+
         groups.push({
             id: 'jazz_kit',
             name: 'Jazz Kit',
             category: 'Custom Samples',
-            instruments: Object.values(prefixMap)
-                .filter(e => e.files.length > 0)
-                .map(e => ({
-                    id: e.strudelId,
-                    label: e.label,
-                    preview: toUrl(join(jazzDir, e.files[0])),
-                    files: e.files.map(f => toUrl(join(jazzDir, f))),
-                    type: 'percussion',
-                })),
+            instruments: jazzInstruments,
         });
     }
 
@@ -131,7 +147,78 @@ export async function GET() {
         });
     }
 
-    // NOTE: tracker/ (de_*) and imported_sf2/ are intentionally excluded
+    // ── Tone.js high-quality library ─────────────────────────────────────────
+    const toneDir = join(SOUNDS_DIR, 'standard', 'tonejs');
+    const toneDirs = listDirs(toneDir);
+
+    if (toneDirs.length > 0) {
+        const instruments = toneDirs.map(dir => {
+            const id = 'tonejs_' + dir.replace(/-/g, '_');
+            const label = dir.replace(/-/g, ' ');
+            const allFiles = listAudioFiles(join(toneDir, dir));
+            const preview = pickPreview(allFiles);
+            return {
+                id,
+                label,
+                preview: preview ? toUrl(join(toneDir, dir, preview)) : null,
+                files: allFiles.sort().map(f => ({ note: f.replace(/\.[^.]+$/, ''), url: toUrl(join(toneDir, dir, f)) })),
+                type: 'melodic',
+            };
+        }).filter(i => i.preview);
+
+        groups.push({
+            id: 'tonejs',
+            name: 'Tone.js Orchestra',
+            category: 'Chronicle Hub',
+            instruments,
+        });
+    }
+
+    // ── Ancient Instruments of the World ─────────────────────────────────────
+    const ancientSamplesDir = join(SOUNDS_DIR, 'imported_sf2', 'Ancient Instruments Of The World', 'samples');
+    const ancientDefs: { id: string; label: string; files: string[] }[] = [
+        { id: 'ancient_bodhran',         label: 'Bodhran',           files: ['Bodhran SideL.wav', 'Bodran SkinL.wav'] },
+        { id: 'ancient_bukkehorn',        label: 'Bukkehorn',         files: ['BukkehornL.wav', 'BukkehornStartL.wav'] },
+        { id: 'ancient_conch',            label: 'Conch',             files: ['ConchL.wav', 'ConchContinueL.wav'] },
+        { id: 'ancient_cornemuse',        label: 'Cornemuse',         files: ['cornemuseStartL.wav', 'cornemuseContinueL.wav'] },
+        { id: 'ancient_crwth',            label: 'Crwth',             files: ['CrwthR.wav'] },
+        { id: 'ancient_celtic_harp',      label: 'Celtic Harp',       files: ['celtic harp-c2L.wav'] },
+        { id: 'ancient_irish_harp',       label: 'Irish Harp',        files: ['IRISH LYRE HARPL.wav'] },
+        { id: 'ancient_jaw_harp',         label: 'Jaw Harp',          files: ['jaw harp.wav'] },
+        { id: 'ancient_jouhikko',         label: 'Jouhikko',          files: ['JouhikkoL.wav'] },
+        { id: 'ancient_brass_lure',       label: 'Brass Lure',        files: ['brass-lure start.wav'] },
+        { id: 'ancient_nyckelharpa',      label: 'Nyckelharpa',       files: ['Nyckelharpa2L.wav'] },
+        { id: 'ancient_prillarhorn',      label: 'Prillarhorn',       files: ['PrillarhornL.wav', 'PrillarhornContinueL.wav'] },
+        { id: 'ancient_psalmodikon',      label: 'Psalmodikon',       files: ['PsalmodikonL.wav'] },
+        { id: 'ancient_sheepbone_flute',  label: 'Sheepbone Flute',   files: ['sheepboneflutestartL.wav', 'sheepboneflutecontiL.wav'] },
+        { id: 'ancient_tagelharpa',       label: 'Tagelharpa',        files: ['tagelharpa2L.wav', 'tagelharpa3L.wav'] },
+        { id: 'ancient_tin_whistle',      label: 'Tin Whistle',       files: ['tin whistle startL.wav'] },
+    ];
+    const ancientOnDisk = new Set(listAudioFiles(ancientSamplesDir));
+    const ancientInstruments = ancientDefs
+        .map(def => {
+            const existing = def.files.filter(f => ancientOnDisk.has(f));
+            if (!existing.length) return null;
+            return {
+                id: def.id,
+                label: def.label,
+                preview: toUrl(join(ancientSamplesDir, existing[0])),
+                files: existing.map(f => toUrl(join(ancientSamplesDir, f))),
+                type: 'oneshot',
+            };
+        })
+        .filter(Boolean);
+
+    if (ancientInstruments.length > 0) {
+        groups.push({
+            id: 'ancient_instruments',
+            name: 'Ancient Instruments of the World',
+            category: 'Chronicle Hub',
+            instruments: ancientInstruments,
+        });
+    }
+
+    // NOTE: tracker/ (de_* Deus Ex samples) are intentionally excluded
 
     return NextResponse.json({ groups });
 }
