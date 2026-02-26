@@ -11,6 +11,7 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import GameImage from '@/components/GameImage';
 import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
+import { AudioTrackPicker } from '@/components/admin/AudioTrackPicker';
 
 interface Props {
     initialData: Storylet;
@@ -284,6 +285,29 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                             qualityDefs={qualityDefs}
                             placeholder="no_return, { $.stress > 10 : instant_redirect }"
                         />
+                    </div>
+                </div>
+
+                <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
+                    <label className="special-label" style={{ color: 'var(--tool-text-dim)', marginBottom: '0.5rem' }}>Audio</label>
+                    <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Music Override</label>
+                            <AudioTrackPicker storyId={storyId} value={form.musicTrackId} onChange={v => handleChange('musicTrackId', v)} />
+                            <p className="special-desc">Replaces or ducks location music while this storylet is open.</p>
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Music Mode</label>
+                            <select
+                                value={form.musicMode || ''}
+                                onChange={e => handleChange('musicMode', e.target.value || undefined)}
+                                className="form-input"
+                                style={{ fontSize: '0.82rem' }}
+                            >
+                                <option value="">Replace (stop location music)</option>
+                                <option value="duck">Duck (lower location music volume)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 

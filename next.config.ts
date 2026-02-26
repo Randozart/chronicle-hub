@@ -3,6 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactCompiler: true,
+  async headers() {
+    return [
+      {
+        // Allow the strudel.cc embed iframe to fetch local audio files via AudioContext
+        source: '/sounds/:path*',
+        headers: [{ key: 'Access-Control-Allow-Origin', value: '*' }],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

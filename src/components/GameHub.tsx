@@ -21,6 +21,7 @@ import WalletHeader from './WalletHeader';
 import MarketInterface from './MarketInterface';
 import GameImage from '@/components/GameImage';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
+import { resolveAudioRef } from '@/engine/audio/strudelPreprocessor';
 import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
@@ -31,6 +32,7 @@ import GameModal from './GameModal';
 import LivingStories from './LivingStories';
 import { useTheme } from '@/providers/ThemeProvider';
 import { DeckState, getDeckStates } from '@/engine/deckLogic';
+import AudioSettingsModal from './AudioSettingsModal';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -161,7 +163,7 @@ export default function GameHub(props: GameHubProps) {
     const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
     const [deckStates, setDeckStates] = useState<Record<string, DeckState>>(props.deckStates || {});
 
-    const { playTrack } = useAudio();
+    const { playTrack, playStrudelTrack, stopStrudelTrack, isStrudelPlaying, updateStrudelQualities, playSample } = useAudio();
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -170,6 +172,7 @@ export default function GameHub(props: GameHubProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [logs, setLogs] = useState<{ message: string, type: 'EVAL' | 'COND' | 'FX', timestamp: number }[]>([]);
     const [showLogger, setShowLogger] = useState(false);
+    const [showAudioSettings, setShowAudioSettings] = useState(false);
     const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
     
     const handleLog = useCallback((message: string, type: 'EVAL' | 'COND' | 'FX') => {
@@ -246,6 +249,10 @@ export default function GameHub(props: GameHubProps) {
             const data = await response.json();
             if (data.success) {
                 const newCards = (data.hand || []) as Opportunity[];
+                // Play draw sound if the deck has one configured (ScribeScript/playlist resolved)
+                const deckDef = props.deckDefs?.[deckId];
+                const drawSoundUrl = resolveAudioRef(deckDef?.drawSoundId, character?.qualities ?? {});
+                if (drawSoundUrl) playSample(drawSoundUrl);
                 setHand(prev => {
                     const currentHand = prev || [];
                     const otherDecksCards = currentHand.filter(c => c.deck !== deckId);
@@ -298,6 +305,10 @@ export default function GameHub(props: GameHubProps) {
             const data = await res.json();
             if (data.success) {
                 setShowMap(false);
+                // Play travel sting for the destination location (ScribeScript/playlist resolved)
+                const destLocation = props.locations?.[targetId];
+                const travelSoundUrl = resolveAudioRef(destLocation?.travelSoundId, character?.qualities ?? {});
+                if (travelSoundUrl) playSample(travelSoundUrl);
                 if (data.newLocation) {
                     setLocation(data.newLocation);
                     setCharacter(prev => prev ? { ...prev, currentLocationId: data.currentLocationId, opportunityHands: data.handCleared ? {} : prev.opportunityHands } : null);
@@ -429,13 +440,51 @@ export default function GameHub(props: GameHubProps) {
     }, [character, location, props.locations]);
     
     useEffect(() => {
-        const trackId = (location as any)?.musicTrackId; 
-        if (trackId && props.musicTracks?.[trackId]) {
-            const trackSource = props.musicTracks[trackId].source;
-            const instrumentList = props.instruments ? Object.values(props.instruments) : [];
-            playTrack(trackSource, instrumentList);
+        // Resolve best music track: location → region → world default.
+        // Each field may be a plain ID, a comma-separated playlist, or a ScribeScript expression.
+        const qualities = character?.qualities ?? {};
+        const locRef = location?.musicTrackId;
+        const regionId = location?.regionId;
+        const regionRef = regionId ? props.regions?.[regionId]?.musicTrackId : undefined;
+        const worldRef = props.settings?.defaultMusicTrackId;
+
+        const trackId = resolveAudioRef(locRef, qualities)
+            || resolveAudioRef(regionRef, qualities)
+            || resolveAudioRef(worldRef, qualities);
+
+        if (!trackId || !props.musicTracks?.[trackId]) {
+            stopStrudelTrack();
+            return;
         }
-    }, [location, props.musicTracks, props.instruments, playTrack]);
+        const track = props.musicTracks[trackId];
+        const source = track.source || '';
+
+        // Detect Strudel vs Ligature: Ligature source begins with a [CONFIG] section.
+        const isLigature = source.trimStart().startsWith('[');
+
+        if (isLigature) {
+            const instrumentList = props.instruments ? Object.values(props.instruments) : [];
+            playTrack(source, instrumentList, character?.qualities);
+        } else {
+            playStrudelTrack(source, character?.qualities ?? {});
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location?.id]);
+
+    // Debounced quality-change effect: re-evaluate ScribeScript in the current Strudel track.
+    // Uses a ref to avoid re-creating the timeout on every render.
+    const qualityUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (!character?.qualities) return;
+        if (qualityUpdateTimerRef.current) clearTimeout(qualityUpdateTimerRef.current);
+        qualityUpdateTimerRef.current = setTimeout(() => {
+            updateStrudelQualities(character.qualities);
+        }, 3000); // 3-second debounce — avoids restarting on every individual quality tick
+        return () => {
+            if (qualityUpdateTimerRef.current) clearTimeout(qualityUpdateTimerRef.current);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [character?.qualities]);
     
     useEffect(() => {
         if (!character) return;
@@ -626,7 +675,16 @@ export default function GameHub(props: GameHubProps) {
                     </div>
                     <div className="sidebar-footer">
                         <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
-                        <ZoomControls />
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <button
+                                onClick={() => setShowAudioSettings(true)}
+                                title="Audio Settings"
+                                style={{ background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', padding: 0 }}
+                            >
+                                🔊
+                            </button>
+                            <ZoomControls />
+                        </div>
                     </div>
                 </div>
             );
@@ -768,28 +826,29 @@ export default function GameHub(props: GameHubProps) {
             innerContent = (
                 <div className="event-view">
                     {showHeaderInStorylet && renderHeader()}
-                    <StoryletDisplay 
-                        eventData={activeEvent} 
-                        qualities={character.qualities} 
-                        resolution={activeResolution} 
-                        onResolve={setActiveResolution} 
-                        onFinish={handleEventFinish} 
-                        onQualitiesUpdate={handleQualitiesUpdate} 
-                        onCardPlayed={handleCardPlayed} 
-                        qualityDefs={mergedQualityDefs} 
-                        storyletDefs={props.storyletDefs} 
-                        opportunityDefs={props.opportunityDefs} 
-                        settings={props.settings} 
-                        imageLibrary={props.imageLibrary} 
-                        categories={props.categories} 
-                        storyId={props.storyId} 
-                        characterId={character.characterId} 
-                        engine={renderEngine} 
-                        isPlaytesting={props.isPlaytesting} 
-                        onLog={props.isPlaytesting ? handleLog : undefined} 
-                        eventSource={eventSource} 
+                    <StoryletDisplay
+                        eventData={activeEvent}
+                        qualities={character.qualities}
+                        resolution={activeResolution}
+                        onResolve={setActiveResolution}
+                        onFinish={handleEventFinish}
+                        onQualitiesUpdate={handleQualitiesUpdate}
+                        onCardPlayed={handleCardPlayed}
+                        qualityDefs={mergedQualityDefs}
+                        storyletDefs={props.storyletDefs}
+                        opportunityDefs={props.opportunityDefs}
+                        settings={props.settings}
+                        imageLibrary={props.imageLibrary}
+                        categories={props.categories}
+                        storyId={props.storyId}
+                        characterId={character.characterId}
+                        engine={renderEngine}
+                        isPlaytesting={props.isPlaytesting}
+                        onLog={props.isPlaytesting ? handleLog : undefined}
+                        eventSource={eventSource}
                         isGuestMode={isGuestMode}
                         character={character}
+                        onPlaySound={playSample}
                     />
                 </div>
             );
@@ -924,8 +983,61 @@ export default function GameHub(props: GameHubProps) {
                 )}
                 
                 {renderLayout()}
-                
+
+                {/* Music widget — shown when current location has a Strudel track */}
+                {isMounted && (() => {
+                    const trackId = location?.musicTrackId;
+                    const track = trackId ? props.musicTracks?.[trackId] : undefined;
+                    if (!track) return null;
+                    const isStrudel = !track.source?.trimStart().startsWith('[');
+                    if (!isStrudel) return null;
+                    return createPortal(
+                        <div style={{
+                            position: 'fixed',
+                            bottom: '1rem',
+                            right: '1rem',
+                            zIndex: 9000,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            background: 'rgba(0,0,0,0.7)',
+                            backdropFilter: 'blur(6px)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            borderRadius: '999px',
+                            padding: '0.3rem 0.75rem 0.3rem 0.5rem',
+                            fontSize: '0.72rem',
+                            color: 'rgba(255,255,255,0.7)',
+                            userSelect: 'none',
+                        }}>
+                            <span style={{ fontSize: '0.9rem' }}>{isStrudelPlaying ? '♪' : '♩'}</span>
+                            <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {track.name || trackId}
+                            </span>
+                            {isStrudelPlaying ? (
+                                <button
+                                    onClick={stopStrudelTrack}
+                                    title="Stop music"
+                                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.85rem', lineHeight: 1 }}
+                                >
+                                    ⏹
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => playStrudelTrack(track.source, character?.qualities ?? {})}
+                                    title="Play music"
+                                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.85rem', lineHeight: 1 }}
+                                >
+                                    ▶
+                                </button>
+                            )}
+                        </div>,
+                        document.body
+                    );
+                })()}
+
                 {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
+
+                <AudioSettingsModal isOpen={showAudioSettings} onClose={() => setShowAudioSettings(false)} />
                 
                 {isMounted && props.isPlaytesting && showInspector && character && createPortal(
                     <CharacterInspector 

@@ -7,6 +7,7 @@ import BehaviorCard from '@/components/admin/BehaviorCard';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
+import { SamplePicker } from '@/components/admin/AudioTrackPicker';
 
 interface Props {
     initialData: DeckDefinition;
@@ -169,6 +170,14 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
                             subLabel="Requirements to draw a card manually."
                             qualityDefs={qualityDefs}
                         />
+                    </div>
+                </div>
+                <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
+                    <label className="special-label" style={{ color: 'var(--tool-text-dim)', marginBottom: '0.5rem' }}>Audio</label>
+                    <div className="form-group">
+                        <label className="form-label">Draw Sound</label>
+                        <SamplePicker value={form.drawSoundId} onChange={v => handleChange('drawSoundId', v)} />
+                        <p className="special-desc">Plays when the player manually draws a card from this deck.</p>
                     </div>
                 </div>
                 <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>

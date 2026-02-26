@@ -9,7 +9,8 @@ import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
-import LocationContentTab from './LocationContentTab'; 
+import LocationContentTab from './LocationContentTab';
+import { AudioTrackPicker, SamplePicker } from '@/components/admin/AudioTrackPicker';
 interface Props {
     initialData: LocationDefinition;
     onSave: (data: LocationDefinition) => void;
@@ -218,6 +219,19 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                                 qualityDefs={qualityDefs}
                                 placeholder="You cannot change equipment here."
                             />
+                        </div>
+                        <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
+                            <label className="special-label" style={{ color: 'var(--tool-text-dim)', marginBottom: '0.5rem' }}>Audio</label>
+                            <div className="form-row">
+                                <div className="form-group" style={{ flex: 1 }}>
+                                    <label className="form-label">Background Music</label>
+                                    <AudioTrackPicker storyId={storyId} value={form.musicTrackId} onChange={v => handleChange('musicTrackId', v)} />
+                                </div>
+                                <div className="form-group" style={{ flex: 1 }}>
+                                    <label className="form-label">Travel Sting</label>
+                                    <SamplePicker value={form.travelSoundId} onChange={v => handleChange('travelSoundId', v)} />
+                                </div>
+                            </div>
                         </div>
                         <div className="form-row" style={{ marginTop: '1rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
                             <div className="form-group" style={{ flex: 1 }}>

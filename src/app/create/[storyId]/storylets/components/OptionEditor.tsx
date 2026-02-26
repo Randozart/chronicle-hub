@@ -8,6 +8,7 @@ import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import ProbabilityChart from '@/components/admin/ProbabilityChart';
+import { SamplePicker } from '@/components/admin/AudioTrackPicker';
 
 interface Props {
     data: ResolveOption;
@@ -173,6 +174,14 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                         storyId={storyId}
                     />
                 )}
+            </div>
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Click Sound</label>
+                <SamplePicker
+                    value={(data as any).clickSoundId || ''}
+                    onChange={v => handleChange('clickSoundId' as any, v)}
+                    placeholder="None (plays on click)"
+                />
             </div>
             <div style={{ marginTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -441,6 +450,13 @@ function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityD
                         entityType="storylet"
                     />
                 </div>
+            </div>
+            <div style={{ marginTop: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--tool-text-dim)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sound Sting</label>
+                <SamplePicker
+                    value={data[`${prefix}SoundId`] || ''}
+                    onChange={v => onChange(`${prefix}SoundId`, v)}
+                />
             </div>
         </div>
     );
