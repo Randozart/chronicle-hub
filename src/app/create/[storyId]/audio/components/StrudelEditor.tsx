@@ -1,7 +1,7 @@
 // src/app/create/[storyId]/audio/components/StrudelEditor.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { LigatureTrack } from '@/engine/audio/models';
 import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
@@ -51,6 +51,38 @@ function formatBytes(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Extract all $varName references from inside {{...}} ScribeScript blocks. */
+function extractScribeVarNames(source: string): string[] {
+    const names = new Set<string>();
+    const blockRe = /\{\{([\s\S]*?)\}\}/g;
+    let block: RegExpExecArray | null;
+    while ((block = blockRe.exec(source)) !== null) {
+        const varRe = /\$\$?([a-zA-Z_][a-zA-Z0-9_]*)/g;
+        let v: RegExpExecArray | null;
+        while ((v = varRe.exec(block[1])) !== null) {
+            names.add(v[1]);
+        }
+    }
+    return [...names];
+}
+
+/** Extract all sample base-names referenced via s("...") in Strudel code. */
+function extractSampleNames(code: string): Set<string> {
+    const names = new Set<string>();
+    // Match .s("...") or s("...") — the argument is a Strudel pattern string
+    const re = /\.?s\(\s*["']([^"']+)["']/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(code)) !== null) {
+        // Pattern strings can contain spaces, angle-brackets, colons: "bd:0 sd <jazz_bd jazz_sn>"
+        const parts = m[1].replace(/[<>[\]]/g, ' ').split(/[\s,]+/);
+        for (const part of parts) {
+            const base = part.split(':')[0].trim();
+            if (base && /^[a-zA-Z0-9_-]+$/.test(base)) names.add(base);
+        }
+    }
+    return names;
 }
 
 // ---------------------------------------------------------------------------
@@ -209,9 +241,11 @@ interface ScribeScriptTabProps {
     onSendWithTestValues: () => void;
     onUpdate: (qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => void;
     storyId?: string;
+    rawSource: string;
+    mockQualities: PlayerQualities;
 }
 
-function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId }: ScribeScriptTabProps) {
+function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId, rawSource, mockQualities }: ScribeScriptTabProps) {
     const [players, setPlayers] = useState<any[]>([]);
     const [showPicker, setShowPicker] = useState(false);
     const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
@@ -219,6 +253,27 @@ function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId }: ScribeScri
     // Character import — owns the imported rows and reset key for ScribeDebugger
     const [importedRows, setImportedRows] = useState<DebugRow[] | undefined>(undefined);
     const [importResetKey, setImportResetKey] = useState(0);
+
+    // Compute which $vars are used in source but not yet in mock qualities
+    const usedVarNames = useMemo(() => extractScribeVarNames(rawSource), [rawSource]);
+    const undefinedVarNames = useMemo(
+        () => usedVarNames.filter(name => !(name in mockQualities)),
+        [usedVarNames, mockQualities],
+    );
+
+    // Add all missing $vars from source into the debugger (preserves existing values)
+    const handleExtractVars = useCallback(() => {
+        if (undefinedVarNames.length === 0) return;
+        const existingRows: DebugRow[] = Object.entries(mockQualities).map(([key, q]) => ({
+            key,
+            value: (q as any).stringValue && (q as any).level === 0
+                ? String((q as any).stringValue)
+                : String((q as any).level ?? 0),
+        }));
+        const newRows: DebugRow[] = undefinedVarNames.map(name => ({ key: name, value: '0' }));
+        setImportedRows([...existingRows, ...newRows]);
+        setImportResetKey(k => k + 1);
+    }, [undefinedVarNames, mockQualities]);
 
     const handleOpenPicker = async () => {
         if (!storyId) return;
@@ -262,6 +317,42 @@ function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId }: ScribeScri
                 <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--tool-text-dim)' }}>
                     Mock Qualities
                 </span>
+                {undefinedVarNames.length > 0 && (
+                    <span
+                        title={`Used in source but not yet defined: $${undefinedVarNames.join(', $')}`}
+                        style={{
+                            background: 'rgba(224,175,104,0.12)',
+                            border: '1px solid var(--warning-color)',
+                            color: 'var(--warning-color)',
+                            borderRadius: '4px',
+                            padding: '0.1rem 0.4rem',
+                            fontSize: '0.72rem',
+                            whiteSpace: 'nowrap',
+                            cursor: 'default',
+                        }}
+                    >
+                        ⚠ {undefinedVarNames.length} undefined
+                    </span>
+                )}
+                {undefinedVarNames.length > 0 && (
+                    <button
+                        onClick={handleExtractVars}
+                        title={`Add missing variables to mock qualities: $${undefinedVarNames.join(', $')}`}
+                        style={{
+                            background: 'transparent',
+                            border: '1px solid var(--tool-border)',
+                            color: 'var(--tool-text-dim)',
+                            borderRadius: '4px',
+                            padding: '0.25rem 0.55rem',
+                            cursor: 'pointer',
+                            fontSize: '0.82rem',
+                            fontFamily: 'inherit',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        ⚡ Extract $vars
+                    </button>
+                )}
                 {storyId && (
                     <button
                         onClick={handleOpenPicker}
@@ -396,7 +487,9 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
 
     // Samples state
     const [samples, setSamples] = useState<StrudelSample[]>([]);
-    const [isLoadingSamples, setIsLoadingSamples] = useState(false);
+    const [isLoadingSamples, setIsLoadingSamples] = useState(true);
+    const [localGroups, setLocalGroups] = useState<LocalGroup[]>([]);
+    const [isLoadingLocalGroups, setIsLoadingLocalGroups] = useState(true);
     const [uploadingName, setUploadingName] = useState('');
     const [selectedFileName, setSelectedFileName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
@@ -421,6 +514,11 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
     // ── Load samples on mount ─────────────────────────────────────────────────
     useEffect(() => {
         loadSamples();
+        fetch('/api/admin/local-samples')
+            .then(r => r.json())
+            .then(j => setLocalGroups(j.groups || []))
+            .catch(() => {})
+            .finally(() => setIsLoadingLocalGroups(false));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadSamples = async () => {
@@ -439,10 +537,40 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
     // ── Build final code for the REPL ─────────────────────────────────────────
     const buildFinalCode = useCallback((source: string, qualities: PlayerQualities): string => {
         const processed = preprocessStrudelSource(source, qualities);
-        if (samples.length === 0) return processed;
-        const entries = samples.map(s => `  "${s.id}": "${s.url}"`).join(',\n');
-        return `samples({\n${entries}\n})\n\n${processed}`;
-    }, [samples]);
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
+        // Scan both raw and processed code so ScribeScript conditionals don't hide names
+        const referenced = new Set([...extractSampleNames(source), ...extractSampleNames(processed)]);
+
+        const lines: string[] = [];
+
+        // Local library samples — load via URL endpoint so Strudel fetches the strudel.json
+        // format at runtime. This avoids inline URL strings with slashes that trigger
+        // Strudel's mini-notation parser on the source code.
+        lines.push(`samples('${origin}/api/admin/strudel-samples');`);
+
+        // Cloud-uploaded samples — inline as single-string entries (only referenced ones)
+        const cloudEntries: string[] = [];
+        for (const s of samples) {
+            if (!referenced.has(s.id)) continue;
+            cloudEntries.push(`  "${s.id}": "${s.url}"`);
+        }
+        if (cloudEntries.length > 0) {
+            lines.push(`samples({\n${cloudEntries.join(',\n')}\n});`);
+        }
+
+        return `${lines.join('\n')}\n\n${processed}`;
+    }, [samples]); // localGroups no longer needed — local samples load via URL
+
+    // ── Auto-send to REPL once after cloud samples have loaded ────────────────
+    // Local library samples load via URL (no wait needed); only cloud samples require loading.
+    const hasSentInitial = useRef(false);
+    useEffect(() => {
+        if (isLoadingSamples) return;
+        if (hasSentInitial.current) return;
+        hasSentInitial.current = true;
+        setIframeSrc(buildStrudelUrl(buildFinalCode(rawSource, {})));
+    }, [isLoadingSamples]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Send to REPL (no test values) ─────────────────────────────────────────
     const handleSendToStrudel = useCallback(() => {
@@ -797,18 +925,21 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                     ))}
                 </div>
 
-                {/* Tab content */}
-                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    {bottomTab === 'scribe' && (
+                {/* Tab content — both always mounted, hidden via CSS to preserve state */}
+                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ display: bottomTab === 'scribe' ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0, overflow: 'hidden' }}>
                         <ScribeScriptTab
                             onSendWithTestValues={handleSendWithTestValues}
                             onUpdate={handleDebuggerUpdate}
                             storyId={storyId}
+                            rawSource={rawSource}
+                            mockQualities={mockQualities}
                         />
-                    )}
-                    {bottomTab === 'samples' && (
+                    </div>
+                    <div style={{ display: bottomTab === 'samples' ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0, overflow: 'hidden' }}>
                         <SamplesPanel
                             samples={samples}
+                            localGroups={localGroups}
                             isLoading={isLoadingSamples}
                             isUploading={isUploading}
                             uploadingName={uploadingName}
@@ -820,7 +951,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                             onUpload={handleUpload}
                             onDelete={handleDeleteSample}
                         />
-                    )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -869,6 +1000,7 @@ interface LocalGroup {
 
 interface SamplesPanelProps {
     samples: StrudelSample[];
+    localGroups: LocalGroup[];
     isLoading: boolean;
     isUploading: boolean;
     uploadingName: string;
@@ -900,23 +1032,15 @@ function copyToClipboard(text: string) {
 }
 
 function SamplesPanel({
-    samples, isLoading, isUploading, uploadingName, selectedFileName, uploadError,
+    samples, localGroups, isLoading, isUploading, uploadingName, selectedFileName, uploadError,
     fileInputRef, onFileSelect, onNameChange, onUpload, onDelete,
 }: SamplesPanelProps) {
     const [showBuiltins, setShowBuiltins] = useState(false);
     const [showLocalLib, setShowLocalLib] = useState(true);
-    const [localGroups, setLocalGroups] = useState<LocalGroup[]>([]);
     const [localLibSearch, setLocalLibSearch] = useState('');
     const [playingUrl, setPlayingUrl] = useState<string | null>(null);
     const [copied, setCopied] = useState<string | null>(null);
     const [expandedGroup, setExpandedGroup] = useState<string | null>('jazz_kit');
-
-    useEffect(() => {
-        fetch('/api/admin/local-samples')
-            .then(r => r.json())
-            .then(j => setLocalGroups(j.groups || []))
-            .catch(() => {});
-    }, []);
 
     const handlePlay = useCallback((url: string) => {
         if (playingUrl === url) { stopPreview(); setPlayingUrl(null); return; }
@@ -1141,7 +1265,7 @@ function SamplesPanel({
                             })}
                         </div>
                     )}
-                    {showLocalLib && localGroups.length === 0 && (
+                    {showLocalLib && localGroups.length === 0 && isLoading && (
                         <div style={{ marginTop: '0.4rem', padding: '0.6rem', background: 'var(--tool-bg-sidebar)', borderRadius: '4px', color: 'var(--tool-text-dim)', fontSize: '0.85rem' }}>
                             Loading library…
                         </div>

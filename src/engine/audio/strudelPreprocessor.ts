@@ -31,11 +31,22 @@ function buildContext(qualities: PlayerQualities): Record<string, unknown> {
 
 /**
  * Evaluates a single expression string in the given variable context.
+ * Any $varName or $$varName references not present in ctx default to 0
+ * instead of throwing a ReferenceError.
  * Returns the result as a string, or throws on error.
  */
 function evaluateExpression(expression: string, ctx: Record<string, unknown>): string {
-    const keys = Object.keys(ctx);
-    const values = Object.values(ctx);
+    // Pre-scan for $varName / $$varName and inject 0 defaults for any that are missing
+    const ctxWithDefaults: Record<string, unknown> = { ...ctx };
+    const varRe = /\$\$?[a-zA-Z_][a-zA-Z0-9_]*/g;
+    let m: RegExpExecArray | null;
+    while ((m = varRe.exec(expression)) !== null) {
+        if (!(m[0] in ctxWithDefaults)) {
+            ctxWithDefaults[m[0]] = 0;
+        }
+    }
+    const keys = Object.keys(ctxWithDefaults);
+    const values = Object.values(ctxWithDefaults);
     // eslint-disable-next-line no-new-func
     const fn = new Function(...keys, `"use strict"; return (${expression});`);
     const result = fn(...values);
