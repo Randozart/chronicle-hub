@@ -94,6 +94,49 @@ export async function GET(_request: NextRequest) {
         }
     }
 
+    // ── Tone.js high-quality library ─────────────────────────────────────────
+    // Registered as "tonejs_{name}" to distinguish from the lighter standard/
+    // variants (e.g. "tonejs_piano" has 28 samples vs "piano"'s 4).
+    const toneDir = join(SOUNDS_DIR, 'standard', 'tonejs');
+    for (const dir of listDirs(toneDir)) {
+        const id = 'tonejs_' + dir.replace(/-/g, '_');
+        const files = listAudioFiles(join(toneDir, dir));
+        if (files.length > 0) {
+            banks[id] = files.sort().map(f => rel(`standard/tonejs/${dir}/${f}`));
+        }
+    }
+
+    // ── Ancient Instruments of the World ─────────────────────────────────────
+    // Single-shot samples from the "Ancient Instruments Of The World" SF2 pack.
+    // Grouped by instrument family into individual banks so each can be
+    // addressed by name in Strudel (e.g. .s("ancient_crwth")).
+    const ancientSamples = join(SOUNDS_DIR, 'imported_sf2', 'Ancient Instruments Of The World', 'samples');
+    const ancientMap: Record<string, string[]> = {
+        ancient_bodhran:       ['Bodhran SideL.wav', 'Bodran SkinL.wav'],
+        ancient_bukkehorn:     ['BukkehornL.wav', 'BukkehornStartL.wav'],
+        ancient_conch:         ['ConchL.wav', 'ConchContinueL.wav'],
+        ancient_cornemuse:     ['cornemuseStartL.wav', 'cornemuseContinueL.wav'],
+        ancient_crwth:         ['CrwthR.wav'],
+        ancient_celtic_harp:   ['celtic harp-c2L.wav'],
+        ancient_irish_harp:    ['IRISH LYRE HARPL.wav'],
+        ancient_jaw_harp:      ['jaw harp.wav'],
+        ancient_jouhikko:      ['JouhikkoL.wav'],
+        ancient_brass_lure:    ['brass-lure start.wav'],
+        ancient_nyckelharpa:   ['Nyckelharpa2L.wav'],
+        ancient_prillarhorn:   ['PrillarhornL.wav', 'PrillarhornContinueL.wav'],
+        ancient_psalmodikon:   ['PsalmodikonL.wav'],
+        ancient_sheepbone_flute: ['sheepboneflutestartL.wav', 'sheepboneflutecontiL.wav'],
+        ancient_tagelharpa:    ['tagelharpa2L.wav', 'tagelharpa3L.wav'],
+        ancient_tin_whistle:   ['tin whistle startL.wav'],
+    };
+    const ancientFiles = new Set(listAudioFiles(ancientSamples));
+    for (const [id, files] of Object.entries(ancientMap)) {
+        const existing = files.filter(f => ancientFiles.has(f));
+        if (existing.length > 0) {
+            banks[id] = existing.map(f => rel(`imported_sf2/Ancient Instruments Of The World/samples/${f}`));
+        }
+    }
+
     return new NextResponse(JSON.stringify(banks), {
         headers: {
             'Content-Type': 'application/json',
