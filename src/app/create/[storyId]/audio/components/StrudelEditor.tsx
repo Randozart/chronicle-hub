@@ -58,6 +58,8 @@ function formatBytes(bytes: number): string {
 // ---------------------------------------------------------------------------
 
 function SyntaxHintPanel() {
+    const [showNested, setShowNested] = useState(false);
+
     const row = (
         example: React.ReactNode,
         desc: React.ReactNode,
@@ -78,16 +80,16 @@ function SyntaxHintPanel() {
     return (
         <div style={{
             background: 'rgba(97, 175, 239, 0.05)',
-            borderBottom: '1px solid #61afef33',
+            borderBottom: '1px solid var(--tool-accent-fade, #61afef33)',
             padding: '0.6rem 0.75rem',
             flexShrink: 0,
-            fontSize: '0.7rem',
+            fontSize: '0.82rem',
         }}>
             <div style={{
-                color: '#61afef',
+                color: 'var(--tool-accent)',
                 fontWeight: 700,
                 marginBottom: '0.45rem',
-                fontSize: '0.63rem',
+                fontSize: '0.75rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
             }}>
@@ -105,12 +107,84 @@ function SyntaxHintPanel() {
                     <>{kw('{{')}{kw('$x > 5', 'var(--text-primary)')}{kw(' : ', 'var(--danger-color)')}{kw('200', 'var(--text-primary)')}{kw(' | ', 'var(--danger-color)')}{kw('100', 'var(--text-primary)')}{kw('}}')} </>,
                     <>
                         <span style={{ fontWeight: 600, color: 'var(--tool-text-header)' }}>conditional</span>
-                        {' — if $x &gt; 5 then 200, else 100. '}
+                        {' — if $x > 5 then 200, else 100. '}
                         {dim(': true | false')} syntax, same as audio ref fields
                     </>,
                 )}
                 {row(kw('{{$hp < 10 ? 0.3 : 1}}', 'var(--text-primary)'), <>JS ternary also works — any JavaScript expression is valid</>)}
+                {row(kw('{{$combat * 0.5 + $magic}}', 'var(--text-primary)'), <>arithmetic across multiple variables</>)}
+                {row(kw('{{Math.min($combat, 10) / 10}}', 'var(--text-primary)'), <>Math functions work — {dim('Math.min, Math.max, Math.floor, Math.pow, …')}</>)}
             </div>
+
+            {/* Nested / chaining section */}
+            <button
+                onClick={() => setShowNested(n => !n)}
+                style={{
+                    marginTop: '0.5rem',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--tool-accent)',
+                    cursor: 'pointer',
+                    fontSize: '0.63rem',
+                    fontFamily: 'inherit',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                }}
+            >
+                <span style={{ fontSize: '0.55rem' }}>{showNested ? '▼' : '▶'}</span>
+                {showNested ? 'Hide' : 'Show'} chaining / nested expressions
+            </button>
+
+            {showNested && (
+                <div style={{
+                    marginTop: '0.4rem',
+                    padding: '0.5rem 0.6rem',
+                    background: 'rgba(0,0,0,0.2)',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(97,175,239,0.15)',
+                    fontSize: '0.68rem',
+                    lineHeight: 1.6,
+                    color: 'var(--tool-text-dim)',
+                }}>
+                    <div style={{ color: 'var(--tool-text-header)', fontWeight: 600, marginBottom: '0.3rem', fontSize: '0.63rem' }}>
+                        Chaining multiple values
+                    </div>
+                    <p style={{ margin: '0 0 0.35rem 0' }}>
+                        Each <code style={{ fontFamily: 'monospace', color: 'var(--warning-color)' }}>{'{{'}</code>
+                        …<code style={{ fontFamily: 'monospace', color: 'var(--warning-color)' }}>{'}}'}</code> block is evaluated independently and replaced with its result.
+                        They cannot reference each other directly, but every block can access all quality variables at once.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.1rem 0.7rem', marginBottom: '0.4rem' }}>
+                        {row(
+                            <code style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '0.95em' }}>
+                                .cpm({'{{$bpm}}'}).amp({'{{$volume / 100}}'})
+                            </code>,
+                            <>two separate substitutions in one line — each evaluates its own expression</>
+                        )}
+                        {row(
+                            <code style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '0.95em' }}>
+                                {'{{$hp < 10 ? $mp * 2 : $mp}}'}
+                            </code>,
+                            <>use the value of one variable to compute using another — all vars are in scope</>
+                        )}
+                        {row(
+                            <code style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '0.95em' }}>
+                                {'{{($combat + $magic) > 15 : 200 | 120}}'}
+                            </code>,
+                            <>combine variables in the condition itself</>
+                        )}
+                    </div>
+                    <div style={{ fontSize: '0.63rem', color: 'var(--tool-text-dim)', fontStyle: 'italic', opacity: 0.8 }}>
+                        Tip: the full JavaScript standard library is available inside each {'{{…}}'} block —{' '}
+                        <code style={{ fontFamily: 'monospace' }}>Math, Number, String, Array, JSON</code>, etc.
+                        String qualities use <code style={{ fontFamily: 'monospace', color: 'var(--tool-accent-mauve)' }}>$$varName</code> and
+                        return the raw string value (e.g. <code style={{ fontFamily: 'monospace' }}>"sword"</code>).
+                    </div>
+                </div>
+            )}
+
             <div style={{
                 marginTop: '0.45rem',
                 fontSize: '0.63rem',
@@ -185,7 +259,7 @@ function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId }: ScribeScri
                 flexShrink: 0,
                 background: 'var(--tool-bg)',
             }}>
-                <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--tool-text-dim)' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--tool-text-dim)' }}>
                     Mock Qualities
                 </span>
                 {storyId && (
@@ -198,9 +272,9 @@ function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId }: ScribeScri
                             border: `1px solid ${showPicker ? 'var(--tool-accent)' : 'var(--tool-border)'}`,
                             color: showPicker ? 'var(--tool-accent)' : 'var(--tool-text-dim)',
                             borderRadius: '4px',
-                            padding: '0.2rem 0.5rem',
+                            padding: '0.25rem 0.55rem',
                             cursor: 'pointer',
-                            fontSize: '0.7rem',
+                            fontSize: '0.82rem',
                             fontFamily: 'inherit',
                             whiteSpace: 'nowrap',
                         }}
@@ -217,9 +291,9 @@ function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId }: ScribeScri
                         border: '1px solid var(--success-color)',
                         color: 'var(--success-color)',
                         borderRadius: '4px',
-                        padding: '0.2rem 0.55rem',
+                        padding: '0.25rem 0.6rem',
                         cursor: 'pointer',
-                        fontSize: '0.7rem',
+                        fontSize: '0.82rem',
                         fontFamily: 'inherit',
                         whiteSpace: 'nowrap',
                     }}
@@ -512,13 +586,13 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.4rem',
-                        padding: '0.35rem 0.6rem',
+                        padding: '0.4rem 0.65rem',
                         borderBottom: '1px solid var(--tool-border)',
                         flexShrink: 0,
                         background: 'var(--tool-bg)',
                     }}>
                         <span style={{
-                            fontSize: '0.63rem',
+                            fontSize: '0.75rem',
                             fontWeight: 700,
                             textTransform: 'uppercase',
                             letterSpacing: '0.07em',
@@ -537,9 +611,9 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                 border: `1px solid ${showSyntaxHint ? '#61afef' : '#61afef55'}`,
                                 color: showSyntaxHint ? '#61afef' : 'var(--tool-text-dim)',
                                 borderRadius: '3px',
-                                padding: '0.1rem 0.35rem',
+                                padding: '0.15rem 0.4rem',
                                 cursor: 'pointer',
-                                fontSize: '0.65rem',
+                                fontSize: '0.78rem',
                                 fontFamily: 'monospace',
                                 lineHeight: 1.4,
                                 whiteSpace: 'nowrap',
@@ -559,9 +633,9 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                 border: '1px solid #61afef',
                                 color: '#61afef',
                                 borderRadius: '4px',
-                                padding: '0.25rem 0.6rem',
+                                padding: '0.3rem 0.7rem',
                                 cursor: 'pointer',
-                                fontSize: '0.72rem',
+                                fontSize: '0.85rem',
                                 fontFamily: 'inherit',
                                 whiteSpace: 'nowrap',
                                 display: 'flex',
@@ -623,10 +697,10 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                 }}>
                     <div style={{
                         flexShrink: 0,
-                        padding: '0.35rem 0.65rem',
+                        padding: '0.4rem 0.65rem',
                         borderBottom: '1px solid var(--tool-border)',
                         background: 'var(--tool-bg)',
-                        fontSize: '0.63rem',
+                        fontSize: '0.75rem',
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.07em',
@@ -699,9 +773,9 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                 border: 'none',
                                 borderBottom: bottomTab === tab ? '2px solid #61afef' : '2px solid transparent',
                                 color: bottomTab === tab ? '#61afef' : 'var(--tool-text-dim)',
-                                padding: '0.35rem 0.9rem',
+                                padding: '0.4rem 1rem',
                                 cursor: 'pointer',
-                                fontSize: '0.72rem',
+                                fontSize: '0.85rem',
                                 fontFamily: 'inherit',
                                 letterSpacing: '0.02em',
                                 whiteSpace: 'nowrap',
@@ -714,7 +788,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                     background: '#61afef33',
                                     borderRadius: '99px',
                                     padding: '0 0.4rem',
-                                    fontSize: '0.65rem',
+                                    fontSize: '0.75rem',
                                 }}>
                                     {samples.length}
                                 </span>
@@ -754,8 +828,44 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
 }
 
 // ---------------------------------------------------------------------------
+// Strudel built-in sample bank reference (SuperDirt default samples)
+// ---------------------------------------------------------------------------
+
+const STRUDEL_BUILTINS: { group: string; names: string[]; note?: string }[] = [
+    { group: 'Kick / Bass Drum',  names: ['bd', 'kick', 'bassdm', 'bassdm2', 'gabba', 'industrial'] },
+    { group: 'Snare',             names: ['sd', 'snare', 'sn', 'realsnare', 'realsquares'] },
+    { group: 'Hi-hat',            names: ['hh', 'oh', 'hihat', 'hat'] },
+    { group: 'Clap / Rim',        names: ['cp', 'clap', 'rim', 'cb', 'realclaps'] },
+    { group: 'Cymbal',            names: ['cy', 'cymbal', 'cr', 'rd'] },
+    { group: 'Toms',              names: ['lt', 'mt', 'ht', 'perc'] },
+    { group: 'Full Kits',         names: ['gretsch', 'rnb', 'jazz'], note: 'multi-sample drum kits' },
+    { group: 'Breakbeats',        names: ['amen', 'amencutup', 'breaks125', 'breaks152', 'breaks165', 'breakbeat'], note: 'use :N for different cuts' },
+    { group: 'Bass / Low-end',    names: ['bass', 'bass0', 'bass1', 'bass2', 'bass3', 'jvbass', 'bassdm'] },
+    { group: 'Keyboard / Tonal',  names: ['piano', 'casio', 'rhodes', 'supersaw', 'moog', 'pad', 'lead'] },
+    { group: 'Electronic',        names: ['rave', 'rave2', 'metal', 'noise', 'glitch', 'tech', 'tink', 'feel'] },
+    { group: 'FX / Atmosphere',   names: ['space', 'east', 'west', 'wind', 'seashore', 'bubble', 'click'] },
+    { group: 'Voice / Speech',    names: ['alphabet', 'numbers', 'diphone', 'speech', 'speakspell', 'voice'] },
+    { group: 'Nature',            names: ['birds', 'crow', 'frog', 'insect', 'jungle'] },
+    { group: 'Tabla / World',     names: ['tabla', 'tabla2', 'chin', 'bottle'] },
+    { group: 'General MIDI',      names: ['gm'], note: 'use note() + .s("gm:N") for GM patch N' },
+];
+
+// ---------------------------------------------------------------------------
 // Samples panel sub-component
 // ---------------------------------------------------------------------------
+
+interface LocalGroup {
+    id: string;
+    name: string;
+    category: string;
+    instruments: {
+        id: string;
+        label: string;
+        preview: string | null;
+        files: (string | { note: string; url: string })[];
+        type: 'percussion' | 'melodic';
+    }[];
+}
 
 interface SamplesPanelProps {
     samples: StrudelSample[];
@@ -771,168 +881,306 @@ interface SamplesPanelProps {
     onDelete: (id: string) => void;
 }
 
+/** Shared audio element for previewing local files */
+let _previewAudio: HTMLAudioElement | null = null;
+
+function playPreview(url: string, onEnd?: () => void) {
+    if (_previewAudio) { _previewAudio.pause(); _previewAudio.src = ''; }
+    _previewAudio = new Audio(url);
+    if (onEnd) _previewAudio.onended = onEnd;
+    _previewAudio.play().catch(() => {});
+}
+
+function stopPreview() {
+    if (_previewAudio) { _previewAudio.pause(); _previewAudio.src = ''; _previewAudio = null; }
+}
+
+function copyToClipboard(text: string) {
+    try { navigator.clipboard.writeText(text); } catch { /* ignore */ }
+}
+
 function SamplesPanel({
     samples, isLoading, isUploading, uploadingName, selectedFileName, uploadError,
     fileInputRef, onFileSelect, onNameChange, onUpload, onDelete,
 }: SamplesPanelProps) {
+    const [showBuiltins, setShowBuiltins] = useState(false);
+    const [showLocalLib, setShowLocalLib] = useState(true);
+    const [localGroups, setLocalGroups] = useState<LocalGroup[]>([]);
+    const [localLibSearch, setLocalLibSearch] = useState('');
+    const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+    const [copied, setCopied] = useState<string | null>(null);
+    const [expandedGroup, setExpandedGroup] = useState<string | null>('jazz_kit');
+
+    useEffect(() => {
+        fetch('/api/admin/local-samples')
+            .then(r => r.json())
+            .then(j => setLocalGroups(j.groups || []))
+            .catch(() => {});
+    }, []);
+
+    const handlePlay = useCallback((url: string) => {
+        if (playingUrl === url) { stopPreview(); setPlayingUrl(null); return; }
+        setPlayingUrl(url);
+        playPreview(url, () => setPlayingUrl(null));
+    }, [playingUrl]);
+
+    const handleCopy = useCallback((text: string) => {
+        copyToClipboard(text);
+        setCopied(text);
+        setTimeout(() => setCopied(null), 1500);
+    }, []);
+
+    const canUpload = !!selectedFileName && !!uploadingName.trim() && !isUploading;
+
     const cell: React.CSSProperties = {
-        padding: '0.4rem 0.6rem',
-        fontSize: '0.78rem',
+        padding: '0.45rem 0.65rem',
+        fontSize: '0.88rem',
         borderBottom: '1px solid var(--tool-border)',
         color: 'var(--tool-text-header)',
         verticalAlign: 'middle',
     };
     const dimCell: React.CSSProperties = { ...cell, color: 'var(--tool-text-dim)' };
 
-    const canUpload = !!selectedFileName && !!uploadingName.trim() && !isUploading;
+    // ── Chip used for both local library and Strudel builtins ────────────────
+    const Chip = ({ label, previewUrl, copyText, color = 'var(--info-color)' }: {
+        label: string; previewUrl?: string | null; copyText: string; color?: string;
+    }) => {
+        const isPlaying = previewUrl && playingUrl === previewUrl;
+        return (
+            <span
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    fontFamily: 'monospace',
+                    color,
+                    background: `${color}18`,
+                    border: `1px solid ${color}44`,
+                    borderRadius: '4px',
+                    padding: '0.1rem 0.35rem',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    transition: 'background 0.12s',
+                    position: 'relative',
+                }}
+            >
+                {previewUrl && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handlePlay(previewUrl); }}
+                        title={isPlaying ? 'Stop' : 'Preview'}
+                        style={{
+                            background: 'none', border: 'none', padding: '0 2px 0 0',
+                            color: isPlaying ? color : `${color}99`,
+                            cursor: 'pointer', fontSize: '0.7rem', lineHeight: 1,
+                        }}
+                    >
+                        {isPlaying ? '■' : '▶'}
+                    </button>
+                )}
+                <span
+                    onClick={() => handleCopy(copyText)}
+                    title={`Click to copy: ${copyText}`}
+                    style={{ cursor: 'pointer' }}
+                >
+                    {label}
+                </span>
+                {copied === copyText && (
+                    <span style={{ position: 'absolute', top: '-1.4rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--tool-bg)', border: '1px solid var(--tool-border)', borderRadius: '3px', padding: '0.1rem 0.35rem', fontSize: '0.68rem', whiteSpace: 'nowrap', color: 'var(--success-color)', zIndex: 20 }}>
+                        copied!
+                    </span>
+                )}
+            </span>
+        );
+    };
 
     return (
-        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, boxSizing: 'border-box', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxSizing: 'border-box' }}>
 
-            {/* Upload form — always visible */}
-            <div style={{
-                background: 'rgba(97,175,239,0.05)',
-                border: '1px dashed #61afef55',
-                borderRadius: '6px',
-                padding: '0.75rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.6rem',
-                flexShrink: 0,
-            }}>
-                <span style={{ fontSize: '0.68rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Upload Sample
-                </span>
-
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="audio/*,.wav,.mp3,.ogg,.flac,.aiff,.webm"
-                        onChange={onFileSelect}
-                        style={{ display: 'none' }}
-                    />
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        style={{
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid var(--tool-border)',
-                            color: 'var(--tool-text-header)',
-                            borderRadius: '4px',
-                            padding: '0.3rem 0.75rem',
-                            cursor: 'pointer',
-                            fontSize: '0.78rem',
-                            fontFamily: 'inherit',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        Choose file…
-                    </button>
-                    <span style={{ fontSize: '0.72rem', color: selectedFileName ? 'var(--tool-text-header)' : 'var(--tool-text-dim)', fontFamily: 'monospace' }}>
-                        {selectedFileName || 'wav · mp3 · ogg · flac · aiff · webm'}
+                {/* ── Upload form ──────────────────────────────────────────── */}
+                <div style={{
+                    background: 'rgba(97,175,239,0.05)',
+                    border: '1px dashed var(--tool-accent-fade, #61afef55)',
+                    borderRadius: '6px',
+                    padding: '0.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.6rem',
+                    flexShrink: 0,
+                }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Upload Custom Sample (Cloud)
                     </span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input ref={fileInputRef} type="file" accept="audio/*,.wav,.mp3,.ogg,.flac,.aiff,.webm" onChange={onFileSelect} style={{ display: 'none' }} />
+                        <button onClick={() => fileInputRef.current?.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--tool-border)', color: 'var(--tool-text-header)', borderRadius: '4px', padding: '0.35rem 0.8rem', cursor: 'pointer', fontSize: '0.88rem', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                            Choose file…
+                        </button>
+                        <span style={{ fontSize: '0.82rem', color: selectedFileName ? 'var(--tool-text-header)' : 'var(--tool-text-dim)', fontFamily: 'monospace' }}>
+                            {selectedFileName || 'wav · mp3 · ogg · flac · aiff · webm'}
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label style={{ fontSize: '0.82rem', color: 'var(--tool-text-dim)', whiteSpace: 'nowrap' }}>Name in Strudel:</label>
+                        <input value={uploadingName} onChange={e => onNameChange(e.target.value)} placeholder="e.g. kick" style={{ background: 'var(--tool-bg-code-editor, #1a1a1a)', border: '1px solid var(--tool-border)', borderRadius: '4px', color: 'var(--tool-text-header)', padding: '0.35rem 0.55rem', fontSize: '0.88rem', fontFamily: 'monospace', width: '140px', outline: 'none' }} />
+                        <button onClick={onUpload} disabled={!canUpload} style={{ background: canUpload ? 'rgba(152,195,121,0.2)' : 'rgba(152,195,121,0.07)', border: '1px solid var(--success-color)', color: 'var(--success-color)', borderRadius: '4px', padding: '0.35rem 0.8rem', cursor: canUpload ? 'pointer' : 'default', fontSize: '0.88rem', fontFamily: 'inherit', opacity: canUpload ? 1 : 0.4 }}>
+                            {isUploading ? 'Uploading…' : '↑ Upload'}
+                        </button>
+                    </div>
+                    {uploadError && <span style={{ fontSize: '0.82rem', color: 'var(--danger-color)' }}>{uploadError}</span>}
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <label style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', whiteSpace: 'nowrap' }}>
-                        Name in Strudel:
-                    </label>
-                    <input
-                        value={uploadingName}
-                        onChange={e => onNameChange(e.target.value)}
-                        placeholder="e.g. kick"
-                        style={{
-                            background: '#1a1a1a',
-                            border: '1px solid var(--tool-border)',
-                            borderRadius: '4px',
-                            color: 'var(--tool-text-header)',
-                            padding: '0.3rem 0.5rem',
-                            fontSize: '0.78rem',
-                            fontFamily: 'monospace',
-                            width: '140px',
-                        }}
-                    />
-                    <button
-                        onClick={onUpload}
-                        disabled={!canUpload}
-                        title={!selectedFileName ? 'Choose a file first' : !uploadingName.trim() ? 'Enter a name' : 'Upload'}
-                        style={{
-                            background: canUpload ? 'rgba(98,198,84,0.2)' : 'rgba(98,198,84,0.07)',
-                            border: '1px solid #98c379',
-                            color: '#98c379',
-                            borderRadius: '4px',
-                            padding: '0.3rem 0.75rem',
-                            cursor: canUpload ? 'pointer' : 'default',
-                            fontSize: '0.78rem',
-                            fontFamily: 'inherit',
-                            opacity: canUpload ? 1 : 0.4,
-                        }}
-                    >
-                        {isUploading ? 'Uploading…' : '↑ Upload'}
-                    </button>
-                </div>
-
-                {uploadError && (
-                    <span style={{ fontSize: '0.72rem', color: '#e06c75' }}>{uploadError}</span>
+                {/* ── Cloud-uploaded samples ────────────────────────────────── */}
+                {isLoading ? (
+                    <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.88rem' }}>Loading samples…</span>
+                ) : samples.length > 0 && (
+                    <>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Cloud Samples</div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--tool-border)' }}>
+                                    <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em' }}>Name</th>
+                                    <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em' }}>Usage</th>
+                                    <th style={{ ...dimCell, textAlign: 'right', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em' }}>Size</th>
+                                    <th style={{ ...dimCell, width: '52px' }} />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {samples.map(s => (
+                                    <tr key={s.id} style={{ borderBottom: '1px solid var(--tool-border)' }}>
+                                        <td style={cell}><code style={{ fontFamily: 'monospace', color: 'var(--warning-color)' }}>{s.id}</code></td>
+                                        <td style={dimCell}><code style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--info-color)' }}>.s("{s.id}")</code></td>
+                                        <td style={{ ...dimCell, textAlign: 'right' }}>{formatBytes(s.size)}</td>
+                                        <td style={{ ...cell, textAlign: 'right', padding: '0 0.4rem' }}>
+                                            <div style={{ display: 'flex', gap: '2px', justifyContent: 'flex-end' }}>
+                                                <button onClick={() => handlePlay(s.url)} title={playingUrl === s.url ? 'Stop' : 'Preview'} style={{ background: playingUrl === s.url ? 'rgba(97,175,239,0.2)' : 'none', border: 'none', color: playingUrl === s.url ? 'var(--tool-accent)' : 'var(--tool-text-dim)', cursor: 'pointer', fontSize: '1rem', padding: '0 4px', lineHeight: 1 }}>
+                                                    {playingUrl === s.url ? '■' : '▶'}
+                                                </button>
+                                                <button onClick={() => onDelete(s.id)} title={`Delete "${s.id}"`} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', fontSize: '1.1rem', padding: '0 4px', lineHeight: 1 }}>×</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
                 )}
-            </div>
 
-            {/* Samples list */}
-            {isLoading ? (
-                <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem' }}>Loading samples…</span>
-            ) : samples.length === 0 ? (
-                <div style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', textAlign: 'center', marginTop: '1rem' }}>
-                    No samples uploaded yet.<br />
-                    <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>
-                        Upload a sample, then use it in Strudel with <code style={{ fontFamily: 'monospace' }}>.s("name")</code>
-                    </span>
+                {/* ── Chronicle Hub local sound library ────────────────────── */}
+                <div style={{ flexShrink: 0 }}>
+                    <button
+                        onClick={() => setShowLocalLib(l => !l)}
+                        style={{ background: showLocalLib ? 'rgba(229,192,123,0.08)' : 'transparent', border: `1px solid ${showLocalLib ? 'var(--warning-color)' : 'var(--tool-border)'}`, color: showLocalLib ? 'var(--warning-color)' : 'var(--tool-text-dim)', borderRadius: '4px', padding: '0.35rem 0.7rem', cursor: 'pointer', fontSize: '0.88rem', fontFamily: 'inherit', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                        <span style={{ fontSize: '0.7rem' }}>{showLocalLib ? '▼' : '▶'}</span>
+                        Chronicle Hub Sound Library
+                        <span style={{ marginLeft: 'auto', opacity: 0.65, fontSize: '0.75rem' }}>local · click ▶ to preview</span>
+                    </button>
+
+                    {showLocalLib && localGroups.length > 0 && (
+                        <div style={{ marginTop: '0.5rem', border: '1px solid var(--tool-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                            {/* Search */}
+                            <div style={{ padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-sidebar)' }}>
+                                <input
+                                    value={localLibSearch}
+                                    onChange={e => setLocalLibSearch(e.target.value)}
+                                    placeholder="Filter instruments…"
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--tool-text-header)', outline: 'none', fontSize: '0.85rem', fontFamily: 'inherit', width: '100%' }}
+                                />
+                            </div>
+                            {/* Groups */}
+                            {localGroups.map(group => {
+                                const filtered = localLibSearch.trim()
+                                    ? group.instruments.filter(i => i.label.toLowerCase().includes(localLibSearch.toLowerCase()) || i.id.toLowerCase().includes(localLibSearch.toLowerCase()))
+                                    : group.instruments;
+                                if (filtered.length === 0) return null;
+                                const isOpen = expandedGroup === group.id || !!localLibSearch.trim();
+                                return (
+                                    <div key={group.id} style={{ borderBottom: '1px solid var(--tool-border)' }}>
+                                        <button
+                                            onClick={() => setExpandedGroup(isOpen && !localLibSearch.trim() ? null : group.id)}
+                                            style={{ width: '100%', textAlign: 'left', background: 'var(--tool-bg)', border: 'none', padding: '0.4rem 0.65rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        >
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--tool-text-dim)' }}>{isOpen ? '▼' : '▶'}</span>
+                                            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--tool-text-header)' }}>{group.name}</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>{group.category}</span>
+                                            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--tool-text-dim)' }}>{filtered.length} instruments</span>
+                                        </button>
+                                        {isOpen && (
+                                            <div style={{ padding: '0.4rem 0.65rem 0.5rem', background: 'var(--tool-bg-sidebar)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                                {filtered.map(inst => {
+                                                    const previewUrl = inst.preview;
+                                                    const strudelId = inst.id;
+                                                    return (
+                                                        <div key={inst.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', borderBottom: '1px solid var(--tool-border)' }}>
+                                                            <button
+                                                                onClick={() => previewUrl && handlePlay(previewUrl)}
+                                                                title={previewUrl ? (playingUrl === previewUrl ? 'Stop' : 'Preview') : 'No preview'}
+                                                                disabled={!previewUrl}
+                                                                style={{ background: previewUrl && playingUrl === previewUrl ? 'rgba(229,192,123,0.2)' : 'transparent', border: `1px solid ${previewUrl && playingUrl === previewUrl ? 'var(--warning-color)' : 'var(--tool-border)'}`, color: previewUrl ? (playingUrl === previewUrl ? 'var(--warning-color)' : 'var(--tool-text-dim)') : 'transparent', borderRadius: '3px', padding: '0.1rem 0.4rem', cursor: previewUrl ? 'pointer' : 'default', fontSize: '0.78rem', lineHeight: 1 }}
+                                                            >
+                                                                {previewUrl && playingUrl === previewUrl ? '■' : '▶'}
+                                                            </button>
+                                                            <span style={{ flex: 1, fontSize: '0.88rem', color: 'var(--tool-text-header)' }}>{inst.label}</span>
+                                                            <code
+                                                                onClick={() => handleCopy(strudelId)}
+                                                                title="Click to copy Strudel sample name"
+                                                                style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--warning-color)', background: 'rgba(229,192,123,0.1)', borderRadius: '3px', padding: '0.1rem 0.35rem', cursor: 'pointer', position: 'relative' }}
+                                                            >
+                                                                {strudelId}
+                                                                {copied === strudelId && <span style={{ position: 'absolute', top: '-1.5rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--tool-bg)', border: '1px solid var(--tool-border)', borderRadius: '3px', padding: '0.1rem 0.3rem', fontSize: '0.68rem', color: 'var(--success-color)', whiteSpace: 'nowrap', zIndex: 20 }}>copied!</span>}
+                                                            </code>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    {showLocalLib && localGroups.length === 0 && (
+                        <div style={{ marginTop: '0.4rem', padding: '0.6rem', background: 'var(--tool-bg-sidebar)', borderRadius: '4px', color: 'var(--tool-text-dim)', fontSize: '0.85rem' }}>
+                            Loading library…
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                    <thead>
-                        <tr style={{ borderBottom: '1px solid var(--tool-border)' }}>
-                            <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Name</th>
-                            <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Usage in Strudel</th>
-                            <th style={{ ...dimCell, textAlign: 'right', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Size</th>
-                            <th style={{ ...dimCell, width: '36px' }} />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {samples.map(s => (
-                            <tr key={s.id} style={{ borderBottom: '1px solid var(--tool-border)' }}>
-                                <td style={cell}>
-                                    <code style={{ fontFamily: 'monospace', color: '#e5c07b' }}>{s.id}</code>
-                                </td>
-                                <td style={dimCell}>
-                                    <code style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#56b6c2' }}>
-                                        .s("{s.id}")
-                                    </code>
-                                </td>
-                                <td style={{ ...dimCell, textAlign: 'right' }}>
-                                    {formatBytes(s.size)}
-                                </td>
-                                <td style={{ ...dimCell, textAlign: 'right', padding: '0 0.4rem' }}>
-                                    <button
-                                        onClick={() => onDelete(s.id)}
-                                        title={`Delete sample "${s.id}"`}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            color: '#e06c75',
-                                            cursor: 'pointer',
-                                            fontSize: '1rem',
-                                            padding: '0 4px',
-                                            lineHeight: 1,
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
+
+                {/* ── Strudel built-in samples reference ───────────────────── */}
+                <div style={{ flexShrink: 0 }}>
+                    <button
+                        onClick={() => setShowBuiltins(b => !b)}
+                        style={{ background: showBuiltins ? 'rgba(86,182,194,0.08)' : 'transparent', border: `1px solid ${showBuiltins ? 'var(--info-color)' : 'var(--tool-border)'}`, color: showBuiltins ? 'var(--info-color)' : 'var(--tool-text-dim)', borderRadius: '4px', padding: '0.35rem 0.7rem', cursor: 'pointer', fontSize: '0.88rem', fontFamily: 'inherit', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                        <span style={{ fontSize: '0.7rem' }}>{showBuiltins ? '▼' : '▶'}</span>
+                        Strudel Built-in Samples (SuperDirt)
+                        <span style={{ marginLeft: 'auto', opacity: 0.65, fontSize: '0.75rem' }}>click chip to copy name</span>
+                    </button>
+
+                    {showBuiltins && (
+                        <div style={{ marginTop: '0.5rem', border: '1px solid var(--tool-border)', borderRadius: '4px', overflow: 'hidden', fontSize: '0.85rem' }}>
+                            <div style={{ padding: '0.5rem 0.7rem', background: 'var(--tool-bg-sidebar)', borderBottom: '1px solid var(--tool-border)', color: 'var(--tool-text-dim)', fontSize: '0.78rem' }}>
+                                Built in to Strudel.cc — use <code style={{ fontFamily: 'monospace', color: 'var(--info-color)' }}>.s("name")</code> or <code style={{ fontFamily: 'monospace', color: 'var(--info-color)' }}>s("name")</code>.
+                                Append <code style={{ fontFamily: 'monospace', color: 'var(--info-color)' }}>:N</code> for variation (e.g. <code style={{ fontFamily: 'monospace' }}>s("bd:2")</code>).
+                                Click a chip to copy its name.
+                            </div>
+                            {STRUDEL_BUILTINS.map(group => (
+                                <div key={group.group} style={{ padding: '0.45rem 0.7rem', borderBottom: '1px solid var(--tool-border)', display: 'flex', alignItems: 'baseline', gap: '0.65rem', flexWrap: 'wrap' }}>
+                                    <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.75rem', flexShrink: 0, minWidth: '140px' }}>{group.group}</span>
+                                    <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        {group.names.map(n => (
+                                            <Chip key={n} label={n} copyText={n} />
+                                        ))}
+                                    </span>
+                                    {group.note && <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.72rem', fontStyle: 'italic' }}>— {group.note}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
