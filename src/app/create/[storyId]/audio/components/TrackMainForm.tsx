@@ -90,6 +90,7 @@ export default function TrackMainForm({ initialData, onSave, onDelete, onDuplica
                 <StrudelEditor
                     data={form}
                     onChange={(newSource) => handleChange('source', newSource)}
+                    storyId={storyId}
                 />
             </div>
             <div style={{ flexShrink: 0, height: '80px', position: 'relative', zIndex: 100 }}>

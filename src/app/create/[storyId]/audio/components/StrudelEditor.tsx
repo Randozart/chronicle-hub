@@ -1,7 +1,7 @@
 // src/app/create/[storyId]/audio/components/StrudelEditor.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LigatureTrack } from '@/engine/audio/models';
 import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
@@ -25,6 +25,7 @@ interface StrudelSample {
 interface Props {
     data: LigatureTrack;
     onChange?: (source: string) => void;
+    storyId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,11 +68,11 @@ function SyntaxHintPanel() {
         </>
     );
 
-    const kw = (s: string, color = '#e5c07b') => (
+    const kw = (s: string, color = 'var(--warning-color)') => (
         <code style={{ fontFamily: 'monospace', color, whiteSpace: 'nowrap' }}>{s}</code>
     );
     const dim = (s: string) => (
-        <code style={{ fontFamily: 'monospace', color: '#abb2bf', fontSize: '0.9em' }}>{s}</code>
+        <code style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '0.9em' }}>{s}</code>
     );
 
     return (
@@ -99,16 +100,16 @@ function SyntaxHintPanel() {
                 lineHeight: 1.7,
             }}>
                 {row(kw('{{$varName}}'), <>numeric quality level — {dim('{{$bpm}} → 120')}</>)}
-                {row(kw('{{$$varName}}', '#c678dd'), <>string quality value — {dim('{{$$weapon}} → "sword"')}</>)}
+                {row(kw('{{$$varName}}', 'var(--tool-accent-mauve)'), <>string quality value — {dim('{{$$weapon}} → "sword"')}</>)}
                 {row(
-                    <>{kw('{{')}{kw('$x > 5', '#abb2bf')}{kw(' : ', '#e06c75')}{kw('200', '#abb2bf')}{kw(' | ', '#e06c75')}{kw('100', '#abb2bf')}{kw('}}')} </>,
+                    <>{kw('{{')}{kw('$x > 5', 'var(--text-primary)')}{kw(' : ', 'var(--danger-color)')}{kw('200', 'var(--text-primary)')}{kw(' | ', 'var(--danger-color)')}{kw('100', 'var(--text-primary)')}{kw('}}')} </>,
                     <>
                         <span style={{ fontWeight: 600, color: 'var(--tool-text-header)' }}>conditional</span>
                         {' — if $x &gt; 5 then 200, else 100. '}
                         {dim(': true | false')} syntax, same as audio ref fields
                     </>,
                 )}
-                {row(kw('{{$hp < 10 ? 0.3 : 1}}', '#abb2bf'), <>JS ternary also works — any JavaScript expression is valid</>)}
+                {row(kw('{{$hp < 10 ? 0.3 : 1}}', 'var(--text-primary)'), <>JS ternary also works — any JavaScript expression is valid</>)}
             </div>
             <div style={{
                 marginTop: '0.45rem',
@@ -128,78 +129,154 @@ function SyntaxHintPanel() {
 // ScribeScript tester tab
 // ---------------------------------------------------------------------------
 
+interface DebugRow { key: string; value: string; }
+
 interface ScribeScriptTabProps {
-    preprocessedPreview: string;
     onSendWithTestValues: () => void;
     onUpdate: (qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => void;
+    storyId?: string;
 }
 
-function ScribeScriptTab({ preprocessedPreview, onSendWithTestValues, onUpdate }: ScribeScriptTabProps) {
+function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId }: ScribeScriptTabProps) {
+    const [players, setPlayers] = useState<any[]>([]);
+    const [showPicker, setShowPicker] = useState(false);
+    const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
+
+    // Character import — owns the imported rows and reset key for ScribeDebugger
+    const [importedRows, setImportedRows] = useState<DebugRow[] | undefined>(undefined);
+    const [importResetKey, setImportResetKey] = useState(0);
+
+    const handleOpenPicker = async () => {
+        if (!storyId) return;
+        if (players.length === 0) {
+            setIsLoadingPlayers(true);
+            try {
+                const res = await fetch(`/api/admin/players?storyId=${storyId}`);
+                const data = await res.json();
+                setPlayers(Array.isArray(data) ? data : []);
+            } catch { /* ignore */ } finally {
+                setIsLoadingPlayers(false);
+            }
+        }
+        setShowPicker(p => !p);
+    };
+
+    const handleSelectCharacter = (player: any) => {
+        const rows: DebugRow[] = Object.entries(player.qualities ?? {})
+            .map(([key, q]: [string, any]) => ({
+                key,
+                value: (q.stringValue && q.level === 0) ? String(q.stringValue) : String(q.level ?? 0),
+            }))
+            .filter((r: DebugRow) => r.key);
+        setImportedRows(rows);
+        setImportResetKey(k => k + 1);
+        setShowPicker(false);
+    };
+
     return (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-
-            {/* Left: quality variable editor */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Header bar */}
             <div style={{
-                flex: '0 0 210px',
-                overflow: 'hidden',
-                borderRight: '1px solid var(--tool-border)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.3rem 0.65rem',
+                borderBottom: '1px solid var(--tool-border)',
+                flexShrink: 0,
+                background: 'var(--tool-bg)',
             }}>
-                <ScribeDebugger onUpdate={onUpdate} />
-            </div>
-
-            {/* Right: preprocessed preview */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.3rem 0.65rem',
-                    borderBottom: '1px solid var(--tool-border)',
-                    flexShrink: 0,
-                    background: 'var(--tool-bg)',
-                }}>
-                    <span style={{
-                        flex: 1,
-                        fontSize: '0.63rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.07em',
-                        color: 'var(--tool-text-dim)',
-                    }}>
-                        Preprocessed Output
-                    </span>
+                <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--tool-text-dim)' }}>
+                    Mock Qualities
+                </span>
+                {storyId && (
                     <button
-                        onClick={onSendWithTestValues}
-                        title="Send preprocessed code to the Strudel REPL using these test quality values"
+                        onClick={handleOpenPicker}
+                        disabled={isLoadingPlayers}
+                        title="Import quality state from a real character in this story"
                         style={{
-                            background: 'rgba(152,195,121,0.15)',
-                            border: '1px solid #98c379',
-                            color: '#98c379',
+                            background: showPicker ? 'rgba(97,175,239,0.15)' : 'transparent',
+                            border: `1px solid ${showPicker ? 'var(--tool-accent)' : 'var(--tool-border)'}`,
+                            color: showPicker ? 'var(--tool-accent)' : 'var(--tool-text-dim)',
                             borderRadius: '4px',
-                            padding: '0.2rem 0.55rem',
+                            padding: '0.2rem 0.5rem',
                             cursor: 'pointer',
                             fontSize: '0.7rem',
                             fontFamily: 'inherit',
                             whiteSpace: 'nowrap',
                         }}
                     >
-                        ▶ Send with Test Values
+                        {isLoadingPlayers ? '…' : '⬇ Import Character State'}
                     </button>
-                </div>
-                <pre style={{
-                    flex: 1,
-                    margin: 0,
-                    padding: '0.55rem 0.75rem',
+                )}
+                <span style={{ flex: 1 }} />
+                <button
+                    onClick={onSendWithTestValues}
+                    title="Send source code preprocessed with these quality values to the Strudel REPL"
+                    style={{
+                        background: 'rgba(152,195,121,0.15)',
+                        border: '1px solid var(--success-color)',
+                        color: 'var(--success-color)',
+                        borderRadius: '4px',
+                        padding: '0.2rem 0.55rem',
+                        cursor: 'pointer',
+                        fontSize: '0.7rem',
+                        fontFamily: 'inherit',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    ▶ Send with Test Values
+                </button>
+            </div>
+
+            {/* Character picker — drops in below the header */}
+            {showPicker && (
+                <div style={{
+                    flexShrink: 0,
+                    borderBottom: '1px solid var(--tool-border)',
+                    background: 'var(--tool-bg-sidebar)',
+                    maxHeight: '150px',
                     overflowY: 'auto',
-                    fontSize: '0.78rem',
-                    fontFamily: 'monospace',
-                    color: '#abb2bf',
-                    background: 'rgba(0,0,0,0.25)',
-                    lineHeight: 1.55,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
                 }}>
-                    {preprocessedPreview}
-                </pre>
+                    {players.length === 0 ? (
+                        <div style={{ padding: '0.6rem 0.75rem', color: 'var(--tool-text-dim)', fontSize: '0.75rem' }}>
+                            No characters found in this story.
+                        </div>
+                    ) : players.map((p, i) => (
+                        <button
+                            key={p._id ?? i}
+                            onClick={() => handleSelectCharacter(p)}
+                            style={{
+                                display: 'block',
+                                width: '100%',
+                                textAlign: 'left',
+                                background: 'none',
+                                border: 'none',
+                                borderBottom: '1px solid var(--tool-border)',
+                                padding: '0.4rem 0.75rem',
+                                cursor: 'pointer',
+                                color: 'var(--tool-text-header)',
+                                fontSize: '0.75rem',
+                                fontFamily: 'inherit',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(97,175,239,0.08)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                        >
+                            <span style={{ fontWeight: 600 }}>{p.name || 'Unnamed'}</span>
+                            <span style={{ marginLeft: '0.5rem', color: 'var(--tool-text-dim)', fontSize: '0.7rem' }}>
+                                {p.username} · {Object.keys(p.qualities ?? {}).length} qualities
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Quality variable editor — fills remaining space */}
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <ScribeDebugger
+                    onUpdate={onUpdate}
+                    initialRows={importedRows}
+                    resetKey={importResetKey}
+                />
             </div>
         </div>
     );
@@ -209,14 +286,28 @@ function ScribeScriptTab({ preprocessedPreview, onSendWithTestValues, onUpdate }
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function StrudelEditor({ data, onChange }: Props) {
+export default function StrudelEditor({ data, onChange, storyId }: Props) {
     const initialSource = data.source || DEFAULT_STRUDEL_SOURCE;
 
     // Editor state
     const [rawSource, setRawSource] = useState(initialSource);
     const [iframeSrc, setIframeSrc] = useState(() => buildStrudelUrl(initialSource));
     const [bottomTab, setBottomTab] = useState<'scribe' | 'samples'>('scribe');
-    const [showSyntaxHint, setShowSyntaxHint] = useState(false);
+
+    // Syntax hint — open by default for first-time users, persisted in localStorage
+    const [showSyntaxHint, setShowSyntaxHint] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return true;
+        const stored = window.localStorage.getItem('strudel-syntax-hint');
+        return stored === null ? true : stored === 'true';
+    });
+
+    const toggleSyntaxHint = useCallback(() => {
+        setShowSyntaxHint(prev => {
+            const next = !prev;
+            try { window.localStorage.setItem('strudel-syntax-hint', String(next)); } catch { /* ignore */ }
+            return next;
+        });
+    }, []);
 
     // Mock qualities for ScribeScript tester
     const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
@@ -240,14 +331,6 @@ export default function StrudelEditor({ data, onChange }: Props) {
 
     const debouncedSource = useDebounce(rawSource, 500);
 
-    // Live preview: source with mock qualities substituted — updates on each keystroke
-    const preprocessedPreview = useMemo(() => {
-        try {
-            return preprocessStrudelSource(rawSource, mockQualities);
-        } catch {
-            return rawSource;
-        }
-    }, [rawSource, mockQualities]);
 
     // ── Sync when a different track is selected ────────────────────────────────
     useEffect(() => {
@@ -447,7 +530,7 @@ export default function StrudelEditor({ data, onChange }: Props) {
 
                         {/* ScribeScript syntax toggle */}
                         <button
-                            onClick={() => setShowSyntaxHint(h => !h)}
+                            onClick={toggleSyntaxHint}
                             title={showSyntaxHint ? 'Hide ScribeScript syntax reference' : 'Show ScribeScript syntax reference ({{...}} templates)'}
                             style={{
                                 background: showSyntaxHint ? 'rgba(97,175,239,0.15)' : 'transparent',
@@ -644,9 +727,9 @@ export default function StrudelEditor({ data, onChange }: Props) {
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     {bottomTab === 'scribe' && (
                         <ScribeScriptTab
-                            preprocessedPreview={preprocessedPreview}
                             onSendWithTestValues={handleSendWithTestValues}
                             onUpdate={handleDebuggerUpdate}
+                            storyId={storyId}
                         />
                     )}
                     {bottomTab === 'samples' && (
