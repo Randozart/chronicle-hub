@@ -81,9 +81,46 @@ export function resolveAudioRef(
 }
 
 /**
+ * Evaluates a ScribeScript conditional shorthand expression:
+ *   condition : trueValue | falseValue
+ *
+ * This is an alternative to the JS ternary (condition ? a : b) that matches
+ * the syntax used in audio ref fields. Only applied when no `?` is present
+ * (to avoid ambiguity with JS ternary expressions).
+ *
+ * Returns the resolved string, or null if the expression does not match the
+ * conditional pattern.
+ */
+function tryConditionalTemplate(expression: string, ctx: Record<string, unknown>): string | null {
+    // Only apply our shorthand if there is no JS ternary `?` in the expression
+    if (expression.includes('?')) return null;
+
+    // Match: <condition> : <trueBranch> | <falseBranch>
+    // Uses a non-greedy match on the condition to find the first bare `:`.
+    // The `s` flag allows `.` to span newlines.
+    const match = expression.match(/^([\s\S]+?)\s*:\s*([\s\S]+?)\s*\|\s*([\s\S]+)$/);
+    if (!match) return null;
+
+    const [, condition, trueBranch, falseBranch] = match;
+    try {
+        const condResult = evaluateExpression(condition.trim(), ctx);
+        const isTrue = condResult !== 'false' && condResult !== '0' && condResult.trim() !== '';
+        return (isTrue ? trueBranch : falseBranch).trim();
+    } catch {
+        return null; // Fall through to plain JS evaluation
+    }
+}
+
+/**
  * Replaces all {{expression}} placeholders in the given Strudel source with
  * the evaluated value of each expression, using the provided player qualities
  * as the variable context.
+ *
+ * Two expression syntaxes are supported:
+ *
+ *   {{$bpm + 10}}              — any JavaScript expression
+ *   {{$combat > 5 : 200 | 100}} — ScribeScript conditional shorthand
+ *                                  (equivalent to $combat > 5 ? 200 : 100)
  *
  * If an expression fails to evaluate, the original placeholder is preserved.
  */
@@ -93,8 +130,13 @@ export function preprocessStrudelSource(
 ): string {
     const ctx = buildContext(qualities);
     return source.replace(/\{\{([\s\S]*?)\}\}/g, (_match, expression: string) => {
+        const trimmed = expression.trim();
         try {
-            return evaluateExpression(expression.trim(), ctx);
+            // Try ScribeScript conditional shorthand first: condition : true | false
+            const conditional = tryConditionalTemplate(trimmed, ctx);
+            if (conditional !== null) return conditional;
+            // Fall back to plain JavaScript expression
+            return evaluateExpression(trimmed, ctx);
         } catch {
             return _match; // Preserve the original template on error
         }

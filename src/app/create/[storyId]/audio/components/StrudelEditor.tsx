@@ -1,11 +1,13 @@
 // src/app/create/[storyId]/audio/components/StrudelEditor.tsx
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { LigatureTrack } from '@/engine/audio/models';
+import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
 import { useDebounce } from '@/hooks/useDebounce';
 import dynamic from 'next/dynamic';
+import ScribeDebugger from '@/components/admin/ScribeDebugger';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
 
@@ -26,16 +28,17 @@ interface Props {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Constants
 // ---------------------------------------------------------------------------
 
 const DEFAULT_STRUDEL_SOURCE = `note("c3 e3 g3 c4").s("piano").slow(2)`;
-const MIN_TOP_PCT = 15;
-const MIN_BOTTOM_PCT = 15;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function buildStrudelUrl(code: string): string {
     // Strudel decodes its URL hash with atob() directly (no decodeURIComponent).
-    // Strudel code is ASCII JavaScript, so btoa(code) is correct.
     try {
         return `https://strudel.cc/?embed#${btoa(code)}`;
     } catch {
@@ -50,7 +53,160 @@ function formatBytes(bytes: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Syntax hint panel
+// ---------------------------------------------------------------------------
+
+function SyntaxHintPanel() {
+    const row = (
+        example: React.ReactNode,
+        desc: React.ReactNode,
+    ): React.ReactNode => (
+        <>
+            <div style={{ paddingTop: '0.15rem' }}>{example}</div>
+            <div style={{ color: 'var(--tool-text-dim)', paddingTop: '0.15rem' }}>{desc}</div>
+        </>
+    );
+
+    const kw = (s: string, color = '#e5c07b') => (
+        <code style={{ fontFamily: 'monospace', color, whiteSpace: 'nowrap' }}>{s}</code>
+    );
+    const dim = (s: string) => (
+        <code style={{ fontFamily: 'monospace', color: '#abb2bf', fontSize: '0.9em' }}>{s}</code>
+    );
+
+    return (
+        <div style={{
+            background: 'rgba(97, 175, 239, 0.05)',
+            borderBottom: '1px solid #61afef33',
+            padding: '0.6rem 0.75rem',
+            flexShrink: 0,
+            fontSize: '0.7rem',
+        }}>
+            <div style={{
+                color: '#61afef',
+                fontWeight: 700,
+                marginBottom: '0.45rem',
+                fontSize: '0.63rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+            }}>
+                ScribeScript — {'{{'}…{'}}'}  Template Syntax
+            </div>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr',
+                gap: '0.05rem 0.85rem',
+                lineHeight: 1.7,
+            }}>
+                {row(kw('{{$varName}}'), <>numeric quality level — {dim('{{$bpm}} → 120')}</>)}
+                {row(kw('{{$$varName}}', '#c678dd'), <>string quality value — {dim('{{$$weapon}} → "sword"')}</>)}
+                {row(
+                    <>{kw('{{')}{kw('$x > 5', '#abb2bf')}{kw(' : ', '#e06c75')}{kw('200', '#abb2bf')}{kw(' | ', '#e06c75')}{kw('100', '#abb2bf')}{kw('}}')} </>,
+                    <>
+                        <span style={{ fontWeight: 600, color: 'var(--tool-text-header)' }}>conditional</span>
+                        {' — if $x &gt; 5 then 200, else 100. '}
+                        {dim(': true | false')} syntax, same as audio ref fields
+                    </>,
+                )}
+                {row(kw('{{$hp < 10 ? 0.3 : 1}}', '#abb2bf'), <>JS ternary also works — any JavaScript expression is valid</>)}
+            </div>
+            <div style={{
+                marginTop: '0.45rem',
+                fontSize: '0.63rem',
+                color: 'var(--tool-text-dim)',
+                opacity: 0.75,
+                fontStyle: 'italic',
+            }}>
+                Templates are substituted when ▶ Send to REPL is clicked.
+                Use the ScribeScript Tester tab below to preview output with mock quality values.
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// ScribeScript tester tab
+// ---------------------------------------------------------------------------
+
+interface ScribeScriptTabProps {
+    preprocessedPreview: string;
+    onSendWithTestValues: () => void;
+    onUpdate: (qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => void;
+}
+
+function ScribeScriptTab({ preprocessedPreview, onSendWithTestValues, onUpdate }: ScribeScriptTabProps) {
+    return (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+
+            {/* Left: quality variable editor */}
+            <div style={{
+                flex: '0 0 210px',
+                overflow: 'hidden',
+                borderRight: '1px solid var(--tool-border)',
+            }}>
+                <ScribeDebugger onUpdate={onUpdate} />
+            </div>
+
+            {/* Right: preprocessed preview */}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.3rem 0.65rem',
+                    borderBottom: '1px solid var(--tool-border)',
+                    flexShrink: 0,
+                    background: 'var(--tool-bg)',
+                }}>
+                    <span style={{
+                        flex: 1,
+                        fontSize: '0.63rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.07em',
+                        color: 'var(--tool-text-dim)',
+                    }}>
+                        Preprocessed Output
+                    </span>
+                    <button
+                        onClick={onSendWithTestValues}
+                        title="Send preprocessed code to the Strudel REPL using these test quality values"
+                        style={{
+                            background: 'rgba(152,195,121,0.15)',
+                            border: '1px solid #98c379',
+                            color: '#98c379',
+                            borderRadius: '4px',
+                            padding: '0.2rem 0.55rem',
+                            cursor: 'pointer',
+                            fontSize: '0.7rem',
+                            fontFamily: 'inherit',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        ▶ Send with Test Values
+                    </button>
+                </div>
+                <pre style={{
+                    flex: 1,
+                    margin: 0,
+                    padding: '0.55rem 0.75rem',
+                    overflowY: 'auto',
+                    fontSize: '0.78rem',
+                    fontFamily: 'monospace',
+                    color: '#abb2bf',
+                    background: 'rgba(0,0,0,0.25)',
+                    lineHeight: 1.55,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                }}>
+                    {preprocessedPreview}
+                </pre>
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
 // ---------------------------------------------------------------------------
 
 export default function StrudelEditor({ data, onChange }: Props) {
@@ -59,12 +215,19 @@ export default function StrudelEditor({ data, onChange }: Props) {
     // Editor state
     const [rawSource, setRawSource] = useState(initialSource);
     const [iframeSrc, setIframeSrc] = useState(() => buildStrudelUrl(initialSource));
-    const [bottomTab, setBottomTab] = useState<'source' | 'samples'>('source');
+    const [bottomTab, setBottomTab] = useState<'scribe' | 'samples'>('scribe');
+    const [showSyntaxHint, setShowSyntaxHint] = useState(false);
 
-    // Resizable split — topPct is the percentage the REPL occupies
-    const [topPct, setTopPct] = useState(68);
+    // Mock qualities for ScribeScript tester
+    const [mockQualities, setMockQualities] = useState<PlayerQualities>({});
+
+    // Resizable pane splits — leftPct = source width %, bottomPct = bottom panel height %
+    const [leftPct, setLeftPct] = useState(42);
+    const [bottomPct, setBottomPct] = useState(30);
+
     const containerRef = useRef<HTMLDivElement>(null);
-    const isDraggingRef = useRef(false);
+    const isHDragging = useRef(false);
+    const isVDragging = useRef(false);
 
     // Samples state
     const [samples, setSamples] = useState<StrudelSample[]>([]);
@@ -77,19 +240,28 @@ export default function StrudelEditor({ data, onChange }: Props) {
 
     const debouncedSource = useDebounce(rawSource, 500);
 
-    // Sync when a different track is selected
+    // Live preview: source with mock qualities substituted — updates on each keystroke
+    const preprocessedPreview = useMemo(() => {
+        try {
+            return preprocessStrudelSource(rawSource, mockQualities);
+        } catch {
+            return rawSource;
+        }
+    }, [rawSource, mockQualities]);
+
+    // ── Sync when a different track is selected ────────────────────────────────
     useEffect(() => {
         const s = data.source || DEFAULT_STRUDEL_SOURCE;
         setRawSource(s);
         setIframeSrc(buildStrudelUrl(s));
     }, [data.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Notify parent of source changes
+    // ── Notify parent of source changes ───────────────────────────────────────
     useEffect(() => {
         if (onChange) onChange(debouncedSource);
     }, [debouncedSource]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Load samples on mount
+    // ── Load samples on mount ─────────────────────────────────────────────────
     useEffect(() => {
         loadSamples();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -107,40 +279,42 @@ export default function StrudelEditor({ data, onChange }: Props) {
         }
     };
 
-    // ------------------------------------------------------------------
-    // Send to Strudel: preprocess ScribeScript, prepend samples(), refresh
-    // ------------------------------------------------------------------
+    // ── Build final code for the REPL ─────────────────────────────────────────
+    const buildFinalCode = useCallback((source: string, qualities: PlayerQualities): string => {
+        const processed = preprocessStrudelSource(source, qualities);
+        if (samples.length === 0) return processed;
+        const entries = samples.map(s => `  "${s.id}": "${s.url}"`).join(',\n');
+        return `samples({\n${entries}\n})\n\n${processed}`;
+    }, [samples]);
+
+    // ── Send to REPL (no test values) ─────────────────────────────────────────
     const handleSendToStrudel = useCallback(() => {
-        // 1. Preprocess any {{...}} ScribeScript templates (no qualities in creator studio)
-        const processed = preprocessStrudelSource(rawSource, {});
+        setIframeSrc(buildStrudelUrl(buildFinalCode(rawSource, {})));
+    }, [rawSource, buildFinalCode]);
 
-        // 2. Build a samples({}) preamble if any samples exist
-        let finalCode = processed;
-        if (samples.length > 0) {
-            const entries = samples
-                .map(s => `  "${s.id}": "${s.url}"`)
-                .join(',\n');
-            finalCode = `samples({\n${entries}\n})\n\n${processed}`;
-        }
+    // ── Send to REPL with mock test quality values ────────────────────────────
+    const handleSendWithTestValues = useCallback(() => {
+        setIframeSrc(buildStrudelUrl(buildFinalCode(rawSource, mockQualities)));
+    }, [rawSource, mockQualities, buildFinalCode]);
 
-        setIframeSrc(buildStrudelUrl(finalCode));
-    }, [rawSource, samples]);
+    // ── ScribeDebugger update handler ─────────────────────────────────────────
+    const handleDebuggerUpdate = useCallback((qualities: PlayerQualities, _defs: Record<string, QualityDefinition>) => {
+        setMockQualities(qualities);
+    }, []);
 
-    // ------------------------------------------------------------------
-    // Drag-to-resize split handle
-    // ------------------------------------------------------------------
-    const handleDragStart = useCallback((e: React.MouseEvent) => {
+    // ── Horizontal drag (source ↔ REPL) ───────────────────────────────────────
+    const handleHDragStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
-        isDraggingRef.current = true;
+        isHDragging.current = true;
 
         const onMove = (ev: MouseEvent) => {
-            if (!isDraggingRef.current || !containerRef.current) return;
+            if (!isHDragging.current || !containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
-            const newPct = ((ev.clientY - rect.top) / rect.height) * 100;
-            setTopPct(Math.min(100 - MIN_BOTTOM_PCT, Math.max(MIN_TOP_PCT, newPct)));
+            const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+            setLeftPct(Math.min(75, Math.max(20, pct)));
         };
         const onUp = () => {
-            isDraggingRef.current = false;
+            isHDragging.current = false;
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
         };
@@ -148,14 +322,32 @@ export default function StrudelEditor({ data, onChange }: Props) {
         document.addEventListener('mouseup', onUp);
     }, []);
 
-    // ------------------------------------------------------------------
-    // Sample upload
-    // ------------------------------------------------------------------
+    // ── Vertical drag (main ↕ bottom panel) ───────────────────────────────────
+    const handleVDragStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        isVDragging.current = true;
+
+        const onMove = (ev: MouseEvent) => {
+            if (!isVDragging.current || !containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            const fromBottom = rect.bottom - ev.clientY;
+            const pct = (fromBottom / rect.height) * 100;
+            setBottomPct(Math.min(55, Math.max(12, pct)));
+        };
+        const onUp = () => {
+            isVDragging.current = false;
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }, []);
+
+    // ── Sample upload/delete ──────────────────────────────────────────────────
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) { setSelectedFileName(''); return; }
         setSelectedFileName(file.name);
-        // Pre-fill the name field from the filename (without extension)
         const baseName = file.name.split('.').slice(0, -1).join('_') || file.name;
         setUploadingName(baseName.replace(/[^a-z0-9_-]/gi, '_').toLowerCase());
         setUploadError('');
@@ -164,14 +356,11 @@ export default function StrudelEditor({ data, onChange }: Props) {
     const handleUpload = async () => {
         const file = fileInputRef.current?.files?.[0];
         if (!file) return;
-
         setIsUploading(true);
         setUploadError('');
-
         const formData = new FormData();
         formData.append('file', file);
         if (uploadingName.trim()) formData.append('name', uploadingName.trim());
-
         try {
             const res = await fetch('/api/admin/samples', { method: 'POST', body: formData });
             const json = await res.json();
@@ -198,17 +387,13 @@ export default function StrudelEditor({ data, onChange }: Props) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id }),
             });
-            if (res.ok) {
-                setSamples(prev => prev.filter(s => s.id !== id));
-            }
+            if (res.ok) setSamples(prev => prev.filter(s => s.id !== id));
         } catch {
             // ignore
         }
     };
 
-    // ------------------------------------------------------------------
-    // Render
-    // ------------------------------------------------------------------
+    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div
             ref={containerRef}
@@ -220,62 +405,172 @@ export default function StrudelEditor({ data, onChange }: Props) {
                 width: '100%',
                 background: 'var(--tool-bg)',
                 overflow: 'hidden',
-                userSelect: isDraggingRef.current ? 'none' : undefined,
             }}
         >
-            {/* ── Toolbar ─────────────────────────────────────────────── */}
+            {/* ── Main area: source (left) + REPL (right) ─────────────────── */}
             <div style={{
+                flex: 100 - bottomPct,
+                minHeight: 0,
                 display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.4rem 0.75rem',
-                borderBottom: '1px solid var(--tool-border)',
-                flexShrink: 0,
+                flexDirection: 'row',
+                overflow: 'hidden',
             }}>
-                <button
-                    onClick={handleSendToStrudel}
-                    title="Send source code to the Strudel REPL (with ScribeScript pre-processed)"
+                {/* ── Left: Source editor ──────────────────────────────── */}
+                <div style={{
+                    flex: leftPct,
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    borderRight: '1px solid var(--tool-border)',
+                }}>
+                    {/* Source header */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        padding: '0.35rem 0.6rem',
+                        borderBottom: '1px solid var(--tool-border)',
+                        flexShrink: 0,
+                        background: 'var(--tool-bg)',
+                    }}>
+                        <span style={{
+                            fontSize: '0.63rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.07em',
+                            color: 'var(--tool-text-dim)',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            Source
+                        </span>
+
+                        {/* ScribeScript syntax toggle */}
+                        <button
+                            onClick={() => setShowSyntaxHint(h => !h)}
+                            title={showSyntaxHint ? 'Hide ScribeScript syntax reference' : 'Show ScribeScript syntax reference ({{...}} templates)'}
+                            style={{
+                                background: showSyntaxHint ? 'rgba(97,175,239,0.15)' : 'transparent',
+                                border: `1px solid ${showSyntaxHint ? '#61afef' : '#61afef55'}`,
+                                color: showSyntaxHint ? '#61afef' : 'var(--tool-text-dim)',
+                                borderRadius: '3px',
+                                padding: '0.1rem 0.35rem',
+                                cursor: 'pointer',
+                                fontSize: '0.65rem',
+                                fontFamily: 'monospace',
+                                lineHeight: 1.4,
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {'{{…}}'}
+                        </button>
+
+                        <span style={{ flex: 1 }} />
+
+                        {/* Send to REPL */}
+                        <button
+                            onClick={handleSendToStrudel}
+                            title="Preprocess ScribeScript templates and send to the Strudel REPL on the right"
+                            style={{
+                                background: 'rgba(97, 175, 239, 0.15)',
+                                border: '1px solid #61afef',
+                                color: '#61afef',
+                                borderRadius: '4px',
+                                padding: '0.25rem 0.6rem',
+                                cursor: 'pointer',
+                                fontSize: '0.72rem',
+                                fontFamily: 'inherit',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                            }}
+                        >
+                            ▶ Send to REPL →
+                        </button>
+                    </div>
+
+                    {/* Collapsible ScribeScript syntax reference */}
+                    {showSyntaxHint && <SyntaxHintPanel />}
+
+                    {/* Code editor — Strudel is JavaScript, use the strudel highlighter */}
+                    <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                        <ScribeEditor
+                            value={rawSource}
+                            onChange={setRawSource}
+                            language="strudel"
+                            minHeight="100%"
+                            showLineNumbers
+                        />
+                    </div>
+                </div>
+
+                {/* ── Horizontal drag handle ───────────────────────────── */}
+                <div
+                    onMouseDown={handleHDragStart}
+                    title="Drag to resize"
                     style={{
-                        background: 'rgba(97, 175, 239, 0.15)',
-                        border: '1px solid #61afef',
-                        color: '#61afef',
-                        borderRadius: '4px',
-                        padding: '0.3rem 0.75rem',
-                        cursor: 'pointer',
-                        fontSize: '0.8rem',
-                        fontFamily: 'inherit',
-                        whiteSpace: 'nowrap',
+                        width: '6px',
+                        flexShrink: 0,
+                        background: 'var(--tool-border)',
+                        cursor: 'ew-resize',
+                        position: 'relative',
+                        zIndex: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                     }}
                 >
-                    ▶ Send to Strudel
-                </button>
+                    <div style={{
+                        width: '2px',
+                        height: '32px',
+                        borderRadius: '2px',
+                        background: 'var(--tool-text-dim)',
+                        opacity: 0.35,
+                    }} />
+                </div>
 
-                <span style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', marginLeft: '0.25rem' }}>
-                    Edit in Source below, then send — or code directly in the REPL above.
-                </span>
+                {/* ── Right: Strudel REPL ──────────────────────────────── */}
+                <div style={{
+                    flex: 100 - leftPct,
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                }}>
+                    <div style={{
+                        flexShrink: 0,
+                        padding: '0.35rem 0.65rem',
+                        borderBottom: '1px solid var(--tool-border)',
+                        background: 'var(--tool-bg)',
+                        fontSize: '0.63rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.07em',
+                        color: 'var(--tool-text-dim)',
+                    }}>
+                        ↳ Live Strudel REPL
+                    </div>
+                    <iframe
+                        key={iframeSrc}
+                        src={iframeSrc}
+                        title="Strudel REPL"
+                        allow="autoplay; microphone"
+                        style={{
+                            flex: 1,
+                            width: '100%',
+                            border: 'none',
+                            display: 'block',
+                            background: '#1a1a2e',
+                        }}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                    />
+                </div>
             </div>
 
-            {/* ── Strudel REPL (top, resizable) ───────────────────────── */}
-            <div style={{ flex: topPct, minHeight: 0, position: 'relative' }}>
-                <iframe
-                    key={iframeSrc}
-                    src={iframeSrc}
-                    title="Strudel REPL"
-                    allow="autoplay; microphone"
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        border: 'none',
-                        display: 'block',
-                        background: '#1a1a2e',
-                    }}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-                />
-            </div>
-
-            {/* ── Drag handle ─────────────────────────────────────────── */}
+            {/* ── Vertical drag handle (main ↕ bottom panel) ──────────────── */}
             <div
-                onMouseDown={handleDragStart}
+                onMouseDown={handleVDragStart}
                 style={{
                     height: '6px',
                     flexShrink: 0,
@@ -293,13 +588,18 @@ export default function StrudelEditor({ data, onChange }: Props) {
                     height: '2px',
                     borderRadius: '2px',
                     background: 'var(--tool-text-dim)',
-                    opacity: 0.4,
+                    opacity: 0.35,
                 }} />
             </div>
 
-            {/* ── Bottom panel (source + samples) ─────────────────────── */}
-            <div style={{ flex: 100 - topPct, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
+            {/* ── Bottom panel: ScribeScript tester + Samples ─────────────── */}
+            <div style={{
+                flex: bottomPct,
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+            }}>
                 {/* Tab bar */}
                 <div style={{
                     display: 'flex',
@@ -307,7 +607,7 @@ export default function StrudelEditor({ data, onChange }: Props) {
                     flexShrink: 0,
                     background: 'var(--tool-bg)',
                 }}>
-                    {(['source', 'samples'] as const).map(tab => (
+                    {(['scribe', 'samples'] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => setBottomTab(tab)}
@@ -316,22 +616,22 @@ export default function StrudelEditor({ data, onChange }: Props) {
                                 border: 'none',
                                 borderBottom: bottomTab === tab ? '2px solid #61afef' : '2px solid transparent',
                                 color: bottomTab === tab ? '#61afef' : 'var(--tool-text-dim)',
-                                padding: '0.4rem 1rem',
+                                padding: '0.35rem 0.9rem',
                                 cursor: 'pointer',
-                                fontSize: '0.78rem',
+                                fontSize: '0.72rem',
                                 fontFamily: 'inherit',
-                                textTransform: 'capitalize',
-                                letterSpacing: '0.03em',
+                                letterSpacing: '0.02em',
+                                whiteSpace: 'nowrap',
                             }}
                         >
-                            {tab}
+                            {tab === 'scribe' ? 'ScribeScript Tester' : 'Samples'}
                             {tab === 'samples' && samples.length > 0 && (
                                 <span style={{
                                     marginLeft: '0.4rem',
                                     background: '#61afef33',
                                     borderRadius: '99px',
                                     padding: '0 0.4rem',
-                                    fontSize: '0.7rem',
+                                    fontSize: '0.65rem',
                                 }}>
                                     {samples.length}
                                 </span>
@@ -341,17 +641,14 @@ export default function StrudelEditor({ data, onChange }: Props) {
                 </div>
 
                 {/* Tab content */}
-                <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-                    {bottomTab === 'source' && (
-                        <ScribeEditor
-                            value={rawSource}
-                            onChange={setRawSource}
-                            language="scribescript"
-                            minHeight="100%"
-                            showLineNumbers
+                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    {bottomTab === 'scribe' && (
+                        <ScribeScriptTab
+                            preprocessedPreview={preprocessedPreview}
+                            onSendWithTestValues={handleSendWithTestValues}
+                            onUpdate={handleDebuggerUpdate}
                         />
                     )}
-
                     {bottomTab === 'samples' && (
                         <SamplesPanel
                             samples={samples}
@@ -407,7 +704,7 @@ function SamplesPanel({
     const canUpload = !!selectedFileName && !!uploadingName.trim() && !isUploading;
 
     return (
-        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
+        <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, boxSizing: 'border-box', overflowY: 'auto' }}>
 
             {/* Upload form — always visible */}
             <div style={{
@@ -420,11 +717,10 @@ function SamplesPanel({
                 gap: '0.6rem',
                 flexShrink: 0,
             }}>
-                <span style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Upload Sample
                 </span>
 
-                {/* Row 1: file picker */}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <input
                         ref={fileInputRef}
@@ -454,7 +750,6 @@ function SamplesPanel({
                     </span>
                 </div>
 
-                {/* Row 2: name + upload button — always visible */}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <label style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', whiteSpace: 'nowrap' }}>
                         Name in Strudel:
@@ -506,16 +801,16 @@ function SamplesPanel({
                 <div style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', textAlign: 'center', marginTop: '1rem' }}>
                     No samples uploaded yet.<br />
                     <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>
-                        Upload a sample, then reference it in Strudel with <code style={{ fontFamily: 'monospace' }}>.s("name")</code>
+                        Upload a sample, then use it in Strudel with <code style={{ fontFamily: 'monospace' }}>.s("name")</code>
                     </span>
                 </div>
             ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--tool-border)' }}>
-                            <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: '0.05em' }}>Name</th>
-                            <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: '0.05em' }}>Usage</th>
-                            <th style={{ ...dimCell, textAlign: 'right', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: '0.05em' }}>Size</th>
+                            <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Name</th>
+                            <th style={{ ...dimCell, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Usage in Strudel</th>
+                            <th style={{ ...dimCell, textAlign: 'right', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Size</th>
                             <th style={{ ...dimCell, width: '36px' }} />
                         </tr>
                     </thead>

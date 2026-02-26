@@ -4,21 +4,22 @@ import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs'; 
 import { useMemo, useState, useEffect } from 'react';
 import { highlightScribeScript } from '@/utils/scribeHighlighter';
-import { ligatureGrammar } from '@/utils/prism-ligature'; 
-import { LintError } from '@/engine/audio/linter'; 
+import { highlightStrudel } from '@/utils/strudelHighlighter';
+import { ligatureGrammar } from '@/utils/prism-ligature';
+import { LintError } from '@/engine/audio/linter';
 
 import 'prismjs/components/prism-clike';
-import 'prismjs/themes/prism-dark.css'; 
+import 'prismjs/themes/prism-dark.css';
 
 interface Props {
     value: string;
     onChange: (val: string) => void;
     placeholder?: string;
     minHeight?: string;
-    language?: 'scribescript' | 'ligature';
-    errors?: LintError[]; 
-    mode?: 'text' | 'condition' | 'effect'; 
-    showLineNumbers?: boolean; 
+    language?: 'scribescript' | 'ligature' | 'strudel';
+    errors?: LintError[];
+    mode?: 'text' | 'condition' | 'effect';
+    showLineNumbers?: boolean;
 }
 
 export default function ScribeEditor({ 
@@ -40,10 +41,13 @@ export default function ScribeEditor({
 
     const [cursorOffset, setCursorOffset] = useState<number | null>(null);
     const isLigature = language === 'ligature';
+    const isStrudel = language === 'strudel';
 
     const highlightCode = (code: string) => {
         if (isLigature) {
-            return highlight(code, languages.ligature || ligatureGrammar, 'ligature'); 
+            return highlight(code, languages.ligature || ligatureGrammar, 'ligature');
+        } else if (isStrudel) {
+            return highlightStrudel(code);
         } else {
             return highlightScribeScript(code, cursorOffset, mode);
         }
@@ -60,13 +64,15 @@ export default function ScribeEditor({
         return map;
     }, [visualErrors]);
 
-    const scopeClass = isLigature ? 'lang-ligature' : 'lang-scribescript';
+    const scopeClass = isLigature ? 'lang-ligature' : isStrudel ? 'lang-strudel' : 'lang-scribescript';
     const displayGutter = showLineNumbers || visualErrors.length > 0;
 
     const effectiveWhiteSpace = isLigature ? 'pre' : 'pre-wrap';
     const effectiveOverflowX = isLigature ? 'auto' : 'hidden';
     const effectiveWordBreak = isLigature ? 'normal' : 'break-word';
     const effectiveMinWidth = isLigature ? 'max-content' : '100%';
+    // Strudel code is plain JS — disable cursor-based bracket matching (ScribeScript-only feature)
+    const trackCursor = !isLigature && !isStrudel;
 
     return (
         <div 
@@ -143,7 +149,7 @@ export default function ScribeEditor({
                         onValueChange={onChange}
                         highlight={highlightCode} 
                         padding={10}
-                        onSelect={!isLigature ? (e) => {
+                        onSelect={trackCursor ? (e) => {
                             const target = e.target as HTMLTextAreaElement;
                             if (target.selectionStart === target.selectionEnd) {
                                 setCursorOffset(target.selectionStart);
@@ -226,6 +232,37 @@ export default function ScribeEditor({
                 .lang-ligature .token.effect-block { color: var(--tool-accent-mauve); } 
                 .lang-ligature .token.variable { color: var(--success-color); } 
                 .lang-ligature .token.class-name { color: var(--warning-color); }
+
+                /* ── Strudel language (JavaScript + {{...}} templates) ────── */
+                .lang-strudel .token.keyword   { color: #c678dd; }
+                .lang-strudel .token.string    { color: #98c379; }
+                .lang-strudel .token.number    { color: #e5c07b; }
+                .lang-strudel .token.boolean   { color: #c678dd; }
+                .lang-strudel .token.function  { color: #61afef; }
+                .lang-strudel .token.method    { color: #61afef; }
+                .lang-strudel .token.property  { color: #e06c75; }
+                .lang-strudel .token.operator  { color: var(--tool-text-dim); }
+                .lang-strudel .token.punctuation { color: var(--tool-text-dim); }
+                .lang-strudel .token.comment   { color: var(--tool-text-dim); font-style: italic; }
+                .lang-strudel .token.regex     { color: #56b6c2; }
+                /* {{...}} template delimiters — amber, bold */
+                .strudel-tmpl-delim { color: #e5c07b; font-weight: bold; }
+                /* Template body wrapper — no extra style, children take over */
+                .strudel-tmpl-body  { }
+                /* $varName — numeric quality, sky blue */
+                .strudel-tmpl-var   { color: #61afef; }
+                /* $$varName — string quality, purple */
+                .strudel-tmpl-dvar  { color: #c678dd; }
+                /* Numbers inside templates */
+                .strudel-tmpl-num   { color: #e5c07b; }
+                /* : and | — conditional flow operators, coral red + bold */
+                .strudel-tmpl-flow  { color: #e06c75; font-weight: bold; }
+                /* Other operators (?, &&, ==, arithmetic…) */
+                .strudel-tmpl-op    { color: var(--tool-text-dim); }
+                /* String literals inside templates */
+                .strudel-tmpl-str   { color: #98c379; }
+                /* Identifiers (Math, true, false, etc.) */
+                .strudel-tmpl-ident { color: var(--tool-text-main); }
 
                 .scribe-editor-wrapper div::-webkit-scrollbar { height: 8px; width: 8px; }
                 .scribe-editor-wrapper div::-webkit-scrollbar-track { background: var(--tool-bg-sidebar); }
