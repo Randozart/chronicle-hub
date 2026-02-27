@@ -9,7 +9,8 @@ import { useRouter } from 'next/navigation';
 import SettingsMainInfo from './components/SettingsMainInfo';
 import SettingsSection from './components/SettingsSection';
 import SettingsVisuals from './components/SettingsVisuals';
-import SettingsGameSystem from './components/SettingsGameSystem'; 
+import SettingsGameSystem from './components/SettingsGameSystem';
+import SettingsAudio from './components/SettingsAudio';
 import DataManagement from './components/DataManagement';
 import CollaboratorManager from './components/CollaboratorManager';
 import SmartArea from '@/components/admin/SmartArea';
@@ -301,6 +302,9 @@ export default function SettingsAdmin({ params }: { params: Promise<{ storyId: s
             </SettingsSection>
             <SettingsSection title="Visuals & Theme" color="var(--tool-accent-mauve)" forceState={expandAll}>
                 <SettingsVisuals settings={form} onChange={handleGenericChange} storyId={storyId}/> 
+            </SettingsSection>
+            <SettingsSection title="Audio & Sounds" color="var(--warning-color)" forceState={expandAll}>
+                <SettingsAudio settings={form} onChange={handleGenericChange} storyId={storyId} />
             </SettingsSection>
             <SettingsSection title="Disclaimers & Attributions" color="var(--tool-text-dim)" forceState={expandAll}>
                 <div className="form-group">

@@ -283,6 +283,12 @@ export interface WorldSettings {
     };
     defaultMusicTrackId?: string;
     musicFadeDuration?: number;
+    /** Default sound URL played when any option is clicked (before resolution), if the option has no clickSoundId. */
+    defaultClickSoundUrl?: string;
+    /** Default sound URL played when any option resolves as success, if the option has no passSoundId. */
+    defaultPassSoundUrl?: string;
+    /** Default sound URL played when any option resolves as failure, if the option has no failSoundId. */
+    defaultFailSoundUrl?: string;
 }
 
 export interface DeckDefinition extends VersionedEntity { 

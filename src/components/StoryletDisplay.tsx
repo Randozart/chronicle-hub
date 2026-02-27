@@ -64,6 +64,10 @@ interface StoryletDisplayProps {
     character?: CharacterDocument;
     /** Called with the resolved pass/fail sound URL (if any) just before onResolve fires. */
     onPlaySound?: (url: string) => void;
+    /** World-level default sound URLs — used when the individual option has no sound configured. */
+    defaultClickSoundUrl?: string;
+    defaultPassSoundUrl?: string;
+    defaultFailSoundUrl?: string;
 }
 
 type DisplayOption = ResolveOption & { isLocked: boolean; lockReason: string; skillCheckText: string; chance: number | null; };
@@ -90,7 +94,10 @@ export default function StoryletDisplay({
     eventSource = 'story',
     isGuestMode,
     character,
-    onPlaySound
+    onPlaySound,
+    defaultClickSoundUrl,
+    defaultPassSoundUrl,
+    defaultFailSoundUrl,
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
     
@@ -117,8 +124,9 @@ export default function StoryletDisplay({
 
     const handleOptionClick = async (option: ResolveOption) => {
         if (isLoading) return;
-        // Play the immediate action sound (sword slash, spell cast, etc.)
-        if (onPlaySound && option.clickSoundId) onPlaySound(option.clickSoundId);
+        // Play the immediate action sound (sword slash, spell cast, etc.) — falls back to world default
+        const clickSound = option.clickSoundId || defaultClickSoundUrl;
+        if (onPlaySound && clickSound) onPlaySound(clickSound);
         setIsLoading(true);
         try {
             const response = await fetch('/api/resolve', {
@@ -167,11 +175,12 @@ export default function StoryletDisplay({
 
             const isInstant = option.tags?.includes('instant_redirect');
 
-            // Play pass or fail sound sting if configured on the option
+            // Play pass or fail sound sting — falls back to world defaults
             if (onPlaySound) {
-                const soundUrl = data.result?.wasSuccess !== false
-                    ? option.passSoundId
-                    : option.failSoundId;
+                const isSuccess = data.result?.wasSuccess !== false;
+                const soundUrl = isSuccess
+                    ? (option.passSoundId || defaultPassSoundUrl)
+                    : (option.failSoundId || defaultFailSoundUrl);
                 if (soundUrl) onPlaySound(soundUrl);
             }
 

@@ -894,6 +894,9 @@ export default function GameHub(props: GameHubProps) {
                         isGuestMode={isGuestMode}
                         character={character}
                         onPlaySound={playSample}
+                        defaultClickSoundUrl={props.settings.defaultClickSoundUrl}
+                        defaultPassSoundUrl={props.settings.defaultPassSoundUrl}
+                        defaultFailSoundUrl={props.settings.defaultFailSoundUrl}
                     />
                 </div>
             );
