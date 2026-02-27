@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { LigatureTrack } from '@/engine/audio/models';
 import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
+import { getStrudelEngine, StrudelEngine } from '@/engine/audio/strudelEngine';
 import { useDebounce } from '@/hooks/useDebounce';
 import dynamic from 'next/dynamic';
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
@@ -37,15 +38,6 @@ const DEFAULT_STRUDEL_SOURCE = `note("c3 e3 g3 c4").s("piano").slow(2)`;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function buildStrudelUrl(code: string): string {
-    // Strudel decodes its URL hash with atob() directly (no decodeURIComponent).
-    try {
-        return `https://strudel.cc/?embed#${btoa(code)}`;
-    } catch {
-        return `https://strudel.cc/?embed#`;
-    }
-}
 
 function formatBytes(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
@@ -456,8 +448,11 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
 
     // Editor state
     const [rawSource, setRawSource] = useState(initialSource);
-    const [iframeSrc, setIframeSrc] = useState(() => buildStrudelUrl(initialSource));
     const [bottomTab, setBottomTab] = useState<'scribe' | 'samples'>('scribe');
+    // Player state
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [lastSentCode, setLastSentCode] = useState('');
+    const strudelEngineRef = useRef<StrudelEngine | null>(null);
 
     // Syntax hint — open by default for first-time users, persisted in localStorage
     const [showSyntaxHint, setShowSyntaxHint] = useState<boolean>(() => {
@@ -499,11 +494,22 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
     const debouncedSource = useDebounce(rawSource, 500);
 
 
+    // ── Init Strudel engine on mount ───────────────────────────────────────────
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        getStrudelEngine(window.location.origin).then(engine => {
+            strudelEngineRef.current = engine;
+        });
+    }, []);
+
     // ── Sync when a different track is selected ────────────────────────────────
     useEffect(() => {
         const s = data.source || DEFAULT_STRUDEL_SOURCE;
         setRawSource(s);
-        setIframeSrc(buildStrudelUrl(s));
+        // Stop any currently playing preview when switching tracks
+        strudelEngineRef.current?.hush();
+        setIsPlaying(false);
+        setLastSentCode('');
     }, [data.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Notify parent of source changes ───────────────────────────────────────
@@ -562,25 +568,31 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
         return `${lines.join('\n')}\n\n${processed}`;
     }, [samples]); // localGroups no longer needed — local samples load via URL
 
-    // ── Auto-send to REPL once after cloud samples have loaded ────────────────
-    // Local library samples load via URL (no wait needed); only cloud samples require loading.
-    const hasSentInitial = useRef(false);
-    useEffect(() => {
-        if (isLoadingSamples) return;
-        if (hasSentInitial.current) return;
-        hasSentInitial.current = true;
-        setIframeSrc(buildStrudelUrl(buildFinalCode(rawSource, {})));
-    }, [isLoadingSamples]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // ── Send to REPL (no test values) ─────────────────────────────────────────
+    // ── Send to player (no test values) ───────────────────────────────────────
     const handleSendToStrudel = useCallback(() => {
-        setIframeSrc(buildStrudelUrl(buildFinalCode(rawSource, {})));
+        const code = buildFinalCode(rawSource, {});
+        setLastSentCode(code);
+        strudelEngineRef.current?.evaluate(code).catch(e =>
+            console.warn('[StrudelEditor] evaluate error:', e)
+        );
+        setIsPlaying(true);
     }, [rawSource, buildFinalCode]);
 
-    // ── Send to REPL with mock test quality values ────────────────────────────
+    // ── Send with mock ScribeScript test values ────────────────────────────────
     const handleSendWithTestValues = useCallback(() => {
-        setIframeSrc(buildStrudelUrl(buildFinalCode(rawSource, mockQualities)));
+        const code = buildFinalCode(rawSource, mockQualities);
+        setLastSentCode(code);
+        strudelEngineRef.current?.evaluate(code).catch(e =>
+            console.warn('[StrudelEditor] evaluate error:', e)
+        );
+        setIsPlaying(true);
     }, [rawSource, mockQualities, buildFinalCode]);
+
+    // ── Stop ───────────────────────────────────────────────────────────────────
+    const handleStop = useCallback(() => {
+        strudelEngineRef.current?.hush();
+        setIsPlaying(false);
+    }, []);
 
     // ── ScribeDebugger update handler ─────────────────────────────────────────
     const handleDebuggerUpdate = useCallback((qualities: PlayerQualities, _defs: Record<string, QualityDefinition>) => {
@@ -815,7 +827,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                     }} />
                 </div>
 
-                {/* ── Right: Strudel REPL ──────────────────────────────── */}
+                {/* ── Right: Player ────────────────────────────────────── */}
                 <div style={{
                     flex: 100 - leftPct,
                     minWidth: 0,
@@ -823,33 +835,94 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                     flexDirection: 'column',
                     overflow: 'hidden',
                 }}>
+                    {/* Header */}
                     <div style={{
                         flexShrink: 0,
                         padding: '0.4rem 0.65rem',
                         borderBottom: '1px solid var(--tool-border)',
                         background: 'var(--tool-bg)',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.07em',
-                        color: 'var(--tool-text-dim)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
                     }}>
-                        ↳ Live Strudel REPL
+                        <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.07em',
+                            color: 'var(--tool-text-dim)',
+                        }}>
+                            Player
+                        </span>
+                        <span style={{ flex: 1 }} />
+                        {isPlaying ? (
+                            <>
+                                <span style={{
+                                    fontSize: '0.72rem',
+                                    color: 'var(--success-color, #98c379)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem',
+                                }}>
+                                    <span style={{ fontSize: '0.85rem' }}>♪</span> Playing
+                                </span>
+                                <button
+                                    onClick={handleStop}
+                                    title="Stop playback"
+                                    style={{
+                                        background: 'rgba(224,108,117,0.12)',
+                                        border: '1px solid var(--danger-color, #e06c75)',
+                                        color: 'var(--danger-color, #e06c75)',
+                                        borderRadius: '4px',
+                                        padding: '0.2rem 0.55rem',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8rem',
+                                        fontFamily: 'inherit',
+                                    }}
+                                >
+                                    ⏹ Stop
+                                </button>
+                            </>
+                        ) : (
+                            <span style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)' }}>
+                                Stopped
+                            </span>
+                        )}
                     </div>
-                    <iframe
-                        key={iframeSrc}
-                        src={iframeSrc}
-                        title="Strudel REPL"
-                        allow="autoplay; microphone"
-                        style={{
-                            flex: 1,
-                            width: '100%',
-                            border: 'none',
-                            display: 'block',
-                            background: '#1a1a2e',
-                        }}
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-                    />
+                    {/* Body — shows last evaluated code or idle prompt */}
+                    <div style={{
+                        flex: 1,
+                        overflow: 'auto',
+                        padding: '0.75rem',
+                        background: 'var(--tool-bg)',
+                    }}>
+                        {lastSentCode ? (
+                            <pre style={{
+                                margin: 0,
+                                fontFamily: 'monospace',
+                                fontSize: '0.78rem',
+                                color: isPlaying ? 'var(--text-primary, #e0e0e0)' : 'var(--tool-text-dim)',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-all',
+                                opacity: isPlaying ? 1 : 0.5,
+                            }}>
+                                {lastSentCode}
+                            </pre>
+                        ) : (
+                            <div style={{
+                                height: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--tool-text-dim)',
+                                fontSize: '0.8rem',
+                                textAlign: 'center',
+                                padding: '2rem',
+                            }}>
+                                Click <strong style={{ color: 'var(--tool-accent, #61afef)' }}> ▶ Send to REPL</strong> to preview the track.
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

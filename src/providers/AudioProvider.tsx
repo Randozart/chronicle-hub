@@ -10,6 +10,7 @@ import { AudioGraph, initializeAudioGraph, stopAllSound, setMasterVolume } from 
 import { scheduleSequence } from '@/engine/audio/scheduler';
 import { PolySampler } from '@/engine/audio/polySampler';
 import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
+import { getStrudelEngine, StrudelEngine } from '@/engine/audio/strudelEngine';
 
 interface LimiterSettings {
     enabled: boolean;
@@ -56,14 +57,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoadingSamples, setIsLoadingSamples] = useState(false);
     const [isStrudelPlaying, setIsStrudelPlaying] = useState(false);
-    const strudelIframeRef = useRef<HTMLIFrameElement | null>(null);
+    /** Shared @strudel/web engine — null until the dynamic import resolves. */
+    const strudelEngineRef = useRef<StrudelEngine | null>(null);
     /** Raw (unprocessed) Strudel source last passed to playStrudelTrack. */
     const currentStrudelSourceRef = useRef<string>('');
-    /** Last fully-evaluated code sent to the Strudel iframe. */
+    /** Last fully-evaluated code sent to Strudel (used by updateStrudelQualities). */
     const lastStrudelCodeRef = useRef<string>('');
-    
-    /** True once the Strudel iframe has finished loading a real Strudel URL (not about:blank). */
-    const strudelIframeReadyRef = useRef(false);
+    /** Code queued while the engine is still initialising. Played as soon as it's ready. */
+    const pendingStrudelCodeRef = useRef<string>('');
 
     const playbackRequestIdRef = useRef(0);
     const previewSynthRef = useRef<AnySoundSource | null>(null);
@@ -93,8 +94,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setMusicMutedState(muted);
         localStorage.setItem('chronicle-audio-musicMuted', String(muted));
         if (muted) {
-            if (strudelIframeRef.current) strudelIframeRef.current.src = 'about:blank';
-            strudelIframeReadyRef.current = false;
+            strudelEngineRef.current?.hush();
+            pendingStrudelCodeRef.current = '';
             setIsStrudelPlaying(false);
         }
     };
@@ -252,33 +253,43 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
 
     // ------------------------------------------------------------------
-    // Strudel iframe-based playback
+    // Strudel playback via @strudel/web
     // ------------------------------------------------------------------
 
-    /** Build a Strudel embed URL. Evaluation is triggered via postMessage after load. */
-    const buildStrudelUrl = (code: string): string => {
-        try {
-            return `https://strudel.cc/?embed#${btoa(code)}`;
-        } catch {
-            return 'about:blank';
-        }
-    };
+    // Initialise the shared Strudel engine on mount.
+    // getStrudelEngine() is idempotent — safe to call from multiple components.
+    // initStrudel() registers initAudioOnFirstClick() internally, so the
+    // AudioContext will be resumed automatically on the first user interaction
+    // anywhere on the page (no dedicated "unlock" button needed).
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const origin = window.location.origin;
+        getStrudelEngine(origin).then(engine => {
+            strudelEngineRef.current = engine;
+            // Play any track that was requested before the engine finished loading.
+            const pending = pendingStrudelCodeRef.current;
+            if (pending) {
+                pendingStrudelCodeRef.current = '';
+                engine.evaluate(pending).catch(e =>
+                    console.warn('[AudioProvider] Strudel evaluate error:', e)
+                );
+                setIsStrudelPlaying(true);
+            }
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const buildFinalCode = (source: string, qualities: PlayerQualities, sampleMap: Record<string, string>): string => {
         const processed = preprocessStrudelSource(source, qualities);
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const lines: string[] = [];
-        // Load local sample banks from the game server — mirrors creator studio behaviour.
-        // The /strudel-samples endpoint has CORS headers so the cross-origin strudel.cc
-        // iframe can fetch it.
-        lines.push(`samples('${origin}/strudel-samples');`);
+        // Cloud-uploaded samples declared inline (only when present).
         if (Object.keys(sampleMap).length > 0) {
             const entries = Object.entries(sampleMap)
                 .map(([name, url]) => `  "${name}": "${url}"`)
                 .join(',\n');
             lines.push(`samples({\n${entries}\n});`);
         }
-        return `${lines.join('\n')}\n\n${processed}`;
+        return lines.length > 0 ? `${lines.join('\n')}\n\n${processed}` : processed;
     };
 
     const playStrudelTrack = (
@@ -288,76 +299,36 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     ) => {
         if (musicMuted) return;
         const finalCode = buildFinalCode(source, qualities, sampleMap);
-
         currentStrudelSourceRef.current = source;
         lastStrudelCodeRef.current = finalCode;
 
-        if (strudelIframeRef.current) {
-            if (strudelIframeReadyRef.current) {
-                // Strudel is already loaded and the AudioContext is running (the user has
-                // already clicked ▶ at least once this session). Send the new code directly
-                // via postMessage — stays in any current user-gesture context and avoids a
-                // full page reload that would expire the gesture before Strudel re-initialises.
-                try {
-                    strudelIframeRef.current.contentWindow?.postMessage(
-                        { type: 'strudel-eval', code: finalCode },
-                        '*'
-                    );
-                } catch { /* cross-origin postMessage blocked */ }
-                // Mark as playing immediately — AudioContext is already running.
-                setIsStrudelPlaying(true);
-            } else {
-                // iframe is at about:blank (first play or after stop) — do a full src load so
-                // Strudel initialises. We do NOT set isStrudelPlaying here because the
-                // browser's autoplay policy will block the AudioContext until the user clicks
-                // the ▶ button. The onLoad handler marks the iframe as ready; the ▶ click
-                // then sends strudel-eval within the user gesture to actually start audio.
-                strudelIframeRef.current.src = buildStrudelUrl(finalCode);
-                // Keep isStrudelPlaying = false so the ▶ button is visible.
-            }
+        if (strudelEngineRef.current) {
+            strudelEngineRef.current.evaluate(finalCode).catch(e =>
+                console.warn('[AudioProvider] Strudel evaluate error:', e)
+            );
+            setIsStrudelPlaying(true);
+        } else {
+            // Engine still loading — queue the code; the init useEffect will play it.
+            pendingStrudelCodeRef.current = finalCode;
         }
     };
 
     /**
-     * Re-evaluates the currently playing Strudel track's ScribeScript templates
-     * against new player qualities. Attempts a live postMessage update so the
-     * pattern keeps playing without restarting; falls back to an iframe src
-     * reload only if the evaluated code actually changed.
+     * Re-evaluates the current Strudel track's ScribeScript templates against
+     * new quality values. Skipped when nothing has changed.
      */
     const updateStrudelQualities = (newQualities: PlayerQualities) => {
         const source = currentStrudelSourceRef.current;
         if (!source || !isStrudelPlaying) return;
-
         const newCode = buildFinalCode(source, newQualities, {});
-        if (newCode === lastStrudelCodeRef.current) return; // no change
-
+        if (newCode === lastStrudelCodeRef.current) return;
         lastStrudelCodeRef.current = newCode;
-
-        // Attempt a seamless live-code update via postMessage.
-        // Strudel's REPL listens for { type: 'strudel-eval', code } messages —
-        // this works with self-hosted Strudel and may work with strudel.cc.
-        if (strudelIframeRef.current?.contentWindow) {
-            try {
-                strudelIframeRef.current.contentWindow.postMessage(
-                    { type: 'strudel-eval', code: newCode },
-                    '*'
-                );
-            } catch {
-                // postMessage failed — fall through to src reload
-            }
-        }
-
-        // Reload the iframe as a reliable fallback (restarts the track with new values).
-        if (strudelIframeRef.current) {
-            strudelIframeRef.current.src = buildStrudelUrl(newCode);
-        }
+        strudelEngineRef.current?.evaluate(newCode).catch(() => {});
     };
 
     const stopStrudelTrack = () => {
-        if (strudelIframeRef.current) {
-            strudelIframeRef.current.src = 'about:blank';
-        }
-        strudelIframeReadyRef.current = false;
+        strudelEngineRef.current?.hush();
+        pendingStrudelCodeRef.current = '';
         currentStrudelSourceRef.current = '';
         lastStrudelCodeRef.current = '';
         setIsStrudelPlaying(false);
@@ -480,45 +451,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }}>
             {children}
 
-            {/* Hidden Strudel REPL iframe for in-game music playback.
-                Positioned off-screen so it stays in the DOM (display:none
-                prevents iframe scripts from running in some browsers).
-                allow="autoplay" delegates autoplay permission so the iframe
-                can start an AudioContext after any user gesture on the parent
-                page. The onLoad handler marks the iframe as ready; evaluation
-                is triggered via strudel-eval postMessage only when the user
-                clicks ▶ (within a gesture), or when the iframe is already warm
-                (AudioContext already running from a previous gesture). */}
-            <iframe
-                ref={strudelIframeRef}
-                title="Strudel Music Player"
-                allow="autoplay; microphone"
-                src="about:blank"
-                onLoad={() => {
-                    const code = lastStrudelCodeRef.current;
-                    if (!code) {
-                        // about:blank loaded (or stopStrudelTrack cleared the ref) — nothing to do.
-                        strudelIframeReadyRef.current = false;
-                        return;
-                    }
-                    // Strudel has loaded. Mark it as ready so the next playStrudelTrack call
-                    // (triggered by the user clicking ▶) sends strudel-eval via postMessage
-                    // within the click gesture, which is the only way to unlock the AudioContext
-                    // under the browser's autoplay policy. We do NOT send strudel-eval here
-                    // because this onLoad callback is not inside a user gesture.
-                    strudelIframeReadyRef.current = true;
-                }}
-                style={{
-                    position: 'fixed',
-                    top: '-2px',
-                    left: '-2px',
-                    width: '1px',
-                    height: '1px',
-                    border: 'none',
-                    pointerEvents: 'none',
-                    opacity: 0,
-                }}
-            />
+            {/* @strudel/web runs entirely in-page — no iframe required. */}
 
             {isLoadingSamples && (
                 <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999, background: '#111', color: '#61afef', padding: '10px 20px', borderRadius: '4px', border: '1px solid #61afef', fontSize: '0.8rem', boxShadow: '0 0 10px rgba(97, 175, 239, 0.2)' }}>
