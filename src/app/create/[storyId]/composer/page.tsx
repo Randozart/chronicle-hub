@@ -87,19 +87,23 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
         const cleanId = id.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         if (items.find(i => i.id === cleanId)) return showToast("ID exists", "error");
 
-        const newItem: ImageComposition = {
-            id: cleanId,
-            storyId,
-            name: "New Composition",
-            width: 512,
-            height: 512,
-            layers: [],
-            parameters: {}
-        };
+        const source = modalConfig.sourceItem;
+        const newItem: ImageComposition = source
+            ? { ...source, id: cleanId, name: source.name + ' (Copy)' }
+            : {
+                id: cleanId,
+                storyId,
+                name: "New Composition",
+                width: 512,
+                height: 512,
+                layers: [],
+                parameters: {}
+            };
 
         setItems(prev => [...prev, newItem]);
         setSelectedId(cleanId);
-        
+        setModalConfig({ isOpen: false, mode: 'create' });
+
         await fetch('/api/admin/compositions', {
             method: 'POST',
             body: JSON.stringify({ storyId, data: newItem })
@@ -135,15 +139,16 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
             
             <div className="admin-editor-col" style={{ display: 'flex', flexDirection: 'column', height: '90vh', maxHeight: '90vh', padding: 0 }}>
                 {activeItem ? (
-                    <ComposerEditor 
+                    <ComposerEditor
                         initialData={activeItem}
                         storyId={storyId}
                         assets={assets}
-                        setAssets={setAssets} 
+                        setAssets={setAssets}
                         allThemes={allThemes}
-                        defaultTheme={defaultTheme} 
+                        defaultTheme={defaultTheme}
                         onSave={handleSave}
                         onDelete={() => setConfirmModal({ isOpen: true, id: activeItem.id })}
+                        onDuplicate={() => setModalConfig({ isOpen: true, mode: 'duplicate', sourceItem: activeItem })}
                         guardRef={guardRef}
                         canImportPsd={canImportPsd}
                         refreshAssets={fetchAssets}
@@ -159,10 +164,10 @@ export default function ComposerPage({ params }: { params: Promise<{ storyId: st
                 isOpen={modalConfig.isOpen}
                 onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
                 onSubmit={handleCreate}
-                title="New Composition"
-                label="ID"
+                title={modalConfig.mode === 'duplicate' ? `Duplicate "${modalConfig.sourceItem?.id}"` : "New Composition"}
+                label="New ID"
                 placeholder="hero_portrait"
-                confirmLabel="Create"
+                confirmLabel={modalConfig.mode === 'duplicate' ? 'Duplicate' : 'Create'}
             />
 
             <ConfirmationModal 

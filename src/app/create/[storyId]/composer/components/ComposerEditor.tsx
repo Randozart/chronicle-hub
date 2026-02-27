@@ -50,6 +50,7 @@ interface Props {
     setAssets: React.Dispatch<React.SetStateAction<GlobalAsset[]>>; 
     onSave: (data: ImageComposition) => void;
     onDelete: () => void;
+    onDuplicate?: () => void;
     guardRef: { current: FormGuard | null };
     allThemes: Record<string, Record<string, string>>;
     defaultTheme: string; 
@@ -58,10 +59,10 @@ interface Props {
 }
 const imageElementCache = new Map<string, HTMLImageElement>();
 
-export default function ComposerEditor({ 
-    initialData, storyId, assets, setAssets, 
-    onSave, onDelete, guardRef, allThemes, defaultTheme, canImportPsd, refreshAssets
-}: Props) {        
+export default function ComposerEditor({
+    initialData, storyId, assets, setAssets,
+    onSave, onDelete, onDuplicate, guardRef, allThemes, defaultTheme, canImportPsd, refreshAssets
+}: Props) {
     const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
         '/api/admin/compositions',
@@ -879,7 +880,7 @@ export default function ComposerEditor({
                                 style={{ border: 'none', background: 'transparent' }}
                             />
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', flex: 1, padding: '0.5rem' }}>
                                 {filteredPresets.map(cat => (
                                     <div key={cat.name} style={{border: '1px solid var(--tool-border)', borderRadius: '4px', overflow:'hidden'}}>
                                         <div 
@@ -1279,12 +1280,13 @@ export default function ComposerEditor({
                 }}
             />
 
-            <CommandCenter 
+            <CommandCenter
                 isDirty={isDirty}
                 isSaving={isSaving}
                 lastSaved={lastSaved}
                 onSave={handleSave}
                 onDelete={onDelete}
+                onDuplicate={onDuplicate}
                 onRevert={revertChanges}
                 itemType="Composition"
             />

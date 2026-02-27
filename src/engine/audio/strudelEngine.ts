@@ -67,19 +67,19 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
         // _locationCb fires synchronously for every scheduled hap while leaving
         // audio output completely untouched.
         //
-        // Why not pattern.onTrigger() inside afterEval?  Because onTrigger()
-        // returns a *new* Pattern — the scheduler keeps playing the original and
-        // the new pattern (with our callback) is never used.
-        //
-        // @strudel/core is in the same webpack bundle as @strudel/web, so they
-        // share the same schedulerState.mjs singleton.
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore — no type declarations for @strudel/core
-        const core = await import('@strudel/core') as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-        const origTrigger = core.getTriggerFunc?.();
-        if (typeof origTrigger === 'function' && typeof core.setTriggerFunc === 'function') {
+        // IMPORTANT: @strudel/web ships as a fully self-contained bundle that
+        // includes its own private copy of @strudel/core.  Importing @strudel/core
+        // separately gives a different module instance with a different `ke`
+        // (trigger func) variable — wrapping that variable has no effect on the
+        // scheduler inside @strudel/web.  We must call getTriggerFunc /
+        // setTriggerFunc through the already-imported @strudel/web module so that
+        // we are patching the same `ke` that the scheduler actually invokes.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const webMod = mod as any;
+        const origTrigger = webMod.getTriggerFunc?.();
+        if (typeof origTrigger === 'function' && typeof webMod.setTriggerFunc === 'function') {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            core.setTriggerFunc((hap: any, ...args: any[]) => {
+            webMod.setTriggerFunc((hap: any, ...args: any[]) => {
                 if (_locationCb) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const locs: TriggerLocation[] = (hap?.context?.locations ?? [])

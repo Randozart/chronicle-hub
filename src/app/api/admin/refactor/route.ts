@@ -104,9 +104,13 @@ export async function POST(request: NextRequest) {
             return { modified: false, count: 0, newObj: obj, details: [] };
         };
         if (scope === 'all' || scope === 'content') {
-            const collections = ['storylets', 'opportunities'];
-            for (const colName of collections) {
-                const cursor = db.collection(colName).find({ worldId: storyId });
+            const collections = [
+                { name: 'storylets', field: 'worldId' },
+                { name: 'opportunities', field: 'worldId' },
+                { name: 'compositions', field: 'storyId' },
+            ];
+            for (const { name: colName, field } of collections) {
+                const cursor = db.collection(colName).find({ [field]: storyId });
                 
                 while(await cursor.hasNext()) {
                     const doc = await cursor.next();

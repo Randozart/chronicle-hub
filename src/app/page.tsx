@@ -107,12 +107,12 @@ export default function Dashboard() {
 
                     <div className="dashboard-grid">
                         {displayList.map((w: any) => (
-                            <WorldCard 
-                                key={w.worldId} 
-                                w={w} 
-                                isOwner={activeTab === 'my' && w.ownerId === (data as any)?.myWorlds?.[0]?.currentUserId} 
-                                isGuest={isGuest} 
-                                isAdmin={isSystemAdmin} 
+                            <WorldCard
+                                key={w.worldId}
+                                w={w}
+                                isOwner={activeTab === 'my' && !!w.currentUserId}
+                                isGuest={isGuest}
+                                isAdmin={isSystemAdmin}
                             />
                         ))}
                         
