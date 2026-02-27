@@ -163,7 +163,7 @@ export default function GameHub(props: GameHubProps) {
     const [alertState, setAlertState] = useState<{ isOpen: boolean, title: string, message: string } | null>(null);
     const [deckStates, setDeckStates] = useState<Record<string, DeckState>>(props.deckStates || {});
 
-    const { playTrack, playStrudelTrack, stopStrudelTrack, isStrudelPlaying, updateStrudelQualities, playSample } = useAudio();
+    const { playTrack, playStrudelTrack, stopStrudelTrack, isStrudelPlaying, updateStrudelQualities, playSample, musicMuted, setMusicMuted } = useAudio();
     const [activeResolution, setActiveResolution] = useState<ResolutionState | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -172,6 +172,7 @@ export default function GameHub(props: GameHubProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [logs, setLogs] = useState<{ message: string, type: 'EVAL' | 'COND' | 'FX', timestamp: number }[]>([]);
     const [showLogger, setShowLogger] = useState(false);
+    const [currentMusicTrackId, setCurrentMusicTrackId] = useState<string | null>(null);
     const [showAudioSettings, setShowAudioSettings] = useState(false);
     const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
     
@@ -454,10 +455,14 @@ export default function GameHub(props: GameHubProps) {
 
         if (!trackId || !props.musicTracks?.[trackId]) {
             stopStrudelTrack();
+            setCurrentMusicTrackId(null);
             return;
         }
         const track = props.musicTracks[trackId];
         const source = track.source || '';
+
+        // Always track the resolved ID so the music widget can display it.
+        setCurrentMusicTrackId(trackId);
 
         // Detect Strudel vs Ligature: Ligature source begins with a [CONFIG] section.
         const isLigature = source.trimStart().startsWith('[');
@@ -469,7 +474,7 @@ export default function GameHub(props: GameHubProps) {
             playStrudelTrack(source, character?.qualities ?? {});
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location?.id]);
+    }, [location?.id, musicMuted]);
 
     // Debounced quality-change effect: re-evaluate ScribeScript in the current Strudel track.
     // Uses a ref to avoid re-creating the timeout on every render.
@@ -984,10 +989,9 @@ export default function GameHub(props: GameHubProps) {
                 
                 {renderLayout()}
 
-                {/* Music widget — shown when current location has a Strudel track */}
+                {/* Music widget — shown whenever a music track is resolved for the current location/region/world */}
                 {isMounted && (() => {
-                    const trackId = location?.musicTrackId;
-                    const track = trackId ? props.musicTracks?.[trackId] : undefined;
+                    const track = currentMusicTrackId ? props.musicTracks?.[currentMusicTrackId] : undefined;
                     if (!track) return null;
                     const isStrudel = !track.source?.trimStart().startsWith('[');
                     if (!isStrudel) return null;
@@ -1006,14 +1010,14 @@ export default function GameHub(props: GameHubProps) {
                             borderRadius: '999px',
                             padding: '0.3rem 0.75rem 0.3rem 0.5rem',
                             fontSize: '0.72rem',
-                            color: 'rgba(255,255,255,0.7)',
+                            color: musicMuted ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.7)',
                             userSelect: 'none',
                         }}>
-                            <span style={{ fontSize: '0.9rem' }}>{isStrudelPlaying ? '♪' : '♩'}</span>
+                            <span style={{ fontSize: '0.9rem' }}>{musicMuted ? '🔇' : isStrudelPlaying ? '♪' : '♩'}</span>
                             <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {track.name || trackId}
+                                {track.name || currentMusicTrackId}
                             </span>
-                            {isStrudelPlaying ? (
+                            {!musicMuted && (isStrudelPlaying ? (
                                 <button
                                     onClick={stopStrudelTrack}
                                     title="Stop music"
@@ -1029,7 +1033,14 @@ export default function GameHub(props: GameHubProps) {
                                 >
                                     ▶
                                 </button>
-                            )}
+                            ))}
+                            <button
+                                onClick={() => setMusicMuted(!musicMuted)}
+                                title={musicMuted ? 'Unmute music' : 'Mute music'}
+                                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.75rem', lineHeight: 1 }}
+                            >
+                                {musicMuted ? '🔇' : '🔊'}
+                            </button>
                         </div>,
                         document.body
                     );
