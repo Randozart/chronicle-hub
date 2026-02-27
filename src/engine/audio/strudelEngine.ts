@@ -23,16 +23,17 @@ export type StrudelEngine = {
     /**
      * Register a callback that fires whenever a Strudel hap triggers and carries
      * source location data. Pass `null` to unregister.
-     * The callback receives the character ranges (in the last evaluated code string)
-     * that correspond to the playing event — use these for live highlighting.
-     * dominant=false in the internal onTrigger call keeps webaudio output active.
+     *
+     * Implemented by wrapping the global Cyclist trigger function once at init
+     * time — this is the only reliable hook because pattern.onTrigger() returns
+     * a *new* pattern that the scheduler never plays.
      */
     setLocationCallback: (cb: LocationCallback | null) => void;
 };
 
 let _promise: Promise<StrudelEngine> | null = null;
-// Module-level so the afterEval closure can always reach the latest callback
-// without the callback itself being captured in a stale closure.
+// Module-level so the trigger wrapper closure can always reach the latest
+// callback without being captured in a stale closure.
 let _locationCb: LocationCallback | null = null;
 
 /**
@@ -59,19 +60,36 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ? async () => { await (mod as any).samples(sampleUrl); }
                 : undefined,
-            // afterEval fires after every evaluate() call with the resulting Pattern.
-            // We attach a non-dominant onTrigger so our callback fires alongside the
-            // default webaudio output (dominant=false keeps audio playing).
-            afterEval: ({ pattern }: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                if (!pattern || typeof pattern.onTrigger !== 'function') return;
-                pattern.onTrigger((hap: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                    if (!_locationCb) return;
+        });
+
+        // After initStrudel() the repl has called setTriggerFunc() internally with
+        // the Cyclist scheduler's audio trigger.  We wrap it ONCE here so that
+        // _locationCb fires synchronously for every scheduled hap while leaving
+        // audio output completely untouched.
+        //
+        // Why not pattern.onTrigger() inside afterEval?  Because onTrigger()
+        // returns a *new* Pattern — the scheduler keeps playing the original and
+        // the new pattern (with our callback) is never used.
+        //
+        // @strudel/core is in the same webpack bundle as @strudel/web, so they
+        // share the same schedulerState.mjs singleton.
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore — no type declarations for @strudel/core
+        const core = await import('@strudel/core') as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+        const origTrigger = core.getTriggerFunc?.();
+        if (typeof origTrigger === 'function' && typeof core.setTriggerFunc === 'function') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            core.setTriggerFunc((hap: any, ...args: any[]) => {
+                if (_locationCb) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const locs: TriggerLocation[] = (hap?.context?.locations ?? [])
                         .filter((l: any) => typeof l?.start === 'number' && typeof l?.end === 'number'); // eslint-disable-line @typescript-eslint/no-explicit-any
                     if (locs.length > 0) _locationCb(locs);
-                }, false /* dominant=false → audio still plays */);
-            },
-        });
+                }
+                return origTrigger(hap, ...args);
+            });
+        }
+
         return {
             evaluate: mod.evaluate as StrudelEngine['evaluate'],
             hush: mod.hush,
