@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 // ---------------------------------------------------------------------------
 // Shared styles
@@ -46,20 +47,6 @@ const btnStyle: React.CSSProperties = {
     whiteSpace: 'nowrap',
 };
 
-const dropdownStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    zIndex: 200,
-    background: 'var(--tool-bg)',
-    border: '1px solid var(--tool-border)',
-    borderRadius: '0 0 4px 4px',
-    maxHeight: '180px',
-    overflowY: 'auto',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-};
-
 const dropdownItemStyle: React.CSSProperties = {
     padding: '0.35rem 0.6rem',
     fontSize: '0.8rem',
@@ -67,6 +54,65 @@ const dropdownItemStyle: React.CSSProperties = {
     color: 'var(--tool-text)',
     borderBottom: '1px solid var(--tool-border)',
 };
+
+// ---------------------------------------------------------------------------
+// Portal dropdown — renders via document.body so overflow:hidden parents
+// can't clip it. Positioned with position:fixed from the trigger's DOMRect.
+// ---------------------------------------------------------------------------
+
+interface PortalDropdownProps {
+    anchorRef: React.RefObject<HTMLElement | null>;
+    onClose: () => void;
+    children: React.ReactNode;
+}
+
+function PortalDropdown({ anchorRef, onClose, children }: PortalDropdownProps) {
+    const [rect, setRect] = useState<DOMRect | null>(null);
+    const dropRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (anchorRef.current) {
+            setRect(anchorRef.current.getBoundingClientRect());
+        }
+        const update = () => {
+            if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
+        };
+        window.addEventListener('scroll', update, true);
+        window.addEventListener('resize', update);
+        return () => {
+            window.removeEventListener('scroll', update, true);
+            window.removeEventListener('resize', update);
+        };
+    }, [anchorRef]);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            const inAnchor = anchorRef.current?.contains(e.target as Node);
+            const inDrop = dropRef.current?.contains(e.target as Node);
+            if (!inAnchor && !inDrop) onClose();
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [anchorRef, onClose]);
+
+    if (!rect) return null;
+
+    const style: React.CSSProperties = {
+        position: 'fixed',
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+        background: 'var(--tool-bg)',
+        border: '1px solid var(--tool-border)',
+        borderRadius: '0 0 4px 4px',
+        maxHeight: '220px',
+        overflowY: 'auto',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+    };
+
+    return createPortal(<div ref={dropRef} style={style}>{children}</div>, document.body);
+}
 
 // ---------------------------------------------------------------------------
 // AudioTrackPicker
@@ -99,13 +145,6 @@ export function AudioTrackPicker({ storyId, value, onChange, placeholder = 'None
             .catch(() => {});
     }, [storyId]);
 
-    // Close dropdown on outside click
-    useEffect(() => {
-        const handler = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
     const appendId = (id: string) => {
         const cur = value?.trim() ?? '';
         onChange(cur ? `${cur}, ${id}` : id);
@@ -132,7 +171,7 @@ export function AudioTrackPicker({ storyId, value, onChange, placeholder = 'None
                 ▾ Browse
             </button>
             {open && (
-                <div style={dropdownStyle}>
+                <PortalDropdown anchorRef={wrapRef} onClose={() => setOpen(false)}>
                     <div
                         style={{ ...dropdownItemStyle, color: 'var(--tool-text-dim)', fontStyle: 'italic' }}
                         onClick={() => { onChange(undefined); setOpen(false); }}
@@ -155,7 +194,7 @@ export function AudioTrackPicker({ storyId, value, onChange, placeholder = 'None
                     {tracks.length === 0 && (
                         <div style={{ ...dropdownItemStyle, color: 'var(--tool-text-dim)', fontStyle: 'italic' }}>No tracks found</div>
                     )}
-                </div>
+                </PortalDropdown>
             )}
         </div>
     );
@@ -193,12 +232,6 @@ export function SamplePicker({ value, onChange, placeholder = 'None — or type 
             .catch(() => {});
     }, []);
 
-    useEffect(() => {
-        const handler = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
     const appendUrl = (url: string) => {
         const cur = value?.trim() ?? '';
         onChange(cur ? `${cur}, ${url}` : url);
@@ -225,7 +258,7 @@ export function SamplePicker({ value, onChange, placeholder = 'None — or type 
                 ▾ Browse
             </button>
             {open && (
-                <div style={dropdownStyle}>
+                <PortalDropdown anchorRef={wrapRef} onClose={() => setOpen(false)}>
                     <div
                         style={{ ...dropdownItemStyle, color: 'var(--tool-text-dim)', fontStyle: 'italic' }}
                         onClick={() => { onChange(undefined); setOpen(false); }}
@@ -248,7 +281,7 @@ export function SamplePicker({ value, onChange, placeholder = 'None — or type 
                     {samples.length === 0 && (
                         <div style={{ ...dropdownItemStyle, color: 'var(--tool-text-dim)', fontStyle: 'italic' }}>No samples uploaded yet</div>
                     )}
-                </div>
+                </PortalDropdown>
             )}
         </div>
     );
