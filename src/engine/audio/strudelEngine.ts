@@ -54,40 +54,64 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
     _promise = (async (): Promise<StrudelEngine> => {
         const mod = await import('@strudel/web');
         const sampleUrl = origin ? `${origin}/strudel-samples` : undefined;
+        // initStrudel() returns the `ls` repl object which has `ls.scheduler`
+        // (the Cyclist instance, `D`).  globalThis.repl is never set by
+        // @strudel/web because its inner XX class is always instantiated with
+        // localScope:true, skipping the globalThis.repl assignment.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (mod.initStrudel as any)({
+        const ls = await (mod.initStrudel as any)({
             prebake: sampleUrl
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ? async () => { await (mod as any).samples(sampleUrl); }
                 : undefined,
         });
 
-        // After initStrudel() the repl has called setTriggerFunc() internally with
-        // the Cyclist scheduler's audio trigger.  We wrap it ONCE here so that
-        // _locationCb fires synchronously for every scheduled hap while leaving
-        // audio output completely untouched.
+        // Hook into live highlighting by monkey-patching scheduler.setPattern.
         //
-        // IMPORTANT: @strudel/web ships as a fully self-contained bundle that
-        // includes its own private copy of @strudel/core.  Importing @strudel/core
-        // separately gives a different module instance with a different `ke`
-        // (trigger func) variable — wrapping that variable has no effect on the
-        // scheduler inside @strudel/web.  We must call getTriggerFunc /
-        // setTriggerFunc through the already-imported @strudel/web module so that
-        // we are patching the same `ke` that the scheduler actually invokes.
+        // WHY NOT getTriggerFunc / setTriggerFunc:
+        // @strudel/web ships as a fully self-contained bundle.  Its scheduler
+        // captures `onTrigger` at construction time and calls it directly
+        // (`n?.(V, Z, X, this.cps, D)` in Db constructor).  The exported
+        // getTriggerFunc/setTriggerFunc operate on a separate variable `Bb`
+        // that nothing in the scheduler ever reads — patching it has no effect.
+        //
+        // CORRECT APPROACH — hap-level context.onTrigger:
+        // The audio-trigger function (s2) checks `hap.context.onTrigger` for
+        // every hap.  When set (without dominantTrigger), it calls BOTH the
+        // default audio output AND context.onTrigger.  We wrap scheduler.setPattern
+        // so every incoming pattern gets a withContext() that injects our hook
+        // while preserving any existing per-hap onTrigger chain.
+        //
+        // We access the scheduler via the initStrudel() return value (ls.scheduler)
+        // rather than globalThis.repl (which @strudel/web never populates).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const webMod = mod as any;
-        const origTrigger = webMod.getTriggerFunc?.();
-        if (typeof origTrigger === 'function' && typeof webMod.setTriggerFunc === 'function') {
+        const scheduler = (ls as any)?.scheduler;
+        if (scheduler && typeof scheduler.setPattern === 'function') {
+            const origSetPattern = (scheduler.setPattern as Function).bind(scheduler); // eslint-disable-line @typescript-eslint/ban-types
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            webMod.setTriggerFunc((hap: any, ...args: any[]) => {
-                if (_locationCb) {
+            scheduler.setPattern = async (pattern: any, start?: boolean) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const wrapped = typeof pattern?.withContext === 'function'
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const locs: TriggerLocation[] = (hap?.context?.locations ?? [])
-                        .filter((l: any) => typeof l?.start === 'number' && typeof l?.end === 'number'); // eslint-disable-line @typescript-eslint/no-explicit-any
-                    if (locs.length > 0) _locationCb(locs);
-                }
-                return origTrigger(hap, ...args);
-            });
+                    ? pattern.withContext((ctx: any) => {
+                        const prevOnTrigger = ctx.onTrigger;
+                        return {
+                            ...ctx,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            onTrigger: async (hap: any, ...args: any[]) => {
+                                if (_locationCb) {
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const locs: TriggerLocation[] = (hap?.context?.locations ?? [])
+                                        .filter((l: any) => typeof l?.start === 'number' && typeof l?.end === 'number'); // eslint-disable-line @typescript-eslint/no-explicit-any
+                                    if (locs.length > 0) _locationCb(locs);
+                                }
+                                if (prevOnTrigger) await prevOnTrigger(hap, ...args);
+                            },
+                        };
+                    })
+                    : pattern;
+                return origSetPattern(wrapped, start);
+            };
         }
 
         return {

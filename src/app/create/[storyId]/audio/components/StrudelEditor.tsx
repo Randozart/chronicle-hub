@@ -708,7 +708,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
     // ── Inject CSS keyframe for live-highlight flashes (once on mount) ─────────
     useEffect(() => {
         const style = document.createElement('style');
-        style.textContent = `@keyframes strudel-flash { from { opacity: 0.75; } to { opacity: 0; } }`;
+        style.textContent = `@keyframes strudel-flash { from { opacity: 1; } to { opacity: 0; } }`;
         document.head.appendChild(style);
         return () => style.remove();
     }, []);
@@ -790,13 +790,13 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
             for (const rect of getRectsForCharRange(codeRef.current, start, end)) {
                 const flash = document.createElement('div');
                 flash.style.cssText =
-                    `position:fixed;left:${rect.left}px;top:${rect.top}px;` +
-                    `width:${rect.width}px;height:${rect.height}px;` +
-                    `background:rgba(97,175,239,0.35);border-radius:2px;` +
+                    `position:fixed;left:${rect.left - 1}px;top:${rect.top}px;` +
+                    `width:${rect.width + 2}px;height:${rect.height}px;` +
+                    `border:2px solid var(--tool-accent);border-radius:3px;` +
                     `pointer-events:none;z-index:9999;` +
-                    `animation:strudel-flash 0.35s ease-out forwards;`;
+                    `animation:strudel-flash 0.4s ease-out forwards;`;
                 document.body.appendChild(flash);
-                setTimeout(() => flash.remove(), 400);
+                setTimeout(() => flash.remove(), 450);
             }
         }
     }, []);
