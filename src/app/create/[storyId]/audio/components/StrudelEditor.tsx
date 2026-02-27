@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { LigatureTrack } from '@/engine/audio/models';
 import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
+import { highlightStrudel } from '@/utils/strudelHighlighter';
 import { getStrudelEngine, StrudelEngine } from '@/engine/audio/strudelEngine';
 import { useDebounce } from '@/hooks/useDebounce';
 import dynamic from 'next/dynamic';
@@ -216,8 +217,8 @@ function SyntaxHintPanel() {
                 opacity: 0.75,
                 fontStyle: 'italic',
             }}>
-                Templates are substituted when ▶ Send to REPL is clicked.
-                Use the ScribeScript Tester tab below to preview output with mock quality values.
+                Templates are substituted each time ▶ Evaluate &amp; Play is clicked.
+                Use the ScribeScript Tester tab below to set mock quality values.
             </div>
         </div>
     );
@@ -228,16 +229,16 @@ function SyntaxHintPanel() {
 // ---------------------------------------------------------------------------
 
 interface DebugRow { key: string; value: string; }
+interface QualityPreset { name: string; rows: DebugRow[]; }
 
 interface ScribeScriptTabProps {
-    onSendWithTestValues: () => void;
     onUpdate: (qualities: PlayerQualities, defs: Record<string, QualityDefinition>) => void;
     storyId?: string;
     rawSource: string;
     mockQualities: PlayerQualities;
 }
 
-function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId, rawSource, mockQualities }: ScribeScriptTabProps) {
+function ScribeScriptTab({ onUpdate, storyId, rawSource, mockQualities }: ScribeScriptTabProps) {
     const [players, setPlayers] = useState<any[]>([]);
     const [showPicker, setShowPicker] = useState(false);
     const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
@@ -245,6 +246,48 @@ function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId, rawSource, m
     // Character import — owns the imported rows and reset key for ScribeDebugger
     const [importedRows, setImportedRows] = useState<DebugRow[] | undefined>(undefined);
     const [importResetKey, setImportResetKey] = useState(0);
+
+    // Quality presets (saved to localStorage per story)
+    const presetsKey = `strudel-quality-presets-${storyId ?? 'global'}`;
+    const [presets, setPresets] = useState<QualityPreset[]>(() => {
+        try {
+            const stored = localStorage.getItem(presetsKey);
+            return stored ? JSON.parse(stored) : [];
+        } catch { return []; }
+    });
+    const [showPresets, setShowPresets] = useState(false);
+    const [newPresetName, setNewPresetName] = useState('');
+
+    const savePresetsToStorage = useCallback((updated: QualityPreset[]) => {
+        try { localStorage.setItem(presetsKey, JSON.stringify(updated)); } catch { /* ignore */ }
+    }, [presetsKey]);
+
+    const handleSavePreset = useCallback(() => {
+        const name = newPresetName.trim();
+        if (!name) return;
+        const currentRows: DebugRow[] = Object.entries(mockQualities).map(([key, q]) => ({
+            key,
+            value: (q as any).stringValue && (q as any).level === 0
+                ? String((q as any).stringValue)
+                : String((q as any).level ?? 0),
+        }));
+        const updated = [...presets.filter(p => p.name !== name), { name, rows: currentRows }];
+        setPresets(updated);
+        savePresetsToStorage(updated);
+        setNewPresetName('');
+    }, [newPresetName, mockQualities, presets, savePresetsToStorage]);
+
+    const handleLoadPreset = useCallback((preset: QualityPreset) => {
+        setImportedRows(preset.rows);
+        setImportResetKey(k => k + 1);
+        setShowPresets(false);
+    }, []);
+
+    const handleDeletePreset = useCallback((name: string) => {
+        const updated = presets.filter(p => p.name !== name);
+        setPresets(updated);
+        savePresetsToStorage(updated);
+    }, [presets, savePresetsToStorage]);
 
     // Compute which $vars are used in source but not yet in mock qualities
     const usedVarNames = useMemo(() => extractScribeVarNames(rawSource), [rawSource]);
@@ -367,23 +410,129 @@ function ScribeScriptTab({ onSendWithTestValues, onUpdate, storyId, rawSource, m
                 )}
                 <span style={{ flex: 1 }} />
                 <button
-                    onClick={onSendWithTestValues}
-                    title="Send source code preprocessed with these quality values to the Strudel REPL"
+                    onClick={() => setShowPresets(p => !p)}
+                    title="Save or load mock quality presets"
                     style={{
-                        background: 'rgba(152,195,121,0.15)',
-                        border: '1px solid var(--success-color)',
-                        color: 'var(--success-color)',
+                        background: showPresets ? 'rgba(97,175,239,0.15)' : 'transparent',
+                        border: `1px solid ${showPresets ? 'var(--tool-accent)' : 'var(--tool-border)'}`,
+                        color: showPresets ? 'var(--tool-accent)' : 'var(--tool-text-dim)',
                         borderRadius: '4px',
-                        padding: '0.25rem 0.6rem',
+                        padding: '0.25rem 0.55rem',
                         cursor: 'pointer',
                         fontSize: '0.82rem',
                         fontFamily: 'inherit',
                         whiteSpace: 'nowrap',
                     }}
                 >
-                    ▶ Send with Test Values
+                    💾 Presets{presets.length > 0 ? ` (${presets.length})` : ''}
                 </button>
             </div>
+
+            {/* Presets panel */}
+            {showPresets && (
+                <div style={{
+                    flexShrink: 0,
+                    borderBottom: '1px solid var(--tool-border)',
+                    background: 'var(--tool-bg-sidebar)',
+                    padding: '0.5rem 0.65rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.3rem',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                }}>
+                    {presets.length === 0 ? (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', padding: '0.1rem 0' }}>
+                            No saved presets yet. Add mock qualities and save a preset below.
+                        </div>
+                    ) : presets.map(p => (
+                        <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <button
+                                onClick={() => handleLoadPreset(p)}
+                                style={{
+                                    flex: 1,
+                                    textAlign: 'left',
+                                    background: 'none',
+                                    border: '1px solid var(--tool-border)',
+                                    color: 'var(--tool-text-header)',
+                                    borderRadius: '3px',
+                                    padding: '0.22rem 0.45rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    fontFamily: 'inherit',
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--tool-accent)')}
+                                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--tool-border)')}
+                            >
+                                {p.name}
+                                <span style={{ marginLeft: '0.4rem', color: 'var(--tool-text-dim)', fontSize: '0.7rem' }}>
+                                    ({p.rows.length} {p.rows.length === 1 ? 'var' : 'vars'})
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => handleDeletePreset(p.name)}
+                                title={`Delete preset "${p.name}"`}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--tool-text-dim)',
+                                    cursor: 'pointer',
+                                    fontSize: '1rem',
+                                    lineHeight: 1,
+                                    padding: '0.1rem 0.2rem',
+                                    flexShrink: 0,
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger-color)')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--tool-text-dim)')}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                    <div style={{
+                        display: 'flex',
+                        gap: '0.35rem',
+                        marginTop: presets.length > 0 ? '0.25rem' : 0,
+                        paddingTop: presets.length > 0 ? '0.35rem' : 0,
+                        borderTop: presets.length > 0 ? '1px solid var(--tool-border)' : 'none',
+                    }}>
+                        <input
+                            value={newPresetName}
+                            onChange={e => setNewPresetName(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); }}
+                            placeholder="Preset name…"
+                            style={{
+                                flex: 1,
+                                background: 'var(--tool-bg)',
+                                border: '1px solid var(--tool-border)',
+                                color: 'var(--tool-text-header)',
+                                borderRadius: '3px',
+                                padding: '0.22rem 0.45rem',
+                                fontSize: '0.75rem',
+                                fontFamily: 'inherit',
+                                outline: 'none',
+                            }}
+                        />
+                        <button
+                            onClick={handleSavePreset}
+                            disabled={!newPresetName.trim()}
+                            style={{
+                                background: newPresetName.trim() ? 'rgba(152,195,121,0.12)' : 'transparent',
+                                border: `1px solid ${newPresetName.trim() ? 'var(--success-color)' : 'var(--tool-border)'}`,
+                                color: newPresetName.trim() ? 'var(--success-color)' : 'var(--tool-text-dim)',
+                                borderRadius: '3px',
+                                padding: '0.22rem 0.55rem',
+                                cursor: newPresetName.trim() ? 'pointer' : 'default',
+                                fontSize: '0.75rem',
+                                fontFamily: 'inherit',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            Save current
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Character picker — drops in below the header */}
             {showPicker && (
@@ -568,18 +717,8 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
         return `${lines.join('\n')}\n\n${processed}`;
     }, [samples]); // localGroups no longer needed — local samples load via URL
 
-    // ── Send to player (no test values) ───────────────────────────────────────
+    // ── Evaluate & Play — always uses mock qualities from ScribeScript tester ──
     const handleSendToStrudel = useCallback(() => {
-        const code = buildFinalCode(rawSource, {});
-        setLastSentCode(code);
-        strudelEngineRef.current?.evaluate(code).catch(e =>
-            console.warn('[StrudelEditor] evaluate error:', e)
-        );
-        setIsPlaying(true);
-    }, [rawSource, buildFinalCode]);
-
-    // ── Send with mock ScribeScript test values ────────────────────────────────
-    const handleSendWithTestValues = useCallback(() => {
         const code = buildFinalCode(rawSource, mockQualities);
         setLastSentCode(code);
         strudelEngineRef.current?.evaluate(code).catch(e =>
@@ -764,10 +903,10 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
 
                         <span style={{ flex: 1 }} />
 
-                        {/* Send to REPL */}
+                        {/* Evaluate & Play */}
                         <button
                             onClick={handleSendToStrudel}
-                            title="Preprocess ScribeScript templates and send to the Strudel REPL on the right"
+                            title="Substitute ScribeScript templates using mock quality values, then play in the Strudel engine"
                             style={{
                                 background: 'rgba(97, 175, 239, 0.15)',
                                 border: '1px solid #61afef',
@@ -783,7 +922,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                 gap: '0.3rem',
                             }}
                         >
-                            ▶ Send to REPL →
+                            ▶ Evaluate &amp; Play
                         </button>
                     </div>
 
@@ -889,7 +1028,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                             </span>
                         )}
                     </div>
-                    {/* Body — shows last evaluated code or idle prompt */}
+                    {/* Body — shows last evaluated code (syntax-highlighted) or idle prompt */}
                     <div style={{
                         flex: 1,
                         overflow: 'auto',
@@ -901,12 +1040,17 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                 margin: 0,
                                 fontFamily: 'monospace',
                                 fontSize: '0.78rem',
-                                color: isPlaying ? 'var(--text-primary, #e0e0e0)' : 'var(--tool-text-dim)',
                                 whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-all',
-                                opacity: isPlaying ? 1 : 0.5,
+                                wordBreak: 'break-word',
+                                lineHeight: 1.65,
+                                opacity: isPlaying ? 1 : 0.55,
+                                transition: 'opacity 0.25s',
                             }}>
-                                {lastSentCode}
+                                <code
+                                    className="lang-strudel"
+                                    // eslint-disable-next-line react/no-danger
+                                    dangerouslySetInnerHTML={{ __html: highlightStrudel(lastSentCode) }}
+                                />
                             </pre>
                         ) : (
                             <div style={{
@@ -919,7 +1063,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                 textAlign: 'center',
                                 padding: '2rem',
                             }}>
-                                Click <strong style={{ color: 'var(--tool-accent, #61afef)' }}> ▶ Send to REPL</strong> to preview the track.
+                                Click <strong style={{ color: 'var(--tool-accent, #61afef)' }}>▶ Evaluate &amp; Play</strong> to preview the track.
                             </div>
                         )}
                     </div>
@@ -1002,7 +1146,6 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
                     <div style={{ display: bottomTab === 'scribe' ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0, overflow: 'hidden' }}>
                         <ScribeScriptTab
-                            onSendWithTestValues={handleSendWithTestValues}
                             onUpdate={handleDebuggerUpdate}
                             storyId={storyId}
                             rawSource={rawSource}
