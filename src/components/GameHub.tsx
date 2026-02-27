@@ -21,7 +21,7 @@ import WalletHeader from './WalletHeader';
 import MarketInterface from './MarketInterface';
 import GameImage from '@/components/GameImage';
 import { InstrumentDefinition, LigatureTrack } from '@/engine/audio/models';
-import { resolveAudioRef } from '@/engine/audio/strudelPreprocessor';
+import { resolveAudioRef, resolveAudioRefList } from '@/engine/audio/strudelPreprocessor';
 import { useAudio } from '@/providers/AudioProvider';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
@@ -174,7 +174,13 @@ export default function GameHub(props: GameHubProps) {
     const [showLogger, setShowLogger] = useState(false);
     const [currentMusicTrackId, setCurrentMusicTrackId] = useState<string | null>(null);
     const [showAudioSettings, setShowAudioSettings] = useState(false);
-    const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]); 
+    const logQueue = useRef<{ message: string, type: 'EVAL' | 'COND' | 'FX' }[]>([]);
+    // Playlist cycling — the resolved list of track IDs for the current location/region/world
+    const playlistRef = useRef<string[]>([]);
+    const playlistIndexRef = useRef<number>(0);
+    const cycleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    // Always-current qualities reference for use inside interval callbacks
+    const qualitiesRef = useRef<PlayerQualities>(props.initialCharacter?.qualities ?? {});
     
     const handleLog = useCallback((message: string, type: 'EVAL' | 'COND' | 'FX') => {
         logQueue.current.push({ message, type });
@@ -402,6 +408,11 @@ export default function GameHub(props: GameHubProps) {
             localStorage.setItem(localKey, JSON.stringify(character));
         }
     }, [isGuestMode, character, props.storyId]);
+
+    // Keep qualitiesRef current so interval callbacks always use fresh values.
+    useEffect(() => {
+        qualitiesRef.current = character?.qualities ?? {};
+    }, [character?.qualities]);
     
     useEffect(() => {
         if (!isGuestMode && !props.initialCharacter) {
@@ -441,38 +452,67 @@ export default function GameHub(props: GameHubProps) {
     }, [character, location, props.locations]);
     
     useEffect(() => {
-        // Resolve best music track: location → region → world default.
+        // Clear any existing playlist cycle timer.
+        if (cycleIntervalRef.current) {
+            clearInterval(cycleIntervalRef.current);
+            cycleIntervalRef.current = null;
+        }
+
+        if (musicMuted) return;
+
+        // Resolve best music playlist: location → region → world default.
         // Each field may be a plain ID, a comma-separated playlist, or a ScribeScript expression.
-        const qualities = character?.qualities ?? {};
+        const qualities = qualitiesRef.current;
         const locRef = location?.musicTrackId;
         const regionId = location?.regionId;
         const regionRef = regionId ? props.regions?.[regionId]?.musicTrackId : undefined;
         const worldRef = props.settings?.defaultMusicTrackId;
 
-        const trackId = resolveAudioRef(locRef, qualities)
-            || resolveAudioRef(regionRef, qualities)
-            || resolveAudioRef(worldRef, qualities);
+        const locList = resolveAudioRefList(locRef, qualities);
+        const regionList = locList.length === 0 ? resolveAudioRefList(regionRef, qualities) : [];
+        const worldList = locList.length === 0 && regionList.length === 0 ? resolveAudioRefList(worldRef, qualities) : [];
+        const playlist = locList.length > 0 ? locList : regionList.length > 0 ? regionList : worldList;
 
-        if (!trackId || !props.musicTracks?.[trackId]) {
+        if (playlist.length === 0) {
             stopStrudelTrack();
             setCurrentMusicTrackId(null);
+            playlistRef.current = [];
             return;
         }
-        const track = props.musicTracks[trackId];
-        const source = track.source || '';
 
-        // Always track the resolved ID so the music widget can display it.
-        setCurrentMusicTrackId(trackId);
+        playlistRef.current = playlist;
+        playlistIndexRef.current = 0;
 
-        // Detect Strudel vs Ligature: Ligature source begins with a [CONFIG] section.
-        const isLigature = source.trimStart().startsWith('[');
+        const playTrackAtIndex = (index: number) => {
+            const id = playlistRef.current[index];
+            if (!id || !props.musicTracks?.[id]) return;
+            const t = props.musicTracks[id];
+            setCurrentMusicTrackId(id);
+            const isLigature = t.source?.trimStart().startsWith('[');
+            if (isLigature) {
+                playTrack(t.source, props.instruments ? Object.values(props.instruments) : [], qualitiesRef.current);
+            } else {
+                playStrudelTrack(t.source, qualitiesRef.current);
+            }
+        };
 
-        if (isLigature) {
-            const instrumentList = props.instruments ? Object.values(props.instruments) : [];
-            playTrack(source, instrumentList, character?.qualities);
-        } else {
-            playStrudelTrack(source, character?.qualities ?? {});
+        playTrackAtIndex(0);
+
+        // Cycle through multi-track playlists every 3 minutes.
+        if (playlist.length > 1) {
+            cycleIntervalRef.current = setInterval(() => {
+                const next = (playlistIndexRef.current + 1) % playlistRef.current.length;
+                playlistIndexRef.current = next;
+                playTrackAtIndex(next);
+            }, 3 * 60 * 1000);
         }
+
+        return () => {
+            if (cycleIntervalRef.current) {
+                clearInterval(cycleIntervalRef.current);
+                cycleIntervalRef.current = null;
+            }
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location?.id, musicMuted]);
 

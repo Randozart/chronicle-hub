@@ -10,9 +10,9 @@ interface Props {
 export default function AudioSettingsModal({ isOpen, onClose }: Props) {
     const {
         musicMuted, setMusicMuted,
+        musicVolume, setMusicVolume,
         sfxMuted, setSfxMuted,
         sfxVolume, setSfxVolume,
-        masterVolume, setMasterVolume,
         isStrudelPlaying, stopStrudelTrack,
     } = useAudio();
 
@@ -94,10 +94,6 @@ export default function AudioSettingsModal({ isOpen, onClose }: Props) {
         </button>
     );
 
-    // Master volume is in dB (-60 to 0). Convert to 0-100 slider.
-    const dbToSlider = (db: number) => Math.round(((db + 60) / 60) * 100);
-    const sliderToDb = (v: number) => (v / 100) * 60 - 60;
-
     return (
         <div style={overlayStyle} onClick={onClose}>
             <div style={modalStyle} onClick={e => e.stopPropagation()}>
@@ -134,12 +130,12 @@ export default function AudioSettingsModal({ isOpen, onClose }: Props) {
                         type="range"
                         min={0}
                         max={100}
-                        value={dbToSlider(masterVolume)}
-                        onChange={e => setMasterVolume(sliderToDb(Number(e.target.value)))}
+                        value={Math.round(musicVolume * 100)}
+                        onChange={e => setMusicVolume(Number(e.target.value) / 100)}
                         style={sliderStyle}
                     />
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #666)', minWidth: '30px', textAlign: 'right' }}>
-                        {dbToSlider(masterVolume)}%
+                        {Math.round(musicVolume * 100)}%
                     </span>
                 </div>
 

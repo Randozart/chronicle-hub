@@ -54,20 +54,20 @@ function evaluateExpression(expression: string, ctx: Record<string, unknown>): s
 }
 
 /**
- * Resolves an audio reference string, which may be:
- *  - A plain ID/URL:  "track_a"
- *  - A comma-separated playlist:  "track_a, track_b, track_c"  (one picked at random)
- *  - A ScribeScript conditional:  "{ $combat > 5 : combat_track | ambient_track }"
- *  - Any combination of the above after conditional resolution
+ * Resolves ScribeScript conditional blocks in an audio ref string, returning
+ * the list of all comma-separated options after conditional evaluation.
  *
- * Returns a single resolved string (the chosen ID/URL), or undefined when the
- * input is empty or resolves to an empty value.
+ * Example: "{ $combat > 5 : battle_a, battle_b | ambient_a }" with combat=8
+ * → ["battle_a", "battle_b"]
+ *
+ * Used by playlist cycling logic so callers can iterate through tracks in order
+ * rather than picking one at random each time.
  */
-export function resolveAudioRef(
+export function resolveAudioRefList(
     ref: string | undefined,
     qualities: PlayerQualities
-): string | undefined {
-    if (!ref) return undefined;
+): string[] {
+    if (!ref) return [];
     const ctx = buildContext(qualities);
 
     // Evaluate { condition : branch_a | branch_b } blocks (single-level)
@@ -85,8 +85,24 @@ export function resolveAudioRef(
         }
     });
 
-    // Split by comma, trim, filter empty, then pick one at random
-    const options = resolved.split(',').map(s => s.trim()).filter(Boolean);
+    return resolved.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/**
+ * Resolves an audio reference string, which may be:
+ *  - A plain ID/URL:  "track_a"
+ *  - A comma-separated playlist:  "track_a, track_b, track_c"  (one picked at random)
+ *  - A ScribeScript conditional:  "{ $combat > 5 : combat_track | ambient_track }"
+ *  - Any combination of the above after conditional resolution
+ *
+ * Returns a single resolved string (the chosen ID/URL), or undefined when the
+ * input is empty or resolves to an empty value.
+ */
+export function resolveAudioRef(
+    ref: string | undefined,
+    qualities: PlayerQualities
+): string | undefined {
+    const options = resolveAudioRefList(ref, qualities);
     if (options.length === 0) return undefined;
     return options[Math.floor(Math.random() * options.length)];
 }

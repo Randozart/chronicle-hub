@@ -43,6 +43,9 @@ interface AudioContextType {
     /** Player audio preferences — persisted to localStorage. */
     musicMuted: boolean;
     setMusicMuted: (muted: boolean) => void;
+    /** Music volume for Strudel playback, 0–1.  Default 1.  Persisted to localStorage. */
+    musicVolume: number;
+    setMusicVolume: (v: number) => void;
     sfxMuted: boolean;
     setSfxMuted: (muted: boolean) => void;
     sfxVolume: number;
@@ -65,6 +68,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const lastStrudelCodeRef = useRef<string>('');
     /** Code queued while the engine is still initialising. Played as soon as it's ready. */
     const pendingStrudelCodeRef = useRef<string>('');
+    /** Processed code without the .gain() suffix — used to quickly re-apply a new volume level. */
+    const preGainCodeRef = useRef<string>('');
 
     const playbackRequestIdRef = useRef(0);
     const previewSynthRef = useRef<AnySoundSource | null>(null);
@@ -79,6 +84,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const [musicMuted, setMusicMutedState] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         return localStorage.getItem('chronicle-audio-musicMuted') === 'true';
+    });
+    const [musicVolume, setMusicVolumeState] = useState<number>(() => {
+        if (typeof window === 'undefined') return 1;
+        const stored = localStorage.getItem('chronicle-audio-musicVolume');
+        return stored !== null ? parseFloat(stored) : 1;
     });
     const [sfxMuted, setSfxMutedState] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
@@ -279,7 +289,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const buildFinalCode = (source: string, qualities: PlayerQualities, sampleMap: Record<string, string>): string => {
+    const buildFinalCode = (source: string, qualities: PlayerQualities, sampleMap: Record<string, string>, vol?: number): string => {
         const processed = preprocessStrudelSource(source, qualities);
         const lines: string[] = [];
         // Cloud-uploaded samples declared inline (only when present).
@@ -289,7 +299,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 .join(',\n');
             lines.push(`samples({\n${entries}\n});`);
         }
-        return lines.length > 0 ? `${lines.join('\n')}\n\n${processed}` : processed;
+        const preGain = lines.length > 0 ? `${lines.join('\n')}\n\n${processed}` : processed;
+        preGainCodeRef.current = preGain;
+        const effectiveVol = vol ?? musicVolume;
+        return effectiveVol < 0.999 ? `${preGain}\n.postgain(${effectiveVol.toFixed(3)})` : preGain;
+    };
+
+    const setMusicVolume = (v: number) => {
+        const clamped = Math.max(0, Math.min(1, v));
+        setMusicVolumeState(clamped);
+        localStorage.setItem('chronicle-audio-musicVolume', String(clamped));
+        // Re-evaluate the current track immediately with the new gain level.
+        const preGain = preGainCodeRef.current;
+        if (preGain && strudelEngineRef.current && isStrudelPlaying) {
+            const code = clamped < 0.999 ? `${preGain}\n.postgain(${clamped.toFixed(3)})` : preGain;
+            lastStrudelCodeRef.current = code;
+            strudelEngineRef.current.evaluate(code).catch(() => {});
+        }
     };
 
     const playStrudelTrack = (
@@ -446,6 +472,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             playStrudelTrack, stopStrudelTrack, isStrudelPlaying, updateStrudelQualities,
             playSample,
             musicMuted, setMusicMuted,
+            musicVolume, setMusicVolume,
             sfxMuted, setSfxMuted,
             sfxVolume, setSfxVolume,
         }}>
