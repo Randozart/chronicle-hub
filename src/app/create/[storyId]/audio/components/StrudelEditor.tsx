@@ -6,7 +6,7 @@ import { LigatureTrack } from '@/engine/audio/models';
 import { PlayerQualities, QualityDefinition } from '@/engine/models';
 import { preprocessStrudelSource } from '@/engine/audio/strudelPreprocessor';
 import { highlightStrudel } from '@/utils/strudelHighlighter';
-import { getStrudelEngine, StrudelEngine } from '@/engine/audio/strudelEngine';
+import { getStrudelEngine, StrudelEngine, TriggerLocation } from '@/engine/audio/strudelEngine';
 import { useDebounce } from '@/hooks/useDebounce';
 import dynamic from 'next/dynamic';
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
@@ -76,6 +76,56 @@ function extractSampleNames(code: string): Set<string> {
         }
     }
     return names;
+}
+
+/**
+ * Walk text nodes inside `root` and return the DOMRect list that corresponds
+ * to the character range [start, end) — where positions are counted in the
+ * plain-text content of the element (matching character offsets in the code
+ * string passed to `dangerouslySetInnerHTML`).
+ *
+ * Works correctly through PrismJS span wrappers because DOM text nodes carry
+ * the original characters; the browser handles entity decoding.
+ */
+function getRectsForCharRange(root: HTMLElement, start: number, end: number): DOMRect[] {
+    try {
+        const range = document.createRange();
+        let pos = 0;
+        let startNode: Text | null = null;
+        let startOff = 0;
+        let endNode: Text | null = null;
+        let endOff = 0;
+
+        function walk(node: Node): boolean {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const n = node as Text;
+                const len = n.length;
+                if (!startNode && pos + len > start) {
+                    startNode = n;
+                    startOff = start - pos;
+                }
+                if (startNode && !endNode && pos + len >= end) {
+                    endNode = n;
+                    endOff = Math.min(end - pos, len);
+                    return true;
+                }
+                pos += len;
+            } else {
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    if (walk(node.childNodes[i])) return true;
+                }
+            }
+            return false;
+        }
+
+        walk(root);
+        if (startNode && endNode) {
+            range.setStart(startNode, startOff);
+            range.setEnd(endNode, endOff);
+            return Array.from(range.getClientRects());
+        }
+    } catch { /* ignore — e.g. detached elements */ }
+    return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -603,6 +653,10 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
     const [lastSentCode, setLastSentCode] = useState('');
     const strudelEngineRef = useRef<StrudelEngine | null>(null);
 
+    // Live highlighting refs
+    const codeRef = useRef<HTMLElement | null>(null);
+    const isPlayingRef = useRef(false);
+
     // Syntax hint — open by default for first-time users, persisted in localStorage
     const [showSyntaxHint, setShowSyntaxHint] = useState<boolean>(() => {
         if (typeof window === 'undefined') return true;
@@ -651,12 +705,24 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
         });
     }, []);
 
+    // ── Inject CSS keyframe for live-highlight flashes (once on mount) ─────────
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.textContent = `@keyframes strudel-flash { from { opacity: 0.75; } to { opacity: 0; } }`;
+        document.head.appendChild(style);
+        return () => style.remove();
+    }, []);
+
+    // ── Keep isPlayingRef in sync with isPlaying state ─────────────────────────
+    useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
     // ── Sync when a different track is selected ────────────────────────────────
     useEffect(() => {
         const s = data.source || DEFAULT_STRUDEL_SOURCE;
         setRawSource(s);
         // Stop any currently playing preview when switching tracks
         strudelEngineRef.current?.hush();
+        strudelEngineRef.current?.setLocationCallback(null);
         setIsPlaying(false);
         setLastSentCode('');
     }, [data.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -717,6 +783,24 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
         return `${lines.join('\n')}\n\n${processed}`;
     }, [samples]); // localGroups no longer needed — local samples load via URL
 
+    // ── Live highlight trigger — fires on each Strudel scheduler event ─────────
+    const handleLocationTrigger = useCallback((locations: TriggerLocation[]) => {
+        if (!isPlayingRef.current || !codeRef.current) return;
+        for (const { start, end } of locations) {
+            for (const rect of getRectsForCharRange(codeRef.current, start, end)) {
+                const flash = document.createElement('div');
+                flash.style.cssText =
+                    `position:fixed;left:${rect.left}px;top:${rect.top}px;` +
+                    `width:${rect.width}px;height:${rect.height}px;` +
+                    `background:rgba(97,175,239,0.35);border-radius:2px;` +
+                    `pointer-events:none;z-index:9999;` +
+                    `animation:strudel-flash 0.35s ease-out forwards;`;
+                document.body.appendChild(flash);
+                setTimeout(() => flash.remove(), 400);
+            }
+        }
+    }, []);
+
     // ── Evaluate & Play — always uses mock qualities from ScribeScript tester ──
     const handleSendToStrudel = useCallback(() => {
         const code = buildFinalCode(rawSource, mockQualities);
@@ -724,12 +808,14 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
         strudelEngineRef.current?.evaluate(code).catch(e =>
             console.warn('[StrudelEditor] evaluate error:', e)
         );
+        strudelEngineRef.current?.setLocationCallback(handleLocationTrigger);
         setIsPlaying(true);
-    }, [rawSource, mockQualities, buildFinalCode]);
+    }, [rawSource, mockQualities, buildFinalCode, handleLocationTrigger]);
 
     // ── Stop ───────────────────────────────────────────────────────────────────
     const handleStop = useCallback(() => {
         strudelEngineRef.current?.hush();
+        strudelEngineRef.current?.setLocationCallback(null);
         setIsPlaying(false);
     }, []);
 
@@ -1047,6 +1133,7 @@ export default function StrudelEditor({ data, onChange, storyId }: Props) {
                                 transition: 'opacity 0.25s',
                             }}>
                                 <code
+                                    ref={codeRef}
                                     className="lang-strudel"
                                     // eslint-disable-next-line react/no-danger
                                     dangerouslySetInnerHTML={{ __html: highlightStrudel(lastSentCode) }}
