@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import SparkleIcon from '@/components/icons/SparkleIcon';
 import ScribeAssistant from '@/components/admin/ScribeAssistant';
 import dynamic from 'next/dynamic';
@@ -33,7 +34,7 @@ interface Props {
     initialTab?: 'variable' | 'conditional' | 'challenge' | 'random' | 'effect' | 'timer';
     contextQualityId?: string;
     qualityDefs?: QualityDefinition[];
-    entityType?: 'location' | 'deck' | 'storylet' | 'quality' | 'market';
+    entityType?: 'location' | 'deck' | 'storylet' | 'quality' | 'market' | 'music';
 }
 
 export default function SmartArea({
@@ -50,9 +51,14 @@ export default function SmartArea({
     const dynamicIds = useDynamicQualities(storyId);
     const [entities, setEntities] = useState<Array<{id: string, name: string}>>([]);
     const [entityFilter, setEntityFilter] = useState("");
+    const entityPickerDropRef = useRef<HTMLDivElement>(null);
+    const [pickerRect, setPickerRect] = useState<DOMRect | null>(null);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+            const inContainer = containerRef.current?.contains(event.target as Node);
+            const inDrop = entityPickerDropRef.current?.contains(event.target as Node);
+            if (!inContainer && !inDrop) {
                 setShowAssistant(false);
                 setShowEntityPicker(false);
             }
@@ -60,6 +66,20 @@ export default function SmartArea({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (!showEntityPicker) return;
+        const update = () => {
+            if (containerRef.current) setPickerRect(containerRef.current.getBoundingClientRect());
+        };
+        update();
+        window.addEventListener('scroll', update, true);
+        window.addEventListener('resize', update);
+        return () => {
+            window.removeEventListener('scroll', update, true);
+            window.removeEventListener('resize', update);
+        };
+    }, [showEntityPicker]);
 
     // Fetch entities initially and when picker is opened (to refresh)
     useEffect(() => {
@@ -71,6 +91,7 @@ export default function SmartArea({
         else if (entityType === 'storylet') endpoint = `/api/admin/storylets?storyId=${storyId}`;
         else if (entityType === 'quality') endpoint = `/api/admin/qualities?storyId=${storyId}`;
         else if (entityType === 'market') endpoint = `/api/admin/markets?storyId=${storyId}`;
+        else if (entityType === 'music') endpoint = `/api/admin/audio?storyId=${storyId}`;
 
         if (!endpoint) return;
 
@@ -78,7 +99,11 @@ export default function SmartArea({
             .then(res => res.json())
             .then(data => {
                 let items: Array<{id: string, name: string}> = [];
-                if (Array.isArray(data)) {
+                if (entityType === 'music' && typeof data === 'object' && data !== null) {
+                    if (data.music) Object.values(data.music).forEach((t: any) => items.push({ id: t.id, name: t.name || t.id }));
+                    if (data.globalTracks) Object.values(data.globalTracks).forEach((t: any) => items.push({ id: t.id, name: `[Global] ${t.name || t.id}` }));
+                    items.sort((a, b) => a.name.localeCompare(b.name));
+                } else if (Array.isArray(data)) {
                     items = data.map((item: any) => ({
                         id: item.id,
                         name: item.name || item.id
@@ -219,9 +244,9 @@ export default function SmartArea({
                                 padding: '2px 8px', transition: 'all 0.1s'
                             }}
                             type="button"
-                            title={`Browse ${entityType}s`}
+                            title={`Browse ${entityType === 'music' ? 'tracks' : entityType + 's'}`}
                         >
-                            🔗 {entityType.charAt(0).toUpperCase() + entityType.slice(1)}s
+                            {entityType === 'music' ? 'Tracks' : entityType.charAt(0).toUpperCase() + entityType.slice(1) + 's'}
                         </button>
                     )}
 
@@ -254,27 +279,29 @@ export default function SmartArea({
                 />
             )}
 
-            {showEntityPicker && entityType && (
-                <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: '5px',
-                    background: 'var(--tool-bg-sidebar)',
-                    border: '1px solid var(--warning-color)',
-                    borderRadius: '4px',
-                    padding: '0.5rem',
-                    minWidth: '300px',
-                    maxWidth: '400px',
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                    zIndex: 100,
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                }}>
+            {showEntityPicker && entityType && pickerRect && typeof document !== 'undefined' && createPortal(
+                <div
+                    ref={entityPickerDropRef}
+                    style={{
+                        position: 'fixed',
+                        top: pickerRect.bottom + 5,
+                        right: window.innerWidth - pickerRect.right,
+                        minWidth: Math.max(300, pickerRect.width),
+                        maxWidth: '400px',
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        zIndex: 9999,
+                        background: 'var(--tool-bg-sidebar)',
+                        border: '1px solid var(--warning-color)',
+                        borderRadius: '4px',
+                        padding: '0.5rem',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                    }}
+                >
                     <div style={{ marginBottom: '0.5rem' }}>
                         <input
                             type="text"
-                            placeholder={`Search ${entityType}s...`}
+                            placeholder={`Search ${entityType === 'music' ? 'tracks' : entityType + 's'}...`}
                             value={entityFilter}
                             onChange={e => setEntityFilter(e.target.value)}
                             className="form-input"
@@ -331,11 +358,12 @@ export default function SmartArea({
                             e.name.toLowerCase().includes(entityFilter.toLowerCase())
                         ).length === 0 && (
                             <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--tool-text-dim)', fontSize: '0.85rem' }}>
-                                No {entityType}s found
+                                No {entityType === 'music' ? 'tracks' : entityType + 's'} found
                             </div>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
             <div 
                 className={hasVisualErrors ? 'editor-has-errors' : ''}

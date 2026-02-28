@@ -8,6 +8,7 @@ import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import { SamplePicker } from '@/components/admin/AudioTrackPicker';
+import SoundsModal from '@/components/admin/SoundsModal';
 
 interface Props {
     initialData: DeckDefinition;
@@ -172,13 +173,15 @@ export default function DeckMainForm({ initialData, onSave, onDelete, onDuplicat
                         />
                     </div>
                 </div>
-                <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
-                    <label className="special-label" style={{ color: 'var(--tool-text-dim)', marginBottom: '0.5rem' }}>Audio</label>
-                    <div className="form-group">
-                        <label className="form-label">Draw Sound</label>
-                        <SamplePicker value={form.drawSoundId} onChange={v => handleChange('drawSoundId', v)} />
-                        <p className="special-desc">Plays when the player manually draws a card from this deck.</p>
-                    </div>
+                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audio</span>
+                    <SoundsModal label="Sounds" hasContent={!!form.drawSoundId}>
+                        <div className="form-group">
+                            <label className="form-label">Draw Sound</label>
+                            <SamplePicker value={form.drawSoundId} onChange={v => handleChange('drawSoundId', v)} />
+                            <p className="special-desc">Plays when the player manually draws a card from this deck.</p>
+                        </div>
+                    </SoundsModal>
                 </div>
                 <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
                     <label className="special-label" style={{ color: 'var(--tool-accent-mauve)' }}>Behavior</label>

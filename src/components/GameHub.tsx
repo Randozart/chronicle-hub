@@ -895,6 +895,7 @@ export default function GameHub(props: GameHubProps) {
                         character={character}
                         onPlaySound={playSample}
                         defaultClickSoundUrl={props.settings.defaultClickSoundUrl}
+                        defaultSoundUrl={props.settings.defaultSoundUrl}
                         defaultPassSoundUrl={props.settings.defaultPassSoundUrl}
                         defaultFailSoundUrl={props.settings.defaultFailSoundUrl}
                     />

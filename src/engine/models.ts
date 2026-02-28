@@ -43,7 +43,9 @@ export interface ResolveOption extends LogicGates {
     computed_action_cost?: number | string;
     /** Sound URL played immediately when the player clicks this option (before resolution). */
     clickSoundId?: string;
-    /** Sound URL played when the option resolves as a success. */
+    /** Sound URL played when the option resolves with no skill check (guaranteed pass). */
+    soundId?: string;
+    /** Sound URL played when the option resolves as a success (skill check passed). */
     passSoundId?: string;
     /** Sound URL played when the option resolves as a failure. */
     failSoundId?: string;
@@ -285,6 +287,8 @@ export interface WorldSettings {
     musicFadeDuration?: number;
     /** Default sound URL played when any option is clicked (before resolution), if the option has no clickSoundId. */
     defaultClickSoundUrl?: string;
+    /** Default sound URL played when any guaranteed (no-challenge) option resolves, if the option has no soundId. */
+    defaultSoundUrl?: string;
     /** Default sound URL played when any option resolves as success, if the option has no passSoundId. */
     defaultPassSoundUrl?: string;
     /** Default sound URL played when any option resolves as failure, if the option has no failSoundId. */

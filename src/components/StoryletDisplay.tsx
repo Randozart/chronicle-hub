@@ -66,6 +66,7 @@ interface StoryletDisplayProps {
     onPlaySound?: (url: string) => void;
     /** World-level default sound URLs — used when the individual option has no sound configured. */
     defaultClickSoundUrl?: string;
+    defaultSoundUrl?: string;
     defaultPassSoundUrl?: string;
     defaultFailSoundUrl?: string;
 }
@@ -96,6 +97,7 @@ export default function StoryletDisplay({
     character,
     onPlaySound,
     defaultClickSoundUrl,
+    defaultSoundUrl,
     defaultPassSoundUrl,
     defaultFailSoundUrl,
 }: StoryletDisplayProps) {
@@ -175,12 +177,17 @@ export default function StoryletDisplay({
 
             const isInstant = option.tags?.includes('instant_redirect');
 
-            // Play pass or fail sound sting — falls back to world defaults
+            // Play resolution sound — guaranteed options use soundId, challenged options use pass/fail
             if (onPlaySound) {
-                const isSuccess = data.result?.wasSuccess !== false;
-                const soundUrl = isSuccess
-                    ? (option.passSoundId || defaultPassSoundUrl)
-                    : (option.failSoundId || defaultFailSoundUrl);
+                let soundUrl: string | undefined;
+                if (!option.challenge) {
+                    soundUrl = (option as any).soundId || defaultSoundUrl;
+                } else {
+                    const isSuccess = data.result?.wasSuccess !== false;
+                    soundUrl = isSuccess
+                        ? (option.passSoundId || defaultPassSoundUrl)
+                        : (option.failSoundId || defaultFailSoundUrl);
+                }
                 if (soundUrl) onPlaySound(soundUrl);
             }
 

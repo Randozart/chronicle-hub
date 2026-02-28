@@ -9,6 +9,7 @@ import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import ProbabilityChart from '@/components/admin/ProbabilityChart';
 import { SamplePicker } from '@/components/admin/AudioTrackPicker';
+import SoundsModal from '@/components/admin/SoundsModal';
 
 interface Props {
     data: ResolveOption;
@@ -175,14 +176,6 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                     />
                 )}
             </div>
-            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.72rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Click Sound</label>
-                <SamplePicker
-                    value={(data as any).clickSoundId || ''}
-                    onChange={v => handleChange('clickSoundId' as any, v)}
-                    placeholder="None (plays on click)"
-                />
-            </div>
             <div style={{ marginTop: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                     <h4 style={{ margin: 0, color: 'var(--tool-text-dim)', textTransform: 'uppercase', fontSize: '0.8rem' }}>Outcomes</h4>
@@ -215,7 +208,48 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                 </div>
             </div>
 
-            <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--tool-border)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--tool-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <SoundsModal
+                    label="Sounds"
+                    hasContent={!!(data.clickSoundId || (data as any).soundId || data.passSoundId || data.failSoundId)}
+                >
+                    <div className="form-group">
+                        <label className="form-label">Click Sound</label>
+                        <SamplePicker
+                            value={(data as any).clickSoundId || ''}
+                            onChange={v => handleChange('clickSoundId' as any, v)}
+                            placeholder="None — plays immediately on click"
+                        />
+                        <p className="special-desc">Fires before the option is resolved, regardless of outcome.</p>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Default Sound</label>
+                        <SamplePicker
+                            value={(data as any).soundId || ''}
+                            onChange={v => handleChange('soundId' as any, v)}
+                            placeholder="None — plays when no skill check is required"
+                        />
+                        <p className="special-desc">Plays when this option has no skill check (guaranteed pass).</p>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Success Sound</label>
+                        <SamplePicker
+                            value={data.passSoundId || ''}
+                            onChange={v => handleChange('passSoundId', v)}
+                            placeholder="None — plays on a successful skill check"
+                        />
+                        <p className="special-desc">Plays after a skill check resolves successfully.</p>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Failure Sound</label>
+                        <SamplePicker
+                            value={data.failSoundId || ''}
+                            onChange={v => handleChange('failSoundId', v)}
+                            placeholder="None — plays on a failed skill check"
+                        />
+                        <p className="special-desc">Plays after a skill check resolves as a failure. Only relevant when difficulty is enabled.</p>
+                    </div>
+                </SoundsModal>
                 <button onClick={onDelete} className="unequip-btn" style={{ width: 'auto', padding: '0.3rem 1rem' }}>Delete Option</button>
             </div>
         </div>
@@ -450,13 +484,6 @@ function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityD
                         entityType="storylet"
                     />
                 </div>
-            </div>
-            <div style={{ marginTop: '0.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--tool-text-dim)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sound Sting</label>
-                <SamplePicker
-                    value={data[`${prefix}SoundId`] || ''}
-                    onChange={v => onChange(`${prefix}SoundId`, v)}
-                />
             </div>
         </div>
     );

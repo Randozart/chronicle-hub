@@ -11,7 +11,7 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import GameImage from '@/components/GameImage';
 import MissingEntityAlert from '@/components/admin/MissingEntityAlert';
-import { AudioTrackPicker } from '@/components/admin/AudioTrackPicker';
+import SoundsModal from '@/components/admin/SoundsModal';
 
 interface Props {
     initialData: Storylet;
@@ -288,15 +288,22 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                     </div>
                 </div>
 
-                <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
-                    <label className="special-label" style={{ color: 'var(--tool-text-dim)', marginBottom: '0.5rem' }}>Audio</label>
-                    <div className="form-row">
-                        <div className="form-group" style={{ flex: 1 }}>
+                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audio</span>
+                    <SoundsModal label="Sounds" hasContent={!!form.musicTrackId}>
+                        <div className="form-group">
                             <label className="form-label">Music Override</label>
-                            <AudioTrackPicker storyId={storyId} value={form.musicTrackId} onChange={v => handleChange('musicTrackId', v)} />
+                            <SmartArea
+                                storyId={storyId}
+                                value={form.musicTrackId || ''}
+                                onChange={v => handleChange('musicTrackId', v || undefined)}
+                                entityType="music"
+                                placeholder="None — or type a ScribeScript expression"
+                                minHeight="38px"
+                            />
                             <p className="special-desc">Replaces or ducks location music while this storylet is open.</p>
                         </div>
-                        <div className="form-group" style={{ flex: 1 }}>
+                        <div className="form-group">
                             <label className="form-label">Music Mode</label>
                             <select
                                 value={form.musicMode || ''}
@@ -308,7 +315,7 @@ export default function StoryletMainForm({ initialData, onSave, onDelete, onDupl
                                 <option value="duck">Duck (lower location music volume)</option>
                             </select>
                         </div>
-                    </div>
+                    </SoundsModal>
                 </div>
 
                 <div style={{ marginTop: '2rem', borderTop: '1px solid var(--tool-border)', paddingTop: '1rem' }}>

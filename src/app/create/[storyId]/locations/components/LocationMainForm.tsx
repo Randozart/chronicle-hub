@@ -10,7 +10,8 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
 import LocationContentTab from './LocationContentTab';
-import { AudioTrackPicker, SamplePicker } from '@/components/admin/AudioTrackPicker';
+import { SamplePicker } from '@/components/admin/AudioTrackPicker';
+import SoundsModal from '@/components/admin/SoundsModal';
 interface Props {
     initialData: LocationDefinition;
     onSave: (data: LocationDefinition) => void;
@@ -220,18 +221,27 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                                 placeholder="You cannot change equipment here."
                             />
                         </div>
-                        <div className="admin-panel-box" style={{ marginTop: '1rem' }}>
-                            <label className="special-label" style={{ color: 'var(--tool-text-dim)', marginBottom: '0.5rem' }}>Audio</label>
-                            <div className="form-row">
-                                <div className="form-group" style={{ flex: 1 }}>
+                        <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audio</span>
+                            <SoundsModal label="Sounds" hasContent={!!(form.musicTrackId || form.travelSoundId)}>
+                                <div className="form-group">
                                     <label className="form-label">Background Music</label>
-                                    <AudioTrackPicker storyId={storyId} value={form.musicTrackId} onChange={v => handleChange('musicTrackId', v)} />
+                                    <SmartArea
+                                        storyId={storyId}
+                                        value={form.musicTrackId || ''}
+                                        onChange={v => handleChange('musicTrackId', v || undefined)}
+                                        entityType="music"
+                                        placeholder="None — or type a ScribeScript expression"
+                                        minHeight="38px"
+                                    />
+                                    <p className="special-desc">Plays when the player is in this location.</p>
                                 </div>
-                                <div className="form-group" style={{ flex: 1 }}>
+                                <div className="form-group">
                                     <label className="form-label">Travel Sting</label>
                                     <SamplePicker value={form.travelSoundId} onChange={v => handleChange('travelSoundId', v)} />
+                                    <p className="special-desc">Short sound played when the player travels to this location.</p>
                                 </div>
-                            </div>
+                            </SoundsModal>
                         </div>
                         <div className="form-row" style={{ marginTop: '1rem', borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
                             <div className="form-group" style={{ flex: 1 }}>

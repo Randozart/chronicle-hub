@@ -1,7 +1,8 @@
 'use client';
 
 import { WorldSettings } from '@/engine/models';
-import { AudioTrackPicker, SamplePicker } from '@/components/admin/AudioTrackPicker';
+import { SamplePicker } from '@/components/admin/AudioTrackPicker';
+import SmartArea from '@/components/admin/SmartArea';
 
 interface SettingsAudioProps {
     settings: WorldSettings;
@@ -14,11 +15,13 @@ export default function SettingsAudio({ settings, onChange, storyId }: SettingsA
         <>
             <div className="form-group">
                 <label className="form-label">Default Music Track</label>
-                <AudioTrackPicker
+                <SmartArea
                     storyId={storyId}
-                    value={settings.defaultMusicTrackId}
-                    onChange={v => onChange('defaultMusicTrackId', v)}
+                    value={settings.defaultMusicTrackId || ''}
+                    onChange={v => onChange('defaultMusicTrackId', v || undefined)}
+                    entityType="music"
                     placeholder="None — global fallback music"
+                    minHeight="38px"
                 />
                 <p className="special-desc">
                     Plays when no location, region, or storylet overrides the music. Supports playlists (comma-separated IDs) and ScribeScript conditionals.
@@ -57,13 +60,23 @@ export default function SettingsAudio({ settings, onChange, storyId }: SettingsA
             </div>
 
             <div className="form-group">
+                <label className="form-label">Default Sound</label>
+                <SamplePicker
+                    value={settings.defaultSoundUrl}
+                    onChange={v => onChange('defaultSoundUrl', v)}
+                    placeholder="None — played for guaranteed (no-challenge) options"
+                />
+                <p className="special-desc">Plays when an option resolves with no skill check required (guaranteed pass).</p>
+            </div>
+
+            <div className="form-group">
                 <label className="form-label">Default Success Sound</label>
                 <SamplePicker
                     value={settings.defaultPassSoundUrl}
                     onChange={v => onChange('defaultPassSoundUrl', v)}
-                    placeholder="None — played on a successful outcome"
+                    placeholder="None — played on a successful skill check"
                 />
-                <p className="special-desc">Plays after an option resolves successfully (or for guaranteed options).</p>
+                <p className="special-desc">Plays after a skill check option resolves successfully.</p>
             </div>
 
             <div className="form-group">

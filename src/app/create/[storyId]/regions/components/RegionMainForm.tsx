@@ -7,7 +7,7 @@ import GameImage from '@/components/GameImage';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
-import { AudioTrackPicker } from '@/components/admin/AudioTrackPicker';
+import SoundsModal from '@/components/admin/SoundsModal';
 
 interface Props {
     initialData: MapRegion;
@@ -119,10 +119,22 @@ export default function RegionMainForm({ initialData, onSave, onDelete, onDuplic
                     <p className="special-desc">Used if a specific Location doesn't have its own market defined.</p>
                 </div>
 
-                <div className="form-group">
-                    <label className="form-label">Background Music</label>
-                    <AudioTrackPicker storyId={storyId} value={form.musicTrackId} onChange={v => handleChange('musicTrackId', v)} />
-                    <p className="special-desc">Plays when entering a location within this region that has no music of its own.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Audio</span>
+                    <SoundsModal label="Sounds" hasContent={!!form.musicTrackId}>
+                        <div className="form-group">
+                            <label className="form-label">Background Music</label>
+                            <SmartArea
+                                storyId={storyId}
+                                value={form.musicTrackId || ''}
+                                onChange={v => handleChange('musicTrackId', v || undefined)}
+                                entityType="music"
+                                placeholder="None — or type a ScribeScript expression"
+                                minHeight="38px"
+                            />
+                            <p className="special-desc">Plays when entering a location within this region that has no music of its own.</p>
+                        </div>
+                    </SoundsModal>
                 </div>
 
             </div>
