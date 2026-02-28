@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { WarningIcon } from '@/components/icons/Icons';
 
 export default function LogicMathPage() {
     return (
@@ -209,7 +210,7 @@ export default function LogicMathPage() {
         <h4 className="docs-h4">Edge Case 3: Variable-from-Variable (The <code>$.</code> Problem)</h4>
 
         <div className="docs-callout" style={{borderColor:'var(--danger-color)', background:'rgba(231, 76, 60, 0.1)', marginBottom:'1rem'}}>
-            <strong style={{color:'var(--danger-color)'}}>⚠️ DEPRECATED SYNTAX</strong>
+            <strong style={{color:'var(--danger-color)', display:'inline-flex', alignItems:'center', gap:'5px'}}><WarningIcon width={14} height={14} /> DEPRECATED SYNTAX</strong>
             <p className="docs-p" style={{fontSize:'0.9rem', margin:'0.5rem 0 0 0'}}>
                 The <code>$(...)</code> syntax shown in this section is <strong>deprecated</strong> and maintained only for backward compatibility with legacy projects.
                 <br/><br/>

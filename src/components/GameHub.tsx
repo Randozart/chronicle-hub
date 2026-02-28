@@ -33,6 +33,7 @@ import LivingStories from './LivingStories';
 import { useTheme } from '@/providers/ThemeProvider';
 import { DeckState, getDeckStates } from '@/engine/deckLogic';
 import AudioSettingsModal from './AudioSettingsModal';
+import { VolumeIcon, MuteIcon } from './icons/Icons';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -724,9 +725,9 @@ export default function GameHub(props: GameHubProps) {
                             <button
                                 onClick={() => setShowAudioSettings(true)}
                                 title="Audio Settings"
-                                style={{ background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', padding: 0 }}
+                                style={{ background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                             >
-                                🔊
+                                <VolumeIcon width={16} height={16} />
                             </button>
                             <ZoomControls />
                         </div>
@@ -775,9 +776,9 @@ export default function GameHub(props: GameHubProps) {
                         <button
                             onClick={() => setShowAudioSettings(true)}
                             title="Audio Settings"
-                            style={{ background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', padding: 0 }}
+                            style={{ background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
                         >
-                            🔊
+                            <VolumeIcon width={16} height={16} />
                         </button>
                         <ZoomControls />
                     </div>
@@ -1066,7 +1067,7 @@ export default function GameHub(props: GameHubProps) {
                             color: musicMuted ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.7)',
                             userSelect: 'none',
                         }}>
-                            <span style={{ fontSize: '0.9rem' }}>{musicMuted ? '🔇' : isStrudelPlaying ? '♪' : '♩'}</span>
+                            <span style={{ display: 'flex', alignItems: 'center' }}>{musicMuted ? <MuteIcon width={14} height={14} /> : isStrudelPlaying ? '♪' : '♩'}</span>
                             <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {track.name || currentMusicTrackId}
                             </span>
@@ -1092,7 +1093,7 @@ export default function GameHub(props: GameHubProps) {
                                 title={musicMuted ? 'Unmute music' : 'Mute music'}
                                 style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.75rem', lineHeight: 1 }}
                             >
-                                {musicMuted ? '🔇' : '🔊'}
+                                {musicMuted ? <MuteIcon width={12} height={12} /> : <VolumeIcon width={12} height={12} />}
                             </button>
                         </div>,
                         document.body

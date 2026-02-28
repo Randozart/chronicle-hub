@@ -7,6 +7,7 @@ import QualityChangeBar from './QualityChangeBar';
 import GameImage from './GameImage';
 import FormattedText from './FormattedText';
 import { GameEngine } from '@/engine/gameEngine';
+import { WarningIcon, WrenchIcon } from '@/components/icons/Icons';
 
 export type ResolutionState = {
     qualities: PlayerQualities; 
@@ -323,8 +324,10 @@ export default function StoryletDisplay({
                                 cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' 
                             }}
                         >
-                            <span>
-                                {(resolution.errors && resolution.errors.length > 0) ? '⚠️ Script Errors Detected' : '🛠️ Debug Console'}
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {(resolution.errors && resolution.errors.length > 0)
+                                    ? <><WarningIcon width={14} height={14} /> Script Errors Detected</>
+                                    : <><WrenchIcon width={14} height={14} /> Debug Console</>}
                             </span>
                             <span>{showDebug ? '▼' : '▶'}</span>
                         </div>

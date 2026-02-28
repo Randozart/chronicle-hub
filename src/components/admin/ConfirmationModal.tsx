@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect } from 'react';
+import { WarningIcon } from '@/components/icons/Icons';
 
 interface ConfirmationModalProps {
     isOpen: boolean;
@@ -58,7 +59,7 @@ export default function ConfirmationModal({
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {isDanger && <span style={{ fontSize: '1.5rem' }}>⚠️</span>}
+                    {isDanger && <WarningIcon width={22} height={22} />}
                     <h3 style={{ margin: 0, color: isDanger ? 'var(--danger-color)' : 'var(--tool-text-header)' }}>
                         {title}
                     </h3>

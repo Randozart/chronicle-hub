@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import { WarningIcon } from '@/components/icons/Icons';
 
 interface Props {
     id: string;
@@ -74,7 +75,7 @@ export default function MissingEntityAlert({ id, type, storyId, onCreate, isRequ
     return (
         <div style={containerStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.2em' }}>{isRequired ? '⚠️' : ''}</span>
+                <span style={{ display: 'flex' }}>{isRequired ? <WarningIcon width={18} height={18} /> : null}</span>
                 <div>
                     <strong>{isRequired ? 'Missing Definition' : `New ${c.label}?`}</strong> {c.msg}
                     {!isRequired && (

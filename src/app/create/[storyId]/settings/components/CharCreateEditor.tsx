@@ -2,6 +2,7 @@
 
 import { CharCreateRule, ImageDefinition, QualityDefinition, QualityType } from "@/engine/models";
 import { useState, useMemo } from "react";
+import { WarningIcon } from '@/components/icons/Icons';
 
 interface CharCreateProps {
     rules: Record<string, CharCreateRule>;
@@ -337,7 +338,7 @@ export default function CharCreateEditor({
                                         alignItems: 'center', 
                                         gap: '0.5rem' 
                                     }}>
-                                        <span>⚠️</span>
+                                        <WarningIcon width={14} height={14} />
                                         <span>Player cannot interact with this. Value will remain empty. Change to <strong>Static</strong> to force a starting value.</span>
                                     </div>
                                 )}

@@ -2,6 +2,7 @@
 import { WorldSettings } from '@/engine/models';
 import { useToast } from '@/providers/ToastProvider';
 import { useState, useEffect } from 'react';
+import { WarningIcon } from '@/components/icons/Icons';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 
 interface Props {
@@ -137,7 +138,7 @@ export default function SettingsMainInfo({ settings, onChange, storyId, onChange
                         background: 'var(--danger-color)', color: 'white', padding: '1rem', 
                         borderRadius: '4px', marginBottom: '1.5rem', textAlign: 'center', fontWeight: 'bold' 
                     }}>
-                        ⚠️ THIS WORLD IS SCHEDULED FOR DELETION ON {new Date(settings.deletionScheduledAt).toLocaleDateString()}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><WarningIcon width={16} height={16} /> THIS WORLD IS SCHEDULED FOR DELETION ON {new Date(settings.deletionScheduledAt).toLocaleDateString()}</span>
                     </div>
                 )}
 

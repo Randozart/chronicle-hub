@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import { SearchIcon } from '@/components/icons/Icons';
 
 export default function WorldManagement() {
     const [worlds, setWorlds] = useState([]);
@@ -104,7 +105,7 @@ export default function WorldManagement() {
                                             }}
                                             title="Open Creator Studio (God Mode)"
                                         >
-                                            <span>🔍</span> Inspect
+                                            <SearchIcon width={14} height={14} /> Inspect
                                         </Link>
 
                                         <button 

@@ -2,6 +2,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { WrenchIcon } from '@/components/icons/Icons';
 
 interface EventSummary {
     _id: number; // The EventId
@@ -62,7 +63,7 @@ export default function WorldDataPage({ params }: { params: Promise<{ worldId: s
                             display: 'flex', alignItems: 'center', gap: '8px'
                         }}
                     >
-                        <span>🛠️</span> Reconstruct Data
+                        <WrenchIcon width={14} height={14} /> Reconstruct Data
                     </Link>
 
                     <input 

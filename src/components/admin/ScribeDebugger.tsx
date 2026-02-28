@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { PlayerQualities, QualityType, QualityDefinition } from '@/engine/models';
+import { SearchIcon } from '@/components/icons/Icons';
 
 interface Row { key: string; value: string; }
 
@@ -96,7 +97,7 @@ export default function ScribeDebugger({ onUpdate, initialRows, resetKey }: Prop
                 alignItems: 'center',
                 gap: '0.4rem',
             }}>
-                <span style={{ color: 'var(--tool-text-dim)', fontSize: '0.8rem', userSelect: 'none' }}>🔍</span>
+                <span style={{ color: 'var(--tool-text-dim)', display: 'flex' }}><SearchIcon width={14} height={14} /></span>
                 <input
                     value={search}
                     onChange={e => setSearch(e.target.value)}

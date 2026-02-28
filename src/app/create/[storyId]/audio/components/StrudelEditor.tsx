@@ -10,6 +10,7 @@ import { getStrudelEngine, StrudelEngine, TriggerLocation } from '@/engine/audio
 import { useDebounce } from '@/hooks/useDebounce';
 import dynamic from 'next/dynamic';
 import ScribeDebugger from '@/components/admin/ScribeDebugger';
+import { LightningIcon, BookmarkIcon } from '@/components/icons/Icons';
 
 const ScribeEditor = dynamic(() => import('@/components/admin/ScribeEditor'), { ssr: false });
 
@@ -435,7 +436,7 @@ function ScribeScriptTab({ onUpdate, storyId, rawSource, mockQualities }: Scribe
                             whiteSpace: 'nowrap',
                         }}
                     >
-                        ⚡ Extract $vars
+                        <LightningIcon width={12} height={12} /> Extract $vars
                     </button>
                 )}
                 {storyId && (
@@ -474,7 +475,7 @@ function ScribeScriptTab({ onUpdate, storyId, rawSource, mockQualities }: Scribe
                         whiteSpace: 'nowrap',
                     }}
                 >
-                    💾 Presets{presets.length > 0 ? ` (${presets.length})` : ''}
+                    <BookmarkIcon width={12} height={12} /> Presets{presets.length > 0 ? ` (${presets.length})` : ''}
                 </button>
             </div>
 

@@ -5,6 +5,7 @@ import { GlobalAsset } from '@/engine/models';
 import AssetEditModal from './AssetEditModal';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import InputModal from '@/components/admin/InputModal';
+import { GearIcon } from '@/components/icons/Icons';
 
 interface Props {
     assets: GlobalAsset[];
@@ -434,10 +435,10 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                                         <div style={{display:'flex', gap:'4px'}}>
                                          <button 
                                             onClick={(e) => { e.stopPropagation(); setEditingAsset(asset); setEditModalOpen(true); }}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '1rem', padding: 0 }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: 0, display: 'flex' }}
                                             title="Edit Settings"
                                         >
-                                            ⚙️
+                                            <GearIcon width={14} height={14} />
                                         </button>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleRename(asset.id); }}

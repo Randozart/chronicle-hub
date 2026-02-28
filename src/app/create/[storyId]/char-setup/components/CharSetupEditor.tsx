@@ -3,6 +3,7 @@
 import { CharCreateRule, ImageDefinition, QualityDefinition, QualityType } from '@/engine/models';
 import { useState, useMemo } from 'react';
 import SmartArea from '@/components/admin/SmartArea';
+import { WarningIcon } from '@/components/icons/Icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -548,7 +549,7 @@ function RuleRow({ ruleKey, rule, isDragged, showSkippedWarning, imageLibrary, s
             {/* Skip warning */}
             {showSkippedWarning && (
                 <div style={{ background: 'rgba(255,200,0,0.08)', border: '1px solid #eebb00', color: '#eebb00', padding: '0.35rem 0.6rem', fontSize: '0.78rem', borderRadius: '4px', marginBottom: '0.65rem' }}>
-                    ⚠️ Skip mode is on — player can&apos;t interact. Switch to <strong>Calc</strong> to force a starting value.
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><WarningIcon width={13} height={13} /> Skip mode is on — player can&apos;t interact. Switch to <strong>Calc</strong> to force a starting value.</span>
                 </div>
             )}
 
