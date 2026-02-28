@@ -879,7 +879,7 @@ export default function ComposerEditor({
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', flex: 1, padding: '0.5rem' }}>
                                 {filteredPresets.map(cat => (
-                                    <div key={cat.name} style={{border: '1px solid var(--tool-border)', borderRadius: '4px', overflow:'hidden'}}>
+                                    <div key={cat.name} style={{border: '1px solid var(--tool-border)', borderRadius: '4px', overflow:'hidden', flexShrink: 0}}>
                                         <div
                                             onClick={() => toggleCategory(cat.name)}
                                             style={{
