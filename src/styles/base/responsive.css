@@ -204,8 +204,8 @@
     }
     .location-header {
         flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
+        align-items: flex-start !important;
+        text-align: left !important;
         gap: 1rem !important;
         width: 100% !important;
     }
@@ -213,11 +213,16 @@
         flex-direction: column !important;
         gap: 0.5rem !important;
         width: 100%;
-        align-items: center !important;
+        align-items: flex-start !important;
+    }
+    .location-description {
+        max-width: 100% !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
     }
     .location-header > div:last-child {
         width: 100%;
-        justify-content: center !important;
+        justify-content: flex-start !important;
         flex-wrap: wrap !important;
         margin-top: 0.5rem;
     }
