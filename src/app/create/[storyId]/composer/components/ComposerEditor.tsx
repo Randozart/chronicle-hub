@@ -880,32 +880,34 @@ export default function ComposerEditor({
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', flex: 1, padding: '0.5rem' }}>
                                 {filteredPresets.map(cat => (
                                     <div key={cat.name} style={{border: '1px solid var(--tool-border)', borderRadius: '4px', overflow:'hidden'}}>
-                                        <div 
+                                        <div
                                             onClick={() => toggleCategory(cat.name)}
-                                            style={{ 
-                                                padding: '6px 8px', 
-                                                background: 'var(--tool-bg-header)', 
-                                                fontSize:'0.75rem', 
-                                                textTransform:'uppercase', 
-                                                color:'var(--tool-text-main)', 
+                                            style={{
+                                                padding: isMobile ? '12px 14px' : '6px 8px',
+                                                minHeight: isMobile ? '48px' : 'auto',
+                                                background: 'var(--tool-bg-header)',
+                                                fontSize: isMobile ? '0.85rem' : '0.75rem',
+                                                textTransform:'uppercase',
+                                                color:'var(--tool-text-main)',
                                                 fontWeight:'bold',
                                                 cursor: 'pointer',
                                                 display: 'flex',
-                                                justifyContent: 'space-between'
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
                                             }}
                                         >
-                                            <span>{cat.name}</span>
-                                            <span>{collapsedCategories.has(cat.name) ? '+' : '-'}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>{cat.name}</span>
+                                            <span style={{ fontSize: isMobile ? '1.1rem' : 'inherit', flexShrink: 0 }}>{collapsedCategories.has(cat.name) ? '+' : '−'}</span>
                                         </div>
-                                        
+
                                         {!collapsedCategories.has(cat.name) && (
-                                            <div style={{ padding: '5px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(45px, 1fr))', gap: '5px', background: 'var(--tool-bg-input)' }}>
+                                            <div style={{ padding: '5px', display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '56px' : '45px'}, 1fr))`, gap: '5px', background: 'var(--tool-bg-input)' }}>
                                                 {cat.files.map(file => (
                                                     <div 
                                                         key={file.path}
                                                         onClick={() => addLayer(file.path, file.name, true)}
                                                         title={file.name}
-                                                        style={{ aspectRatio: '1/1', background: '#222', borderRadius: '4px', cursor: 'pointer', padding: '4px', border: '1px solid var(--tool-border)', display:'flex', alignItems:'center', justifyContent:'center' }}
+                                                        style={{ aspectRatio: '1/1', background: '#222', borderRadius: '4px', cursor: 'pointer', padding: isMobile ? '6px' : '4px', border: '1px solid var(--tool-border)', display:'flex', alignItems:'center', justifyContent:'center' }}
                                                         className="hover:border-blue-500"
                                                     >
                                                         <img src={`/${file.path}`} style={{ width:'100%', height:'100%', objectFit:'contain' }} alt={file.name} />
