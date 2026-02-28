@@ -1149,3 +1149,167 @@ font-size: 0.9rem !important;
     box-shadow: 0 0 15px 2px var(--accent-highlight);
     transform: translate(0, -2px);
 }
+
+[data-theme='20XX'].theme-wrapper {
+    background: radial-gradient(circle at center, #000a15 0%, #000 60%) !important;
+    perspective: 1000px;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+[data-theme='20XX'].theme-wrapper::before {
+    content: '';
+    position: fixed;
+    top: -100%; left: -100%; right: -100%; bottom: -100%;
+    z-index: 0;
+    background: 
+        linear-gradient(90deg, rgba(0, 255, 255, 0.15) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(0, 255, 255, 0.15) 1px, transparent 1px);
+    background-size: 80px 80px;
+    transform: rotateX(60deg) translateY(0);
+    animation: harm-grid-scroll 15s linear infinite;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+    pointer-events: none;
+}
+
+@keyframes harm-grid-scroll {
+    0% { transform: rotateX(60deg) translateY(0); }
+    100% { transform: rotateX(60deg) translateY(80px); }
+}
+
+[data-theme='20XX'] .layout-banner {
+    position: relative;
+    background: #000 !important;
+    border: 3px solid #fff !important;
+    margin: 0 auto 3rem auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    clip-path: polygon(40px 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%, 0 40px);
+    box-shadow: -6px -6px 0px rgba(255, 0, 150, 0.8), 6px 6px 0px rgba(0, 255, 255, 0.8), 0 0 30px rgba(0, 255, 255, 0.2);
+}
+
+[data-theme='20XX'] .layout-banner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.25) 0px, rgba(0, 0, 0, 0.25) 1px, transparent 1px, transparent 3px);
+    box-shadow: inset 0 0 60px 5px rgba(255, 0, 150, 0.7), inset 0 0 100px 40px rgba(0, 255, 255, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme='20XX'] .banner-gradient-overlay {
+    display: none !important;
+}
+
+[data-theme='20XX'] .banner-bg-image img {
+    opacity: 0.7;
+    mix-blend-mode: screen;
+    filter: sepia(0.5) hue-rotate(180deg) contrast(1.3) brightness(1.1) !important;
+    transform: scale(1.05);
+}
+
+[data-theme='20XX'] .storylet-image-container,
+[data-theme='20XX'] .card-image,
+[data-theme='20XX'] .option-image,
+[data-theme='20XX'] .profile-portrait {
+    position: relative;
+    background: #000 !important;
+    border: 2px solid #fff !important;
+    clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+
+[data-theme='20XX'] .storylet-image-container::after,
+[data-theme='20XX'] .card-image::after,
+[data-theme='20XX'] .option-image::after,
+[data-theme='20XX'] .profile-portrait::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.25) 0px, rgba(0, 0, 0, 0.25) 1px, transparent 1px, transparent 3px);
+    box-shadow: inset 0 0 20px 5px rgba(255, 0, 150, 0.6), inset 0 0 40px 10px rgba(0, 255, 255, 0.4);
+}
+
+[data-theme='20XX'] .storylet-container,
+[data-theme='20XX'] .sidebar-panel,
+[data-theme='20XX'] .card,
+[data-theme='20XX'] .option-button,
+[data-theme='20XX'] .action-box {
+    background-color: rgba(5, 10, 15, 0.94) !important;
+    background-image: 
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.3) 0px, rgba(0,0,0,0.3) 1px, transparent 1px, transparent 3px),
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 15px) !important;
+    border: 1px solid #fff;
+    color: #fff;
+    box-shadow: -4px -4px 0px rgba(255, 0, 150, 0.8), 4px 4px 0px rgba(0, 255, 255, 0.8);
+    clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+    backdrop-filter: blur(4px);
+}
+
+[data-theme='20XX'] .storylet-text,
+[data-theme='20XX'] .card-content,
+[data-theme='20XX'] .storylet-text p,
+[data-theme='20XX'] .banner-title {
+    color: #ffffff !important;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+    font-family: "Courier New", monospace;
+    font-weight: 600;
+}
+
+[data-theme='20XX'] h1, 
+[data-theme='20XX'] h2, 
+[data-theme='20XX'] h3, 
+[data-theme='20XX'] .banner-title {
+    color: #fff !important;
+    text-transform: uppercase;
+    font-weight: 900 !important;
+    letter-spacing: 2px;
+    text-shadow: -3px 0 0 rgba(255, 0, 0, 0.8), 3px 0 0 rgba(0, 255, 255, 0.8);
+    transform: skewX(-5deg);
+}
+
+[data-theme='20XX'] .option-button:hover,
+[data-theme='20XX'] .card:hover {
+    background: #ff3300 !important;
+    background-image: none !important;
+    color: #000 !important;
+    border-color: #fff;
+    transform: scale(1.02) skewX(-2deg);
+    box-shadow: 0 0 30px rgba(255, 50, 0, 0.8);
+}
+
+[data-theme='20XX'] .option-button:hover img,
+[data-theme='20XX'] .card:hover img {
+    filter: contrast(1.8) brightness(1.2) saturate(1.4) !important;
+    mix-blend-mode: normal;
+    opacity: 1;
+}
+
+[data-theme='20XX'] .option-button:hover .option-image::after,
+[data-theme='20XX'] .card:hover .card-image::after {
+    background-image: none !important;
+    box-shadow: inset 0 0 30px 5px rgba(255, 0, 0, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.9);
+}
+
+[data-theme='20XX'] .option-button:hover *,
+[data-theme='20XX'] .card:hover * {
+    color: #000 !important;
+    text-shadow: none !important;
+}
+
+[data-theme='20XX'] .banner-content {
+    padding: 3rem !important;
+    position: relative;
+    z-index: 20;
+}
+
+[data-theme='20XX'] .location-header {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 1rem !important;
+    clip-path: none !important;
+    text-align: center;
+}

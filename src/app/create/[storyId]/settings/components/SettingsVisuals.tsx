@@ -164,6 +164,8 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
                             <option value="inferno">Infernum</option>
                             <option value="masquerade">Masquerade</option>
                             <option value="delver">Dungeon Delver</option>
+                            <option value="20XX">20XX</option>
+
                         </select>
                     </div>
                     <div style={{ marginTop: '1rem' }}>

@@ -1186,9 +1186,7 @@ h1, h2, h3, h4, h5, h6 {
     --progress-fill: #72f6ff;
     --font-main: var(--font-josefin), sans-serif;
     --border-radius: 6px;
-    /* Lines temporarily removed due to potential bug
-    position: relative;
-    overflow: hidden; */
+    /* position: relative + overflow: hidden removed (bug) */
 }
 
 [data-theme='nordic'] {
@@ -1450,4 +1448,51 @@ h1, h2, h3, h4, h5, h6 {
     --danger-color: #8a0303;
     --font-main: var(--font-roboto-slab), "Georgia", serif;
     --border-radius: 3px;
+}
+[data-theme='20XX'] {
+    --bg-main: #050408; 
+    --bg-panel: rgba(15, 15, 20, 0.9); 
+    --bg-item: rgba(20, 20, 30, 0.6); 
+    --bg-item-hover: rgba(40, 0, 60, 0.4);
+
+    --border-color: #00e5ff;
+    --border-light: #ff0055;
+    
+    --text-primary: #e0faff; 
+    --text-secondary: #bd00ff; 
+    --text-muted: #536b75; 
+    --text-header: #ffffff;
+
+    --accent-primary: #d600ff;
+    --accent-hover: #00e5ff;   
+    
+    --accent-highlight: #ffcc00; 
+    --accent-highlight-rgb: 255, 204, 0;
+
+    --success-color: #00ff9d;
+    --success-bg: rgba(0, 255, 157, 0.1);
+    
+    --danger-color: #ff2a2a; 
+    --danger-bg: rgba(255, 42, 42, 0.15);
+    
+    --warning-color: #ffcc00;
+
+    --progress-bg: #1a1a1a;
+    --progress-fill: #ff0055; 
+    
+    --font-main: "Courier New", var(--font-fira-code), monospace;
+    --font-header: "Courier New", monospace;
+    --border-radius: 0px; 
+
+    --tool-bg-dark: #000;
+    --tool-text-main: #00e5ff;
+    --tool-border: #ff0055;
+    
+    --scrollbar-bg: #000;
+    --scrollbar-thumb: #bd00ff;
+    --scrollbar-thumb-hover: #00e5ff;
+    
+    --bg-overlay: rgba(0, 0, 0, 0.85);
+    --shadow-modal: 4px 4px 0px #bd00ff; 
+    --tool-bg-code-editor: #080510; 
 }
