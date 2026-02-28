@@ -1268,6 +1268,13 @@ font-size: 0.9rem !important;
     text-shadow: -2px 0 0 rgba(255, 0, 80, 0.5), 2px 0 0 rgba(0, 200, 255, 0.5);
 }
 
+[data-theme='20XX'] .option-button h3,
+[data-theme='20XX'] .action-box h3,
+[data-theme='20XX'] .card-text h3 {
+    color: #fff !important;
+    text-shadow: none !important;
+}
+
 [data-theme='20XX'] .option-button:hover,
 [data-theme='20XX'] .card:hover {
     background: #cc2200 !important;
