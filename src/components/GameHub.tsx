@@ -1100,7 +1100,7 @@ export default function GameHub(props: GameHubProps) {
                     );
                 })()}
 
-                {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
+                {showMap && <MapModal currentLocationId={character.currentLocationId} locations={props.locations} regions={props.regions} imageLibrary={props.imageLibrary} qualities={character.qualities} onTravel={handleTravel} onClose={() => setShowMap(false)} />}
 
                 <AudioSettingsModal isOpen={showAudioSettings} onClose={() => setShowAudioSettings(false)} />
                 

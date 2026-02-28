@@ -1,6 +1,6 @@
 'use client';
 
-import { LocationDefinition, MapRegion, ImageDefinition } from "@/engine/models";
+import { LocationDefinition, MapRegion, ImageDefinition, PlayerQualities } from "@/engine/models";
 import GameImage from "./GameImage";
 
 interface MapModalProps {
@@ -8,19 +8,42 @@ interface MapModalProps {
     locations: Record<string, LocationDefinition>;
     regions: Record<string, MapRegion>;
     imageLibrary: Record<string, ImageDefinition>;
+    qualities: PlayerQualities;
     onTravel: (locationId: string) => void;
     onClose: () => void;
 }
 
-export default function MapModal({ 
-    currentLocationId, locations, regions, imageLibrary, onTravel, onClose 
+function evalCond(condition: string | undefined, qualities: PlayerQualities): boolean {
+    if (!condition?.trim()) return true;
+    return condition.split(',').every(part => {
+        const p = part.trim();
+        const m = p.match(/^\$(\w+)\s*(>=|<=|==|!=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
+        if (m) {
+            const level = (qualities[m[1]] as any)?.level ?? 0;
+            const rhs = parseFloat(m[3]);
+            switch (m[2]) {
+                case '>=': return level >= rhs;
+                case '<=': return level <= rhs;
+                case '>':  return level > rhs;
+                case '<':  return level < rhs;
+                case '==': return level == rhs;
+                case '!=': return level != rhs;
+            }
+        }
+        return true;
+    });
+}
+
+export default function MapModal({
+    currentLocationId, locations, regions, imageLibrary, qualities, onTravel, onClose
 }: MapModalProps) {
-    
+
     const currentLoc = locations[currentLocationId];
     const regionId = currentLoc?.regionId || (currentLoc as any)?.map || 'default';
     const region = regions[regionId];
-    const visibleLocations = Object.values(locations).filter(l => 
-        (l.regionId === regionId) || ((l as any).map === regionId)
+    const visibleLocations = Object.values(locations).filter(l =>
+        ((l.regionId === regionId) || ((l as any).map === regionId)) &&
+        evalCond(l.visibleCondition, qualities)
     );
     const hasVisualMap = region && region.image;
 
@@ -83,6 +106,7 @@ export default function MapModal({
                                 const x = loc.coordinates?.x ?? 50;
                                 const y = loc.coordinates?.y ?? 50;
                                 const isCurrent = loc.id === currentLocationId;
+                                const isLocked = !isCurrent && !evalCond(loc.unlockCondition, qualities);
 
                                 return (
                                     <div
@@ -94,21 +118,23 @@ export default function MapModal({
                                             transform: 'translate(-50%, -50%)',
                                             display: 'flex', flexDirection: 'column', alignItems: 'center',
                                             zIndex: 10,
-                                            cursor: isCurrent ? 'default' : 'pointer'
+                                            cursor: isCurrent || isLocked ? 'default' : 'pointer',
+                                            opacity: isLocked ? 0.45 : 1,
                                         }}
-                                        onClick={() => !isCurrent && onTravel(loc.id)}
-                                        title={loc.name}
+                                        onClick={() => !isCurrent && !isLocked && onTravel(loc.id)}
+                                        title={isLocked ? `${loc.name} (locked)` : loc.name}
                                     >
                                         <div style={{
                                             width: '40px', height: '40px',
                                             borderRadius: '50%',
-                                            border: `2px solid ${isCurrent ? 'var(--success-color)' : 'var(--border-color)'}`,
+                                            border: `2px solid ${isCurrent ? 'var(--success-color)' : isLocked ? 'var(--text-muted)' : 'var(--border-color)'}`,
                                             backgroundColor: isCurrent ? 'var(--bg-panel)' : 'var(--bg-item)',
                                             boxShadow: '0 2px 5px rgba(0,0,0,0.5)',
                                             overflow: 'hidden',
                                             transition: 'transform 0.2s',
+                                            filter: isLocked ? 'grayscale(1)' : 'none',
                                         }}
-                                        className={!isCurrent ? "hover-scale" : ""}
+                                        className={!isCurrent && !isLocked ? "hover-scale" : ""}
                                         >
                                             <GameImage 
                                                 code={loc.image} 
@@ -137,28 +163,31 @@ export default function MapModal({
                         <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
                             {visibleLocations.map(loc => {
                                 const isCurrent = loc.id === currentLocationId;
+                                const isLocked = !isCurrent && !evalCond(loc.unlockCondition, qualities);
                                 return (
                                     <button
                                         key={loc.id}
-                                        disabled={isCurrent}
-                                        onClick={() => onTravel(loc.id)}
+                                        disabled={isCurrent || isLocked}
+                                        onClick={() => !isLocked && onTravel(loc.id)}
                                         style={{
-                                            padding: '1rem', 
-                                            borderRadius: 'var(--border-radius)', 
-                                            border: `1px solid ${isCurrent ? 'var(--success-color)' : 'var(--border-light)'}`,
+                                            padding: '1rem',
+                                            borderRadius: 'var(--border-radius)',
+                                            border: `1px solid ${isCurrent ? 'var(--success-color)' : isLocked ? 'var(--text-muted)' : 'var(--border-light)'}`,
                                             backgroundColor: isCurrent ? 'var(--success-bg)' : 'var(--bg-item)',
                                             display: 'flex', alignItems: 'center', gap: '1rem',
-                                            cursor: isCurrent ? 'default' : 'pointer',
+                                            cursor: isCurrent || isLocked ? 'not-allowed' : 'pointer',
                                             textAlign: 'left',
-                                            color: 'var(--text-primary)'
+                                            color: isLocked ? 'var(--text-muted)' : 'var(--text-primary)',
+                                            opacity: isLocked ? 0.5 : 1,
+                                            filter: isLocked ? 'grayscale(0.8)' : 'none',
                                         }}
-                                        className={!isCurrent ? "hover-bg-lighter" : ""}
+                                        className={!isCurrent && !isLocked ? "hover-bg-lighter" : ""}
                                     >
-                                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border-light)' }}>
-                                            <GameImage 
-                                                code={loc.image} 
-                                                imageLibrary={imageLibrary} 
-                                                type="location" 
+                                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `1px solid ${isLocked ? 'var(--text-muted)' : 'var(--border-light)'}` }}>
+                                            <GameImage
+                                                code={loc.image}
+                                                imageLibrary={imageLibrary}
+                                                type="location"
                                                 alt=""
                                                 className="location-image"
                                             />
@@ -166,6 +195,7 @@ export default function MapModal({
                                         <div>
                                             <div style={{ fontWeight: 'bold' }}>{loc.name}</div>
                                             {isCurrent && <div style={{ fontSize: '0.75rem', color: 'var(--success-text)', textTransform: 'uppercase', fontWeight: 'bold' }}>Current Location</div>}
+                                            {isLocked && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Locked</div>}
                                         </div>
                                     </button>
                                 );
