@@ -1241,9 +1241,9 @@ font-size: 0.9rem !important;
     background-image: 
         repeating-linear-gradient(0deg, rgba(0,0,0,0.3) 0px, rgba(0,0,0,0.3) 1px, transparent 1px, transparent 3px),
         repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 15px) !important;
-    border: 1px solid #fff;
-    color: #fff;
-    box-shadow: -4px -4px 0px rgba(255, 0, 150, 0.8), 4px 4px 0px rgba(0, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #d0f0f8;
+    box-shadow: -2px -2px 0px rgba(255, 0, 150, 0.5), 2px 2px 0px rgba(0, 255, 255, 0.5);
     clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
     backdrop-filter: blur(4px);
 }
@@ -1252,32 +1252,30 @@ font-size: 0.9rem !important;
 [data-theme='20XX'] .card-content,
 [data-theme='20XX'] .storylet-text p,
 [data-theme='20XX'] .banner-title {
-    color: #ffffff !important;
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
-    font-family: "Courier New", monospace;
-    font-weight: 600;
+    color: #d0f0f8 !important;
+    text-shadow: none;
+    font-weight: 400;
 }
 
-[data-theme='20XX'] h1, 
-[data-theme='20XX'] h2, 
-[data-theme='20XX'] h3, 
+[data-theme='20XX'] h1,
+[data-theme='20XX'] h2,
+[data-theme='20XX'] h3,
 [data-theme='20XX'] .banner-title {
     color: #fff !important;
     text-transform: uppercase;
-    font-weight: 900 !important;
+    font-weight: 700 !important;
     letter-spacing: 2px;
-    text-shadow: -3px 0 0 rgba(255, 0, 0, 0.8), 3px 0 0 rgba(0, 255, 255, 0.8);
-    transform: skewX(-5deg);
+    text-shadow: -1px 0 0 rgba(255, 0, 0, 0.45), 1px 0 0 rgba(0, 255, 255, 0.45);
 }
 
 [data-theme='20XX'] .option-button:hover,
 [data-theme='20XX'] .card:hover {
-    background: #ff3300 !important;
+    background: #cc2200 !important;
     background-image: none !important;
-    color: #000 !important;
+    color: #fff !important;
     border-color: #fff;
-    transform: scale(1.02) skewX(-2deg);
-    box-shadow: 0 0 30px rgba(255, 50, 0, 0.8);
+    transform: scale(1.01);
+    box-shadow: 0 0 20px rgba(255, 50, 0, 0.6);
 }
 
 [data-theme='20XX'] .option-button:hover img,
@@ -1295,7 +1293,7 @@ font-size: 0.9rem !important;
 
 [data-theme='20XX'] .option-button:hover *,
 [data-theme='20XX'] .card:hover * {
-    color: #000 !important;
+    color: #fff !important;
     text-shadow: none !important;
 }
 

@@ -1458,9 +1458,9 @@ h1, h2, h3, h4, h5, h6 {
     --border-color: #00e5ff;
     --border-light: #ff0055;
     
-    --text-primary: #e0faff; 
-    --text-secondary: #bd00ff; 
-    --text-muted: #536b75; 
+    --text-primary: #d0f0f8;
+    --text-secondary: #a67eff;
+    --text-muted: #6a8a96;
     --text-header: #ffffff;
 
     --accent-primary: #d600ff;
@@ -1480,8 +1480,8 @@ h1, h2, h3, h4, h5, h6 {
     --progress-bg: #1a1a1a;
     --progress-fill: #ff0055; 
     
-    --font-main: "Courier New", var(--font-fira-code), monospace;
-    --font-header: "Courier New", monospace;
+    --font-main: var(--font-fira-code), "Courier New", monospace;
+    --font-header: var(--font-fira-code), "Courier New", monospace;
     --border-radius: 0px; 
 
     --tool-bg-dark: #000;
