@@ -771,7 +771,16 @@ export default function GameHub(props: GameHubProps) {
                 </div>
                 <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     <button onClick={handleExit} className="switch-char-btn">← Switch Character</button>
-                    <ZoomControls />
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <button
+                            onClick={() => setShowAudioSettings(true)}
+                            title="Audio Settings"
+                            style={{ background: 'transparent', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', padding: 0 }}
+                        >
+                            🔊
+                        </button>
+                        <ZoomControls />
+                    </div>
                 </div>
             </div>
         );

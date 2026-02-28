@@ -93,8 +93,10 @@ export default function ComposerEditor({
         startLayer: CompositionLayer;
         handle?: string; // 'tl', 'tr', etc.
     } | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+    const [mobileTab, setMobileTab] = useState<'assets' | 'canvas' | 'layers'>('canvas');
 
-    
+
     if (!data) return <div className="loading-container">Loading editor...</div>;
     const [viewZoom, setViewZoom] = useState(1);
 
@@ -207,10 +209,17 @@ export default function ComposerEditor({
         };
 
         container.addEventListener('wheel', onWheel, { passive: false });
-        
+
         return () => {
             container.removeEventListener('wheel', onWheel);
         };
+    }, []);
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
     }, []);
 
     const moveLayer = (index: number, direction: -1 | 1) => {
@@ -724,133 +733,121 @@ export default function ComposerEditor({
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             
-            <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            {/* Import Progress Overlay */}
+            {importProgress !== null && (
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '300px', background: '#333', borderRadius: '4px', overflow: 'hidden', height: '10px', marginBottom: '10px' }}>
+                        <div style={{ width: `${importProgress}%`, background: 'var(--success-color)', height: '100%', transition: 'width 0.2s' }}/>
+                    </div>
+                    <span style={{ color: '#fff' }}>{importStatus}</span>
+                </div>
+            )}
 
-                <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
-                    {/* Editable Name */}
-                    <input 
-                        value={data.name} 
+            {isMobile ? (
+                /* ── Mobile header: name + zoom only ── */
+                <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+                    <input
+                        value={data.name}
                         onChange={e => handleChange('name', e.target.value)}
                         className="form-input"
-                        style={{ fontWeight:'bold', fontSize:'1rem', background:'transparent', border:'none', borderBottom:'1px dashed #555', width:'200px' }}
+                        style={{ fontWeight: 'bold', flex: 1, background: 'transparent', border: 'none', borderBottom: '1px dashed #555', minWidth: 0 }}
                     />
-                    <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--tool-text-dim)', whiteSpace: 'nowrap' }}>
+                        {(viewZoom * 100).toFixed(0)}%
+                    </span>
+                    <button onClick={() => setViewZoom(1)} style={{ fontSize: '0.7rem', cursor: 'pointer', background: 'var(--tool-bg-input)', border: '1px solid var(--tool-border)', padding: '3px 8px', borderRadius: '4px', color: 'var(--tool-text-main)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        Reset Zoom
+                    </button>
                 </div>
-
-                {/* Import Progress Overlay */}
-                {importProgress !== null && (
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '300px', background: '#333', borderRadius: '4px', overflow: 'hidden', height: '10px', marginBottom: '10px' }}>
-                            <div style={{ width: `${importProgress}%`, background: 'var(--success-color)', height: '100%', transition: 'width 0.2s' }}/>
-                        </div>
-                        <span style={{ color: '#fff' }}>{importStatus}</span>
+            ) : (
+                /* ── Desktop header: full controls ── */
+                <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+                        <input
+                            value={data.name}
+                            onChange={e => handleChange('name', e.target.value)}
+                            className="form-input"
+                            style={{ fontWeight:'bold', fontSize:'1rem', background:'transparent', border:'none', borderBottom:'1px dashed #555', width:'200px' }}
+                        />
+                        <span style={{fontSize:'0.8rem', color:'var(--tool-text-dim)'}}>{data.id}</span>
                     </div>
-                )}
-                {canImportPsd && (
-                    <div style={{ display: 'flex', alignItems: 'center', marginRight: '20px' }}>
-                        <label 
-                            className="save-btn" 
-                            style={{ 
-                                cursor: isImporting ? 'wait' : 'pointer', 
-                                background: isImporting ? '#444' : 'var(--success-color)',
-                                color: '#fff',
-                                padding: '4px 10px',
-                                fontSize: '0.8rem',
-                                borderRadius: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '5px'
+                    {canImportPsd && (
+                        <div style={{ display: 'flex', alignItems: 'center', marginRight: '20px' }}>
+                            <label
+                                className="save-btn"
+                                style={{ cursor: isImporting ? 'wait' : 'pointer', background: isImporting ? '#444' : 'var(--success-color)', color: '#fff', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            >
+                                {isImporting ? 'Parsing PSD...' : '⬆ Import PSD'}
+                                <input type="file" accept=".psd,.psb" onChange={handlePsdImport} disabled={isImporting} style={{ display: 'none' }} />
+                            </label>
+                        </div>
+                    )}
+                    <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+                        <select className="form-select" style={{width:'auto', padding:'2px 8px'}} onChange={(e) => { const dims = CANVAS_PRESETS[e.target.value as keyof typeof CANVAS_PRESETS]; if(dims) { handleChange('width', dims.w); handleChange('height', dims.h); } }} defaultValue="">
+                            <option value="" disabled>Resize Canvas...</option>
+                            {Object.keys(CANVAS_PRESETS).map(k => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                        <label className="form-label" style={{marginBottom:0}}>W:</label>
+                        <input type="number" value={data.width} onChange={e => handleChange('width', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
+                        <label className="form-label" style={{marginBottom:0}}>H:</label>
+                        <input type="number" value={data.height} onChange={e => handleChange('height', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
+                        <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
+                        <button
+                            onClick={() => setInteractionMode(interactionMode === 'edit' ? 'focus' : 'edit')}
+                            style={{ fontSize:'0.75rem', padding:'4px 8px', borderRadius:'4px', cursor:'pointer', background: interactionMode === 'focus' ? 'var(--tool-accent)' : 'var(--tool-bg-input)', color: interactionMode === 'focus' ? '#000' : 'var(--tool-text-main)', border: '1px solid var(--tool-border)', fontWeight: 'bold' }}
+                            title="Click to set the focal point (center) of the composition"
+                        >
+                            {interactionMode === 'focus' ? '◎ Set Focus' : '◎ Focus'}
+                        </button>
+                        <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
+                        <select value={previewTheme} onChange={(e) => setPreviewTheme(e.target.value)} className="form-select" style={{ width: 'auto', padding: '2px 8px', fontSize: '0.8rem', maxWidth: '120px' }} title="Preview Theme Context">
+                            {Object.keys(allThemes).map(key => {
+                                let label = key;
+                                if (key === ':root') label = 'Default';
+                                if (key.includes('data-theme=')) label = key.match(/'([^']+)'/)?.[1] || key;
+                                if (key.includes('data-global-theme=')) label = key.match(/'([^']+)'/)?.[1] || key;
+                                return <option key={key} value={label.toLowerCase() === 'default' ? 'default' : label}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
+                            })}
+                        </select>
+                        <label className="form-label" style={{marginBottom:0}}>Bg:</label>
+                        <div style={{flex: 1, minWidth:'120px'}}>
+                            <ColorPickerInput value={data.backgroundColor || ''} onChange={c => handleChange('backgroundColor', c)} allThemes={allThemes} />
+                        </div>
+                        <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
+                        <div className="form-label" style={{ marginBottom:0, minWidth: '80px', textAlign:'right', cursor:'help' }} title="Hold Ctrl + Scroll on the CANVAS to Zoom">
+                            Zoom: {(viewZoom * 100).toFixed(0)}%
+                        </div>
+                        <button onClick={() => setViewZoom(1)} style={{fontSize:'0.7rem', cursor:'pointer', background:'var(--tool-bg-input)', border:'1px solid var(--tool-border)', padding:'2px 5px', borderRadius:'4px', color:'var(--tool-text-main)'}}>Reset</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Mobile tab bar */}
+            {isMobile && (
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--tool-border)', background: 'var(--tool-bg-header)', flexShrink: 0 }}>
+                    {(['assets', 'canvas', 'layers'] as const).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setMobileTab(tab)}
+                            style={{
+                                flex: 1, padding: '0.65rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem',
+                                background: mobileTab === tab ? 'var(--tool-bg-input)' : 'transparent',
+                                color: mobileTab === tab ? 'var(--tool-text-main)' : 'var(--tool-text-dim)',
+                                border: 'none',
+                                borderBottom: mobileTab === tab ? '2px solid var(--tool-accent)' : '2px solid transparent',
+                                textTransform: 'capitalize'
                             }}
                         >
-                            {isImporting ? 'Parsing PSD...' : '⬆ Import PSD'}
-                            <input 
-                                type="file" 
-                                accept=".psd,.psb" 
-                                onChange={handlePsdImport} 
-                                disabled={isImporting} 
-                                style={{ display: 'none' }} 
-                            />
-                        </label>
-                    </div>
-                )}
-                <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
-                    <select 
-                        className="form-select" 
-                        style={{width:'auto', padding:'2px 8px'}}
-                        onChange={(e) => {
-                            const dims = CANVAS_PRESETS[e.target.value as keyof typeof CANVAS_PRESETS];
-                            if(dims) {
-                                handleChange('width', dims.w);
-                                handleChange('height', dims.h);
-                            }
-                        }}
-                        defaultValue=""
-                    >
-                        <option value="" disabled>Resize Canvas...</option>
-                        {Object.keys(CANVAS_PRESETS).map(k => <option key={k} value={k}>{k}</option>)}
-                    </select>
-                    <label className="form-label" style={{marginBottom:0}}>W:</label>
-                    <input type="number" value={data.width} onChange={e => handleChange('width', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
-                    <label className="form-label" style={{marginBottom:0}}>H:</label>
-                    <input type="number" value={data.height} onChange={e => handleChange('height', parseInt(e.target.value))} className="form-input" style={{width: 60}} />
-                    <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
-
-                    <button 
-                        onClick={() => setInteractionMode(interactionMode === 'edit' ? 'focus' : 'edit')}
-                        style={{
-                            fontSize:'0.75rem', padding:'4px 8px', borderRadius:'4px', cursor:'pointer',
-                            background: interactionMode === 'focus' ? 'var(--tool-accent)' : 'var(--tool-bg-input)',
-                            color: interactionMode === 'focus' ? '#000' : 'var(--tool-text-main)',
-                            border: '1px solid var(--tool-border)',
-                            fontWeight: 'bold'
-                        }}
-                        title="Click to set the focal point (center) of the composition"
-                    >
-                        {interactionMode === 'focus' ? '◎ Set Focus' : '◎ Focus'}
-                    </button>
-                    <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
-                    <select 
-                    value={previewTheme} 
-                    onChange={(e) => setPreviewTheme(e.target.value)}
-                    className="form-select"
-                    style={{ width: 'auto', padding: '2px 8px', fontSize: '0.8rem', maxWidth: '120px' }}
-                    title="Preview Theme Context"
-                >
-                    {Object.keys(allThemes).map(key => {
-                        // Clean up selector names for display
-                        // e.g. ":root" -> "Default", "[data-theme='noir']" -> "Noir"
-                        let label = key;
-                        if (key === ':root') label = 'Default';
-                        if (key.includes('data-theme=')) label = key.match(/'([^']+)'/)?.[1] || key;
-                        if (key.includes('data-global-theme=')) label = key.match(/'([^']+)'/)?.[1] || key;
-                        
-                        return <option key={key} value={label.toLowerCase() === 'default' ? 'default' : label}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
-                    })}
-                </select>
-                    <label className="form-label" style={{marginBottom:0}}>Bg:</label>
-                    <div style={{flex: 1, minWidth:'120px'}}>
-                        <ColorPickerInput 
-                            value={data.backgroundColor || ''} 
-                            onChange={c => handleChange('backgroundColor', c)} 
-                            allThemes={allThemes}
-                        />
-                    </div>
-                    <div style={{width: '1px', height: '20px', background: 'var(--tool-border)', margin: '0 5px'}}></div>
-                    <div 
-                        className="form-label" 
-                        style={{ marginBottom:0, minWidth: '80px', textAlign:'right', cursor:'help' }}
-                        title="Hold Ctrl + Scroll on the CANVAS to Zoom"
-                    >
-                        Zoom: {(viewZoom * 100).toFixed(0)}%
-                    </div>                    
-                    <button onClick={() => setViewZoom(1)} style={{fontSize:'0.7rem', cursor:'pointer', background:'var(--tool-bg-input)', border:'1px solid var(--tool-border)', padding:'2px 5px', borderRadius:'4px', color:'var(--tool-text-main)'}}>Reset</button>
+                            {tab === 'assets' ? 'Assets' : tab === 'canvas' ? 'Canvas' : 'Layers'}
+                        </button>
+                    ))}
                 </div>
-            </div>
+            )}
 
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
-                
-                {/* Left: Asset Browser - Fixed width, no grow/shrink */}
-                <div style={{ width: '500px', minWidth: '300px', borderRight: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden', minHeight: 0 }}>
+
+                {/* Left: Asset Browser */}
+                <div style={isMobile ? { display: mobileTab === 'assets' ? 'flex' : 'none', flex: 1, minHeight: 0, flexDirection: 'column', background: 'var(--tool-bg-sidebar)', overflow: 'hidden' } : { width: '500px', minWidth: '300px', borderRight: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
                     
                     {/* Browser Tabs */}
                     <div style={{ display:'flex', borderBottom:'1px solid var(--tool-border)', flexShrink: 0 }}>
@@ -926,19 +923,10 @@ export default function ComposerEditor({
                     </div>
                 </div>
 
-                    <div 
+                    <div
                         ref={containerRef}
-                        onMouseDown={() => setSelectedLayerId(null)} // Click black space to deselect
-                        style={{ 
-                            flex: 1, 
-                            background: '#0a0a0a', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            overflow: 'auto', 
-                            padding: '2rem', 
-                            minWidth: 0 
-                        }}
+                        onMouseDown={() => setSelectedLayerId(null)}
+                        style={isMobile ? { display: mobileTab === 'canvas' ? 'flex' : 'none', flex: 1, minHeight: 0, background: '#0a0a0a', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '1rem' } : { flex: 1, background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '2rem', minWidth: 0 }}
                     >                    
                     <div style={{ 
                         width: data.width * viewZoom, 
@@ -961,7 +949,7 @@ export default function ComposerEditor({
                     </div>
                 </div>
 
-                <div style={{ width: '320px', minWidth: '320px', borderLeft: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
+                <div style={isMobile ? { display: mobileTab === 'layers' ? 'flex' : 'none', flex: 1, minHeight: 0, flexDirection: 'column', background: 'var(--tool-bg-sidebar)', overflow: 'hidden' } : { width: '320px', minWidth: '320px', borderLeft: '1px solid var(--tool-border)', display: 'flex', flexDirection: 'column', background: 'var(--tool-bg-sidebar)' }}>
                     
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--tool-border)', minHeight: '200px' }}>
                         <div style={{ padding: '0.5rem', fontWeight:'bold', borderBottom:'1px solid var(--tool-border)', background:'var(--tool-bg-header)', flexShrink: 0 }}>Layers</div>
