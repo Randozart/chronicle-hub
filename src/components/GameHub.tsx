@@ -559,7 +559,7 @@ export default function GameHub(props: GameHubProps) {
     }
 
     if (!character) {
-        return <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper"><CharacterLobby {...props} /></div>;
+        return <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ height: '100vh' }}><CharacterLobby {...props} /></div>;
     }
     
     if (!location) return <div>Loading location data...</div>;
