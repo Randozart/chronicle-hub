@@ -216,8 +216,10 @@ export const updateStoryletOrCard = async (
     );
 
     if (result.success) {
-        if (process.env.NODE_ENV !== 'production') console.log(`[Cache] Invalidating ${collectionName}-${worldId}`);
-        revalidateTag(`${collectionName}-${worldId}`, '');
+        // Both storylets and opportunities are cached together under the 'storylets-{worldId}' tag
+        // (see contentCache.ts getCachedStorylets). Always invalidate that shared tag.
+        if (process.env.NODE_ENV !== 'production') console.log(`[Cache] Invalidating storylets-${worldId} (collection: ${collectionName})`);
+        revalidateTag(`storylets-${worldId}`);
         return { success: true, newVersion: result.newVersion };
     }
 
@@ -243,7 +245,7 @@ export const deleteStoryletOrCard = async (
             const tag = `storylets-${worldId}`;
             console.log(`[Cache] Invalidating tag '${tag}' due to deletion of ${id}`);
             
-            revalidateTag(tag, ''); 
+            revalidateTag(tag);
         }
 
         return result.acknowledged;
