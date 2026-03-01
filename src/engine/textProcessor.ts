@@ -277,10 +277,19 @@ function resolveComplexExpression(
         });
     }
 
+    // Expand %macro[...] expressions so they can be used in conditions and math expressions
+    // e.g. `%count[encounters; $. > 0] > 0` or `$strength + %count[buffs]`
+    if (expandedExpr.includes('%')) {
+        expandedExpr = expandedExpr.replace(/%([a-zA-Z_]+)\[([^\[\]]*)\]/g, (match) => {
+            const result = evaluateMacro(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1);
+            return String(result);
+        });
+    }
+
     // If expression is a single variable, skip eval wrapping
     const simpleVarPattern = /^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/;
-    if (simpleVarPattern.test(expr.trim())) {
-         const result = resolveVariable(expr.trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
+    if (simpleVarPattern.test(expandedExpr.trim())) {
+         const result = resolveVariable(expandedExpr.trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
          return result;
     }
 
@@ -288,9 +297,9 @@ function resolveComplexExpression(
         // Handle self-references ($.) by replacing them with the actual quality ID
         // Maintains level spoofing if applicable, e.g., `$.level` -> `$qualityId[level]`
         // This was the source of an earlier bug where spoofed levels were not applied correctly
-        let processedExpr = expr;
-        
-        if (self && expr.includes('$.')) {
+        let processedExpr = expandedExpr;
+
+        if (self && expandedExpr.includes('$.')) {
             const level = (self.state && 'level' in self.state) ? self.state.level : 0;
             const spoofedId = `$${self.qid}[${level}]`;
 
