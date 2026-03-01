@@ -877,6 +877,16 @@ export default function ComposerEditor({
                                 style={{ border: 'none', background: 'transparent' }}
                             />
                         ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                                <div style={{ padding: '0.5rem', flexShrink: 0, borderBottom: '1px solid var(--tool-border)' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Search presets..."
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        style={{ width: '100%', padding: '4px 8px', background: 'var(--tool-bg-input)', border: '1px solid var(--tool-border)', borderRadius: '4px', color: 'var(--tool-text-main)', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
+                                    />
+                                </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', flex: 1, padding: '0.5rem' }}>
                                 {filteredPresets.map(cat => (
                                     <div key={cat.name} style={{border: '1px solid var(--tool-border)', borderRadius: '4px', overflow:'hidden', flexShrink: 0}}>
@@ -921,6 +931,7 @@ export default function ComposerEditor({
                                     Icons via game-icons.net (CC BY 3.0)
                                 </div>
                             </div>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -928,25 +939,24 @@ export default function ComposerEditor({
                     <div
                         ref={containerRef}
                         onMouseDown={() => setSelectedLayerId(null)}
-                        style={isMobile ? { display: mobileTab === 'canvas' ? 'flex' : 'none', flex: 1, minHeight: 0, background: '#0a0a0a', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '1rem' } : { flex: 1, background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '2rem', minWidth: 0 }}
-                    >                    
-                    <div style={{ 
-                        width: data.width * viewZoom, 
+                        onMouseMove={handleCanvasMouseMove}
+                        onMouseUp={handleCanvasMouseUp}
+                        style={isMobile ? { display: mobileTab === 'canvas' ? 'flex' : 'none', flex: 1, minHeight: 0, background: '#0a0a0a', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '1rem', cursor: dragState ? 'grabbing' : 'auto' } : { flex: 1, background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '2rem', minWidth: 0, cursor: dragState ? 'grabbing' : 'auto' }}
+                    >
+                    <div style={{
+                        width: data.width * viewZoom,
                         height: data.height * viewZoom,
                         boxShadow: '0 0 20px rgba(0,0,0,0.5)',
                         background: 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzIyMiIgZD0iTTAgMGgxMHYxMEgwem0xMCAxMGgxMHYxMEgxMHoiLz48L3N2Zz4=") repeat',
                         flexShrink: 0,
                         transition: 'width 0.1s, height 0.1s'
                     }}>
-                        <canvas 
+                        <canvas
                             ref={canvasRef}
                             width={data.width}
                             height={data.height}
-                            style={{ width: '100%', height: '100%', cursor: dragState ? 'grabbing' : 'auto', imageRendering: 'pixelated' }}
+                            style={{ width: '100%', height: '100%', imageRendering: 'pixelated' }}
                             onMouseDown={handleCanvasMouseDown}
-                            onMouseMove={handleCanvasMouseMove}
-                            onMouseUp={handleCanvasMouseUp}
-                            onMouseLeave={handleCanvasMouseUp}
                         />
                     </div>
                 </div>
