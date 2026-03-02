@@ -67,7 +67,7 @@ let _locationCb: LocationCallback | null = null;
  */
 export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
     if (_promise) return _promise;
-    _promise = (async (): Promise<StrudelEngine> => {
+    _promise = (async (): Promise<StrudelEngine> => { try {
         const mod = await import('@strudel/web');
 
         // ----------------------------------------------------------------
@@ -84,6 +84,18 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
         const masterGain = realCtx.createGain();
         masterGain.gain.value = 1;
         masterGain.connect(realCtx.destination);
+
+        // Resume AudioContext on first user interaction (since we provide a custom audioContext,
+        // Strudel's internal initAudioOnFirstClick may be disabled).
+        const resumeOnClick = () => {
+            if (realCtx.state === 'suspended') {
+                realCtx.resume().catch(() => {});
+            }
+            document.removeEventListener('click', resumeOnClick);
+            document.removeEventListener('touchstart', resumeOnClick);
+        };
+        document.addEventListener('click', resumeOnClick);
+        document.addEventListener('touchstart', resumeOnClick);
 
         // Proxy: intercepts audioCtx.destination so that when Strudel wires
         // its output bus via `audioCtx.destination`, it connects to masterGain
@@ -109,7 +121,13 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
             audioContext: proxyCtx,
             prebake: sampleUrl
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ? async () => { await (mod as any).samples(sampleUrl); }
+                ? async () => {
+                    try {
+                        await (mod as any).samples(sampleUrl);
+                    } catch (err) {
+                        console.warn('[StrudelEngine] Failed to load sample banks:', err);
+                    }
+                }
                 : undefined,
         });
 
@@ -203,6 +221,11 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
             getAudioContext: () => realCtx,
             setLocationCallback: (cb) => { _locationCb = cb; },
         };
-    })();
+    } catch (err) {
+        console.error('[StrudelEngine] Initialisation failed:', err);
+        _promise = null;
+        throw err;
+    }
+})();
     return _promise;
 }

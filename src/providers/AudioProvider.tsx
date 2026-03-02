@@ -293,6 +293,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 );
                 setIsStrudelPlaying(true);
             }
+        }).catch(err => {
+            console.error('[AudioProvider] Failed to initialize Strudel engine:', err);
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
