@@ -73,91 +73,31 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
         console.log('[StrudelEngine] @strudel/web imported successfully');
 
         // ----------------------------------------------------------------
-        // AudioContext + master gain node
-        // ----------------------------------------------------------------
-
-        // Using default settings instead of 'playback' hint to avoid potential
-        // compatibility issues with Strudel.
-        const realCtx = new AudioContext();
-        console.log('[StrudelEngine] AudioContext created with default settings, state:', realCtx.state);
-
-        // Master gain node — all of Strudel's audio routes through here.
-        const masterGain = realCtx.createGain();
-        masterGain.gain.value = 1;
-        // Log channel information
-        console.log('[StrudelEngine] masterGain channel properties:', {
-            channelCount: masterGain.channelCount,
-            channelCountMode: masterGain.channelCountMode,
-            channelInterpretation: masterGain.channelInterpretation
-        });
-        const originalDestination = realCtx.destination;
-        console.log('[StrudelEngine] originalDestination channel properties:', {
-            channelCount: originalDestination.channelCount,
-            maxChannelCount: originalDestination.maxChannelCount
-        });
-        // Try to match destination channel properties
-        // Ensure channelCount is valid (1-32)
-        const destChannelCount = originalDestination.channelCount;
-        const validChannelCount = destChannelCount >= 1 && destChannelCount <= 32 ? destChannelCount : 2;
-        console.log('[StrudelEngine] Setting masterGain channelCount to:', validChannelCount, '(original destination:', destChannelCount, ')');
-        masterGain.channelCount = validChannelCount;
-        masterGain.channelCountMode = 'explicit';
-        masterGain.channelInterpretation = 'speakers';
-        masterGain.connect(originalDestination);
-
-        // Resume AudioContext on first user interaction (since we provide a custom audioContext,
-        // Strudel's internal initAudioOnFirstClick may be disabled).
-        const resumeOnClick = () => {
-            console.log('[StrudelEngine] User interaction detected, AudioContext state:', realCtx.state);
-            if (realCtx.state === 'suspended') {
-                console.log('[StrudelEngine] Resuming AudioContext...');
-                realCtx.resume().then(() => {
-                    console.log('[StrudelEngine] AudioContext resumed successfully, state:', realCtx.state);
-                }).catch(err => {
-                    console.error('[StrudelEngine] Failed to resume AudioContext:', err);
-                });
-            } else {
-                console.log('[StrudelEngine] AudioContext already running');
-            }
-            document.removeEventListener('click', resumeOnClick);
-            document.removeEventListener('touchstart', resumeOnClick);
-        };
-        document.addEventListener('click', resumeOnClick);
-        document.addEventListener('touchstart', resumeOnClick);
-
-        // Log AudioContext state changes
-        realCtx.onstatechange = () => {
-            console.log('[StrudelEngine] AudioContext state changed:', realCtx.state);
-        };
-
-        // Don't override destination - it causes channelCount errors.
-        // Instead, we'll control volume through Strudel's .postgain() method.
-        // The audioContext we pass to Strudel is the unmodified realCtx
-        const audioContextForStrudel = realCtx;
-
-        // ----------------------------------------------------------------
         // Strudel init
         // ----------------------------------------------------------------
 
         const sampleUrl = origin ? `${origin}/strudel-samples` : undefined;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ls = await (mod.initStrudel as any)({
-            audioContext: audioContextForStrudel,
-            prebake: sampleUrl
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ? async () => {
-                    try {
-                        console.log('[StrudelEngine] Loading sample banks from:', sampleUrl);
-                        await (mod as any).samples(sampleUrl);
-                        console.log('[StrudelEngine] Sample banks loaded successfully');
-                    } catch (err) {
-                        console.warn('[StrudelEngine] Failed to load sample banks:', err);
-                    }
+        // Let Strudel create its own AudioContext (don't pass audioContext option)
+        // This should avoid the channelCount=0 error
+        const initOptions: any = {};
+        if (sampleUrl) {
+            initOptions.prebake = async () => {
+                try {
+                    console.log('[StrudelEngine] Loading sample banks from:', sampleUrl);
+                    await (mod as any).samples(sampleUrl);
+                    console.log('[StrudelEngine] Sample banks loaded successfully');
+                } catch (err) {
+                    console.warn('[StrudelEngine] Failed to load sample banks:', err);
                 }
-                : undefined,
-        });
+            };
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ls = await (mod.initStrudel as any)(initOptions);
         console.log('[StrudelEngine] initStrudel completed successfully');
+        const realCtx = mod.getAudioContext();
+        console.log('[StrudelEngine] Got Strudel AudioContext, state:', realCtx.state, 'channelCount:', realCtx.destination.channelCount);
 
         // ----------------------------------------------------------------
         // Live-highlight hook (monkey-patch scheduler.setPattern)
