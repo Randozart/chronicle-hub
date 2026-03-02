@@ -76,16 +76,34 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
         // AudioContext + master gain node
         // ----------------------------------------------------------------
 
-        // 'playback' hint → browser allocates a larger render quantum / buffer.
-        // The scheduler's setInterval (100 ms default) can be throttled on
-        // mobile; a larger buffer means more audio is pre-rendered before the
-        // next tick arrives, preventing dropouts.
-        const realCtx = new AudioContext({ latencyHint: 'playback' });
+        // Using default settings instead of 'playback' hint to avoid potential
+        // compatibility issues with Strudel.
+        const realCtx = new AudioContext();
+        console.log('[StrudelEngine] AudioContext created with default settings, state:', realCtx.state);
 
         // Master gain node — all of Strudel's audio routes through here.
         const masterGain = realCtx.createGain();
         masterGain.gain.value = 1;
-        masterGain.connect(realCtx.destination);
+        // Log channel information
+        console.log('[StrudelEngine] masterGain channel properties:', {
+            channelCount: masterGain.channelCount,
+            channelCountMode: masterGain.channelCountMode,
+            channelInterpretation: masterGain.channelInterpretation
+        });
+        const originalDestination = realCtx.destination;
+        console.log('[StrudelEngine] originalDestination channel properties:', {
+            channelCount: originalDestination.channelCount,
+            maxChannelCount: originalDestination.maxChannelCount
+        });
+        // Try to match destination channel properties
+        // Ensure channelCount is valid (1-32)
+        const destChannelCount = originalDestination.channelCount;
+        const validChannelCount = destChannelCount >= 1 && destChannelCount <= 32 ? destChannelCount : 2;
+        console.log('[StrudelEngine] Setting masterGain channelCount to:', validChannelCount, '(original destination:', destChannelCount, ')');
+        masterGain.channelCount = validChannelCount;
+        masterGain.channelCountMode = 'explicit';
+        masterGain.channelInterpretation = 'speakers';
+        masterGain.connect(originalDestination);
 
         // Resume AudioContext on first user interaction (since we provide a custom audioContext,
         // Strudel's internal initAudioOnFirstClick may be disabled).
@@ -112,18 +130,10 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
             console.log('[StrudelEngine] AudioContext state changed:', realCtx.state);
         };
 
-        // Proxy: intercepts audioCtx.destination so that when Strudel wires
-        // its output bus via `audioCtx.destination`, it connects to masterGain
-        // instead of the hardware destination directly.
-        // All other accesses are transparently forwarded to realCtx.
-        const proxyCtx = new Proxy(realCtx, {
-            get(target, prop: string | symbol) {
-                if (prop === 'destination') return masterGain;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const val = (target as any)[prop];
-                return typeof val === 'function' ? val.bind(target) : val;
-            },
-        }) as AudioContext;
+        // Don't override destination - it causes channelCount errors.
+        // Instead, we'll control volume through Strudel's .postgain() method.
+        // The audioContext we pass to Strudel is the unmodified realCtx
+        const audioContextForStrudel = realCtx;
 
         // ----------------------------------------------------------------
         // Strudel init
@@ -133,7 +143,7 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ls = await (mod.initStrudel as any)({
-            audioContext: proxyCtx,
+            audioContext: audioContextForStrudel,
             prebake: sampleUrl
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ? async () => {
@@ -204,36 +214,17 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
         let _fadeGen = 0;
 
         const fadeVolume = (targetGain: number, durationMs: number): Promise<void> => {
-            console.log('[StrudelEngine] fadeVolume called:', { targetGain, durationMs, currentState: realCtx.state });
+            console.log('[StrudelEngine] fadeVolume called (no-op for now):', { targetGain, durationMs, currentState: realCtx.state });
             _currentGain = targetGain;
-            const gen = ++_fadeGen;
-            const durationSec = Math.max(0, durationMs) / 1000;
-            const gain = masterGain.gain;
-
-            return new Promise<void>((resolve) => {
-                if (durationSec === 0) {
-                    gain.cancelScheduledValues(realCtx.currentTime);
-                    gain.setValueAtTime(targetGain, realCtx.currentTime);
-                    resolve();
-                    return;
-                }
-
-                gain.cancelScheduledValues(realCtx.currentTime);
-                // Anchor current value before ramping to avoid discontinuities.
-                gain.setValueAtTime(gain.value, realCtx.currentTime);
-                gain.linearRampToValueAtTime(targetGain, realCtx.currentTime + durationSec);
-
-                // Resolve once the ramp has had time to complete.
-                setTimeout(() => {
-                    // Even if superseded, resolve so the caller's await unblocks.
-                    void gen;
-                    resolve();
-                }, durationMs + 20);
-            });
+            // TODO: Implement proper volume fading without breaking channelCount
+            // For now, just resolve immediately
+            return Promise.resolve();
         };
 
         const wrappedEvaluate: StrudelEngine['evaluate'] = async (code, autoplay) => {
             console.log('[StrudelEngine] evaluate called:', { codeLength: code.length, autoplay, audioContextState: realCtx.state });
+            // Log first 200 chars of code to see what's being evaluated
+            console.log('[StrudelEngine] Code snippet:', code.substring(0, Math.min(200, code.length)));
             // Ensure AudioContext is running before evaluating
             if (realCtx.state === 'suspended') {
                 console.log('[StrudelEngine] AudioContext suspended, attempting to resume...');
