@@ -33,6 +33,20 @@ const EyeOffIcon = () => (
     </svg>
 );
 
+const LockIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+);
+
+const UnlockIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+    </svg>
+);
+
 interface PresetFile {
     path: string;
     name: string;
@@ -227,17 +241,19 @@ export default function ComposerEditor({
         const sorted = [...data.layers].sort((a, b) => b.zIndex - a.zIndex);
         const targetIndex = index + direction;
         if (targetIndex < 0 || targetIndex >= sorted.length) return;
-        
+
         const currentLayer = sorted[index];
         const swapLayer = sorted[targetIndex];
-        
-        // Swap Z-Indices
+
+        // Swap Z-Indices immutably
         const tempZ = currentLayer.zIndex;
-        currentLayer.zIndex = swapLayer.zIndex;
-        swapLayer.zIndex = tempZ;
-        
-        // Update state
-        handleChange('layers', [...data.layers]);
+        const updatedLayers = data.layers.map(l => {
+            if (l.id === currentLayer.id) return { ...l, zIndex: swapLayer.zIndex };
+            if (l.id === swapLayer.id) return { ...l, zIndex: tempZ };
+            return l;
+        });
+
+        handleChange('layers', updatedLayers);
     };
 
     useEffect(() => {
@@ -336,14 +352,22 @@ export default function ComposerEditor({
             
             const effects = [];
             
-            let strokeStyle = null;
-            if (layer.effects?.stroke?.enabled) {
+            // Stroke silhouette canvas (built before transform, used after)
+            let strokeSilhouette: HTMLCanvasElement | null = null;
+            let strokeWidth = 0;
+            if (layer.effects?.stroke?.enabled && finalImageToDraw.width > 0 && finalImageToDraw.height > 0) {
                 const st = layer.effects.stroke;
+                strokeWidth = st.width;
                 const sColor = resolveCssVariable(st.color, previewTheme, allThemes);
-                strokeStyle = `drop-shadow(${st.width}px 0px 0px ${sColor}) 
-                               drop-shadow(-${st.width}px 0px 0px ${sColor}) 
-                               drop-shadow(0px ${st.width}px 0px ${sColor}) 
-                               drop-shadow(0px -${st.width}px 0px ${sColor})`;
+                const silCanvas = document.createElement('canvas');
+                silCanvas.width = finalImageToDraw.width;
+                silCanvas.height = finalImageToDraw.height;
+                const silCtx = silCanvas.getContext('2d')!;
+                silCtx.drawImage(finalImageToDraw, 0, 0);
+                silCtx.globalCompositeOperation = 'source-in';
+                silCtx.fillStyle = sColor;
+                silCtx.fillRect(0, 0, silCanvas.width, silCanvas.height);
+                strokeSilhouette = silCanvas;
             }
 
             // Glow
@@ -373,18 +397,17 @@ export default function ComposerEditor({
             ctx.translate(layer.x + (finalImageToDraw.width * layer.scale)/2, layer.y + (finalImageToDraw.height * layer.scale)/2);
             ctx.rotate((layer.rotation * Math.PI) / 180);
             
-            if (strokeStyle) {
+            if (strokeSilhouette) {
+                const iw = finalImageToDraw.width * layer.scale;
+                const ih = finalImageToDraw.height * layer.scale;
                 ctx.save();
-                ctx.filter = strokeStyle;
                 ctx.globalCompositeOperation = 'source-over';
-                if (finalImageToDraw.width > 0 && finalImageToDraw.height > 0) {
-                    ctx.drawImage(
-                        finalImageToDraw, 
-                        -(finalImageToDraw.width * layer.scale)/2, 
-                        -(finalImageToDraw.height * layer.scale)/2, 
-                        finalImageToDraw.width * layer.scale, 
-                        finalImageToDraw.height * layer.scale
-                    );
+                const N = 16;
+                for (let i = 0; i < N; i++) {
+                    const angle = (2 * Math.PI * i) / N;
+                    const ox = Math.cos(angle) * strokeWidth;
+                    const oy = Math.sin(angle) * strokeWidth;
+                    ctx.drawImage(strokeSilhouette, -iw / 2 + ox, -ih / 2 + oy, iw, ih);
                 }
                 ctx.restore();
             }
@@ -442,7 +465,7 @@ export default function ComposerEditor({
                 id: uuidv4(),
                 assetId: assetId,
                 name: name,
-                zIndex: data.layers.length,
+                zIndex: data.layers.length > 0 ? Math.max(...data.layers.map(l => l.zIndex)) + 1 : 0,
                 x: (data.width / 2) - (width / 2),
                 y: (data.height / 2) - (height / 2),
                 scale: 1,
@@ -642,6 +665,7 @@ export default function ComposerEditor({
         const sortedReverse = [...data.layers].sort((a, b) => b.zIndex - a.zIndex);
         for (const layer of sortedReverse) {
             if (layer.editorHidden) continue;
+            if (layer.locked) continue;
             const img = getCachedImage(layer);
             if (!img) continue;
 
@@ -997,12 +1021,19 @@ export default function ComposerEditor({
                                                     style={{ fontSize:'0.5rem', lineHeight:1, cursor:'pointer', border:'none', background:'none', color:'inherit', opacity: idx === data.layers.length - 1 ? 0.2 : 1 }}
                                                 >▼</button>
                                             </div>                                            
-                                            <button 
+                                            <button
                                                 onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { editorHidden: !layer.editorHidden }); }}
                                                 style={{ border:'none', background:'none', cursor:'pointer', color: 'inherit', padding: '0 4px', display:'flex', alignItems:'center' }}
                                                 title={layer.editorHidden ? "Show Layer" : "Hide Layer"}
                                             >
                                                 {layer.editorHidden ? <EyeOffIcon /> : <EyeIcon />}
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { locked: !layer.locked }); }}
+                                                style={{ border:'none', background:'none', cursor:'pointer', color: 'inherit', padding: '0 2px', display:'flex', alignItems:'center' }}
+                                                title={layer.locked ? "Unlock Layer" : "Lock Layer"}
+                                            >
+                                                {layer.locked ? <LockIcon /> : <UnlockIcon />}
                                             </button>
                                             {layer.groupId && <span style={{fontSize:'0.6rem', border:'1px solid currentColor', padding:'0 2px', borderRadius:'2px'}}>{layer.groupId}</span>}
                                             <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{layer.name}</span>

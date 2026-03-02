@@ -169,7 +169,8 @@ export interface CompositionLayer {
     tintColor?: string;
     enableThemeColor?: boolean;
 
-    editorHidden?: boolean; 
+    editorHidden?: boolean;
+    locked?: boolean;
 
     blendMode?: BlendMode; 
     
