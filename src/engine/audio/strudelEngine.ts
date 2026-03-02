@@ -68,7 +68,9 @@ let _locationCb: LocationCallback | null = null;
 export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
     if (_promise) return _promise;
     _promise = (async (): Promise<StrudelEngine> => { try {
+        console.log('[StrudelEngine] Initializing Strudel engine...');
         const mod = await import('@strudel/web');
+        console.log('[StrudelEngine] @strudel/web imported successfully');
 
         // ----------------------------------------------------------------
         // AudioContext + master gain node
@@ -88,14 +90,27 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
         // Resume AudioContext on first user interaction (since we provide a custom audioContext,
         // Strudel's internal initAudioOnFirstClick may be disabled).
         const resumeOnClick = () => {
+            console.log('[StrudelEngine] User interaction detected, AudioContext state:', realCtx.state);
             if (realCtx.state === 'suspended') {
-                realCtx.resume().catch(() => {});
+                console.log('[StrudelEngine] Resuming AudioContext...');
+                realCtx.resume().then(() => {
+                    console.log('[StrudelEngine] AudioContext resumed successfully, state:', realCtx.state);
+                }).catch(err => {
+                    console.error('[StrudelEngine] Failed to resume AudioContext:', err);
+                });
+            } else {
+                console.log('[StrudelEngine] AudioContext already running');
             }
             document.removeEventListener('click', resumeOnClick);
             document.removeEventListener('touchstart', resumeOnClick);
         };
         document.addEventListener('click', resumeOnClick);
         document.addEventListener('touchstart', resumeOnClick);
+
+        // Log AudioContext state changes
+        realCtx.onstatechange = () => {
+            console.log('[StrudelEngine] AudioContext state changed:', realCtx.state);
+        };
 
         // Proxy: intercepts audioCtx.destination so that when Strudel wires
         // its output bus via `audioCtx.destination`, it connects to masterGain
@@ -123,13 +138,16 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ? async () => {
                     try {
+                        console.log('[StrudelEngine] Loading sample banks from:', sampleUrl);
                         await (mod as any).samples(sampleUrl);
+                        console.log('[StrudelEngine] Sample banks loaded successfully');
                     } catch (err) {
                         console.warn('[StrudelEngine] Failed to load sample banks:', err);
                     }
                 }
                 : undefined,
         });
+        console.log('[StrudelEngine] initStrudel completed successfully');
 
         // ----------------------------------------------------------------
         // Live-highlight hook (monkey-patch scheduler.setPattern)
@@ -186,6 +204,7 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
         let _fadeGen = 0;
 
         const fadeVolume = (targetGain: number, durationMs: number): Promise<void> => {
+            console.log('[StrudelEngine] fadeVolume called:', { targetGain, durationMs, currentState: realCtx.state });
             _currentGain = targetGain;
             const gen = ++_fadeGen;
             const durationSec = Math.max(0, durationMs) / 1000;
@@ -213,9 +232,36 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
             });
         };
 
+        const wrappedEvaluate: StrudelEngine['evaluate'] = async (code, autoplay) => {
+            console.log('[StrudelEngine] evaluate called:', { codeLength: code.length, autoplay, audioContextState: realCtx.state });
+            // Ensure AudioContext is running before evaluating
+            if (realCtx.state === 'suspended') {
+                console.log('[StrudelEngine] AudioContext suspended, attempting to resume...');
+                try {
+                    await realCtx.resume();
+                    console.log('[StrudelEngine] AudioContext resumed successfully, state:', realCtx.state);
+                } catch (resumeErr) {
+                    console.warn('[StrudelEngine] Could not resume AudioContext (may need user gesture):', resumeErr);
+                    // Continue anyway - evaluate will likely fail but we let it throw
+                }
+            }
+            try {
+                await (mod.evaluate as StrudelEngine['evaluate'])(code, autoplay);
+                console.log('[StrudelEngine] evaluate succeeded');
+            } catch (err) {
+                console.error('[StrudelEngine] evaluate failed:', err);
+                throw err;
+            }
+        };
+
+        const wrappedHush = () => {
+            console.log('[StrudelEngine] hush called');
+            mod.hush();
+        };
+
         return {
-            evaluate: mod.evaluate as StrudelEngine['evaluate'],
-            hush: mod.hush,
+            evaluate: wrappedEvaluate,
+            hush: wrappedHush,
             fadeVolume,
             getMasterGain: () => _currentGain,
             getAudioContext: () => realCtx,

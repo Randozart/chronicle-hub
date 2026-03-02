@@ -283,10 +283,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         if (typeof window === 'undefined') return;
         const origin = window.location.origin;
         getStrudelEngine(origin).then(engine => {
+            console.log('[AudioProvider] Strudel engine initialized successfully');
             strudelEngineRef.current = engine;
             // Play any track that was requested before the engine finished loading.
             const pending = pendingStrudelCodeRef.current;
             if (pending) {
+                console.log('[AudioProvider] Playing pending track');
                 pendingStrudelCodeRef.current = '';
                 engine.evaluate(pending).catch(e =>
                     console.warn('[AudioProvider] Strudel evaluate error:', e)
@@ -387,6 +389,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         sampleMap: Record<string, string> = {},
         fadeDuration: number = 0
     ) => {
+        console.log('[AudioProvider] playStrudelTrack called:', { sourceLength: source.length, fadeDuration, musicMuted });
         if (musicMuted) return;
         const finalCode = buildFinalCode(source, qualities, sampleMap);
         currentStrudelSourceRef.current = source;
