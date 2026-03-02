@@ -444,7 +444,19 @@
         height: 140px !important;
         min-height: 0 !important;
     }
-    
+
+    /* Banner mode: override column layout so Travel button stays visible */
+    .location-wrapper.mode-banner .location-header {
+        flex-direction: row !important;
+        align-items: flex-end !important;
+        padding: 0.75rem 1rem !important;
+        gap: 0.5rem !important;
+    }
+    /* Description doesn't fit in the compact mobile banner — hide it */
+    .location-wrapper.mode-banner .location-description {
+        display: none;
+    }
+
     .banner-content {
         padding: 1rem !important;
         align-items: flex-end !important;

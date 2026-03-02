@@ -184,24 +184,24 @@
     
     .location-header {
         flex-direction: column;
-        text-align: center;
+        text-align: left;
         gap: 1rem;
     }
-    
+
     .header-controls {
         width: 100%;
-        justify-content: center;
+        justify-content: flex-start;
     }
 
      .location-text {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
         width: 100%;
     }
-    
+
     .location-text h1 {
-        text-align: center;
+        text-align: left;
         font-size: 1.8rem;
         word-wrap: break-word;
         line-height: 1.2;
