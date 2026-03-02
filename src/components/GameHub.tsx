@@ -474,8 +474,10 @@ export default function GameHub(props: GameHubProps) {
         const worldList = locList.length === 0 && regionList.length === 0 ? resolveAudioRefList(worldRef, qualities) : [];
         const playlist = locList.length > 0 ? locList : regionList.length > 0 ? regionList : worldList;
 
+        const fadeDuration = props.settings?.musicFadeDuration ?? 0;
+
         if (playlist.length === 0) {
-            stopStrudelTrack();
+            stopStrudelTrack(fadeDuration);
             setCurrentMusicTrackId(null);
             playlistRef.current = [];
             return;
@@ -493,7 +495,7 @@ export default function GameHub(props: GameHubProps) {
             if (isLigature) {
                 playTrack(t.source, props.instruments ? Object.values(props.instruments) : [], qualitiesRef.current);
             } else {
-                playStrudelTrack(t.source, qualitiesRef.current);
+                playStrudelTrack(t.source, qualitiesRef.current, {}, fadeDuration);
             }
         };
 
@@ -1073,7 +1075,7 @@ export default function GameHub(props: GameHubProps) {
                             </span>
                             {!musicMuted && (isStrudelPlaying ? (
                                 <button
-                                    onClick={stopStrudelTrack}
+                                    onClick={() => stopStrudelTrack()}
                                     title="Stop music"
                                     style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.85rem', lineHeight: 1 }}
                                 >

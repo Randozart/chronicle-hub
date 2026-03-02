@@ -29,10 +29,11 @@ interface AudioContextType {
     playPreviewNote: (instrumentDef: InstrumentDefinition, note: string, duration?: Tone.Unit.Time) => void;
     startPreviewNote: (instrumentDef: InstrumentDefinition, note: string) => void;
     stopPreviewNote: (note?: string) => void;
-    /** Play a Strudel code string via the embedded Strudel REPL iframe. */
-    playStrudelTrack: (source: string, qualities?: PlayerQualities, sampleMap?: Record<string, string>) => void;
-    /** Stop Strudel playback. */
-    stopStrudelTrack: () => void;
+    /** Play a Strudel code string via the shared @strudel/web engine.
+     *  @param fadeDuration - crossfade duration in ms (0 = instant with a brief silence gap to clear reverb tails). */
+    playStrudelTrack: (source: string, qualities?: PlayerQualities, sampleMap?: Record<string, string>, fadeDuration?: number) => void;
+    /** Stop Strudel playback, optionally fading out first. */
+    stopStrudelTrack: (fadeDuration?: number) => void;
     /** True while the Strudel iframe has an active track loaded. */
     isStrudelPlaying: boolean;
     /** Re-evaluate the current Strudel track's ScribeScript templates against new quality values.
@@ -70,6 +71,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const pendingStrudelCodeRef = useRef<string>('');
     /** Processed code without the .gain() suffix — used to quickly re-apply a new volume level. */
     const preGainCodeRef = useRef<string>('');
+    /** Qualities snapshot used when replaying after a visibility/suspend recovery. */
+    const lastQualitiesRef = useRef<PlayerQualities>({});
+    /** Sample map snapshot used when replaying after a visibility/suspend recovery. */
+    const lastSampleMapRef = useRef<Record<string, string>>({});
+    /** Whether Strudel is supposed to be playing (survives brief interruptions). */
+    const intendedPlayingRef = useRef<boolean>(false);
 
     const playbackRequestIdRef = useRef(0);
     const previewSynthRef = useRef<AnySoundSource | null>(null);
@@ -104,6 +111,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         setMusicMutedState(muted);
         localStorage.setItem('chronicle-audio-musicMuted', String(muted));
         if (muted) {
+            intendedPlayingRef.current = false;
             strudelEngineRef.current?.hush();
             pendingStrudelCodeRef.current = '';
             setIsStrudelPlaying(false);
@@ -289,6 +297,59 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // ------------------------------------------------------------------
+    // Mobile / background-tab recovery
+    // ------------------------------------------------------------------
+
+    // When the page is hidden (tab switch, phone lock screen) the browser may
+    // suspend the AudioContext and throttle setInterval, causing the Cyclist
+    // scheduler to fall behind. When the page becomes visible again we resume
+    // the AudioContext and, if playback was interrupted, re-evaluate the
+    // current track so Strudel restarts from a clean state.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState !== 'visible') return;
+            if (!intendedPlayingRef.current) return;
+            const engine = strudelEngineRef.current;
+            const code = lastStrudelCodeRef.current;
+            if (!engine || !code) return;
+            // Re-evaluate to restart the scheduler if it stalled while hidden.
+            engine.evaluate(code).catch(() => {});
+            engine.fadeVolume(musicVolume, 0).catch(() => {});
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Monitor the Strudel AudioContext for unexpected suspension (iOS phone
+    // calls, system audio interruptions). Auto-resume when it transitions back
+    // to 'running' so music restores without user interaction.
+    // The engine initialises asynchronously, so we attach the listener inside
+    // the existing engine-init promise chain.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        let ctx: AudioContext | null = null;
+
+        getStrudelEngine(window.location.origin).then(engine => {
+            ctx = engine.getAudioContext();
+            ctx.onstatechange = () => {
+                if (ctx?.state === 'running' && intendedPlayingRef.current) {
+                    const code = lastStrudelCodeRef.current;
+                    if (code) engine.evaluate(code).catch(() => {});
+                }
+            };
+        });
+
+        return () => {
+            if (ctx) ctx.onstatechange = null;
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const buildFinalCode = (source: string, qualities: PlayerQualities, sampleMap: Record<string, string>, vol?: number): string => {
         const processed = preprocessStrudelSource(source, qualities);
         const lines: string[] = [];
@@ -321,21 +382,47 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const playStrudelTrack = (
         source: string,
         qualities: PlayerQualities = {},
-        sampleMap: Record<string, string> = {}
+        sampleMap: Record<string, string> = {},
+        fadeDuration: number = 0
     ) => {
         if (musicMuted) return;
         const finalCode = buildFinalCode(source, qualities, sampleMap);
         currentStrudelSourceRef.current = source;
         lastStrudelCodeRef.current = finalCode;
+        lastQualitiesRef.current = qualities;
+        lastSampleMapRef.current = sampleMap;
+        intendedPlayingRef.current = true;
 
-        if (strudelEngineRef.current) {
-            strudelEngineRef.current.evaluate(finalCode).catch(e =>
-                console.warn('[AudioProvider] Strudel evaluate error:', e)
-            );
-            setIsStrudelPlaying(true);
-        } else {
+        const engine = strudelEngineRef.current;
+        if (!engine) {
             // Engine still loading — queue the code; the init useEffect will play it.
             pendingStrudelCodeRef.current = finalCode;
+            return;
+        }
+
+        const doPlay = () => {
+            engine.evaluate(finalCode).catch(e =>
+                console.warn('[AudioProvider] Strudel evaluate error:', e)
+            );
+            // Restore full volume after the transition gap/fade-in.
+            engine.fadeVolume(musicVolume, fadeDuration > 0 ? Math.min(fadeDuration, 800) : 0).catch(() => {});
+            setIsStrudelPlaying(true);
+        };
+
+        if (fadeDuration > 0) {
+            // Fade out the current track, then switch.
+            engine.fadeVolume(0, fadeDuration).then(() => {
+                engine.hush();
+                // Brief pause so reverb/delay tails in the audio graph drain
+                // before the new pattern's first events are scheduled.
+                setTimeout(doPlay, 80);
+            });
+        } else {
+            // Instant cut: hush immediately, but wait 150 ms before evaluating
+            // the new pattern. This gives reverb/delay tails time to fall below
+            // the noise floor without any audible crossfade.
+            engine.hush();
+            setTimeout(doPlay, 150);
         }
     };
 
@@ -352,12 +439,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         strudelEngineRef.current?.evaluate(newCode).catch(() => {});
     };
 
-    const stopStrudelTrack = () => {
-        strudelEngineRef.current?.hush();
+    const stopStrudelTrack = (fadeDuration: number = 0) => {
+        intendedPlayingRef.current = false;
         pendingStrudelCodeRef.current = '';
         currentStrudelSourceRef.current = '';
         lastStrudelCodeRef.current = '';
         setIsStrudelPlaying(false);
+
+        const engine = strudelEngineRef.current;
+        if (!engine) return;
+
+        if (fadeDuration > 0) {
+            engine.fadeVolume(0, fadeDuration).then(() => engine.hush()).catch(() => engine.hush());
+        } else {
+            engine.hush();
+        }
     };
 
     // ------------------------------------------------------------------

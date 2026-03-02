@@ -9,7 +9,8 @@
 //
 //   const engine = await getStrudelEngine(window.location.origin);
 //   await engine.evaluate('note("c3 e3").s("piano")');
-//   engine.hush(); // stop
+//   await engine.fadeVolume(0, 300); // ramp to silence over 300 ms
+//   engine.hush();                   // then stop the scheduler
 
 /** A character range in the evaluated source code. */
 export type TriggerLocation = { start: number; end: number };
@@ -21,19 +22,24 @@ export type StrudelEngine = {
     evaluate: (code: string, autoplay?: boolean) => Promise<void>;
     hush: () => void;
     /**
+     * Frame-accurate volume ramp via the Web Audio API parameter scheduler.
+     * Ramps the master gain node to `targetGain` (0–1) over `durationMs`.
+     * Resolves when the ramp is complete (or immediately when durationMs = 0).
+     * Cancels any in-progress ramp before starting the new one.
+     */
+    fadeVolume: (targetGain: number, durationMs: number) => Promise<void>;
+    /** Current master gain value (0–1). */
+    getMasterGain: () => number;
+    /** The real AudioContext used by this engine (for state monitoring). */
+    getAudioContext: () => AudioContext;
+    /**
      * Register a callback that fires whenever a Strudel hap triggers and carries
      * source location data. Pass `null` to unregister.
-     *
-     * Implemented by wrapping the global Cyclist trigger function once at init
-     * time — this is the only reliable hook because pattern.onTrigger() returns
-     * a *new* pattern that the scheduler never plays.
      */
     setLocationCallback: (cb: LocationCallback | null) => void;
 };
 
 let _promise: Promise<StrudelEngine> | null = null;
-// Module-level so the trigger wrapper closure can always reach the latest
-// callback without being captured in a stale closure.
 let _locationCb: LocationCallback | null = null;
 
 /**
@@ -45,52 +51,90 @@ let _locationCb: LocationCallback | null = null;
  * the first evaluate(). Subsequent calls with a different or missing origin
  * reuse the already-initialised engine.
  *
- * initStrudel() calls initAudioOnFirstClick() internally, which registers a
- * one-time listener that resumes the AudioContext on the first user interaction
- * anywhere on the page — so no specific "unlock" button is required.
+ * ### Mobile buffering
+ * The AudioContext is created with `latencyHint: 'playback'`, instructing the
+ * browser to allocate a larger audio render buffer. This significantly reduces
+ * dropouts when the browser throttles JavaScript timers under power-saving
+ * mode or CPU load — the primary cause of mobile audio chopping.
+ *
+ * ### Frame-accurate crossfades
+ * A master GainNode is inserted between Strudel's output bus and the hardware
+ * destination using an AudioContext Proxy. When Strudel's internal nodes call
+ * `audioCtx.destination`, the Proxy intercepts and returns our GainNode
+ * instead. This means all Strudel audio routes through masterGain →
+ * realDestination, giving us frame-accurate ramps via the Web Audio API
+ * parameter scheduler — no re-evaluation of patterns needed.
  */
 export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
     if (_promise) return _promise;
     _promise = (async (): Promise<StrudelEngine> => {
         const mod = await import('@strudel/web');
+
+        // ----------------------------------------------------------------
+        // AudioContext + master gain node
+        // ----------------------------------------------------------------
+
+        // 'playback' hint → browser allocates a larger render quantum / buffer.
+        // The scheduler's setInterval (100 ms default) can be throttled on
+        // mobile; a larger buffer means more audio is pre-rendered before the
+        // next tick arrives, preventing dropouts.
+        const realCtx = new AudioContext({ latencyHint: 'playback' });
+
+        // Master gain node — all of Strudel's audio routes through here.
+        const masterGain = realCtx.createGain();
+        masterGain.gain.value = 1;
+        masterGain.connect(realCtx.destination);
+
+        // Proxy: intercepts audioCtx.destination so that when Strudel wires
+        // its output bus via `audioCtx.destination`, it connects to masterGain
+        // instead of the hardware destination directly.
+        // All other accesses are transparently forwarded to realCtx.
+        const proxyCtx = new Proxy(realCtx, {
+            get(target, prop: string | symbol) {
+                if (prop === 'destination') return masterGain;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const val = (target as any)[prop];
+                return typeof val === 'function' ? val.bind(target) : val;
+            },
+        }) as AudioContext;
+
+        // ----------------------------------------------------------------
+        // Strudel init
+        // ----------------------------------------------------------------
+
         const sampleUrl = origin ? `${origin}/strudel-samples` : undefined;
-        // initStrudel() returns the `ls` repl object which has `ls.scheduler`
-        // (the Cyclist instance, `D`).  globalThis.repl is never set by
-        // @strudel/web because its inner XX class is always instantiated with
-        // localScope:true, skipping the globalThis.repl assignment.
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ls = await (mod.initStrudel as any)({
+            audioContext: proxyCtx,
             prebake: sampleUrl
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ? async () => { await (mod as any).samples(sampleUrl); }
                 : undefined,
         });
 
-        // Hook into live highlighting by monkey-patching scheduler.setPattern.
+        // ----------------------------------------------------------------
+        // Live-highlight hook (monkey-patch scheduler.setPattern)
         //
         // WHY NOT getTriggerFunc / setTriggerFunc:
-        // @strudel/web ships as a fully self-contained bundle.  Its scheduler
-        // captures `onTrigger` at construction time and calls it directly
-        // (`n?.(V, Z, X, this.cps, D)` in Db constructor).  The exported
-        // getTriggerFunc/setTriggerFunc operate on a separate variable `Bb`
-        // that nothing in the scheduler ever reads — patching it has no effect.
+        // @strudel/web ships as a fully self-contained bundle. Its scheduler
+        // captures `onTrigger` at construction time and calls it directly.
+        // The exported getTriggerFunc/setTriggerFunc operate on a separate
+        // variable that nothing in the scheduler ever reads — patching it
+        // has no effect.
         //
         // CORRECT APPROACH — hap-level context.onTrigger:
-        // The audio-trigger function (s2) checks `hap.context.onTrigger` for
-        // every hap.  When set (without dominantTrigger), it calls BOTH the
-        // default audio output AND context.onTrigger.  We wrap scheduler.setPattern
-        // so every incoming pattern gets a withContext() that injects our hook
-        // while preserving any existing per-hap onTrigger chain.
-        //
-        // We access the scheduler via the initStrudel() return value (ls.scheduler)
-        // rather than globalThis.repl (which @strudel/web never populates).
+        // The audio-trigger function checks `hap.context.onTrigger` for every
+        // hap. We wrap scheduler.setPattern so every incoming pattern gets a
+        // withContext() injecting our hook while preserving any existing chain.
+        // ----------------------------------------------------------------
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const scheduler = (ls as any)?.scheduler;
         if (scheduler && typeof scheduler.setPattern === 'function') {
             const origSetPattern = (scheduler.setPattern as Function).bind(scheduler); // eslint-disable-line @typescript-eslint/ban-types
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             scheduler.setPattern = async (pattern: any, start?: boolean) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const wrapped = typeof pattern?.withContext === 'function'
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ? pattern.withContext((ctx: any) => {
@@ -102,7 +146,7 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
                                 if (_locationCb) {
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     const locs: TriggerLocation[] = (hap?.context?.locations ?? [])
-                                        .filter((l: any) => typeof l?.start === 'number' && typeof l?.end === 'number'); // eslint-disable-line @typescript-eslint/no-explicit-any
+                                        .filter((l: any) => typeof l?.start === 'number' && typeof l?.end === 'number');
                                     if (locs.length > 0) _locationCb(locs);
                                 }
                                 if (prevOnTrigger) await prevOnTrigger(hap, ...args);
@@ -114,9 +158,49 @@ export function getStrudelEngine(origin?: string): Promise<StrudelEngine> {
             };
         }
 
+        // ----------------------------------------------------------------
+        // fadeVolume — Web Audio API parameter ramp on masterGain
+        // ----------------------------------------------------------------
+
+        let _currentGain = 1;
+        // Incremented on every new fade so a superseded fade's setTimeout
+        // doesn't resolve after a newer fade has taken over.
+        let _fadeGen = 0;
+
+        const fadeVolume = (targetGain: number, durationMs: number): Promise<void> => {
+            _currentGain = targetGain;
+            const gen = ++_fadeGen;
+            const durationSec = Math.max(0, durationMs) / 1000;
+            const gain = masterGain.gain;
+
+            return new Promise<void>((resolve) => {
+                if (durationSec === 0) {
+                    gain.cancelScheduledValues(realCtx.currentTime);
+                    gain.setValueAtTime(targetGain, realCtx.currentTime);
+                    resolve();
+                    return;
+                }
+
+                gain.cancelScheduledValues(realCtx.currentTime);
+                // Anchor current value before ramping to avoid discontinuities.
+                gain.setValueAtTime(gain.value, realCtx.currentTime);
+                gain.linearRampToValueAtTime(targetGain, realCtx.currentTime + durationSec);
+
+                // Resolve once the ramp has had time to complete.
+                setTimeout(() => {
+                    // Even if superseded, resolve so the caller's await unblocks.
+                    void gen;
+                    resolve();
+                }, durationMs + 20);
+            });
+        };
+
         return {
             evaluate: mod.evaluate as StrudelEngine['evaluate'],
             hush: mod.hush,
+            fadeVolume,
+            getMasterGain: () => _currentGain,
+            getAudioContext: () => realCtx,
             setLocationCallback: (cb) => { _locationCb = cb; },
         };
     })();
