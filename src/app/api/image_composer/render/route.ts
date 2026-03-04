@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/engine/database';
 import { getAssetBuffer } from '@/engine/storageService';
 import { getAllThemes } from '@/engine/themeParser';
-import { ImageComposition, CompositionLayer } from '@/engine/models';
+import { ImageComposition } from '@/engine/models';
 import sharp from 'sharp';
 
+// Helper: Get dimensions safely
 async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
     try {
         const metadata = await sharp(buffer).metadata();
@@ -27,10 +28,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Missing ID or StoryID' }, { status: 400 });
     }
 
+    // Cache Check
     const cacheKey = request.url;
     if (RENDER_CACHE.has(cacheKey)) {
-        const buffer = RENDER_CACHE.get(cacheKey)!;
-        return new NextResponse(buffer as any, { 
+        return new NextResponse(RENDER_CACHE.get(cacheKey)! as any, { 
             headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=3600' }
         });
     }
@@ -40,13 +41,12 @@ export async function GET(request: NextRequest) {
         const db = client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db');
 
         const composition = await db.collection<ImageComposition>('compositions').findOne({ id: compositionId, storyId });
-
         if (!composition) {
             return NextResponse.json({ error: 'Composition not found' }, { status: 404 });
         }
 
+        // --- Theme Resolution ---
         let themeName = searchParams.get('theme');
-        
         if (!themeName) {
             const worldConfig = await db.collection('config').findOne({ 
                 storyId: composition.storyId, 
@@ -57,72 +57,65 @@ export async function GET(request: NextRequest) {
         }
 
         const allThemes = getAllThemes();
-        // Ensure themeName is treated as a string. Fallback to 'default' if logic fails to prevent casting 'null'
         const finalThemeName = themeName || 'default';
         const themeColors = { ...(allThemes[':root'] || {}), ...(allThemes[finalThemeName] || {}) };
+        
+        // --- Layer Processing ---
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
 
-        console.log(`Rendering composition ${compositionId} with ${sortedLayers.length} layers`);
-        sortedLayers.forEach((layer, i) => {
-            console.log(`  Layer ${i}: id=${layer.id}, assetId=${layer.assetId}, groupId=${layer.groupId}, variantValue=${layer.variantValue}`);
-        });
-
         for (const layer of sortedLayers) {
+            // Logic Filtering
             if (layer.groupId) {
                 const paramValue = searchParams.get(layer.groupId);
-                if (paramValue !== layer.variantValue) {
-                    continue;
-                }
+                if (paramValue !== layer.variantValue) continue;
             }
-            let assetUrl = layer.assetId;
 
-            // Handle case where assetId is just "presets" (likely a bug)
-            if (assetUrl === 'presets') {
-                console.warn(`Invalid assetId "presets" for layer ${layer.id} in composition ${compositionId}, skipping layer`);
-                continue;
-            }
+            // Asset Resolution
+            let assetUrl = layer.assetId;
+            if (assetUrl === 'presets') continue; // Skip invalid legacy data
 
             if (!assetUrl.includes('/') && !assetUrl.startsWith('http')) {
                  const assetDoc = await db.collection('assets').findOne({ id: assetUrl });
-                 if (!assetDoc) assetUrl = `/uploads/misc/${assetUrl}.png`;
-                 else assetUrl = assetDoc.url as string;
+                 assetUrl = assetDoc ? (assetDoc.url as string) : `/uploads/misc/${assetUrl}.png`;
             }
 
-            console.log(`Fetching asset: ${assetUrl} for layer ${layer.id}`);
             let buffer = await getAssetBuffer(assetUrl);
             if (!buffer) {
-                console.warn(`Layer asset missing: ${assetUrl}`, { layerId: layer.id, assetId: layer.assetId, storyId, compositionId });
+                console.warn(`Layer asset missing: ${assetUrl}`);
                 continue;
             }
-            console.log(`  Asset loaded (${buffer.length} bytes)`);
-            const assetDims = await getImageDimensions(buffer);
-            console.log(`  Asset dimensions: ${assetDims.width}x${assetDims.height}`);
+
+            // SVG Theme Tinting
             const isSvg = assetUrl.toLowerCase().endsWith('.svg');
-            
             if (isSvg && (layer.enableThemeColor || layer.tintColor)) {
                 let svgString = buffer.toString('utf-8');
-                svgString = svgString.replace(/var\((--[^)]+)\)/g, (match, varName) => {
-                    return themeColors[varName] || match;
-                });
+                
+                // Replace CSS vars
+                svgString = svgString.replace(/var\((--[^)]+)\)/g, (match, varName) => themeColors[varName] || match);
+                
+                // Manual Tint
                 if (layer.tintColor) {
                     let color = layer.tintColor;
                     if (color.startsWith('var(')) {
                         const varName = color.match(/var\((--[^)]+)\)/)?.[1];
                         if (varName) color = themeColors[varName] || color;
                     }
+                    // Simple regex replacement for fills/strokes - acceptable for simple icons
                     svgString = svgString.replace(/fill="[^"]*"/g, `fill="${color}"`);
                     svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${color}"`);
                 }
-
                 buffer = Buffer.from(svgString);
             }
+
+            // Transform Pipeline (Resize/Rotate)
             let pipeline = sharp(buffer);
-            if (layer.scale !== 1) {
-                const meta = await pipeline.metadata();
-                if (meta.width) {
-                    pipeline.resize(Math.round(meta.width * layer.scale));
-                }
+            
+            // We must get metadata to scale correctly
+            const meta = await pipeline.metadata();
+            
+            if (layer.scale !== 1 && meta.width) {
+                pipeline.resize(Math.round(meta.width * layer.scale));
             }
             if (layer.rotation !== 0) {
                 pipeline.rotate(layer.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } });
@@ -130,17 +123,18 @@ export async function GET(request: NextRequest) {
             
             const layerBuffer = await pipeline.toBuffer();
             
+            // --- Effects ---
+
+            // 1. Stroke / Outline
             if (layer.effects?.stroke?.enabled) {
                 const st = layer.effects.stroke;
-                const strokeColor = st.color.startsWith('var(') 
-                    ? (themeColors[st.color.match(/--[\w-]+/)?.[0] || ''] || '#ffffff') 
-                    : st.color;
+                const strokeColor = resolveColor(st.color, themeColors);
                 
                 try {
                     const strokeBuffer = await createStrokeLayer(layerBuffer, strokeColor, st.width);
-                    // Stroke is larger than original, so offset position
                     layersToRender.push({
                         input: strokeBuffer,
+                        // Offset by stroke width because the stroke buffer is larger
                         top: Math.round(layer.y - st.width),
                         left: Math.round(layer.x - st.width),
                         blend: 'over',
@@ -148,43 +142,42 @@ export async function GET(request: NextRequest) {
                 } catch(e) { console.error("Stroke error", e); }
             }
             
-            // Glow
+            // 2. Glow
             if (layer.effects?.glow?.enabled) {
                 const g = layer.effects.glow;
-                const glowColor = g.color.startsWith('var(') 
-                    ? (themeColors[g.color.match(/--[\w-]+/)?.[0] || ''] || '#ffffff') 
-                    : g.color;
+                const glowColor = resolveColor(g.color, themeColors);
                 
                 try {
-                    const glowBuffer = await createShadowLayer(layerBuffer, glowColor, g.blur);
+                    // We add padding to the glow so it doesn't clip
+                    const padding = g.blur * 2; 
+                    const glowBuffer = await createShadowLayer(layerBuffer, glowColor, g.blur, padding);
                     layersToRender.push({
                         input: glowBuffer,
-                        top: Math.round(layer.y), // No offset for glow
-                        left: Math.round(layer.x),
+                        top: Math.round(layer.y - padding),
+                        left: Math.round(layer.x - padding),
                         blend: 'screen'
                     });
                 } catch (e) { console.error("Glow error", e); }
             }
 
-            // Drop Shadow
+            // 3. Drop Shadow
             if (layer.effects?.shadow?.enabled) {
                 const s = layer.effects.shadow;
-                const shadowColor = s.color.startsWith('var(') 
-                    ? (themeColors[s.color.match(/--[\w-]+/)?.[0] || ''] || '#000000') 
-                    : s.color;
+                const shadowColor = resolveColor(s.color, themeColors, '#000000');
 
                 try {
-                    const shadowBuffer = await createShadowLayer(layerBuffer, shadowColor, s.blur);
+                    const padding = s.blur * 2;
+                    const shadowBuffer = await createShadowLayer(layerBuffer, shadowColor, s.blur, padding);
                     layersToRender.push({
                         input: shadowBuffer,
-                        top: Math.round(layer.y + s.y),
-                        left: Math.round(layer.x + s.x),
-                        blend: 'multiply' // Shadows darken
+                        top: Math.round(layer.y + s.y - padding),
+                        left: Math.round(layer.x + s.x - padding),
+                        blend: 'multiply'
                     });
                 } catch (e) { console.error("Shadow error", e); }
             }
 
-            // Main Layer
+            // 4. Main Layer
             layersToRender.push({
                 input: layerBuffer,
                 top: Math.round(layer.y),
@@ -193,128 +186,24 @@ export async function GET(request: NextRequest) {
             });
         }
 
+        // --- Background Handling ---
         if (composition.backgroundColor) {
-            const bgKey = composition.backgroundColor.match(/--[\w-]+/)?.[0] || '';
-            const resolvedBg = composition.backgroundColor.startsWith('var(') 
-                ? (themeColors[bgKey] || '#000000') 
-                : composition.backgroundColor;
-
-            try {
-                const bgBuffer = await sharp({
-                    create: {
-                        width: composition.width,
-                        height: composition.height,
-                        channels: 4,
-                        background: resolvedBg
-                    }
-                }).png().toBuffer();
-
-                layersToRender.unshift({ input: bgBuffer, top: 0, left: 0, blend: 'dest-over' });
-            } catch (e) {
-                console.warn("Invalid background color:", resolvedBg);
-            }
-        }
-
-        // Log all layers before compositing
-        console.log(`Composition canvas: ${composition.width}x${composition.height}`);
-        console.log(`Total layers to composite: ${layersToRender.length}`);
-        for (let i = 0; i < layersToRender.length; i++) {
-            const layer = layersToRender[i];
-            try {
-                if (Buffer.isBuffer(layer.input)) {
-                    const dims = await getImageDimensions(layer.input);
-                    console.log(`  Layer ${i}: pos=(${layer.left},${layer.top}), dims=${dims.width}x${dims.height}, blend=${layer.blend}`);
-                } else {
-                    console.log(`  Layer ${i}: pos=(${layer.left},${layer.top}), blend=${layer.blend}, input is not a Buffer (type: ${typeof layer.input})`);
+            const resolvedBg = resolveColor(composition.backgroundColor, themeColors, '#000000');
+            
+            // Create a background layer
+            const bgBuffer = await sharp({
+                create: {
+                    width: composition.width,
+                    height: composition.height,
+                    channels: 4,
+                    background: resolvedBg
                 }
-            } catch (e) {
-                console.log(`  Layer ${i}: pos=(${layer.left},${layer.top}), blend=${layer.blend}, failed to get dimensions: ${e}`);
-            }
+            }).png().toBuffer();
+
+            layersToRender.unshift({ input: bgBuffer, top: 0, left: 0, blend: 'dest-over' });
         }
 
-        // Ensure all layers have valid positions before compositing
-        console.log('Ensuring all layers have valid positions...');
-        for (let i = 0; i < layersToRender.length; i++) {
-            const layer = layersToRender[i];
-            if (typeof layer.left !== 'number') {
-                console.warn(`  Layer ${i}: left is ${typeof layer.left}, setting to 0`);
-                layer.left = 0;
-            }
-            if (typeof layer.top !== 'number') {
-                console.warn(`  Layer ${i}: top is ${typeof layer.top}, setting to 0`);
-                layer.top = 0;
-            }
-        }
-
-        // Validate each layer before compositing
-        console.log('Validating layers before composite...');
-        for (let i = 0; i < layersToRender.length; i++) {
-            const layer = layersToRender[i];
-            const left = layer.left!;
-            const top = layer.top!;
-            if (!Buffer.isBuffer(layer.input)) {
-                console.error(`  Layer ${i}: Input is not a Buffer (type: ${typeof layer.input})`);
-                continue;
-            }
-            try {
-                const dims = await getImageDimensions(layer.input);
-                if (dims.width <= 0 || dims.height <= 0) {
-                    console.error(`  Layer ${i}: Invalid dimensions ${dims.width}x${dims.height}`);
-                }
-                // Check if layer fits within base canvas (not required but informative)
-                const right = left + dims.width;
-                const bottom = top + dims.height;
-                if (right < 0 || bottom < 0 || left > composition.width || top > composition.height) {
-                    console.warn(`  Layer ${i}: completely outside canvas (bounds: ${left},${top} - ${right},${bottom})`);
-                }
-                // Check if image is larger than canvas (could cause sharp error)
-                if (dims.width > composition.width || dims.height > composition.height) {
-                    console.warn(`  Layer ${i}: Image (${dims.width}x${dims.height}) larger than canvas (${composition.width}x${composition.height}) - may cause sharp error`);
-                }
-            } catch (e) {
-                console.error(`  Layer ${i}: Failed to get dimensions: ${e}`);
-            }
-        }
-
-        // Resize any layers that are larger than canvas (sharp requires same dimensions or smaller)
-        console.log('Checking for oversized layers...');
-        let resizedCount = 0;
-        for (let i = 0; i < layersToRender.length; i++) {
-            const layer = layersToRender[i];
-            if (!Buffer.isBuffer(layer.input)) continue;
-
-            try {
-                const dims = await getImageDimensions(layer.input);
-                if (dims.width > composition.width || dims.height > composition.height) {
-                    console.log(`  Layer ${i} is oversized (${dims.width}x${dims.height} vs canvas ${composition.width}x${composition.height}), resizing...`);
-                    // Calculate scale to fit within canvas while maintaining aspect ratio
-                    const scale = Math.min(
-                        composition.width / dims.width,
-                        composition.height / dims.height
-                    );
-                    const newWidth = Math.round(dims.width * scale);
-                    const newHeight = Math.round(dims.height * scale);
-
-                    // Resize the image
-                    const resizedBuffer = await sharp(layer.input)
-                        .resize(newWidth, newHeight, { fit: 'inside' })
-                        .toBuffer();
-
-                    // Update layer with resized image
-                    layer.input = resizedBuffer;
-                    resizedCount++;
-
-                    // Note: Position remains the same (top-left corner doesn't change)
-                    console.log(`    Resized to ${newWidth}x${newHeight} (scale: ${scale.toFixed(2)})`);
-                }
-            } catch (e) {
-                console.error(`  Layer ${i}: Failed to check/resize: ${e}`);
-            }
-        }
-        if (resizedCount > 0) {
-            console.log(`Resized ${resizedCount} oversized layer(s)`);
-        }
-
+        // --- Final Composite ---
         const base = sharp({
             create: {
                 width: composition.width,
@@ -324,54 +213,12 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        console.log('Starting composite operation...');
-        let outputBuffer: Buffer;
-        try {
-            outputBuffer = await base
-                .composite(layersToRender)
-                .webp({ quality: 85 })
-                .toBuffer();
-            console.log('Composite operation completed successfully');
-        } catch (error: any) {
-            console.error('Composite failed:', error.message);
-            // Try to identify problematic layer
-            console.log('Attempting to identify problematic layer...');
-            for (let i = 0; i < layersToRender.length; i++) {
-                const layer = layersToRender[i];
-                console.log(`  Checking layer ${i}: pos=(${layer.left},${layer.top}), blend=${layer.blend}`);
-                if (Buffer.isBuffer(layer.input)) {
-                    try {
-                        const dims = await getImageDimensions(layer.input);
-                        console.log(`    Dimensions: ${dims.width}x${dims.height}`);
-                        if (dims.width > composition.width || dims.height > composition.height) {
-                            console.log(`    WARNING: Layer ${i} is larger than canvas (${composition.width}x${composition.height})`);
-                        }
-                    } catch (e) {
-                        console.log(`    Failed to get dimensions: ${e}`);
-                    }
-                }
-            }
-            // Try composite with single layers to find culprit
-            console.log('Testing composite with individual layers...');
-            for (let i = 0; i < layersToRender.length; i++) {
-                try {
-                    const testBase = sharp({
-                        create: {
-                            width: composition.width,
-                            height: composition.height,
-                            channels: 4,
-                            background: { r: 0, g: 0, b: 0, alpha: 0 }
-                        }
-                    });
-                    await testBase.composite([layersToRender[i]]).toBuffer();
-                    console.log(`  Layer ${i}: OK`);
-                } catch (layerError: any) {
-                    console.error(`  Layer ${i}: FAILED - ${layerError.message}`);
-                    console.error(`    Layer details:`, layersToRender[i]);
-                }
-            }
-            throw error; // Re-throw original error
-        }
+        const outputBuffer = await base
+            .composite(layersToRender)
+            .webp({ quality: 85 })
+            .toBuffer();
+
+        // Update Cache
         if (RENDER_CACHE.size >= CACHE_SIZE_LIMIT) {
             const firstKey = RENDER_CACHE.keys().next().value;
             if (firstKey) RENDER_CACHE.delete(firstKey);
@@ -391,48 +238,52 @@ export async function GET(request: NextRequest) {
     }
 }
 
+// Helper to resolve CSS variables
+function resolveColor(input: string, themeColors: Record<string, string>, fallback = '#ffffff') {
+    if (input.startsWith('var(')) {
+        const key = input.match(/--[\w-]+/)?.[0] || '';
+        return themeColors[key] || fallback;
+    }
+    return input;
+}
+
 async function createShadowLayer(
     inputBuffer: Buffer,
     color: string,
-    blurRadius: number
+    blurRadius: number,
+    padding: number
 ): Promise<Buffer> {
-    // Get dimensions
     const meta = await sharp(inputBuffer).metadata();
-    const originalWidth = meta.width || 100;
-    const originalHeight = meta.height || 100;
+    const w = meta.width || 100;
+    const h = meta.height || 100;
 
-    console.log(`[shadow] Original dimensions: ${originalWidth}x${originalHeight}, blur radius: ${blurRadius}`);
-
-    // Ensure positive dimensions
-    const safeWidth = Math.max(1, originalWidth);
-    const safeHeight = Math.max(1, originalHeight);
-
-    // Create a solid color canvas of the same size
+    // 1. Create solid silhouette
     const solidColor = await sharp({
         create: {
-            width: safeWidth,
-            height: safeHeight,
+            width: w,
+            height: h,
             channels: 4,
             background: color
         }
-    })
-    .png()
-    .toBuffer();
+    }).png().toBuffer();
 
-    // Composite the solid color In to the input image
-    // This keeps the input's alpha channel but replaces pixels with the solid color
     const silhouette = await sharp(solidColor)
-        .composite([{ input: inputBuffer, blend: 'dest-in' }])
+        .composite([{ input: inputBuffer, blend: 'dest-in' }]) // cut out shape
         .png()
         .toBuffer();
 
-    // Apply Blur
-    // Sigma calculation: Sharp's blur is sigma, CSS is radius. Approx sigma = radius / 2
-    const sigma = Math.max(0.3, blurRadius / 2);
-
-    console.log(`[shadow] Applying blur with sigma: ${sigma}`);
-
-    return sharp(silhouette).blur(sigma).toBuffer();
+    // 2. Extend canvas to prevent blur clipping
+    // 3. Blur
+    return sharp(silhouette)
+        .extend({
+            top: padding,
+            bottom: padding,
+            left: padding,
+            right: padding,
+            background: { r: 0, g: 0, b: 0, alpha: 0 }
+        })
+        .blur(Math.max(0.3, blurRadius / 2)) // Sigma approximation
+        .toBuffer();
 }
 
 async function createStrokeLayer(
@@ -440,24 +291,13 @@ async function createStrokeLayer(
     color: string,
     width: number
 ): Promise<Buffer> {
-    // Create a solid color silhouette (same as shadow)
     const meta = await sharp(inputBuffer).metadata();
-    const originalWidth = meta.width || 100;
-    const originalHeight = meta.height || 100;
+    const w = meta.width || 100;
+    const h = meta.height || 100;
 
-    console.log(`[stroke] Original dimensions: ${originalWidth}x${originalHeight}, stroke width: ${width}`);
-
-    // Ensure positive dimensions
-    const safeWidth = Math.max(1, originalWidth);
-    const safeHeight = Math.max(1, originalHeight);
-
+    // Solid silhouette
     const solidColor = await sharp({
-        create: {
-            width: safeWidth,
-            height: safeHeight,
-            channels: 4,
-            background: color
-        }
+        create: { width: w, height: h, channels: 4, background: color }
     }).png().toBuffer();
 
     const silhouette = await sharp(solidColor)
@@ -465,17 +305,9 @@ async function createStrokeLayer(
         .png()
         .toBuffer();
 
-    // Dilate the silhouette to create the stroke
-    // Sharp's 'extend' or 'linear' won't work well for arbitrary shapes.
-    // A robust trick is to blur the solid silhouette heavily, then threshold the alpha.
-    // Or, simply create 4-8 copies offset in a circle for a cheap stroke.
-    // For performance and quality, the "Multi-Offset" method is standard for backend stroke without GPU.
-
-    // We'll generate a larger buffer to hold the stroke
-    const strokeWidth = safeWidth + width * 2;
-    const strokeHeight = safeHeight + width * 2;
-
-    console.log(`[stroke] Stroke canvas: ${strokeWidth}x${strokeHeight}`);
+    // Create larger canvas
+    const strokeWidth = w + width * 2;
+    const strokeHeight = h + width * 2;
 
     const strokeCanvas = sharp({
         create: {
@@ -486,10 +318,10 @@ async function createStrokeLayer(
         }
     });
 
+    // Circular offsets for stroke effect
     const offsets = [
         { top: 0, left: width }, { top: width * 2, left: width },
         { top: width, left: 0 }, { top: width, left: width * 2 },
-        // Diagonals for smoother corners
         { top: width/2, left: width/2 }, { top: width*1.5, left: width*1.5 },
         { top: width/2, left: width*1.5 }, { top: width*1.5, left: width/2 }
     ];
