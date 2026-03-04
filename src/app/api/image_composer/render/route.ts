@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Missing ID or StoryID' }, { status: 400 });
     }
 
-    // Cache Check
     const cacheKey = request.url;
     if (RENDER_CACHE.has(cacheKey)) {
         return new NextResponse(RENDER_CACHE.get(cacheKey)! as any, { 
@@ -64,6 +63,66 @@ export async function GET(request: NextRequest) {
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
 
+        // Helper to crop layers to canvas bounds to prevent Sharp errors
+        const safelyAddLayer = async (buffer: Buffer, x: number, y: number, blend: string) => {
+            const meta = await sharp(buffer).metadata();
+            const w = meta.width || 0;
+            const h = meta.height || 0;
+
+            // Calculate Intersection with Canvas
+            // Canvas Rect: 0, 0, composition.width, composition.height
+            // Layer Rect: x, y, w, h
+            
+            const ix = Math.max(0, x);
+            const iy = Math.max(0, y);
+            const ir = Math.min(composition.width, x + w);
+            const ib = Math.min(composition.height, y + h);
+
+            const iw = ir - ix;
+            const ih = ib - iy;
+
+            // If intersection is empty or invalid, the layer is off-screen
+            if (iw <= 0 || ih <= 0) return;
+
+            // If the layer is fully inside and smaller than canvas, add as is
+            // Note: Sharp throws error if layer is larger than canvas, even if positioned safely.
+            // So we strictly crop if dimensions exceed canvas OR if it's partially off-screen.
+            const needsCrop = w > composition.width || h > composition.height || x < 0 || y < 0 || (x + w) > composition.width || (y + h) > composition.height;
+
+            if (needsCrop) {
+                // Calculate crop offsets relative to the Layer Image
+                const extractLeft = Math.round(ix - x);
+                const extractTop = Math.round(iy - y);
+
+                try {
+                    const croppedBuffer = await sharp(buffer)
+                        .extract({ 
+                            left: Math.max(0, extractLeft), 
+                            top: Math.max(0, extractTop), 
+                            width: Math.floor(iw), 
+                            height: Math.floor(ih) 
+                        })
+                        .toBuffer();
+
+                    layersToRender.push({
+                        input: croppedBuffer,
+                        top: Math.round(iy),
+                        left: Math.round(ix),
+                        blend: blend as any
+                    });
+                } catch(e) {
+                    console.error("Failed to crop layer", e);
+                }
+            } else {
+                layersToRender.push({
+                    input: buffer,
+                    top: Math.round(y),
+                    left: Math.round(x),
+                    blend: blend as any
+                });
+            }
+        };
+
         for (const layer of sortedLayers) {
             // Logic Filtering
             if (layer.groupId) {
@@ -73,7 +132,7 @@ export async function GET(request: NextRequest) {
 
             // Asset Resolution
             let assetUrl = layer.assetId;
-            if (assetUrl === 'presets') continue; // Skip invalid legacy data
+            if (assetUrl === 'presets') continue; 
 
             if (!assetUrl.includes('/') && !assetUrl.startsWith('http')) {
                  const assetDoc = await db.collection('assets').findOne({ id: assetUrl });
@@ -90,28 +149,22 @@ export async function GET(request: NextRequest) {
             const isSvg = assetUrl.toLowerCase().endsWith('.svg');
             if (isSvg && (layer.enableThemeColor || layer.tintColor)) {
                 let svgString = buffer.toString('utf-8');
-                
-                // Replace CSS vars
                 svgString = svgString.replace(/var\((--[^)]+)\)/g, (match, varName) => themeColors[varName] || match);
                 
-                // Manual Tint
                 if (layer.tintColor) {
                     let color = layer.tintColor;
                     if (color.startsWith('var(')) {
                         const varName = color.match(/var\((--[^)]+)\)/)?.[1];
                         if (varName) color = themeColors[varName] || color;
                     }
-                    // Simple regex replacement for fills/strokes - acceptable for simple icons
                     svgString = svgString.replace(/fill="[^"]*"/g, `fill="${color}"`);
                     svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${color}"`);
                 }
                 buffer = Buffer.from(svgString);
             }
 
-            // Transform Pipeline (Resize/Rotate)
+            // Transform Pipeline
             let pipeline = sharp(buffer);
-            
-            // We must get metadata to scale correctly
             const meta = await pipeline.metadata();
             
             if (layer.scale !== 1 && meta.width) {
@@ -125,20 +178,19 @@ export async function GET(request: NextRequest) {
             
             // --- Effects ---
 
-            // 1. Stroke / Outline
+            // 1. Stroke
             if (layer.effects?.stroke?.enabled) {
                 const st = layer.effects.stroke;
                 const strokeColor = resolveColor(st.color, themeColors);
                 
                 try {
                     const strokeBuffer = await createStrokeLayer(layerBuffer, strokeColor, st.width);
-                    layersToRender.push({
-                        input: strokeBuffer,
-                        // Offset by stroke width because the stroke buffer is larger
-                        top: Math.round(layer.y - st.width),
-                        left: Math.round(layer.x - st.width),
-                        blend: 'over',
-                    });
+                    await safelyAddLayer(
+                        strokeBuffer, 
+                        layer.x - st.width, 
+                        layer.y - st.width, 
+                        'over'
+                    );
                 } catch(e) { console.error("Stroke error", e); }
             }
             
@@ -148,15 +200,14 @@ export async function GET(request: NextRequest) {
                 const glowColor = resolveColor(g.color, themeColors);
                 
                 try {
-                    // We add padding to the glow so it doesn't clip
                     const padding = g.blur * 2; 
                     const glowBuffer = await createShadowLayer(layerBuffer, glowColor, g.blur, padding);
-                    layersToRender.push({
-                        input: glowBuffer,
-                        top: Math.round(layer.y - padding),
-                        left: Math.round(layer.x - padding),
-                        blend: 'screen'
-                    });
+                    await safelyAddLayer(
+                        glowBuffer,
+                        layer.x - padding,
+                        layer.y - padding,
+                        'screen'
+                    );
                 } catch (e) { console.error("Glow error", e); }
             }
 
@@ -168,29 +219,27 @@ export async function GET(request: NextRequest) {
                 try {
                     const padding = s.blur * 2;
                     const shadowBuffer = await createShadowLayer(layerBuffer, shadowColor, s.blur, padding);
-                    layersToRender.push({
-                        input: shadowBuffer,
-                        top: Math.round(layer.y + s.y - padding),
-                        left: Math.round(layer.x + s.x - padding),
-                        blend: 'multiply'
-                    });
+                    await safelyAddLayer(
+                        shadowBuffer,
+                        layer.x + s.x - padding,
+                        layer.y + s.y - padding,
+                        'multiply'
+                    );
                 } catch (e) { console.error("Shadow error", e); }
             }
 
             // 4. Main Layer
-            layersToRender.push({
-                input: layerBuffer,
-                top: Math.round(layer.y),
-                left: Math.round(layer.x),
-                blend: (layer.blendMode as any) || 'over' 
-            });
+            await safelyAddLayer(
+                layerBuffer,
+                layer.x,
+                layer.y,
+                (layer.blendMode as any) || 'over'
+            );
         }
 
-        // --- Background Handling ---
+        // --- Background ---
         if (composition.backgroundColor) {
             const resolvedBg = resolveColor(composition.backgroundColor, themeColors, '#000000');
-            
-            // Create a background layer
             const bgBuffer = await sharp({
                 create: {
                     width: composition.width,
@@ -199,7 +248,6 @@ export async function GET(request: NextRequest) {
                     background: resolvedBg
                 }
             }).png().toBuffer();
-
             layersToRender.unshift({ input: bgBuffer, top: 0, left: 0, blend: 'dest-over' });
         }
 
@@ -238,7 +286,6 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// Helper to resolve CSS variables
 function resolveColor(input: string, themeColors: Record<string, string>, fallback = '#ffffff') {
     if (input.startsWith('var(')) {
         const key = input.match(/--[\w-]+/)?.[0] || '';
@@ -257,23 +304,17 @@ async function createShadowLayer(
     const w = meta.width || 100;
     const h = meta.height || 100;
 
-    // 1. Create solid silhouette
+    // Solid silhouette
     const solidColor = await sharp({
-        create: {
-            width: w,
-            height: h,
-            channels: 4,
-            background: color
-        }
+        create: { width: w, height: h, channels: 4, background: color }
     }).png().toBuffer();
 
     const silhouette = await sharp(solidColor)
-        .composite([{ input: inputBuffer, blend: 'dest-in' }]) // cut out shape
+        .composite([{ input: inputBuffer, blend: 'dest-in' }])
         .png()
         .toBuffer();
 
-    // 2. Extend canvas to prevent blur clipping
-    // 3. Blur
+    // Extend and Blur
     return sharp(silhouette)
         .extend({
             top: padding,
@@ -282,7 +323,7 @@ async function createShadowLayer(
             right: padding,
             background: { r: 0, g: 0, b: 0, alpha: 0 }
         })
-        .blur(Math.max(0.3, blurRadius / 2)) // Sigma approximation
+        .blur(Math.max(0.3, blurRadius / 2)) 
         .toBuffer();
 }
 
@@ -295,7 +336,6 @@ async function createStrokeLayer(
     const w = meta.width || 100;
     const h = meta.height || 100;
 
-    // Solid silhouette
     const solidColor = await sharp({
         create: { width: w, height: h, channels: 4, background: color }
     }).png().toBuffer();
@@ -305,7 +345,6 @@ async function createStrokeLayer(
         .png()
         .toBuffer();
 
-    // Create larger canvas
     const strokeWidth = w + width * 2;
     const strokeHeight = h + width * 2;
 
@@ -318,7 +357,6 @@ async function createStrokeLayer(
         }
     });
 
-    // Circular offsets for stroke effect
     const offsets = [
         { top: 0, left: width }, { top: width * 2, left: width },
         { top: width, left: 0 }, { top: width, left: width * 2 },
