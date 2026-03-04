@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
                     }
                 }).png().toBuffer();
 
-                layersToRender.unshift({ input: bgBuffer, blend: 'dest-over' });
+                layersToRender.unshift({ input: bgBuffer, top: 0, left: 0, blend: 'dest-over' });
             } catch (e) {
                 console.warn("Invalid background color:", resolvedBg);
             }
@@ -232,6 +232,90 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        // Ensure all layers have valid positions before compositing
+        console.log('Ensuring all layers have valid positions...');
+        for (let i = 0; i < layersToRender.length; i++) {
+            const layer = layersToRender[i];
+            if (typeof layer.left !== 'number') {
+                console.warn(`  Layer ${i}: left is ${typeof layer.left}, setting to 0`);
+                layer.left = 0;
+            }
+            if (typeof layer.top !== 'number') {
+                console.warn(`  Layer ${i}: top is ${typeof layer.top}, setting to 0`);
+                layer.top = 0;
+            }
+        }
+
+        // Validate each layer before compositing
+        console.log('Validating layers before composite...');
+        for (let i = 0; i < layersToRender.length; i++) {
+            const layer = layersToRender[i];
+            const left = layer.left!;
+            const top = layer.top!;
+            if (!Buffer.isBuffer(layer.input)) {
+                console.error(`  Layer ${i}: Input is not a Buffer (type: ${typeof layer.input})`);
+                continue;
+            }
+            try {
+                const dims = await getImageDimensions(layer.input);
+                if (dims.width <= 0 || dims.height <= 0) {
+                    console.error(`  Layer ${i}: Invalid dimensions ${dims.width}x${dims.height}`);
+                }
+                // Check if layer fits within base canvas (not required but informative)
+                const right = left + dims.width;
+                const bottom = top + dims.height;
+                if (right < 0 || bottom < 0 || left > composition.width || top > composition.height) {
+                    console.warn(`  Layer ${i}: completely outside canvas (bounds: ${left},${top} - ${right},${bottom})`);
+                }
+                // Check if image is larger than canvas (could cause sharp error)
+                if (dims.width > composition.width || dims.height > composition.height) {
+                    console.warn(`  Layer ${i}: Image (${dims.width}x${dims.height}) larger than canvas (${composition.width}x${composition.height}) - may cause sharp error`);
+                }
+            } catch (e) {
+                console.error(`  Layer ${i}: Failed to get dimensions: ${e}`);
+            }
+        }
+
+        // Resize any layers that are excessively larger than canvas
+        console.log('Checking for oversized layers...');
+        const MAX_SIZE_RATIO = 2; // If layer is more than 2x canvas size, resize it
+        let resizedCount = 0;
+        for (let i = 0; i < layersToRender.length; i++) {
+            const layer = layersToRender[i];
+            if (!Buffer.isBuffer(layer.input)) continue;
+
+            try {
+                const dims = await getImageDimensions(layer.input);
+                if (dims.width > composition.width * MAX_SIZE_RATIO || dims.height > composition.height * MAX_SIZE_RATIO) {
+                    console.log(`  Layer ${i} is oversized (${dims.width}x${dims.height} vs canvas ${composition.width}x${composition.height}), resizing...`);
+                    // Calculate scale to fit within canvas while maintaining aspect ratio
+                    const scale = Math.min(
+                        composition.width / dims.width,
+                        composition.height / dims.height
+                    );
+                    const newWidth = Math.round(dims.width * scale);
+                    const newHeight = Math.round(dims.height * scale);
+
+                    // Resize the image
+                    const resizedBuffer = await sharp(layer.input)
+                        .resize(newWidth, newHeight, { fit: 'inside' })
+                        .toBuffer();
+
+                    // Update layer with resized image
+                    layer.input = resizedBuffer;
+                    resizedCount++;
+
+                    // Note: Position remains the same (top-left corner doesn't change)
+                    console.log(`    Resized to ${newWidth}x${newHeight} (scale: ${scale.toFixed(2)})`);
+                }
+            } catch (e) {
+                console.error(`  Layer ${i}: Failed to check/resize: ${e}`);
+            }
+        }
+        if (resizedCount > 0) {
+            console.log(`Resized ${resizedCount} oversized layer(s)`);
+        }
+
         const base = sharp({
             create: {
                 width: composition.width,
@@ -242,11 +326,53 @@ export async function GET(request: NextRequest) {
         });
 
         console.log('Starting composite operation...');
-        const outputBuffer = await base
-            .composite(layersToRender)
-            .webp({ quality: 85 })
-            .toBuffer();
-        console.log('Composite operation completed successfully');
+        let outputBuffer: Buffer;
+        try {
+            outputBuffer = await base
+                .composite(layersToRender)
+                .webp({ quality: 85 })
+                .toBuffer();
+            console.log('Composite operation completed successfully');
+        } catch (error: any) {
+            console.error('Composite failed:', error.message);
+            // Try to identify problematic layer
+            console.log('Attempting to identify problematic layer...');
+            for (let i = 0; i < layersToRender.length; i++) {
+                const layer = layersToRender[i];
+                console.log(`  Checking layer ${i}: pos=(${layer.left},${layer.top}), blend=${layer.blend}`);
+                if (Buffer.isBuffer(layer.input)) {
+                    try {
+                        const dims = await getImageDimensions(layer.input);
+                        console.log(`    Dimensions: ${dims.width}x${dims.height}`);
+                        if (dims.width > composition.width || dims.height > composition.height) {
+                            console.log(`    WARNING: Layer ${i} is larger than canvas (${composition.width}x${composition.height})`);
+                        }
+                    } catch (e) {
+                        console.log(`    Failed to get dimensions: ${e}`);
+                    }
+                }
+            }
+            // Try composite with single layers to find culprit
+            console.log('Testing composite with individual layers...');
+            for (let i = 0; i < layersToRender.length; i++) {
+                try {
+                    const testBase = sharp({
+                        create: {
+                            width: composition.width,
+                            height: composition.height,
+                            channels: 4,
+                            background: { r: 0, g: 0, b: 0, alpha: 0 }
+                        }
+                    });
+                    await testBase.composite([layersToRender[i]]).toBuffer();
+                    console.log(`  Layer ${i}: OK`);
+                } catch (layerError: any) {
+                    console.error(`  Layer ${i}: FAILED - ${layerError.message}`);
+                    console.error(`    Layer details:`, layersToRender[i]);
+                }
+            }
+            throw error; // Re-throw original error
+        }
         if (RENDER_CACHE.size >= CACHE_SIZE_LIMIT) {
             const firstKey = RENDER_CACHE.keys().next().value;
             if (firstKey) RENDER_CACHE.delete(firstKey);
