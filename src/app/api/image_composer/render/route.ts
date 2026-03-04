@@ -18,27 +18,45 @@ async function getImageDimensions(buffer: Buffer): Promise<{ width: number; heig
 
 export const RENDER_CACHE = new Map<string, Buffer>();
 const CACHE_SIZE_LIMIT = 50;
+const STORY_ID_PREFIX = 'storyId=';
 
-// Cache clearing helper
+/**
+ * Clears all cache entries associated with a specific story ID.
+ *
+ * This function iterates through the RENDER_CACHE Map and removes any entries
+ * whose cache key contains the story ID. Cache keys are full URLs that include
+ * query parameters like `storyId=abc123`.
+ *
+ * @param storyId - The story ID to clear cache entries for. Must be a non-empty
+ *                  string containing only alphanumeric characters, hyphens, and underscores.
+ * @returns The number of cache entries that were cleared. Returns 0 if the
+ *          storyId is invalid or no matching entries were found.
+ *
+ * @example
+ * // Clear cache for story 'my-story-123'
+ * const clearedCount = clearCacheForStory('my-story-123');
+ * console.log(`Cleared ${clearedCount} cache entries`);
+ */
 export function clearCacheForStory(storyId: string): number {
+    // Validate input
     if (!storyId || typeof storyId !== 'string') return 0;
 
-    let cleared = 0;
-    const prefix = `storyId=${storyId}`;
-
-    // Iterate through cache keys and delete those containing the storyId
-    const keysToDelete: string[] = [];
-    const allKeys = Array.from(RENDER_CACHE.keys());
-
-    for (const key of allKeys) {
-        if (key.includes(prefix)) {
-            keysToDelete.push(key);
-        }
+    // Validate storyId format: alphanumeric, hyphens, underscores only
+    const storyIdRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!storyIdRegex.test(storyId)) {
+        console.warn(`[Cache] Invalid storyId format: ${storyId}`);
+        return 0;
     }
 
-    for (const key of keysToDelete) {
-        RENDER_CACHE.delete(key);
-        cleared++;
+    let cleared = 0;
+    const prefix = `${STORY_ID_PREFIX}${storyId}`;
+
+    // Iterate through cache entries and delete those containing the storyId
+    for (const [key, _] of RENDER_CACHE) {
+        if (key.includes(prefix)) {
+            RENDER_CACHE.delete(key);
+            cleared++;
+        }
     }
 
     console.log(`[Cache] Cleared ${cleared} entries for story ${storyId}`);
