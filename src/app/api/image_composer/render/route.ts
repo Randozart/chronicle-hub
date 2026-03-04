@@ -52,6 +52,11 @@ export async function GET(request: NextRequest) {
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
 
+        console.log(`Rendering composition ${compositionId} with ${sortedLayers.length} layers`);
+        sortedLayers.forEach((layer, i) => {
+            console.log(`  Layer ${i}: id=${layer.id}, assetId=${layer.assetId}, groupId=${layer.groupId}, variantValue=${layer.variantValue}`);
+        });
+
         for (const layer of sortedLayers) {
             if (layer.groupId) {
                 const paramValue = searchParams.get(layer.groupId);
@@ -60,15 +65,22 @@ export async function GET(request: NextRequest) {
                 }
             }
             let assetUrl = layer.assetId;
+
+            // Handle case where assetId is just "presets" (likely a bug)
+            if (assetUrl === 'presets') {
+                console.warn(`Invalid assetId "presets" for layer ${layer.id} in composition ${compositionId}, skipping layer`);
+                continue;
+            }
+
             if (!assetUrl.includes('/') && !assetUrl.startsWith('http')) {
-                 const assetDoc = await db.collection('assets').findOne({ id: assetUrl }); 
-                 if (!assetDoc) assetUrl = `/uploads/misc/${assetUrl}.png`; 
+                 const assetDoc = await db.collection('assets').findOne({ id: assetUrl });
+                 if (!assetDoc) assetUrl = `/uploads/misc/${assetUrl}.png`;
                  else assetUrl = assetDoc.url as string;
             }
 
             let buffer = await getAssetBuffer(assetUrl);
             if (!buffer) {
-                console.warn(`Layer asset missing: ${assetUrl}`);
+                console.warn(`Layer asset missing: ${assetUrl}`, { layerId: layer.id, assetId: layer.assetId, storyId, compositionId });
                 continue;
             }
             const isSvg = assetUrl.toLowerCase().endsWith('.svg');

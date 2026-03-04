@@ -184,28 +184,51 @@ export const getAssetBuffer = async (url: string): Promise<Buffer | null> => {
         if (provider === 's3' && s3Client) {
             let key = url;
             const baseUrlWithBucket = `${S3_PUBLIC_URL}/${S3_BUCKET}/`;
-            
+
             if (url.startsWith(baseUrlWithBucket)) {
                 key = url.replace(baseUrlWithBucket, '');
             } else if (url.startsWith(`${S3_ENDPOINT}/${S3_BUCKET}/`)) {
                 key = url.replace(`${S3_ENDPOINT}/${S3_BUCKET}/`, '');
             }
 
+            // For preset paths (static bundled assets), try local filesystem first
+            // since they may not be uploaded to S3
+            if (url.startsWith('presets/')) {
+                const relativePath = url.startsWith('/') ? url.slice(1) : url;
+                const possibleBasePaths = [
+                    path.join(process.cwd(), 'public'),
+                    path.join(process.cwd(), '..', 'public'), // for standalone output
+                ];
+
+                for (const basePath of possibleBasePaths) {
+                    const fullPath = path.join(basePath, relativePath);
+                    try {
+                        const buffer = await fs.readFile(fullPath);
+                        console.log(`Found preset file at ${fullPath}`);
+                        return buffer;
+                    } catch (e) {
+                        // Continue to next path
+                    }
+                }
+                console.warn(`Preset file not found locally: ${url}`);
+                return null; // Don't try S3 - preset files are not uploaded there
+            }
+
             const command = new GetObjectCommand({
                 Bucket: S3_BUCKET,
                 Key: key
             });
-            
+
             const response = await s3Client.send(command);
             if (!response.Body) return null;
-            
+
             return streamToBuffer(response.Body as Readable);
 
         } else {
-            const relativePath = url.startsWith('http') 
-                ? new URL(url).pathname 
+            const relativePath = url.startsWith('http')
+                ? new URL(url).pathname
                 : (url.startsWith('/') ? url.slice(1) : url);
-                
+
             const fullPath = path.join(process.cwd(), 'public', relativePath);
             return await fs.readFile(fullPath);
         }
