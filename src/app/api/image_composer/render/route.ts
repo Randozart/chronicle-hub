@@ -68,56 +68,68 @@ export async function GET(request: NextRequest) {
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
 
-        // Helper to crop layers to canvas bounds
+        // Helper: Robustly add layer by cropping it to the canvas viewport using integer math
         const safelyAddLayer = async (buffer: Buffer, x: number, y: number, blend: string) => {
             const meta = await sharp(buffer).metadata();
             const w = meta.width || 0;
             const h = meta.height || 0;
 
-            const ix = Math.max(0, x);
-            const iy = Math.max(0, y);
-            const ir = Math.min(composition.width, x + w);
-            const ib = Math.min(composition.height, y + h);
+            // 1. Round positions to integers immediately to align with pixel grid
+            const targetX = Math.round(x);
+            const targetY = Math.round(y);
 
-            const iw = ir - ix;
-            const ih = ib - iy;
+            // 2. Calculate the intersection rectangle between the Layer and the Canvas
+            // Canvas is (0, 0, composition.width, composition.height)
+            const visibleX = Math.max(0, targetX);
+            const visibleY = Math.max(0, targetY);
+            const visibleRight = Math.min(composition.width, targetX + w);
+            const visibleBottom = Math.min(composition.height, targetY + h);
 
-            // If invalid intersection, skip
-            if (iw <= 0 || ih <= 0) return;
+            const visibleW = visibleRight - visibleX;
+            const visibleH = visibleBottom - visibleY;
 
-            // Strict Crop Check:
-            // If the layer bounds extend OUTSIDE the canvas at all, we must crop.
-            // Sharp errors if the overlay is larger than the canvas.
-            const needsCrop = w > composition.width || h > composition.height || x < 0 || y < 0 || (x + w) > composition.width || (y + h) > composition.height;
+            // If the layer is completely off-screen, skip it
+            if (visibleW <= 0 || visibleH <= 0) return;
+
+            // 3. Determine if we need to crop
+            // Sharp throws an error if we try to composite an image larger than the canvas,
+            // or if it extends partially off-screen. We must crop to the visible region.
+            const needsCrop = visibleW < w || visibleH < h || targetX < 0 || targetY < 0;
 
             if (needsCrop) {
-                const extractLeft = Math.round(ix - x);
-                const extractTop = Math.round(iy - y);
+                // Calculate the offsets into the source image
+                const cropLeft = visibleX - targetX;
+                const cropTop = visibleY - targetY;
+
+                // Clamp just to be safe (though math above should guarantee validity)
+                const finalCropLeft = Math.max(0, Math.min(cropLeft, w - visibleW));
+                const finalCropTop = Math.max(0, Math.min(cropTop, h - visibleH));
 
                 try {
-                    const croppedBuffer = await sharp(buffer)
-                        .extract({ 
-                            left: Math.max(0, extractLeft), 
-                            top: Math.max(0, extractTop), 
-                            width: Math.floor(iw), 
-                            height: Math.floor(ih) 
+                    const cropped = await sharp(buffer)
+                        .extract({
+                            left: finalCropLeft,
+                            top: finalCropTop,
+                            width: visibleW,
+                            height: visibleH
                         })
                         .toBuffer();
-
+                    
                     layersToRender.push({
-                        input: croppedBuffer,
-                        top: Math.round(iy),
-                        left: Math.round(ix),
+                        input: cropped,
+                        top: visibleY,
+                        left: visibleX,
                         blend: blend as any
                     });
-                } catch(e) {
-                    console.error("Failed to crop layer", e);
+                } catch (e) { 
+                    console.error(`Crop failed for layer at ${x},${y} (size ${w}x${h})`, e); 
                 }
             } else {
+                // Layer fits fully inside the canvas
                 layersToRender.push({
                     input: buffer,
-                    top: Math.round(y),
-                    left: Math.round(x),
+                    top: targetY,
+                    left: targetX,
                     blend: blend as any
                 });
             }
@@ -164,7 +176,7 @@ export async function GET(request: NextRequest) {
             }
 
             // --- STEP 1: RESIZE ---
-            // We must resize first to know the dimensions for the pivot point
+            // Resize first to establish base dimensions
             let img = sharp(buffer);
             const originalMeta = await img.metadata();
             
@@ -178,16 +190,11 @@ export async function GET(request: NextRequest) {
             const scaledH = scaledMeta.height || 0;
 
             // --- STEP 2: ROTATE & RE-CENTER ---
-            // Editor rotates around the center of the scaled image.
-            // Sharp rotates the image bounding box, increasing its size.
-            // We must calculate the offset to keep the visual center in the same spot.
-            
-            // 1. Calculate visual center in Canvas Space (based on Editor logic)
-            // Editor logic: top-left + half size
+            // 1. Calculate visual center in Canvas Space (where the user put the center of the image)
             const visualCenterX = layer.x + (scaledW / 2);
             const visualCenterY = layer.y + (scaledH / 2);
 
-            // 2. Perform Rotation
+            // 2. Rotate (expands bounding box)
             const rotatedBuffer = await sharp(scaledBuffer)
                 .rotate(layer.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
                 .toBuffer();
@@ -196,7 +203,8 @@ export async function GET(request: NextRequest) {
             const rotatedW = rotatedMeta.width || 0;
             const rotatedH = rotatedMeta.height || 0;
 
-            // 3. Calculate New Top-Left to maintain center
+            // 3. Calculate New Top-Left to keep the center fixed
+            // We move the new (larger) box so its center aligns with the original visual center
             const finalX = visualCenterX - (rotatedW / 2);
             const finalY = visualCenterY - (rotatedH / 2);
 
@@ -328,7 +336,6 @@ async function createShadowLayer(
     const w = meta.width || 100;
     const h = meta.height || 100;
 
-    // Solid silhouette
     const solidColor = await sharp({
         create: { width: w, height: h, channels: 4, background: color }
     }).png().toBuffer();
@@ -338,7 +345,6 @@ async function createShadowLayer(
         .png()
         .toBuffer();
 
-    // Extend and Blur
     return sharp(silhouette)
         .extend({
             top: padding,
