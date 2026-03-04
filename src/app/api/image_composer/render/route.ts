@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
             const meta = await sharp(buffer).metadata();
             const w = meta.width || 0;
             const h = meta.height || 0;
+            console.log(`[safelyAddLayer] buffer ${w}x${h}, x=${x}, y=${y}, canvas ${composition.width}x${composition.height}`);
 
             // 1. Round positions to integers immediately to align with pixel grid
             const targetX = Math.round(x);
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
             // Sharp throws an error if we try to composite an image larger than the canvas,
             // or if it extends partially off-screen. We must crop to the visible region.
             const needsCrop = visibleW < w || visibleH < h || targetX < 0 || targetY < 0;
+            console.log(`[safelyAddLayer] needsCrop=${needsCrop}, visibleW=${visibleW}, visibleH=${visibleH}, targetX=${targetX}, targetY=${targetY}`);
 
             if (needsCrop) {
                 // Calculate the offsets into the source image
@@ -115,6 +117,7 @@ export async function GET(request: NextRequest) {
                         })
                         .toBuffer();
                     
+                    console.log(`[safelyAddLayer] pushing cropped layer ${visibleW}x${visibleH} at (${visibleX},${visibleY})`);
                     layersToRender.push({
                         input: cropped,
                         top: visibleY,
@@ -126,6 +129,7 @@ export async function GET(request: NextRequest) {
                 }
             } else {
                 // Layer fits fully inside the canvas
+                console.log(`[safelyAddLayer] pushing full layer ${w}x${h} at (${targetX},${targetY})`);
                 layersToRender.push({
                     input: buffer,
                     top: targetY,
@@ -135,7 +139,9 @@ export async function GET(request: NextRequest) {
             }
         };
 
+        let layerIndex = 0;
         for (const layer of sortedLayers) {
+            console.log(`[Layer ${layerIndex}] x=${layer.x}, y=${layer.y}, scale=${layer.scale}, rotation=${layer.rotation}, asset=${layer.assetId}`);
             // Logic Filtering
             if (layer.groupId) {
                 const paramValue = searchParams.get(layer.groupId);
@@ -194,6 +200,7 @@ export async function GET(request: NextRequest) {
             
             const scaledW = scaledMeta.width || 0;
             const scaledH = scaledMeta.height || 0;
+            console.log(`[Layer ${layerIndex}] scaled ${scaledW}x${scaledH}`);
 
             // --- STEP 2: ROTATE & RE-CENTER ---
             // 1. Calculate visual center in Canvas Space (where the user put the center of the image)
@@ -212,6 +219,7 @@ export async function GET(request: NextRequest) {
             // 3. Calculate New Top-Left to keep the center fixed
             const finalX = visualCenterX - (rotatedW / 2);
             const finalY = visualCenterY - (rotatedH / 2);
+            console.log(`[Layer ${layerIndex}] rotated ${rotatedW}x${rotatedH}, finalX=${finalX}, finalY=${finalY}`);
 
             // --- STEP 3: EFFECTS & RENDER ---
             
@@ -272,6 +280,7 @@ export async function GET(request: NextRequest) {
                 finalY,
                 (layer.blendMode as any) || 'over'
             );
+            layerIndex++;
         }
 
         // --- Background ---
@@ -288,6 +297,54 @@ export async function GET(request: NextRequest) {
             layersToRender.unshift({ input: bgBuffer, top: 0, left: 0, blend: 'dest-over' });
         }
 
+        // --- Resize oversized layers ---
+        // Sharp requires all composite images to be same dimensions or smaller than base canvas
+        console.log('Checking for oversized layers...');
+        let resizedCount = 0;
+        for (let i = 0; i < layersToRender.length; i++) {
+            const layer = layersToRender[i];
+            if (!Buffer.isBuffer(layer.input)) continue;
+
+            try {
+                const dims = await getImageDimensions(layer.input);
+                if (dims.width > composition.width || dims.height > composition.height) {
+                    console.log(`  Layer ${i} is oversized (${dims.width}x${dims.height} vs canvas ${composition.width}x${composition.height}), resizing...`);
+                    // Calculate scale to fit within canvas while maintaining aspect ratio
+                    const scale = Math.min(
+                        composition.width / dims.width,
+                        composition.height / dims.height
+                    );
+                    const newWidth = Math.round(dims.width * scale);
+                    const newHeight = Math.round(dims.height * scale);
+                    // Resize the image
+                    const resizedBuffer = await sharp(layer.input as Buffer)
+                        .resize(newWidth, newHeight, { fit: 'inside' })
+                        .toBuffer();
+                    // Update layer with resized image
+                    layer.input = resizedBuffer;
+                    resizedCount++;
+                }
+            } catch (e) {
+                console.error(`  Layer ${i}: Failed to check/resize: ${e}`);
+            }
+        }
+        if (resizedCount > 0) {
+            console.log(`Resized ${resizedCount} oversized layer(s)`);
+        }
+
+        // --- Validate layer positions ---
+        for (let i = 0; i < layersToRender.length; i++) {
+            const layer = layersToRender[i];
+            if (typeof layer.top !== 'number' || isNaN(layer.top)) {
+                console.warn(`Layer ${i}: top is ${layer.top}, defaulting to 0`);
+                layer.top = 0;
+            }
+            if (typeof layer.left !== 'number' || isNaN(layer.left)) {
+                console.warn(`Layer ${i}: left is ${layer.left}, defaulting to 0`);
+                layer.left = 0;
+            }
+        }
+
         // --- Final Composite ---
         const base = sharp({
             create: {
@@ -298,6 +355,20 @@ export async function GET(request: NextRequest) {
             }
         });
 
+        console.log(`[Composite] Starting composite with ${layersToRender.length} layers`);
+        for (let i = 0; i < layersToRender.length; i++) {
+            const layer = layersToRender[i];
+            try {
+                if (Buffer.isBuffer(layer.input)) {
+                    const meta = await sharp(layer.input as Buffer).metadata();
+                    console.log(`[Composite] Layer ${i}: ${meta.width}x${meta.height} at (${layer.left},${layer.top}) blend=${layer.blend}`);
+                } else {
+                    console.log(`[Composite] Layer ${i}: non-buffer input at (${layer.left},${layer.top}) blend=${layer.blend}`);
+                }
+            } catch (e) {
+                console.log(`[Composite] Layer ${i}: unknown size at (${layer.left},${layer.top}) blend=${layer.blend}`);
+            }
+        }
         const outputBuffer = await base
             .composite(layersToRender)
             .webp({ quality: 85 })
