@@ -276,9 +276,8 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // Resize any layers that are excessively larger than canvas
+        // Resize any layers that are larger than canvas (sharp requires same dimensions or smaller)
         console.log('Checking for oversized layers...');
-        const MAX_SIZE_RATIO = 2; // If layer is more than 2x canvas size, resize it
         let resizedCount = 0;
         for (let i = 0; i < layersToRender.length; i++) {
             const layer = layersToRender[i];
@@ -286,7 +285,7 @@ export async function GET(request: NextRequest) {
 
             try {
                 const dims = await getImageDimensions(layer.input);
-                if (dims.width > composition.width * MAX_SIZE_RATIO || dims.height > composition.height * MAX_SIZE_RATIO) {
+                if (dims.width > composition.width || dims.height > composition.height) {
                     console.log(`  Layer ${i} is oversized (${dims.width}x${dims.height} vs canvas ${composition.width}x${composition.height}), resizing...`);
                     // Calculate scale to fit within canvas while maintaining aspect ratio
                     const scale = Math.min(
