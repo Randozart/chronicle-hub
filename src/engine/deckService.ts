@@ -1,6 +1,8 @@
 // src/engine/deckService.ts
 import { CharacterDocument, DeckDefinition, WorldConfig, Opportunity, Storylet } from './models';
 import { GameEngine } from './gameEngine';
+import { processScheduledUpdates } from './characterService';
+import { applyWorldUpdates, processAutoEquip } from './resolutionService';
 const { getStorylets } = require('@/engine/contentCache');
 
 export const checkDeckEligibility = (
@@ -122,7 +124,7 @@ export const drawCards = async (
     character: CharacterDocument,
     deckId: string,
     gameData: WorldConfig
-): Promise<CharacterDocument> => {
+): Promise<{ character: CharacterDocument, drawnCard: Opportunity }> => {
     
     const deckDef = gameData.decks[deckId];
     if (!deckDef) throw new Error(`Deck definition '${deckId}' not found.`);
@@ -195,6 +197,57 @@ export const drawCards = async (
     const drawnCard = weightedCandidates[Math.floor(Math.random() * weightedCandidates.length)];
 
     character.opportunityHands[deckId] = [...currentHand, drawnCard.id];
+
+    return { character, drawnCard };
+};
+
+export const maybeAutoPlayCard = (
+    character: CharacterDocument,
+    gameData: WorldConfig,
+    drawnCard: Opportunity,
+    deckId: string
+): CharacterDocument => {
+    // Create engine with current character state
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    if (character.dynamicQualities) {
+        engine.dynamicQualities = { ...character.dynamicQualities };
+        Object.assign(engine.worldContent.qualities, character.dynamicQualities);
+    }
+
+    // Evaluate tags (support ScribeScript)
+    const effectiveTags = (drawnCard.tags || []).map(tag => {
+        if (tag.includes('{')) {
+            return engine.evaluateText(tag).trim();
+        }
+        return tag;
+    }).filter(Boolean);
+
+    if (!effectiveTags.includes('play_on_draw')) {
+        return character;
+    }
+
+    // Find eligible options
+    const eligibleOptions = (drawnCard.options || []).filter(option => {
+        if (option.visible_if && !engine.evaluateCondition(option.visible_if)) {
+            return false;
+        }
+        if (option.unlock_if && !engine.evaluateCondition(option.unlock_if)) {
+            return false;
+        }
+        return true;
+    });
+
+    if (eligibleOptions.length === 0) {
+        // No eligible option, card stays in hand
+        return character;
+    }
+
+    // Set this card as the active storylet/opportunity
+    // The frontend will detect currentStoryletId and display the card
+    character.currentStoryletId = drawnCard.id;
+
+    // Card remains in hand - it will be removed when resolved by the player
+    // through the normal resolution flow
 
     return character;
 };

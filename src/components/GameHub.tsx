@@ -270,8 +270,14 @@ export default function GameHub(props: GameHubProps) {
                     ...prev,
                     opportunityHands: { ...(prev.opportunityHands || {}), [deckId]: newCards.map(c => c.id) },
                     qualities: data.newQualities || prev.qualities,
-                    deckCharges: data.newCharges || prev.deckCharges 
+                    deckCharges: data.newCharges || prev.deckCharges,
+                    currentStoryletId: data.currentStoryletId || prev.currentStoryletId
                 } : null);
+
+                // If a card was auto-played (play_on_draw), show it immediately
+                if (data.currentStoryletId) {
+                    showEvent(data.currentStoryletId, 'story');
+                }
             } else {
                 setAlertState({ isOpen: true, title: "Cannot Draw", message: data.message || "Failed to draw." });
             }

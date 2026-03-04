@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getCharacter, saveCharacterState, regenerateActions } from '@/engine/characterService';
 import { getContent, getStorylets } from '@/engine/contentCache';
-import { drawCards } from '@/engine/deckService';
+import { drawCards, maybeAutoPlayCard } from '@/engine/deckService';
 import { GameEngine } from '@/engine/gameEngine';
 import { Opportunity } from '@/engine/models';
 export async function POST(request: NextRequest) {
@@ -60,8 +60,12 @@ export async function POST(request: NextRequest) {
         }
 
 
-        character = await drawCards(character, targetDeckId, gameData);
-        
+        const { character: updatedCharacter, drawnCard } = await drawCards(character, targetDeckId, gameData);
+        character = updatedCharacter;
+
+        // Auto-play if card has play_on_draw tag
+        character = maybeAutoPlayCard(character, gameData, drawnCard, targetDeckId);
+
         if (userId !== 'guest') {
             await saveCharacterState(character);
         }
@@ -74,12 +78,13 @@ export async function POST(request: NextRequest) {
             return eventDef;
         }).filter(Boolean) as Opportunity[];
 
-        return NextResponse.json({ 
-            success: true, 
+        return NextResponse.json({
+            success: true,
             hand: handDefinitions,
             newQualities: character.qualities,
             newCharges: character.deckCharges,
-            lastDeckUpdate: character.lastDeckUpdate
+            lastDeckUpdate: character.lastDeckUpdate,
+            currentStoryletId: character.currentStoryletId || null
         });
 
     } catch (e: any) {
