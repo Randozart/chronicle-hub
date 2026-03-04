@@ -4,6 +4,17 @@ import { getAssetBuffer } from '@/engine/storageService';
 import { getAllThemes } from '@/engine/themeParser';
 import { ImageComposition, CompositionLayer } from '@/engine/models';
 import sharp from 'sharp';
+
+async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
+    try {
+        const metadata = await sharp(buffer).metadata();
+        return { width: metadata.width || 0, height: metadata.height || 0 };
+    } catch (e) {
+        console.error('Failed to get image dimensions:', e);
+        return { width: 0, height: 0 };
+    }
+}
+
 const RENDER_CACHE = new Map<string, Buffer>();
 const CACHE_SIZE_LIMIT = 50;
 
@@ -78,11 +89,15 @@ export async function GET(request: NextRequest) {
                  else assetUrl = assetDoc.url as string;
             }
 
+            console.log(`Fetching asset: ${assetUrl} for layer ${layer.id}`);
             let buffer = await getAssetBuffer(assetUrl);
             if (!buffer) {
                 console.warn(`Layer asset missing: ${assetUrl}`, { layerId: layer.id, assetId: layer.assetId, storyId, compositionId });
                 continue;
             }
+            console.log(`  Asset loaded (${buffer.length} bytes)`);
+            const assetDims = await getImageDimensions(buffer);
+            console.log(`  Asset dimensions: ${assetDims.width}x${assetDims.height}`);
             const isSvg = assetUrl.toLowerCase().endsWith('.svg');
             
             if (isSvg && (layer.enableThemeColor || layer.tintColor)) {
@@ -200,6 +215,23 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        // Log all layers before compositing
+        console.log(`Composition canvas: ${composition.width}x${composition.height}`);
+        console.log(`Total layers to composite: ${layersToRender.length}`);
+        for (let i = 0; i < layersToRender.length; i++) {
+            const layer = layersToRender[i];
+            try {
+                if (Buffer.isBuffer(layer.input)) {
+                    const dims = await getImageDimensions(layer.input);
+                    console.log(`  Layer ${i}: pos=(${layer.left},${layer.top}), dims=${dims.width}x${dims.height}, blend=${layer.blend}`);
+                } else {
+                    console.log(`  Layer ${i}: pos=(${layer.left},${layer.top}), blend=${layer.blend}, input is not a Buffer (type: ${typeof layer.input})`);
+                }
+            } catch (e) {
+                console.log(`  Layer ${i}: pos=(${layer.left},${layer.top}), blend=${layer.blend}, failed to get dimensions: ${e}`);
+            }
+        }
+
         const base = sharp({
             create: {
                 width: composition.width,
@@ -209,10 +241,12 @@ export async function GET(request: NextRequest) {
             }
         });
 
+        console.log('Starting composite operation...');
         const outputBuffer = await base
             .composite(layersToRender)
             .webp({ quality: 85 })
             .toBuffer();
+        console.log('Composite operation completed successfully');
         if (RENDER_CACHE.size >= CACHE_SIZE_LIMIT) {
             const firstKey = RENDER_CACHE.keys().next().value;
             if (firstKey) RENDER_CACHE.delete(firstKey);
@@ -233,18 +267,26 @@ export async function GET(request: NextRequest) {
 }
 
 async function createShadowLayer(
-    inputBuffer: Buffer, 
-    color: string, 
+    inputBuffer: Buffer,
+    color: string,
     blurRadius: number
 ): Promise<Buffer> {
     // Get dimensions
     const meta = await sharp(inputBuffer).metadata();
-    
+    const originalWidth = meta.width || 100;
+    const originalHeight = meta.height || 100;
+
+    console.log(`[shadow] Original dimensions: ${originalWidth}x${originalHeight}, blur radius: ${blurRadius}`);
+
+    // Ensure positive dimensions
+    const safeWidth = Math.max(1, originalWidth);
+    const safeHeight = Math.max(1, originalHeight);
+
     // Create a solid color canvas of the same size
     const solidColor = await sharp({
         create: {
-            width: meta.width || 100,
-            height: meta.height || 100,
+            width: safeWidth,
+            height: safeHeight,
             channels: 4,
             background: color
         }
@@ -262,7 +304,9 @@ async function createShadowLayer(
     // Apply Blur
     // Sigma calculation: Sharp's blur is sigma, CSS is radius. Approx sigma = radius / 2
     const sigma = Math.max(0.3, blurRadius / 2);
-    
+
+    console.log(`[shadow] Applying blur with sigma: ${sigma}`);
+
     return sharp(silhouette).blur(sigma).toBuffer();
 }
 
@@ -273,10 +317,19 @@ async function createStrokeLayer(
 ): Promise<Buffer> {
     // Create a solid color silhouette (same as shadow)
     const meta = await sharp(inputBuffer).metadata();
+    const originalWidth = meta.width || 100;
+    const originalHeight = meta.height || 100;
+
+    console.log(`[stroke] Original dimensions: ${originalWidth}x${originalHeight}, stroke width: ${width}`);
+
+    // Ensure positive dimensions
+    const safeWidth = Math.max(1, originalWidth);
+    const safeHeight = Math.max(1, originalHeight);
+
     const solidColor = await sharp({
         create: {
-            width: meta.width || 100,
-            height: meta.height || 100,
+            width: safeWidth,
+            height: safeHeight,
             channels: 4,
             background: color
         }
@@ -292,19 +345,24 @@ async function createStrokeLayer(
     // A robust trick is to blur the solid silhouette heavily, then threshold the alpha.
     // Or, simply create 4-8 copies offset in a circle for a cheap stroke.
     // For performance and quality, the "Multi-Offset" method is standard for backend stroke without GPU.
-    
+
     // We'll generate a larger buffer to hold the stroke
+    const strokeWidth = safeWidth + width * 2;
+    const strokeHeight = safeHeight + width * 2;
+
+    console.log(`[stroke] Stroke canvas: ${strokeWidth}x${strokeHeight}`);
+
     const strokeCanvas = sharp({
         create: {
-            width: (meta.width || 100) + width * 2,
-            height: (meta.height || 100) + width * 2,
+            width: strokeWidth,
+            height: strokeHeight,
             channels: 4,
             background: { r: 0, g: 0, b: 0, alpha: 0 }
         }
     });
 
     const offsets = [
-        { top: 0, left: width }, { top: width * 2, left: width }, 
+        { top: 0, left: width }, { top: width * 2, left: width },
         { top: width, left: 0 }, { top: width, left: width * 2 },
         // Diagonals for smoother corners
         { top: width/2, left: width/2 }, { top: width*1.5, left: width*1.5 },

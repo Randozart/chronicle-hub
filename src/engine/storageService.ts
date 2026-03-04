@@ -198,19 +198,24 @@ export const getAssetBuffer = async (url: string): Promise<Buffer | null> => {
                 const possibleBasePaths = [
                     path.join(process.cwd(), 'public'),
                     path.join(process.cwd(), '..', 'public'), // for standalone output
+                    path.join(process.cwd(), '..', '..', 'public'), // deeper nesting
+                    path.join(process.cwd(), 'public', 'presets'), // direct presets subdirectory
+                    path.join(process.cwd(), '..', 'public', 'presets'),
                 ];
 
+                console.log(`[s3] Looking for preset file: ${url}, relativePath: ${relativePath}`);
                 for (const basePath of possibleBasePaths) {
                     const fullPath = path.join(basePath, relativePath);
                     try {
+                        await fs.access(fullPath);
                         const buffer = await fs.readFile(fullPath);
-                        console.log(`Found preset file at ${fullPath}`);
+                        console.log(`[s3] Found preset file at ${fullPath} (size: ${buffer.length} bytes)`);
                         return buffer;
                     } catch (e) {
-                        // Continue to next path
+                        console.log(`[s3] Not found at ${fullPath}: ${String(e)}`);
                     }
                 }
-                console.warn(`Preset file not found locally: ${url}`);
+                console.warn(`[s3] Preset file not found locally after checking all paths: ${url}`);
                 return null; // Don't try S3 - preset files are not uploaded there
             }
 
@@ -228,6 +233,32 @@ export const getAssetBuffer = async (url: string): Promise<Buffer | null> => {
             const relativePath = url.startsWith('http')
                 ? new URL(url).pathname
                 : (url.startsWith('/') ? url.slice(1) : url);
+
+            // For preset paths, try multiple possible base locations
+            if (url.startsWith('presets/')) {
+                const possibleBasePaths = [
+                    path.join(process.cwd(), 'public'),
+                    path.join(process.cwd(), '..', 'public'),
+                    path.join(process.cwd(), '..', '..', 'public'),
+                    path.join(process.cwd(), 'public', 'presets'),
+                    path.join(process.cwd(), '..', 'public', 'presets'),
+                ];
+
+                console.log(`[local] Looking for preset file: ${url}, relativePath: ${relativePath}`);
+                for (const basePath of possibleBasePaths) {
+                    const fullPath = path.join(basePath, relativePath);
+                    try {
+                        await fs.access(fullPath);
+                        const buffer = await fs.readFile(fullPath);
+                        console.log(`[local] Found preset file at ${fullPath} (size: ${buffer.length} bytes)`);
+                        return buffer;
+                    } catch (e) {
+                        console.log(`[local] Not found at ${fullPath}: ${String(e)}`);
+                    }
+                }
+                console.warn(`[local] Preset file not found locally after checking all paths: ${url}`);
+                return null;
+            }
 
             const fullPath = path.join(process.cwd(), 'public', relativePath);
             return await fs.readFile(fullPath);
