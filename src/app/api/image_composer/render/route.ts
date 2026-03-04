@@ -49,11 +49,18 @@ export function clearCacheForStory(storyId: string): number {
     }
 
     let cleared = 0;
-    const prefix = `${STORY_ID_PREFIX}${storyId}`;
 
-    // Iterate through cache entries and delete those containing the storyId
-    for (const [key, _] of RENDER_CACHE) {
-        if (key.includes(prefix)) {
+    // Create a snapshot of cache keys to avoid concurrent modification issues
+    const allKeys = Array.from(RENDER_CACHE.keys());
+
+    // Use regex to match storyId as a complete query parameter (not substring)
+    // Matches: [?&]storyId=value(?:&|$) where value is our storyId
+    // Escape regex special characters in storyId to prevent injection
+    const escapedStoryId = storyId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const paramPattern = new RegExp(`[?&]${STORY_ID_PREFIX}${escapedStoryId}(?:&|$)`);
+
+    for (const key of allKeys) {
+        if (paramPattern.test(key)) {
             RENDER_CACHE.delete(key);
             cleared++;
         }
