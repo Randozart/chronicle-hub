@@ -16,8 +16,34 @@ async function getImageDimensions(buffer: Buffer): Promise<{ width: number; heig
     }
 }
 
-const RENDER_CACHE = new Map<string, Buffer>();
+export const RENDER_CACHE = new Map<string, Buffer>();
 const CACHE_SIZE_LIMIT = 50;
+
+// Cache clearing helper
+export function clearCacheForStory(storyId: string): number {
+    if (!storyId || typeof storyId !== 'string') return 0;
+
+    let cleared = 0;
+    const prefix = `storyId=${storyId}`;
+
+    // Iterate through cache keys and delete those containing the storyId
+    const keysToDelete: string[] = [];
+    const allKeys = Array.from(RENDER_CACHE.keys());
+
+    for (const key of allKeys) {
+        if (key.includes(prefix)) {
+            keysToDelete.push(key);
+        }
+    }
+
+    for (const key of keysToDelete) {
+        RENDER_CACHE.delete(key);
+        cleared++;
+    }
+
+    console.log(`[Cache] Cleared ${cleared} entries for story ${storyId}`);
+    return cleared;
+}
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
