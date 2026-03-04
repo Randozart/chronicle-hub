@@ -23,13 +23,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const compositionId = searchParams.get('id');
     const storyId = searchParams.get('storyId'); 
-    
+    const forceRefresh = searchParams.get('refresh') === 'true';
+
     if (!compositionId || !storyId) {
         return NextResponse.json({ error: 'Missing ID or StoryID' }, { status: 400 });
     }
 
-    const cacheKey = request.url;
-    if (RENDER_CACHE.has(cacheKey)) {
+    // Cache Key Logic
+    const urlObj = new URL(request.url);
+    urlObj.searchParams.delete('refresh');
+    const cacheKey = urlObj.toString(); 
+
+    if (!forceRefresh && RENDER_CACHE.has(cacheKey)) {
         return new NextResponse(RENDER_CACHE.get(cacheKey)! as any, { 
             headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=3600' }
         });
@@ -63,16 +68,12 @@ export async function GET(request: NextRequest) {
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
 
-        // Helper to crop layers to canvas bounds to prevent Sharp errors
+        // Helper to crop layers to canvas bounds
         const safelyAddLayer = async (buffer: Buffer, x: number, y: number, blend: string) => {
             const meta = await sharp(buffer).metadata();
             const w = meta.width || 0;
             const h = meta.height || 0;
 
-            // Calculate Intersection with Canvas
-            // Canvas Rect: 0, 0, composition.width, composition.height
-            // Layer Rect: x, y, w, h
-            
             const ix = Math.max(0, x);
             const iy = Math.max(0, y);
             const ir = Math.min(composition.width, x + w);
@@ -81,16 +82,15 @@ export async function GET(request: NextRequest) {
             const iw = ir - ix;
             const ih = ib - iy;
 
-            // If intersection is empty or invalid, the layer is off-screen
+            // If invalid intersection, skip
             if (iw <= 0 || ih <= 0) return;
 
-            // If the layer is fully inside and smaller than canvas, add as is
-            // Note: Sharp throws error if layer is larger than canvas, even if positioned safely.
-            // So we strictly crop if dimensions exceed canvas OR if it's partially off-screen.
+            // Strict Crop Check:
+            // If the layer bounds extend OUTSIDE the canvas at all, we must crop.
+            // Sharp errors if the overlay is larger than the canvas.
             const needsCrop = w > composition.width || h > composition.height || x < 0 || y < 0 || (x + w) > composition.width || (y + h) > composition.height;
 
             if (needsCrop) {
-                // Calculate crop offsets relative to the Layer Image
                 const extractLeft = Math.round(ix - x);
                 const extractTop = Math.round(iy - y);
 
@@ -163,32 +163,56 @@ export async function GET(request: NextRequest) {
                 buffer = Buffer.from(svgString);
             }
 
-            // Transform Pipeline
-            let pipeline = sharp(buffer);
-            const meta = await pipeline.metadata();
+            // --- STEP 1: RESIZE ---
+            // We must resize first to know the dimensions for the pivot point
+            let img = sharp(buffer);
+            const originalMeta = await img.metadata();
             
-            if (layer.scale !== 1 && meta.width) {
-                pipeline.resize(Math.round(meta.width * layer.scale));
+            if (layer.scale !== 1 && originalMeta.width) {
+                img = img.resize(Math.round(originalMeta.width * layer.scale));
             }
-            if (layer.rotation !== 0) {
-                pipeline.rotate(layer.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } });
-            }
+            const scaledBuffer = await img.toBuffer();
+            const scaledMeta = await sharp(scaledBuffer).metadata();
             
-            const layerBuffer = await pipeline.toBuffer();
-            
-            // --- Effects ---
+            const scaledW = scaledMeta.width || 0;
+            const scaledH = scaledMeta.height || 0;
 
+            // --- STEP 2: ROTATE & RE-CENTER ---
+            // Editor rotates around the center of the scaled image.
+            // Sharp rotates the image bounding box, increasing its size.
+            // We must calculate the offset to keep the visual center in the same spot.
+            
+            // 1. Calculate visual center in Canvas Space (based on Editor logic)
+            // Editor logic: top-left + half size
+            const visualCenterX = layer.x + (scaledW / 2);
+            const visualCenterY = layer.y + (scaledH / 2);
+
+            // 2. Perform Rotation
+            const rotatedBuffer = await sharp(scaledBuffer)
+                .rotate(layer.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                .toBuffer();
+            
+            const rotatedMeta = await sharp(rotatedBuffer).metadata();
+            const rotatedW = rotatedMeta.width || 0;
+            const rotatedH = rotatedMeta.height || 0;
+
+            // 3. Calculate New Top-Left to maintain center
+            const finalX = visualCenterX - (rotatedW / 2);
+            const finalY = visualCenterY - (rotatedH / 2);
+
+            // --- STEP 3: EFFECTS & RENDER ---
+            
             // 1. Stroke
             if (layer.effects?.stroke?.enabled) {
                 const st = layer.effects.stroke;
                 const strokeColor = resolveColor(st.color, themeColors);
                 
                 try {
-                    const strokeBuffer = await createStrokeLayer(layerBuffer, strokeColor, st.width);
+                    const strokeBuffer = await createStrokeLayer(rotatedBuffer, strokeColor, st.width);
                     await safelyAddLayer(
                         strokeBuffer, 
-                        layer.x - st.width, 
-                        layer.y - st.width, 
+                        finalX - st.width, 
+                        finalY - st.width, 
                         'over'
                     );
                 } catch(e) { console.error("Stroke error", e); }
@@ -201,11 +225,11 @@ export async function GET(request: NextRequest) {
                 
                 try {
                     const padding = g.blur * 2; 
-                    const glowBuffer = await createShadowLayer(layerBuffer, glowColor, g.blur, padding);
+                    const glowBuffer = await createShadowLayer(rotatedBuffer, glowColor, g.blur, padding);
                     await safelyAddLayer(
                         glowBuffer,
-                        layer.x - padding,
-                        layer.y - padding,
+                        finalX - padding,
+                        finalY - padding,
                         'screen'
                     );
                 } catch (e) { console.error("Glow error", e); }
@@ -218,11 +242,11 @@ export async function GET(request: NextRequest) {
 
                 try {
                     const padding = s.blur * 2;
-                    const shadowBuffer = await createShadowLayer(layerBuffer, shadowColor, s.blur, padding);
+                    const shadowBuffer = await createShadowLayer(rotatedBuffer, shadowColor, s.blur, padding);
                     await safelyAddLayer(
                         shadowBuffer,
-                        layer.x + s.x - padding,
-                        layer.y + s.y - padding,
+                        finalX + s.x - padding,
+                        finalY + s.y - padding,
                         'multiply'
                     );
                 } catch (e) { console.error("Shadow error", e); }
@@ -230,9 +254,9 @@ export async function GET(request: NextRequest) {
 
             // 4. Main Layer
             await safelyAddLayer(
-                layerBuffer,
-                layer.x,
-                layer.y,
+                rotatedBuffer,
+                finalX,
+                finalY,
                 (layer.blendMode as any) || 'over'
             );
         }
