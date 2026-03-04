@@ -157,27 +157,33 @@ export async function GET(request: NextRequest) {
                 continue;
             }
 
-            // SVG Theme Tinting
+            // SVG Theme Tinting & DENSITY FIX
             const isSvg = assetUrl.toLowerCase().endsWith('.svg');
-            if (isSvg && (layer.enableThemeColor || layer.tintColor)) {
-                let svgString = buffer.toString('utf-8');
-                svgString = svgString.replace(/var\((--[^)]+)\)/g, (match, varName) => themeColors[varName] || match);
-                
-                if (layer.tintColor) {
-                    let color = layer.tintColor;
-                    if (color.startsWith('var(')) {
-                        const varName = color.match(/var\((--[^)]+)\)/)?.[1];
-                        if (varName) color = themeColors[varName] || color;
+            
+            if (isSvg) {
+                // If manually tinted or themed, we process the string first
+                if (layer.enableThemeColor || layer.tintColor) {
+                    let svgString = buffer.toString('utf-8');
+                    svgString = svgString.replace(/var\((--[^)]+)\)/g, (match, varName) => themeColors[varName] || match);
+                    
+                    if (layer.tintColor) {
+                        let color = layer.tintColor;
+                        if (color.startsWith('var(')) {
+                            const varName = color.match(/var\((--[^)]+)\)/)?.[1];
+                            if (varName) color = themeColors[varName] || color;
+                        }
+                        svgString = svgString.replace(/fill="[^"]*"/g, `fill="${color}"`);
+                        svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${color}"`);
                     }
-                    svgString = svgString.replace(/fill="[^"]*"/g, `fill="${color}"`);
-                    svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${color}"`);
+                    buffer = Buffer.from(svgString);
                 }
-                buffer = Buffer.from(svgString);
             }
 
             // --- STEP 1: RESIZE ---
-            // Resize first to establish base dimensions
-            let img = sharp(buffer);
+            // Force density to 72 for SVGs to match Browser/Canvas default. 
+            // Without this, Sharp might use 96 or higher, making the image huge and shifting the center.
+            let img = isSvg ? sharp(buffer, { density: 72 }) : sharp(buffer);
+            
             const originalMeta = await img.metadata();
             
             if (layer.scale !== 1 && originalMeta.width) {
@@ -204,7 +210,6 @@ export async function GET(request: NextRequest) {
             const rotatedH = rotatedMeta.height || 0;
 
             // 3. Calculate New Top-Left to keep the center fixed
-            // We move the new (larger) box so its center aligns with the original visual center
             const finalX = visualCenterX - (rotatedW / 2);
             const finalY = visualCenterY - (rotatedH / 2);
 
@@ -336,6 +341,7 @@ async function createShadowLayer(
     const w = meta.width || 100;
     const h = meta.height || 100;
 
+    // Solid silhouette
     const solidColor = await sharp({
         create: { width: w, height: h, channels: 4, background: color }
     }).png().toBuffer();
