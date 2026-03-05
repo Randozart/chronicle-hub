@@ -135,9 +135,25 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
                         <nav className="admin-nav" style={{ overflowY: 'auto', flex: 1 }}>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                                 <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
-                                    <Link 
-                                        href={`/play/${storyId}?playtest=true`}
-                                        target="_blank"
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                // Clear image composer cache
+                                                const response = await fetch(`/api/image_composer/cache/clear?storyId=${storyId}`);
+                                                const result = await response.json();
+
+                                                if (result.success) {
+                                                    showToast(`Cleared ${result.cleared} cached images`, 'info');
+                                                }
+
+                                                // Open playtest in new tab
+                                                window.open(`/play/${storyId}?playtest=true`, '_blank');
+                                            } catch (error) {
+                                                console.error('Failed to clear cache:', error);
+                                                showToast('Cache clear failed, opening playtest anyway', 'error');
+                                                window.open(`/play/${storyId}?playtest=true`, '_blank');
+                                            }
+                                        }}
                                         className="admin-link"
                                         style={{
                                             backgroundColor: 'var(--tool-accent-green, #28a745)',
@@ -147,11 +163,16 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
                                             fontWeight: 'bold',
                                             padding: '0.6rem',
                                             borderRadius: '4px',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                            width: '100%',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontFamily: 'inherit',
+                                            fontSize: 'inherit'
                                         }}
                                     >
                                         ▶ Playtest World
-                                    </Link>
+                                    </button>
                                 </li>
 
                                 {role !== 'reader' && (
