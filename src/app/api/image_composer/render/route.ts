@@ -296,7 +296,8 @@ export async function GET(request: NextRequest) {
 
                 // Scale up the density for crisp edges based on the target scale
                 const scaleRatio = targetWidth / (svgDimensions.width || 100);
-                const density = Math.min(2400, Math.max(72, 72 * scaleRatio));
+                // Increase density when scaling down (scaleRatio < 1) to preserve sharpness
+                const density = Math.min(2400, 72 * Math.max(scaleRatio, 1 / scaleRatio));
 
                 img = sharp(buffer, { density }).resize(targetWidth, targetHeight, {
                     fit: 'fill',
