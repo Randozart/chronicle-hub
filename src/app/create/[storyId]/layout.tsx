@@ -1,11 +1,11 @@
-'use client'; 
+'use client';
 import Link from 'next/link';
 import CheatSheet from '@/components/admin/CheatSheet';
 import AdminSidebarFooter from '@/components/admin/AdminSidebarFooter';
 import { ToastProvider, useToast } from '@/providers/ToastProvider';
 import { useEffect, useState, use } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import RefactorModal from '@/components/admin/RefactorModal'; 
+import RefactorModal from '@/components/admin/RefactorModal';
 import { CreatorProvider } from '@/providers/CreatorProvider';
 
 const RefactorIcon = () => (
@@ -32,9 +32,9 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
     const router = useRouter();
     const { showToast } = useToast();
     const [showNav, setShowNav] = useState(false);
-    const [showHelp, setShowHelp] = useState(false);    
+    const [showHelp, setShowHelp] = useState(false);
     const [showRefactor, setShowRefactor] = useState(false);
-    
+
     // Role State
     const [role, setRole] = useState<'owner' | 'writer' | 'reader' | null>(null);
 
@@ -44,7 +44,7 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
             try {
                 const res = await fetch(`/api/admin/verify?storyId=${storyId}`);
                 if (!res.ok) {
-                    router.push('/'); 
+                    router.push('/');
                     return;
                 }
                 const data = await res.json();
@@ -58,7 +58,9 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
     }, [storyId, router]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setShowNav(false);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setShowHelp(false);
     }, [pathname]);
 
@@ -67,8 +69,8 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                e.stopPropagation(); 
-                
+                e.stopPropagation();
+
                 if (role === 'reader') {
                     showToast("Read Only Mode: Cannot Save", "info");
                     return;
@@ -77,7 +79,7 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
                 window.dispatchEvent(new Event('global-save-trigger'));
             }
         };
-        
+
         // Only attach if role is loaded
         if (role) {
             window.addEventListener('keydown', handleKeyDown, { capture: true });
@@ -86,7 +88,7 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
     }, [role, showToast]);
 
     const base = `/create/${storyId}`;
-    
+
     if (!role) {
         return (
             <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0e0e0e', color: '#666' }}>
@@ -99,12 +101,12 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
         // Wrap everything in CreatorProvider
         <CreatorProvider storyId={storyId} initialRole={role}>
             {showRefactor && (
-                <RefactorModal 
+                <RefactorModal
                     isOpen={showRefactor}
                     onClose={() => setShowRefactor(false)}
                     storyId={storyId}
-                    currentId="" 
-                    onSuccess={() => window.location.reload()} 
+                    currentId=""
+                    onSuccess={() => window.location.reload()}
                 />
             )}
             <div className="admin-layout" style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -119,13 +121,13 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
                 )}
 
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
-                    
+
                     <aside className={`admin-sidebar ${showNav ? 'mobile-open' : ''}`} style={{ flexShrink: 0 }}>
                         <div className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             Creator Studio
                             <button className="mobile-close-btn" onClick={() => setShowNav(false)} style={{ display: showNav ? 'block' : 'none' }}>✕</button>
                         </div>
-                        
+
                         {role === 'reader' && (
                             <div style={{ background: 'var(--tool-bg-input)', color: 'var(--tool-text-dim)', fontSize: '0.75rem', padding: '0.5rem', textAlign: 'center', borderBottom: '1px solid var(--tool-border)' }}>
                                 Read Only Mode
@@ -177,7 +179,7 @@ function InnerLayout({ children, storyId }: { children: React.ReactNode, storyId
 
                                 {role !== 'reader' && (
                                     <li style={{ marginBottom: '1rem', padding: '0 1rem' }}>
-                                        <button 
+                                        <button
                                             onClick={() => setShowRefactor(true)}
                                             className="admin-link"
                                             style={{

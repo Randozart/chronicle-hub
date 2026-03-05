@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars */
 const fs = require('fs');
 const path = require('path');
-const SOURCE_DIR = './public/sounds/imported_sf2'; 
+const SOURCE_DIR = './public/sounds/imported_sf2';
 const PUBLIC_URL_ROOT = '/sounds/imported_sf2/';
 const MAX_DEPTH = 10;
 
@@ -47,7 +48,7 @@ function parseSfz(filePath) {
     const content = fs.readFileSync(filePath, 'utf-8');
     const lines = content.split(/\r?\n/);
     const urls = {};
-    
+
     const sfzDir = path.dirname(filePath);
     let currentSample = null;
     let currentKey = null;
@@ -61,11 +62,11 @@ function parseSfz(filePath) {
                 const absSourceDir = path.resolve(SOURCE_DIR);
                 const relFromRoot = path.relative(absSourceDir, fullSystemPath);
                 const finalWebPath = relFromRoot.replace(/\\/g, '/');
-                
+
                 urls[noteName] = finalWebPath;
             }
             currentKey = null;
-            currentSample = null; 
+            currentSample = null;
         }
     };
 
@@ -103,7 +104,7 @@ function generatePresets() {
         const name = filename.replace('.sfz', '').replace(/_/g, ' ');
         const parentDir = path.basename(path.dirname(file));
         const category = parentDir === 'imported_sf2' ? 'Imported' : parentDir;
-        
+
         try {
             const urls = parseSfz(file);
             if (Object.keys(urls).length > 0) {
@@ -129,10 +130,10 @@ function generatePresets() {
 
     if (count > 0) {
         console.log('\n// --- PASTE INTO src/engine/audio/presets.ts ---');
-        
+
         const output = JSON.stringify(presets, null, 4);
         console.log(output.substring(1, output.lastIndexOf('}')) + ',');
-        
+
         console.log('// ----------------------------------------------');
     } else {
         console.log("No valid SFZ files found.");
