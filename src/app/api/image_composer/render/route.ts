@@ -200,13 +200,19 @@ export async function GET(request: NextRequest) {
             if (layer.editorHidden) {
                 const groupId = layer.groupId;
                 const hasGroup = groupId !== undefined && groupId !== null && groupId !== '';
-                const groupMatches = hasGroup && searchParams.get(groupId) === layer.variantValue;
 
-                if (!hasGroup || !groupMatches) {
+                if (hasGroup) {
+                    // groupId is now guaranteed to be a non-empty string
+                    const groupMatches = searchParams.get(groupId) === layer.variantValue;
+                    if (groupMatches) {
+                        console.log(`[Layer ${layerIndex}] Rendering editor-hidden layer due to active group: ${groupId}=${layer.variantValue}`);
+                    } else {
+                        console.log(`[Layer ${layerIndex}] Skipping editor-hidden layer: ${layer.name || layer.assetId}`);
+                        continue;
+                    }
+                } else {
                     console.log(`[Layer ${layerIndex}] Skipping editor-hidden layer: ${layer.name || layer.assetId}`);
                     continue;
-                } else {
-                    console.log(`[Layer ${layerIndex}] Rendering editor-hidden layer due to active group: ${groupId}=${layer.variantValue}`);
                 }
             }
 
