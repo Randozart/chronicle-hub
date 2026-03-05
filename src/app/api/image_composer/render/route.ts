@@ -198,14 +198,15 @@ export async function GET(request: NextRequest) {
             // --- EditorHidden Filtering ---
             // Skip editor-hidden layers unless part of active logic group
             if (layer.editorHidden) {
-                const hasGroup = layer.groupId !== undefined && layer.groupId !== null && layer.groupId !== '';
-                const groupMatches = hasGroup && searchParams.get(layer.groupId) === layer.variantValue;
+                const groupId = layer.groupId;
+                const hasGroup = groupId !== undefined && groupId !== null && groupId !== '';
+                const groupMatches = hasGroup && searchParams.get(groupId) === layer.variantValue;
 
                 if (!hasGroup || !groupMatches) {
                     console.log(`[Layer ${layerIndex}] Skipping editor-hidden layer: ${layer.name || layer.assetId}`);
                     continue;
                 } else {
-                    console.log(`[Layer ${layerIndex}] Rendering editor-hidden layer due to active group: ${layer.groupId}=${layer.variantValue}`);
+                    console.log(`[Layer ${layerIndex}] Rendering editor-hidden layer due to active group: ${groupId}=${layer.variantValue}`);
                 }
             }
 
