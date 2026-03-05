@@ -194,10 +194,27 @@ export async function GET(request: NextRequest) {
         let layerIndex = 0;
         for (const layer of sortedLayers) {
             console.log(`[Layer ${layerIndex}] x=${layer.x}, y=${layer.y}, scale=${layer.scale}, rotation=${layer.rotation}, asset=${layer.assetId}`);
-            // Logic Filtering
+            // --- EditorHidden Filtering ---
+            // Skip editor-hidden layers unless part of active logic group
+            if (layer.editorHidden) {
+                const hasGroup = layer.groupId !== undefined && layer.groupId !== null && layer.groupId !== '';
+                const groupMatches = hasGroup && searchParams.get(layer.groupId) === layer.variantValue;
+
+                if (!hasGroup || !groupMatches) {
+                    console.log(`[Layer ${layerIndex}] Skipping editor-hidden layer: ${layer.name || layer.assetId}`);
+                    continue;
+                } else {
+                    console.log(`[Layer ${layerIndex}] Rendering editor-hidden layer due to active group: ${layer.groupId}=${layer.variantValue}`);
+                }
+            }
+
+            // --- Logic Group Filtering ---
             if (layer.groupId) {
                 const paramValue = searchParams.get(layer.groupId);
-                if (paramValue !== layer.variantValue) continue;
+                if (paramValue !== layer.variantValue) {
+                    console.log(`[Layer ${layerIndex}] Skipping due to group mismatch: ${layer.groupId}=${paramValue} vs ${layer.variantValue}`);
+                    continue;
+                }
             }
 
             // Asset Resolution
