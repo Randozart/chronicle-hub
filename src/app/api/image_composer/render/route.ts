@@ -267,7 +267,7 @@ export async function GET(request: NextRequest) {
             if (isSvg) {
                 if (layer.enableThemeColor || layer.tintColor) {
                     let svgString = buffer.toString('utf-8');
-                    // Fully resolve all CSS variables using the new robust helper
+                    // Fully resolve all CSS variables using the robust helper
                     svgString = svgString.replace(/var\((--[^)]+)\)/g, (match) => resolveColor(match, themeColors));
                     
                     if (layer.tintColor) {
@@ -282,24 +282,35 @@ export async function GET(request: NextRequest) {
             // --- STEP 1: RESIZE ---
             let img: sharp.Sharp;
             
-            // Get original intrinsic dimensions first
-            const metaForScale = await sharp(buffer).metadata();
-            const origW = metaForScale.width || 100;
-            const origH = metaForScale.height || 100;
-            
-            const scaledW = Math.max(1, Math.round(origW * layer.scale));
-            const scaledH = Math.max(1, Math.round(origH * layer.scale));
-
             if (isSvg) {
-                // Determine density needed to render at the target scale cleanly without pixelation
-                const density = Math.min(2400, Math.max(72, 72 * layer.scale));
-                
-                img = sharp(buffer, { density }).resize(scaledW, scaledH, {
+                const svgDimensions = extractSvgDimensions(buffer);
+                const targetDims = calculateSvgTargetDimensions(
+                    svgDimensions,
+                    composition.width,
+                    composition.height,
+                    layer.scale
+                );
+
+                const targetWidth = targetDims.targetWidth;
+                const targetHeight = targetDims.targetHeight;
+
+                // Scale up the density for crisp edges based on the target scale
+                const scaleRatio = targetWidth / (svgDimensions.width || 100);
+                const density = Math.min(2400, Math.max(72, 72 * scaleRatio));
+
+                img = sharp(buffer, { density }).resize(targetWidth, targetHeight, {
                     fit: 'fill',
                     background: { r: 0, g: 0, b: 0, alpha: 0 }
                 });
             } else {
                 img = sharp(buffer);
+                const originalMeta = await img.metadata();
+                const origW = originalMeta.width || 100;
+                const origH = originalMeta.height || 100;
+                
+                const scaledW = Math.max(1, Math.round(origW * layer.scale));
+                const scaledH = Math.max(1, Math.round(origH * layer.scale));
+
                 if (layer.scale !== 1) {
                     img = img.resize(scaledW, scaledH, { fit: 'fill' });
                 }
@@ -307,7 +318,13 @@ export async function GET(request: NextRequest) {
 
             const scaledBuffer = await img.toBuffer();
             const scaledMeta = await sharp(scaledBuffer).metadata();
+            
+            // Capture final dimensions for the rotation/centering math
+            const scaledW = scaledMeta.width || 0;
+            const scaledH = scaledMeta.height || 0;
 
+            console.log(`[Layer ${layerIndex}] scaled output is ${scaledW}x${scaledH}`);
+            
             // --- STEP 2: ROTATE & RE-CENTER ---
             // Debug: Log original layer coordinates
             console.log(`[Coord Debug] Layer ${layerIndex}: original position (${layer.x}, ${layer.y}), scale=${layer.scale}, rotation=${layer.rotation}`);
