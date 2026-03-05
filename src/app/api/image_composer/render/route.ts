@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         let themeName = searchParams.get('theme');
         if (!themeName) {
             const worldConfig = await db.collection('config').findOne({ 
-                storyId: composition.storyId, 
+                storyId: storyId,
                 category: 'settings', 
                 itemId: 'settings' 
             });
@@ -115,8 +115,28 @@ export async function GET(request: NextRequest) {
 
         const allThemes = getAllThemes();
         const finalThemeName = themeName || 'default';
-        const themeColors = { ...(allThemes[':root'] || {}), ...(allThemes[finalThemeName] || {}) };
         
+        // Find exact theme key in allThemes (handles properties like [data-theme='name'])
+        let matchedThemeKey = ':root';
+        if (finalThemeName !== 'default') {
+            const possibleKeys = [
+                finalThemeName,
+                `[data-theme='${finalThemeName}']`,
+                `[data-global-theme='${finalThemeName}']`
+            ];
+            for (const key of possibleKeys) {
+                if (allThemes[key]) {
+                    matchedThemeKey = key;
+                    break;
+                }
+            }
+            // Fallback partial match if not found perfectly
+            if (matchedThemeKey === ':root') {
+                const found = Object.keys(allThemes).find(k => k.includes(finalThemeName));
+                if (found) matchedThemeKey = found;
+            }
+        }
+        const themeColors = { ...(allThemes[':root'] || {}), ...(allThemes[matchedThemeKey] || {}) };
         // --- Layer Processing ---
         const layersToRender: sharp.OverlayOptions[] = [];
         const sortedLayers = composition.layers.sort((a, b) => a.zIndex - b.zIndex);
@@ -245,19 +265,15 @@ export async function GET(request: NextRequest) {
             const isSvg = assetUrl.toLowerCase().endsWith('.svg');
             
             if (isSvg) {
-                // If manually tinted or themed, we process the string first
                 if (layer.enableThemeColor || layer.tintColor) {
                     let svgString = buffer.toString('utf-8');
-                    svgString = svgString.replace(/var\((--[^)]+)\)/g, (match, varName) => themeColors[varName] || match);
+                    // Fully resolve all CSS variables using the new robust helper
+                    svgString = svgString.replace(/var\((--[^)]+)\)/g, (match) => resolveColor(match, themeColors));
                     
                     if (layer.tintColor) {
-                        let color = layer.tintColor;
-                        if (color.startsWith('var(')) {
-                            const varName = color.match(/var\((--[^)]+)\)/)?.[1];
-                            if (varName) color = themeColors[varName] || color;
-                        }
-                        svgString = svgString.replace(/fill="[^"]*"/g, `fill="${color}"`);
-                        svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${color}"`);
+                        const resolvedTint = resolveColor(layer.tintColor, themeColors, '#000000');
+                        svgString = svgString.replace(/fill="[^"]*"/g, `fill="${resolvedTint}"`);
+                        svgString = svgString.replace(/stroke="[^"]*"/g, `stroke="${resolvedTint}"`);
                     }
                     buffer = Buffer.from(svgString);
                 }
@@ -265,49 +281,32 @@ export async function GET(request: NextRequest) {
 
             // --- STEP 1: RESIZE ---
             let img: sharp.Sharp;
-            let targetWidth: number | undefined;
-            let targetHeight: number | undefined;
+            
+            // Get original intrinsic dimensions first
+            const metaForScale = await sharp(buffer).metadata();
+            const origW = metaForScale.width || 100;
+            const origH = metaForScale.height || 100;
+            
+            const scaledW = Math.max(1, Math.round(origW * layer.scale));
+            const scaledH = Math.max(1, Math.round(origH * layer.scale));
 
             if (isSvg) {
-                // Extract SVG dimensions and calculate target size
-                const svgDimensions = extractSvgDimensions(buffer);
-                const targetDims = calculateSvgTargetDimensions(
-                    svgDimensions,
-                    composition.width,
-                    composition.height,
-                    layer.scale
-                );
-
-                targetWidth = targetDims.targetWidth;
-                targetHeight = targetDims.targetHeight;
-
-                console.log(`[SVG Debug] Layer ${layerIndex}: ${svgDimensions.width}x${svgDimensions.height} -> ${targetWidth}x${targetHeight} (scale=${layer.scale})`);
-
-                // Create sharp instance with density 72 and target dimensions
-                img = sharp(buffer, { density: 72 }).resize(targetWidth, targetHeight, {
+                // Determine density needed to render at the target scale cleanly without pixelation
+                const density = Math.min(2400, Math.max(72, 72 * layer.scale));
+                
+                img = sharp(buffer, { density }).resize(scaledW, scaledH, {
                     fit: 'fill',
                     background: { r: 0, g: 0, b: 0, alpha: 0 }
                 });
             } else {
                 img = sharp(buffer);
-
-                const originalMeta = await img.metadata();
-                if (layer.scale !== 1 && originalMeta.width) {
-                    img = img.resize(Math.round(originalMeta.width * layer.scale));
+                if (layer.scale !== 1) {
+                    img = img.resize(scaledW, scaledH, { fit: 'fill' });
                 }
             }
 
             const scaledBuffer = await img.toBuffer();
             const scaledMeta = await sharp(scaledBuffer).metadata();
-            
-            const scaledW = scaledMeta.width || 0;
-            const scaledH = scaledMeta.height || 0;
-            // Debug log for SVG vs non-SVG scaling
-            if (isSvg) {
-                console.log(`[Layer ${layerIndex}] SVG scaled ${scaledW}x${scaledH} (target was ${targetWidth}x${targetHeight})`);
-            } else {
-                console.log(`[Layer ${layerIndex}] scaled ${scaledW}x${scaledH}`);
-            }
 
             // --- STEP 2: ROTATE & RE-CENTER ---
             // Debug: Log original layer coordinates
@@ -360,7 +359,7 @@ export async function GET(request: NextRequest) {
                 const glowColor = resolveColor(g.color, themeColors);
                 
                 try {
-                    const padding = g.blur * 2; 
+                    const padding = Math.max(1, Math.round(g.blur * 2)); 
                     const glowBuffer = await createShadowLayer(rotatedBuffer, glowColor, g.blur, padding);
                     await safelyAddLayer(
                         glowBuffer,
@@ -377,7 +376,7 @@ export async function GET(request: NextRequest) {
                 const shadowColor = resolveColor(s.color, themeColors, '#000000');
 
                 try {
-                    const padding = s.blur * 2;
+                    const padding = Math.max(1, Math.round(s.blur * 2));
                     const shadowBuffer = await createShadowLayer(rotatedBuffer, shadowColor, s.blur, padding);
                     await safelyAddLayer(
                         shadowBuffer,
@@ -511,11 +510,26 @@ export async function GET(request: NextRequest) {
 }
 
 function resolveColor(input: string, themeColors: Record<string, string>, fallback = '#ffffff') {
-    if (input.startsWith('var(')) {
-        const key = input.match(/--[\w-]+/)?.[0] || '';
-        return themeColors[key] || fallback;
+    if (!input) return fallback;
+    let current = input;
+    let depth = 0;
+    
+    // Deep resolve nested vars
+    while (current.includes('var(') && depth < 5) {
+        const match = current.match(/var\((--[^)]+)\)/);
+        if (match && match[1]) {
+            current = current.replace(match[0], themeColors[match[1]] || fallback);
+        } else {
+            break; 
+        }
+        depth++;
     }
-    return input;
+    
+    // Ensure Sharp compatibility. If it still contains a var, or isn't a color format sharp likes, fallback.
+    if (current.includes('var(') || (!current.startsWith('#') && !current.startsWith('rgb') && !current.match(/^[a-zA-Z]+$/))) {
+        return fallback;
+    }
+    return current;
 }
 
 async function createShadowLayer(
@@ -528,9 +542,12 @@ async function createShadowLayer(
     const w = meta.width || 100;
     const h = meta.height || 100;
 
-    // Solid silhouette
+    // Make sure color is valid, otherwise default to black to prevent Sharp crashes
+    let validColor = color;
+    if (!validColor.startsWith('#') && !validColor.startsWith('rgb')) validColor = '#000000';
+
     const solidColor = await sharp({
-        create: { width: w, height: h, channels: 4, background: color }
+        create: { width: w, height: h, channels: 4, background: validColor }
     }).png().toBuffer();
 
     const silhouette = await sharp(solidColor)
