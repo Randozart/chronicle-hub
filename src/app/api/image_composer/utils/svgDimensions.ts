@@ -43,9 +43,7 @@ export function calculateSvgTargetDimensions(
 ): { targetWidth: number; targetHeight: number } {
     // Calculate scale factor to make SVG proportional to canvas
     // Use the smaller dimension to ensure SVG fits
-    const canvasAspect = canvasWidth / canvasHeight;
-    const svgAspect = svgDimensions.width / svgDimensions.height;
-
+    // Note: Aspect ratios are kept in the calculation for potential future adjustments
     let scaleFactor = 1;
 
     if (canvasWidth > 0 && canvasHeight > 0) {

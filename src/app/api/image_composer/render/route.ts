@@ -4,6 +4,7 @@ import { getAssetBuffer } from '@/engine/storageService';
 import { getAllThemes } from '@/engine/themeParser';
 import { ImageComposition } from '@/engine/models';
 import sharp from 'sharp';
+import type { Blend } from 'sharp';
 import { extractSvgDimensions, calculateSvgTargetDimensions } from '../utils/svgDimensions';
 
 // Helper: Get dimensions safely
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = urlObj.toString(); 
 
     if (!forceRefresh && RENDER_CACHE.has(cacheKey)) {
-        return new NextResponse(RENDER_CACHE.get(cacheKey)! as any, { 
+        return new NextResponse(RENDER_CACHE.get(cacheKey)! as BodyInit, {
             headers: { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=3600' }
         });
     }
@@ -174,7 +175,7 @@ export async function GET(request: NextRequest) {
                         input: cropped,
                         top: visibleY,
                         left: visibleX,
-                        blend: blend as any
+                        blend: blend as Blend
                     });
                 } catch (e) { 
                     console.error(`Crop failed for layer at ${x},${y} (size ${w}x${h})`, e); 
@@ -186,7 +187,7 @@ export async function GET(request: NextRequest) {
                     input: buffer,
                     top: targetY,
                     left: targetX,
-                    blend: blend as any
+                    blend: blend as Blend
                 });
             }
         };
@@ -384,7 +385,7 @@ export async function GET(request: NextRequest) {
                 rotatedBuffer,
                 finalX,
                 finalY,
-                (layer.blendMode as any) || 'over'
+                (layer.blendMode as Blend) || 'over'
             );
             layerIndex++;
         }
@@ -472,6 +473,7 @@ export async function GET(request: NextRequest) {
                     console.log(`[Composite] Layer ${i}: non-buffer input at (${layer.left},${layer.top}) blend=${layer.blend}`);
                 }
             } catch (e) {
+                void e;
                 console.log(`[Composite] Layer ${i}: unknown size at (${layer.left},${layer.top}) blend=${layer.blend}`);
             }
         }
@@ -487,7 +489,7 @@ export async function GET(request: NextRequest) {
         }
         RENDER_CACHE.set(cacheKey, outputBuffer);
 
-        return new NextResponse(outputBuffer as any, {
+        return new NextResponse(outputBuffer as BodyInit, {
             headers: {
                 'Content-Type': 'image/webp',
                 'Cache-Control': 'public, max-age=3600'
