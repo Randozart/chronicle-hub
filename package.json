@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "validate:composer": "bash scripts/validate-image-composer.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
