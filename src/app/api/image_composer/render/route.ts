@@ -301,15 +301,19 @@ export async function GET(request: NextRequest) {
             }
 
             // --- STEP 2: ROTATE & RE-CENTER ---
+            // Debug: Log original layer coordinates
+            console.log(`[Coord Debug] Layer ${layerIndex}: original position (${layer.x}, ${layer.y}), scale=${layer.scale}, rotation=${layer.rotation}`);
+
             // 1. Calculate visual center in Canvas Space (where the user put the center of the image)
             const visualCenterX = layer.x + (scaledW / 2);
             const visualCenterY = layer.y + (scaledH / 2);
+            console.log(`[Coord Debug] Layer ${layerIndex}: visual center (${visualCenterX}, ${visualCenterY}), scaled dims ${scaledW}x${scaledH}`);
 
             // 2. Rotate (expands bounding box)
             const rotatedBuffer = await sharp(scaledBuffer)
                 .rotate(layer.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
                 .toBuffer();
-            
+
             const rotatedMeta = await sharp(rotatedBuffer).metadata();
             const rotatedW = rotatedMeta.width || 0;
             const rotatedH = rotatedMeta.height || 0;
@@ -317,6 +321,10 @@ export async function GET(request: NextRequest) {
             // 3. Calculate New Top-Left to keep the center fixed
             const finalX = visualCenterX - (rotatedW / 2);
             const finalY = visualCenterY - (rotatedH / 2);
+
+            // Debug log for rotation calculations
+            console.log(`[Coord Debug] Layer ${layerIndex}: rotated ${rotatedW}x${rotatedH} (expanded from ${scaledW}x${scaledH})`);
+            console.log(`[Coord Debug] Layer ${layerIndex}: final position (${finalX}, ${finalY}) to keep center at (${visualCenterX}, ${visualCenterY})`);
             console.log(`[Layer ${layerIndex}] rotated ${rotatedW}x${rotatedH}, finalX=${finalX}, finalY=${finalY}`);
 
             // --- STEP 3: EFFECTS & RENDER ---
