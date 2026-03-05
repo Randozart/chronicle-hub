@@ -41,23 +41,10 @@ export function calculateSvgTargetDimensions(
     canvasHeight: number,
     layerScale: number = 1
 ): { targetWidth: number; targetHeight: number } {
-    // Calculate scale factor to make SVG proportional to canvas
-    // Use the smaller dimension to ensure SVG fits
-    // Note: Aspect ratios are kept in the calculation for potential future adjustments
-    let scaleFactor = 1;
-
-    if (canvasWidth > 0 && canvasHeight > 0) {
-        // Scale SVG so its larger dimension is ~50% of canvas (adjustable)
-        const targetMaxDimension = Math.max(canvasWidth, canvasHeight) * 0.5;
-        const svgMaxDimension = Math.max(svgDimensions.width, svgDimensions.height);
-        scaleFactor = targetMaxDimension / svgMaxDimension;
-    }
-
-    // Apply layer scale
-    scaleFactor *= layerScale;
-
+    // Apply layer scale directly (consistent with non-SVG image scaling and browser preview)
+    // The oversized layers logic will handle fitting within canvas bounds
     return {
-        targetWidth: Math.round(svgDimensions.width * scaleFactor),
-        targetHeight: Math.round(svgDimensions.height * scaleFactor)
+        targetWidth: Math.round(svgDimensions.width * layerScale),
+        targetHeight: Math.round(svgDimensions.height * layerScale)
     };
 }

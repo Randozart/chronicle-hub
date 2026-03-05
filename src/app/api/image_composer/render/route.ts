@@ -281,7 +281,8 @@ export async function GET(request: NextRequest) {
 
             // --- STEP 1: RESIZE ---
             let img: sharp.Sharp;
-            
+            let floatScaledW = 0, floatScaledH = 0;
+
             if (isSvg) {
                 const svgDimensions = extractSvgDimensions(buffer);
                 const targetDims = calculateSvgTargetDimensions(
@@ -293,6 +294,10 @@ export async function GET(request: NextRequest) {
 
                 const targetWidth = targetDims.targetWidth;
                 const targetHeight = targetDims.targetHeight;
+
+                // Store float dimensions for accurate center calculation
+                floatScaledW = svgDimensions.width * layer.scale;
+                floatScaledH = svgDimensions.height * layer.scale;
 
                 // Scale up the density for crisp edges based on the target scale
                 const scaleRatio = targetWidth / (svgDimensions.width || 100);
@@ -308,9 +313,13 @@ export async function GET(request: NextRequest) {
                 const originalMeta = await img.metadata();
                 const origW = originalMeta.width || 100;
                 const origH = originalMeta.height || 100;
-                
-                const scaledW = Math.max(1, Math.round(origW * layer.scale));
-                const scaledH = Math.max(1, Math.round(origH * layer.scale));
+
+                // Store float dimensions for accurate center calculation
+                floatScaledW = origW * layer.scale;
+                floatScaledH = origH * layer.scale;
+
+                const scaledW = Math.max(1, Math.round(floatScaledW));
+                const scaledH = Math.max(1, Math.round(floatScaledH));
 
                 if (layer.scale !== 1) {
                     img = img.resize(scaledW, scaledH, { fit: 'fill' });
@@ -324,16 +333,16 @@ export async function GET(request: NextRequest) {
             const scaledW = scaledMeta.width || 0;
             const scaledH = scaledMeta.height || 0;
 
-            console.log(`[Layer ${layerIndex}] scaled output is ${scaledW}x${scaledH}`);
+            console.log(`[Layer ${layerIndex}] scaled output is integer ${scaledW}x${scaledH}, float ${floatScaledW.toFixed(2)}x${floatScaledH.toFixed(2)}`);
             
             // --- STEP 2: ROTATE & RE-CENTER ---
             // Debug: Log original layer coordinates
             console.log(`[Coord Debug] Layer ${layerIndex}: original position (${layer.x}, ${layer.y}), scale=${layer.scale}, rotation=${layer.rotation}`);
 
             // 1. Calculate visual center in Canvas Space (where the user put the center of the image)
-            const visualCenterX = layer.x + (scaledW / 2);
-            const visualCenterY = layer.y + (scaledH / 2);
-            console.log(`[Coord Debug] Layer ${layerIndex}: visual center (${visualCenterX}, ${visualCenterY}), scaled dims ${scaledW}x${scaledH}`);
+            const visualCenterX = layer.x + (floatScaledW / 2);
+            const visualCenterY = layer.y + (floatScaledH / 2);
+            console.log(`[Coord Debug] Layer ${layerIndex}: visual center (${visualCenterX}, ${visualCenterY}), float dims ${floatScaledW.toFixed(2)}x${floatScaledH.toFixed(2)}, integer dims ${scaledW}x${scaledH}`);
 
             // 2. Rotate (expands bounding box)
             const rotatedBuffer = await sharp(scaledBuffer)
@@ -429,40 +438,9 @@ export async function GET(request: NextRequest) {
             layersToRender.unshift({ input: bgBuffer, top: 0, left: 0, blend: 'dest-over' });
         }
 
-        // --- Resize oversized layers ---
-        // Sharp requires all composite images to be same dimensions or smaller than base canvas
-        console.log('Checking for oversized layers...');
-        let resizedCount = 0;
-        for (let i = 0; i < layersToRender.length; i++) {
-            const layer = layersToRender[i];
-            if (!Buffer.isBuffer(layer.input)) continue;
-
-            try {
-                const dims = await getImageDimensions(layer.input);
-                if (dims.width > composition.width || dims.height > composition.height) {
-                    console.log(`  Layer ${i} is oversized (${dims.width}x${dims.height} vs canvas ${composition.width}x${composition.height}), resizing...`);
-                    // Calculate scale to fit within canvas while maintaining aspect ratio
-                    const scale = Math.min(
-                        composition.width / dims.width,
-                        composition.height / dims.height
-                    );
-                    const newWidth = Math.round(dims.width * scale);
-                    const newHeight = Math.round(dims.height * scale);
-                    // Resize the image
-                    const resizedBuffer = await sharp(layer.input as Buffer)
-                        .resize(newWidth, newHeight, { fit: 'inside' })
-                        .toBuffer();
-                    // Update layer with resized image
-                    layer.input = resizedBuffer;
-                    resizedCount++;
-                }
-            } catch (e) {
-                console.error(`  Layer ${i}: Failed to check/resize: ${e}`);
-            }
-        }
-        if (resizedCount > 0) {
-            console.log(`Resized ${resizedCount} oversized layer(s)`);
-        }
+        // --- Oversized layers are handled by safelyAddLayer cropping ---
+        // No additional resizing needed to match browser clipping behavior
+        console.log('Oversized layer handling: relying on safelyAddLayer cropping');
 
         // --- Validate layer positions ---
         for (let i = 0; i < layersToRender.length; i++) {
