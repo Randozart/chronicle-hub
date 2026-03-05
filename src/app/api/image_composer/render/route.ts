@@ -4,6 +4,7 @@ import { getAssetBuffer } from '@/engine/storageService';
 import { getAllThemes } from '@/engine/themeParser';
 import { ImageComposition } from '@/engine/models';
 import sharp from 'sharp';
+import { extractSvgDimensions, calculateSvgTargetDimensions } from '../utils/svgDimensions';
 
 // Helper: Get dimensions safely
 async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
@@ -237,21 +238,50 @@ export async function GET(request: NextRequest) {
             }
 
             // --- STEP 1: RESIZE ---
-            // Force density to 72 for SVGs to match Browser/Canvas default. 
-            // Without this, Sharp might use 96 or higher, making the image huge and shifting the center.
-            let img = isSvg ? sharp(buffer, { density: 72 }) : sharp(buffer);
-            
-            const originalMeta = await img.metadata();
-            
-            if (layer.scale !== 1 && originalMeta.width) {
-                img = img.resize(Math.round(originalMeta.width * layer.scale));
+            let img: sharp.Sharp;
+            let targetWidth: number | undefined;
+            let targetHeight: number | undefined;
+
+            if (isSvg) {
+                // Extract SVG dimensions and calculate target size
+                const svgDimensions = extractSvgDimensions(buffer);
+                const targetDims = calculateSvgTargetDimensions(
+                    svgDimensions,
+                    composition.width,
+                    composition.height,
+                    layer.scale
+                );
+
+                targetWidth = targetDims.targetWidth;
+                targetHeight = targetDims.targetHeight;
+
+                console.log(`[SVG Debug] Layer ${layerIndex}: ${svgDimensions.width}x${svgDimensions.height} -> ${targetWidth}x${targetHeight} (scale=${layer.scale})`);
+
+                // Create sharp instance with density 72 and target dimensions
+                img = sharp(buffer, { density: 72 }).resize(targetWidth, targetHeight, {
+                    fit: 'fill',
+                    background: { r: 0, g: 0, b: 0, alpha: 0 }
+                });
+            } else {
+                img = sharp(buffer);
+
+                const originalMeta = await img.metadata();
+                if (layer.scale !== 1 && originalMeta.width) {
+                    img = img.resize(Math.round(originalMeta.width * layer.scale));
+                }
             }
+
             const scaledBuffer = await img.toBuffer();
             const scaledMeta = await sharp(scaledBuffer).metadata();
             
             const scaledW = scaledMeta.width || 0;
             const scaledH = scaledMeta.height || 0;
-            console.log(`[Layer ${layerIndex}] scaled ${scaledW}x${scaledH}`);
+            // Debug log for SVG vs non-SVG scaling
+            if (isSvg) {
+                console.log(`[Layer ${layerIndex}] SVG scaled ${scaledW}x${scaledH} (target was ${targetWidth}x${targetHeight})`);
+            } else {
+                console.log(`[Layer ${layerIndex}] scaled ${scaledW}x${scaledH}`);
+            }
 
             // --- STEP 2: ROTATE & RE-CENTER ---
             // 1. Calculate visual center in Canvas Space (where the user put the center of the image)
