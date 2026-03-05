@@ -217,10 +217,11 @@ export async function GET(request: NextRequest) {
             }
 
             // --- Logic Group Filtering ---
-            if (layer.groupId) {
-                const paramValue = searchParams.get(layer.groupId);
+            const logicGroupId = layer.groupId;
+            if (logicGroupId && logicGroupId !== '') {
+                const paramValue = searchParams.get(logicGroupId);
                 if (paramValue !== layer.variantValue) {
-                    console.log(`[Layer ${layerIndex}] Skipping due to group mismatch: ${layer.groupId}=${paramValue} vs ${layer.variantValue}`);
+                    console.log(`[Layer ${layerIndex}] Skipping due to group mismatch: ${logicGroupId}=${paramValue} vs ${layer.variantValue}`);
                     continue;
                 }
             }
