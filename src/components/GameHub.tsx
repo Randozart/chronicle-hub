@@ -342,14 +342,8 @@ export default function GameHub(props: GameHubProps) {
     }, [props.storyId]);
 
     const handleOpenMarket = useCallback(() => {
-        const isLocked = activeEvent && (
-            (activeEvent as any).urgency === 'Must' || !!(activeEvent as any).autofire_if
-        );
+        if (activeEvent) return;
         setShowMarket(true);
-        if (!isLocked) {
-            setActiveEvent(null);
-            setActiveResolution(null);
-        }
     }, [activeEvent]);
 
     const mergedQualityDefs = useMemo(() => ({
@@ -851,7 +845,7 @@ export default function GameHub(props: GameHubProps) {
                         qualityDefs={mergedQualityDefs} 
                         equipCategories={props.settings.equipCategories || []} 
                         onUpdateCharacter={handleCharacterUpdate} 
-                        onUseItem={(id) => showEvent(id, 'item')} 
+                        onUseItem={(id) => { if (!activeEvent) showEvent(id, 'item'); }} 
                         onRequestTabChange={(tab) => setActiveTab(tab)} 
                         storyId={props.storyId} 
                         imageLibrary={props.imageLibrary} 
