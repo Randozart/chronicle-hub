@@ -31,6 +31,9 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
     const [guestChar, setGuestChar] = useState<CharacterDocument | null>(null);
     const [errorModal, setErrorModal] = useState<string | null>(null);
     const [startOverConfirm, setStartOverConfirm] = useState(false);
+    const [selectedCharacterIds, setSelectedCharacterIds] = useState<Set<string>>(new Set());
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
     
     const searchParams = useSearchParams();
     const isPlaytest = searchParams.get('playtest') === 'true';
@@ -71,14 +74,79 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
             setCharToDelete(null);
         } else {
             try {
-                await fetch('/api/character/delete', {
+                const response = await fetch('/api/character/delete', {
                     method: 'DELETE',
                     body: JSON.stringify({ storyId: props.storyId, characterId: charToDelete })
                 });
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to delete character');
+                }
                 window.location.reload();
-            } catch (err) { console.error(err); }
+            } catch (err) {
+                console.error(err);
+                setErrorModal(err instanceof Error ? err.message : 'Failed to delete character');
+                setCharToDelete(null);
+            }
         }
     };
+
+    const toggleSelection = (charId: string) => {
+        const newSet = new Set(selectedCharacterIds);
+        if (newSet.has(charId)) {
+            newSet.delete(charId);
+        } else {
+            newSet.add(charId);
+        }
+        setSelectedCharacterIds(newSet);
+    };
+
+    const selectAll = () => {
+        const allIds = props.availableCharacters.map(c => c.characterId);
+        setSelectedCharacterIds(new Set(allIds));
+    };
+
+    const clearSelection = () => {
+        setSelectedCharacterIds(new Set());
+    };
+
+    const requestBulkDelete = () => {
+        if (selectedCharacterIds.size === 0) return;
+        setShowBulkDeleteConfirm(true);
+    };
+
+    const confirmBulkDelete = async () => {
+        if (selectedCharacterIds.size === 0) return;
+
+        if (props.isGuest) {
+            // guest only has one character, bulk delete not applicable
+            localStorage.removeItem(`chronicle_guest_${props.storyId}`);
+            setGuestChar(null);
+            setSelectedCharacterIds(new Set());
+            setShowBulkDeleteConfirm(false);
+        } else {
+            try {
+                const response = await fetch('/api/character/delete', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ storyId: props.storyId, characterId: Array.from(selectedCharacterIds) })
+                });
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to delete characters');
+                }
+                window.location.reload();
+            } catch (err) {
+                console.error(err);
+                setErrorModal(err instanceof Error ? err.message : 'Failed to delete selected characters');
+                setShowBulkDeleteConfirm(false);
+            }
+        }
+    };
+
+    const cancelBulkDelete = () => {
+        setShowBulkDeleteConfirm(false);
+    };
+
     const handleStartGame = async () => {
         setIsCreating(true);
         try {
@@ -142,6 +210,15 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                 onClose={() => setCharToDelete(null)}
             />
             <GameModal
+                isOpen={showBulkDeleteConfirm}
+                type="danger"
+                title="Delete Multiple Characters?"
+                message={`Are you sure you want to permanently delete ${selectedCharacterIds.size} characters? This action cannot be undone.`}
+                confirmLabel="Delete Forever"
+                onConfirm={confirmBulkDelete}
+                onClose={cancelBulkDelete}
+            />
+            <GameModal
                 isOpen={!!errorModal}
                 title="Error"
                 message={errorModal || ""}
@@ -187,17 +264,118 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                     Select Character
                 </h1>
                 
+                {!props.isGuest && (
+                    <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {!isSelectionMode ? (
+                            <button
+                                onClick={() => setIsSelectionMode(true)}
+                                style={{
+                                    background: 'var(--bg-item)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-primary)',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: 'var(--border-radius)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                Select Multiple
+                            </button>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={selectAll}
+                                    style={{
+                                        background: 'var(--bg-item)',
+                                        border: '1px solid var(--border-color)',
+                                        color: 'var(--text-primary)',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: 'var(--border-radius)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    Select All
+                                </button>
+                                <button
+                                    onClick={clearSelection}
+                                    style={{
+                                        background: 'var(--bg-item)',
+                                        border: '1px solid var(--border-color)',
+                                        color: 'var(--text-primary)',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: 'var(--border-radius)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    Clear Selection
+                                </button>
+                                <button
+                                    onClick={requestBulkDelete}
+                                    disabled={selectedCharacterIds.size === 0}
+                                    style={{
+                                        background: selectedCharacterIds.size === 0 ? 'var(--bg-main)' : 'var(--danger-color)',
+                                        border: '1px solid var(--border-color)',
+                                        color: selectedCharacterIds.size === 0 ? 'var(--text-muted)' : 'white',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: 'var(--border-radius)',
+                                        cursor: selectedCharacterIds.size === 0 ? 'default' : 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    Delete Selected ({selectedCharacterIds.size})
+                                </button>
+                                <button
+                                    onClick={() => { clearSelection(); setIsSelectionMode(false); }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: '1px solid var(--border-color)',
+                                        color: 'var(--text-muted)',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: 'var(--border-radius)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
                 <div style={{ display: 'grid', gap: '1rem' }}>
                     {props.isGuest && guestChar && (
-                        <button 
-                            onClick={() => window.location.href = `/play/${props.storyId}?guest=true${urlSuffix}`} 
+                        <button
+                            onClick={(e) => {
+                                if (isSelectionMode) {
+                                    e.preventDefault();
+                                    toggleSelection(guestChar.characterId);
+                                } else {
+                                    window.location.href = `/play/${props.storyId}?guest=true${urlSuffix}`;
+                                }
+                            }}
                             className="option-button"
-                            style={{ 
-                                padding: '1rem', 
+                            style={{
+                                padding: '1rem',
                                 display: 'flex', alignItems: 'center', gap: '1rem',
-                                textAlign: 'left', width: '100%'
+                                textAlign: 'left', width: '100%',
+                                background: 'var(--bg-item)',
+                                border: selectedCharacterIds.has(guestChar.characterId) ? '2px solid var(--accent-highlight)' : '1px solid var(--border-color)'
                             }}
                         >
+                            {isSelectionMode && (
+                                <input
+                                    type="checkbox"
+                                    checked={selectedCharacterIds.has(guestChar.characterId)}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        toggleSelection(guestChar.characterId);
+                                    }}
+                                    style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                                />
+                            )}
                             <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: '0 0 0.25rem 0', color: 'var(--accent-highlight)', fontSize: '1.1rem' }}>
                                     {guestChar.name || "Guest"}
@@ -206,14 +384,16 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                                     Local Save • {props.locations[guestChar.currentLocationId]?.name || "Unknown Location"}
                                 </p>
                             </div>
-                            <div 
-                                onClick={(e) => requestDelete(guestChar.characterId, e)}
-                                style={{ color: 'var(--danger-color)', padding: '0.5rem', cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6 }}
-                                title="Delete Save"
-                                className="hover:opacity-100"
-                            >
-                                ✕
-                            </div>
+                            {!isSelectionMode && (
+                                <div
+                                    onClick={(e) => requestDelete(guestChar.characterId, e)}
+                                    style={{ color: 'var(--danger-color)', padding: '0.5rem', cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6 }}
+                                    title="Delete Save"
+                                    className="hover:opacity-100"
+                                >
+                                    ✕
+                                </div>
+                            )}
                         </button>
                     )}
                     {!props.isGuest && props.availableCharacters.map((c, index) => {
@@ -226,31 +406,52 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                         const width = sizeMap[sizeSetting] || '70px';
                         const effectiveShape = props.settings.portraitStyle || 'circle';
 
+                        const isSelected = selectedCharacterIds.has(c.characterId);
                         return (
-                            <button 
-                                key={c.characterId || index} 
-                                onClick={() => window.location.href = `/play/${props.storyId}?char=${c.characterId}${urlSuffix}`}
+                            <button
+                                key={c.characterId || index}
+                                onClick={(e) => {
+                                    if (isSelectionMode) {
+                                        e.preventDefault();
+                                        toggleSelection(c.characterId);
+                                    } else {
+                                        window.location.href = `/play/${props.storyId}?char=${c.characterId}${urlSuffix}`;
+                                    }
+                                }}
                                 className="option-button"
-                                style={{ 
-                                    padding: '1rem', 
+                                style={{
+                                    padding: '1rem',
                                     display: 'flex', alignItems: 'center', gap: '1rem',
-                                    textAlign: 'left', width: '100%'
+                                    textAlign: 'left', width: '100%',
+                                    background: 'var(--bg-item)',
+                                    border: isSelected ? '2px solid var(--accent-highlight)' : '1px solid var(--border-color)'
                                 }}
                             >
+                                {isSelectionMode && (
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            toggleSelection(c.characterId);
+                                        }}
+                                        style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                                    />
+                                )}
                                 {!hideIdentity && (
-                                    <div style={{ 
+                                    <div style={{
                                         width: width,
                                         aspectRatio: effectiveShape === 'rect' ? '3/4' : '1/1',
                                         borderRadius: borderRadius,
-                                        overflow: 'hidden', 
+                                        overflow: 'hidden',
                                         border: '2px solid var(--accent-primary)',
                                         flexShrink: 0, background: '#000'
                                     }}
                                     >
-                                        <GameImage 
-                                            code={c.portrait || "default_avatar"} 
-                                            imageLibrary={props.imageLibrary} 
-                                            type="portrait" 
+                                        <GameImage
+                                            code={c.portrait || "default_avatar"}
+                                            imageLibrary={props.imageLibrary}
+                                            type="portrait"
                                             settings={props.settings}
                                             shapeOverride={effectiveShape}
                                             className="w-full h-full object-cover"
@@ -267,15 +468,17 @@ export default function CharacterLobby (props: CharacterLobbyProps) {
                                         {props.locations[c.currentLocationId]?.name || "Unknown Location"}
                                     </p>
                                 </div>
-                                
-                                <div 
-                                    onClick={(e) => requestDelete(c.characterId, e)}
-                                    style={{ color: 'var(--danger-color)', padding: '0.5rem', cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6 }}
-                                    title="Delete Save"
-                                    className="hover:opacity-100"
-                                >
-                                    ✕
-                                </div>
+
+                                {!isSelectionMode && (
+                                    <div
+                                        onClick={(e) => requestDelete(c.characterId, e)}
+                                        style={{ color: 'var(--danger-color)', padding: '0.5rem', cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6 }}
+                                        title="Delete Save"
+                                        className="hover:opacity-100"
+                                    >
+                                        ✕
+                                    </div>
+                                )}
                             </button>
                         );
                     })}
