@@ -70,7 +70,7 @@ export class GameEngine implements EngineContext {
      * Intercepts property access to calculate "Effective Levels" (Base + Equipment Bonuses)
      * on the fly, so scripts always see the modified values.
      */
-    private getEffectiveQualitiesProxy(): PlayerQualities {
+    public getEffectiveQualitiesProxy(): PlayerQualities {
         return new Proxy(this.qualities, {
             get: (target, prop) => {
                 if (typeof prop !== 'string') return Reflect.get(target, prop);

@@ -341,6 +341,17 @@ export default function GameHub(props: GameHubProps) {
         window.location.href = `/play/${props.storyId}?menu=true`;
     }, [props.storyId]);
 
+    const handleOpenMarket = useCallback(() => {
+        const isLocked = activeEvent && (
+            (activeEvent as any).urgency === 'Must' || !!(activeEvent as any).autofire_if
+        );
+        setShowMarket(true);
+        if (!isLocked) {
+            setActiveEvent(null);
+            setActiveResolution(null);
+        }
+    }, [activeEvent]);
+
     const mergedQualityDefs = useMemo(() => ({
         ...props.qualityDefs,
         ...(character?.dynamicQualities || {})
@@ -606,7 +617,8 @@ export default function GameHub(props: GameHubProps) {
 
     const visibleStorylets = Object.values(props.storyletDefs)
         .filter(s => {
-            if (s.location !== character.currentLocationId) return false;
+            const locs = s.location?.split(',').map((l: string) => l.trim()).filter(Boolean) || [];
+            if (locs.length > 0 && !locs.includes(character.currentLocationId)) return false;
             return renderEngine.evaluateCondition(s.visible_if);
         })
         .sort((a, b) => (a.ordering || 0) - (b.ordering || 0));
@@ -813,13 +825,13 @@ export default function GameHub(props: GameHubProps) {
                                 <GameImage code={imageCode} type="location" imageLibrary={props.imageLibrary} className="banner-img" />
                             </div>
                         )}
-                        <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={canTravel ? () => setShowMap(true) : undefined} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} styleMode={headerStyle} />
+                        <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={canTravel ? () => setShowMap(true) : undefined} onOpenMarket={activeMarketId ? handleOpenMarket : undefined} styleMode={headerStyle} />
                     </div>
                 );
             }
             return (
                 <div className="location-header-wrapper">
-                    <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={canTravel ? () => setShowMap(true) : undefined} onOpenMarket={activeMarketId ? () => setShowMarket(true) : undefined} styleMode={headerStyle} />
+                    <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={canTravel ? () => setShowMap(true) : undefined} onOpenMarket={activeMarketId ? handleOpenMarket : undefined} styleMode={headerStyle} />
                 </div>
             );
         };
@@ -870,17 +882,18 @@ export default function GameHub(props: GameHubProps) {
         } else if (showMarket && activeMarketId) {
             innerContent = (
                 <div className="content-panel">
-                    <MarketInterface 
-                        market={props.markets[activeMarketId]!} 
-                        qualities={character.qualities} 
-                        qualityDefs={mergedQualityDefs} 
-                        imageLibrary={props.imageLibrary} 
-                        settings={props.settings} 
-                        onClose={() => setShowMarket(false)} 
-                        onUpdate={handleQualitiesUpdate} 
-                        storyId={props.storyId} 
-                        characterId={character.characterId} 
-                        worldState={props.worldState} 
+                    <MarketInterface
+                        market={props.markets[activeMarketId]!}
+                        qualities={character.qualities}
+                        qualityDefs={mergedQualityDefs}
+                        imageLibrary={props.imageLibrary}
+                        settings={props.settings}
+                        onClose={() => setShowMarket(false)}
+                        onUpdate={handleQualitiesUpdate}
+                        storyId={props.storyId}
+                        characterId={character.characterId}
+                        worldState={props.worldState}
+                        equipment={character.equipment}
                     />
                 </div>
             );
@@ -1014,7 +1027,7 @@ export default function GameHub(props: GameHubProps) {
             imageLibrary: props.imageLibrary,
             onExit: handleExit,
             onOpenMap: canTravel ? () => setShowMap(true) : undefined,
-            onOpenMarket: () => setShowMarket(true),
+            onOpenMarket: handleOpenMarket,
             currentMarketId: activeMarketId,
             isTransitioning: isTransitioning,
             hasRightColumn: hasRightColumn 

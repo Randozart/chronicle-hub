@@ -16,10 +16,11 @@ interface Props {
     onUpdate: (newQualities: PlayerQualities) => void;
     storyId: string;
     characterId: string;
-    worldState: PlayerQualities; 
+    worldState: PlayerQualities;
+    equipment?: Record<string, string | null>;
 }
 
-export default function MarketInterface({ market, qualities, qualityDefs, imageLibrary, settings, onClose, onUpdate, storyId, characterId, worldState }: Props) {
+export default function MarketInterface({ market, qualities, qualityDefs, imageLibrary, settings, onClose, onUpdate, storyId, characterId, worldState, equipment = {} }: Props) {
     const [activeStallIndex, setActiveStallIndex] = useState(0);
     const [selectedListing, setSelectedListing] = useState<ShopListing | null>(null);
     const [quantity, setQuantity] = useState(1);
@@ -27,7 +28,7 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
 
     const currentStall = market.stalls[activeStallIndex];
 
-    const engine = useMemo(() => new GameEngine(qualities, { settings, qualities: qualityDefs } as any, {}, worldState), [qualities, qualityDefs, settings, worldState]);
+    const engine = useMemo(() => new GameEngine(qualities, { settings, qualities: qualityDefs } as any, equipment, worldState), [qualities, qualityDefs, settings, worldState, equipment]);
 
     const getPrice = (priceExpr: string) => {
         const val = engine.evaluateText(`{${priceExpr}}`);
@@ -120,10 +121,10 @@ export default function MarketInterface({ market, qualities, qualityDefs, imageL
 
                         let canAfford = true;
                         if (currentStall.mode === 'buy') {
-                            const funds = (qualities[currencyId] as any)?.level || 0;
+                            const funds = engine.getEffectiveLevel(currencyId);
                             if (funds < price) canAfford = false;
                         } else {
-                            const owned = (qualities[listing.qualityId] as any)?.level || 0;
+                            const owned = engine.getEffectiveLevel(listing.qualityId);
                             if (owned < 1) canAfford = false;
                         }
 

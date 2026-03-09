@@ -420,7 +420,7 @@ export default function StoryletDisplay({
                 }
             }
 
-            const { chance, text } = getChallengeDetails(option.challenge, qualities, qualityDefs);
+            const { chance, text } = getChallengeDetails(option.challenge, engine.getEffectiveQualitiesProxy(), qualityDefs);
             const skillCheckText = chance !== null && !isLocked ? `${text} [${chance}%]` : '';
             return { ...option, isLocked, lockReason, skillCheckText, chance };
         });

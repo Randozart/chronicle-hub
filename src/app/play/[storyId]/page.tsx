@@ -103,7 +103,11 @@ export default async function PlayPage({ params, searchParams }: Props) {
             );
 
             const eligible = autofires.filter(s => {
-                if ((s as any).location && (s as any).location !== character!.currentLocationId) return false;
+                const loc = (s as any).location;
+                if (loc) {
+                    const locs = (loc as string).split(',').map((l: string) => l.trim()).filter(Boolean);
+                    if (!locs.includes(character!.currentLocationId)) return false;
+                }
                 return engine.evaluateCondition(s.autofire_if || "false");
             });
 

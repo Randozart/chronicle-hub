@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
 
         const isAutofire = storyletDef.urgency === 'Must' || !!storyletDef.autofire_if;
         if ('location' in storyletDef && storyletDef.location) {
-            if (character.currentLocationId !== storyletDef.location && !isAutofire) {
+            const locs = storyletDef.location.split(',').map((l: string) => l.trim()).filter(Boolean);
+            if (!locs.includes(character.currentLocationId) && !isAutofire) {
                 return NextResponse.json({ error: 'You are not in the correct location.' }, { status: 403 });
             }
         }
@@ -61,8 +62,8 @@ export async function POST(request: NextRequest) {
             }
         }
         const pendingAutofires = await getAutofireStorylets(storyId);
-        const eligibleAutofires = pendingAutofires.filter(e => 
-            ((!e as any).location || (e as any).location === character.currentLocationId) && 
+        const eligibleAutofires = pendingAutofires.filter(e =>
+            (!(e as any).location || (e as any).location.split(',').map((l: string) => l.trim()).includes(character.currentLocationId)) &&
             engine.evaluateCondition(e.autofire_if || "")
         );
         eligibleAutofires.sort((a, b) => {
@@ -159,8 +160,8 @@ export async function POST(request: NextRequest) {
         if (character.dynamicQualities) {
              Object.assign(postResolutionEngine.worldContent.qualities, character.dynamicQualities);
         }
-        const newEligibleAutofires = pendingAutofires.filter(e => 
-            ((!e as any).location || (e as any).location === character.currentLocationId) && 
+        const newEligibleAutofires = pendingAutofires.filter(e =>
+            (!(e as any).location || (e as any).location.split(',').map((l: string) => l.trim()).includes(character.currentLocationId)) &&
             postResolutionEngine.evaluateCondition(e.autofire_if || "")
         );
         newEligibleAutofires.sort((a, b) => {
@@ -185,7 +186,8 @@ export async function POST(request: NextRequest) {
         else if (!('deck' in storyletDef)) {
             // Determine if this is a "Root" storylet which is attached to the location
             // or a "Transient" storylet (a redirect/result event).
-            const isLocationRoot = 'location' in storyletDef && storyletDef.location === character.currentLocationId;
+            const isLocationRoot = 'location' in storyletDef && !!storyletDef.location &&
+                storyletDef.location.split(',').map((l: string) => l.trim()).some(l => l === character.currentLocationId);
             
             // We only stick to the current storylet if it's a Root location 
             // or it's an Autofire event that keeps triggering.
