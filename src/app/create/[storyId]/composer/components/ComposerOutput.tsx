@@ -4,11 +4,12 @@ import { useMemo } from 'react';
 
 interface Props {
     composition: ImageComposition;
-    storyId: string; 
+    storyId: string;
     onExport: () => void;
+    onRenderToLibrary?: () => Promise<void>;
 }
 
-export default function ComposerOutput({ composition, storyId, onExport }: Props) {
+export default function ComposerOutput({ composition, storyId, onExport, onRenderToLibrary }: Props) {
 
     const dynamicUrl = useMemo(() => {
         // Auto-detect groups
@@ -40,6 +41,9 @@ export default function ComposerOutput({ composition, storyId, onExport }: Props
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                 <button className="option-button" onClick={onExport} style={{width:'100%'}}>📸 Export PNG Snapshot</button>
+                {onRenderToLibrary && (
+                    <button className="option-button" onClick={onRenderToLibrary} style={{width:'100%'}}>💾 Render to Library</button>
+                )}
             </div>
         </div>
     );

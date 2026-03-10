@@ -9,6 +9,7 @@ import ColorPickerInput from './ColorPickerInput';
 import ComposerOutput from './ComposerOutput';
 import { resolveCssVariable } from '@/utils/themeUtils';
 import AssetExplorer from '@/components/admin/assets/AssetExplorer';
+import { useToast } from '@/providers/ToastProvider';
 
 
 const CANVAS_PRESETS = {
@@ -77,6 +78,7 @@ export default function ComposerEditor({
     initialData, storyId, assets, setAssets,
     onSave, onDelete, onDuplicate, guardRef, allThemes, defaultTheme, canImportPsd, refreshAssets
 }: Props) {
+    const { showToast } = useToast();
     const { data, handleChange, handleSave, isDirty, isSaving, lastSaved, revertChanges } = useCreatorForm<ImageComposition>(
         initialData,
         '/api/admin/compositions',
@@ -1297,9 +1299,9 @@ export default function ComposerEditor({
                 </div>
             </div>
 
-            <ComposerOutput 
+            <ComposerOutput
                 composition={data}
-                storyId={storyId} 
+                storyId={storyId}
                 onExport={() => {
                     const canvas = canvasRef.current;
                     if (canvas) {
@@ -1307,6 +1309,107 @@ export default function ComposerEditor({
                         link.download = `${data.id}-preview.png`;
                         link.href = canvas.toDataURL('image/png');
                         link.click();
+                    }
+                }}
+                onRenderToLibrary={async () => {
+                    try {
+                        showToast("Rendering image to library...", "info");
+
+                        // Compute logic group parameters based on currently visible layers
+                        // We want to render exactly what the user sees in the editor
+                        const groupParams: Record<string, string> = {};
+                        const groupConflicts: Record<string, Set<string>> = {};
+
+                        // Analyze visible layers (not editorHidden)
+                        data.layers.forEach(layer => {
+                            if (layer.editorHidden) return; // Skip hidden layers
+
+                            if (layer.groupId && layer.groupId.trim() !== '') {
+                                const groupId = layer.groupId;
+                                // variantValue can be string, null, or undefined
+                                const variantValue = layer.variantValue ?? '';
+
+                                if (!groupConflicts[groupId]) {
+                                    groupConflicts[groupId] = new Set();
+                                }
+                                groupConflicts[groupId].add(variantValue);
+
+                                // Use the first variant value we encounter for each group
+                                // If there are conflicts (same group, different values),
+                                // we'll use the first one and warn the user
+                                if (!(groupId in groupParams)) {
+                                    groupParams[groupId] = variantValue;
+                                }
+                            }
+                        });
+
+                        // Check for conflicts and warn
+                        const conflictingGroups = Object.entries(groupConflicts)
+                            .filter(([_, values]) => values.size > 1)
+                            .map(([groupId, values]) => `${groupId} (${Array.from(values).join(', ')})`);
+
+                        if (conflictingGroups.length > 0) {
+                            console.warn(`Logic group conflicts detected: ${conflictingGroups.join('; ')}. Using first variant.`);
+                            showToast(
+                                `Warning: Logic group conflicts detected. Some layers may not render correctly.`,
+                                "warning"
+                            );
+                        }
+
+                        // Build the render URL with logic group parameters
+                        const params = new URLSearchParams();
+                        params.set('storyId', storyId);
+                        params.set('id', data.id);
+
+                        // Add logic group parameters
+                        // Only add parameter if variantValue is a non-empty string
+                        // If variantValue is null/undefined/empty, don't add the parameter
+                        // This matches the render endpoint logic: paramValue !== layer.variantValue
+                        // If paramValue is null (not provided) and layer.variantValue is null, layer is shown
+                        // If paramValue is "" and layer.variantValue is null, layer is skipped (wrong!)
+                        Object.entries(groupParams).forEach(([groupId, value]) => {
+                            if (value !== undefined && value !== null && value !== '') {
+                                params.set(groupId, value);
+                            }
+                            // If value is empty string "", we need to add empty parameter
+                            // because ?groupId= results in paramValue = ""
+                            else if (value === '') {
+                                params.set(groupId, '');
+                            }
+                            // If value is null/undefined, don't add parameter
+                        });
+
+                        const renderUrl = `/api/image_composer/render?${params.toString()}`;
+
+                        // Call the new API endpoint to render and save to library
+                        const response = await fetch('/api/image_composer/render-to-library', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                storyId,
+                                compositionId: data.id,
+                                renderUrl,
+                                name: data.name || data.id,
+                                category: 'composer'
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.text();
+                            throw new Error(error || 'Failed to render to library');
+                        }
+
+                        const result = await response.json();
+                        showToast(`Image saved to library: ${result.filename}`, "success");
+
+                        // Refresh assets if needed
+                        refreshAssets();
+
+                    } catch (error) {
+                        console.error('Failed to render to library:', error);
+                        showToast(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
                     }
                 }}
             />
