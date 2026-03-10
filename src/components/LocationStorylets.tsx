@@ -1,6 +1,6 @@
 'use client';
 
-import { Storylet, PlayerQualities, QualityDefinition, ImageDefinition, WorldSettings } from "@/engine/models";
+import { Storylet, PlayerQualities, QualityDefinition, ImageDefinition, WorldSettings, LocationDefinition } from "@/engine/models";
 import { GameEngine } from "@/engine/gameEngine";
 import GameImage from "./GameImage";
 import FormattedText from "./FormattedText";
@@ -12,17 +12,19 @@ interface LocationStoryletsProps {
     qualityDefs: Record<string, QualityDefinition>;
     imageLibrary: Record<string, ImageDefinition>;
     settings: WorldSettings;
-    engine: GameEngine; 
+    engine: GameEngine;
+    location?: LocationDefinition;
 }
 
-export default function LocationStorylets({ 
-    storylets, 
-    onStoryletClick, 
-    qualities, 
-    qualityDefs, 
-    imageLibrary, 
-    settings, 
-    engine
+export default function LocationStorylets({
+    storylets,
+    onStoryletClick,
+    qualities,
+    qualityDefs,
+    imageLibrary,
+    settings,
+    engine,
+    location
 }: LocationStoryletsProps) {
     const visibleStorylets = storylets; 
 
@@ -64,7 +66,9 @@ export default function LocationStorylets({
     };
 
     const cfg = settings.componentConfig || {};
-    const layoutStyle = cfg.storyletListStyle || 'rows';
+    const layoutStyle = location?.storyletDisplayOverride && location.storyletDisplayOverride !== 'default'
+        ? location.storyletDisplayOverride
+        : cfg.storyletListStyle || 'rows';
 
     const useCardStructure = ['cards', 'polaroid', 'images-only', 'tarot', 'scrolling'].includes(layoutStyle);
     const containerClass = useCardStructure ? `card-container mode-${layoutStyle}` : `storylet-list-container mode-${layoutStyle}`;

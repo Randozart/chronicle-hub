@@ -112,7 +112,7 @@ export default function LocationsAdmin({ params }: { params: Promise<{ storyId: 
             name: "New Location",
             image: "",
             deck: "default_deck",
-            regionId: "default", 
+            regionId: "default",
             coordinates: { x: 0, y: 0 },
             version: 1
         };

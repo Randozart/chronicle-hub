@@ -333,6 +333,7 @@ export interface LocationDefinition extends VersionedEntity {
     equipmentLockMessage?: string;
     musicTrackId?: string;
     travelSoundId?: string;
+    storyletDisplayOverride?: 'default' | 'cards' | 'rows' | 'scrolling' | 'polaroid' | 'images-only' | 'tarot';
 }
 export interface ImageDefinition extends VersionedEntity{ 
     id: string; 

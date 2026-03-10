@@ -936,14 +936,15 @@ export default function GameHub(props: GameHubProps) {
                     {renderHeader()}
                     {visibleStorylets.length > 0 && (
                         <div className="storylet-feed" style={{ marginTop: '2rem' }}>
-                            <LocationStorylets 
-                                storylets={visibleStorylets} 
-                                onStoryletClick={showEvent} 
-                                qualities={character.qualities} 
-                                qualityDefs={mergedQualityDefs} 
-                                imageLibrary={props.imageLibrary} 
-                                settings={props.settings} 
-                                engine={renderEngine} 
+                            <LocationStorylets
+                                storylets={visibleStorylets}
+                                onStoryletClick={showEvent}
+                                qualities={character.qualities}
+                                qualityDefs={mergedQualityDefs}
+                                imageLibrary={props.imageLibrary}
+                                settings={props.settings}
+                                engine={renderEngine}
+                                location={props.locations[character.currentLocationId]}
                             />
                         </div>
                     )}

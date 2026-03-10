@@ -174,29 +174,50 @@ export default function LocationMainForm({ initialData, onSave, onDelete, onDupl
                             <label className="special-label" style={{ color: 'var(--tool-accent)', marginBottom: '0.5rem' }}>Access Control</label>
                             <div className="form-row">
                                 <div style={{ flex: 1 }}>
-                                    <SmartArea 
-                                        label="Requirement for Visibility" 
+                                    <SmartArea
+                                        label="Requirement for Visibility"
                                         subLabel="Condition to unlock this location. Leave blank for always visible."
-                                        value={form.visibleCondition || ''} 
-                                        onChange={v => handleChange('visibleCondition', v)} 
-                                        storyId={storyId} 
-                                        mode="condition" 
+                                        value={form.visibleCondition || ''}
+                                        onChange={v => handleChange('visibleCondition', v)}
+                                        storyId={storyId}
+                                        mode="condition"
                                         qualityDefs={qualityDefs}
                                         placeholder="$discovered_map >= 1"
                                     />
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <SmartArea 
-                                        label="Requirement for Selectability" 
+                                    <SmartArea
+                                        label="Requirement for Selectability"
                                         subLabel="Condition to enable interaction. Leave blank for always selectable."
-                                        value={form.unlockCondition || ''} 
-                                        onChange={v => handleChange('unlockCondition', v)} 
-                                        storyId={storyId} 
-                                        mode="condition" 
+                                        value={form.unlockCondition || ''}
+                                        onChange={v => handleChange('unlockCondition', v)}
+                                        storyId={storyId}
+                                        mode="condition"
                                         qualityDefs={qualityDefs}
                                         placeholder="$key_item >= 1"
                                     />
                                 </div>
+                            </div>
+                        </div>
+                        <div className="admin-panel-box" style={{ marginTop: '1rem', borderColor: 'var(--tool-accent-mauve)' }}>
+                            <label className="special-label" style={{ color: 'var(--tool-accent-mauve)', marginBottom: '0.5rem' }}>Storylet Display</label>
+                            <div className="form-group">
+                                <label className="form-label">Visual Style Override</label>
+                                <select
+                                    value={form.storyletDisplayOverride || 'default'}
+                                    onChange={e => handleChange('storyletDisplayOverride', e.target.value === 'default' ? undefined : e.target.value)}
+                                    className="form-select"
+                                    style={{ height: '40px' }}
+                                >
+                                    <option value="default">Use Global Default</option>
+                                    <option value="rows">List Rows</option>
+                                    <option value="cards">Standard Cards</option>
+                                    <option value="scrolling">Horizontal Scroll</option>
+                                    <option value="polaroid">Polaroid Cards</option>
+                                    <option value="images-only">Images Only</option>
+                                    <option value="tarot">Tarot Cards</option>
+                                </select>
+                                <p className="special-desc">Override how storylets are displayed in this location. Overrides global settings.</p>
                             </div>
                         </div>
                         <div className="special-field-group" style={{ borderColor: 'var(--tool-accent-mauve)', marginTop: '1rem' }}>
