@@ -1352,7 +1352,7 @@ export default function ComposerEditor({
                             console.warn(`Logic group conflicts detected: ${conflictingGroups.join('; ')}. Using first variant.`);
                             showToast(
                                 `Warning: Logic group conflicts detected. Some layers may not render correctly.`,
-                                "warning"
+                                "info"
                             );
                         }
 
