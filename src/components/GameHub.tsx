@@ -213,13 +213,14 @@ export default function GameHub(props: GameHubProps) {
         } catch (error) { console.error(error); setActiveEvent(null); } finally { setIsLoading(false); }
     }, [props.storyId, character]);
 
-    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>, newEquipment?: Record<string, string | null>, newPendingEvents?: any[]) => {
+    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>, newEquipment?: Record<string, string | null>, newPendingEvents?: any[], updatedHand?: Record<string, string[]>) => {
         setCharacter(prev => {
             if (!prev) return null;
             const updated: CharacterDocument = { ...prev, qualities: { ...newQualities } };
             if (newDefinitions) updated.dynamicQualities = { ...(prev.dynamicQualities || {}), ...newDefinitions };
             if (newEquipment) updated.equipment = { ...newEquipment };
             if (newPendingEvents) updated.pendingEvents = newPendingEvents;
+            if (updatedHand) updated.opportunityHands = updatedHand;
             return updated;
         });
     }, []);
@@ -611,6 +612,9 @@ export default function GameHub(props: GameHubProps) {
 
     const visibleStorylets = Object.values(props.storyletDefs)
         .filter(s => {
+            // Skip opportunities (cards) - they should only appear in decks, not as regular storylets
+            if ('deck' in s) return false;
+
             const locs = s.location?.split(',').map((l: string) => l.trim()).filter(Boolean) || [];
             if (locs.length > 0 && !locs.includes(character.currentLocationId)) return false;
             return renderEngine.evaluateCondition(s.visible_if);

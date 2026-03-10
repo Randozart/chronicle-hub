@@ -46,10 +46,11 @@ interface StoryletDisplayProps {
         newPendingEvents?: any[]
     ) => void;
     onQualitiesUpdate: (
-        newQualities: PlayerQualities, 
-        newDefinitions?: Record<string, QualityDefinition>, 
+        newQualities: PlayerQualities,
+        newDefinitions?: Record<string, QualityDefinition>,
         newEquipment?: Record<string, string | null>,
-        newPendingEvents?: any[]
+        newPendingEvents?: any[],
+        updatedHand?: Record<string, string[]>
     ) => void;
     
     onCardPlayed?: (cardId: string) => void;
@@ -170,7 +171,7 @@ export default function StoryletDisplay({
                 }
             }
 
-            onQualitiesUpdate(data.newQualities, data.newDefinitions, data.equipment, data.pendingEvents); 
+            onQualitiesUpdate(data.newQualities, data.newDefinitions, data.equipment, data.pendingEvents, data.updatedHand); 
             
             if (onCardPlayed && 'deck' in eventData) {
                 onCardPlayed(eventData.id);
@@ -221,16 +222,17 @@ export default function StoryletDisplay({
         if (disableReturn) return null;
         const explicitReturn = storylet.return;
         if (explicitReturn) {
-            const target = storyletDefs[explicitReturn];
+            // Check both storylets and opportunities for the return target
+            const target = storyletDefs[explicitReturn] || opportunityDefs[explicitReturn];
             if (target) {
                 const isVisible = evaluateCondition(target.visible_if, qualities, qualityDefs, null, 0);
                 const isUnlocked = evaluateCondition(target.unlock_if, qualities, qualityDefs, null, 0);
-                if (!isVisible || !isUnlocked) return undefined; 
+                if (!isVisible || !isUnlocked) return undefined;
                 return explicitReturn;
             }
             return undefined;
         }
-        return undefined; 
+        return undefined;
     };
 
     const returnTargetId = getReturnTarget();

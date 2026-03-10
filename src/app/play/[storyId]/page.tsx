@@ -135,9 +135,11 @@ export default async function PlayPage({ params, searchParams }: Props) {
     const safeHand = serialize(initialHand);
     const safeActiveEvent = serialize(activeEvent);
     
-    const storyletMap = allContent.reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {});
+    const storyletMap = allContent
+        .filter((s: any) => !('deck' in s))  // Only items WITHOUT deck property (actual storylets)
+        .reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {});
     const opportunityMap = allContent
-        .filter((s: any) => 'deck' in s)
+        .filter((s: any) => 'deck' in s)  // Only items WITH deck property (opportunities/cards)
         .reduce((acc: any, s: Storylet | Opportunity) => { acc[s.id] = s; return acc; }, {});
 
     const safeAvailableChars = serialize(availableCharacters);
