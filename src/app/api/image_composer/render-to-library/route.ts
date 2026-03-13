@@ -6,6 +6,7 @@ import { uploadAsset } from '@/engine/storageService';
 import { updateWorldConfigItem } from '@/engine/worldService';
 import { ImageDefinition } from '@/engine/models';
 import { ObjectId } from 'mongodb';
+import { GET } from '../render/route';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 
@@ -33,83 +34,47 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // Render the image by calling the existing render endpoint
-        // Add cache-busting parameter to ensure fresh render
-        const cacheBuster = `_=${Date.now()}`;
-        const separator = renderUrl.includes('?') ? '&' : '?';
+        // Parse the render URL to extract parameters
+        const renderUrlObj = new URL(renderUrl, 'http://localhost');
+        const searchParams = renderUrlObj.searchParams;
 
-        // For internal requests, we need to construct the URL properly
-        // The issue is that request.nextUrl.origin returns https://container-id:3000
-        // but SSL isn't configured for internal requests
-        // Solution: Use HTTP instead of HTTPS, and try different hostnames
+        // Add cache-busting and refresh parameters
+        searchParams.set('_', Date.now().toString());
+        searchParams.set('refresh', 'true');
 
-        const port = process.env.PORT || '3000';
+        // Create a mock NextRequest object for the render endpoint
+        // The render endpoint only needs the search parameters, not the full origin
+        const mockUrl = new URL('http://localhost' + renderUrlObj.pathname);
+        searchParams.forEach((value, key) => {
+            mockUrl.searchParams.set(key, value);
+        });
 
-        // Get the hostname from the request URL (without protocol)
-        const requestHostname = request.nextUrl.hostname;
+        const mockRequest = new NextRequest(mockUrl, {
+            method: 'GET',
+            headers: request.headers
+        });
 
-        // Try different origins in order of preference
-        const originAttempts = [
-            `http://localhost:${port}`,  // Standard localhost
-            `http://127.0.0.1:${port}`,  // IPv4 localhost
-            `http://${requestHostname}:${port}`,  // Container hostname (from request)
-        ];
+        console.log(`[Render to Library] Calling render directly with URL: ${mockUrl.toString()}`);
 
-        let renderResponse: Response | null = null;
-        let lastError: Error | null = null;
+        // Call the render endpoint function directly
+        const renderResult = await GET(mockRequest);
 
-        for (const origin of originAttempts) {
-            try {
-                const fullRenderUrl = `${origin}${renderUrl}${separator}${cacheBuster}&refresh=true`;
-                console.log(`[Render to Library] Attempting to render from: ${fullRenderUrl}`);
-
-                // Use a timeout to prevent hanging
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-                try {
-                    renderResponse = await fetch(fullRenderUrl, {
-                        signal: controller.signal
-                    });
-
-                    clearTimeout(timeoutId);
-
-                    // If we get any response (even non-OK), we've successfully connected
-                    // Break out of the loop to handle the response
-                    break;
-                } catch (fetchError) {
-                    clearTimeout(timeoutId);
-                    throw fetchError;
-                }
-            } catch (error) {
-                console.log(`[Render to Library] Failed with origin ${origin}:`, error);
-                lastError = error as Error;
-                renderResponse = null;
-                continue;
-            }
-        }
-
-        if (!renderResponse) {
-            console.error('[Render to Library] All origin attempts failed:', lastError);
-            return NextResponse.json({ error: 'Failed to render image: could not connect to render service' }, { status: 500 });
-        }
-
-        if (!renderResponse.ok) {
-            const errorText = await renderResponse.text();
-            console.error(`[Render to Library] Render failed: ${renderResponse.status} - ${errorText}`);
-            return NextResponse.json({ error: `Render failed: ${renderResponse.status}` }, { status: 500 });
+        if (!renderResult.ok) {
+            const errorText = await renderResult.text();
+            console.error(`[Render to Library] Render failed: ${renderResult.status} - ${errorText}`);
+            return NextResponse.json({ error: `Render failed: ${renderResult.status}` }, { status: 500 });
         }
 
         // Check if the response is actually an image
-        const contentType = renderResponse.headers.get('content-type');
+        const contentType = renderResult.headers.get('content-type');
         if (!contentType || !contentType.startsWith('image/')) {
-            const errorText = await renderResponse.text();
+            const errorText = await renderResult.text();
             console.error(`[Render to Library] Render returned non-image: ${contentType} - ${errorText.substring(0, 200)}`);
             return NextResponse.json({ error: 'Render did not return an image' }, { status: 500 });
         }
 
         // Get the image buffer
-        const imageBuffer = Buffer.from(await renderResponse.arrayBuffer());
+        const imageBuffer = Buffer.from(await renderResult.arrayBuffer());
         const imageSize = imageBuffer.byteLength;
 
         // Check storage limits
