@@ -37,10 +37,63 @@ export async function POST(request: NextRequest) {
         // Add cache-busting parameter to ensure fresh render
         const cacheBuster = `_=${Date.now()}`;
         const separator = renderUrl.includes('?') ? '&' : '?';
-        const fullRenderUrl = `${request.nextUrl.origin}${renderUrl}${separator}${cacheBuster}&refresh=true`;
-        console.log(`[Render to Library] Rendering image from: ${fullRenderUrl}`);
 
-        const renderResponse = await fetch(fullRenderUrl);
+        // For internal requests, we need to construct the URL properly
+        // The issue is that request.nextUrl.origin returns https://container-id:3000
+        // but SSL isn't configured for internal requests
+        // Solution: Use HTTP instead of HTTPS, and try different hostnames
+
+        const port = process.env.PORT || '3000';
+
+        // Get the hostname from the request URL (without protocol)
+        const requestHostname = request.nextUrl.hostname;
+
+        // Try different origins in order of preference
+        const originAttempts = [
+            `http://localhost:${port}`,  // Standard localhost
+            `http://127.0.0.1:${port}`,  // IPv4 localhost
+            `http://${requestHostname}:${port}`,  // Container hostname (from request)
+        ];
+
+        let renderResponse: Response | null = null;
+        let lastError: Error | null = null;
+
+        for (const origin of originAttempts) {
+            try {
+                const fullRenderUrl = `${origin}${renderUrl}${separator}${cacheBuster}&refresh=true`;
+                console.log(`[Render to Library] Attempting to render from: ${fullRenderUrl}`);
+
+                // Use a timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                try {
+                    renderResponse = await fetch(fullRenderUrl, {
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    // If we get any response (even non-OK), we've successfully connected
+                    // Break out of the loop to handle the response
+                    break;
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    throw fetchError;
+                }
+            } catch (error) {
+                console.log(`[Render to Library] Failed with origin ${origin}:`, error);
+                lastError = error as Error;
+                renderResponse = null;
+                continue;
+            }
+        }
+
+        if (!renderResponse) {
+            console.error('[Render to Library] All origin attempts failed:', lastError);
+            return NextResponse.json({ error: 'Failed to render image: could not connect to render service' }, { status: 500 });
+        }
+
         if (!renderResponse.ok) {
             const errorText = await renderResponse.text();
             console.error(`[Render to Library] Render failed: ${renderResponse.status} - ${errorText}`);
