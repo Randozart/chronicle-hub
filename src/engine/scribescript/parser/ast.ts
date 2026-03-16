@@ -93,8 +93,8 @@ export interface LiteralNode extends BaseNode {
 
 export interface RangeNode extends BaseNode {
   type: 'Range';
-  min: number;
-  max: number;
+  min: ASTNode;
+  max: ASTNode;
 }
 
 export interface ChoiceNode extends BaseNode {

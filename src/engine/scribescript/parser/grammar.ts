@@ -76,6 +76,7 @@ export const Semicolon = createToken({ name: 'Semicolon', pattern: /;/ });
 export const Comma = createToken({ name: 'Comma', pattern: /,/ });
 export const Pipe = createToken({ name: 'Pipe', pattern: /\|/ });
 export const Tilde = createToken({ name: 'Tilde', pattern: /~/ });
+export const Percent = createToken({ name: 'Percent', pattern: /%/ });
 
 // Literals
 export const NumberLiteral = createToken({
@@ -104,6 +105,11 @@ export const WhiteSpace = createToken({
 // Lexer
 // ----------------------------------------------------------------------------
 
+export const Identifier = createToken({
+  name: 'Identifier',
+  pattern: /[a-zA-Z_][a-zA-Z0-9_]*/,
+});
+
 export const allTokens = [
   WhiteSpace,
   // Variable sigils
@@ -119,7 +125,8 @@ export const allTokens = [
   RBracket,
   LParen,
   RParen,
-  // Operators (longer patterns first)
+  // Operators (longer patterns first — ChallengeOp before GreaterThan/LessThan!)
+  ChallengeOp,
   DoubleEquals,
   NotEquals,
   GreaterEquals,
@@ -134,19 +141,20 @@ export const allTokens = [
   LogicalAnd,
   LogicalOr,
   LogicalNot,
-  ChallengeOp,
   // Macro
   Macro,
+  Percent,
   // Separators
   Colon,
   Semicolon,
   Comma,
   Pipe,
   Tilde,
-  // Literals
+  // Literals (BooleanLiteral before Identifier so true/false are keywords)
   NumberLiteral,
   StringLiteral,
   BooleanLiteral,
+  Identifier,
 ];
 
 export const scribeScriptLexer = new Lexer(allTokens);
@@ -180,12 +188,31 @@ export class ScribeScriptParser extends CstParser {
 
     this.RULE('braceExpression', () => {
       this.CONSUME(LBrace);
-      this.SUBRULE(this.expression);
+      this.OR([
+        {
+          // Assignment: @alias = expression — gate on Alias followed by Equals
+          GATE: () => this.LA(1).tokenType === Alias && this.LA(2).tokenType === Equals,
+          ALT: () => this.SUBRULE(this.assignment),
+        },
+        { ALT: () => this.SUBRULE(this.expression) },
+      ]);
       this.CONSUME(RBrace);
     });
 
-    this.RULE('expression', () => {
+    this.RULE('branch', () => {
       this.SUBRULE(this.logicalOr);
+      this.OPTION(() => {
+        this.CONSUME(Colon);
+        this.SUBRULE2(this.logicalOr);
+      });
+    });
+
+    this.RULE('expression', () => {
+      this.SUBRULE(this.branch);
+      this.MANY(() => {
+        this.CONSUME(Pipe);
+        this.SUBRULE2(this.branch);
+      });
     });
 
     this.RULE('logicalOr', () => {
@@ -223,6 +250,8 @@ export class ScribeScriptParser extends CstParser {
           { ALT: () => this.CONSUME(LessThan) },
           { ALT: () => this.CONSUME(GreaterEquals) },
           { ALT: () => this.CONSUME(LessEquals) },
+          { ALT: () => this.CONSUME(ChallengeOp) },
+          { ALT: () => this.CONSUME(Tilde) },
         ]);
         this.SUBRULE2(this.additive);
       });
@@ -238,6 +267,7 @@ export class ScribeScriptParser extends CstParser {
         this.SUBRULE2(this.multiplicative);
       });
     });
+
 
     this.RULE('multiplicative', () => {
       this.SUBRULE(this.unary);
@@ -268,8 +298,10 @@ export class ScribeScriptParser extends CstParser {
     this.RULE('primary', () => {
       this.OR([
         { ALT: () => this.SUBRULE(this.variable) },
+        { ALT: () => this.SUBRULE(this.percentageShorthand) },
         { ALT: () => this.SUBRULE(this.literal) },
         { ALT: () => this.SUBRULE(this.parenthesized) },
+        { ALT: () => this.SUBRULE(this.macro) },
       ]);
     });
 
@@ -299,6 +331,7 @@ export class ScribeScriptParser extends CstParser {
         { ALT: () => this.CONSUME(NumberLiteral) },
         { ALT: () => this.CONSUME(StringLiteral) },
         { ALT: () => this.CONSUME(BooleanLiteral) },
+        { ALT: () => this.CONSUME(Identifier) },
       ]);
     });
 
@@ -312,8 +345,18 @@ export class ScribeScriptParser extends CstParser {
     this.RULE('macro', () => {
       this.CONSUME(Macro);
       this.CONSUME(LBracket);
-      this.SUBRULE(this.expression);
+      this.SUBRULE(this.macroArgs);
       this.CONSUME(RBracket);
+    });
+
+    this.RULE('macroArgs', () => {
+      // First argument is required
+      this.SUBRULE(this.expression);
+      // Optional additional arguments separated by semicolons
+      this.MANY(() => {
+        this.CONSUME(Semicolon);
+        this.SUBRULE1(this.expression);
+      });
     });
 
     this.RULE('assignment', () => {
@@ -322,16 +365,13 @@ export class ScribeScriptParser extends CstParser {
       this.SUBRULE(this.expression);
     });
 
-    this.RULE('conditional', () => {
-      this.SUBRULE(this.expression);
-      this.CONSUME(Colon);
-      this.SUBRULE1(this.expression);
-    });
 
-    this.RULE('challengeExpression', () => {
-      this.SUBRULE(this.expression);
-      this.CONSUME(ChallengeOp);
-      this.SUBRULE1(this.expression);
+
+
+    // Percentage shorthand: NumberLiteral %
+    this.RULE('percentageShorthand', () => {
+      this.CONSUME(NumberLiteral);
+      this.CONSUME(Percent);
     });
 
     // Very important: call this after all rules have been defined
