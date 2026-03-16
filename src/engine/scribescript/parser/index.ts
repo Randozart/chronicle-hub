@@ -4,27 +4,28 @@ import { scribeScriptLexer, parser } from './grammar';
 import { ScribeScriptVisitor } from './visitor';
 import { CstToAstTransformer } from './transformer';
 import { AstEvaluator } from './astEvaluator';
+import type { EvaluationContext } from './astEvaluator';
 export { scribeScriptLexer, parser };
 export type { ASTNode } from './ast';
+export type { EvaluationContext } from './astEvaluator';
 export { ScribeScriptVisitor, CstToAstTransformer, AstEvaluator };
 
 /**
  * Evaluate ScribeScript text using the new parser.
  * Handles both pure brace expressions and template strings with interspersed
  * plain text (e.g. "You have {$gold} gold pieces.").
+ * Accepts a full EvaluationContext (including optional legacy field) so that
+ * macros, challenges, and self-reference delegate to the legacy engine.
  */
 export function evaluateTextNew(
   text: string,
-  context: {
-    variables?: Map<string, any>;
-    worldVariables?: Map<string, any>;
-    aliases?: Map<string, any>;
-  } = {}
+  context: Partial<EvaluationContext> = {}
 ): any {
   const evaluator = new AstEvaluator({
     variables: context.variables || new Map(),
     worldVariables: context.worldVariables || new Map(),
     aliases: context.aliases || new Map(),
+    legacy: context.legacy,
   });
 
   // If the entire text is a single brace expression, evaluate directly

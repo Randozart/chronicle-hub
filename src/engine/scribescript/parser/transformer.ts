@@ -164,9 +164,15 @@ export class CstToAstTransformer {
   }
 
   private transformBraceExpression(cst: any): BraceExpressionNode {
-    const expression = cst.children.expression && cst.children.expression[0]
-      ? this.transformExpression(cst.children.expression[0])
-      : this.createEmptyLiteral();
+    let expression: ASTNode;
+
+    if (cst.children.assignment && cst.children.assignment[0]) {
+      expression = this.transformAssignment(cst.children.assignment[0]);
+    } else if (cst.children.expression && cst.children.expression[0]) {
+      expression = this.transformExpression(cst.children.expression[0]);
+    } else {
+      expression = this.createEmptyLiteral();
+    }
 
     return {
       type: 'BraceExpression',
