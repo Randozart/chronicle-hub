@@ -4,6 +4,66 @@ import { safeEval } from '@/utils/safeEval';
 import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
 import { ScribeEvaluator } from './scribescript/types';
 
+// New parser integration (Phase 1: Non-destructive)
+const USE_NEW_PARSER = process.env.SCRIBESCRIPT_USE_NEW_PARSER === 'true';
+
+/**
+ * Try to evaluate text using the new Chevrotain-based parser.
+ * Returns the result if successful, null if new parser is disabled or fails.
+ */
+function tryNewParser(
+  rawText: string,
+  qualities: PlayerQualities,
+  qualityDefs: Record<string, QualityDefinition>,
+  selfContext: { qid: string, state: QualityState } | null,
+  resolutionRoll: number,
+  aliases: Record<string, string> | null,
+  errors?: string[],
+  logger?: TraceLogger,
+  depth: number = 0,
+  locals?: Record<string, number | string>
+): string | null {
+  if (!USE_NEW_PARSER) {
+    return null;
+  }
+
+  try {
+    // Import dynamically to avoid circular dependencies during initial implementation
+    // @ts-ignore - require works in Node.js environment
+    const { evaluateTextWithNewParser } = require('./scribescript/parser/integration');
+    const result = evaluateTextWithNewParser(
+      rawText,
+      qualities,
+      qualityDefs,
+      selfContext,
+      resolutionRoll,
+      aliases,
+      errors,
+      logger,
+      depth,
+      locals
+    );
+
+    // If new parser returned a non-empty result, use it
+    if (result !== '') {
+      if (logger) {
+        logger.trace(`[New Parser] Success for: ${rawText.substring(0, 50)}...`, depth);
+      }
+      return result;
+    }
+  } catch (error) {
+    // Silently fail - fall back to old parser
+    if (logger) {
+      logger.trace(`[New Parser] Failed for: ${rawText.substring(0, 50)}... - ${error}`, depth);
+    }
+    if (errors) {
+      errors.push(`New parser error: ${error}`);
+    }
+  }
+
+  return null;
+}
+
 export type TraceLogger = (message: string, depth: number, type?: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR') => void;
 
 type EvaluationContext = 'LOGIC' | 'TEXT';
@@ -70,9 +130,33 @@ export function evaluateText(
     errors?: string[],
     logger?: TraceLogger,
     depth: number = 0,
-    locals?: Record<string, number | string> 
+    locals?: Record<string, number | string>
 ): string {
     if (!rawText) return '';
+
+    // Try new parser first if feature flag is enabled
+    if (USE_NEW_PARSER) {
+        const newParserResult = tryNewParser(
+            rawText,
+            qualities,
+            qualityDefs,
+            selfContext,
+            resolutionRoll,
+            aliases,
+            errors,
+            logger,
+            depth,
+            locals
+        );
+        if (newParserResult !== null) {
+            return newParserResult;
+        }
+        // If new parser returned null, fall through to old parser
+        if (logger) {
+            logger.trace(`[New Parser] Fallback to old parser for: ${rawText.substring(0, 50)}...`, depth);
+        }
+    }
+
     if (selfContext && depth === 0) {
 
     } else {
