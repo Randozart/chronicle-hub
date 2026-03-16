@@ -98,9 +98,12 @@ export class AstEvaluator {
   private evaluateVariable(node: VariableNode): any {
     const leg = this.context.legacy;
 
-    // Self-reference, property chains, and level-spoof all need quality definitions
-    // from the legacy context. Delegate to resolveVariable for full fidelity.
-    const needsLegacy = node.sigil === '$.' || node.propertyChain.length > 0 || !!node.levelSpoof;
+    // Delegate to resolveVariable for full fidelity whenever legacy context is available.
+    // This is required for: String qualities (stringValue vs level), property chains,
+    // level-spoof, self-reference, and any other quality-type-specific logic.
+    // '@' and '#' sigils without property chains use the fast path (Maps only).
+    const needsLegacy = node.sigil === '$.' || node.propertyChain.length > 0 || !!node.levelSpoof
+      || (!!leg && node.sigil === '$');
     if (needsLegacy && leg) {
       // Reconstruct the variable string that resolveVariable expects,
       // e.g. "$strength", "@enemy", "$.level", "$item[5].name"
