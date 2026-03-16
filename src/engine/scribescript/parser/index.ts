@@ -28,9 +28,12 @@ export function evaluateTextNew(
     legacy: context.legacy,
   });
 
-  // If the entire text is a single brace expression, evaluate directly
+  // If the entire text is a single brace expression with no nested braces, evaluate directly.
+  // If there are nested braces (e.g. {${$role}[3].prop}), fall through to the Russian doll
+  // loop below so innermost blocks are resolved first — matching legacy textProcessor behaviour.
   const trimmed = text.trim();
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+  const innerContent = trimmed.slice(1, -1);
+  if (trimmed.startsWith('{') && trimmed.endsWith('}') && !innerContent.includes('{')) {
     try {
       const ast = parseToAST(trimmed);
       return evaluator.evaluate(ast);
