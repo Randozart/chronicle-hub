@@ -135,9 +135,15 @@ export function evaluateText(
 ): string {
     if (!rawText) return '';
 
-    // Try new parser first if feature flag is enabled
+    // Try new parser first if feature flag is enabled.
+    // Falls back to legacy if the new parser throws (e.g. unquoted prose in text_variants,
+    // grammar constructs not yet supported). This makes the new parser non-destructive.
     if (process.env.SCRIBESCRIPT_USE_NEW_PARSER === 'true') {
-        return evaluateTextWithNewParser(rawText, qualities, qualityDefs, selfContext, resolutionRoll, aliases, errors, logger, depth, locals);
+        try {
+            return evaluateTextWithNewParser(rawText, qualities, qualityDefs, selfContext, resolutionRoll, aliases, errors, logger, depth, locals);
+        } catch {
+            // Fall through to legacy parser
+        }
     }
 
     if (selfContext && depth === 0) {

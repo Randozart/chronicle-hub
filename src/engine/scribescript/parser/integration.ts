@@ -143,18 +143,10 @@ export function evaluateTextWithNewParser(
 
     return String(result);
   } catch (error) {
-    const errorMsg = `New parser error: ${error}`;
-    console.warn(errorMsg);
-
-    if (errors) {
-      errors.push(errorMsg);
-    }
-
-    if (logger) {
-      logger(`New parser failed: ${error}`, depth, 'WARN');
-    }
-
-    return '';
+    // Re-throw so the caller (textProcessor.ts) can fall back to the legacy parser.
+    // This keeps the new parser as a non-destructive overlay: it only takes effect
+    // when it can fully handle the expression.
+    throw error;
   }
 }
 
