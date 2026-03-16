@@ -119,18 +119,18 @@ export const allTokens = [
   RBracket,
   LParen,
   RParen,
-  // Operators
+  // Operators (longer patterns first)
+  DoubleEquals,
+  NotEquals,
+  GreaterEquals,
+  LessEquals,
+  Equals,
+  GreaterThan,
+  LessThan,
   Plus,
   Minus,
   Multiply,
   Divide,
-  Equals,
-  DoubleEquals,
-  NotEquals,
-  GreaterThan,
-  LessThan,
-  GreaterEquals,
-  LessEquals,
   LogicalAnd,
   LogicalOr,
   LogicalNot,
@@ -251,10 +251,10 @@ export class ScribeScriptParser extends CstParser {
     });
 
     this.RULE('unary', () => {
-      this.OR([
+      this.OR1([
         {
           ALT: () => {
-            this.OR([
+            this.OR2([
               { ALT: () => this.CONSUME(LogicalNot) },
               { ALT: () => this.CONSUME(Minus) },
             ]);
@@ -325,13 +325,13 @@ export class ScribeScriptParser extends CstParser {
     this.RULE('conditional', () => {
       this.SUBRULE(this.expression);
       this.CONSUME(Colon);
-      this.SUBRULE(this.expression);
+      this.SUBRULE1(this.expression);
     });
 
     this.RULE('challengeExpression', () => {
       this.SUBRULE(this.expression);
       this.CONSUME(ChallengeOp);
-      this.SUBRULE(this.expression);
+      this.SUBRULE1(this.expression);
     });
 
     // Very important: call this after all rules have been defined
