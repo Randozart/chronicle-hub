@@ -3,6 +3,7 @@
 import { safeEval } from '@/utils/safeEval';
 import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
 import { ScribeEvaluator } from './scribescript/types';
+import { evaluateTextWithNewParser } from './scribescript/parser/integration';
 
 // New parser integration (Phase 1: Non-destructive)
 const USE_NEW_PARSER = process.env.SCRIBESCRIPT_USE_NEW_PARSER === 'true';
@@ -135,26 +136,8 @@ export function evaluateText(
     if (!rawText) return '';
 
     // Try new parser first if feature flag is enabled
-    if (USE_NEW_PARSER) {
-        const newParserResult = tryNewParser(
-            rawText,
-            qualities,
-            qualityDefs,
-            selfContext,
-            resolutionRoll,
-            aliases,
-            errors,
-            logger,
-            depth,
-            locals
-        );
-        if (newParserResult !== null) {
-            return newParserResult;
-        }
-        // If new parser returned null, fall through to old parser
-        if (logger) {
-            logger.trace(`[New Parser] Fallback to old parser for: ${rawText.substring(0, 50)}...`, depth);
-        }
+    if (process.env.SCRIBESCRIPT_USE_NEW_PARSER === 'true') {
+        return evaluateTextWithNewParser(rawText, qualities, qualityDefs, selfContext, resolutionRoll, aliases, errors, logger, depth, locals);
     }
 
     if (selfContext && depth === 0) {
