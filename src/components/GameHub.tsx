@@ -34,6 +34,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { DeckState, getDeckStates } from '@/engine/deckLogic';
 import AudioSettingsModal from './AudioSettingsModal';
 import { VolumeIcon, MuteIcon } from './icons/Icons';
+import { evaluateMarketId } from '@/utils/propertyHelpers';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -631,8 +632,13 @@ export default function GameHub(props: GameHubProps) {
         };
     }
 
-    const locationMarket = location?.marketId;
-    const regionMarket = (location?.regionId && props.regions[location.regionId]) ? props.regions[location.regionId].marketId : null;
+    const locationMarket = evaluateMarketId(location?.marketId, renderEngine);
+    const regionMarket = evaluateMarketId(
+        location?.regionId && props.regions[location.regionId]
+            ? props.regions[location.regionId].marketId
+            : undefined,
+        renderEngine
+    );
     const activeMarketId = locationMarket || regionMarket || undefined;
     
     const actionQid = props.settings.actionId.replace('$', '');

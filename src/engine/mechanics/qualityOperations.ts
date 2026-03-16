@@ -69,9 +69,11 @@ export function changeQuality(
                 else if (op === '-=') qState.changePoints -= numValue;
                 
                 updatePyramidalLevel(ctx, qState, def);
-            } else if (op === '=') { 
-                qState.level = numValue; 
-                qState.changePoints = 0; 
+            } else if (op === '=') {
+                qState.level = numValue;
+                qState.changePoints = 0;
+                // Ensure Pyramidal level doesn't go negative when set directly
+                if (qState.level < 0) qState.level = 0;
             }
         } else {
             if (isIncremental) {
@@ -111,7 +113,17 @@ export function changeQuality(
             }
         }
         qState.level = Math.floor(qState.level);
-        if ((def.type === QualityType.Counter || isItem) && qState.level < 0) qState.level = 0;
+        // Prevent all numeric quality types from going negative
+        const isNumericType = def.type === QualityType.Counter ||
+                             def.type === QualityType.Tracker ||
+                             def.type === QualityType.Pyramidal ||
+                             isItem;
+        if (isNumericType && qState.level < 0) qState.level = 0;
+
+        // Also ensure Pyramidal changePoints don't go negative
+        if (qState.type === QualityType.Pyramidal && qState.changePoints < 0) {
+            qState.changePoints = 0;
+        }
     }
 
     const context = { qid: effectiveQid, state: qState };
@@ -230,9 +242,11 @@ export function updatePyramidalLevel(ctx: EngineContext, qState: any, def: Quali
     }
     while (qState.changePoints < 0 && qState.level > 0) {
         const prevCp = Math.min(qState.level, cpCap);
-        qState.level--; 
+        qState.level--;
         qState.changePoints += prevCp;
     }
+    // Final safety check to ensure level doesn't go negative
+    if (qState.level < 0) qState.level = 0;
 }
 
 function pruneSources(qState: any, amountSpent: number, totalLevelBefore: number) {

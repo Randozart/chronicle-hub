@@ -12,8 +12,12 @@ export const checkDeckEligibility = (
 ): Record<string, boolean> => {
     const eligibility: Record<string, boolean> = {};
     const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    if (character.dynamicQualities) {
+        engine.dynamicQualities = { ...character.dynamicQualities };
+        Object.assign(engine.worldContent.qualities, character.dynamicQualities);
+    }
     const deckOps: Record<string, Opportunity[]> = {};
-    
+
     allContent.forEach(c => {
         if ('deck' in c && c.deck) {
             if (!deckOps[c.deck]) deckOps[c.deck] = [];
@@ -22,8 +26,36 @@ export const checkDeckEligibility = (
     });
 
     for (const deckId in gameData.decks) {
-        const hand = character.opportunityHands?.[deckId] || [];
-        if (hand.length > 0) { eligibility[deckId] = true; continue; }
+        let hand = character.opportunityHands?.[deckId] || [];
+
+        // Filter out invalid transient cards from hand for accurate counting
+        const validHand = hand.filter(cardId => {
+            const opportunity = deckOps[deckId]?.find(op => op.id === cardId);
+            if (!opportunity) {
+                // Card definition not found, remove it
+                return false;
+            }
+
+            // Check if card has keep_if_invalid flag
+            if (opportunity.keep_if_invalid) {
+                // Keep the card even if invalid
+                return true;
+            }
+
+            // Check draw_condition for transient cards
+            if (opportunity.draw_condition) {
+                const isValid = engine.evaluateCondition(opportunity.draw_condition);
+                if (!isValid) {
+                    // Transient card with failed draw_condition, remove it
+                    return false;
+                }
+            }
+
+            // Card is valid or has no draw_condition
+            return true;
+        });
+
+        if (validHand.length > 0) { eligibility[deckId] = true; continue; }
 
         const deckDef = gameData.decks[deckId];
         const deckSizeStr = engine.evaluateText(`{${deckDef.deck_size || '0'}}`);
@@ -34,7 +66,7 @@ export const checkDeckEligibility = (
 
         const ops = deckOps[deckId] || [];
         eligibility[deckId] = ops.some(op => {
-             if (hand.includes(op.id)) return false; 
+             if (validHand.includes(op.id)) return false;
              if (op.draw_condition) return engine.evaluateCondition(op.draw_condition);
              return true;
         });
@@ -156,13 +188,16 @@ export const drawCards = async (
     const handSize = parseInt(handSizeStr, 10) || 3;
 
     if (!character.opportunityHands) character.opportunityHands = {};
+
+    // Validate hand before checking size to remove invalid transient cards
+    const allContent = await getStorylets(character.storyId);
+    character = validateOpportunityHand(character, deckId, gameData, allContent);
+
     const currentHand = character.opportunityHands[deckId] || [];
 
     if (currentHand.length >= handSize) {
         throw new Error("Hand is full.");
     }
-
-    const allContent = await getStorylets(character.storyId);
     
     const candidates = allContent.filter((op: any) => {
         if (!('deck' in op) || op.deck !== deckId) return false;
@@ -199,6 +234,67 @@ export const drawCards = async (
     character.opportunityHands[deckId] = [...currentHand, drawnCard.id];
 
     return { character, drawnCard };
+};
+
+export const validateOpportunityHand = (
+    character: CharacterDocument,
+    deckId: string,
+    gameData: WorldConfig,
+    allContent: (Storylet | Opportunity)[]
+): CharacterDocument => {
+    if (!character.opportunityHands || !character.opportunityHands[deckId]) {
+        return character;
+    }
+
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    if (character.dynamicQualities) {
+        engine.dynamicQualities = { ...character.dynamicQualities };
+        Object.assign(engine.worldContent.qualities, character.dynamicQualities);
+    }
+    const currentHand = character.opportunityHands[deckId];
+
+    // Get all opportunity definitions for this deck
+    const deckOpportunities = allContent.filter((op): op is Opportunity =>
+        'deck' in op && op.deck === deckId
+    );
+
+    // Create a map of opportunity IDs to their definitions for quick lookup
+    const opportunityMap = new Map<string, Opportunity>();
+    deckOpportunities.forEach(op => opportunityMap.set(op.id, op as Opportunity));
+
+    // Filter out invalid transient cards
+    const validHand = currentHand.filter(cardId => {
+        const opportunity = opportunityMap.get(cardId);
+        if (!opportunity) {
+            // Card definition not found, remove it
+            return false;
+        }
+
+        // Check if card has keep_if_invalid flag
+        if (opportunity.keep_if_invalid) {
+            // Keep the card even if invalid
+            return true;
+        }
+
+        // Check draw_condition for transient cards
+        if (opportunity.draw_condition) {
+            const isValid = engine.evaluateCondition(opportunity.draw_condition);
+            if (!isValid) {
+                // Transient card with failed draw_condition, remove it
+                return false;
+            }
+        }
+
+        // Card is valid or has no draw_condition
+        return true;
+    });
+
+    // Update character if hand changed
+    if (validHand.length !== currentHand.length) {
+        character.opportunityHands[deckId] = validHand;
+    }
+
+    return character;
 };
 
 export const maybeAutoPlayCard = (

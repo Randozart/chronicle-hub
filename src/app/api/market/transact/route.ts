@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getCharacter, saveCharacterState } from '@/engine/characterService';
-import { getContent } from '@/engine/contentCache'; 
+import { getContent } from '@/engine/contentCache';
 import { GameEngine } from '@/engine/gameEngine';
 import { getWorldState } from '@/engine/worldService';
 import { processAutoEquip } from '@/engine/resolutionService';
+import { evaluateMarketId } from '@/utils/propertyHelpers';
 
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -28,10 +29,16 @@ export async function POST(request: NextRequest) {
     
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
+    // Create engine for evaluating market IDs
+    const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
+
     const currentLocation = gameData.locations[character.currentLocationId];
-    const locationMarket = currentLocation?.marketId;
-    const regionMarket = currentLocation?.regionId ? gameData.regions[currentLocation.regionId]?.marketId : null;
-    
+    const locationMarket = evaluateMarketId(currentLocation?.marketId, engine);
+    const regionMarket = evaluateMarketId(
+        currentLocation?.regionId ? gameData.regions[currentLocation.regionId]?.marketId : undefined,
+        engine
+    );
+
     if (locationMarket !== marketId && regionMarket !== marketId) {
         return NextResponse.json({ error: 'You are not at this market.' }, { status: 403 });
     }
@@ -45,8 +52,6 @@ export async function POST(request: NextRequest) {
     const listing = stall.listings.find(l => l.id === listingId);
     if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
-    const engine = new GameEngine(character.qualities, gameData, character.equipment, worldState);
-    
     if (listing.visible_if && !engine.evaluateCondition(listing.visible_if)) {
         return NextResponse.json({ error: 'Item not available.' }, { status: 403 });
     }
