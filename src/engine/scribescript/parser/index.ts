@@ -34,32 +34,24 @@ export function evaluateTextNew(
   const trimmed = text.trim();
   const innerContent = trimmed.slice(1, -1);
   if (trimmed.startsWith('{') && trimmed.endsWith('}') && !innerContent.includes('{')) {
-    try {
-      const ast = parseToAST(trimmed);
-      return evaluator.evaluate(ast);
-    } catch (error) {
-      console.error('ScribeScript parser error:', error);
-      return text;
-    }
+    // Let parse/eval errors propagate — the caller (evaluateTextWithNewParser) re-throws
+    // so textProcessor.ts can fall back to the legacy parser.
+    const ast = parseToAST(trimmed);
+    return evaluator.evaluate(ast);
   }
 
-  // Template mode: iteratively evaluate innermost {..} blocks and substitute
-  // Mirrors textProcessor.ts evaluateRecursive behaviour
+  // Template mode: iteratively evaluate innermost {..} blocks and substitute.
+  // Errors are propagated so the legacy fallback in textProcessor.ts triggers for
+  // any expression the new parser cannot handle (e.g. {// comments}, unquoted prose).
   let result = text;
   for (let i = 0; i < 500; i++) {
     const match = result.match(/\{([^{}]*?)\}/);
     if (!match) break;
 
     const blockWithBraces = match[0];
-
-    try {
-      const ast = parseToAST(blockWithBraces);
-      const blockResult = evaluator.evaluate(ast);
-      result = result.replace(blockWithBraces, () => String(blockResult ?? ''));
-    } catch {
-      // Leave unresolvable blocks as empty string
-      result = result.replace(blockWithBraces, () => '');
-    }
+    const ast = parseToAST(blockWithBraces);
+    const blockResult = evaluator.evaluate(ast);
+    result = result.replace(blockWithBraces, () => String(blockResult ?? ''));
   }
 
   return result;
