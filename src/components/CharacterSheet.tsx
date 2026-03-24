@@ -132,7 +132,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                         }
                     }
                     
-                    const selfContext = { qid: q.id, state: { ...mergedState, level: q.effectiveLevel } as any };
+                    const selfContext = { qid: q.id, state: { ...q, level: q.effectiveLevel } as any };
                     const displayName = engine.evaluateText(q.name, selfContext);
                     const displayDesc = q.description ? engine.evaluateText(q.description, selfContext) : "";
 
