@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getContent, getAutofireStorylets } from '@/engine/contentCache'; 
-import { getCharacter, saveCharacterState, regenerateActions, processScheduledUpdates, checkLivingStories } from '@/engine/characterService'; 
+import { getCharacter, saveCharacterState, regenerateActions, processScheduledUpdates, checkLivingStories, enforceEquipmentVisibility } from '@/engine/characterService';
 import { GameEngine } from '@/engine/gameEngine';
 import { getEvent, getWorldState } from '@/engine/worldService'; 
 import { applyWorldUpdates, processAutoEquip } from '@/engine/resolutionService';
@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
         processScheduledUpdates(character, engineResult.scheduledUpdates);
         await applyWorldUpdates(storyId, engineResult.qualityChanges);
         processAutoEquip(character, engineResult.qualityChanges, gameData);
+        enforceEquipmentVisibility(character, gameData);
 
         const staticTags = option.tags || [];
         let dynamicTags: string[] = [];

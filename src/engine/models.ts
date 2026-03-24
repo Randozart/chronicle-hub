@@ -344,11 +344,13 @@ export interface ImageDefinition extends VersionedEntity{
     focus?: { x: number; y: number }; 
     thumbZoom?: number;
 }
-export interface CategoryDefinition extends VersionedEntity{ 
-    id: string; 
-    name?: string; 
-    color?: string; 
-    description?: string; 
+export interface CategoryDefinition extends VersionedEntity{
+    id: string;
+    name?: string;
+    color?: string;
+    description?: string;
+    visible_if?: string;
+    unlock_if?: string;
 }
 export interface ShopListing { 
     id: string; 

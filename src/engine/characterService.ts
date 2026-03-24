@@ -66,6 +66,35 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
     return character;
 };
 
+export function enforceEquipmentVisibility(character: CharacterDocument, gameData: WorldConfig): CharacterDocument {
+    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    const equipCats = gameData.settings?.equipCategories || [];
+
+    for (const catRaw of equipCats) {
+        const cat = catRaw.trim();
+        const infiniteMatch = cat.match(/^(.+?)\s*\*\s*$/);
+        const countedMatch  = cat.match(/^(.+?)\s*\*\s*(\d+)$/);
+        const baseName = infiniteMatch ? infiniteMatch[1]
+                       : countedMatch  ? countedMatch[1]
+                       : cat;
+
+        const catDef = gameData.categories?.[baseName];
+        if (!catDef) continue;
+
+        const isVisible  = catDef.visible_if  ? engine.evaluateCondition(catDef.visible_if)  : true;
+        const isUnlocked = catDef.unlock_if   ? engine.evaluateCondition(catDef.unlock_if)   : true;
+
+        if (!isVisible || !isUnlocked) {
+            for (const slotKey of Object.keys(character.equipment)) {
+                if (slotKey === baseName || slotKey.startsWith(baseName + '_')) {
+                    character.equipment[slotKey] = null;
+                }
+            }
+        }
+    }
+    return character;
+}
+
 export const processScheduledUpdates = (character: CharacterDocument, instructions: any[]) => {
     if (!instructions || instructions.length === 0) return;
 

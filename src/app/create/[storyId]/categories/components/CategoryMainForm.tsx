@@ -183,6 +183,32 @@ export default function CategoryMainForm({
                                         <code>{form.id}</code> (1 Slot), <code>{form.id}*2</code> (2 Slots), <code>{form.id}*</code> (Infinite).
                                     </p>
                                 </div>
+                                <div style={{ marginTop: '1rem' }}>
+                                    <SmartArea
+                                        label="Visible When (ScribeScript)"
+                                        value={form.visible_if || ''}
+                                        onChange={v => handleChange('visible_if', v)}
+                                        storyId={storyId}
+                                        minHeight="60px"
+                                        placeholder="e.g. $main_hand_weapon.twohanded != 1"
+                                    />
+                                    <p className="special-desc" style={{ marginTop: '0.5rem' }}>
+                                        Slot is <strong>shown</strong> when true. Leave blank to always show. When hidden, equipped items are automatically removed.
+                                    </p>
+                                </div>
+                                <div style={{ marginTop: '1rem' }}>
+                                    <SmartArea
+                                        label="Unlocked When (ScribeScript)"
+                                        value={form.unlock_if || ''}
+                                        onChange={v => handleChange('unlock_if', v)}
+                                        storyId={storyId}
+                                        minHeight="60px"
+                                        placeholder="e.g. $strength >= 10"
+                                    />
+                                    <p className="special-desc" style={{ marginTop: '0.5rem' }}>
+                                        Slot is <strong>interactable</strong> when true (visible but locked otherwise). Equipped items are also removed when locked.
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </div>

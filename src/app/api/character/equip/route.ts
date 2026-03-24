@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from "@/lib/auth";
-import { getCharacter, saveCharacterState } from '@/engine/characterService';
+import { getCharacter, saveCharacterState, enforceEquipmentVisibility } from '@/engine/characterService';
 import { getContent, getAutofireStorylets } from '@/engine/contentCache';
 import { GameEngine } from '@/engine/gameEngine';
 
@@ -90,7 +90,9 @@ export async function POST(request: NextRequest) {
 
         character.equipment[slot] = itemId;
     }
-    
+
+    enforceEquipmentVisibility(character, gameData);
+
     // Try to find any autofires that are pending, since some items can redirect the character to a storylet. 
     const pendingAutofires = await getAutofireStorylets(storyId);
     

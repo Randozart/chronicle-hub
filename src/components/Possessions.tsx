@@ -14,7 +14,8 @@ interface PossessionsProps {
     equipment: Record<string, string | null>;
     qualityDefs: Record<string, QualityDefinition>;
     equipCategories: string[];
-    onUpdateCharacter: (character: any) => void; 
+    lockedEquipCategories?: string[];
+    onUpdateCharacter: (character: any) => void;
     onUseItem: (eventId: string) => void;
     onRequestTabChange: (tab: 'story') => void;
     storyId: string;
@@ -288,19 +289,20 @@ function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: 
     );
 }
 
-export default function Possessions({ 
-    qualities, 
-    equipment, 
-    qualityDefs, 
-    equipCategories, 
-    onUpdateCharacter, 
-    onUseItem, 
-    onRequestTabChange, 
-    storyId, 
-    imageLibrary, 
+export default function Possessions({
+    qualities,
+    equipment,
+    qualityDefs,
+    equipCategories,
+    lockedEquipCategories,
+    onUpdateCharacter,
+    onUseItem,
+    onRequestTabChange,
+    storyId,
+    imageLibrary,
     settings,
-    engine, 
-    showHidden, 
+    engine,
+    showHidden,
     onAutofire,
     isGuestMode,
     character
@@ -485,15 +487,16 @@ export default function Possessions({
                     <div className={`inventory-grid ${isList ? 'inv-mode-list' : ''}`} style={styleVariables}>
                         {expandedSlots.map(slotObj => {
                             const slotId = slotObj.id;
-                            
+                            const isSlotLocked = (lockedEquipCategories || []).includes(slotObj.category);
+
                             // Visual Fallback: If this is slot 1 (base ID), checks if there's an item in the legacy `_1` slot
                             // This ensures items don't disappear if data migration wasn't perfect.
-                            const effectiveEquipId = equipment[slotId] 
+                            const effectiveEquipId = equipment[slotId]
                                 || (slotId === slotObj.category ? equipment[`${slotId}_1`] : undefined);
-                            
+
                             // Determine which key to actually target for unequip
-                            const actualSlotKey = (effectiveEquipId && !equipment[slotId] && slotId === slotObj.category) 
-                                ? `${slotId}_1` 
+                            const actualSlotKey = (effectiveEquipId && !equipment[slotId] && slotId === slotObj.category)
+                                ? `${slotId}_1`
                                 : slotId;
 
                             let equippedItem = null;
@@ -503,18 +506,18 @@ export default function Possessions({
 
                             if (equippedItem) {
                                 return (
-                                    <ItemDisplay 
+                                    <ItemDisplay
                                         key={slotId}
                                         item={equippedItem}
                                         isEquipped={true}
                                         slotName={slotObj.label}
-                                        onEquipToggle={() => handleEquipToggle(actualSlotKey, null)}
+                                        onEquipToggle={isSlotLocked ? undefined : () => handleEquipToggle(actualSlotKey, null)}
                                         onUse={handleUse}
-                                        isLoading={isLoading}
+                                        isLoading={isLoading || isSlotLocked}
                                         qualityDefs={qualityDefs}
                                         qualities={qualities}
                                         imageLibrary={imageLibrary}
-                                        styleMode={invStyle} 
+                                        styleMode={invStyle}
                                         shapeConfig={invShape}
                                         portraitMode={portraitMode}
                                         engine={engine}
@@ -522,9 +525,9 @@ export default function Possessions({
                                 );
                             } else {
                                 return (
-                                    <div key={slotId} className="inventory-item empty" style={{ display: 'flex', flexDirection: isList ? 'row' : 'column', alignItems: 'center', justifyContent: isList ? 'flex-start' : 'center', padding: '1rem', background: 'rgba(0,0,0,0.1)', border: '1px dashed var(--border-light)', gap: '0.5rem', minHeight: isList ? 'auto' : '120px' }}>
+                                    <div key={slotId} className="inventory-item empty" style={{ display: 'flex', flexDirection: isList ? 'row' : 'column', alignItems: 'center', justifyContent: isList ? 'flex-start' : 'center', padding: '1rem', background: 'rgba(0,0,0,0.1)', border: '1px dashed var(--border-light)', gap: '0.5rem', minHeight: isList ? 'auto' : '120px', opacity: isSlotLocked ? 0.5 : 1, cursor: isSlotLocked ? 'not-allowed' : 'default' }}>
                                         <span style={{ textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><FormattedText text={slotObj.label} /></span>
-                                        <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Empty</span>
+                                        <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isSlotLocked ? 'Locked' : 'Empty'}</span>
                                     </div>
                                 );
                             }
