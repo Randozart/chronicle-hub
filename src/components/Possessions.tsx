@@ -1,6 +1,6 @@
 'use client';
 
-import { CharacterDocument, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
+import { CategoryDefinition, CharacterDocument, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
@@ -15,6 +15,7 @@ interface PossessionsProps {
     qualityDefs: Record<string, QualityDefinition>;
     equipCategories: string[];
     lockedEquipCategories?: string[];
+    categories?: Record<string, CategoryDefinition>;
     onUpdateCharacter: (character: any) => void;
     onUseItem: (eventId: string) => void;
     onRequestTabChange: (tab: 'story') => void;
@@ -311,6 +312,7 @@ export default function Possessions({
     qualityDefs,
     equipCategories,
     lockedEquipCategories,
+    categories,
     onUpdateCharacter,
     onUseItem,
     onRequestTabChange,
@@ -389,24 +391,26 @@ export default function Possessions({
                 // Render 1 to max + 1
                 for (let i = 1; i <= max + 1; i++) {
                     const id = i === 1 ? cat : `${cat}_${i}`;
-                    slotMap.set(id, { id, label: `${cat} ${i}`, category: cat, order: globalOrder++ });
+                    const catLabel = categories?.[cat]?.name || cat;
+                    slotMap.set(id, { id, label: `${catLabel} ${i}`, category: cat, order: globalOrder++ });
                 }
 
             } else if (count > 1) {
                 // Render 1 to count
                 for (let i = 1; i <= count; i++) {
                     const id = i === 1 ? cat : `${cat}_${i}`;
-                    slotMap.set(id, { id, label: `${cat} ${i}`, category: cat, order: globalOrder++ });
+                    const catLabel = categories?.[cat]?.name || cat;
+                    slotMap.set(id, { id, label: `${catLabel} ${i}`, category: cat, order: globalOrder++ });
                 }
             } else {
                 // Single slot
-                slotMap.set(cat, { id: cat, label: cat, category: cat, order: globalOrder++ });
+                slotMap.set(cat, { id: cat, label: categories?.[cat]?.name || cat, category: cat, order: globalOrder++ });
             }
         });
 
         // Convert map back to array and sort by original definition order
         return Array.from(slotMap.values()).sort((a, b) => a.order - b.order);
-    }, [equipCategories, equipment]);
+    }, [equipCategories, equipment, categories]);
 
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
@@ -568,12 +572,13 @@ export default function Possessions({
                     <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--accent-highlight)', paddingLeft: '0.5rem' }}><FormattedText text={group} /></h3>
                     
                     <div className={`inventory-grid ${isList ? 'inv-mode-list' : ''}`} style={styleVariables}>
-                        {grouped[group].map((item: any) => (
-                            <ItemDisplay 
+                        {grouped[group].map((item: any) => {
+                            const isItemCategoryLocked = (lockedEquipCategories || []).includes(item.category || '');
+                            return (<ItemDisplay
                                 key={item.id}
                                 item={item}
                                 isEquipped={false}
-                                onEquipToggle={() => handleEquipToggle(item.category || '', item.id)}
+                                onEquipToggle={isItemCategoryLocked ? undefined : () => handleEquipToggle(item.category || '', item.id)}
                                 onUse={handleUse}
                                 isLoading={isLoading}
                                 qualityDefs={qualityDefs}
@@ -583,8 +588,7 @@ export default function Possessions({
                                 shapeConfig={invShape}
                                 portraitMode={portraitMode}
                                 engine={engine}
-                            />
-                        ))}
+                            />);})}
                     </div>
                 </div>
             ))}
