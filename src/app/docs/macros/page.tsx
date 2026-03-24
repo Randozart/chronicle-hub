@@ -556,6 +556,32 @@ export default function MacrosPage() {
     </tbody>
 </table>
 </section>
+
+            <section id="equipment">
+                <h2 className="docs-h2">7. Equipment Macros</h2>
+                <p className="docs-p">
+                    These macros allow storylet effects to directly manipulate a character&apos;s equipped items.
+                </p>
+
+                <h3 className="docs-h3"><code>%unequip</code></h3>
+                <p className="docs-p"><strong>Removes any item equipped in the specified slot.</strong> Also clears all numbered variants of that slot (e.g. unequipping <code>ring</code> also clears <code>ring_2</code>, <code>ring_3</code>, etc.).</p>
+                <div className="docs-syntax-box">
+                    <code className="docs-code">{`{%unequip[ SLOT_NAME ]}`}</code>
+                </div>
+                <div className="docs-pre">
+                    <span style={{color:'var(--text-muted)'}}>// Remove whatever is equipped in the main_hand slot.</span>
+                    <br/>
+                    <code className="docs-code">{`{%unequip[main_hand]}`}</code>
+                    <br/><br/>
+                    <span style={{color:'var(--text-muted)'}}>// Clear all ring slots (ring, ring_2, ring_3 ...).</span>
+                    <br/>
+                    <code className="docs-code">{`{%unequip[ring]}`}</code>
+                </div>
+                <p className="docs-p">
+                    The slot name can be a ScribeScript expression: <code>{`{%unequip[$target_slot]}`}</code>.
+                    The item is <strong>not</strong> removed from the character&apos;s inventory — only unequipped from the slot.
+                </p>
+            </section>
         </div>
     );
 }

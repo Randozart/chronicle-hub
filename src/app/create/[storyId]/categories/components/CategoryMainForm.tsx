@@ -167,48 +167,50 @@ export default function CategoryMainForm({
                             />
                             
                             {currentEquipConfig && (
-                                <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
-                                    <label className="form-label">Slot Configuration</label>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <input 
-                                            value={equipConfigString} 
-                                            onChange={e => setEquipConfigString(e.target.value)} 
-                                            onBlur={handleEquipStringBlur}
-                                            className="form-input" 
-                                            placeholder={form.id}
-                                        />
-                                        <button className="save-btn" onClick={handleEquipStringBlur} style={{ padding: '0 1rem', width: 'auto' }}>Update</button>
+                                <>
+                                    <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
+                                        <label className="form-label">Slot Configuration</label>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <input
+                                                value={equipConfigString}
+                                                onChange={e => setEquipConfigString(e.target.value)}
+                                                onBlur={handleEquipStringBlur}
+                                                className="form-input"
+                                                placeholder={form.id}
+                                            />
+                                            <button className="save-btn" onClick={handleEquipStringBlur} style={{ padding: '0 1rem', width: 'auto' }}>Update</button>
+                                        </div>
+                                        <p className="special-desc" style={{ marginTop: '0.5rem' }}>
+                                            <code>{form.id}</code> (1 Slot), <code>{form.id}*2</code> (2 Slots), <code>{form.id}*</code> (Infinite).
+                                        </p>
                                     </div>
-                                    <p className="special-desc" style={{ marginTop: '0.5rem' }}>
-                                        <code>{form.id}</code> (1 Slot), <code>{form.id}*2</code> (2 Slots), <code>{form.id}*</code> (Infinite).
-                                    </p>
-                                </div>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <SmartArea
-                                        label="Visible When (ScribeScript)"
-                                        value={form.visible_if || ''}
-                                        onChange={v => handleChange('visible_if', v)}
-                                        storyId={storyId}
-                                        minHeight="60px"
-                                        placeholder="e.g. $main_hand_weapon.twohanded != 1"
-                                    />
-                                    <p className="special-desc" style={{ marginTop: '0.5rem' }}>
-                                        Slot is <strong>shown</strong> when true. Leave blank to always show. When hidden, equipped items are automatically removed.
-                                    </p>
-                                </div>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <SmartArea
-                                        label="Unlocked When (ScribeScript)"
-                                        value={form.unlock_if || ''}
-                                        onChange={v => handleChange('unlock_if', v)}
-                                        storyId={storyId}
-                                        minHeight="60px"
-                                        placeholder="e.g. $strength >= 10"
-                                    />
-                                    <p className="special-desc" style={{ marginTop: '0.5rem' }}>
-                                        Slot is <strong>interactable</strong> when true (visible but locked otherwise). Equipped items are also removed when locked.
-                                    </p>
-                                </div>
+                                    <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
+                                        <SmartArea
+                                            label="Visible When (ScribeScript)"
+                                            value={form.visible_if || ''}
+                                            onChange={v => handleChange('visible_if', v)}
+                                            storyId={storyId}
+                                            minHeight="60px"
+                                            placeholder="e.g. $main_hand_weapon.twohanded != 1"
+                                        />
+                                        <p className="special-desc" style={{ marginTop: '0.5rem' }}>
+                                            Slot is <strong>shown</strong> when true. Leave blank to always show. When hidden, equipped items are automatically removed.
+                                        </p>
+                                    </div>
+                                    <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
+                                        <SmartArea
+                                            label="Unlocked When (ScribeScript)"
+                                            value={form.unlock_if || ''}
+                                            onChange={v => handleChange('unlock_if', v)}
+                                            storyId={storyId}
+                                            minHeight="60px"
+                                            placeholder="e.g. $strength >= 10"
+                                        />
+                                        <p className="special-desc" style={{ marginTop: '0.5rem' }}>
+                                            Slot is <strong>interactable</strong> when true (visible but locked otherwise). Equipped items are also removed when locked.
+                                        </p>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>

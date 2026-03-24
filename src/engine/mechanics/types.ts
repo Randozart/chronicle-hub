@@ -4,6 +4,7 @@ export interface EngineContext {
     worldQualities: PlayerQualities;
     worldContent: WorldConfig;
     dynamicQualities: Record<string, QualityDefinition>;
+    equipment: Record<string, string | null>;
 
     changes: QualityChangeInfo[];
 scheduledUpdates: any[];
