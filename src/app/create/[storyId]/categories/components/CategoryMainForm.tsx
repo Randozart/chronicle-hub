@@ -186,29 +186,29 @@ export default function CategoryMainForm({
                                     </div>
                                     <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
                                         <SmartArea
-                                            label="Visible When (ScribeScript)"
+                                            label="Visible When"
+                                            subLabel="Slot is shown when true. Leave blank to always show. When hidden, equipped items are automatically removed."
                                             value={form.visible_if || ''}
                                             onChange={v => handleChange('visible_if', v)}
                                             storyId={storyId}
                                             minHeight="60px"
+                                            mode="condition"
+                                            entityType="quality"
                                             placeholder="e.g. $main_hand_weapon.twohanded != 1"
                                         />
-                                        <p className="special-desc" style={{ marginTop: '0.5rem' }}>
-                                            Slot is <strong>shown</strong> when true. Leave blank to always show. When hidden, equipped items are automatically removed.
-                                        </p>
                                     </div>
                                     <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
                                         <SmartArea
-                                            label="Unlocked When (ScribeScript)"
+                                            label="Unlocked When"
+                                            subLabel="Slot is interactable when true (visible but locked otherwise). Equipped items are also removed when locked."
                                             value={form.unlock_if || ''}
                                             onChange={v => handleChange('unlock_if', v)}
                                             storyId={storyId}
                                             minHeight="60px"
+                                            mode="condition"
+                                            entityType="quality"
                                             placeholder="e.g. $strength >= 10"
                                         />
-                                        <p className="special-desc" style={{ marginTop: '0.5rem' }}>
-                                            Slot is <strong>interactable</strong> when true (visible but locked otherwise). Equipped items are also removed when locked.
-                                        </p>
                                     </div>
                                 </>
                             )}

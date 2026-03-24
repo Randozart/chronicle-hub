@@ -30,41 +30,54 @@ interface PossessionsProps {
 
 const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngine }) => {
     if (!bonusStr) return null;
-    
+
     const evaluatedBonus = engine.evaluateText(bonusStr);
     const parts = evaluatedBonus.split(',').map(p => p.trim()).filter(Boolean);
-    
+
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
             {parts.map((part, idx) => {
-                // Regex matches "$quality + 1", "quality + 1", "$quality -2", "quality- 2", etc.
-                // Makes the sign and number optional for flexibility.
-                const match = part.match(/^\$?(.+?)\s*([+\-])\s*(\d+)$/);
+                // Match all assignment operators: =, +=, -=, +, -, ++, --
+                const match = part.match(/^\$([a-zA-Z0-9_]+)\s*(\+\+|--|[\+\-]?=|[\+\-])\s*(\d+)?$/);
                 let content = part;
-                let color = 'inherit';
-                
-                if (match) {
-                    const [, nameRaw, op, val] = match;
-                    let displayName = nameRaw;
+                let color = 'var(--success-color)';
 
-                    const def = engine.worldContent.qualities[nameRaw];
-                    
-                    if (def && def.name) {
-                        displayName = engine.evaluateText(def.name);
-                    } 
-                    
-                    content = `${displayName} ${op}${val}`;
-                    color = op === '+' ? 'var(--success-color)' : 'var(--danger-color)';
+                if (match) {
+                    const [, qid, op, valStr] = match;
+                    const def = engine.worldContent.qualities[qid];
+                    const val = valStr !== undefined ? parseInt(valStr, 10) : 1;
+                    const currentLevel = engine.getEffectiveLevel(qid);
+
+                    // Calculate projected level after this bonus is applied
+                    let projectedLevel: number;
+                    switch (op) {
+                        case '=':                                projectedLevel = val; break;
+                        case '+=': case '+':                     projectedLevel = currentLevel + val; break;
+                        case '-=': case '-':                     projectedLevel = currentLevel - val; color = 'var(--danger-color)'; break;
+                        case '++':                               projectedLevel = currentLevel + 1; break;
+                        case '--':                               projectedLevel = currentLevel - 1; color = 'var(--danger-color)'; break;
+                        default:                                 projectedLevel = val;
+                    }
+
+                    if (def) {
+                        // Evaluate the quality's name at the projected level using $. self-context
+                        const mockState = { qualityId: qid, type: def.type, level: projectedLevel, stringValue: '', changePoints: 0 } as any;
+                        content = def.name
+                            ? engine.evaluateText(def.name, { qid, state: mockState })
+                            : qid;
+                    } else {
+                        content = `${qid}: ${projectedLevel}`;
+                    }
                 }
-                
+
                 return (
-                    <span key={idx} style={{ 
-                        color, 
-                        fontWeight: 'bold', 
-                        fontSize: '0.85rem', 
-                        backgroundColor: 'rgba(0,0,0,0.2)', 
-                        padding: '2px 6px', 
-                        borderRadius: '4px' 
+                    <span key={idx} style={{
+                        color,
+                        fontWeight: 'bold',
+                        fontSize: '0.85rem',
+                        backgroundColor: 'rgba(0,0,0,0.2)',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
                     }}>
                         {content}
                     </span>
