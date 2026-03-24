@@ -73,6 +73,13 @@ export const loadGameData = cache(async (worldId: string = 'trader_johns_world')
             }
         }
 
+        if (rawContent.categories) {
+            processedContent.categories = {};
+            for (const key in rawContent.categories) {
+                processedContent.categories[key] = { ...rawContent.categories[key], id: key };
+            }
+        }
+
         return processedContent;
 
     } catch (error) {
