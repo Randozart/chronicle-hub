@@ -67,7 +67,6 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
 };
 
 export function enforceEquipmentVisibility(character: CharacterDocument, gameData: WorldConfig): CharacterDocument {
-    const engine = new GameEngine(character.qualities, gameData, character.equipment);
     const equipCats = gameData.settings?.equipCategories || [];
 
     for (const catRaw of equipCats) {
@@ -81,8 +80,18 @@ export function enforceEquipmentVisibility(character: CharacterDocument, gameDat
         const catDef = gameData.categories?.[baseName];
         if (!catDef) continue;
 
-        const isVisible  = catDef.visible_if  ? engine.evaluateCondition(catDef.visible_if)  : true;
-        const isUnlocked = catDef.unlock_if   ? engine.evaluateCondition(catDef.unlock_if)   : true;
+        // Evaluate conditions WITHOUT bonuses from items in this slot —
+        // otherwise an item already in the slot can override its own lock condition.
+        const tempEquipment = { ...character.equipment };
+        for (const slotKey of Object.keys(tempEquipment)) {
+            if (slotKey === baseName || slotKey.startsWith(baseName + '_')) {
+                tempEquipment[slotKey] = null;
+            }
+        }
+        const conditionEngine = new GameEngine(character.qualities, gameData, tempEquipment);
+
+        const isVisible  = catDef.visible_if  ? conditionEngine.evaluateCondition(catDef.visible_if)  : true;
+        const isUnlocked = catDef.unlock_if   ? conditionEngine.evaluateCondition(catDef.unlock_if)   : true;
 
         if (!isVisible || !isUnlocked) {
             for (const slotKey of Object.keys(character.equipment)) {

@@ -61,10 +61,14 @@ const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngin
                     }
 
                     if (def) {
-                        // Evaluate the quality's name at the projected level using $. self-context
-                        const mockState = { qualityId: qid, type: def.type, level: projectedLevel, stringValue: '', changePoints: 0 } as any;
+                        // Evaluate the name at the projected level by bypassing the effective-qualities
+                        // proxy (which would reflect bonuses from other equipped items). Instead, inject
+                        // the projected state directly so $. resolves to projectedLevel regardless of
+                        // what other equipment is currently setting this quality.
+                        const projectedState = { qualityId: qid, type: def.type, level: projectedLevel, stringValue: '', changePoints: 0 } as any;
+                        const tempQualities = { ...engine.qualities, [qid]: projectedState };
                         content = def.name
-                            ? engine.evaluateText(def.name, { qid, state: mockState })
+                            ? evaluateText(def.name, tempQualities, engine.worldContent.qualities, { qid, state: projectedState }, 0, {}, [])
                             : qid;
                         if (def.tags?.includes('hide_level')) {
                             color = 'var(--success-color)'; // trait-style: no negative coloring when level is hidden
