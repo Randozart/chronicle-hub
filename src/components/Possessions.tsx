@@ -65,6 +65,9 @@ const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngin
                         content = def.name
                             ? engine.evaluateText(def.name, { qid, state: mockState })
                             : qid;
+                        if (def.tags?.includes('hide_level')) {
+                            color = 'var(--success-color)'; // trait-style: no negative coloring when level is hidden
+                        }
                     } else {
                         content = `${qid}: ${projectedLevel}`;
                     }

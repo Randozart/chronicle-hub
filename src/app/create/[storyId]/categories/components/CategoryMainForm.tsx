@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CategoryDefinition, WorldSettings } from '@/engine/models';
+import { CategoryDefinition, QualityDefinition, WorldSettings } from '@/engine/models';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
@@ -17,11 +17,12 @@ interface Props {
     onDuplicate: (data: CategoryDefinition) => void;
     onUpdateSettings: (s: WorldSettings) => void;
     storyId: string;
+    qualityDefs: QualityDefinition[];
     guardRef: { current: FormGuard | null };
 }
 
-export default function CategoryMainForm({ 
-    initialData, settings, onSave, onDelete, onDuplicate, onUpdateSettings, storyId, guardRef 
+export default function CategoryMainForm({
+    initialData, settings, onSave, onDelete, onDuplicate, onUpdateSettings, storyId, qualityDefs, guardRef
 }: Props) {
     
     const { 
@@ -194,6 +195,7 @@ export default function CategoryMainForm({
                                             minHeight="60px"
                                             mode="condition"
                                             entityType="quality"
+                                            qualityDefs={qualityDefs}
                                             placeholder="e.g. $main_hand_weapon.twohanded != 1"
                                         />
                                     </div>
@@ -207,6 +209,7 @@ export default function CategoryMainForm({
                                             minHeight="60px"
                                             mode="condition"
                                             entityType="quality"
+                                            qualityDefs={qualityDefs}
                                             placeholder="e.g. $strength >= 10"
                                         />
                                     </div>
