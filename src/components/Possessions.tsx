@@ -67,11 +67,36 @@ const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngin
                         // what other equipment is currently setting this quality.
                         const projectedState = { qualityId: qid, type: def.type, level: projectedLevel, stringValue: '', changePoints: 0 } as any;
                         const tempQualities = { ...engine.qualities, [qid]: projectedState };
-                        content = def.name
+
+                        // Evaluate tags to check visibility rules
+                        const evaluatedTags = (def.tags || [])
+                            .map(t => engine.evaluateText(t, { qid, state: projectedState }).trim())
+                            .filter(Boolean);
+                        const isHidden = evaluatedTags.includes('hidden');
+                        const isBonusOnly = evaluatedTags.includes('bonus_only');
+                        const hideLevel = evaluatedTags.includes('hide_level');
+
+                        // Skip pill entirely if hidden and not explicitly marked bonus_only
+                        if (isHidden && !isBonusOnly) return null;
+
+                        const resolvedName = def.name
                             ? evaluateText(def.name, tempQualities, engine.worldContent.qualities, { qid, state: projectedState }, 0, {}, [])
                             : qid;
-                        if (def.tags?.includes('hide_level')) {
-                            color = 'var(--success-color)'; // trait-style: no negative coloring when level is hidden
+
+                        if (hideLevel) {
+                            content = resolvedName;
+                            color = 'var(--tool-text-dim)'; // muted trait-style: no green/red distinction
+                        } else {
+                            // Show the delta alongside the name so the magnitude is visible
+                            let delta: string;
+                            switch (op) {
+                                case '++':           delta = '+1'; break;
+                                case '--':           delta = '-1'; break;
+                                case '=':            delta = `${projectedLevel}`; break;
+                                case '-=': case '-': delta = `-${val}`; break;
+                                default:             delta = `+${val}`;
+                            }
+                            content = `${resolvedName} ${delta}`;
                         }
                     } else {
                         content = `${qid}: ${projectedLevel}`;
@@ -474,7 +499,8 @@ export default function Possessions({
             const state = qualities[qid];
             if (!def || !state) return null;
 
-            if (def.tags?.includes('hidden') && !showHidden) return null;
+            const ALL_HIDING_TAGS = ['hidden', 'fx_only', 'no_ui', 'log_only', 'bonus_only'];
+            if (ALL_HIDING_TAGS.some(t => def.tags?.includes(t)) && !showHidden) return null;
 
             const totalLevel = ('level' in state) ? state.level : 0;
             const numEquipped = equippedCounts[qid] || 0;

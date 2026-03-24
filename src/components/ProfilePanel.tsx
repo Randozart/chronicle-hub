@@ -73,9 +73,10 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 
                 const tags = Array.isArray(rendered.tags) ? rendered.tags : [];
                 
-                const shouldHide = tags.includes('hidden') || 
-                                   tags.includes('no_ui') || 
-                                   tags.includes('fx_only');
+                const shouldHide = tags.includes('hidden') ||
+                                   tags.includes('no_ui') ||
+                                   tags.includes('fx_only') ||
+                                   tags.includes('bonus_only');
 
                 if (shouldHide && !showHidden) return null;
 

@@ -361,10 +361,13 @@ export class GameEngine implements EngineContext {
                 for (const m of matches) {
                     const targetQid = m[1];
                     const targetDef = this.worldContent.qualities[targetQid];
-                    // Only include if not marked as hideAsBonus
-                    if (!targetDef?.hideAsBonus) {
-                        affectedQids.add(targetQid);
-                    }
+                    if (targetDef?.hideAsBonus) continue;
+                    const state = this.qualities[targetQid];
+                    const evaluatedTags = (targetDef?.tags || [])
+                        .map(t => this.evaluateText(t, { qid: targetQid, state }).trim())
+                        .filter(Boolean);
+                    if (evaluatedTags.includes('hidden') || evaluatedTags.includes('bonus_only')) continue;
+                    affectedQids.add(targetQid);
                 }
             }
         }
