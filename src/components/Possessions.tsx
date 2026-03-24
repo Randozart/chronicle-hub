@@ -84,10 +84,13 @@ const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngin
                             : qid;
 
                         if (hideLevel) {
-                            content = resolvedName;
                             color = 'var(--tool-text-dim)'; // muted trait-style: no green/red distinction
+                            return (
+                                <span key={idx} style={{ color, fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                                    <FormattedText text={resolvedName} inline />
+                                </span>
+                            );
                         } else {
-                            // Show the delta alongside the name so the magnitude is visible
                             let delta: string;
                             switch (op) {
                                 case '++':           delta = '+1'; break;
@@ -96,7 +99,11 @@ const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngin
                                 case '-=': case '-': delta = `-${val}`; break;
                                 default:             delta = `+${val}`;
                             }
-                            content = `${resolvedName} ${delta}`;
+                            return (
+                                <span key={idx} style={{ color, fontWeight: 'bold', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                                    <FormattedText text={resolvedName} inline /> {delta}
+                                </span>
+                            );
                         }
                     } else {
                         content = `${qid}: ${projectedLevel}`;

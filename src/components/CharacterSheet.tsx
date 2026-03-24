@@ -132,8 +132,9 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                         }
                     }
                     
-                    const displayName = engine.evaluateText(q.name);
-                    const displayDesc = q.description ? engine.evaluateText(q.description) : "";
+                    const selfContext = { qid: q.id, state: { ...mergedState, level: q.effectiveLevel } as any };
+                    const displayName = engine.evaluateText(q.name, selfContext);
+                    const displayDesc = q.description ? engine.evaluateText(q.description, selfContext) : "";
 
                     const primaryCat = (q.category || "").split(',')[0].trim();
                     const catDef = categories[primaryCat];

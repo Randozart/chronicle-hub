@@ -56,9 +56,9 @@ export default function FormattedText({ text, inline = false }: FormattedTextPro
             }
         );
         
-        // Preserve newlines as markdown hard breaks
-        // Decided to take this out, as it was causing additional newlines to be created.
-        // processed = processed.replace(/\n/g, '  \n');
+        // Preserve single newlines as Markdown hard breaks (two trailing spaces).
+        // Only convert single \n — leave \n\n paragraph breaks untouched.
+        processed = processed.replace(/([^\n])\n(?!\n)/g, '$1  \n');
 
         return processed;
     }, [text]);
