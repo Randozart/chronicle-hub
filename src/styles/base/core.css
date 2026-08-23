@@ -56,9 +56,11 @@ button, input, textarea, select, h1 {
     color: inherit !important;
 }
 
+/* Scrollbars consume the per-theme --scrollbar-* variables when defined,
+   falling back to the generic border/background tokens otherwise. */
 * {
     scrollbar-width: thin;
-    scrollbar-color: var(--border-light) var(--bg-main);
+    scrollbar-color: var(--scrollbar-thumb, var(--border-light)) var(--scrollbar-bg, var(--bg-main));
 }
 
 ::-webkit-scrollbar {
@@ -67,20 +69,20 @@ button, input, textarea, select, h1 {
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--bg-main); 
+    background: var(--scrollbar-bg, var(--bg-main)); 
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: var(--border-light); 
+    background-color: var(--scrollbar-thumb, var(--border-light)); 
     border-radius: 5px;
     
-    border: 2px solid var(--bg-main); 
+    border: 2px solid var(--scrollbar-bg, var(--bg-main)); 
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--text-muted); 
+    background-color: var(--scrollbar-thumb-hover, var(--text-muted)); 
 }
 
 ::-webkit-scrollbar-corner {
-    background: var(--bg-main);
+    background: var(--scrollbar-bg, var(--bg-main));
 }
