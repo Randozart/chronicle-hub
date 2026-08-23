@@ -2,6 +2,7 @@
 
 import { Storylet, PlayerQualities, QualityDefinition, ImageDefinition, WorldSettings, LocationDefinition } from "@/engine/models";
 import { GameEngine } from "@/engine/gameEngine";
+import { formatLockReason } from "@/utils/lockReason";
 import GameImage from "./GameImage";
 import FormattedText from "./FormattedText";
 
@@ -31,38 +32,11 @@ export default function LocationStorylets({
     if (visibleStorylets.length === 0) return null;
 
     const getLockReason = (condition: string): string => {
-        const opMap: Record<string, string> = {
-            '>': 'more than',
-            '>=': 'at least',
-            '<': 'less than',
-            '<=': 'at most',
-            '==': 'exactly',
-            '!=': 'not'
-        };
-
-        let readable = condition.replace(/(\$?[a-zA-Z0-9_]+)\s*(>=|<=|==|!=|>|<)\s*([0-9]+|'[^']+'|"[^"]+")/g, (match, rawQid, op, val) => {
-            const qid = rawQid.startsWith('$') ? rawQid.substring(1) : rawQid;
-            const qualityName = qualityDefs[qid]?.name ?? qid;
-            
-            const state = qualities[qid];
-            let currentVal: string | number = 0;
-            if (state) {
-                if (state.type === 'S') currentVal = state.stringValue;
-                else if ('level' in state) currentVal = state.level;
-            }
-
-            const cleanVal = val.replace(/^['"]|['"]$/g, '');
-            const readableOp = opMap[op] || op;
-            
-            return `${qualityName} ${readableOp} ${cleanVal} (Current: ${currentVal})`;
+        return formatLockReason(condition, {
+            getQualityName: qid => qualityDefs[qid]?.name ?? qid,
+            qualities,
+            evaluate: text => engine.evaluateText(text)
         });
-
-        readable = readable.replace(/&&|,/g, ' AND ');
-        readable = readable.replace(/\|\|/g, ' OR ');
-        
-        readable = readable.replace(/\$/g, '');
-
-        return `Requires: ${readable}`;
     };
 
     const cfg = settings.componentConfig || {};

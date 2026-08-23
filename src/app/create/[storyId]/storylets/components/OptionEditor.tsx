@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ResolveOption, QualityDefinition, WorldSettings } from '@/engine/models';
 import { toggleProperty, hasProperty } from '@/utils/propertyHelpers';
+import { formatLockReason } from '@/utils/lockReason';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import ProbabilityChart from '@/components/admin/ProbabilityChart';
@@ -501,16 +502,11 @@ const miniLabel: React.CSSProperties = {
 
 const getLockPreview = (condition: string, defs: QualityDefinition[]) => {
     if (!condition) return "";
-    const opMap: Record<string, string> = { '>': 'more than', '>=': 'at least', '<': 'less than', '<=': 'at most', '==': 'exactly', '!=': 'not' };
-    
-    // Naive replacement for preview purposes. Doesn't have live values, but allows for basic logic.
-    let readable = condition.replace(/(\$?[a-zA-Z0-9_]+)\s*(>=|<=|==|!=|>|<)\s*([0-9]+|'[^']+'|"[^"]+")/g, (match, rawQid, op, val) => {
-        const qid = rawQid.startsWith('$') ? rawQid.substring(1) : rawQid;
-        const def = defs.find(d => d.id === qid);
-        const name = def?.name || qid;
-        const cleanVal = val.replace(/^['"]|['"]$/g, '');
-        return `${name} ${opMap[op] || op} ${cleanVal}`;
+
+    // Authoring preview: no live character state, so no Current hints.
+    // Names resolve through formatLockReason; scripted names stay raw
+    // since the editor has no engine instance to evaluate them with.
+    return formatLockReason(condition, {
+        getQualityName: qid => defs.find(d => d.id === qid)?.name || qid
     });
-    
-    return `Requires: ${readable.replace(/&&|,/g, ' AND ').replace(/\|\|/g, ' OR ').replace(/\$/g, '')}`;
 };
