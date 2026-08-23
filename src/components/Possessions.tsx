@@ -1,10 +1,11 @@
 'use client';
 
-import { CharacterDocument, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
+import { CharacterDocument, CategoryDefinition, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
 import { evaluateText } from "@/engine/textProcessor";
+import { isInHiddenCategory } from "@/utils/categoryMatching";
 import { GameEngine } from '@/engine/gameEngine';
 import FormattedText from "./FormattedText"; 
 import GameModal from "./GameModal";
@@ -14,6 +15,7 @@ interface PossessionsProps {
     equipment: Record<string, string | null>;
     qualityDefs: Record<string, QualityDefinition>;
     equipCategories: string[];
+    categories?: Record<string, CategoryDefinition>;
     onUpdateCharacter: (character: any) => void; 
     onUseItem: (eventId: string) => void;
     onRequestTabChange: (tab: 'story') => void;
@@ -293,6 +295,7 @@ export default function Possessions({
     equipment, 
     qualityDefs, 
     equipCategories, 
+    categories,
     onUpdateCharacter, 
     onUseItem, 
     onRequestTabChange, 
@@ -450,6 +453,10 @@ export default function Possessions({
 
             if (def.tags?.includes('hidden') && !showHidden) return null;
 
+            // Categories flagged hidden keep items out of the bag listing
+            // (they remain equippable and queryable elsewhere).
+            if (isInHiddenCategory(def.category, categories) && !showHidden) return null;
+
             const totalLevel = ('level' in state) ? state.level : 0;
             const numEquipped = equippedCounts[qid] || 0;
             
@@ -463,7 +470,7 @@ export default function Possessions({
             const merged = { ...def, ...state, level: inventoryLevel };
             return engine.render(merged);
         }).filter(Boolean as any);
-    }, [qualities, qualityDefs, equipment, currencyIds, engine, showHidden]); 
+    }, [qualities, qualityDefs, equipment, currencyIds, engine, showHidden, categories]); 
 
     const grouped = useGroupedList(inventoryItems, groupBy, search);
     const groups = Object.keys(grouped).sort();

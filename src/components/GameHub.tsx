@@ -898,6 +898,7 @@ export default function GameHub(props: GameHubProps) {
                         equipment={character.equipment} 
                         qualityDefs={mergedQualityDefs} 
                         equipCategories={props.settings.equipCategories || []} 
+                        categories={props.categories}
                         onUpdateCharacter={handleCharacterUpdate} 
                         onUseItem={(id) => { if (!activeEvent) showEvent(id, 'item'); }} 
                         onRequestTabChange={(tab) => setActiveTab(tab)} 

@@ -348,7 +348,10 @@ export interface CategoryDefinition extends VersionedEntity{
     id: string; 
     name?: string; 
     color?: string; 
-    description?: string; 
+    description?: string;
+    /// Member qualities stay queryable (%pick/%all, sidebar grouping) but are
+    /// excluded from the profile listing and the possessions/item listing.
+    hidden?: boolean; 
 }
 export interface ShopListing { 
     id: string; 

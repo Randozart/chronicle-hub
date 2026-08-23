@@ -24,3 +24,26 @@ export function matchesAnyCategory(
     const owned = normalizeCategoryList(qualityCategories);
     return owned.some(c => wanted.includes(c));
 }
+
+/// True when at least one of the quality's categories is flagged hidden,
+/// meaning it should be excluded from listings while remaining usable for
+/// %pick/%all queries and sidebar grouping. Unknown categories are never
+/// treated as hidden.
+export function isInHiddenCategory(
+    qualityCategories: string | string[] | undefined | null,
+    categories: Record<string, { hidden?: boolean }> | undefined | null
+): boolean {
+    if (!categories) return false;
+    const parts = Array.isArray(qualityCategories)
+        ? qualityCategories
+        : String(qualityCategories ?? "").split(",");
+
+    return parts.some(raw => {
+        const catId = raw.trim();
+        if (!catId) return false;
+        // Lookup preserves the author's casing - category ids are keys, not
+        // display strings, so normalizing here would miss definitions.
+        const def = categories[catId] || categories[`$${catId}`];
+        return !!def?.hidden;
+    });
+}

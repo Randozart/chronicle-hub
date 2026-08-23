@@ -2,6 +2,7 @@
 import { PlayerQualities, QualityDefinition, QualityType, ImageDefinition, CategoryDefinition, WorldSettings } from "@/engine/models";
 import { useState, useMemo } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
+import { isInHiddenCategory } from "@/utils/categoryMatching";
 import { evaluateText } from "@/engine/textProcessor";
 import GameImage from "./GameImage";
 import { GameEngine } from '@/engine/gameEngine';
@@ -73,11 +74,14 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 
                 const tags = Array.isArray(rendered.tags) ? rendered.tags : [];
                 
-                const shouldHide = tags.includes('hidden') || 
-                                   tags.includes('no_ui') || 
+                const shouldHide = tags.includes('hidden') ||
+                                   tags.includes('no_ui') ||
                                    tags.includes('fx_only');
 
                 if (shouldHide && !showHidden) return null;
+
+                // Categories flagged hidden stay queryable but never list here.
+                if (isInHiddenCategory(def.category, categories) && !showHidden) return null;
 
                 if (qid === settings.titleQualityId?.replace('$', '')) return null; 
                 if (def.type === QualityType.Item || def.type === QualityType.Equipable) return null;
@@ -89,7 +93,7 @@ export default function ProfilePanel({ qualities, qualityDefs, imageLibrary, cat
                 return rendered;
             })
             .filter(Boolean as any);
-    }, [qualities, qualityDefs, settings.titleQualityId, engine, showHidden]);
+    }, [qualities, qualityDefs, settings.titleQualityId, engine, showHidden, categories]);
 
     const grouped = useGroupedList(flatList, groupBy, search);
     const groups = Object.keys(grouped).sort();

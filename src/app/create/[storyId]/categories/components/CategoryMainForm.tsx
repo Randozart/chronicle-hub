@@ -158,6 +158,12 @@ export default function CategoryMainForm({
                             label="Show in Sidebar" 
                             desc={`Qualities in "${form.id}" will appear in the main player sidebar.`} 
                         />
+                        <BehaviorCard
+                            checked={!!form.hidden}
+                            onChange={() => handleChange('hidden', !form.hidden)}
+                            label="Hide from Listings"
+                            desc={`Qualities in "${form.id}" stay usable in %pick/%all and the sidebar, but never appear in the profile or possessions listings. Pairs well with Show in Sidebar.`}
+                        />
                         <div style={{ borderTop: '1px dashed var(--tool-border)', paddingTop: '1rem' }}>
                             <BehaviorCard 
                                 checked={!!currentEquipConfig} 
