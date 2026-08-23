@@ -213,22 +213,31 @@ export const getCharactersList = async (userId: string, storyId: string) => {
     });
 };
 
-export const getOrCreateCharacter = async (
-    userId: string, 
-    storyId: string,
+/// Provisioning inputs for a brand-new character, shared by the registered
+/// and guest creation flows so both produce identical starting state.
+export interface InitialCharacterState {
+    initialQualities: PlayerQualities;
+    initialDeckCharges: Record<string, number>;
+    initialLastDeckUpdate: Record<string, Date>;
+}
+
+/// Build starting qualities from char_create rules (explicit choices first,
+/// then static/numeric/string defaults, then expression evaluation), seed
+/// deck charges from each deck's deck_size, and seed the action economy
+/// quality from settings.maxActions.
+export const buildInitialCharacterState = (
+    worldContent: WorldConfig,
     choices?: Record<string, string>
-): Promise<CharacterDocument> => {
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
-    const worldContent = await getWorldConfig(storyId);
+): InitialCharacterState => {
     const initialQualities: PlayerQualities = {};
     const rules = worldContent.char_create || {};
+
+    // Pass 1: direct values - player choices win over rule defaults.
     for (const key in rules) {
         const qid = key.replace('$', '');
         const ruleObj = rules[key];
         if (!ruleObj || typeof ruleObj.rule === 'undefined' || ruleObj.rule === null) {
-            console.warn(`[CharCreate] Corrupt rule for key "${key}" in story "${storyId}". Skipping.`);
+            console.warn(`[CharCreate] Corrupt rule for key "${key}". Skipping.`);
             continue;
         }
 
@@ -255,16 +264,15 @@ export const getOrCreateCharacter = async (
             }
         }
     }
+
+    // Pass 2: expression rules evaluated against everything pass 1 produced.
     const tempEngine = new GameEngine(initialQualities, worldContent);
     for (const key in rules) {
         const qid = key.replace('$', '');
         if (initialQualities[qid]) continue;
-        
+
         const ruleObj = rules[key];
-        if (!ruleObj || typeof ruleObj.rule === 'undefined' || ruleObj.rule === null) {
-            console.warn(`[CharCreate] Corrupt rule for key "${key}" in story "${storyId}". Skipping.`);
-            continue;
-        }
+        if (!ruleObj || typeof ruleObj.rule === 'undefined' || ruleObj.rule === null) continue;
 
         const rule = ruleObj.rule;
 
@@ -274,7 +282,7 @@ export const getOrCreateCharacter = async (
                 const def = worldContent.qualities[qid];
                 const isNumber = !isNaN(Number(result)) && result.trim() !== "";
                 let type = def?.type || (isNumber ? QualityType.Pyramidal : QualityType.String);
-                
+
                 if (type === QualityType.String) {
                      initialQualities[qid] = { qualityId: qid, type, stringValue: result };
                 } else {
@@ -284,6 +292,7 @@ export const getOrCreateCharacter = async (
         }
     }
 
+    // Deck charges.
     const initialDeckCharges: Record<string, number> = {};
     const initialLastDeckUpdate: Record<string, Date> = {};
     if (worldContent.decks) {
@@ -295,12 +304,51 @@ export const getOrCreateCharacter = async (
         }
     }
 
+    // Action economy seed honours the world's configured maximum.
     if (worldContent.settings.useActionEconomy) {
         const actionQid = worldContent.settings.actionId.replace('$', '');
         if (!initialQualities[actionQid]) {
-             initialQualities[actionQid] = { qualityId: actionQid, type: QualityType.Counter, level: 20 };
+            const maxStr = tempEngine.evaluateText(`{${worldContent.settings.maxActions || 20}}`);
+            const maxActions = parseInt(maxStr, 10);
+            initialQualities[actionQid] = { qualityId: actionQid, type: QualityType.Counter, level: isNaN(maxActions) ? 20 : maxActions };
         }
     }
+
+    return { initialQualities, initialDeckCharges, initialLastDeckUpdate };
+};
+
+/// Resolve a new character's display name: explicit choice first (checked
+/// against the configured player-name id, the default id, and 'name'),
+/// then the seeded quality value, then a generic fallback.
+export const resolveCharacterName = (
+    worldContent: WorldConfig,
+    choices: Record<string, string> | undefined,
+    initialQualities: PlayerQualities
+): string => {
+    const nameSetting = worldContent.settings.playerName || '$player_name';
+    const nameQid = nameSetting.replace('$', '').trim();
+
+    const fromChoice = choices?.[nameQid] ?? choices?.['player_name'] ?? choices?.['name'];
+    if (fromChoice) return fromChoice;
+
+    const nameState = initialQualities[nameQid] as any;
+    if (nameState?.stringValue) return nameState.stringValue;
+    if (nameState && typeof nameState.level === 'number') return String(nameState.level);
+
+    return "Unknown";
+};
+
+export const getOrCreateCharacter = async (
+    userId: string,
+    storyId: string,
+    choices?: Record<string, string>
+): Promise<CharacterDocument> => {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    const collection = db.collection<CharacterDocument>(COLLECTION_NAME);
+    const worldContent = await getWorldConfig(storyId);
+
+    const { initialQualities, initialDeckCharges, initialLastDeckUpdate } = buildInitialCharacterState(worldContent, choices);
 
     let startingLocation = choices?.['location'] || worldContent.settings.startLocation;
 
@@ -311,7 +359,9 @@ export const getOrCreateCharacter = async (
         } else {
             startingLocation = 'start';
         }
-    }    let charName = choices?.['player_name'] || (initialQualities['player_name'] as any)?.stringValue || "Unknown";
+    }
+
+    const charName = resolveCharacterName(worldContent, choices, initialQualities);
 
     const newCharacter: CharacterDocument = {
         characterId: uuidv4(),
