@@ -1,17 +1,15 @@
 # Community Bug Batch + Hidden Categories Feature
 
 **Date:** 2026-08-23
-**Branch:** `bugfix-batch-aug2026` (from `parser-rework` @ `0e457b80`)
+**Branch:** `bugfix-batch-aug2026-clean` (from `main` @ `eefa002d`; cherry-picked off the original
+`bugfix-batch-aug2026` which sat on top of the parked `parser-rework`)
 **Status:** Complete — all phases landed (see git log on branch)
 
 ## Outcome notes
 
-- Base branch did not compile: `textProcessor.ts` called `logger.trace()` on a
-  callable `TraceLogger` type. Fixed in a separate commit so the batch builds.
-- `npm run test:parser` fails on the base branch too (`tsconfig.test.json`
-  lacks the `@/*` path alias) — left as-is, flagged for follow-up.
-- Full-project lint: 2193 problems vs 2195 baseline (net -2); every touched
-  file was diffed against its stashed baseline with no new diagnostics.
+- Deliberately excludes the `parser-rework` branch (10 commits, ScribeScript
+  parser rewrite) — parked as not working; batch carries no dependency on it.
+- Full-project lint: no new diagnostics on any touched file vs stashed baseline.
 - `npm run build` passes after installing the missing platform-native
   `lightningcss-linux-x64-gnu` binary (environmental, `--no-save`).
 **Sources:** GitHub issue #52, direct user reports, Discord/other reports relayed by maintainer.
