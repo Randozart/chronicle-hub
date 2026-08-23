@@ -3,8 +3,9 @@ import { PlayerQualities, QualityDefinition, WorldSettings, QualityType, Categor
 import { useMemo } from "react"; 
 import { evaluateText } from "@/engine/textProcessor"; 
 import { GameEngine } from "@/engine/gameEngine";
-import FormattedText from "./FormattedText"; 
-import GameImage from "./GameImage"; 
+import FormattedText from "./FormattedText";
+import GameImage from "./GameImage";
+import { matchesAnyCategory } from "@/utils/categoryMatching";
 
 interface CharacterSheetProps {
     qualities: PlayerQualities;
@@ -38,7 +39,7 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             if (!definition) return null;
 
             const cats = (definition.category ?? "").split(",").map(s => s.trim());
-            const isInSidebarCategory = categoriesToDisplay.length > 0 && categoriesToDisplay.some(c => cats.includes(c));
+            const isInSidebarCategory = matchesAnyCategory(cats, categoriesToDisplay);
             
             if (!isInSidebarCategory) return null;
 

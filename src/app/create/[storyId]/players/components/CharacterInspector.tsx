@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { QualityDefinition, WorldSettings, CharacterDocument, QualityType, PendingEvent } from '@/engine/models';
 import { useToast } from '@/providers/ToastProvider';
+import { normalizeCategoryList } from '@/utils/categoryMatching';
 
 interface Props {
     characterId: string;
@@ -105,8 +106,8 @@ export default function CharacterInspector({ characterId, storyId, worldQualitie
                 
                 if (selectedCategory !== "All") {
                     const catStr = def.category || "Uncategorized";
-                    const cats = catStr.split(',').map(c => c.trim());
-                    if (!cats.includes(selectedCategory)) return false;
+                    const cats = normalizeCategoryList(catStr);
+                    if (!cats.includes(selectedCategory.trim().toLowerCase())) return false;
                 }
                 return true;
             })
