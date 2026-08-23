@@ -63,8 +63,10 @@ export async function POST(request: NextRequest) {
         }
         const pendingAutofires = await getAutofireStorylets(storyId);
         const eligibleAutofires = pendingAutofires.filter(e =>
+            e.autofire_if !== undefined &&
+            e.autofire_if.trim() !== "" &&
             (!(e as any).location || (e as any).location.split(',').map((l: string) => l.trim()).includes(character.currentLocationId)) &&
-            engine.evaluateCondition(e.autofire_if || "")
+            engine.evaluateCondition(e.autofire_if)
         );
         eligibleAutofires.sort((a, b) => {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };
@@ -161,8 +163,10 @@ export async function POST(request: NextRequest) {
              Object.assign(postResolutionEngine.worldContent.qualities, character.dynamicQualities);
         }
         const newEligibleAutofires = pendingAutofires.filter(e =>
+            e.autofire_if !== undefined &&
+            e.autofire_if.trim() !== "" &&
             (!(e as any).location || (e as any).location.split(',').map((l: string) => l.trim()).includes(character.currentLocationId)) &&
-            postResolutionEngine.evaluateCondition(e.autofire_if || "")
+            postResolutionEngine.evaluateCondition(e.autofire_if)
         );
         newEligibleAutofires.sort((a, b) => {
             const priority = { 'Must': 3, 'High': 2, 'Normal': 1 };

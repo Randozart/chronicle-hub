@@ -94,9 +94,11 @@ export async function POST(request: NextRequest) {
     // Try to find any autofires that are pending, since some items can redirect the character to a storylet. 
     const pendingAutofires = await getAutofireStorylets(storyId);
     
-    const eligibleAutofires = pendingAutofires.filter(e => 
-        ((!e as any).location || (e as any).location === character.currentLocationId) && 
-        engine.evaluateCondition(e.autofire_if || "")
+    const eligibleAutofires = pendingAutofires.filter(e =>
+        e.autofire_if !== undefined &&
+        e.autofire_if.trim() !== "" &&
+        (!(e as any).location || (e as any).location.split(',').map((l: string) => l.trim()).includes(character.currentLocationId)) &&
+        engine.evaluateCondition(e.autofire_if)
     );
     
     eligibleAutofires.sort((a, b) => {

@@ -140,5 +140,9 @@ export const getContent = async (storyId: string, forceFresh = false) => {
 
 export const getAutofireStorylets = async (storyId: string, isPlaytest = false, forceFresh = false) => {
     const all = await getStorylets(storyId, isPlaytest, forceFresh);
-    return all.filter(s => !!s.autofire_if || s.urgency === 'Must' || s.urgency === 'High');
+    // Only storylets with an explicit autofire_if script may force-play.
+    // Bare Must/High urgency must not hijack the player: an empty
+    // condition evaluates truthy and would otherwise lock every refresh
+    // onto the first urgent storylet at the location.
+    return all.filter(s => !!s.autofire_if && s.autofire_if.trim() !== "");
 };
