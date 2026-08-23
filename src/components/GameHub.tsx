@@ -35,6 +35,7 @@ import { DeckState, getDeckStates } from '@/engine/deckLogic';
 import AudioSettingsModal from './AudioSettingsModal';
 import { VolumeIcon, MuteIcon } from './icons/Icons';
 import { evaluateMarketId } from '@/utils/propertyHelpers';
+import { findEligibleAutofire } from '@/utils/autofire';
 
 interface GameHubProps {
     initialCharacter: CharacterDocument | null; 
@@ -329,6 +330,18 @@ export default function GameHub(props: GameHubProps) {
                     setLocation(data.newLocation);
                     setCharacter(prev => prev ? { ...prev, currentLocationId: data.currentLocationId, opportunityHands: data.handCleared ? {} : prev.opportunityHands } : null);
                     if (data.handCleared) setHand([]);
+
+                    // Guests skip the server-side must-event check on
+                    // refresh, so re-evaluate autofires at the destination.
+                    if (isGuestMode && character) {
+                        const arrivalId = data.currentLocationId || targetId;
+                        const autofire = findEligibleAutofire(renderEngineRef.current, props.storyletDefs, arrivalId);
+                        if (autofire) {
+                            showEvent(autofire.id);
+                            setTimeout(() => setIsTransitioning(false), 300);
+                            return;
+                        }
+                    }
                 }
                 router.refresh();
                 setTimeout(() => setIsTransitioning(false), 300);
@@ -337,7 +350,7 @@ export default function GameHub(props: GameHubProps) {
                 setIsTransitioning(false); 
             }
         } catch(e) { console.error("Travel failed:", e); setAlertState({ isOpen: true, title: "Travel Error", message: "A network error occurred." }); setIsTransitioning(false); } 
-    }, [character, props.storyId, activeEvent, router]);
+    }, [character, props.storyId, activeEvent, router, isGuestMode, props.storyletDefs, showEvent]);
 
     const handleExit = useCallback(() => {
         window.location.href = `/play/${props.storyId}?menu=true`;
@@ -378,6 +391,11 @@ export default function GameHub(props: GameHubProps) {
         [character?.qualities, worldConfig, character?.equipment, props.worldState, props.isPlaytesting, handleLog]
     );
 
+    // Ref mirror of renderEngine so callbacks declared before it (travel,
+    // guest bootstrap) can evaluate conditions without stale-closure games.
+    const renderEngineRef = useRef<GameEngine>(renderEngine);
+    useEffect(() => { renderEngineRef.current = renderEngine; }, [renderEngine]);
+
     const deckIds = useMemo(() => 
         location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [],
         [location?.deck]
@@ -403,13 +421,39 @@ export default function GameHub(props: GameHubProps) {
         if (isGuestMode && !props.initialCharacter && !props.isMenu) {
             const localKey = `chronicle_guest_${props.storyId}`;
             const stored = localStorage.getItem(localKey);
-            
+
             if (stored) {
                 try {
                     const parsed = JSON.parse(stored);
                     setCharacter(parsed);
                     if (parsed.currentLocationId && props.locations[parsed.currentLocationId]) {
                         setLocation(props.locations[parsed.currentLocationId]);
+                    }
+
+                    // Guests have no server render to run the must-event
+                    // check, so evaluate autofires client-side on entry.
+                    const guestConfig: WorldConfig = {
+                        settings: props.settings,
+                        qualities: { ...props.qualityDefs, ...(parsed.dynamicQualities || {}) },
+                        decks: props.deckDefs,
+                        locations: props.locations,
+                        regions: props.regions,
+                        images: props.imageLibrary,
+                        categories: props.categories || {},
+                        char_create: {},
+                        markets: props.markets,
+                        instruments: props.instruments || {},
+                        music: props.musicTracks || {}
+                    };
+                    const guestEngine = new GameEngine(
+                        parsed.qualities || {},
+                        guestConfig,
+                        parsed.equipment || {},
+                        props.worldState
+                    );
+                    const autofire = findEligibleAutofire(guestEngine, props.storyletDefs, parsed.currentLocationId);
+                    if (autofire && !parsed.currentStoryletId) {
+                        showEvent(autofire.id);
                     }
                 } catch (e) { console.error("Guest load error", e); }
             }
