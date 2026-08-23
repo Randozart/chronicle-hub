@@ -13,24 +13,33 @@ export function parseAndQueueTimerInstruction(
         instruction.targetId = mainArgs;
     } else {
         const lastColon = mainArgs.lastIndexOf(':');
-        if (lastColon === -1) return;
+        if (lastColon === -1) {
+            console.warn(`[Scheduler] %${command}[${argsStr}] has no ':' separating effect from duration. Timer dropped.`);
+            return;
+        }
 
         const effectStr = mainArgs.substring(0, lastColon).trim();
         const timeStr = mainArgs.substring(lastColon + 1).trim();
 
         const tMatch = timeStr.match(/((?:\{.*\}|\d+))\s*([mhd])/);
-        if (tMatch) {
+        if (!tMatch) {
+            console.warn(`[Scheduler] %${command}[${argsStr}] duration '${timeStr}' is not a number followed by m, h or d. Timer dropped.`);
+        } else {
             const amountRaw = tMatch[1];
             const unit = tMatch[2];
             const amountVal = parseInt(ctx.evaluateText(amountRaw.startsWith('{') ? amountRaw : `{${amountRaw}}`));
-            
-            if (!isNaN(amountVal)) {
+
+            if (isNaN(amountVal)) {
+                console.warn(`[Scheduler] %${command}[${argsStr}] duration '${timeStr}' did not resolve to a number. Timer dropped.`);
+            } else {
                 instruction.intervalMs = amountVal * (unit === 'h' ? 3600000 : unit === 'd' ? 86400000 : 60000);
             }
         }
 
         const effMatch = effectStr.match(/\$([a-zA-Z0-9_]+)\s*(=|\+=|-=)\s*(.*)/);
-        if (effMatch) {
+        if (!effMatch) {
+            console.warn(`[Scheduler] %${command}[${argsStr}] effect '${effectStr}' must look like $quality += value. Timer dropped.`);
+        } else {
             instruction.targetId = effMatch[1];
             instruction.op = effMatch[2];
             const valStr = effMatch[3];

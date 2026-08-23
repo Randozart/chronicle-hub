@@ -2,7 +2,7 @@
 import { processAutoEquip } from './resolutionService'; 
 import clientPromise from '@/engine/database';
 import { PlayerQualities, CharacterDocument, WorldConfig, QualityType, PendingEvent, QualityChangeInfo } from '@/engine/models';
-import { getWorldConfig, getSettings } from '@/engine/worldService'; 
+import { getWorldConfig, getSettings, getWorldState } from '@/engine/worldService';
 import { GameEngine } from './gameEngine';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -14,20 +14,29 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
 
     const now = new Date();
     const eventsToFire = character.pendingEvents.filter(e => now >= new Date(e.triggerTime) && !e.completedTime);
-    
+
     if (eventsToFire.length === 0) return character;
 
     const gameData = await getWorldConfig(character.storyId);
-    const engine = new GameEngine(character.qualities, gameData, character.equipment);
+    const worldState = await getWorldState(character.storyId);
 
-    let needsSave = false;
+    // Merge runtime-created quality definitions so timers may target
+    // %new dynamic qualities exactly like the resolve pipeline does.
+    const mergedConfig: WorldConfig = {
+        ...gameData,
+        qualities: { ...gameData.qualities, ...(character.dynamicQualities || {}) }
+    };
+
+    const engine = new GameEngine(character.qualities, mergedConfig, character.equipment, worldState);
+
+    let firedAny = false;
 
     for (const event of eventsToFire) {
-        needsSave = true;
+        firedAny = true;
         if (event.scope === 'category') {
             const categoryName = event.targetId;
-            const affectedQids = Object.values(gameData.qualities)
-                .filter(q => q.category?.split(',').map(c => c.trim()).includes(categoryName))
+            const affectedQids = Object.values(mergedConfig.qualities)
+                .filter(q => q.category?.split(',').map(c => c.trim().toLowerCase()).includes(categoryName.trim().toLowerCase()))
                 .map(q => q.id);
 
             for (const qid of affectedQids) {
@@ -59,7 +68,30 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
     if (Object.keys(newDefinitions).length > 0) {
         character.dynamicQualities = { ...(character.dynamicQualities || {}), ...newDefinitions };
     }
-    if (needsSave) {
+
+    // Persist $world.* writes: compare the engine's world snapshot against
+    // the state we loaded and write back only the changed keys.
+    const updatedWorldQualities = engine.getWorldQualities();
+    const changedWorldKeys = Object.keys(updatedWorldQualities).filter(qid =>
+        JSON.stringify(worldState[qid]) !== JSON.stringify(updatedWorldQualities[qid])
+    );
+    if (changedWorldKeys.length > 0) {
+        try {
+            const client = await clientPromise;
+            const db = client.db(DB_NAME);
+            const updates: Record<string, unknown> = {};
+            for (const qid of changedWorldKeys) {
+                updates[`worldState.${qid}`] = updatedWorldQualities[qid];
+            }
+            await db.collection('worlds').updateOne({ worldId: character.storyId }, { $set: updates });
+        } catch (worldWriteError) {
+            console.error(`[checkLivingStories] Failed to persist world-state writes for ${character.storyId}:`, worldWriteError);
+        }
+    }
+
+    // Guests have no DB document; the mutated character is returned to the
+    // caller (the resolve API echoes pendingEvents back to the client).
+    if (firedAny && character.userId !== 'guest') {
         await saveCharacterState(character);
     }
 
@@ -94,12 +126,12 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
     }
     for (const instr of additions) {
         if (instr.op && instr.intervalMs) {
-            
+
             if (instr.unique) {
-                const exists = character.pendingEvents.some(e => 
-                    e.scope === instr.scope && 
-                    e.targetId === instr.targetId && 
-                    e.op === instr.op && 
+                const exists = character.pendingEvents.some(e =>
+                    e.scope === instr.scope &&
+                    e.targetId === instr.targetId &&
+                    e.op === instr.op &&
                     e.value === instr.value
                 );
                 if (exists) continue;
@@ -111,14 +143,21 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
                 targetId: instr.targetId,
                 op: instr.op,
                 value: instr.value,
-                startTime: new Date(), 
+                startTime: new Date(),
                 triggerTime: new Date(Date.now() + instr.intervalMs),
                 recurring: !!instr.recurring,
                 intervalMs: instr.intervalMs,
                 description: instr.description
             };
-            
+
             character.pendingEvents.push(newEvent);
+        } else {
+            console.warn(
+                `[LivingStories] Dropping malformed timer instruction ` +
+                `(op=${JSON.stringify(instr.op)}, intervalMs=${JSON.stringify(instr.intervalMs)}, ` +
+                `target=${instr.targetId}, rawOptions=${JSON.stringify(instr.rawOptions)}). ` +
+                `Check the %schedule duration (use m/h/d units) and the $quality effect syntax.`
+            );
         }
     }
 };
