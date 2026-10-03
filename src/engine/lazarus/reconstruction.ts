@@ -13,6 +13,14 @@ export interface StateChange {
     isSystem?: boolean;
 }
 
+export interface ParsedRequirement {
+    qualityId: number;
+    name?: string;
+    op: '>=' | '<=' | '==' | '>' | '<' | null;
+    value: number | null;
+    confidence: number;
+}
+
 export interface ReconstructedBranch {
     Id: number;
     Name: string;
@@ -21,12 +29,12 @@ export interface ReconstructedBranch {
     ButtonText?: string;
     Requirements: {
         raw: string;
-        parsed: { qualityId: number; op: string; value: number }[];
+        parsed: ParsedRequirement[];
     };
     Outcomes: {
         eventId: number;
         title: string;
-        isSuccess: boolean;
+        isSuccess: boolean | null;
         logic: {
             diffs: StateChange[];
             messages: string[];
@@ -129,20 +137,57 @@ export function calculateStateDiff(startPayload: any, endPayload: any): {
 
 // 2. REQUIREMENTS PARSING
 
-export function parseRequirements(html: string) {
-    const parsed: { qualityId: number; op: string; value: number }[] = [];
+export function parseRequirements(html: string): ParsedRequirement[] {
+    const parsed: ParsedRequirement[] = [];
     if (!html) return parsed;
 
-    // Regex to extract Quality ID from data-edit attribute
-    const regex = /data-edit=["'](\d+)["']/g;
-    let match;
-    
-    while ((match = regex.exec(html)) !== null) {
-        parsed.push({
-            qualityId: parseInt(match[1]),
-            op: '?', 
-            value: 0 
-        });
+    // Split by <span class="req-item" to process each requirement block individually
+    const blocks = html.split(/(?=<span[^>]*class="req-item)/g);
+
+    for (const block of blocks) {
+        // Extract Quality ID from data-edit attribute
+        const idMatch = block.match(/data-edit=["'](\d+)["']/);
+        if (!idMatch) continue;
+
+        const qualityId = parseInt(idMatch[1]);
+
+        // Extract quality name from alt attribute
+        const altMatch = block.match(/alt=["']([^"']+)["']/);
+        const name = altMatch ? altMatch[1] : undefined;
+
+        // Extract threshold value from req-item-level span
+        const levelMatch = block.match(/<span[^>]*class="req-item-level"[^>]*>(\d+)<\/span>/);
+        const value = levelMatch ? parseInt(levelMatch[1]) : null;
+
+        // Infer operator from surrounding text
+        let op: ParsedRequirement['op'] = '>=';
+        let confidence = 0.9;
+
+        const lowerBlock = block.toLowerCase();
+        if (lowerBlock.includes('no more than') || lowerBlock.includes('maximum')) {
+            op = '<=';
+        } else if (lowerBlock.includes('at least') || lowerBlock.includes('minimum') || lowerBlock.includes('you need')) {
+            op = '>=';
+        } else if (lowerBlock.includes('exactly')) {
+            op = '==';
+        } else if (lowerBlock.includes('more than')) {
+            op = '>';
+        } else if (lowerBlock.includes('less than')) {
+            op = '<';
+        } else if (lowerBlock.includes('unlocked with')) {
+            // Unlock requirements are >= by definition
+            op = '>=';
+        } else {
+            // Default: no explicit operator found, assume >= but lower confidence
+            confidence = 0.7;
+        }
+
+        // If no value found, lower confidence significantly
+        if (value === null) {
+            confidence = 0.3;
+        }
+
+        parsed.push({ qualityId, name, op, value, confidence });
     }
 
     return parsed;
@@ -218,15 +263,26 @@ export async function reconstructWorldData(worldId: string): Promise<{ events: R
                 .toArray();
 
             const outcomesProcessed = outcomesRaw.map((out: any) => {
-                // Calculate and store state changes (diffs + messages)
                 const logic = calculateStateDiff(hubRecord.rawPayload, out.rawPayload);
                 const outEvt = out.rawPayload.Event || {};
-                
+
+                let isSuccess: boolean | null = null;
+                const branchHasChallenges = b.Challenges && b.Challenges.length > 0;
+                if (branchHasChallenges) {
+                    const msgs = out.rawPayload.Messages || [];
+                    const hasSuccess = msgs.some((m: any) => m.Type === 'DifficultyRollSuccessMessage');
+                    const hasFailure = msgs.some((m: any) => m.Type === 'DifficultyRollFailureMessage');
+                    if (hasSuccess) isSuccess = true;
+                    else if (hasFailure) isSuccess = false;
+                } else {
+                    isSuccess = true;
+                }
+
                 return {
                     eventId: outEvt.Id,
                     title: outEvt.Name,
-                    isSuccess: true, 
-                    logic: logic, 
+                    isSuccess,
+                    logic,
                     evidenceId: out._id.toString()
                 };
             });

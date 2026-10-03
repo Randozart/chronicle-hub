@@ -104,6 +104,36 @@ export default function ReconstructPage({ params }: { params: Promise<{ worldId:
                     </div>
                 )}
 
+                {activeTab === 'geography' && (
+                    <div>
+                        <p style={{marginBottom:'1rem', color:'#888'}}>Found {geography.length} unique areas and settings.</p>
+                        <div style={{maxHeight:'600px', overflowY:'auto'}}>
+                            <table style={{width:'100%', borderCollapse:'collapse', fontSize:'0.85rem'}}>
+                                <thead>
+                                    <tr style={{textAlign:'left', color:'#666'}}><th>ID</th><th>Name</th><th>Type</th><th>Description</th></tr>
+                                </thead>
+                                <tbody>
+                                    {geography.map((g: any) => (
+                                        <tr key={`${g._id.id}-${g._id.type}`} style={{borderTop:'1px solid #333'}}>
+                                            <td style={{padding:'8px', color:'#61afef', fontFamily:'monospace'}}>{g._id.id}</td>
+                                            <td style={{padding:'8px', color:'#ccc'}}>{g.name}</td>
+                                            <td style={{padding:'8px'}}>
+                                                <span style={{
+                                                    background: g._id.type === 'Setting' ? 'rgba(155, 89, 182, 0.1)' : 'rgba(229, 192, 123, 0.1)',
+                                                    color: g._id.type === 'Setting' ? '#9b59b6' : '#e5c07b',
+                                                    padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem',
+                                                    border: `1px solid ${g._id.type === 'Setting' ? 'rgba(155, 89, 182, 0.3)' : 'rgba(229, 192, 123, 0.3)'}`
+                                                }}>{g._id.type}</span>
+                                            </td>
+                                            <td style={{padding:'8px', color:'#aaa', maxWidth:'300px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{g.description || '—'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'export' && (
                     <div style={{display:'flex', gap:'1rem', flexDirection:'column'}}>
                         <div style={{background:'#111', padding:'1rem', borderRadius:'4px', color:'#999', fontSize:'0.9rem'}}>
