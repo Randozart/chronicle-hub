@@ -3,7 +3,7 @@
 import {
     PlayerQualities, QualityState, QualityType, ResolveOption, Storylet,
     QualityChangeInfo, WorldConfig, Opportunity, QualityDefinition,
-    WorldSettings
+    WorldSettings, TargetEvalContext
 } from '@/engine/models';
 import {
     evaluateText as evaluateScribeText,
@@ -32,6 +32,9 @@ export class GameEngine implements EngineContext {
     public tempAliases: Record<string, string> = {}; 
     public errors: string[] = [];
     public executedEffectsLog: string[] = [];
+
+    /** $target.* scope for social actions; set by the resolve pipeline. */
+    private targetCtx: TargetEvalContext | null = null;
 
     
     /**
@@ -128,7 +131,8 @@ export class GameEngine implements EngineContext {
             this.errors,
             (msg, depth, type) => this.traceLog(msg, depth, type),
             0,
-            locals
+            locals,
+            this.targetCtx
         );
     }
 
@@ -181,7 +185,10 @@ export class GameEngine implements EngineContext {
                 contextOverride || null,
                 this.resolutionRoll, 
                 this.tempAliases,
-                this.errors
+                this.errors,
+                undefined,
+                0,
+                this.targetCtx
             );
         }
         for (const part of parts) {
@@ -193,7 +200,10 @@ export class GameEngine implements EngineContext {
                 contextOverride || null,
                 this.resolutionRoll, 
                 this.tempAliases,
-                this.errors
+                this.errors,
+                undefined,
+                0,
+                this.targetCtx
             );
             
             if (this._logger) {
@@ -204,6 +214,14 @@ export class GameEngine implements EngineContext {
         }
 
         return true;
+    }
+
+    /**
+     * Sets the `$target.*` evaluation scope used by social actions. Pass null
+     * to clear. The snapshot should be taken AFTER the actor's own effects.
+     */
+    public setTargetContext(ctx: TargetEvalContext | null): void {
+        this.targetCtx = ctx;
     }
 
     /**

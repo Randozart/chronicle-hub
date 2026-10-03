@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PendingEvent, QualityDefinition, WorldSettings, ImageDefinition } from '@/engine/models';
+import { PendingEvent, LivingEvent, SocialEvent, QualityDefinition, WorldSettings, ImageDefinition } from '@/engine/models';
 import GameImage from './GameImage';
 import FormattedText from './FormattedText';
 import { GameEngine } from '@/engine/gameEngine';
@@ -13,6 +13,7 @@ interface Props {
     settings: WorldSettings;
     engine: GameEngine;
     onAcknowledge: (instanceId: string) => void; 
+    onSocialRespond?: (instanceId: string, action: 'accept' | 'decline') => void;
 }
 
 const formatTimeLeft = (ms: number) => {
@@ -26,16 +27,28 @@ const formatTimeLeft = (ms: number) => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
-export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary, settings, engine, onAcknowledge }: Props) {
+const formatChange = (c: { qid: string; qualityName?: string; name?: string; levelBefore?: number; levelAfter?: number; cpBefore?: number; cpAfter?: number }) => {
+    const label = c.qualityName || c.name || c.qid;
+    const levelDelta = (c.levelAfter ?? 0) - (c.levelBefore ?? 0);
+    if (levelDelta !== 0) return `${label} ${levelDelta > 0 ? '+' : ''}${levelDelta}`;
+    const cpDelta = (c.cpAfter ?? 0) - (c.cpBefore ?? 0);
+    if (cpDelta !== 0) return `${label} (${cpDelta > 0 ? '+' : ''}${cpDelta} progress)`;
+    return label;
+};
+
+export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary, settings, engine, onAcknowledge, onSocialRespond }: Props) {
     const [now, setNow] = useState(Date.now());
-    const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+    const [busyId, setBusyId] = useState<string | null>(null);
 
     useEffect(() => {
         const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
     }, []);
 
-    const activeStories = pendingEvents || [];
+    const all = pendingEvents || [];
+    const socialStories = all.filter((e): e is SocialEvent => e.type === 'social');
+    const livingStories = all.filter((e): e is LivingEvent => e.type !== 'social');
+    const activeStories = all;
 
     const hideWhenEmpty = settings.livingStoriesConfig?.hideWhenEmpty !== false;
     if (activeStories.length === 0 && hideWhenEmpty) return null;
@@ -43,8 +56,14 @@ export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary
     const title = settings.livingStoriesConfig?.title || "Living Stories";
 
     const handleAcknowledge = (instanceId: string) => {
-        setAcknowledgingId(instanceId);
+        setBusyId(instanceId);
         onAcknowledge(instanceId);
+    };
+
+    const handleSocialRespond = (instanceId: string, action: 'accept' | 'decline') => {
+        if (!onSocialRespond) return;
+        setBusyId(instanceId);
+        onSocialRespond(instanceId, action);
     };
 
     return (
@@ -61,7 +80,68 @@ export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary
             )}
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {activeStories.map(event => {
+                {socialStories.map(event => {
+                    const senderLabel = event.fromName || 'Another rat';
+                    const outcomeLabel = event.outcome === 'fail' ? 'They failed.' : event.outcome === 'pass' ? 'They succeeded.' : '';
+                    return (
+                        <div key={event.instanceId} className="living-story-card" style={{ 
+                            background: 'var(--bg-item)', border: '1px solid var(--accent-highlight)',
+                            borderRadius: 'var(--border-radius)', padding: '0.75rem', display: 'flex', gap: '10px'
+                        }}>
+                            <div style={{ fontSize: '1.4rem', flexShrink: 0 }}>🐀</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{senderLabel}</div>
+                                {event.description && (
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', lineHeight: '1.3' }}>
+                                        <FormattedText text={event.description} />
+                                    </div>
+                                )}
+                                {outcomeLabel && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', fontStyle: 'italic' }}>
+                                        {outcomeLabel}
+                                    </div>
+                                )}
+                                {event.accepted && event.changes && event.changes.length > 0 && (
+                                    <div style={{ fontSize: '0.8rem', marginTop: '6px', color: 'var(--success-color)' }}>
+                                        {event.changes.map(c => (
+                                            <div key={c.qid}>{formatChange(c)}</div>
+                                        ))}
+                                    </div>
+                                )}
+                                {event.accepted ? (
+                                    <button 
+                                        onClick={() => handleAcknowledge(event.instanceId)}
+                                        disabled={busyId === event.instanceId}
+                                        className="option-button"
+                                        style={{ width: '100%', marginTop: '8px', padding: '0.4rem', fontSize: '0.8rem', background: 'var(--success-bg)', color: 'var(--success-color)' }}
+                                    >
+                                        {busyId === event.instanceId ? 'Processing...' : 'Acknowledge'}
+                                    </button>
+                                ) : (
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                        <button 
+                                            onClick={() => handleSocialRespond(event.instanceId, 'accept')}
+                                            disabled={busyId === event.instanceId || !onSocialRespond}
+                                            className="option-button"
+                                            style={{ flex: 1, padding: '0.4rem', fontSize: '0.8rem', background: 'var(--success-bg)', color: 'var(--success-color)' }}
+                                        >
+                                            Accept
+                                        </button>
+                                        <button 
+                                            onClick={() => handleSocialRespond(event.instanceId, 'decline')}
+                                            disabled={busyId === event.instanceId || !onSocialRespond}
+                                            className="option-button"
+                                            style={{ flex: 1, padding: '0.4rem', fontSize: '0.8rem' }}
+                                        >
+                                            Decline
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+                {livingStories.map(event => {
                     const qDef = qualityDefs[event.targetId];
                     const name = qDef?.name || event.targetId;
                     const desc = event.description || qDef?.description || "";
@@ -115,11 +195,11 @@ export default function LivingStories({ pendingEvents, qualityDefs, imageLibrary
                                 {isComplete && (
                                     <button 
                                         onClick={() => handleAcknowledge(event.instanceId)}
-                                        disabled={acknowledgingId === event.instanceId}
+                                        disabled={busyId === event.instanceId}
                                         className="option-button"
                                         style={{ width: '100%', marginTop: '8px', padding: '0.4rem', fontSize: '0.8rem', background: 'var(--success-bg)', color: 'var(--success-color)' }}
                                     >
-                                        {acknowledgingId === event.instanceId ? 'Processing...' : 'Acknowledge'}
+                                        {busyId === event.instanceId ? 'Processing...' : 'Acknowledge'}
                                     </button>
                                 )}
                             </div>

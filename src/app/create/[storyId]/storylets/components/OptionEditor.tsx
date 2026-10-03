@@ -83,7 +83,72 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                         label="Delayed Text Eval" 
                         desc="Eval text AFTER effects." 
                     />
+                    <BehaviorCard
+                        checked={!!data.social}
+                        onChange={() => handleChange('social', !data.social)}
+                        label="Social Action"
+                        desc="Performed ON another player. They must accept."
+                    />
                 </div>
+
+                {!!data.social && (
+                    <div className="special-field-group" style={{ marginTop: '1rem', borderColor: 'var(--tool-accent)' }}>
+                        <label className="special-label" style={{ color: 'var(--tool-accent)' }}>Social Action</label>
+                        <div className="form-group">
+                            <label className="form-label">Targets</label>
+                            <div style={{ display: 'flex', gap: '1.5rem' }}>
+                                <label className="toggle-label">
+                                    <input
+                                        type="radio"
+                                        name="social_scope"
+                                        checked={(data.social_scope || 'here') === 'here'}
+                                        onChange={() => handleChange('social_scope', 'here')}
+                                    />
+                                    Players here
+                                </label>
+                                <label className="toggle-label">
+                                    <input
+                                        type="radio"
+                                        name="social_scope"
+                                        checked={data.social_scope === 'anywhere'}
+                                        onChange={() => handleChange('social_scope', 'anywhere')}
+                                    />
+                                    Players anywhere
+                                </label>
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <SmartArea
+                                label="Target must meet requirement"
+                                subLabel="Players who fail this never appear in the target list."
+                                value={data.social_if || ''}
+                                onChange={v => handleChange('social_if', v || undefined)}
+                                storyId={storyId}
+                                mode="condition"
+                                placeholder="Leave blank for anyone"
+                                qualityDefs={qualityDefs}
+                            />
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <BehaviorCard
+                                checked={!!data.auto_accept}
+                                onChange={() => handleChange('auto_accept', !data.auto_accept)}
+                                label="Auto-accept"
+                                desc="No consent needed — gifts, ambient acts. Applies on their next visit."
+                            />
+                        </div>
+                        <SmartArea
+                            label="Target Sees"
+                            subLabel="Story delivered to the other player. Supports $target.name and $target.quality."
+                            value={data.target_text || ''}
+                            onChange={v => handleChange('target_text', v || undefined)}
+                            storyId={storyId}
+                            minHeight="60px"
+                            placeholder="What does the other player experience?"
+                            qualityDefs={qualityDefs}
+                        />
+                    </div>
+                )}
 
                 <div className="form-group">
                     <SmartArea 
@@ -457,6 +522,20 @@ function OutcomeColumn({ title, color, data, prefix, onChange, storyId, qualityD
             <div style={{ marginTop: '0.5rem' }}>
                 <SmartArea label="Changes" value={data[`${prefix}_quality_change`] || ''} onChange={v => onChange(`${prefix}_quality_change`, v)} storyId={storyId} mode="effect" qualityDefs={qualityDefs} />
             </div>
+
+            {data.social && (
+                <div style={{ marginTop: '0.5rem' }}>
+                    <SmartArea
+                        label="Their Changes"
+                        subLabel="Applied to your target when they accept. Supports $target.quality reads."
+                        value={data[`${prefix}_target_quality_change`] || ''}
+                        onChange={v => onChange(`${prefix}_target_quality_change`, v)}
+                        storyId={storyId}
+                        mode="effect"
+                        qualityDefs={qualityDefs}
+                    />
+                </div>
+            )}
 
             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
                 <div style={{ flex: 1 }}>

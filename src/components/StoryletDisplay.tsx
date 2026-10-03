@@ -105,9 +105,11 @@ export default function StoryletDisplay({
     defaultFailSoundUrl,
 }: StoryletDisplayProps) {
     const [isLoading, setIsLoading] = useState(false);
-    
     const [showDebug, setShowDebug] = useState(false);
     const [showHidden, setShowHidden] = useState(false);
+    const [socialPicker, setSocialPicker] = useState<ResolveOption | null>(null);
+    const [socialCandidates, setSocialCandidates] = useState<{ characterId: string; name: string }[]>([]);
+    const [candidatesLoading, setCandidatesLoading] = useState(false);
     
     const storylet = eventData;
 
@@ -127,17 +129,40 @@ export default function StoryletDisplay({
     };
     const effectiveTags = getEffectiveTags();
 
-    const handleOptionClick = async (option: ResolveOption) => {
+    const openSocialPicker = (option: ResolveOption) => {
+        if (isGuestMode) {
+            alert('Social actions require a registered account.');
+            return;
+        }
+        setSocialPicker(option);
+        setSocialCandidates([]);
+        setCandidatesLoading(true);
+        fetch(`/api/social/candidates?storyId=${storyId}&characterId=${characterId}&storyletId=${storylet.id}&optionId=${option.id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) setSocialCandidates(data.candidates || []);
+                else alert(data.error || 'Could not load targets.');
+            })
+            .catch(() => alert('Could not load targets.'))
+            .finally(() => setCandidatesLoading(false));
+    };
+
+    const handleOptionClick = async (option: ResolveOption, targetCharacterId?: string) => {
         if (isLoading) return;
+        if (option.social && !targetCharacterId) {
+            openSocialPicker(option);
+            return;
+        }
         // Play the immediate action sound (sword slash, spell cast, etc.) — falls back to world default
         const clickSound = option.clickSoundId || defaultClickSoundUrl;
         if (onPlaySound && clickSound) onPlaySound(clickSound);
         setIsLoading(true);
+        setSocialPicker(null);
         try {
             const response = await fetch('/api/resolve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId, characterId, guestState: isGuestMode ? character : undefined })
+                body: JSON.stringify({ storyletId: storylet.id, optionId: option.id, storyId, characterId, guestState: isGuestMode ? character : undefined, targetCharacterId })
             });
 
             if (response.status === 409) {
@@ -503,6 +528,56 @@ export default function StoryletDisplay({
                     </button>
                 )}
             </div>
+
+            {socialPicker && (
+                <div 
+                    onClick={() => !candidatesLoading && setSocialPicker(null)}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        background: 'rgba(0,0,0,0.7)', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', padding: '1rem'
+                    }}
+                >
+                    <div 
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            background: 'var(--bg-panel, #1a1a2e)', border: '1px solid var(--border-color, #444)',
+                            borderRadius: 'var(--border-radius, 8px)', padding: '1.5rem', width: '100%', maxWidth: '420px',
+                            maxHeight: '70vh', overflowY: 'auto'
+                        }}
+                    >
+                        <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem' }}>Choose a target</h3>
+                        <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: 'var(--text-muted, #999)' }}>
+                            {socialPicker.name}
+                        </p>
+                        {candidatesLoading && <div style={{ color: 'var(--text-muted, #999)', fontStyle: 'italic' }}>Looking around…</div>}
+                        {!candidatesLoading && socialCandidates.length === 0 && (
+                            <div style={{ color: 'var(--text-muted, #999)', fontStyle: 'italic' }}>Nobody here to target.</div>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {socialCandidates.map(c => (
+                                <button
+                                    key={c.characterId}
+                                    className="option-button"
+                                    disabled={isLoading}
+                                    onClick={() => handleOptionClick(socialPicker, c.characterId)}
+                                    style={{ textAlign: 'left', padding: '0.75rem' }}
+                                >
+                                    {c.name}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            className="option-button return-button"
+                            onClick={() => setSocialPicker(null)}
+                            style={{ width: '100%', marginTop: '1rem' }}
+                            disabled={isLoading}
+                        >
+                            Never mind
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -39,6 +39,21 @@ export interface ResolveOption extends LogicGates {
     fail_redirect?: string;
     fail_move_to?: string;
 
+    /** Social action: this option is performed ON another player's character. */
+    social?: boolean;
+    /** Where candidate targets come from. Phase B adds 'known' (relationship rows). */
+    social_scope?: 'here' | 'anywhere';
+    /** Per-candidate condition string, evaluated against the candidate's qualities. */
+    social_if?: string;
+    /** Skip the accept/decline step — gift-like acts apply on the target's next tick. */
+    auto_accept?: boolean;
+    /** Effect string applied to the TARGET on the actor's success (or unchallenged resolve). */
+    target_pass_quality_change?: string;
+    /** Effect string applied to the TARGET on the actor's failure. */
+    target_fail_quality_change?: string;
+    /** Narration delivered to the target. Evaluated in actor context after actor effects; snapshot stored. */
+    target_text?: string;
+
     lock_message?: string;
     computed_action_cost?: number | string;
     /** Sound URL played immediately when the player clicks this option (before resolution). */
@@ -407,8 +422,10 @@ export interface StringQualityState extends BaseQualityState { type: QualityType
 export type QualityState = CounterQualityState | PyramidalQualityState | ItemQualityState | StringQualityState;
 export type PlayerQualities = Record<string, QualityState>;
 
-export interface PendingEvent {
+/** Timer/effect event produced by %schedule macros. Absent `type` means 'living'. */
+export interface LivingEvent {
     instanceId: string;
+    type?: 'living';
     scope: 'quality' | 'category';
     targetId: string;
     op: '=' | '+=' | '-=';
@@ -419,7 +436,50 @@ export interface PendingEvent {
     intervalMs?: number;
     description?: string;
     completedTime?: Date;
+}
 
+/** Player-to-player social act delivered to the target for consent. */
+export interface SocialEvent {
+    instanceId: string;
+    type: 'social';
+    triggerTime: Date;
+    /**
+     * Narration delivered to the target. Stored raw; evaluated in the TARGET's
+     * context on accept, where `$target` is the ACTOR ("$target.name groomed
+     * you") and plain `$quality` reads the target's own state.
+     */
+    description?: string;
+    completedTime?: Date;
+    fromCharacterId: string;
+    fromName?: string;
+    socialOptionId?: string;
+    socialOptionName?: string;
+    /** Effect strings from the option; the outcome's set applies on accept. */
+    effects?: { pass?: string; fail?: string };
+    /** The actor's resolution result; keys which effect set applies. */
+    outcome?: 'pass' | 'fail';
+    /** Auto-accept acts apply on the target's next tick without consent. */
+    autoAccept?: boolean;
+    accepted?: boolean;
+    /** The actor's name + post-act quality state, snapshotted for mirroring reads. */
+    actorSnapshot?: { name?: string; qualities: PlayerQualities };
+    /** Filled on accept so the target's card can list their changes. */
+    changes?: QualityChangeInfo[];
+}
+
+export type PendingEvent = LivingEvent | SocialEvent;
+
+/** Quality ids reserved for engine scopes; authors should not create these. */
+export const RESERVED_QUALITY_IDS = ['target', 'rel', 'world', 'platform'] as const;
+
+/**
+ * Evaluation context for the `$target.*` scope (social actions).
+ * While set, `$target.name` resolves to the counterpart's character name and
+ * `$target.<qid>` reads a quality from their state (StoryNexus "mirroring").
+ */
+export interface TargetEvalContext {
+    name?: string;
+    qualities: PlayerQualities;
 }
 
 export interface CharacterDocument {

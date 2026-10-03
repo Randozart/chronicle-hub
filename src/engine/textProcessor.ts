@@ -1,7 +1,7 @@
 // src/engine/textProcessor.ts
 
 import { safeEval } from '@/utils/safeEval';
-import { PlayerQualities, QualityDefinition, QualityState, QualityType } from './models';
+import { PlayerQualities, QualityDefinition, QualityState, QualityType, TargetEvalContext } from './models';
 import { ScribeEvaluator } from './scribescript/types';
 
 export type TraceLogger = (message: string, depth: number, type?: 'INFO' | 'SUCCESS' | 'WARN' | 'ERROR') => void;
@@ -70,7 +70,8 @@ export function evaluateText(
     errors?: string[],
     logger?: TraceLogger,
     depth: number = 0,
-    locals?: Record<string, number | string> 
+    locals?: Record<string, number | string>,
+    targetCtx?: TargetEvalContext | null
 ): string {
     if (!rawText) return '';
     if (selfContext && depth === 0) {
@@ -83,7 +84,7 @@ export function evaluateText(
     const effectiveAliases = aliases || {}; 
     
     try {
-        return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors, logger, depth, locals);
+        return evaluateRecursive(cleanText, 'TEXT', qualities, qualityDefs, effectiveAliases, selfContext, resolutionRoll, errors, logger, depth, locals, targetCtx);
     } catch (e: any) {
         const msg = `Fatal Parser Error: ${e.message}`;
         console.error(msg);
@@ -108,7 +109,8 @@ function evaluateRecursive(
     errors?: string[],
     logger?: TraceLogger,
     depth: number = 0,
-    locals?: Record<string, number | string>
+    locals?: Record<string, number | string>,
+    targetCtx?: TargetEvalContext | null
 ): string {
     let currentText = text;
     let currentBlock = ""; 
@@ -126,7 +128,7 @@ function evaluateRecursive(
                 logger(`Eval: ${blockWithBraces}`, depth);
             }
 
-            const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, locals);
+            const resolvedValue = evaluateExpression(blockContent, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, locals, targetCtx);
             
             const safeValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
             
@@ -138,7 +140,7 @@ function evaluateRecursive(
         }
 
         if (context === 'LOGIC') {
-            return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, locals).toString();        
+            return evaluateExpression(currentText, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, locals, targetCtx).toString();        
         } else {
             return currentText;
         }
@@ -164,7 +166,8 @@ function evaluateExpression(
     errors?: string[],
     logger?: TraceLogger,
     depth: number = 0,
-    locals?: Record<string, number | string>
+    locals?: Record<string, number | string>,
+    targetCtx?: TargetEvalContext | null
 ): string | number | boolean {
     const cleanExpr = expr.replace(/\/\/.*$/gm, '').trim();
     if (!cleanExpr) return "";
@@ -187,7 +190,7 @@ function evaluateExpression(
         const aliasKey = assignmentMatch[1];
         const rawValue = assignmentMatch[2];
         
-        const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
+        const resolvedValue = resolveComplexExpression(rawValue, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText, targetCtx);
         
         let storedValue = (resolvedValue === undefined || resolvedValue === null) ? "" : resolvedValue.toString().trim();
         if (storedValue.startsWith('$')) storedValue = storedValue.substring(1);
@@ -198,7 +201,7 @@ function evaluateExpression(
     }
 
     if (trimmedExpr.includes(':')) {
-        return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
+        return evaluateConditional(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, targetCtx);
     }
 
     if (trimmedExpr.startsWith('%')) {
@@ -215,7 +218,7 @@ function evaluateExpression(
         const randomIndex = Math.floor(Math.random() * choices.length);
         const selected = choices[randomIndex].trim();
         if (logger) logger(`Choice: "${selected}"`, depth);
-        return evaluateExpression(selected, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
+        return evaluateExpression(selected, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, locals, targetCtx);
     }
     
     if (trimmedExpr.match(/>>|<<|><|<>/)) {
@@ -231,7 +234,7 @@ function evaluateExpression(
         return res;
     }
 
-    return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
+    return resolveComplexExpression(trimmedExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText, targetCtx);
 }
 
 /**
@@ -256,7 +259,8 @@ function resolveComplexExpression(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number = 0,
-    evaluator: ScribeEvaluator
+    evaluator: ScribeEvaluator,
+    targetCtx?: TargetEvalContext | null
 ): string | number | boolean {
     if(depth < 2 && logger) logger(`Expr: "${expr}"`, depth);
 
@@ -268,7 +272,7 @@ function resolveComplexExpression(
         expandedExpr = expandedExpr.replace(/\$\(([^)]+)\)/g, (match, innerLogic) => {
             // Recursively resolve the logic inside the parentheses
             const resolvedId = resolveComplexExpression(
-                innerLogic, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, evaluator
+                innerLogic, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth + 1, evaluator, targetCtx
             );
             // Clean up the result to be a valid ID
             const cleanId = resolvedId.toString().replace(/['"]/g, '').trim();
@@ -289,7 +293,7 @@ function resolveComplexExpression(
     // If expression is a single variable, skip eval wrapping
     const simpleVarPattern = /^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/;
     if (simpleVarPattern.test(expandedExpr.trim())) {
-         const result = resolveVariable(expandedExpr.trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
+         const result = resolveVariable(expandedExpr.trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator, targetCtx);
          return result;
     }
 
@@ -312,7 +316,7 @@ function resolveComplexExpression(
         }
         
         const varReplacedExpr = processedExpr.replace(VARIABLE_REGEX, (match) => { 
-                const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
+                const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator, targetCtx);
                 
                 if (typeof resolved === 'string') {
                     // Pass pure numbers through
@@ -360,13 +364,15 @@ function resolveVariable(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number = 0,
-    evaluator?: ScribeEvaluator 
+    evaluator?: ScribeEvaluator,
+    targetCtx?: TargetEvalContext | null
 ): string | number {    
     try {
         const match = fullMatch.match(/^((?:\$\.)|[@#\$](?:[a-zA-Z0-9_]+|\{.*?\}|\(.*?\)))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)$/);
         if (!match) return fullMatch;
 
-        const [, sigilAndName, levelSpoof, propChain] = match;
+        const [, sigilAndName, levelSpoof, rawPropChain] = match;
+        let propChain: string = rawPropChain || '';
         let sigil: string, identifier: string;
         
         if (sigilAndName === '$.') { 
@@ -374,7 +380,7 @@ function resolveVariable(
         } else { 
             sigil = sigilAndName.charAt(0); 
             identifier = sigilAndName.slice(1); 
-        }
+        } 
         if (identifier.startsWith('{')) {
             const resolvedId = evaluateText(identifier, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
             identifier = resolvedId.toString().replace(/^['"]|['"]$/g, '').trim();
@@ -386,6 +392,17 @@ function resolveVariable(
         }
         let qualityId: string | undefined;
         let contextQualities = qualities;
+
+        // $target.* — read the social counterpart's name or qualities. The prop
+        // chain redirects onto their quality state; defs stay world-shared.
+        if (sigil === '$' && identifier === 'target') {
+            if (!targetCtx) return `[Unknown: ${fullMatch}]`;
+            const tProps = propChain.split('.').filter(Boolean);
+            if (tProps.length === 0 || tProps[0] === 'name') return targetCtx.name || '';
+            qualityId = tProps[0];
+            contextQualities = targetCtx.qualities;
+            propChain = tProps.length > 1 ? `.${tProps.slice(1).join('.')}` : '';
+        }
 
         if (sigil === '$.') qualityId = self?.qid; 
         else if (sigil === '@') {
@@ -421,7 +438,7 @@ function resolveVariable(
         }
         if (levelSpoof) {
             if(logger) logger(`Expr: "${levelSpoof}"`, depth);
-            const spoofedValRaw = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth);
+            const spoofedValRaw = evaluateExpression(levelSpoof, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, undefined, targetCtx);
             const spoofedVal = Number(spoofedValRaw);
             
             if (!isNaN(spoofedVal)) {
@@ -523,7 +540,8 @@ function evaluateConditional(
     resolutionRoll: number, 
     errors?: string[],
     logger?: TraceLogger,
-    depth: number = 0
+    depth: number = 0,
+    targetCtx?: TargetEvalContext | null
 ): string {
 
     const branches = splitByPipe(expr);
@@ -535,7 +553,7 @@ function evaluateConditional(
             // This is an "If" or "Else If" branch
             const conditionStr = branch.substring(0, colonIndex).trim();
             
-            const isMet = evaluateCondition(conditionStr, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
+            const isMet = evaluateCondition(conditionStr, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth, targetCtx);
             
             if (isMet) {
                 if (logger) logger(`Condition [${conditionStr}] TRUE`, depth, 'SUCCESS');
@@ -546,7 +564,7 @@ function evaluateConditional(
                 // Clean up quotes and .trim() again to prevent indentation bugs
                 const cleanedResult = resultStr.replace(/^['"]|['"]$/g, '').trim();
                 
-                return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+                return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1, undefined, targetCtx);
             }
             // If condition is NOT met, the loop continues to the next branch (|)
         } else {
@@ -556,7 +574,7 @@ function evaluateConditional(
             // Clean up quotes and .trim() again to prevent indentation bugs
             const cleanedResult = branch.trim().replace(/^['"]|['"]$/g, '').trim();
             
-            return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1);
+            return evaluateText(cleanedResult, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth + 1, undefined, targetCtx);
         }
     }
     
@@ -695,7 +713,8 @@ export function evaluateCondition(
     aliases: Record<string, string> = {}, 
     errors?: string[],
     logger?: TraceLogger,      
-    depth: number = 0          
+    depth: number = 0,
+    targetCtx?: TargetEvalContext | null
 ): boolean {
     if (!expression) return true;
     const trimExpr = expression.trim();
@@ -706,18 +725,18 @@ export function evaluateCondition(
             const opMatch = findBinaryOperator(trimExpr);
             // If no operator found at depth 0, it means the parens are wrapping the whole thing
             if (!opMatch && !trimExpr.includes('||') && !trimExpr.includes('&&')) {
-                return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
+                return evaluateCondition(trimExpr.slice(1, -1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth, targetCtx);
             }
         }
         
-        if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
-        if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth));
-        if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth);
+        if (trimExpr.includes('||')) return trimExpr.split('||').some(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth, targetCtx));
+        if (trimExpr.includes('&&')) return trimExpr.split('&&').every(part => evaluateCondition(part, qualities, defs, self, resolutionRoll, aliases, errors, logger, depth, targetCtx));
+        if (trimExpr.startsWith('!')) return !evaluateCondition(trimExpr.slice(1), qualities, defs, self, resolutionRoll, aliases, errors, logger, depth, targetCtx);
 
         const opData = findBinaryOperator(trimExpr);
         
         if (!opData) {
-            const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
+            const val = resolveComplexExpression(trimExpr, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText, targetCtx);
             return val === 'true' || val === true || Number(val) > 0;
         }
         
@@ -726,8 +745,8 @@ export function evaluateCondition(
         let leftRaw = trimExpr.substring(0, index).trim();
         if (leftRaw === '' && self) leftRaw = '$.';
 
-        const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
-        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText);
+        const leftVal = resolveComplexExpression(leftRaw, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText, targetCtx);
+        const rightVal = resolveComplexExpression(trimExpr.substring(index + operator.length).trim(), qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluateText, targetCtx);
 
         if (operator === '==' || operator === '=' || operator === '!=') {
             const cleanLeft = String(leftVal).replace(/^['"]|['"]$/g, '').trim();

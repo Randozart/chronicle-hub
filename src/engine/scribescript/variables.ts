@@ -1,6 +1,6 @@
 // src/engine/scribescript/variables.ts
 import { safeEval } from '@/utils/safeEval';
-import { PlayerQualities, QualityDefinition, QualityState, QualityType } from '../models';
+import { PlayerQualities, QualityDefinition, QualityState, QualityType, TargetEvalContext } from '../models';
 import { ScribeEvaluator, TraceLogger } from './types';
 const VARIABLE_REGEX = /((?:\$\.)|[@#\$](?:\{.*?\}|[a-zA-Z0-9_]+))(?:\[(.*?)\])?((?:\.[a-zA-Z0-9_]+)*)/g;
 
@@ -14,7 +14,8 @@ export function resolveComplexExpression(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number,
-    evaluator: ScribeEvaluator
+    evaluator: ScribeEvaluator,
+    targetCtx?: TargetEvalContext | null
 ): string | number | boolean {
     const indent = '  '.repeat(depth);
     if (logger) logger(`Expr: "${expr}"`, depth, 'INFO');
@@ -35,7 +36,7 @@ export function resolveComplexExpression(
         }
         
         const varReplacedExpr = expr.replace(VARIABLE_REGEX, (match) => { 
-            const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator);
+            const resolved = resolveVariable(match, qualities, defs, aliases, self, resolutionRoll, errors, logger, depth, evaluator, targetCtx);
             if (typeof resolved === 'string') {
                 if (!isNaN(Number(resolved)) && resolved.trim() !== "") {
                     return resolved;
@@ -64,7 +65,8 @@ export function resolveVariable(
     errors: string[] | undefined, 
     logger: TraceLogger | undefined, 
     depth: number,
-    evaluator: ScribeEvaluator
+    evaluator: ScribeEvaluator,
+    targetCtx?: TargetEvalContext | null
 ): string | number {
     const indent = '  '.repeat(depth);
     
@@ -74,10 +76,11 @@ export function resolveVariable(
         
         if (!match) return fullMatch;
 
-        const [, sigilAndName, levelSpoof, propChain] = match;
+        const [, sigilAndName, levelSpoof, rawPropChain] = match;
         
         let sigil: string;
         let identifier: string;
+        let propChain: string = rawPropChain || '';
         if (sigilAndName === '$.') {
             sigil = '$.';
             identifier = '';
@@ -91,6 +94,17 @@ export function resolveVariable(
 
         let qualityId: string | undefined;
         let contextQualities = qualities;
+
+        // $target.* — read the social counterpart's name or qualities. The prop
+        // chain redirects onto their quality state; defs stay world-shared.
+        if (sigil === '$' && identifier === 'target') {
+            if (!targetCtx) return `[Unknown: ${fullMatch}]`;
+            const tProps = propChain.split('.').filter(Boolean);
+            if (tProps.length === 0 || tProps[0] === 'name') return targetCtx.name || '';
+            qualityId = tProps[0];
+            contextQualities = targetCtx.qualities;
+            propChain = tProps.length > 1 ? `.${tProps.slice(1).join('.')}` : '';
+        }
 
         if (sigil === '$.') qualityId = self?.qid;
         else if (sigil === '@') qualityId = aliases[identifier];
@@ -107,7 +121,7 @@ export function resolveVariable(
         if (sigil === '$.' && self) {
             state = self.state;
         } else {
-            state = qualities[qualityId];
+            state = contextQualities[qualityId];
             if (!state && self?.qid === qualityId) state = self.state;
         }
         if (!state) {

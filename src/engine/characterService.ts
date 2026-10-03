@@ -1,7 +1,7 @@
 // src/engine/characterService.ts
 import { processAutoEquip } from './resolutionService'; 
 import clientPromise from '@/engine/database';
-import { PlayerQualities, CharacterDocument, WorldConfig, QualityType, PendingEvent, QualityChangeInfo } from '@/engine/models';
+import { PlayerQualities, CharacterDocument, WorldConfig, QualityType, PendingEvent, LivingEvent, SocialEvent, QualityChangeInfo } from '@/engine/models';
 import { getWorldConfig, getSettings, getWorldState } from '@/engine/worldService';
 import { GameEngine } from './gameEngine';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,9 +13,13 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
     if (!character.pendingEvents || character.pendingEvents.length === 0) return character;
 
     const now = new Date();
-    const eventsToFire = character.pendingEvents.filter(e => now >= new Date(e.triggerTime) && !e.completedTime);
+    const dueEvents = character.pendingEvents.filter(e => now >= new Date(e.triggerTime) && !e.completedTime);
+    // Unaccepted social invitations must NOT auto-complete here — they wait for
+    // the target's Accept/Decline. Auto-accepted social acts DO apply on this tick.
+    const eventsToFire = dueEvents.filter((e): e is LivingEvent => e.type !== 'social');
+    const autoAcceptSocial = dueEvents.filter((e): e is SocialEvent => e.type === 'social' && !!e.autoAccept && !e.accepted);
 
-    if (eventsToFire.length === 0) return character;
+    if (eventsToFire.length === 0 && autoAcceptSocial.length === 0) return character;
 
     const gameData = await getWorldConfig(character.storyId);
     const worldState = await getWorldState(character.storyId);
@@ -47,7 +51,7 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
             const effectString = `$${event.targetId} ${event.op} ${event.value}`;
             engine.applyEffects(effectString);
         }
-        const originalEvent = character.pendingEvents.find(e => e.instanceId === event.instanceId);
+        const originalEvent = character.pendingEvents.find((e): e is LivingEvent => e.instanceId === event.instanceId);
         if (!originalEvent) continue;
         originalEvent.completedTime = now;
 
@@ -63,6 +67,27 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
             });
         }
     }
+
+    for (const social of autoAcceptSocial) {
+        firedAny = true;
+        const effectString = social.outcome === 'fail'
+            ? social.effects?.fail
+            : social.effects?.pass;
+        if (social.actorSnapshot) engine.setTargetContext(social.actorSnapshot);
+        const changesBefore = engine.changes.length;
+        if (effectString) engine.applyEffects(effectString);
+        // Narration: $target here is the ACTOR (actorSnapshot).
+        if (social.description) {
+            social.description = engine.evaluateText(social.description);
+        }
+        const originalEvent = character.pendingEvents.find((e): e is SocialEvent => e.instanceId === social.instanceId);
+        if (!originalEvent) continue;
+        // Stay pending (acknowledge-style) so the target sees what was done to
+        // them; only the Acknowledge click (acknowledge-event) removes the card.
+        originalEvent.accepted = true;
+        originalEvent.changes = engine.changes.slice(changesBefore);
+    }
+
     character.qualities = engine.getQualities();
     const newDefinitions = engine.getDynamicQualities();
     if (Object.keys(newDefinitions).length > 0) {
@@ -108,19 +133,19 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
     for (const instr of removals) {
         const { scope, targetId, target } = instr; 
         
-        let matches: PendingEvent[] = character.pendingEvents.filter((e: PendingEvent) => 
-            e.scope === scope && e.targetId === targetId
+        let matches: LivingEvent[] = character.pendingEvents.filter((e): e is LivingEvent =>
+            e.type !== 'social' && e.scope === scope && e.targetId === targetId
         );
 
         if (matches.length === 0) continue;
         if (target.type === 'first') {
-            matches.sort((a: PendingEvent, b: PendingEvent) => new Date(a.triggerTime).getTime() - new Date(b.triggerTime).getTime());
+            matches.sort((a: LivingEvent, b: LivingEvent) => new Date(a.triggerTime).getTime() - new Date(b.triggerTime).getTime());
         } else if (target.type === 'last') {
-            matches.sort((a: PendingEvent, b: PendingEvent) => new Date(b.triggerTime).getTime() - new Date(a.triggerTime).getTime());
+            matches.sort((a: LivingEvent, b: LivingEvent) => new Date(b.triggerTime).getTime() - new Date(a.triggerTime).getTime());
         }
 
         const count = target.count || (target.type === 'all' ? Infinity : 1);
-        const toRemove: PendingEvent[] = matches.slice(0, count);
+        const toRemove: LivingEvent[] = matches.slice(0, count);
         const toRemoveIds = new Set(toRemove.map((e: PendingEvent) => e.instanceId));
         character.pendingEvents = character.pendingEvents.filter((e: PendingEvent) => !toRemoveIds.has(e.instanceId));
     }
@@ -128,7 +153,8 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
         if (instr.op && instr.intervalMs) {
 
             if (instr.unique) {
-                const exists = character.pendingEvents.some(e =>
+                const exists = character.pendingEvents.some((e): e is LivingEvent =>
+                    e.type !== 'social' &&
                     e.scope === instr.scope &&
                     e.targetId === instr.targetId &&
                     e.op === instr.op &&
@@ -137,7 +163,7 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
                 if (exists) continue;
             }
 
-            const newEvent: PendingEvent = {
+            const newEvent: LivingEvent = {
                 instanceId: uuidv4(),
                 scope: instr.scope,
                 targetId: instr.targetId,

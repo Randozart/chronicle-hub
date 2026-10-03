@@ -202,6 +202,19 @@ export default function GameHub(props: GameHubProps) {
         } catch (e) { console.error("Ack error", e); }
     }, [character, props.storyId]);
 
+    const handleSocialRespond = useCallback(async (instanceId: string, action: 'accept' | 'decline') => {
+        if (!character) return;
+        try {
+            const res = await fetch('/api/social/respond', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storyId: props.storyId, characterId: character.characterId, instanceId: instanceId, action: action, guestState: isGuestMode ? character : undefined })
+            });
+            const data = await res.json();
+            if (data.success && data.character) setCharacter(data.character);
+        } catch (e) { console.error("Social respond error", e); }
+    }, [character, props.storyId, isGuestMode]);
+
     const showEvent = useCallback(async (eventId: string | null, source: 'story' | 'item' = 'story') => {
         if (!eventId) { setActiveEvent(null); setActiveResolution(null); return; }
         setEventSource(source);
@@ -642,6 +655,7 @@ export default function GameHub(props: GameHubProps) {
                     settings={props.settings}
                     engine={renderEngine}
                     onAcknowledge={handleAcknowledgeEvent}
+                    onSocialRespond={handleSocialRespond}
                 />
             );
             if (position === 'column') columnLivingStories = livingStoriesComponent;
@@ -923,6 +937,7 @@ export default function GameHub(props: GameHubProps) {
                         settings={props.settings} 
                         engine={renderEngine} 
                         onAcknowledge={handleAcknowledgeEvent} 
+                        onSocialRespond={handleSocialRespond}
                     />
                 </div>
             );

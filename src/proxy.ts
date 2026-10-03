@@ -33,6 +33,7 @@ export async function proxy(req: NextRequest) {
 
         pathname.startsWith('/api/resolve') ||
         pathname.startsWith('/api/storylet') ||
+        pathname.startsWith('/api/social') ||
         pathname.startsWith('/api/character/equip') ||
         pathname.startsWith('/api/deck') ||
         pathname.startsWith('/api/market') ||

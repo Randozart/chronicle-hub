@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import clientPromise from '@/engine/database';
+import { v4 as uuidv4 } from 'uuid';
 import { getContent, getAutofireStorylets } from '@/engine/contentCache'; 
 import { getCharacter, saveCharacterState, regenerateActions, processScheduledUpdates, checkLivingStories } from '@/engine/characterService'; 
 import { GameEngine } from '@/engine/gameEngine';
 import { getEvent, getWorldState } from '@/engine/worldService'; 
 import { applyWorldUpdates, processAutoEquip } from '@/engine/resolutionService';
 import { verifyWorldAccess } from '@/engine/accessControl';
+import { CharacterDocument, SocialEvent } from '@/engine/models';
 
 export async function POST(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         const userId = session?.user ? (session.user as any).id : 'guest';
 
-        const { storyletId, optionId, storyId, characterId, guestState } = await request.json();
+        const { storyletId, optionId, storyId, characterId, guestState, targetCharacterId } = await request.json();
         const canDebug = await verifyWorldAccess(storyId, 'writer');
 
         const gameData = await getContent(storyId);
@@ -86,6 +89,43 @@ export async function POST(request: NextRequest) {
         if (!engine.evaluateCondition(option.visible_if)) {
              return NextResponse.json({ error: 'Option is not available.' }, { status: 403 });
         }
+
+        // --- Social action validation (before any action cost is spent) ---
+        let targetDoc: CharacterDocument | null = null;
+        if (option.social) {
+            if (userId === 'guest') {
+                return NextResponse.json({ error: 'Social actions require a registered account.' }, { status: 403 });
+            }
+            if (!targetCharacterId) {
+                return NextResponse.json({ error: 'No target selected.' }, { status: 400 });
+            }
+            const client = await clientPromise;
+            targetDoc = await client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db')
+                .collection<CharacterDocument>('characters')
+                .findOne({ characterId: targetCharacterId, storyId }) ?? null;
+            if (!targetDoc) {
+                return NextResponse.json({ error: 'Target character not found.' }, { status: 404 });
+            }
+            if (targetDoc.characterId === character.characterId) {
+                return NextResponse.json({ error: 'You cannot target yourself.' }, { status: 400 });
+            }
+            if (targetDoc.userId === 'guest') {
+                return NextResponse.json({ error: 'That character cannot be targeted.' }, { status: 403 });
+            }
+            if ((option.social_scope || 'here') === 'here' && targetDoc.currentLocationId !== character.currentLocationId) {
+                return NextResponse.json({ error: 'That character is not here.' }, { status: 403 });
+            }
+            if (option.social_if) {
+                const targetEngine = new GameEngine(targetDoc.qualities, gameData, targetDoc.equipment, worldState);
+                if (targetDoc.dynamicQualities) {
+                    Object.assign(targetEngine.worldContent.qualities, targetDoc.dynamicQualities);
+                }
+                if (!targetEngine.evaluateCondition(option.social_if)) {
+                    return NextResponse.json({ error: 'That character does not meet the requirements.' }, { status: 403 });
+                }
+            }
+        }
+
         if (gameData.settings.useActionEconomy) {
             let costExpr: string | number = gameData.settings.defaultActionCost ?? 1;
             if (option.action_cost) { costExpr = option.action_cost; }
@@ -116,6 +156,54 @@ export async function POST(request: NextRequest) {
         processScheduledUpdates(character, engineResult.scheduledUpdates);
         await applyWorldUpdates(storyId, engineResult.qualityChanges);
         processAutoEquip(character, engineResult.qualityChanges, gameData);
+
+        // --- Social action: snapshot + enqueue on the target ---
+        // Actor effects are already applied (locked ordering); $target.* reads
+        // now see post-act state. The target's own effects stay pending until
+        // they accept (or their next tick, for auto-accept acts).
+        if (option.social && targetDoc) {
+            const targetCtx = { name: targetDoc.name, qualities: JSON.parse(JSON.stringify(targetDoc.qualities)) };
+            engine.setTargetContext(targetCtx);
+
+            const outcome: 'pass' | 'fail' = engineResult.wasSuccess ? 'pass' : 'fail';
+            // target_text is stored raw: it narrates TO the target ABOUT the
+            // actor, so it evaluates in the target's context at accept time,
+            // where $target is the acting player.
+            const narration = option.target_text;
+
+            const socialEvent: SocialEvent = {
+                instanceId: uuidv4(),
+                type: 'social',
+                triggerTime: new Date(),
+                description: narration,
+                fromCharacterId: character.characterId,
+                fromName: character.name,
+                socialOptionId: option.id,
+                socialOptionName: option.name,
+                effects: {
+                    pass: option.target_pass_quality_change,
+                    fail: option.target_fail_quality_change,
+                },
+                outcome,
+                autoAccept: !!option.auto_accept,
+                actorSnapshot: {
+                    name: character.name,
+                    // Post-act actor state: mirroring reads see the actor AFTER
+                    // their own effects resolved.
+                    qualities: JSON.parse(JSON.stringify(character.qualities)),
+                },
+            };
+
+            // Append-only write: never touch the rest of the target's document,
+            // so a concurrent save on their side cannot be clobbered.
+            const client = await clientPromise;
+            await client.db(process.env.MONGODB_DB_NAME || 'chronicle-hub-db')
+                .collection<CharacterDocument>('characters')
+                .updateOne(
+                    { characterId: targetDoc.characterId },
+                    { $push: { pendingEvents: socialEvent } }
+                );
+        }
 
         const staticTags = option.tags || [];
         let dynamicTags: string[] = [];
@@ -161,6 +249,13 @@ export async function POST(request: NextRequest) {
         const postResolutionEngine = new GameEngine(character.qualities, gameData, character.equipment, updatedWorldState);
         if (character.dynamicQualities) {
              Object.assign(postResolutionEngine.worldContent.qualities, character.dynamicQualities);
+        }
+        // Actor prose may reference $target.* — same snapshot the event stores.
+        if (option.social && targetDoc) {
+            postResolutionEngine.setTargetContext({
+                name: targetDoc.name,
+                qualities: JSON.parse(JSON.stringify(targetDoc.qualities))
+            });
         }
         const newEligibleAutofires = pendingAutofires.filter(e =>
             e.autofire_if !== undefined &&

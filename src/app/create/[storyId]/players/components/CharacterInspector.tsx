@@ -180,16 +180,27 @@ export default function CharacterInspector({ characterId, storyId, worldQualitie
                                         ) : (
                                             <div style={{ display: 'grid', gap: '1rem' }}>
                                                 {char.pendingEvents.map((evt: PendingEvent, idx: number) => (
-                                                    <div key={idx} style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', borderLeft: '4px solid var(--warning-color)' }}>
+                                                    <div key={idx} style={{ background: 'var(--tool-bg-input)', padding: '1rem', borderRadius: '4px', borderLeft: `4px solid ${evt.type === 'social' ? 'var(--accent-highlight)' : 'var(--warning-color)'}` }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                            <strong style={{ color: 'var(--warning-color)', fontSize: '1.1rem' }}>{evt.targetId}</strong>
+                                                            <strong style={{ color: evt.type === 'social' ? 'var(--accent-highlight)' : 'var(--warning-color)', fontSize: '1.1rem' }}>
+                                                                {evt.type === 'social' ? `Social: ${evt.socialOptionName || evt.socialOptionId || 'act'} from ${evt.fromName || evt.fromCharacterId}` : evt.targetId}
+                                                            </strong>
                                                             <span style={{ fontSize: '0.9rem', color: 'var(--tool-text-dim)' }}>Due: {new Date(evt.triggerTime).toLocaleString()}</span>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: 'var(--tool-text-main)' }}>
-                                                            <span>Op: <code>{evt.op} {evt.value}</code></span>
-                                                            <span>Scope: <code>{evt.scope}</code></span>
-                                                            {evt.recurring && <span style={{ color: 'var(--success-color)' }}>↻ Recurring ({evt.intervalMs}ms)</span>}
-                                                        </div>
+                                                        {evt.type === 'social' ? (
+                                                            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: 'var(--tool-text-main)', flexWrap: 'wrap' }}>
+                                                                <span>Outcome: <code>{evt.outcome || '?'}</code></span>
+                                                                <span>Accepted: <code>{String(!!evt.accepted)}</code></span>
+                                                                <span>Auto: <code>{String(!!evt.autoAccept)}</code></span>
+                                                                {evt.description && <span style={{ fontStyle: 'italic' }}>&ldquo;{evt.description}&rdquo;</span>}
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: 'var(--tool-text-main)' }}>
+                                                                <span>Op: <code>{evt.op} {evt.value}</code></span>
+                                                                <span>Scope: <code>{evt.scope}</code></span>
+                                                                {evt.recurring && <span style={{ color: 'var(--success-color)' }}>↻ Recurring ({evt.intervalMs}ms)</span>}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
