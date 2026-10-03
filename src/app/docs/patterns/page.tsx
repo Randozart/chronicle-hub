@@ -252,6 +252,62 @@ export default function PatternsDocs() {
                     </ul>
                 </div>
 
+                {/* Pattern 11 - Hidden Ledger: hidden categories keep secret content scriptable but invisible */}
+                <div className="docs-card" style={{borderColor: '#44aa88', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: '#44aa88'}}>11. The Hidden Ledger</h3>
+                    <p className="docs-p">
+                        Secret content the engine can see but the player&apos;s listings cannot. A category flagged
+                        <strong> Hide from Listings</strong> keeps its qualities out of the profile and possessions lists,
+                        while <code className="docs-code">%pick</code>/<code className="docs-code">%all</code> and the sidebar still work normally.
+                    </p>
+                    <ul className="docs-list">
+                        <li>
+                            <strong>The Veil:</strong> Create a category <code className="docs-code">veiled</code> with
+                            <strong> Show in Sidebar</strong> and <strong>Hide from Listings</strong> both enabled. Put your
+                            cult rank (<code className="docs-code">$cult_rank</code>) and hidden currencies in it. Players see the
+                            rank on their character sheet, but it never appears in the profile list.
+                        </li>
+                        <li>
+                            <strong>The Deep Veil:</strong> A second category <code className="docs-code">secret</code> with
+                            <strong> Hide from Listings</strong> only. Quest flags and true-write-only state go here — invisible
+                            everywhere, but still targetable: <code className="docs-code">{`%pick[secret] += 1`}</code>.
+                        </li>
+                        <li>
+                            <strong>The Loot Table:</strong> Put all possible rewards in a hidden category and grant them randomly
+                            without ever exposing the table itself:
+                            <br/><code className="docs-code">{`%pick[veiled ; 2] += 1`}</code>
+                        </li>
+                    </ul>
+                </div>
+
+                {/* Pattern 12 - The Watering Hole: social actions between players */}
+                <div className="docs-card" style={{borderColor: '#d98a4a', marginTop: '2rem'}}>
+                    <h3 style={{marginTop: 0, color: '#d98a4a'}}>12. The Watering Hole</h3>
+                    <p className="docs-p">
+                        Player-to-player mechanics via <strong>Social Actions</strong>. One shared location becomes the place
+                        where rats — or whoever your players are — groom, feud, and court each other.
+                    </p>
+                    <ul className="docs-list">
+                        <li>
+                            <strong>The Gift (auto-accept):</strong> &ldquo;Offer a Grooming&rdquo; — Your Changes{' '}
+                            <code className="docs-code">calm += 1</code>, Their Changes{' '}
+                            <code className="docs-code">filth -= 1, bond += 1</code>, Auto-accept on. Ambient kindness, no consent friction.
+                        </li>
+                        <li>
+                            <strong>The Challenge (consent):</strong> &ldquo;Bare Your Teeth&rdquo; — Skill Check, Target requirement{' '}
+                            <code className="docs-code">menace &gt;= 1</code>. On success Their Changes{' '}
+                            <code className="docs-code">menace -= 1</code>; on failure Their Changes{' '}
+                            <code className="docs-code">menace += 1</code>. They can decline — and you will never know.
+                        </li>
+                        <li>
+                            <strong>The Mirror:</strong> Their Changes can copy the attacker&rsquo;s stats with{' '}
+                            <code className="docs-code">$target</code> — e.g.{' '}
+                            <code className="docs-code">opponent_scars = $target.scar_count</code> — because in Their Changes,{' '}
+                            <code className="docs-code">$target</code> is the acting player.
+                        </li>
+                    </ul>
+                </div>
+
             </section>
 
             <style jsx>{`

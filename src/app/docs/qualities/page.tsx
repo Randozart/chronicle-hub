@@ -517,6 +517,21 @@ export default function QualitiesDocs() {
                     </div>
                 </div>
 
+                <div className="docs-callout" style={{marginTop: '2rem', borderColor: 'var(--docs-accent-blue)'}}>
+                    <strong style={{color: 'var(--docs-accent-blue)'}}>Three Ways to Hide a Quality</strong>
+                    <p className="docs-p" style={{marginTop: '0.5rem'}}>
+                        These mechanisms look similar but operate at different levels — pick the right one:
+                    </p>
+                    <ul className="docs-list" style={{fontSize: '0.9rem'}}>
+                        <li><strong>Per-quality <code>hidden</code> tag:</strong> hides a single quality from the profile. Set on each quality individually.</li>
+                        <li><strong><code>hideAsBonus</code> property:</strong> hides the quality from the character sheet while still applying its equipment bonus (as used above).</li>
+                        <li><strong>Category &quot;Hide from Listings&quot; toggle:</strong> one switch hides <em>every</em> quality in a category from the profile and possessions listings, while keeping them on the sidebar (if sidebar-enabled) and fully targetable by <code>%pick</code>/<code>%all</code>. Prefer this when hiding a whole group.</li>
+                    </ul>
+                    <p className="docs-p" style={{marginBottom: 0, fontSize: '0.9rem'}}>
+                        See <a href="/docs/interface" className="docs-link">Categories &amp; the Character Sheet</a> for the full behavior.
+                    </p>
+                </div>
+
                 <div className="docs-callout" style={{marginTop: '3rem', borderColor: 'var(--docs-accent-green)'}}>
                     <strong style={{color: 'var(--docs-accent-green)'}}>Want More Examples?</strong>
                     <p className="docs-p" style={{marginBottom: 0, marginTop: '0.5rem'}}>

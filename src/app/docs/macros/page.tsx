@@ -226,6 +226,17 @@ export default function MacrosPage() {
                 <p className="docs-p">
                     These macros allow you to treat your Quality Categories as databases. You can randomly select items for loot tables, get a count of items, or perform an operation on an entire category at once.
                 </p>
+                <p className="docs-p">
+                    Collection macros ignore the <strong>Hide from Listings</strong> flag on categories: qualities in hidden categories are fully
+                    targetable by <code className="docs-code">%pick</code>, <code className="docs-code">%roll</code>, <code className="docs-code">%all</code>,{' '}
+                    <code className="docs-code">%list</code> and <code className="docs-code">%count</code>. This is the intended way to script secret
+                    content — the player never sees it in their profile or possessions, but your effects can still select and modify it.
+                </p>
+                <p className="docs-p">
+                    Inside <strong>Social Actions</strong>, effect values and conditions may also read the other player with{' '}
+                    <code className="docs-code">$target.quality</code> (e.g. <code className="docs-code">{`%all[menace; menace >= $target.menace] -= 1`}</code>).
+                    See <a href="/docs/storylets" style={{color: 'var(--docs-accent-blue)'}}>Social Actions</a> for the full scope rules.
+                </p>
 
                 <h3 className="docs-h3" style={{marginTop:'2rem'}}><code>%pick</code> (Random Selection)</h3>
                 <div className="docs-context-box">

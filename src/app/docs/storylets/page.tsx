@@ -125,6 +125,31 @@ export default function StoryletsDocs() {
         </div>
         
     </div>
+
+        <h3 className="docs-h3" style={{marginTop: '2rem'}}>Social Actions (Acting on Other Players)</h3>
+        <p className="docs-p">
+            An option flagged <strong>Social Action</strong> is performed <em>on another player&apos;s character</em> instead of
+            the world. The acting player picks a target from a picker; the target receives the act as an
+            invitation card and can <strong>Accept</strong> or <strong>Decline</strong> it. Only on accept do the
+            target&apos;s changes apply. Gift-like acts can skip consent via <strong>Auto-accept</strong>.
+        </p>
+        <div className="docs-context-box">
+            <ul>
+                <li><strong>Targets:</strong> Players in the same location, or anywhere in the world.</li>
+                <li><strong>Target must meet requirement:</strong> condition against the <em>candidate&apos;s</em> qualities — failing players never appear in the picker.</li>
+                <li><strong>Your Changes:</strong> apply to the actor immediately, exactly like a normal option (challenges work too).</li>
+                <li><strong>Their Changes:</strong> effect strings applied to the target when they accept — one set for success, one for failure, keyed off the actor&apos;s roll.</li>
+                <li><strong>Target Sees:</strong> narration delivered to the other player, written from your perspective at the moment of the act.</li>
+                <li><strong>Decline is silent:</strong> nothing happens; the actor is not told.</li>
+            </ul>
+        </div>
+        <div className="docs-callout" style={{marginTop: '1rem'}}>
+            <strong>$target — referencing the other player:</strong>
+            <br/>• <code>$target.name</code> — their character name, usable in any text
+            <br/>• <code>$target.menace</code> — read one of their qualities (&quot;mirroring&quot;), usable in text, requirements, and effect values
+            <br/>• In <strong>Your Changes</strong> prose and <strong>Target Sees</strong> narration, <code>$target</code> is the other player; in <strong>Their Changes</strong>, <code>$target</code> is the acting player (so <code>opponent_weapon = $target.weapon</code> copies the actor&apos;s stat onto them).
+            <br/>• Ordering is fixed: the actor&apos;s own effects resolve <em>first</em>, then target values are read.
+        </div>
 </section>
 
             {/* SECTION 3: DECK MECHANICS */}

@@ -106,7 +106,7 @@ export default function InterfacePage() {
                         </tr>
                         <tr>
                             <td><strong>Categories</strong></td>
-                            <td>Organize qualities into groups for batch operations</td>
+                            <td>Organize qualities into groups for batch operations, sidebar display, and hidden listings</td>
                         </tr>
                         <tr>
                             <td><strong>Regions</strong></td>
@@ -130,6 +130,39 @@ export default function InterfacePage() {
                         </tr>
                     </tbody>
                 </table>
+
+                <h3 className="docs-h3" style={{marginTop: '2rem'}}>Categories &amp; the Character Sheet</h3>
+                <p className="docs-p">
+                    A quality can belong to one or more categories — list them in its <strong>Category</strong> field, separated by commas
+                    (e.g. <code className="docs-code">character, menace</code>). Categories do three jobs: they organize the quality list,
+                    they let collection macros like <code className="docs-code">%pick</code> and <code className="docs-code">%all</code> target
+                    whole groups at once (see <a href="/docs/macros" style={{color: 'var(--docs-accent-blue)'}}>Collection &amp; Batch Macros</a>),
+                    and they control where a quality appears for players.
+                </p>
+                <p className="docs-p">
+                    Two toggles on each category control player-facing visibility:
+                </p>
+                <div className="docs-context-box">
+                    <ul>
+                        <li>
+                            <strong>Show in Sidebar:</strong> puts the category in the character sheet sidebar (the same list as
+                            the <em>Sidebar Categories</em> field in Settings). A quality appears on the sidebar when
+                            <strong> at least one</strong> of its categories is shown there — it does <em>not</em> need all of them.
+                        </li>
+                        <li>
+                            <strong>Hide from Listings:</strong> member qualities never appear in the profile quality list or the
+                            possessions/item listing. They remain fully usable: they still show on the sidebar if that category is
+                            sidebar-enabled, and macros like <code className="docs-code">%pick</code> and <code className="docs-code">%all</code> can
+                            still target them normally. Use this for internal bookkeeping you want to group and script but never show
+                            as a list entry — hidden currencies, cult ranks, loot-table contents, and so on.
+                        </li>
+                    </ul>
+                </div>
+                <p className="docs-p">
+                    Typical setup for a secret stat: create a category like <code className="docs-code">veiled</code>, enable
+                    <strong> Show in Sidebar</strong> and <strong>Hide from Listings</strong> on it, then put your secret qualities in
+                    that category. Players see the stat itself in the sidebar, but it never clutters the profile or bag listings.
+                </p>
 
                 <h3 className="docs-h3" style={{marginTop: '2rem'}}>The Top Bar</h3>
                 <ul className="docs-list">
