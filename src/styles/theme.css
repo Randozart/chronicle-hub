@@ -1496,3 +1496,24 @@ h1, h2, h3, h4, h5, h6 {
     --shadow-modal: 4px 4px 0px #bd00ff; 
     --tool-bg-code-editor: #080510; 
 }
+[data-theme='neon-noir'] {
+    --bg-main: #0a0e14;
+    --bg-panel: #0e1420;
+    --bg-item: #131b2a;
+    --bg-item-hover: #1a2438;
+    --border-color: #26334d;
+    --border-light: #37476b;
+    --text-primary: #d8d2c4;
+    --text-secondary: #9aa3b2;
+    --text-muted: #5c6678;
+    --accent-primary: #1e2a40;
+    --accent-hover: #2a3a58;
+    --accent-highlight: #ffb347;
+    --success-color: #29e6d2;
+    --danger-color: #ff2d78;
+    --progress-bg: #131b2a;
+    --progress-fill: #ffb347;
+    --font-header: "Georgia", "Times New Roman", serif;
+    --font-main: "Helvetica Neue", Arial, sans-serif;
+    --border-radius: 3px;
+}

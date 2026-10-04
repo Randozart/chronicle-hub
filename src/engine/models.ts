@@ -154,7 +154,7 @@ export interface CharCreateRule {
     showOnCard?: boolean;
 }
 
-export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop";
+export type LayoutStyle = "nexus" | "london" | "elysium" | "tabletop" | "cinematic";
 export type ImageCategory = 'icon' | 'banner' | 'background' | 'portrait' | 'map' | 'storylet' | 'cover' | 'location' | 'uncategorized';
 
 export interface SystemMessage {

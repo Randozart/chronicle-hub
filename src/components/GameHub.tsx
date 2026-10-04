@@ -6,6 +6,7 @@ import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import ElysiumLayout from './layouts/ElysiumLayout';
 import TabletopLayout from './layouts/TabletopLayout';
+import CinematicLayout from './layouts/CinematicLayout';
 import MapModal from './MapModal';
 import { GameEngine } from '@/engine/gameEngine';
 import CharacterLobby from './CharacterLobby';
@@ -1101,6 +1102,7 @@ export default function GameHub(props: GameHubProps) {
             case 'london': return <LondonLayout {...layoutProps} />;
             case 'elysium': return <ElysiumLayout {...layoutProps} />; 
             case 'tabletop': return <TabletopLayout {...layoutProps} />;
+            case 'cinematic': return <CinematicLayout {...layoutProps} />;
             default: return <NexusLayout {...layoutProps} />;
         }
     };
