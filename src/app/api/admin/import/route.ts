@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import clientPromise from '@/engine/database';
 import { verifyWorldAccess } from '@/engine/accessControl';
 import { getServerSession } from 'next-auth/next';
@@ -267,6 +268,11 @@ export async function POST(request: NextRequest) {
                 await db.collection('opportunities').bulkWrite(batch);
             }
         }
+
+        // Invalidate cached world content so players/editors see imported data
+        // immediately (matches updateWorldConfigItem / updateStoryletOrCard).
+        revalidateTag(`world-${targetStoryId}`, '');
+        revalidateTag(`storylets-${targetStoryId}`, '');
 
         return NextResponse.json({ 
             success: true, 

@@ -131,10 +131,11 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
     const removals = instructions.filter(i => ['cancel', 'reset', 'update'].includes(i.type));
     const additions = instructions.filter(i => ['schedule', 'reset', 'update'].includes(i.type));
     for (const instr of removals) {
-        const { scope, targetId, target } = instr; 
-        
+        const { scope = null, targetId, target = { type: 'all' } } = instr;
+        const normScope = scope ?? null;
+
         let matches: LivingEvent[] = character.pendingEvents.filter((e): e is LivingEvent =>
-            e.type !== 'social' && e.scope === scope && e.targetId === targetId
+            e.type !== 'social' && (e.scope ?? null) === normScope && e.targetId === targetId
         );
 
         if (matches.length === 0) continue;
@@ -155,7 +156,7 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
             if (instr.unique) {
                 const exists = character.pendingEvents.some((e): e is LivingEvent =>
                     e.type !== 'social' &&
-                    e.scope === instr.scope &&
+                    (e.scope ?? null) === (instr.scope ?? null) &&
                     e.targetId === instr.targetId &&
                     e.op === instr.op &&
                     e.value === instr.value
@@ -165,7 +166,7 @@ export const processScheduledUpdates = (character: CharacterDocument, instructio
 
             const newEvent: LivingEvent = {
                 instanceId: uuidv4(),
-                scope: instr.scope,
+                scope: instr.scope ?? null,
                 targetId: instr.targetId,
                 op: instr.op,
                 value: instr.value,
