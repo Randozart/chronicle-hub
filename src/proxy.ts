@@ -17,6 +17,7 @@ export async function proxy(req: NextRequest) {
         pathname === '/reset-password' ||  
         pathname.startsWith('/_next') || 
         pathname.startsWith('/images') || 
+        pathname.startsWith('/uploads') ||
         pathname.startsWith('/themes') ||
         pathname === '/favicon.ico' ||
         pathname === '/logo-w.svg' ||

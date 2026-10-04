@@ -341,7 +341,7 @@ export default function AssetExplorer({ assets, onSelect, onRefresh, storyId, mo
                             type="file" 
                             onChange={handleFileSelect} 
                             style={{ display: 'none' }} 
-                            accept="image/*"
+                            accept="image/svg+xml,.svg,image/*"
                         />
                     </div>
                 </div>

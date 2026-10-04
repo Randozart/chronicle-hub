@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="600" height="900">
+  <defs>
+    <linearGradient id="nightcity" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#080c13"/>
+      <stop offset="0.6" stop-color="#0d1727"/>
+      <stop offset="1" stop-color="#12233a"/>
+    </linearGradient>
+    <linearGradient id="sillwood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1712"/>
+      <stop offset="1" stop-color="#120e0a"/>
+    </linearGradient>
+    <radialGradient id="bokeh" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bokehc" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#29e6d2" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#29e6d2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bokehp" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff2d78" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#ff2d78" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="wgrain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.85  0 0 0 0 0.85  0 0 0 0 0.8  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+
+  <rect width="300" height="450" fill="url(#nightcity)"/>
+
+  <!-- city far below: bokeh field -->
+  <g>
+    <circle cx="52" cy="240" r="9" fill="url(#bokeh)"/>
+    <circle cx="96" cy="272" r="6" fill="url(#bokehc)"/>
+    <circle cx="150" cy="250" r="11" fill="url(#bokeh)"/>
+    <circle cx="204" cy="286" r="7" fill="url(#bokehp)"/>
+    <circle cx="246" cy="244" r="9" fill="url(#bokeh)"/>
+    <circle cx="272" cy="290" r="6" fill="url(#bokehc)"/>
+    <circle cx="122" cy="300" r="8" fill="url(#bokeh)"/>
+    <circle cx="230" cy="312" r="5" fill="url(#bokehp)"/>
+    <circle cx="76" cy="316" r="6" fill="url(#bokehc)"/>
+  </g>
+  <!-- distant towers, barely -->
+  <g fill="#0a1424">
+    <rect x="30" y="230" width="26" height="120"/><rect x="130" y="210" width="30" height="140"/>
+    <rect x="236" y="224" width="26" height="126"/>
+  </g>
+
+  <!-- the window: frame + mullions -->
+  <rect x="18" y="30" width="264" height="330" fill="none" stroke="#1c2739" stroke-width="3"/>
+  <line x1="150" y1="30" x2="150" y2="360" stroke="#1c2739" stroke-width="3"/>
+  <line x1="18" y1="196" x2="282" y2="196" stroke="#1c2739" stroke-width="3"/>
+  <!-- rain on the glass -->
+  <g stroke="#5b7396" stroke-width="0.8" opacity="0.4">
+    <path d="M44 34 v80 M52 60 v96 M66 40 v70 M78 80 v90 M96 44 v100 M110 70 v84 M126 36 v76 M138 90 v92"/>
+    <path d="M168 40 v84 M180 64 v96 M194 36 v78 M210 74 v88 M226 46 v96 M242 84 v80 M258 40 v88 M270 70 v92"/>
+    <path d="M40 210 v70 M64 226 v90 M92 204 v84 M120 240 v70 M164 212 v88 M192 236 v76 M222 204 v90 M252 230 v82 M276 214 v70"/>
+  </g>
+  <!-- a bead running down -->
+  <path d="M150 196 q-2 40 1 78 q2 30 -2 60" stroke="#8fa3c4" stroke-width="1.4" fill="none" opacity="0.5"/>
+
+  <!-- window seat -->
+  <rect x="0" y="360" width="300" height="90" fill="url(#sillwood)"/>
+  <line x1="0" y1="360" x2="300" y2="360" stroke="#3d3020" stroke-width="2"/>
+  <line x1="0" y1="366" x2="300" y2="366" stroke="#3d3020" stroke-width="0.8" opacity="0.6"/>
+  <!-- warm lamp light from the left, off-frame -->
+  <polygon points="0,360 70,360 40,450 0,450" fill="#ffb347" opacity="0.07"/>
+
+  <!-- the tray: three settings -->
+  <g>
+    <rect x="96" y="384" width="128" height="22" fill="#241c12" stroke="#3d3020" stroke-width="1.4"/>
+    <g stroke="#c67b4e" stroke-width="1" fill="#120e0a">
+      <ellipse cx="122" cy="392" rx="12" ry="4"/>
+      <ellipse cx="160" cy="392" rx="12" ry="4"/>
+      <ellipse cx="198" cy="392" rx="12" ry="4"/>
+    </g>
+    <g fill="#d8d2c4" opacity="0.85">
+      <rect x="118" y="380" width="7" height="7"/>
+      <rect x="156" y="380" width="7" height="7"/>
+      <rect x="194" y="380" width="7" height="7"/>
+    </g>
+  </g>
+
+  <!-- the empty chair, pushed back, side profile -->
+  <g fill="#060810">
+    <path d="M226 306 q10 -4 16 0 l4 74 h-10 l-2 -60 h-6 Z"/>
+    <rect x="222" y="378" width="60" height="9"/>
+    <rect x="228" y="387" width="7" height="52"/>
+    <rect x="272" y="387" width="7" height="46"/>
+    <path d="M278 316 q8 0 8 8 l-2 10 h-8 Z"/>
+  </g>
+  <line x1="222" y1="378" x2="282" y2="378" stroke="#c67b4e" stroke-width="1" opacity="0.5"/>
+
+  <!-- condensation ring where a cup stood -->
+  <circle cx="70" cy="404" r="9" fill="none" stroke="#8fa3c4" stroke-width="1" opacity="0.3"/>
+
+  <rect width="300" height="450" filter="url(#wgrain)" opacity="0.5" fill="none"/>
+
+  <rect x="6" y="6" width="288" height="438" fill="none" stroke="#37476b" stroke-width="1.6"/>
+  <rect x="12" y="12" width="276" height="426" fill="none" stroke="#232f45" stroke-width="0.8"/>
+  <g stroke="#ffb347" stroke-width="1.6">
+    <line x1="6" y1="18" x2="6" y2="6"/><line x1="6" y1="6" x2="18" y2="6"/>
+    <line x1="282" y1="6" x2="294" y2="6"/><line x1="294" y1="6" x2="294" y2="18"/>
+    <line x1="6" y1="432" x2="6" y2="444"/><line x1="6" y1="444" x2="18" y2="444"/>
+    <line x1="282" y1="444" x2="294" y2="444"/><line x1="294" y1="444" x2="294" y2="432"/>
+  </g>
+
+  <rect x="24" y="398" width="252" height="30" fill="#070b11" opacity="0.9"/>
+  <line x1="24" y1="398" x2="276" y2="398" stroke="#ffb347" stroke-width="0.8"/>
+  <text x="150" y="417" text-anchor="middle" font-family="Georgia, serif" font-size="12" letter-spacing="2.5" fill="#d8d2c4">ONE SETTING, WINDOW SEAT</text>
+</svg>

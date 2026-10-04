@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/providers/ToastProvider';
 import { ImageCategory } from '@/engine/models';
+import { isSvgFile } from '@/utils/svgFile';
 
 interface Props {
     onSelect: (url: string) => void;
@@ -36,7 +37,8 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
     const [isLoadingLib, setIsLoadingLib] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
-    const [fileType, setFileType] = useState("image/jpeg");
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [svgPreviewUrl, setSvgPreviewUrl] = useState<string | null>(null);
     const [imageKey, setImageKey] = useState("");
     const [category, setCategory] = useState<string>('icon');
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -87,9 +89,22 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
 
         const cleanName = file.name.split('.')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '_');
         setImageKey(cleanName);
-        setFileType(file.type);
+        const svg = isSvgFile(file);
 
         const url = URL.createObjectURL(file);
+        if (svg) {
+            // Vector preview: no img.onload gate (dimensionless SVGs may never
+            // report intrinsic size) and no crop math.
+            setPendingFile(file);
+            setSvgPreviewUrl(prev => {
+                if (prev) URL.revokeObjectURL(prev);
+                return url;
+            });
+            setOriginalImage(null);
+            setActiveTab('upload');
+            return;
+        }
+        setPendingFile(null);
         const img = new Image();
         img.onload = () => {
             setOriginalImage(img);
@@ -97,6 +112,15 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
             calculateAutoFit(img, category);
         };
         img.src = url;
+    };
+    const clearPendingFile = () => {
+        setOriginalImage(null);
+        setPendingFile(null);
+        setSvgPreviewUrl(prev => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
     const calculateAutoFit = (img: HTMLImageElement, cat: string) => {
         const ratio = ASPECT_RATIOS[cat] || 1;
@@ -174,16 +198,15 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
         setPan({ x: panStart.x + deltaX, y: panStart.y + deltaY });
     };
     const performUpload = async () => {
-        if (!originalImage) return;
+        if (!originalImage && !pendingFile) return;
         setIsUploading(true);
 
         try {
-            let blob: Blob | null = null;
-            if (fileType === 'image/svg+xml') {
-                const response = await fetch(originalImage.src);
-                blob = await response.blob();
-            } 
-            else {
+            const formData = new FormData();
+            if (pendingFile) {
+                // Vector SVG: post the original file untouched — never canvas.
+                formData.append('file', pendingFile, `${imageKey}.svg`);
+            } else if (originalImage) {
                 const targetW = OUTPUT_WIDTHS[category] || 1024;
                 const ratio = ASPECT_RATIOS[category] || 1;
                 const targetH = targetW / ratio;
@@ -207,14 +230,11 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
                 ctx.scale(scale * renderRatio, scale * renderRatio);
                 ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
 
-                blob = await new Promise<Blob | null>(resolve => osc.toBlob(resolve, 'image/jpeg', 0.9));
+                const blob = await new Promise<Blob | null>(resolve => osc.toBlob(resolve, 'image/jpeg', 0.9));
+                if (!blob) throw new Error("Failed to generate image");
+                formData.append('file', blob, `${imageKey}.jpg`);
             }
 
-            if (!blob) throw new Error("Failed to generate image");
-
-            const formData = new FormData();
-            const ext = fileType === 'image/svg+xml' ? 'svg' : 'jpg';
-            formData.append('file', blob, `${imageKey}.${ext}`);
             formData.append('storyId', storyId);
             formData.append('category', category);
             formData.append('alt', imageKey);
@@ -254,7 +274,7 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
                 <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-item)' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <button 
-                            onClick={() => { setActiveTab('library'); setOriginalImage(null); }}
+                            onClick={() => { setActiveTab('library'); clearPendingFile(); }}
                             className={`tab-btn ${activeTab === 'library' ? 'active' : ''}`}
                             style={{ padding: '0.5rem 1rem', border: 'none', background: 'transparent' }}
                         >
@@ -312,7 +332,7 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
                     )}
                     {activeTab === 'upload' && (
                         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            {!originalImage ? (
+                            {!originalImage && !svgPreviewUrl ? (
                                 <div 
                                     onClick={() => fileInputRef.current?.click()}
                                     style={{ 
@@ -324,12 +344,24 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
                                 >
                                     <span style={{ fontSize: '3rem', marginBottom: '1rem' }}>📷</span>
                                     <p>Click to select an image</p>
-                                    <input ref={fileInputRef} type="file" hidden accept="image/*" onChange={handleFileSelect} />
+                                    <input ref={fileInputRef} type="file" hidden accept="image/svg+xml,.svg,image/*" onChange={handleFileSelect} />
                                 </div>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '1.5rem' }}>
                                     <div style={{ flex: 1, display: 'flex', gap: '2rem', minHeight: 0, flexDirection: 'column', md: { flexDirection: 'row' } } as any}>
                                         <div style={{ flex: 2, minHeight: '300px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            {svgPreviewUrl ? (
+                                                // eslint-disable-next-line @next/next/no-img-element -- blob: objectURL preview; next/image cannot optimize it
+                                                <img
+                                                    src={svgPreviewUrl}
+                                                    alt="SVG preview"
+                                                    style={{
+                                                        width: '100%', height: '100%', objectFit: 'contain',
+                                                        borderRadius: '4px', border: '1px solid var(--border-color)',
+                                                        background: 'var(--bg-main)'
+                                                    }}
+                                                />
+                                            ) : (
                                             <canvas 
                                                 ref={canvasRef}
                                                 onMouseDown={handlePointerDown}
@@ -345,6 +377,7 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
                                                     cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none'
                                                 }}
                                             />
+                                            )}
                                         </div>
                                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto' }}>
                                             
@@ -377,6 +410,12 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
                                                 </p>
                                             </div>
 
+                                            {pendingFile ? (
+                                                <div className="form-group">
+                                                    <label className="form-label">Vector File (SVG)</label>
+                                                    <p className="special-desc">Uploaded raw — crop preset and zoom do not apply.</p>
+                                                </div>
+                                            ) : (
                                             <div className="form-group">
                                                 <label className="form-label">Zoom</label>
                                                 <input 
@@ -386,12 +425,13 @@ export default function ImagePickerModal({ onSelect, onClose, storyId = 'global'
                                                     style={{ width: '100%' }}
                                                 />
                                             </div>
+                                            )}
 
                                             <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
                                                 <button 
                                                     className="return-button" 
                                                     style={{ background: 'var(--bg-item)' }}
-                                                    onClick={() => setOriginalImage(null)}
+                                                    onClick={clearPendingFile}
                                                 >
                                                     Cancel
                                                 </button>

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <defs>
+    <linearGradient id="rb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#08090d"/>
+      <stop offset="1" stop-color="#0d0f16"/>
+    </linearGradient>
+    <radialGradient id="rblamp" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="rbgrain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.85  0 0 0 0 0.85  0 0 0 0 0.8  0 0 0 0.055 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="400" fill="url(#rb)"/>
+
+  <!-- filing shelves: three banks receding -->
+  <!-- bank 1 (far left, small) -->
+  <g fill="none" stroke="#1c2230" stroke-width="1.4">
+    <rect x="20" y="60" width="180" height="24"/><rect x="20" y="84" width="180" height="24"/>
+    <rect x="20" y="108" width="180" height="24"/><rect x="20" y="132" width="180" height="24"/>
+    <rect x="20" y="156" width="180" height="24"/><rect x="20" y="180" width="180" height="24"/>
+  </g>
+  <g fill="#12141c">
+    <rect x="26" y="66" width="24" height="14"/><rect x="56" y="66" width="30" height="14"/><rect x="92" y="66" width="20" height="14"/>
+    <rect x="26" y="90" width="30" height="14"/><rect x="62" y="90" width="22" height="14"/>
+    <rect x="120" y="114" width="26" height="14"/><rect x="30" y="138" width="28" height="14"/><rect x="100" y="162" width="32" height="14"/>
+  </g>
+  <!-- bank 2 (mid) -->
+  <g fill="none" stroke="#222a3c" stroke-width="1.5">
+    <rect x="240" y="30" width="260" height="34"/><rect x="240" y="64" width="260" height="34"/>
+    <rect x="240" y="98" width="260" height="34"/><rect x="240" y="132" width="260" height="34"/>
+    <rect x="240" y="166" width="260" height="34"/><rect x="240" y="200" width="260" height="34"/>
+  </g>
+  <g fill="#12141c">
+    <rect x="248" y="38" width="34" height="18"/><rect x="290" y="38" width="44" height="18"/><rect x="342" y="38" width="28" height="18"/>
+    <rect x="248" y="72" width="44" height="18"/><rect x="300" y="72" width="30" height="18"/><rect x="380" y="72" width="40" height="18"/>
+    <rect x="248" y="106" width="30" height="18"/><rect x="330" y="140" width="42" height="18"/><rect x="420" y="106" width="36" height="18"/>
+    <rect x="290" y="174" width="38" height="18"/><rect x="400" y="208" width="30" height="18"/>
+  </g>
+  <!-- bank 3 (near, large, right) -->
+  <g fill="none" stroke="#2e3648" stroke-width="1.7">
+    <rect x="560" y="0" width="360" height="52"/><rect x="560" y="52" width="360" height="52"/>
+    <rect x="560" y="104" width="360" height="52"/><rect x="560" y="156" width="360" height="52"/>
+    <rect x="560" y="208" width="360" height="52"/>
+  </g>
+  <g fill="#12141c">
+    <rect x="572" y="10" width="52" height="28"/><rect x="634" y="10" width="66" height="28"/><rect x="712" y="10" width="44" height="28"/>
+    <rect x="572" y="62" width="66" height="28"/><rect x="650" y="62" width="46" height="28"/><rect x="740" y="62" width="58" height="28"/><rect x="820" y="62" width="48" height="28"/>
+    <rect x="572" y="114" width="46" height="28"/><rect x="700" y="114" width="60" height="28"/><rect x="800" y="114" width="52" height="28"/>
+    <rect x="620" y="166" width="54" height="28"/><rect x="760" y="166" width="66" height="28"/><rect x="860" y="218" width="46" height="28"/>
+  </g>
+  <!-- one folder pulled out, askew -->
+  <rect x="726" y="58" width="20" height="40" fill="#1c2230" transform="rotate(8 736 78)"/>
+
+  <!-- the reading desk, lamp lit -->
+  <circle cx="960" cy="250" r="90" fill="url(#rblamp)"/>
+  <rect x="820" y="280" width="380" height="14" fill="#0b1119"/>
+  <line x1="820" y1="280" x2="1200" y2="280" stroke="#26334d" stroke-width="1.6"/>
+  <line x1="912" y1="252" x2="912" y2="216" stroke="#37476b" stroke-width="2"/>
+  <path d="M890 216 h44 l10 14 h-64 Z" fill="#0b1119" stroke="#ffb347" stroke-width="1.6"/>
+  <circle cx="912" cy="238" r="4" fill="#ffb347"/>
+  <!-- open ledger under the lamp -->
+  <path d="M840 288 q36 -8 72 0 l0 8 q-36 -6 -72 0 Z" fill="#d8d2c4" opacity="0.8"/>
+  <path d="M912 288 q36 -8 72 0 l0 8 q-36 -6 -72 0 Z" fill="#cfc9b8" opacity="0.7"/>
+  <line x1="912" y1="288" x2="912" y2="296" stroke="#8a8272" stroke-width="1"/>
+  <g stroke="#5c6678" stroke-width="0.9" opacity="0.7">
+    <line x1="852" y1="286" x2="898" y2="284"/><line x1="924" y1="284" x2="972" y2="282"/>
+  </g>
+
+  <!-- floor + a long shadow of the shelves -->
+  <rect x="0" y="294" width="820" height="106" fill="#08090d"/>
+  <line x1="0" y1="294" x2="820" y2="294" stroke="#1c2230" stroke-width="1.4"/>
+  <polygon points="240,294 500,294 620,400 200,400" fill="#05060a" opacity="0.6"/>
+  <!-- dust motes in the lamp light -->
+  <g fill="#ffb347" opacity="0.55">
+    <circle cx="936" cy="240" r="1.2"/><circle cx="958" cy="258" r="1"/><circle cx="886" cy="262" r="1.1"/>
+  </g>
+
+  <rect width="1200" height="400" filter="url(#rbgrain)" opacity="0.55" fill="none"/>
+</svg>

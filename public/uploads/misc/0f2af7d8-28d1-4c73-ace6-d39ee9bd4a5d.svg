@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="600" height="900">
+  <defs>
+    <linearGradient id="dawn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0e14"/>
+      <stop offset="0.42" stop-color="#1a2333"/>
+      <stop offset="0.52" stop-color="#3a3a4e"/>
+      <stop offset="0.6" stop-color="#6e4e46"/>
+      <stop offset="0.68" stop-color="#28303f"/>
+      <stop offset="1" stop-color="#0b1420"/>
+    </linearGradient>
+    <filter id="pgrain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.85  0 0 0 0 0.85  0 0 0 0 0.8  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+
+  <rect width="300" height="450" fill="url(#dawn)"/>
+
+  <!-- dawn band glow -->
+  <rect x="0" y="216" width="300" height="70" fill="#c67b4e" opacity="0.14"/>
+
+  <!-- antenna forest on the far roofs -->
+  <g stroke="#0a0e14" stroke-width="1.6">
+    <line x1="30" y1="228" x2="30" y2="176"/><line x1="22" y1="188" x2="38" y2="182"/>
+    <line x1="58" y1="236" x2="58" y2="168"/><line x1="50" y1="180" x2="66" y2="176"/><line x1="50" y1="196" x2="66" y2="200"/>
+    <line x1="86" y1="230" x2="86" y2="182"/><line x1="80" y1="192" x2="92" y2="188"/>
+    <line x1="242" y1="232" x2="242" y2="172"/><line x1="234" y1="184" x2="250" y2="180"/>
+    <line x1="268" y1="228" x2="268" y2="186"/><line x1="260" y1="196" x2="276" y2="192"/>
+  </g>
+  <!-- far roofline -->
+  <path d="M0 228 H300 V258 H0 Z" fill="#0a0e14"/>
+  <g fill="#ffb347" opacity="0.4">
+    <rect x="14" y="238" width="3" height="4"/><rect x="70" y="242" width="3" height="4"/><rect x="252" y="240" width="3" height="4"/>
+  </g>
+
+  <!-- pigeon arcs -->
+  <g fill="none" stroke="#0a0e14" stroke-width="2">
+    <path d="M96 150 q7 -7 14 0 M103 144 v8"/>
+    <path d="M130 128 q6 -6 12 0 M136 123 v7"/>
+    <path d="M172 142 q7 -7 14 0 M179 136 v8"/>
+    <path d="M210 118 q6 -6 12 0 M216 113 v7"/>
+    <path d="M248 138 q6 -6 12 0 M254 133 v7"/>
+  </g>
+  <g fill="none" stroke="#31415f" stroke-width="1.6">
+    <path d="M64 168 q6 -6 12 0 M70 163 v7"/>
+    <path d="M156 122 q5 -5 10 0 M161 118 v6"/>
+    <path d="M226 158 q6 -6 12 0 M232 153 v7"/>
+  </g>
+
+  <!-- mid roofs -->
+  <path d="M0 268 H300 V450 H0 Z" fill="#0b1119"/>
+  <rect x="0" y="268" width="300" height="8" fill="#111a28"/>
+  <line x1="0" y1="268" x2="300" y2="268" stroke="#37476b" stroke-width="1.2"/>
+  <g stroke="#16203a" stroke-width="1">
+    <line x1="60" y1="276" x2="60" y2="450"/><line x1="140" y1="276" x2="140" y2="450"/><line x1="230" y1="276" x2="230" y2="450"/>
+  </g>
+
+  <!-- the coop -->
+  <g>
+    <rect x="196" y="180" width="76" height="88" fill="#0d1522" stroke="#26334d" stroke-width="1.4"/>
+    <path d="M192 180 L234 158 L276 180 Z" fill="#0d1522" stroke="#26334d" stroke-width="1.4"/>
+    <g fill="#070b11">
+      <rect x="206" y="196" width="14" height="14"/><rect x="228" y="196" width="14" height="14"/>
+      <rect x="250" y="196" width="14" height="14"/><rect x="206" y="220" width="14" height="14"/>
+      <rect x="228" y="220" width="14" height="14"/><rect x="250" y="220" width="14" height="14"/>
+      <rect x="206" y="244" width="14" height="14"/><rect x="228" y="244" width="14" height="14"/><rect x="250" y="244" width="14" height="14"/>
+    </g>
+    <g stroke="#8fa3c4" stroke-width="0.8" opacity="0.5">
+      <rect x="206" y="196" width="14" height="14" fill="none"/><rect x="228" y="220" width="14" height="14" fill="none"/><rect x="250" y="244" width="14" height="14" fill="none"/>
+    </g>
+  </g>
+
+  <!-- the keeper: silhouette, feeding -->
+  <g fill="#04060b">
+    <!-- coat body, slight lean forward -->
+    <path d="M108 300 q10 -10 24 -8 l8 4 10 60 q-26 10 -50 0 Z"/>
+    <!-- head with cap -->
+    <circle cx="146" cy="286" r="8"/>
+    <path d="M136 283 q11 -7 21 -1 l-2 5 q-9 -5 -17 2 Z"/>
+    <!-- arm extended, scattering -->
+    <path d="M140 300 q16 -4 30 2 l-2 8 q-14 -5 -28 -2 Z"/>
+    <!-- legs -->
+    <rect x="118" y="354" width="9" height="46"/>
+    <rect x="134" y="354" width="9" height="42"/>
+  </g>
+  <!-- rim light: dawn behind -->
+  <path d="M132 292 q10 -8 24 -8" fill="none" stroke="#c67b4e" stroke-width="1.5" opacity="0.9"/>
+  <path d="M136 283 q11 -7 21 -1" fill="none" stroke="#c67b4e" stroke-width="1.1" opacity="0.8"/>
+  <path d="M150 296 q14 -2 22 4" fill="none" stroke="#ffb347" stroke-width="1" opacity="0.6"/>
+  <ellipse cx="130" cy="400" rx="28" ry="4" fill="#04060b" opacity="0.7"/>
+
+  <!-- pigeons down on the roof near him -->
+  <g fill="#0a0e14">
+    <path d="M170 372 q6 -8 12 0 q-6 4 -12 0 Z"/>
+    <path d="M192 378 q6 -8 12 0 q-6 4 -12 0 Z"/>
+    <path d="M158 384 q5 -7 10 0 q-5 4 -10 0 Z"/>
+    <path d="M182 392 q5 -7 10 0 q-5 4 -10 0 Z"/>
+    <path d="M204 366 q5 -7 10 0 q-5 4 -10 0 Z"/>
+  </g>
+  <!-- scattered feed -->
+  <g fill="#c67b4e" opacity="0.8">
+    <circle cx="164" cy="386" r="1.2"/><circle cx="176" cy="390" r="1.2"/><circle cx="188" cy="386" r="1.2"/>
+    <circle cx="198" cy="392" r="1.2"/><circle cx="168" cy="396" r="1.2"/><circle cx="184" cy="398" r="1.2"/>
+  </g>
+  <!-- roof edge under his feet -->
+  <line x1="96" y1="402" x2="226" y2="402" stroke="#1c2739" stroke-width="1.2" opacity="0.8"/>
+
+  <!-- water tower silhouette, far left -->
+  <g fill="#0a0e14">
+    <rect x="8" y="290" width="34" height="26"/>
+    <path d="M4 290 L25 272 L46 290 Z"/>
+    <line x1="12" y1="316" x2="8" y2="356" stroke="#0a0e14" stroke-width="3"/>
+    <line x1="38" y1="316" x2="42" y2="356" stroke="#0a0e14" stroke-width="3"/>
+  </g>
+
+  <rect width="300" height="450" filter="url(#pgrain)" opacity="0.5" fill="none"/>
+
+  <rect x="6" y="6" width="288" height="438" fill="none" stroke="#37476b" stroke-width="1.6"/>
+  <rect x="12" y="12" width="276" height="426" fill="none" stroke="#232f45" stroke-width="0.8"/>
+  <g stroke="#ffb347" stroke-width="1.6">
+    <line x1="6" y1="18" x2="6" y2="6"/><line x1="6" y1="6" x2="18" y2="6"/>
+    <line x1="282" y1="6" x2="294" y2="6"/><line x1="294" y1="6" x2="294" y2="18"/>
+    <line x1="6" y1="432" x2="6" y2="444"/><line x1="6" y1="444" x2="18" y2="444"/>
+    <line x1="282" y1="444" x2="294" y2="444"/><line x1="294" y1="444" x2="294" y2="432"/>
+  </g>
+
+  <rect x="24" y="398" width="252" height="30" fill="#070b11" opacity="0.9"/>
+  <line x1="24" y1="398" x2="276" y2="398" stroke="#ffb347" stroke-width="0.8"/>
+  <text x="150" y="417" text-anchor="middle" font-family="Georgia, serif" font-size="12" letter-spacing="2.5" fill="#d8d2c4">THE KEEPER OF PIGEONS</text>
+</svg>

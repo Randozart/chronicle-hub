@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <defs>
+    <linearGradient id="osky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0e14"/>
+      <stop offset="1" stop-color="#0f1a2a"/>
+    </linearGradient>
+    <radialGradient id="olastlamp" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="ograin2">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.85  0 0 0 0 0.85  0 0 0 0 0.8  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="400" fill="url(#osky)"/>
+
+  <!-- the old station facade -->
+  <g>
+    <rect x="340" y="90" width="520" height="260" fill="#0b1119" stroke="#22304a" stroke-width="2"/>
+    <!-- pediment -->
+    <path d="M320 90 L600 56 L880 90 Z" fill="#0d1522" stroke="#22304a" stroke-width="2"/>
+    <!-- the clock, stopped -->
+    <circle cx="600" cy="130" r="30" fill="#0a0e14" stroke="#37476b" stroke-width="2"/>
+    <line x1="600" y1="130" x2="600" y2="110" stroke="#d8d2c4" stroke-width="2" opacity="0.7"/>
+    <line x1="600" y1="130" x2="616" y2="138" stroke="#d8d2c4" stroke-width="2" opacity="0.7"/>
+    <!-- columns -->
+    <g stroke="#16203a" stroke-width="10">
+      <line x1="380" y1="170" x2="380" y2="350"/><line x1="470" y1="170" x2="470" y2="350"/>
+      <line x1="730" y1="170" x2="730" y2="350"/><line x1="820" y1="170" x2="820" y2="350"/>
+    </g>
+    <!-- bricked arches: the old platforms, sealed -->
+    <path d="M500 350 V250 q0 -26 30 -26 q30 0 30 26 V350 Z" fill="#070b11" stroke="#16203a" stroke-width="2"/>
+    <line x1="500" y1="290" x2="560" y2="290" stroke="#16203a" stroke-width="1.6"/>
+    <line x1="500" y1="320" x2="560" y2="320" stroke="#16203a" stroke-width="1.6"/>
+    <!-- THE LAST LIT WINDOW -->
+    <rect x="620" y="230" width="56" height="70" fill="#ffb347" opacity="0.16"/>
+    <rect x="620" y="230" width="56" height="70" fill="none" stroke="#26334d" stroke-width="2"/>
+    <line x1="648" y1="230" x2="648" y2="300" stroke="#26334d" stroke-width="1.6"/>
+    <line x1="620" y1="265" x2="676" y2="265" stroke="#26334d" stroke-width="1.6"/>
+    <circle cx="634" cy="248" r="26" fill="url(#olastlamp)"/>
+    <rect x="628" y="240" width="12" height="12" fill="#ffb347" opacity="0.6"/>
+    <!-- dead windows -->
+    <g fill="none" stroke="#1c2739" stroke-width="1.6">
+      <rect x="400" y="230" width="56" height="70"/><rect x="400" y="180" width="56" height="30"/>
+      <rect x="740" y="180" width="40" height="30"/><rect x="380" y="180" width="0" height="0"/>
+    </g>
+    <!-- faded signage -->
+    <text x="600" y="212" text-anchor="middle" font-family="Georgia, serif" font-size="15" letter-spacing="6" fill="#3d4658">OLD STATION</text>
+  </g>
+
+  <!-- street -->
+  <rect x="0" y="350" width="1200" height="50" fill="#0a0f1a"/>
+  <line x1="0" y1="350" x2="1200" y2="350" stroke="#22304a" stroke-width="1.6"/>
+  <!-- weeds through the pavement -->
+  <g stroke="#2a3a58" stroke-width="1.4" fill="none">
+    <path d="M120 350 q-2 -10 4 -16 M240 350 q3 -8 -2 -14 M920 350 q-3 -9 3 -15 M1080 350 q2 -8 -3 -13"/>
+  </g>
+  <!-- timetable board, long empty -->
+  <rect x="60" y="296" width="90" height="54" fill="#0b1119" stroke="#1c2739" stroke-width="1.6"/>
+  <g stroke="#16203a" stroke-width="1.2">
+    <line x1="68" y1="310" x2="142" y2="310"/><line x1="68" y1="322" x2="142" y2="322"/><line x1="68" y1="334" x2="142" y2="334"/>
+  </g>
+  <!-- one bench, wet -->
+  <g fill="#0b1119" stroke="#1c2739" stroke-width="1.4">
+    <rect x="940" y="322" width="110" height="8"/>
+    <rect x="946" y="330" width="8" height="20"/><rect x="1036" y="330" width="8" height="20"/>
+  </g>
+  <path d="M936 350 h120" stroke="#29e6d2" stroke-width="0.8" opacity="0.3"/>
+
+  <!-- moths at the lit window -->
+  <g fill="#ffb347" opacity="0.7">
+    <circle cx="612" cy="222" r="1.4"/><circle cx="684" cy="238" r="1.2"/><circle cx="668" cy="212" r="1"/>
+  </g>
+
+  <rect width="1200" height="400" filter="url(#ograin2)" opacity="0.5" fill="none"/>
+</svg>

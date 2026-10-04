@@ -58,7 +58,8 @@ export const uploadAsset = async (
     let ext = originalName.split('.').pop() || 'bin';
     
     // Optimization & WebP Conversion
-    const isSvg = contentType === 'image/svg+xml' || ext === 'svg';
+    const isSvg = contentType === 'image/svg+xml' || ext.toLowerCase() === 'svg';
+    if (isSvg) contentType = 'image/svg+xml'; // never fall through as octet-stream (S3 renders/downloads)
     // Optimize if it's an image, not an SVG, and optimization isn't disabled
     const shouldOptimize = options.optimize !== false && (contentType.startsWith('image/') || ['.png', '.jpg', '.jpeg'].includes(`.${ext}`));
 

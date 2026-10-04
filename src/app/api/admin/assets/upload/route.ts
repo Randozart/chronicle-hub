@@ -6,9 +6,29 @@ import { updateWorldConfigItem } from '@/engine/worldService';
 import { ImageDefinition } from '@/engine/models';
 import clientPromise from '@/engine/database';
 import { ObjectId } from 'mongodb';
+import DOMPurify from 'isomorphic-dompurify';
+import { isSvgFile, sniffSvg } from '@/utils/svgFile';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'chronicle-hub-db';
 const FREE_LIMIT_BYTES = 20 * 1024 * 1024;
+
+const VALID_RASTER_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+/**
+ * Strict SVG sanitisation: strip scriptable/remote content, keep vector art.
+ * Removes <script>/<foreignObject>/on* handlers and blocks every URI scheme
+ * (javascript:, http(s):) — only fragment refs (#..), relative paths and
+ * inline data:image URIs survive. Inline <style>, gradients, filters,
+ * animations and url(#..) references are preserved.
+ */
+function sanitizeSvg(svg: string): string | null {
+    const clean = DOMPurify.sanitize(svg, {
+        USE_PROFILES: { svg: true, svgFilters: true },
+        FORBID_TAGS: ['foreignObject', 'script', 'iframe', 'object', 'embed', 'link', 'meta'],
+        ALLOWED_URI_REGEXP: /^[^:]*$|^#|^data:image\//,
+    });
+    return clean.includes('<svg') ? clean : null;
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -32,8 +52,20 @@ export async function POST(request: NextRequest) {
         if (!file || !storyId) {
             return NextResponse.json({ error: 'Missing file or storyId' }, { status: 400 });
         }
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
-        if (!validTypes.includes(file.type)) {
+
+        // SVGs are recognised by MIME, extension, or content — never by the
+        // browser-reported type alone — and sanitised before storage.
+        const bytes = Buffer.from(await file.arrayBuffer());
+        const svgCandidate = isSvgFile({ name: file.name, type: file.type }) || sniffSvg(bytes.subarray(0, 1024));
+        let uploadFile: File = file;
+        if (svgCandidate) {
+            const cleaned = sanitizeSvg(new TextDecoder('utf-8').decode(bytes));
+            if (!cleaned) {
+                return NextResponse.json({ error: 'Invalid or unsafe SVG file.' }, { status: 400 });
+            }
+            const baseName = file.name.replace(/\.svg$/i, '') || 'upload';
+            uploadFile = new File([cleaned], `${baseName}.svg`, { type: 'image/svg+xml' });
+        } else if (!VALID_RASTER_TYPES.includes(file.type)) {
             return NextResponse.json({ error: 'Invalid file type. Only images allowed.' }, { status: 400 });
         }
         const client = await clientPromise;
@@ -57,7 +89,7 @@ export async function POST(request: NextRequest) {
         }
         const qualityOverride = qualityRaw ? parseInt(qualityRaw as string) : undefined;
         
-        const { url, size } = await uploadAsset(file, targetFolder, { 
+        const { url, size } = await uploadAsset(uploadFile, targetFolder, { 
             optimize: true, 
             preset,
             qualityOverride

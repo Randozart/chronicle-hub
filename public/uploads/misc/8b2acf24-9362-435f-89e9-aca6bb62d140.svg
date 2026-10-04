@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <defs>
+    <linearGradient id="dsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0e14"/>
+      <stop offset="1" stop-color="#101b2b"/>
+    </linearGradient>
+    <linearGradient id="dwater" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11222f"/>
+      <stop offset="1" stop-color="#0a1420"/>
+    </linearGradient>
+    <filter id="dgrain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.85  0 0 0 0 0.85  0 0 0 0 0.8  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="400" fill="url(#dsky)"/>
+
+  <!-- far cranes -->
+  <g stroke="#0a0e14" stroke-width="5" fill="none">
+    <path d="M150 200 V80 L290 60 M150 100 L240 88"/>
+    <path d="M960 190 V70 L1100 52 M960 92 L1050 80"/>
+    <path d="M480 210 V96 L570 84"/>
+  </g>
+  <!-- hanging container on the near crane -->
+  <g stroke="#0a0e14" stroke-width="2.4" fill="none">
+    <line x1="250" y1="88" x2="250" y2="130"/><line x1="236" y1="130" x2="264" y2="130"/>
+  </g>
+  <rect x="230" y="130" width="40" height="24" fill="#0d1626" stroke="#1c2739"/>
+
+  <!-- far skyline -->
+  <g fill="#0a0e14">
+    <rect x="0" y="180" width="1200" height="60"/>
+    <rect x="380" y="150" width="60" height="90"/><rect x="660" y="140" width="50" height="100"/>
+    <rect x="1150" y="160" width="50" height="80"/>
+  </g>
+  <g fill="#ffb347" opacity="0.4">
+    <rect x="392" y="170" width="4" height="5"/><rect x="672" y="160" width="4" height="5"/>
+  </g>
+
+  <!-- THE STACK ROWS: containers receding -->
+  <g stroke="#1c2739" stroke-width="1.6">
+    <rect x="40" y="238" width="230" height="52" fill="#0d1522"/>
+    <rect x="80" y="286" width="230" height="52" fill="#0b1320"/>
+    <rect x="40" y="334" width="230" height="52" fill="#0a111c"/>
+    <rect x="420" y="238" width="230" height="52" fill="#0d1522"/>
+    <rect x="460" y="286" width="230" height="52" fill="#0b1320"/>
+    <rect x="420" y="334" width="230" height="52" fill="#0a111c"/>
+    <rect x="800" y="238" width="230" height="52" fill="#0d1522"/>
+    <rect x="840" y="286" width="230" height="52" fill="#0b1320"/>
+    <rect x="800" y="334" width="230" height="52" fill="#0a111c"/>
+  </g>
+  <!-- corrugation lines + stencil marks -->
+  <g stroke="#16203a" stroke-width="1">
+    <line x1="70" y1="238" x2="70" y2="290"/><line x1="120" y1="238" x2="120" y2="290"/><line x1="170" y1="238" x2="170" y2="290"/><line x1="220" y1="238" x2="220" y2="290"/>
+    <line x1="450" y1="286" x2="450" y2="338"/><line x1="500" y1="286" x2="500" y2="338"/><line x1="550" y1="286" x2="550" y2="338"/><line x1="600" y1="286" x2="600" y2="338"/>
+    <line x1="830" y1="334" x2="830" y2="386"/><line x1="880" y1="334" x2="880" y2="386"/><line x1="930" y1="334" x2="930" y2="386"/><line x1="980" y1="334" x2="980" y2="386"/>
+  </g>
+  <g fill="#8fa3c4" opacity="0.4" font-family="monospace" font-size="11" letter-spacing="2">
+    <text x="96" y="268">OGUN-FREIGHT</text>
+    <text x="478" y="316">HUB-9</text>
+    <text x="856" y="364">RECEIVED</text>
+  </g>
+
+  <!-- water edge, right -->
+  <rect x="1050" y="238" width="150" height="162" fill="url(#dwater)"/>
+  <line x1="1050" y1="238" x2="1050" y2="400" stroke="#22304a" stroke-width="2"/>
+  <g stroke="#29e6d2" stroke-width="0.8" opacity="0.4">
+    <line x1="1070" y1="270" x2="1180" y2="270"/><line x1="1090" y1="300" x2="1190" y2="300"/><line x1="1064" y1="340" x2="1170" y2="340"/>
+  </g>
+  <!-- crane reflection -->
+  <line x1="960" y1="240" x2="960" y2="320" stroke="#22304a" stroke-width="4" opacity="0.4"/>
+
+  <!-- bollard + rope, foreground -->
+  <rect x="700" y="352" width="26" height="30" fill="#05070c"/>
+  <ellipse cx="713" cy="352" rx="14" ry="5" fill="#05070c"/>
+  <path d="M713 354 q60 14 130 6" stroke="#0a0e14" stroke-width="4" fill="none"/>
+
+  <!-- gulls -->
+  <g fill="none" stroke="#0a0e14" stroke-width="2">
+    <path d="M330 130 q8 -8 16 0 M374 108 q7 -7 14 0"/>
+  </g>
+
+  <rect width="1200" height="400" filter="url(#dgrain)" opacity="0.5" fill="none"/>
+</svg>

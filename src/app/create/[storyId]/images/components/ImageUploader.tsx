@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ImageCategory, ImageDefinition } from '@/engine/models';
+import { isSvgFile } from '@/utils/svgFile';
 
 interface Props {
     storyId: string;
@@ -40,6 +41,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
     const [imageKey, setImageKey] = useState("");
     const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
     const [originalFileType, setOriginalFileType] = useState("image/jpeg");
+    const [svgPreviewUrl, setSvgPreviewUrl] = useState<string | null>(null);
     const [quality, setQuality] = useState(90); 
     const [estimatedSize, setEstimatedSize] = useState<number | null>(null);
     const [userAssets, setUserAssets] = useState<any[]>([]);
@@ -129,15 +131,36 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
 
         const cleanName = file.name.split('.')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '_');
         setImageKey(cleanName);
-        setOriginalFileType(file.type); 
+        const svg = isSvgFile(file);
+        setOriginalFileType(svg ? 'image/svg+xml' : file.type);
 
         const url = URL.createObjectURL(file);
+        if (svg) {
+            // Vector preview: skip the img.onload gate entirely — dimensionless
+            // SVGs may never report intrinsic size, and crop math doesn't apply.
+            setSvgPreviewUrl(prev => {
+                if (prev) URL.revokeObjectURL(prev);
+                return url;
+            });
+            setOriginalImage(null);
+            return;
+        }
         const img = new Image();
         img.onload = () => {
             setOriginalImage(img);
             calculateAutoFit(img, category);
         };
         img.src = url;
+    };
+
+    const clearPendingFile = () => {
+        setOriginalImage(null);
+        setSvgPreviewUrl(prev => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+        });
+        // Allow re-picking the same file after cancel (change won't refire otherwise)
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const calculateAutoFit = (img: HTMLImageElement, cat: string) => {
@@ -316,7 +339,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
             const data = await res.json();
             if (res.ok) {
                 onUploadComplete(data);
-                setOriginalImage(null);
+                clearPendingFile();
                 setImageKey("");
                 setEstimatedSize(null);
             } else {
@@ -382,7 +405,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                 const data = await res.json();
                 if (res.ok) {
                     onUploadComplete(data);
-                    setOriginalImage(null);
+                    clearPendingFile();
                     setImageKey("");
                     setEstimatedSize(null);
                 } else {
@@ -417,7 +440,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
 
             {activeTab === 'upload' && (
                 <>
-                    {!originalImage ? (
+                    {!originalImage && !svgPreviewUrl ? (
                         <div 
                             onClick={() => fileInputRef.current?.click()}
                             style={{ 
@@ -431,7 +454,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                             <input 
                                 ref={fileInputRef} 
                                 type="file" 
-                                accept="image/*" 
+                                accept="image/svg+xml,.svg,image/*" 
                                 onChange={handleFileSelect} 
                                 style={{ display: 'none' }} 
                             />
@@ -450,6 +473,25 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                 flexDirection: 'column', 
                                 gap: '15px' 
                             }}>
+                                {svgPreviewUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element -- blob: objectURL preview; next/image cannot optimize it
+                                    <img
+                                        src={svgPreviewUrl}
+                                        alt="SVG preview"
+                                        style={{
+                                            width: '100%',
+                                            aspectRatio: '1/1',
+                                            objectFit: 'contain',
+                                            background: '#111',
+                                            border: '1px solid #444',
+                                            borderRadius: '4px',
+                                            boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+                                            display: 'block',
+                                            margin: '0 auto'
+                                        }}
+                                    />
+                                ) : (
+                                <>
                                 <canvas 
                                     ref={canvasRef}
                                     onMouseDown={handlePointerDown}
@@ -489,6 +531,8 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                 <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#666' }}>
                                     Drag to pan • Pinch/Scroll to zoom
                                 </div>
+                                </>
+                                )}
                             </div>
                             <div style={{ 
                                 flex: '1 1 250px',
@@ -560,7 +604,7 @@ export default function ImageUploader({ storyId, onUploadComplete, onStorageUpda
                                 
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
                                     <button 
-                                        onClick={() => setOriginalImage(null)} 
+                                        onClick={clearPendingFile} 
                                         className="unequip-btn" 
                                         style={{ flex: 1, padding: '10px', background: '#333', border: 'none', color: '#ccc', borderRadius: '4px', cursor: 'pointer' }}
                                     >

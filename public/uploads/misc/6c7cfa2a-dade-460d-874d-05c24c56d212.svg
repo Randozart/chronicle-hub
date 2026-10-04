@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="600" height="900">
+  <defs>
+    <linearGradient id="troom" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0d14"/>
+      <stop offset="1" stop-color="#0e1320"/>
+    </linearGradient>
+    <linearGradient id="amberwall" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3d2c14" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#3d2c14" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cyanwall" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#123c3e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#123c3e" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="tgrain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.85  0 0 0 0 0.85  0 0 0 0 0.8  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+
+  <rect width="300" height="450" fill="url(#troom)"/>
+
+  <!-- back wall with the doorway -->
+  <rect x="0" y="60" width="300" height="220" fill="#0b0f19"/>
+  <rect x="0" y="60" width="150" height="220" fill="url(#amberwall)"/>
+  <rect x="150" y="60" width="150" height="220" fill="url(#cyanwall)"/>
+  <line x1="150" y1="60" x2="150" y2="280" stroke="#26334d" stroke-width="1.4"/>
+
+  <!-- the doorway, small Nadia in it -->
+  <rect x="132" y="120" width="36" height="120" fill="#060a12" stroke="#26334d" stroke-width="1.4"/>
+  <polygon points="134,122 166,122 166,238 134,238" fill="#101a2c" opacity="0.6"/>
+  <g fill="#04060b">
+    <circle cx="150" cy="176" r="6"/>
+    <path d="M143 184 L157 184 L160 232 L140 232 Z"/>
+    <rect x="145" y="232" width="4" height="8"/>
+    <rect x="152" y="232" width="4" height="8"/>
+  </g>
+  <path d="M143 184 L157 184" fill="none" stroke="#d8d2c4" stroke-width="0.9" opacity="0.5"/>
+
+  <!-- floor: converging -->
+  <polygon points="0,280 300,280 300,450 0,450" fill="#0c1220"/>
+  <g stroke="#1a2436" stroke-width="1">
+    <line x1="150" y1="280" x2="150" y2="450"/>
+    <line x1="150" y1="280" x2="60" y2="450"/>
+    <line x1="150" y1="280" x2="240" y2="450"/>
+    <line x1="60" y1="316" x2="240" y2="316"/>
+    <line x1="36" y1="366" x2="264" y2="366"/>
+  </g>
+
+  <!-- the table, in perspective -->
+  <polygon points="70,316 230,316 262,398 38,398" fill="#101624" stroke="#26334d" stroke-width="1.4"/>
+  <polygon points="38,398 262,398 262,410 38,410" fill="#0a0f1a"/>
+  <line x1="70" y1="316" x2="230" y2="316" stroke="#37476b" stroke-width="1.2"/>
+
+  <!-- the file between them -->
+  <g>
+    <polygon points="140,346 176,346 184,360 132,360" fill="#d8d2c4" opacity="0.85"/>
+    <g stroke="#5c6678" stroke-width="1">
+      <line x1="140" y1="352" x2="176" y2="352"/><line x1="138" y1="356" x2="178" y2="356"/>
+    </g>
+  </g>
+
+  <!-- LEFT FIGURE: the Anders who stayed — fedora, amber side -->
+  <g fill="#04060b">
+    <path d="M84 200 L128 200 L132 224 L80 224 Z"/>
+    <path d="M74 224 L138 224 L142 234 L70 234 Z"/>
+    <rect x="98" y="234" width="24" height="12"/>
+    <path d="M92 246 L136 246 L144 316 L82 316 Z"/>
+    <!-- arm on the table -->
+    <path d="M96 270 L136 296 L130 308 L88 284 Z"/>
+  </g>
+  <path d="M84 200 L128 200" fill="none" stroke="#ffb347" stroke-width="1.6" opacity="0.95"/>
+  <path d="M84 200 L80 224" fill="none" stroke="#ffb347" stroke-width="1.2" opacity="0.7"/>
+  <path d="M74 224 L70 234" fill="none" stroke="#ffb347" stroke-width="1.1" opacity="0.65"/>
+  <path d="M92 246 L82 316" fill="none" stroke="#ffb347" stroke-width="1.4" opacity="0.8"/>
+
+  <!-- RIGHT FIGURE: the Anders who left — flat cap, cyan side -->
+  <g fill="#04060b">
+    <path d="M212 206 q18 -8 34 0 l2 18 h-38 Z"/>
+    <path d="M206 226 L252 226 L248 234 L210 234 Z"/>
+    <rect x="216" y="234" width="24" height="12"/>
+    <path d="M206 246 L250 246 L242 316 L198 316 Z"/>
+    <path d="M244 270 L206 296 L212 308 L252 284 Z"/>
+  </g>
+  <path d="M212 206 q18 -8 34 0" fill="none" stroke="#29e6d2" stroke-width="1.5" opacity="0.9"/>
+  <path d="M246 206 L248 226" fill="none" stroke="#29e6d2" stroke-width="1.1" opacity="0.7"/>
+  <path d="M252 226 L248 234" fill="none" stroke="#29e6d2" stroke-width="1.1" opacity="0.65"/>
+  <path d="M250 246 L242 316" fill="none" stroke="#29e6d2" stroke-width="1.3" opacity="0.75"/>
+
+  <!-- their long shadows cast inward -->
+  <polygon points="82,316 144,316 120,450 40,450" fill="#05070c" opacity="0.5"/>
+  <polygon points="198,316 256,316 272,450 186,450" fill="#05070c" opacity="0.5"/>
+
+  <rect width="300" height="450" filter="url(#tgrain)" opacity="0.5" fill="none"/>
+
+  <rect x="6" y="6" width="288" height="438" fill="none" stroke="#37476b" stroke-width="1.6"/>
+  <rect x="12" y="12" width="276" height="426" fill="none" stroke="#232f45" stroke-width="0.8"/>
+  <g stroke="#ffb347" stroke-width="1.6">
+    <line x1="6" y1="18" x2="6" y2="6"/><line x1="6" y1="6" x2="18" y2="6"/>
+    <line x1="282" y1="6" x2="294" y2="6"/><line x1="294" y1="6" x2="294" y2="18"/>
+    <line x1="6" y1="432" x2="6" y2="444"/><line x1="6" y1="444" x2="18" y2="444"/>
+    <line x1="282" y1="444" x2="294" y2="444"/><line x1="294" y1="444" x2="294" y2="432"/>
+  </g>
+
+  <rect x="24" y="398" width="252" height="30" fill="#070b11" opacity="0.9"/>
+  <line x1="24" y1="398" x2="276" y2="398" stroke="#ffb347" stroke-width="0.8"/>
+  <text x="150" y="417" text-anchor="middle" font-family="Georgia, serif" font-size="11.5" letter-spacing="2.2" fill="#d8d2c4">ONE ROOM, TWO ANDERS</text>
+</svg>

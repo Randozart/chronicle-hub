@@ -52,6 +52,7 @@ export default function GameImage({ code, imageLibrary, alt, type, className, st
         else if (currentSrc.endsWith('.jpg')) nextSrc = currentSrc.replace('.jpg', '.jpeg');
         else if (currentSrc.endsWith('.jpeg')) nextSrc = currentSrc.replace('.jpeg', '.gif');
         else if (currentSrc.endsWith('.gif')) nextSrc = currentSrc.replace('.gif', '.webp');
+        else if (currentSrc.endsWith('.webp')) nextSrc = currentSrc.replace('.webp', '.svg');
 
         if (nextSrc) {
             img.src = nextSrc;
