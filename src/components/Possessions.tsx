@@ -1,10 +1,6 @@
 'use client';
 
-<<<<<<< HEAD
-import { CharacterDocument, CategoryDefinition, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
-=======
 import { CategoryDefinition, CharacterDocument, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
->>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
@@ -19,14 +15,10 @@ interface PossessionsProps {
     equipment: Record<string, string | null>;
     qualityDefs: Record<string, QualityDefinition>;
     equipCategories: string[];
-<<<<<<< HEAD
-    categories?: Record<string, CategoryDefinition>;
-    onUpdateCharacter: (character: any) => void; 
-=======
     lockedEquipCategories?: string[];
     categories?: Record<string, CategoryDefinition>;
     onUpdateCharacter: (character: any) => void;
->>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
+
     onUseItem: (eventId: string) => void;
     onRequestTabChange: (tab: 'story') => void;
     storyId: string;
@@ -352,19 +344,6 @@ function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: 
     );
 }
 
-<<<<<<< HEAD
-export default function Possessions({ 
-    qualities, 
-    equipment, 
-    qualityDefs, 
-    equipCategories, 
-    categories,
-    onUpdateCharacter, 
-    onUseItem, 
-    onRequestTabChange, 
-    storyId, 
-    imageLibrary, 
-=======
 export default function Possessions({
     qualities,
     equipment,
@@ -377,7 +356,6 @@ export default function Possessions({
     onRequestTabChange,
     storyId,
     imageLibrary,
->>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
     settings,
     engine,
     showHidden,

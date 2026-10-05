@@ -405,14 +405,11 @@ export default function GameHub(props: GameHubProps) {
         [character?.qualities, worldConfig, character?.equipment, props.worldState, props.isPlaytesting, handleLog]
     );
 
-<<<<<<< HEAD
     // Ref mirror of renderEngine so callbacks declared before it (travel,
     // guest bootstrap) can evaluate conditions without stale-closure games.
     const renderEngineRef = useRef<GameEngine>(renderEngine);
     useEffect(() => { renderEngineRef.current = renderEngine; }, [renderEngine]);
 
-    const deckIds = useMemo(() => 
-=======
     const getBaseCatName = (catRaw: string) => {
         const cat = catRaw.trim();
         const m = cat.match(/^(.+?)\s*\*(?:\s*\d+)?$/);
@@ -442,7 +439,6 @@ export default function GameHub(props: GameHubProps) {
     }, [props.settings.equipCategories, props.categories, renderEngine]);
 
     const deckIds = useMemo(() =>
->>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
         location?.deck ? location.deck.split(',').map(s => s.trim()).filter(Boolean) : [],
         [location?.deck]
     );
@@ -944,12 +940,8 @@ export default function GameHub(props: GameHubProps) {
                         qualities={character.qualities} 
                         equipment={character.equipment} 
                         qualityDefs={mergedQualityDefs} 
-<<<<<<< HEAD
-                        equipCategories={props.settings.equipCategories || []} 
-=======
                         equipCategories={visibleEquipCategories}
                         lockedEquipCategories={lockedEquipCategories}
->>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
                         categories={props.categories}
                         onUpdateCharacter={handleCharacterUpdate} 
                         onUseItem={(id) => { if (!activeEvent) showEvent(id, 'item'); }} 
