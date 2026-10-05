@@ -181,6 +181,22 @@ export function parseAndApplyEffects(
                 }
             }
         }
+        else if (command.startsWith('%unequip')) {
+            // %unequip[slot_name] — clears all equipment slots matching the given category/slot name.
+            // Matches the exact slot (e.g. "main_hand") and any numbered variants (e.g. "ring", "ring_2", "ring_3").
+            const unequipMatch = command.match(/^%unequip\[([^\]]+)\]$/);
+            if (unequipMatch) {
+                const rawSlot = ctx.evaluateText(unequipMatch[1].trim()).trim();
+                let cleared = 0;
+                for (const slotKey of Object.keys(ctx.equipment)) {
+                    if (slotKey === rawSlot || slotKey.startsWith(rawSlot + '_')) {
+                        ctx.equipment[slotKey] = null;
+                        cleared++;
+                    }
+                }
+                ctx.executedEffectsLog.push(`[EXECUTE] Unequip: ${rawSlot} (${cleared} slot(s) cleared)`);
+            }
+        }
         else {
             // Regex captures the Left-Hand Side (rawLhs) of the assignment, optional metadata (metaStr), the operator (op), and the Right-Hand Side (valStr).
             const assignMatch = command.match(/^(.+?)(?:\s*\[(.*?)\])?\s*(\+\+|--|[\+\-\*\/%]=|=)\s*([\s\S]*)$/);

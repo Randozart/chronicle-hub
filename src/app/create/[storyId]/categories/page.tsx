@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use, useRef } from 'react';
-import { CategoryDefinition, WorldSettings } from '@/engine/models';
+import { CategoryDefinition, QualityDefinition, WorldSettings } from '@/engine/models';
 import AdminListSidebar from '../storylets/components/AdminListSidebar';
 import CategoryMainForm from './components/CategoryMainForm';
 import InputModal from '@/components/admin/InputModal';
@@ -15,6 +15,7 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
     const { showToast } = useToast();
     const [categories, setCategories] = useState<CategoryDefinition[]>([]);
     const [settings, setSettings] = useState<WorldSettings | null>(null);
+    const [qualities, setQualities] = useState<QualityDefinition[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const guardRef = useRef<FormGuard | null>(null);
@@ -36,14 +37,19 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
         setIsLoading(true);
         Promise.all([
             fetch(`/api/admin/categories?storyId=${storyId}`),
-            fetch(`/api/admin/settings?storyId=${storyId}`)
-        ]).then(async ([catRes, setRes]) => {
+            fetch(`/api/admin/settings?storyId=${storyId}`),
+            fetch(`/api/admin/qualities?storyId=${storyId}`)
+        ]).then(async ([catRes, setRes, qualRes]) => {
             if (catRes.ok) {
                 const data = await catRes.json();
                 setCategories(Object.values(data));
             }
             if (setRes.ok) {
                 setSettings(await setRes.json());
+            }
+            if (qualRes.ok) {
+                const data = await qualRes.json();
+                setQualities(Object.values(data));
             }
         }).finally(() => setIsLoading(false));
     }, [storyId]);
@@ -196,6 +202,7 @@ export default function CategoriesAdmin({ params }: { params: Promise<{ storyId:
                         onDuplicate={openDuplicateModal}
                         onUpdateSettings={handleSettingsUpdate}
                         storyId={storyId}
+                        qualityDefs={qualities}
                         guardRef={guardRef}
                     />
                 ) : (

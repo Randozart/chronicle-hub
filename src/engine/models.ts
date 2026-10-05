@@ -359,14 +359,16 @@ export interface ImageDefinition extends VersionedEntity{
     focus?: { x: number; y: number }; 
     thumbZoom?: number;
 }
-export interface CategoryDefinition extends VersionedEntity{ 
-    id: string; 
-    name?: string; 
-    color?: string; 
+export interface CategoryDefinition extends VersionedEntity {
+    id: string;
+    name?: string;
+    color?: string;
     description?: string;
     /// Member qualities stay queryable (%pick/%all, sidebar grouping) but are
     /// excluded from the profile listing and the possessions/item listing.
-    hidden?: boolean; 
+    hidden?: boolean;
+    visible_if?: string;
+    unlock_if?: string;
 }
 export interface ShopListing { 
     id: string; 

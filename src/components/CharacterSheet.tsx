@@ -46,10 +46,11 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
             const renderedObject = engine.render({ id: qid, tags: definition.tags || [] });
             const renderedTags = Array.isArray(renderedObject.tags) ? renderedObject.tags : [];
             
-            const shouldHide = renderedTags.includes('hidden') || 
-                               renderedTags.includes('log_only') || 
-                               renderedTags.includes('no_ui') || 
-                               renderedTags.includes('fx_only');
+            const shouldHide = renderedTags.includes('hidden') ||
+                               renderedTags.includes('log_only') ||
+                               renderedTags.includes('no_ui') ||
+                               renderedTags.includes('fx_only') ||
+                               renderedTags.includes('bonus_only');
 
             if (shouldHide && !showHidden) return null;
 
@@ -132,8 +133,9 @@ export default function CharacterSheet({ qualities, equipment, qualityDefs, sett
                         }
                     }
                     
-                    const displayName = engine.evaluateText(q.name);
-                    const displayDesc = q.description ? engine.evaluateText(q.description) : "";
+                    const selfContext = { qid: q.id, state: { ...q, level: q.effectiveLevel } as any };
+                    const displayName = engine.evaluateText(q.name, selfContext);
+                    const displayDesc = q.description ? engine.evaluateText(q.description, selfContext) : "";
 
                     const primaryCat = (q.category || "").split(',')[0].trim();
                     const catDef = categories[primaryCat];

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CategoryDefinition, WorldSettings } from '@/engine/models';
+import { CategoryDefinition, QualityDefinition, WorldSettings } from '@/engine/models';
 import { useCreatorForm, FormGuard } from '@/hooks/useCreatorForm';
 import CommandCenter from '@/components/admin/CommandCenter';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
@@ -17,11 +17,12 @@ interface Props {
     onDuplicate: (data: CategoryDefinition) => void;
     onUpdateSettings: (s: WorldSettings) => void;
     storyId: string;
+    qualityDefs: QualityDefinition[];
     guardRef: { current: FormGuard | null };
 }
 
-export default function CategoryMainForm({ 
-    initialData, settings, onSave, onDelete, onDuplicate, onUpdateSettings, storyId, guardRef 
+export default function CategoryMainForm({
+    initialData, settings, onSave, onDelete, onDuplicate, onUpdateSettings, storyId, qualityDefs, guardRef
 }: Props) {
     
     const { 
@@ -173,22 +174,52 @@ export default function CategoryMainForm({
                             />
                             
                             {currentEquipConfig && (
-                                <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
-                                    <label className="form-label">Slot Configuration</label>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <input 
-                                            value={equipConfigString} 
-                                            onChange={e => setEquipConfigString(e.target.value)} 
-                                            onBlur={handleEquipStringBlur}
-                                            className="form-input" 
-                                            placeholder={form.id}
-                                        />
-                                        <button className="save-btn" onClick={handleEquipStringBlur} style={{ padding: '0 1rem', width: 'auto' }}>Update</button>
+                                <>
+                                    <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
+                                        <label className="form-label">Slot Configuration</label>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <input
+                                                value={equipConfigString}
+                                                onChange={e => setEquipConfigString(e.target.value)}
+                                                onBlur={handleEquipStringBlur}
+                                                className="form-input"
+                                                placeholder={form.id}
+                                            />
+                                            <button className="save-btn" onClick={handleEquipStringBlur} style={{ padding: '0 1rem', width: 'auto' }}>Update</button>
+                                        </div>
+                                        <p className="special-desc" style={{ marginTop: '0.5rem' }}>
+                                            <code>{form.id}</code> (1 Slot), <code>{form.id}*2</code> (2 Slots), <code>{form.id}*</code> (Infinite).
+                                        </p>
                                     </div>
-                                    <p className="special-desc" style={{ marginTop: '0.5rem' }}>
-                                        <code>{form.id}</code> (1 Slot), <code>{form.id}*2</code> (2 Slots), <code>{form.id}*</code> (Infinite).
-                                    </p>
-                                </div>
+                                    <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
+                                        <SmartArea
+                                            label="Visible When"
+                                            subLabel="Slot is shown when true. Leave blank to always show. When hidden, equipped items are automatically removed."
+                                            value={form.visible_if || ''}
+                                            onChange={v => handleChange('visible_if', v)}
+                                            storyId={storyId}
+                                            minHeight="60px"
+                                            mode="condition"
+                                            entityType="quality"
+                                            qualityDefs={qualityDefs}
+                                            placeholder="e.g. $main_hand_weapon.twohanded != 1"
+                                        />
+                                    </div>
+                                    <div style={{ marginTop: '1rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '2px solid var(--tool-accent)' }}>
+                                        <SmartArea
+                                            label="Unlocked When"
+                                            subLabel="Slot is interactable when true (visible but locked otherwise). Equipped items are also removed when locked."
+                                            value={form.unlock_if || ''}
+                                            onChange={v => handleChange('unlock_if', v)}
+                                            storyId={storyId}
+                                            minHeight="60px"
+                                            mode="condition"
+                                            entityType="quality"
+                                            qualityDefs={qualityDefs}
+                                            placeholder="e.g. $strength >= 10"
+                                        />
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>

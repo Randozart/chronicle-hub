@@ -317,7 +317,8 @@ export default function QualityMainForm({ initialData, settings, onSave, onDelet
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <BehaviorCard checked={hasProperty(form.tags, 'hidden')} onChange={() => handleTagToggle('hidden')} label="Hidden" desc="Do not show on profile." />
                         <BehaviorCard checked={hasProperty(form.tags, 'hide_level')} onChange={() => handleTagToggle('hide_level')} label="Hide Level" desc="Hide the numeric value." />
-                        <BehaviorCard checked={hasProperty(form.tags, 'fx_only')} onChange={() => handleTagToggle('fx_only')} label="FX Only" desc="Only show when modified by an effect." />                        
+                        <BehaviorCard checked={hasProperty(form.tags, 'fx_only')} onChange={() => handleTagToggle('fx_only')} label="FX Only" desc="Only show when modified by an effect." />
+                        <BehaviorCard checked={hasProperty(form.tags, 'bonus_only')} onChange={() => handleTagToggle('bonus_only')} label="Bonus Only" desc="Only shows on equipment bonus cards. Hidden everywhere else." />                        
                             {(form.type === 'E') && (
                             <>
                                 <BehaviorCard checked={hasProperty(form.tags, 'auto_equip')} onChange={() => handleTagToggle('auto_equip')} label="Auto-Equip" desc="Equip on gain." />

@@ -1,6 +1,10 @@
 'use client';
 
+<<<<<<< HEAD
 import { CharacterDocument, CategoryDefinition, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
+=======
+import { CategoryDefinition, CharacterDocument, ImageDefinition, PlayerQualities, QualityDefinition, WorldSettings } from "@/engine/models";
+>>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useGroupedList } from "@/hooks/useGroupedList";
 import GameImage from "./GameImage";
@@ -15,8 +19,14 @@ interface PossessionsProps {
     equipment: Record<string, string | null>;
     qualityDefs: Record<string, QualityDefinition>;
     equipCategories: string[];
+<<<<<<< HEAD
     categories?: Record<string, CategoryDefinition>;
     onUpdateCharacter: (character: any) => void; 
+=======
+    lockedEquipCategories?: string[];
+    categories?: Record<string, CategoryDefinition>;
+    onUpdateCharacter: (character: any) => void;
+>>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
     onUseItem: (eventId: string) => void;
     onRequestTabChange: (tab: 'story') => void;
     storyId: string;
@@ -31,41 +41,93 @@ interface PossessionsProps {
 
 const FormatBonus = ({ bonusStr, engine }: { bonusStr: string, engine: GameEngine }) => {
     if (!bonusStr) return null;
-    
+
     const evaluatedBonus = engine.evaluateText(bonusStr);
     const parts = evaluatedBonus.split(',').map(p => p.trim()).filter(Boolean);
-    
+
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
             {parts.map((part, idx) => {
-                // Regex matches "$quality + 1", "quality + 1", "$quality -2", "quality- 2", etc.
-                // Makes the sign and number optional for flexibility.
-                const match = part.match(/^\$?(.+?)\s*([+\-])\s*(\d+)$/);
+                // Match all assignment operators: =, +=, -=, +, -, ++, --
+                const match = part.match(/^\$([a-zA-Z0-9_]+)\s*(\+\+|--|[\+\-]?=|[\+\-])\s*(\d+)?$/);
                 let content = part;
-                let color = 'inherit';
-                
-                if (match) {
-                    const [, nameRaw, op, val] = match;
-                    let displayName = nameRaw;
+                let color = 'var(--success-color)';
 
-                    const def = engine.worldContent.qualities[nameRaw];
-                    
-                    if (def && def.name) {
-                        displayName = engine.evaluateText(def.name);
-                    } 
-                    
-                    content = `${displayName} ${op}${val}`;
-                    color = op === '+' ? 'var(--success-color)' : 'var(--danger-color)';
+                if (match) {
+                    const [, qid, op, valStr] = match;
+                    const def = engine.worldContent.qualities[qid];
+                    const val = valStr !== undefined ? parseInt(valStr, 10) : 1;
+                    const currentLevel = engine.getEffectiveLevel(qid);
+
+                    // Calculate projected level after this bonus is applied
+                    let projectedLevel: number;
+                    switch (op) {
+                        case '=':                                projectedLevel = val; break;
+                        case '+=': case '+':                     projectedLevel = currentLevel + val; break;
+                        case '-=': case '-':                     projectedLevel = currentLevel - val; color = 'var(--danger-color)'; break;
+                        case '++':                               projectedLevel = currentLevel + 1; break;
+                        case '--':                               projectedLevel = currentLevel - 1; color = 'var(--danger-color)'; break;
+                        default:                                 projectedLevel = val;
+                    }
+
+                    if (def) {
+                        // Evaluate the name at the projected level by bypassing the effective-qualities
+                        // proxy (which would reflect bonuses from other equipped items). Instead, inject
+                        // the projected state directly so $. resolves to projectedLevel regardless of
+                        // what other equipment is currently setting this quality.
+                        const projectedState = { qualityId: qid, type: def.type, level: projectedLevel, stringValue: '', changePoints: 0 } as any;
+                        const tempQualities = { ...engine.qualities, [qid]: projectedState };
+
+                        // Evaluate tags to check visibility rules
+                        const evaluatedTags = (def.tags || [])
+                            .map(t => engine.evaluateText(t, { qid, state: projectedState }).trim())
+                            .filter(Boolean);
+                        const isHidden = evaluatedTags.includes('hidden');
+                        const isBonusOnly = evaluatedTags.includes('bonus_only');
+                        const hideLevel = evaluatedTags.includes('hide_level');
+
+                        // Skip pill entirely if hidden and not explicitly marked bonus_only
+                        if (isHidden && !isBonusOnly) return null;
+
+                        const resolvedName = def.name
+                            ? evaluateText(def.name, tempQualities, engine.worldContent.qualities, { qid, state: projectedState }, 0, {}, [])
+                            : qid;
+
+                        if (hideLevel) {
+                            color = 'var(--tool-text-dim)'; // muted trait-style: no green/red distinction
+                            return (
+                                <span key={idx} style={{ color, fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                                    <FormattedText text={resolvedName} inline />
+                                </span>
+                            );
+                        } else {
+                            let delta: string;
+                            switch (op) {
+                                case '++':           delta = '+1'; break;
+                                case '--':           delta = '-1'; break;
+                                case '=':            delta = `${projectedLevel}`; break;
+                                case '-=': case '-': delta = `-${val}`; break;
+                                default:             delta = `+${val}`;
+                            }
+                            return (
+                                <span key={idx} style={{ color, fontWeight: 'bold', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                                    <FormattedText text={resolvedName} inline /> {delta}
+                                </span>
+                            );
+                        }
+                    } else {
+                        content = `${qid}: ${projectedLevel}`;
+                    }
                 }
-                
+
                 return (
-                    <span key={idx} style={{ 
-                        color, 
-                        fontWeight: 'bold', 
-                        fontSize: '0.85rem', 
-                        backgroundColor: 'rgba(0,0,0,0.2)', 
-                        padding: '2px 6px', 
-                        borderRadius: '4px' 
+                    <span key={idx} style={{
+                        color,
+                        fontWeight: 'bold',
+                        fontSize: '0.85rem',
+                        backgroundColor: 'rgba(0,0,0,0.2)',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
                     }}>
                         {content}
                     </span>
@@ -290,6 +352,7 @@ function MessageModal({ isOpen, message, onClose }: { isOpen: boolean, message: 
     );
 }
 
+<<<<<<< HEAD
 export default function Possessions({ 
     qualities, 
     equipment, 
@@ -301,9 +364,23 @@ export default function Possessions({
     onRequestTabChange, 
     storyId, 
     imageLibrary, 
+=======
+export default function Possessions({
+    qualities,
+    equipment,
+    qualityDefs,
+    equipCategories,
+    lockedEquipCategories,
+    categories,
+    onUpdateCharacter,
+    onUseItem,
+    onRequestTabChange,
+    storyId,
+    imageLibrary,
+>>>>>>> 3cb5724fda468d0c4853ef0705d74857805e7faa
     settings,
-    engine, 
-    showHidden, 
+    engine,
+    showHidden,
     onAutofire,
     isGuestMode,
     character
@@ -374,24 +451,26 @@ export default function Possessions({
                 // Render 1 to max + 1
                 for (let i = 1; i <= max + 1; i++) {
                     const id = i === 1 ? cat : `${cat}_${i}`;
-                    slotMap.set(id, { id, label: `${cat} ${i}`, category: cat, order: globalOrder++ });
+                    const catLabel = categories?.[cat]?.name || cat;
+                    slotMap.set(id, { id, label: `${catLabel} ${i}`, category: cat, order: globalOrder++ });
                 }
 
             } else if (count > 1) {
                 // Render 1 to count
                 for (let i = 1; i <= count; i++) {
                     const id = i === 1 ? cat : `${cat}_${i}`;
-                    slotMap.set(id, { id, label: `${cat} ${i}`, category: cat, order: globalOrder++ });
+                    const catLabel = categories?.[cat]?.name || cat;
+                    slotMap.set(id, { id, label: `${catLabel} ${i}`, category: cat, order: globalOrder++ });
                 }
             } else {
                 // Single slot
-                slotMap.set(cat, { id: cat, label: cat, category: cat, order: globalOrder++ });
+                slotMap.set(cat, { id: cat, label: categories?.[cat]?.name || cat, category: cat, order: globalOrder++ });
             }
         });
 
         // Convert map back to array and sort by original definition order
         return Array.from(slotMap.values()).sort((a, b) => a.order - b.order);
-    }, [equipCategories, equipment]);
+    }, [equipCategories, equipment, categories]);
 
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
@@ -451,7 +530,8 @@ export default function Possessions({
             const state = qualities[qid];
             if (!def || !state) return null;
 
-            if (def.tags?.includes('hidden') && !showHidden) return null;
+            const ALL_HIDING_TAGS = ['hidden', 'fx_only', 'no_ui', 'log_only', 'bonus_only'];
+            if (ALL_HIDING_TAGS.some(t => def.tags?.includes(t)) && !showHidden) return null;
 
             // Categories flagged hidden keep items out of the bag listing
             // (they remain equippable and queryable elsewhere).
@@ -492,15 +572,16 @@ export default function Possessions({
                     <div className={`inventory-grid ${isList ? 'inv-mode-list' : ''}`} style={styleVariables}>
                         {expandedSlots.map(slotObj => {
                             const slotId = slotObj.id;
-                            
+                            const isSlotLocked = (lockedEquipCategories || []).includes(slotObj.category);
+
                             // Visual Fallback: If this is slot 1 (base ID), checks if there's an item in the legacy `_1` slot
                             // This ensures items don't disappear if data migration wasn't perfect.
-                            const effectiveEquipId = equipment[slotId] 
+                            const effectiveEquipId = equipment[slotId]
                                 || (slotId === slotObj.category ? equipment[`${slotId}_1`] : undefined);
-                            
+
                             // Determine which key to actually target for unequip
-                            const actualSlotKey = (effectiveEquipId && !equipment[slotId] && slotId === slotObj.category) 
-                                ? `${slotId}_1` 
+                            const actualSlotKey = (effectiveEquipId && !equipment[slotId] && slotId === slotObj.category)
+                                ? `${slotId}_1`
                                 : slotId;
 
                             let equippedItem = null;
@@ -510,18 +591,18 @@ export default function Possessions({
 
                             if (equippedItem) {
                                 return (
-                                    <ItemDisplay 
+                                    <ItemDisplay
                                         key={slotId}
                                         item={equippedItem}
                                         isEquipped={true}
                                         slotName={slotObj.label}
-                                        onEquipToggle={() => handleEquipToggle(actualSlotKey, null)}
+                                        onEquipToggle={isSlotLocked ? undefined : () => handleEquipToggle(actualSlotKey, null)}
                                         onUse={handleUse}
-                                        isLoading={isLoading}
+                                        isLoading={isLoading || isSlotLocked}
                                         qualityDefs={qualityDefs}
                                         qualities={qualities}
                                         imageLibrary={imageLibrary}
-                                        styleMode={invStyle} 
+                                        styleMode={invStyle}
                                         shapeConfig={invShape}
                                         portraitMode={portraitMode}
                                         engine={engine}
@@ -529,9 +610,9 @@ export default function Possessions({
                                 );
                             } else {
                                 return (
-                                    <div key={slotId} className="inventory-item empty" style={{ display: 'flex', flexDirection: isList ? 'row' : 'column', alignItems: 'center', justifyContent: isList ? 'flex-start' : 'center', padding: '1rem', background: 'rgba(0,0,0,0.1)', border: '1px dashed var(--border-light)', gap: '0.5rem', minHeight: isList ? 'auto' : '120px' }}>
+                                    <div key={slotId} className="inventory-item empty" style={{ display: 'flex', flexDirection: isList ? 'row' : 'column', alignItems: 'center', justifyContent: isList ? 'flex-start' : 'center', padding: '1rem', background: 'rgba(0,0,0,0.1)', border: '1px dashed var(--border-light)', gap: '0.5rem', minHeight: isList ? 'auto' : '120px', opacity: isSlotLocked ? 0.5 : 1, cursor: isSlotLocked ? 'not-allowed' : 'default' }}>
                                         <span style={{ textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.8rem', color: 'var(--text-muted)' }}><FormattedText text={slotObj.label} /></span>
-                                        <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Empty</span>
+                                        <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isSlotLocked ? 'Locked' : 'Empty'}</span>
                                     </div>
                                 );
                             }
@@ -556,12 +637,13 @@ export default function Possessions({
                     <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-highlight)', marginBottom: '1rem', textTransform: 'uppercase', borderLeft: '3px solid var(--accent-highlight)', paddingLeft: '0.5rem' }}><FormattedText text={group} /></h3>
                     
                     <div className={`inventory-grid ${isList ? 'inv-mode-list' : ''}`} style={styleVariables}>
-                        {grouped[group].map((item: any) => (
-                            <ItemDisplay 
+                        {grouped[group].map((item: any) => {
+                            const isItemCategoryLocked = (lockedEquipCategories || []).includes(item.category || '');
+                            return (<ItemDisplay
                                 key={item.id}
                                 item={item}
                                 isEquipped={false}
-                                onEquipToggle={() => handleEquipToggle(item.category || '', item.id)}
+                                onEquipToggle={isItemCategoryLocked ? undefined : () => handleEquipToggle(item.category || '', item.id)}
                                 onUse={handleUse}
                                 isLoading={isLoading}
                                 qualityDefs={qualityDefs}
@@ -571,8 +653,7 @@ export default function Possessions({
                                 shapeConfig={invShape}
                                 portraitMode={portraitMode}
                                 engine={engine}
-                            />
-                        ))}
+                            />);})}
                     </div>
                 </div>
             ))}
