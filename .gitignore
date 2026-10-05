@@ -51,3 +51,6 @@ public/uploads/images/cc3b2c95-6692-4fc7-aaa1-55a8282b8580.webp
 
 # research reports
 parser_refactor_report.mdMicrosoft/
+
+# runtime uploads (game/world content — belongs to the world repo, not the engine)
+/public/uploads/
