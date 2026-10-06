@@ -302,6 +302,45 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     // ------------------------------------------------------------------
+    // Audio unlock on first user gesture
+    // ------------------------------------------------------------------
+    // Browsers create the AudioContext suspended until a user gesture. Despite
+    // the comment above, @strudel/web does NOT call initAudioOnFirstClick()
+    // internally — it is only exported — so the context was never resumed and
+    // music silently failed to start on entering the game. We unlock explicitly
+    // on the first interaction and restart the intended track.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        let done = false;
+        const remove = () => {
+            window.removeEventListener('pointerdown', unlock);
+            window.removeEventListener('mousedown', unlock);
+            window.removeEventListener('touchstart', unlock);
+            window.removeEventListener('keydown', unlock);
+        };
+        const unlock = () => {
+            if (done) return;
+            done = true;
+            remove();
+            getStrudelEngine(window.location.origin).then(engine => {
+                const ctx = engine.getAudioContext();
+                if (ctx && ctx.state !== 'running') {
+                    ctx.resume().catch(() => {});
+                }
+                if (intendedPlayingRef.current && lastStrudelCodeRef.current) {
+                    engine.evaluate(lastStrudelCodeRef.current).catch(() => {});
+                }
+            }).catch(() => {});
+        };
+        window.addEventListener('pointerdown', unlock);
+        window.addEventListener('mousedown', unlock);
+        window.addEventListener('touchstart', unlock);
+        window.addEventListener('keydown', unlock);
+        return remove;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // ------------------------------------------------------------------
     // Mobile / background-tab recovery
     // ------------------------------------------------------------------
 

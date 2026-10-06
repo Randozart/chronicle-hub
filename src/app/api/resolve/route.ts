@@ -60,7 +60,11 @@ export async function POST(request: NextRequest) {
         
         if ('deck' in storyletDef) {
             const hand = character.opportunityHands?.[storyletDef.deck] || [];
-            if (!hand.includes(storyletDef.id)) {
+            // A card reached as the current event (e.g. via a pass_redirect from a storylet, like
+            // the office fridge sending you to the noodle bar) is playable even though it was never
+            // drawn into the hand.
+            const isActiveEvent = character.currentStoryletId === storyletDef.id;
+            if (!hand.includes(storyletDef.id) && !isActiveEvent) {
                 return NextResponse.json({ error: 'This card is not in your hand.' }, { status: 403 });
             }
         }
@@ -218,7 +222,7 @@ export async function POST(request: NextRequest) {
             if (finalTags.has('clear_hand')) {
                  if (character.opportunityHands[deck]) character.opportunityHands[deck] = [];
             } else {
-                 character.opportunityHands[deck] = character.opportunityHands[deck].filter((id: string) => id !== storyletId);
+                 character.opportunityHands[deck] = (character.opportunityHands[deck] || []).filter((id: string) => id !== storyletId);
             }
         } else if (finalTags.has('clear_hand')) {
              const locDeck = gameData.locations[character.currentLocationId]?.deck;

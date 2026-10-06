@@ -241,6 +241,12 @@ export async function POST(request: NextRequest) {
                 const batch = storyletOps.slice(i, i + BATCH_SIZE);
                 await db.collection('storylets').bulkWrite(batch);
             }
+            // Remove storylets no longer present in the imported file (the file is the source of
+            // truth). Scoped to this world so other worlds are untouched.
+            await db.collection('storylets').deleteMany({
+                worldId: targetStoryId,
+                id: { $nin: data.storylets.map((s: any) => s.id) }
+            });
         }
 
         // 3. Opportunities Bulk Write
@@ -267,6 +273,11 @@ export async function POST(request: NextRequest) {
                 const batch = cardOps.slice(i, i + BATCH_SIZE);
                 await db.collection('opportunities').bulkWrite(batch);
             }
+            // Remove cards no longer present in the imported file (scoped to this world).
+            await db.collection('opportunities').deleteMany({
+                worldId: targetStoryId,
+                id: { $nin: data.opportunities.map((o: any) => o.id) }
+            });
         }
 
         // Invalidate cached world content so players/editors see imported data

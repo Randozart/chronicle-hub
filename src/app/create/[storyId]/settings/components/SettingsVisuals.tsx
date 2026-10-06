@@ -43,6 +43,7 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
     const layoutDescriptions: Record<string, string> = {
         nexus: "Classic two-column layout. Sidebar on the left, text content on the right. Defaults to a broad layout, but can alternatively be set to a narrow layout style.",
         london: "Two-column layout like Classic, but with a large location banner at the top of the page.",
+        cinematic: "Full-width cinematic banner at the top of the page, with the sidebar and content beneath it.",
         elysium: "An immersive layout with a full-screen background image. Parallax can be enabled on the image to make it reactive to mouse position.",
         tabletop: "A multi-column layout where the middle section is reserved for the location image. Parallax can be enabled on the image to make it reactive to mouse position."
     };
@@ -105,6 +106,7 @@ export default function SettingsVisuals({ settings, onChange, storyId }: Props) 
                         <select value={settings.layoutStyle} onChange={e => handleChange('layoutStyle', e.target.value as any)} className="form-select">
                             <option value="nexus">Classic</option>
                             <option value="london">Cinematic</option>
+                            <option value="cinematic">Cinematic Banner</option>
                             <option value="elysium">Immersive</option>
                             <option value="tabletop">Tabletop</option>
                         </select>
