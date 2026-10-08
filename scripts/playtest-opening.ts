@@ -30,7 +30,7 @@ type Step =
     | { do: 'options'; storylet: string; include?: string[]; exclude?: string[] }
     | { do: 'travel'; to: string; status: number; note?: string }
     | { do: 'q'; exact?: Record<string, number>; gte?: Record<string, number>; str?: Record<string, string>; absent?: string[] }
-    | { do: 'log'; msg: string };
+    | { do: 'log'; msg: string | (() => string) };
 
 const STEPS: Step[] = [
     // --- Prologue: forced autofire chain (epitaph -> mirror form -> wake) ---
@@ -137,14 +137,17 @@ const STEPS: Step[] = [
     { do: 'travel', to: 'ossuary', status: 200 },
     { do: 'travel', to: 'inner_world', status: 403, note: 'inner_world still needs mundanity 30' },
     { do: 'visible', include: ['day_close'], note: 'night nudge: the clock saturated (slot 3), closing the day is the player\'s call' },
+    { do: 'resolve', storylet: 'day_close', option: 'day_close_accept' },
+    { do: 'visible', include: ['day_renew'], note: 'latch set: dawn is waiting' },
+    { do: 'resolve', storylet: 'day_renew', option: 'day_renew_accept' },
 
     // --- Final ledger ---
     {
         do: 'q',
-        exact: { intro_done: 1, intro_epitaph: 1, reading_1_done: 1, case_marlow: 3, cases_closed: 1, mirror_done: 1, cases_open: 0, rent_set: 1, slot: 3 },
-        gte: { cash: 70, actions: 1, nerve: 5 },
+        exact: { intro_done: 1, intro_epitaph: 1, reading_1_done: 1, case_marlow: 3, cases_closed: 1, mirror_done: 1, cases_open: 0, rent_set: 1, slot: 0, day: 1, day_latch: 0, rent_due: 1, static_debt: 1, days_worked: 1 },
+        gte: { cash: 70, actions: 1, nerve: 5, meals: 0 },
         str: { starting_tool: 'recorder' },
-        absent: ['flubbed_cases', 'day', 'day_latch', 'street_shifted'],
+        absent: ['flubbed_cases', 'street_shifted'],
     },
     { do: 'log', msg: 'opening chain complete' },
 ];
@@ -282,7 +285,7 @@ async function main() {
         const tag = `[${String(n).padStart(2, '0')}] ${step.do}${'note' in step && step.note ? ` — ${step.note}` : ''}`;
 
         if (step.do === 'log') {
-            console.log(`${tag}\n      loc=${char.currentLocationId} cash=${qLevel('cash')} actions=${qLevel('actions')}`);
+            console.log(`${tag}\n      loc=${char.currentLocationId} cash=${qLevel('cash')} actions=${qLevel('actions')}${'msg' in step && step.msg ? `\n      ${typeof step.msg === 'function' ? step.msg() : step.msg}` : ''}`);
             continue;
         }
 
