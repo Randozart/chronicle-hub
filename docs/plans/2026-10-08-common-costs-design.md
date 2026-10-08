@@ -24,11 +24,11 @@ commonCosts?: CommonCostDef[];
 
 - `key` — stable id referenced by options.
 - `label` — editor-facing name ("Time passes", "Stamina").
-- `effects` — **plain ScribeScript effects** (ops and macros; keep it to `$q += n`-style
-  statements — conditional regions inside effect strings do not reliably execute, so put any
-  branching in the *storylets* that read the meter, not in the cost). Sodium Wisp's "time":
-  `$slot += 1` with `slot` a Counter (max 3) — the meter saturates at night; the day itself
-  turns in a storylet that reads the meter and resets it.
+- `effects` — ScribeScript effect string, applied at resolve. **Conditionals work**: a
+  `{cond : effects | }` region is expanded via evaluateText and re-parsed recursively, so
+  branches carry full effect strings, and text conditionals nest. Sodium Wisp's "time":
+  `$slot_carry += 1, { $slot_carry >= 3 : $slot += 1, $slot_carry -= 3 | }` — every third
+  opted action advances the clock (the carry quality absorbs the remainder).
 - `default` — pre-check the box for new options.
 
 ### Options opt in per option

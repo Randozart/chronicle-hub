@@ -30,11 +30,13 @@
 
 - `default: true` is an editor affordance only; resolve applies strictly opted-in keys
   (backwards compatible: pre-existing options have no `common_costs` and never pay).
-- **Keep cost effect strings plain.** Conditional regions inside effect strings do not
-  reliably execute (the parser's evaluateText expansion path depends on quality-state shape
-  nuances; a purpose-built conditional-effect op is a future engine enhancement). The day
-  clock therefore uses a saturating counter (`slot` max 3) with the day-turn living in
-  storylets that read the meter — branching belongs in storylets, never in the cost.
+- **Conditional effects ARE supported** (corrected 2026-10-08, same day): the parser expands
+  `{cond : effects | }` regions via evaluateText and re-parses recursively; text conditionals
+  nest too. An earlier correction in these docs claimed otherwise — that was a test-harness
+  artifact (seeding raw numbers instead of QualityState objects breaks proxy reads; production
+  characters always carry proper states). Verified with a state-shaped harness: carry/wrap
+  effect strings tick correctly, nested conditionals resolve DAWN/DAY/NIGHT, and trailing
+  conditionals in qc strings fire.
 - Sodium Wisp's dormant `day_close` qc carried ~30 conditional regions (standing decay,
-  rel penalties) that provably never executed while dormant — flagged for the world's gaps
-  register rather than trusted here.
+  rel penalties) that were inert only because the storylet itself was dormant — they work,
+  and are restored in the world repo.

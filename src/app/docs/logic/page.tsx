@@ -489,14 +489,14 @@ export default function LogicMathPage() {
         <strong>Example — a day clock.</strong> Define a cost <code>key: time</code>, label
         &ldquo;Time passes&rdquo;, effects:
         <div className="docs-pre">
-            <code className="docs-code">{`$slot += 1`}</code>
+            <code className="docs-code">{`$slot_carry += 1, { $slot_carry >= 3 : $slot += 1, $slot_carry -= 3 | }`}</code>
         </div>
-        with <code>slot</code> defined as a Counter (max 3): every opted-in action moves the world
-        dawn → day → dusk → night, and the counter simply <em>saturates</em> at night — no conditional
-        logic needed. The day itself turns when a storylet (&ldquo;Close the Day&rdquo;, visible at
-        <code> {`$slot >= 3`}</code>) spends plain effects: charge the day, reset
-        <code> {`$slot = 0`}</code>. Because the meter only moves when the player acts, the world waits
-        for them. Read the slot back in any text: <code>{`{ $slot >= 2 : The lamps are lit. | }`}</code>
+        Every third opted-in action moves the world dawn → day → dusk → night. Cost effects may
+        use conditionals — they are expanded as text and re-parsed, so branches can carry full
+        effect strings. The day itself turns in a storylet (&ldquo;Close the Day&rdquo;, visible
+        at <code>{`$slot >= 2`}</code> or wherever the fiction wants it): charge the day, reset
+        the meters. Read the slot back in any text — nesting works:
+        <code>{`{ $slot <= 0 : Dawn. | { $slot <= 1 : Day. | Night. } }`}</code>
     </div>
     <div className="docs-card">
         <h4 className="docs-h4">Recipe</h4>
