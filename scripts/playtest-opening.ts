@@ -125,18 +125,22 @@ const STEPS: Step[] = [
         note: 'cases_closed=1: the morning-mirror payoff finally opens',
     },
 
-    // --- Deferred payoff + city opens ---
+    // --- Deferred payoff, then the year signs before the city opens ---
     { do: 'resolve', storylet: 'evening_reflection', option: 'ref_sound' },
     { do: 'visible', exclude: ['evening_reflection'], note: 'mirror_done=1: one shot, no loop' },
+    { do: 'visible', include: ['life_admin'], note: 'the year\'s paperwork arrives (intro + reading_1 done)' },
+    { do: 'travel', to: 'rainline', status: 403, note: 'city sealed until the lease is signed' },
+    { do: 'resolve', storylet: 'life_admin', option: 'life_admin_sign' },
+    { do: 'visible', include: ['the_rounds'], note: 'gig board opens once the year bills (board lives at the office)' },
     { do: 'travel', to: 'rainline', status: 200 },
-    { do: 'visible', include: ['rainline_hub'], note: 'city hubs unlocked at first close' },
+    { do: 'visible', include: ['rainline_hub'], note: 'city hubs open once the year bills' },
     { do: 'travel', to: 'ossuary', status: 200 },
     { do: 'travel', to: 'inner_world', status: 403, note: 'inner_world still needs mundanity 30' },
 
     // --- Final ledger ---
     {
         do: 'q',
-        exact: { intro_done: 1, intro_epitaph: 1, reading_1_done: 1, case_marlow: 3, cases_closed: 1, mirror_done: 1, cases_open: 0 },
+        exact: { intro_done: 1, intro_epitaph: 1, reading_1_done: 1, case_marlow: 3, cases_closed: 1, mirror_done: 1, cases_open: 0, rent_set: 1 },
         gte: { cash: 70, actions: 1, nerve: 5 },
         str: { starting_tool: 'recorder' },
         absent: ['flubbed_cases'],
