@@ -30,6 +30,11 @@
 
 - `default: true` is an editor affordance only; resolve applies strictly opted-in keys
   (backwards compatible: pre-existing options have no `common_costs` and never pay).
-- Conditional effects inside a qc-style string are a proven pattern (`day_close_accept` in
-  Sodium Wisp already ships one); the day-clock carry/wrap leans on it, so no loop logic
-  needed in the engine.
+- **Keep cost effect strings plain.** Conditional regions inside effect strings do not
+  reliably execute (the parser's evaluateText expansion path depends on quality-state shape
+  nuances; a purpose-built conditional-effect op is a future engine enhancement). The day
+  clock therefore uses a saturating counter (`slot` max 3) with the day-turn living in
+  storylets that read the meter — branching belongs in storylets, never in the cost.
+- Sodium Wisp's dormant `day_close` qc carried ~30 conditional regions (standing decay,
+  rel penalties) that provably never executed while dormant — flagged for the world's gaps
+  register rather than trusted here.

@@ -489,12 +489,14 @@ export default function LogicMathPage() {
         <strong>Example — a day clock.</strong> Define a cost <code>key: time</code>, label
         &ldquo;Time passes&rdquo;, effects:
         <div className="docs-pre">
-            <code className="docs-code">{`$slot_carry += 1, { $slot_carry >= 3 && $slot < 3 : $slot += 1, $slot_carry -= 3 | }`}</code>
+            <code className="docs-code">{`$slot += 1`}</code>
         </div>
-        Every third opted-in action moves the world from dawn to day to dusk to night — and because
-        the meter only moves when the player acts, the world waits for them. Pair it with storylets
-        that read <code>{`{ $slot >= 2 : The lamps are lit. | }`}</code> and options with higher
-        action costs (&ldquo;Wait for the lamps to die&rdquo;) that opt in.
+        with <code>slot</code> defined as a Counter (max 3): every opted-in action moves the world
+        dawn → day → dusk → night, and the counter simply <em>saturates</em> at night — no conditional
+        logic needed. The day itself turns when a storylet (&ldquo;Close the Day&rdquo;, visible at
+        <code> {`$slot >= 3`}</code>) spends plain effects: charge the day, reset
+        <code> {`$slot = 0`}</code>. Because the meter only moves when the player acts, the world waits
+        for them. Read the slot back in any text: <code>{`{ $slot >= 2 : The lamps are lit. | }`}</code>
     </div>
     <div className="docs-card">
         <h4 className="docs-h4">Recipe</h4>
