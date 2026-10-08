@@ -148,6 +148,16 @@ export async function POST(request: NextRequest) {
                 engine.applyEffects(String(costExpr));
             }
         }
+        // Common costs: world-defined secondary meters ("Time passes", "Stamina").
+        // Options opt in per option via common_costs; effects are arbitrary ScribeScript.
+        // See docs/plans/2026-10-08-common-costs-design.md
+        if (gameData.settings.commonCosts?.length && option.common_costs?.length) {
+            for (const ccKey of option.common_costs) {
+                const cc = gameData.settings.commonCosts.find(c => c.key === ccKey);
+                if (cc?.effects) { engine.applyEffects(cc.effects); }
+            }
+        }
+
         const engineResult = engine.resolveOption(storyletDef, option);
         character.qualities = engine.getQualities();
         const updatedWorldState = engine.getWorldQualities();

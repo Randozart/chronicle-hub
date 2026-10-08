@@ -17,6 +17,18 @@ export interface LogicGates {
     unlock_if?: string;  
 }
 
+/** A world-defined secondary cost ("Time passes", "Stamina") options may opt into. */
+export interface CommonCostDef {
+    /** Stable id referenced by option.common_costs. */
+    key: string;
+    /** Editor-facing display name. */
+    label: string;
+    /** ScribeScript effect string applied at resolve when an option opts in. */
+    effects: string;
+    /** Pre-check this cost for newly created options. */
+    default?: boolean;
+}
+
 export interface ResolveOption extends LogicGates {
     id: string;
     name: string;
@@ -25,6 +37,8 @@ export interface ResolveOption extends LogicGates {
     meta?: string;
     challenge?: string; 
     action_cost?: string; 
+    /** Keys of settings.commonCosts this option pays. See docs/plans/2026-10-08-common-costs-design.md */
+    common_costs?: string[];
     tags?: string[]; 
     dynamic_tags?: string; 
     ordering?: number;
@@ -216,6 +230,8 @@ export interface WorldSettings {
     publicationStatus?: 'private' | 'in_progress' | 'published';
     deletionScheduledAt?: string;
     isOpenSource?: boolean;
+    /** World-defined secondary costs ("Time passes", "Stamina"). Options opt in per option via common_costs. */
+    commonCosts?: CommonCostDef[];
     useActionEconomy: boolean;
     maxActions: number | string;
     actionId: string;

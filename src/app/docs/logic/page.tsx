@@ -470,8 +470,39 @@ export default function LogicMathPage() {
                 ($rmo_A ^ $rmo_B) {'<'} 5 && ($rmo_A ^ $rmo_B) != 3
             </code>
             <br/><br/>
-            <span style={{color:'var(--text-muted)'}}>// Logic: If A is 7 (111) and B is 5 (101), (A ^ B) results in 010 (which is 2).</span>
+                <span style={{color:'var(--text-muted)'}}>// Logic: If A is 7 (111) and B is 5 (101), (A ^ B) results in 010 (which is 2).</span>
         </div>
+    </div>
+</section>
+
+<section id="common-costs">
+    <h2 className="docs-h2">4. Common Costs</h2>
+    <p className="docs-p">
+        Common Costs are <strong>world-defined secondary meters</strong> — time passing, stamina,
+        sanity — that options can pay in addition to (or instead of) actions. You define them once in
+        <strong> Settings → Game System → Common Costs</strong> (key, label, effects); every option editor
+        then shows a checkbox per cost. Checked = this option applies that cost&apos;s effect string at
+        resolve. The engine has no opinions about what the cost <em>means</em> — the effect string is
+        arbitrary ScribeScript.
+    </p>
+    <div className="docs-callout">
+        <strong>Example — a day clock.</strong> Define a cost <code>key: time</code>, label
+        &ldquo;Time passes&rdquo;, effects:
+        <div className="docs-pre">
+            <code className="docs-code">{`$slot_carry += 1, { $slot_carry >= 3 && $slot < 3 : $slot += 1, $slot_carry -= 3 | }`}</code>
+        </div>
+        Every third opted-in action moves the world from dawn to day to dusk to night — and because
+        the meter only moves when the player acts, the world waits for them. Pair it with storylets
+        that read <code>{`{ $slot >= 2 : The lamps are lit. | }`}</code> and options with higher
+        action costs (&ldquo;Wait for the lamps to die&rdquo;) that opt in.
+    </div>
+    <div className="docs-card">
+        <h4 className="docs-h4">Recipe</h4>
+        <ol className="docs-list">
+            <li>Define the cost in Settings (key, label, effects; <em>Default</em> pre-checks it on new options you create afterward).</li>
+            <li>Open any option editor (storylets or opportunity cards) — check the costs that option should pay.</li>
+            <li>Free options (<code>Instant Redirect</code>, zero action cost) may still opt in — common costs are independent of the action economy.</li>
+        </ol>
     </div>
 </section>
         </div>

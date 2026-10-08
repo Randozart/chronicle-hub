@@ -9,6 +9,7 @@ import { formatLockReason } from '@/utils/lockReason';
 import SmartArea from '@/components/admin/SmartArea';
 import BehaviorCard from '@/components/admin/BehaviorCard';
 import ProbabilityChart from '@/components/admin/ProbabilityChart';
+import CommonCostsPicker from '@/components/admin/CommonCostsPicker';
 import { SamplePicker } from '@/components/admin/AudioTrackPicker';
 import SoundsModal from '@/components/admin/SoundsModal';
 
@@ -61,6 +62,11 @@ export default function OptionEditor({ data, onChange, onDelete, storyId, qualit
                     />
                 </div>
             </div>
+            <CommonCostsPicker
+                storyId={storyId}
+                value={data.common_costs}
+                onChange={v => handleChange('common_costs', v.length ? v : undefined)}
+            />
             <div className="form-row">
                 <div style={{ flex: 1 }}>
                      <SmartArea label="Teaser (Option Card)" subLabel="Description shown on the button." value={data.short || ''} onChange={v => handleChange('short', v)} storyId={storyId} minHeight="60px" qualityDefs={qualityDefs} />

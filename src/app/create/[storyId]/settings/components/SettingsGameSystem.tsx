@@ -87,6 +87,64 @@ export default function SettingsGameSystem({ settings, onChange, storyId, qualit
             </div>
             <div>
                 <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-main)', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
+                    Common Costs
+                </h4>
+                <p className="form-label" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                    World-defined secondary meters — time passing, stamina, sanity. Options opt in with a
+                    checkmark in the option editor; the effect string is applied on resolve. Fully ScribeScript.
+                    <br/><a
+                        href="/docs/logic#common-costs"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--tool-accent)', textDecoration: 'none', marginLeft: '8px' }}
+                    >
+                        Read Docs: Common Costs
+                    </a>
+                </p>
+                {(settings.commonCosts || []).map((cc, i) => (
+                    <div key={i} className="form-row" style={{ alignItems: 'flex-end', borderTop: '1px dashed var(--tool-border)', paddingTop: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                            <SmartArea label={`Key ${i + 1}`} value={cc.key} onChange={v => {
+                                const next = [...(settings.commonCosts || [])];
+                                next[i] = { ...cc, key: v };
+                                handleChange('commonCosts', next);
+                            }} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} placeholder="time" />
+                        </div>
+                        <div style={{ flex: 2 }}>
+                            <SmartArea label="Label" value={cc.label} onChange={v => {
+                                const next = [...(settings.commonCosts || [])];
+                                next[i] = { ...cc, label: v };
+                                handleChange('commonCosts', next);
+                            }} storyId={storyId} minHeight="38px" qualityDefs={qualityDefs} placeholder="Time passes" />
+                        </div>
+                        <div style={{ flex: 3 }}>
+                            <SmartArea label="Effects" value={cc.effects} onChange={v => {
+                                const next = [...(settings.commonCosts || [])];
+                                next[i] = { ...cc, effects: v };
+                                handleChange('commonCosts', next);
+                            }} storyId={storyId} minHeight="38px" mode="effect" qualityDefs={qualityDefs} placeholder="$slot_carry += 1" />
+                        </div>
+                        <div>
+                            <label className="toggle-label" style={{ marginBottom: '0.5rem' }}>
+                                <input type="checkbox" checked={!!cc.default} onChange={e => {
+                                    const next = [...(settings.commonCosts || [])];
+                                    next[i] = { ...cc, default: e.target.checked };
+                                    handleChange('commonCosts', next);
+                                }} />
+                                Default
+                            </label>
+                        </div>
+                        <button className="unequip-btn" style={{ width: 'auto', padding: '0.3rem 1rem', marginBottom: '0.25rem' }} onClick={() => {
+                            handleChange('commonCosts', (settings.commonCosts || []).filter((_, j) => j !== i));
+                        }}>Remove</button>
+                    </div>
+                ))}
+                <button className="equip-btn" style={{ width: 'auto', padding: '0.3rem 1rem' }} onClick={() => {
+                    handleChange('commonCosts', [...(settings.commonCosts || []), { key: '', label: '', effects: '', default: false }]);
+                }}>Add Common Cost</button>
+            </div>
+            <div>
+                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--tool-text-main)', borderBottom: '1px solid var(--tool-border)', paddingBottom: '0.5rem' }}>
                     Challenge Physics
                 </h4>
                 <p className="form-label" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
