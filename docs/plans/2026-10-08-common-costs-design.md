@@ -25,9 +25,11 @@ commonCosts?: CommonCostDef[];
 - `key` — stable id referenced by options.
 - `label` — editor-facing name ("Time passes", "Stamina").
 - `effects` — ScribeScript effect string, applied at resolve. **Conditionals work**: a
-  `{cond : effects | }` region is expanded via evaluateText and re-parsed recursively, so
-  branches carry full effect strings, and text conditionals nest. Sodium Wisp's "time":
-  `$slot_carry += 1, { $slot_carry >= 3 : $slot += 1, $slot_carry -= 3 | }` — every third
+  `{cond : effects}` region is expanded via evaluateText and re-parsed recursively, so
+  branches carry full effect strings, and text conditionals nest. No empty fallback is
+  needed — `{cond : A}` is complete (all-conditions-fail resolves to nothing). Sodium
+  Wisp's "time":
+  `$slot_carry += 1, { $slot_carry >= 3 : $slot += 1, $slot_carry -= 3 }` — every third
   opted action advances the clock (the carry quality absorbs the remainder).
 - `default` — pre-check the box for new options.
 

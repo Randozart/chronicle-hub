@@ -489,11 +489,12 @@ export default function LogicMathPage() {
         <strong>Example — a day clock.</strong> Define a cost <code>key: time</code>, label
         &ldquo;Time passes&rdquo;, effects:
         <div className="docs-pre">
-            <code className="docs-code">{`$slot_carry += 1, { $slot_carry >= 3 : $slot += 1, $slot_carry -= 3 | }`}</code>
+            <code className="docs-code">{`$slot_carry += 1, { $slot_carry >= 3 : $slot += 1, $slot_carry -= 3 }`}</code>
         </div>
         Every third opted-in action moves the world dawn → day → dusk → night. Cost effects may
         use conditionals — they are expanded as text and re-parsed, so branches can carry full
-        effect strings. The day itself turns in a storylet (&ldquo;Close the Day&rdquo;, visible
+        effect strings. No empty fallback is needed: a conditional whose conditions all fail
+        simply resolves to nothing (<code>{`{ $x > 5 : rare. }`}</code> is complete as written). The day itself turns in a storylet (&ldquo;Close the Day&rdquo;, visible
         at <code>{`$slot >= 2`}</code> or wherever the fiction wants it): charge the day, reset
         the meters. Read the slot back in any text — nesting works:
         <code>{`{ $slot <= 0 : Dawn. | { $slot <= 1 : Day. | Night. } }`}</code>
