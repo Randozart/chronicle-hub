@@ -913,7 +913,7 @@ export default function GameHub(props: GameHubProps) {
                     <div className={`location-wrapper mode-banner`}>
                         {imageCode && (
                             <div className="banner-bg-layer">
-                                <GameImage code={imageCode} type="location" imageLibrary={props.imageLibrary} className="banner-img" />
+                                <GameImage code={imageCode} type="location" imageLibrary={props.imageLibrary} className="banner-img" evaluateText={(t) => renderEngine.evaluateText(t)} />
                             </div>
                         )}
                         <LocationHeader location={renderedLocation!} imageLibrary={props.imageLibrary} onOpenMap={canTravel ? () => setShowMap(true) : undefined} onOpenMarket={activeMarketId ? handleOpenMarket : undefined} styleMode={headerStyle} />
