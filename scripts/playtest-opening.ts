@@ -136,14 +136,15 @@ const STEPS: Step[] = [
     { do: 'visible', include: ['rainline_hub'], note: 'city hubs open once the year bills' },
     { do: 'travel', to: 'ossuary', status: 200 },
     { do: 'travel', to: 'inner_world', status: 403, note: 'inner_world still needs mundanity 30' },
+    { do: 'visible', include: ['day_close'], note: 'night nudge: the clock saturated (slot 3), closing the day is the player\'s call' },
 
     // --- Final ledger ---
     {
         do: 'q',
-        exact: { intro_done: 1, intro_epitaph: 1, reading_1_done: 1, case_marlow: 3, cases_closed: 1, mirror_done: 1, cases_open: 0, rent_set: 1 },
+        exact: { intro_done: 1, intro_epitaph: 1, reading_1_done: 1, case_marlow: 3, cases_closed: 1, mirror_done: 1, cases_open: 0, rent_set: 1, slot: 3 },
         gte: { cash: 70, actions: 1, nerve: 5 },
         str: { starting_tool: 'recorder' },
-        absent: ['flubbed_cases'],
+        absent: ['flubbed_cases', 'day', 'day_latch', 'street_shifted'],
     },
     { do: 'log', msg: 'opening chain complete' },
 ];
