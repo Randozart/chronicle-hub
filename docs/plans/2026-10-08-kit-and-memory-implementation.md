@@ -41,10 +41,19 @@ keys whose base (minus `_\d+` index suffix) is not among them.
 ## Gotchas (recorded, not re-learned)
 
 - **`=` never pushes sources** — only incremental `++`/`+=` on Item/Equipable types do.
-  Source-tagged grants must use `++`.
+  Source-tagged grants must use `++`, with metadata BEFORE the operator:
+  `$item [source: ...] ++`.
 - **No commas inside source strings** — effect metadata splits parts on `,`.
+- **No apostrophes inside source strings either** — the effect splitter treats `'` as a
+  quote opener; a source like `[source: your grandfather's kit]` opens a quote span that
+  never closes, and the comma-separated effects AFTER it are swallowed whole. Cost a real
+  playtest cycle (`grandfather's` ate `, $intro_done += 1`; every intro-gated hub check
+  failed downstream). Keep source strings plain: no commas, no apostrophes, no brackets.
 - Importing `characterService` pulls in the Mongo client: harness scripts must export
   `MONGODB_URI` from `.env.local` and `process.exit(0)` or the process never ends.
+- World-side verification that caught the above: `CH-Neon-Medium/tools/build_kit_memory.py`
+  + `scripts/playtest-opening.ts` (intro chain gates every later hub check on `intro_done`,
+  so a swallowed effect fails loudly and far from the cause).
 
 ## Verification
 
