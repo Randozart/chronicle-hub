@@ -112,6 +112,15 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'Deck not found on character' }, { status: 404 });
         }
 
+        // Discard-lock: the UI hides the button for can_discard === false cards
+        // (OpportunityHand), but client gating alone is API-abuse class — enforce
+        // here too. Locked hands are the world's pacing valve: play, don't shed.
+        const allContent = await getStorylets(storyId);
+        const cardDef = allContent.find((c: { id: string }) => c.id === cardId) as Opportunity | undefined;
+        if (cardDef && cardDef.can_discard === false) {
+            return NextResponse.json({ error: "This card won't leave your hand. Play it." }, { status: 403 });
+        }
+
         character.opportunityHands[deckId] = character.opportunityHands[deckId].filter((id: any) => id !== cardId);
         
         if (userId !== 'guest') {
