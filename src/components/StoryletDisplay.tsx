@@ -173,7 +173,15 @@ export default function StoryletDisplay({
                 }
             }
 
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                // Every non-ok resolve response carries { error }: 429 not enough
+                // actions, 403 option/location/maintenance, 400/404 addressing.
+                // Surface the server's message instead of crashing on raw text.
+                const errData = await response.json().catch(() => ({}) as { error?: string });
+                console.error('Resolve rejected:', response.status, errData);
+                alert(errData.error || 'That door is stuck. Try again.');
+                return;
+            }
             
             const data = await response.json();
             
