@@ -126,6 +126,19 @@ export const checkLivingStories = async (character: CharacterDocument): Promise<
 export function enforceEquipmentVisibility(character: CharacterDocument, gameData: WorldConfig): CharacterDocument {
     const equipCats = gameData.settings?.equipCategories || [];
 
+    // Purge orphaned slot keys (slot renamed/removed from equipCategories).
+    // The item stays owned — only the slot binding is dropped, so ghost
+    // entries can't lock equipment out of its new slot.
+    const validBases = new Set<string>();
+    for (const catRaw of equipCats) {
+        const base = catRaw.trim().replace(/\s*\*\s*\d*\s*$/, "");
+        if (base) validBases.add(base);
+    }
+    for (const slotKey of Object.keys(character.equipment)) {
+        const base = slotKey.replace(/_\d+$/, "");
+        if (!validBases.has(base)) delete character.equipment[slotKey];
+    }
+
     for (const catRaw of equipCats) {
         const cat = catRaw.trim();
         const infiniteMatch = cat.match(/^(.+?)\s*\*\s*$/);

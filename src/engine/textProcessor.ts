@@ -486,6 +486,14 @@ function resolveVariable(
                 foundIn = 'def';
             }
             else if (prop === 'singular') { foundValue = currentDef?.singular_name || currentDef?.name || lookupId; foundIn = 'def'; }
+            else if (prop === 'source') {
+                // Item memory: the oldest stored source (FIFO, paired with prune order).
+                const srcs: unknown = (typeof currentValue === 'object' && currentValue !== null)
+                    ? currentValue.sources
+                    : (state && 'sources' in state ? state.sources : undefined);
+                foundValue = (Array.isArray(srcs) && srcs.length > 0) ? srcs[0] : "";
+                foundIn = 'state';
+            }
             else if (currentDef?.text_variants && currentDef.text_variants[prop]) {
                 foundValue = currentDef.text_variants[prop];
                 foundIn = 'def';
