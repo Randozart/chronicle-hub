@@ -67,6 +67,14 @@ export async function POST(request: NextRequest) {
             if (!hand.includes(storyletDef.id) && !isActiveEvent) {
                 return NextResponse.json({ error: 'This card is not in your hand.' }, { status: 403 });
             }
+            // Stale-card enforcement: draw_condition is re-checked at resolve so a card whose
+            // moment has passed can't be played out of a lingering hand (validateOpportunityHand
+            // only prunes at draw/hand-load). keep_if_invalid cards ride anyway; redirect-target
+            // cards bypass via the active-event path above.
+            if (!isActiveEvent && !storyletDef.keep_if_invalid && storyletDef.draw_condition &&
+                !engine.evaluateCondition(storyletDef.draw_condition)) {
+                return NextResponse.json({ error: 'The moment for this has passed.' }, { status: 403 });
+            }
         }
         const pendingAutofires = await getAutofireStorylets(storyId);
         const eligibleAutofires = pendingAutofires.filter(e =>

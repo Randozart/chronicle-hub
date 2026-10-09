@@ -1063,8 +1063,15 @@ export default function GameHub(props: GameHubProps) {
                                 <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--text-highlight)', textTransform: 'uppercase', fontSize: '1.1rem', letterSpacing: '1px' }}>
                                     {renderEngine.evaluateText(deckTitle)}
                                 </h3>
-                                <OpportunityHand 
-                                    hand={hand.filter(c => c.deck === deckId)} 
+                                <OpportunityHand
+                                    hand={hand.filter(c => c.deck === deckId &&
+                                        // Stale cards hide from display the moment their
+                                        // draw_condition lapses (validateOpportunityHand
+                                        // prunes them from storage at the next draw; the
+                                        // resolve route 403s them regardless).
+                                        (c.keep_if_invalid || !c.draw_condition ||
+                                         renderEngine.evaluateCondition(c.draw_condition)))
+                                }
                                     hasCandidates={hasCandidates} 
                                     onCardClick={showEvent} 
                                     onDrawClick={() => handleDrawForDeck(deckId)} 
