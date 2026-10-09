@@ -30,6 +30,15 @@ type Step =
     | { do: 'options'; storylet: string; include?: string[]; exclude?: string[] }
     | { do: 'travel'; to: string; status: number; note?: string }
     | { do: 'q'; exact?: Record<string, number>; gte?: Record<string, number>; str?: Record<string, string>; absent?: string[] }
+    | {
+        do: 'kit';
+        source?: { qid: string; level: number; source: string };
+        equipped?: { slot: string; itemId: string | null };
+        render?: { storylet: string; option: string; contains: string };
+        gate?: { card: string; open: boolean };
+        hasOption?: { card: string; optionId: string };
+        note?: string;
+    }
     | { do: 'log'; msg: string | (() => string) };
 
 const STEPS: Step[] = [
@@ -51,6 +60,15 @@ const STEPS: Step[] = [
     },
     // A1 cleared the take_* redirects: wake resolves into the hub, no forced march.
     { do: 'resolve', storylet: 'intro_wake', option: 'intro_take_recorder' },
+    {
+        do: 'kit',
+        source: { qid: 'voice_recorder', level: 1, source: 'the thing you never sold' },
+        equipped: { slot: 'hand', itemId: 'voice_recorder' },
+        gate: { card: 'card_appraisal', open: true },
+        render: { storylet: 'use_recorder', option: 'recorder_replay', contains: 'the thing you never sold' },
+        hasOption: { card: 'card_neon_hawker', optionId: 'hawker_buy_umbrella' },
+        note: 'kit: intro grant sourced, auto-equipped to hand, appraisal gate open, use event renders provenance, hawker sells the umbrella',
+    },
     { do: 'current', expect: null, note: 'no redirect: player lands in the hub' },
     { do: 'af', expect: null, note: 'no autofire grabs the fresh hub' },
 
@@ -131,6 +149,12 @@ const STEPS: Step[] = [
     { do: 'visible', include: ['life_admin'], note: 'the year\'s paperwork arrives (intro + reading_1 done)' },
     { do: 'travel', to: 'rainline', status: 403, note: 'city sealed until the lease is signed' },
     { do: 'resolve', storylet: 'life_admin', option: 'life_admin_sign' },
+    {
+        do: 'kit',
+        source: { qid: 'landlord_key', level: 1, source: 'the building management envelope' },
+        equipped: { slot: 'shelf', itemId: null },
+        note: 'kit: rent key sourced; bound item stays unequipped until the player commits the shelf',
+    },
     { do: 'visible', include: ['the_rounds'], note: 'gig board opens once the year bills (board lives at the office)' },
     { do: 'travel', to: 'rainline', status: 200 },
     { do: 'visible', include: ['rainline_hub'], note: 'city hubs open once the year bills' },
@@ -352,6 +376,52 @@ async function main() {
                 const got = qLevel(qid);
                 (got === undefined || got === 0) ? ok(`q ${qid} absent`) : fail(`q ${qid}: want absent got ${got}`);
             }
+            continue;
+        }
+
+        if (step.do === 'kit') {
+            let bad = false;
+            if (step.source) {
+                const { qid, level, source } = step.source;
+                const st: any = char.qualities?.[qid];
+                const gotLevel = st?.level;
+                const gotSrc = st?.sources?.[0];
+                if (gotLevel !== level) { fail(`${tag}: ${qid} level want ${level} got ${gotLevel}`); bad = true; }
+                if (gotSrc !== source) { fail(`${tag}: ${qid} source want "${source}" got "${gotSrc}"`); bad = true; }
+            }
+            if (step.equipped !== undefined) {
+                const { slot, itemId } = step.equipped!;
+                const got = (char.equipment || {})[slot] ?? null;
+                if (got !== itemId) { fail(`${tag}: equipment[${slot}] want ${itemId} got ${got}`); bad = true; }
+            }
+            if (step.render) {
+                const def: any = storyletDefs[step.render.storylet];
+                const opt = def?.options?.find((o: any) => o.id === step.render!.option);
+                if (!opt) { fail(`${tag}: render def missing ${step.render.storylet}/${step.render.option}`); bad = true; }
+                else {
+                    const rendered = clientEngine().evaluateText(opt.pass_long);
+                    if (!rendered.includes(step.render.contains)) {
+                        fail(`${tag}: rendered use event lacks "${step.render.contains}" — got: ${rendered.slice(-120)}`);
+                        bad = true;
+                    }
+                }
+            }
+            if (step.gate) {
+                const card: any = storyletDefs[step.gate.card];
+                if (!card) { fail(`${tag}: card def missing ${step.gate.card}`); bad = true; }
+                else {
+                    const open = clientEngine().evaluateCondition(card.draw_condition);
+                    if (open !== step.gate.open) { fail(`${tag}: ${step.gate.card} draw gate want ${step.gate.open} got ${open}`); bad = true; }
+                }
+            }
+            if (step.hasOption) {
+                const card: any = storyletDefs[step.hasOption.card];
+                const ids: string[] = (card?.options || []).map((o: any) => o.id);
+                if (!ids.includes(step.hasOption.optionId)) {
+                    fail(`${tag}: ${step.hasOption.card} lacks option ${step.hasOption.optionId}`); bad = true;
+                }
+            }
+            if (!bad) ok(`${tag}`);
             continue;
         }
 
