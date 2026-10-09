@@ -266,56 +266,79 @@ export class GameEngine implements EngineContext {
             const itemDef = this.worldContent.qualities[itemId];
             if (!itemDef || !itemDef.bonus) continue;
 
-            const evaluatedBonus = evaluateScribeText(
-                itemDef.bonus,
-                this.qualities,
-                this.worldContent.qualities,
-                null,
-                this.resolutionRoll,
-                this.tempAliases,
-                []
-            );
+            total = this.applyDefBonus(itemDef, qid, total);
+        }
 
-            // Split effects string properly to handle complex ScribeScript
-            const bonuses = this.splitEffectsString(evaluatedBonus);
-            for (const bonus of bonuses) {
-                const trimmed = bonus.trim();
-                if (!trimmed) continue;
+        // Intrinsic bonuses: NON-equipment qualities whose definition carries a
+        // bonus (Trackers/Counters, e.g. a curse that sharpens the ear) apply
+        // while owned (level >= 1). Equipped items are handled above; this pass
+        // deliberately skips type E so nothing is ever counted twice.
+        for (const qid0 in this.qualities) {
+            const state = this.qualities[qid0];
+            if (!state || !('level' in state) || !(state.level > 0)) continue;
+            const def = this.worldContent.qualities[qid0];
+            if (!def?.bonus || def.type === QualityType.Equipable) continue;
+            total = this.applyDefBonus(def, qid, total);
+        }
+        return total;
+    }
 
-                // Try simple syntax first for backward compatibility
-                const simpleMatch = trimmed.match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
-                if (simpleMatch) {
-                    const [, targetQid, op, value] = simpleMatch;
+    /**
+     * Applies one definition's bonus string (ScribeScript, may be a cascade)
+     * to the effective level of `qid`. Shared by the equipped-item pass and
+     * the intrinsic (owned non-equipment) pass.
+     */
+    private applyDefBonus(itemDef: QualityDefinition, qid: string, total: number): number {
+        if (!itemDef.bonus) return total;
+        const evaluatedBonus = evaluateScribeText(
+            itemDef.bonus,
+            this.qualities,
+            this.worldContent.qualities,
+            null,
+            this.resolutionRoll,
+            this.tempAliases,
+            []
+        );
+
+        // Split effects string properly to handle complex ScribeScript
+        const bonuses = this.splitEffectsString(evaluatedBonus);
+        for (const bonus of bonuses) {
+            const trimmed = bonus.trim();
+            if (!trimmed) continue;
+
+            // Try simple syntax first for backward compatibility
+            const simpleMatch = trimmed.match(/^\$([a-zA-Z0-9_]+)\s*([+\-])\s*(\d+)$/);
+            if (simpleMatch) {
+                const [, targetQid, op, value] = simpleMatch;
+                if (targetQid === qid) {
+                    const numVal = parseInt(value, 10);
+                    if (op === '+') total += numVal;
+                    if (op === '-') total -= numVal;
+                }
+            } else {
+                // Parse as full ScribeScript effect (e.g., $strength += { $level * 2 })
+                const effectMatch = trimmed.match(/^\$([a-zA-Z0-9_]+)\s*(\+\+|--|[\+\-\*\/%]=|=)\s*([\s\S]*)$/);
+                if (effectMatch) {
+                    const [, targetQid, op, valueExpr] = effectMatch;
                     if (targetQid === qid) {
-                        const numVal = parseInt(value, 10);
-                        if (op === '+') total += numVal;
-                        if (op === '-') total -= numVal;
-                    }
-                } else {
-                    // Parse as full ScribeScript effect (e.g., $strength += { $level * 2 })
-                    const effectMatch = trimmed.match(/^\$([a-zA-Z0-9_]+)\s*(\+\+|--|[\+\-\*\/%]=|=)\s*([\s\S]*)$/);
-                    if (effectMatch) {
-                        const [, targetQid, op, valueExpr] = effectMatch;
-                        if (targetQid === qid) {
-                            // Evaluate the value expression (might be complex ScribeScript)
-                            const evaluatedValue = evaluateScribeText(
-                                valueExpr,
-                                this.qualities,
-                                this.worldContent.qualities,
-                                null,
-                                this.resolutionRoll,
-                                this.tempAliases,
-                                []
-                            );
+                        // Evaluate the value expression (might be complex ScribeScript)
+                        const evaluatedValue = evaluateScribeText(
+                            valueExpr,
+                            this.qualities,
+                            this.worldContent.qualities,
+                            null,
+                            this.resolutionRoll,
+                            this.tempAliases,
+                            []
+                        );
 
-                            const numVal = parseInt(evaluatedValue, 10);
-                            if (!isNaN(numVal)) {
-                                if (op === '+' || op === '+=') total += numVal;
-                                else if (op === '-' || op === '-=') total -= numVal;
-                                else if (op === '++') total += 1;
-                                else if (op === '--') total -= 1;
-                                else if (op === '=') total = numVal;
-                            }
+                        const numVal = parseInt(evaluatedValue, 10);
+                        if (!isNaN(numVal)) {
+                            if (op === '+' || op === '+=') total += numVal;
+                            else if (op === '-' || op === '-=') total -= numVal;
+                            else if (op === '++') total += 1;
+                            else if (op === '--') total -= 1;
+                            else if (op === '=') total = numVal;
                         }
                     }
                 }

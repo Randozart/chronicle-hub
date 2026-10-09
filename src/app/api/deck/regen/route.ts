@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
         let character = await getCharacter(userId, storyId, characterId);
 
         if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+        if (character.ended) return NextResponse.json({ error: 'Your part in this is done.', ended: true }, { status: 403 });
         if (gameData.decks) {
             for (const deckId in gameData.decks) {
                 character = regenerateDeckCharges(character, gameData.decks[deckId], gameData);

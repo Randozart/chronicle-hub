@@ -23,6 +23,7 @@ let character = null;
         character = await getCharacter(userId, storyId, characterId);
     }    
     if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+    if (character.ended) return NextResponse.json({ error: 'Your part in this is done.', ended: true }, { status: 403 });
 
     const gameData = await getContent(storyId);
     const targetLoc = gameData.locations[targetLocationId];

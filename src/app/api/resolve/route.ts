@@ -30,6 +30,12 @@ export async function POST(request: NextRequest) {
         }
 
         if (!character) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+
+        // A character whose story has ended cannot act. This is checked before
+        // everything else — endings are terminal by design.
+        if (character.ended) {
+            return NextResponse.json({ error: 'Your part in this is done.', ended: true }, { status: 403 });
+        }
             
         if (gameData.settings.useActionEconomy) {
             character = await regenerateActions(character);
@@ -179,6 +185,19 @@ export async function POST(request: NextRequest) {
         await applyWorldUpdates(storyId, engineResult.qualityChanges);
         processAutoEquip(character, engineResult.qualityChanges, gameData);
         enforceEquipmentVisibility(character, gameData);
+
+        // True endings: an option marked endsCharacter finishes the story. The
+        // flag rides on the character from here on — every play route refuses
+        // it, and GameHub swaps the hub for the ending screen.
+        if (option.endsCharacter) {
+            character.ended = {
+                endingId: option.endingId,
+                storyletId: storyletId,
+                optionId: option.id,
+                optionName: option.name,
+                at: new Date(),
+            };
+        }
 
         // --- Social action: snapshot + enqueue on the target ---
         // Actor effects are already applied (locked ordering); $target.* reads
@@ -347,6 +366,7 @@ export async function POST(request: NextRequest) {
             newQualities: character.qualities,
             newDefinitions: Object.keys(newDefinitions).length > 0 ? newDefinitions : undefined,
             equipment: character.equipment, 
+            ended: character.ended,
             updatedHand: 'deck' in storyletDef || finalTags.has('clear_hand') ? character.opportunityHands : undefined, 
         
             pendingEvents: character.pendingEvents,

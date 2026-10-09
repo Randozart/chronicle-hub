@@ -1,6 +1,6 @@
 'use client';
 
-import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition, CharacterDocument } from '@/engine/models';
+import { Storylet, PlayerQualities, ResolveOption, Opportunity, QualityDefinition, QualityChangeInfo, WorldSettings, ImageDefinition, CategoryDefinition, CharacterDocument, CharacterEnding } from '@/engine/models';
 import { useState } from 'react';
 import { evaluateText, evaluateCondition, getChallengeDetails } from '@/engine/textProcessor';
 import QualityChangeBar from './QualityChangeBar';
@@ -51,7 +51,8 @@ interface StoryletDisplayProps {
         newDefinitions?: Record<string, QualityDefinition>,
         newEquipment?: Record<string, string | null>,
         newPendingEvents?: any[],
-        updatedHand?: Record<string, string[]>
+        updatedHand?: Record<string, string[]>,
+        ended?: CharacterEnding
     ) => void;
     
     onCardPlayed?: (cardId: string) => void;
@@ -205,7 +206,7 @@ export default function StoryletDisplay({
                 }
             }
 
-            onQualitiesUpdate(data.newQualities, data.newDefinitions, data.equipment, data.pendingEvents, data.updatedHand); 
+            onQualitiesUpdate(data.newQualities, data.newDefinitions, data.equipment, data.pendingEvents, data.updatedHand, data.ended);
             
             if (onCardPlayed && 'deck' in eventData) {
                 onCardPlayed(eventData.id);

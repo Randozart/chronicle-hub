@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { CharacterDocument, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage, WorldConfig } from '@/engine/models';
+import { CharacterDocument, CharacterEnding, LocationDefinition, Opportunity, PlayerQualities, QualityDefinition, Storylet, WorldSettings, ImageDefinition, CategoryDefinition, MapRegion, DeckDefinition, MarketDefinition, SystemMessage, WorldConfig } from '@/engine/models';
 import NexusLayout from './layouts/NexusLayout';
 import LondonLayout from './layouts/LondonLayout';
 import ElysiumLayout from './layouts/ElysiumLayout';
@@ -14,6 +14,7 @@ import CharacterSheet from './CharacterSheet';
 import LocationHeader from './LocationHeader';
 import LocationStorylets from './LocationStorylets';
 import OpportunityHand from './OpportunityHand';
+import EndingScreen from './EndingScreen';
 import StoryletDisplay, { ResolutionState } from './StoryletDisplay'; 
 import ProfilePanel from './ProfilePanel';
 import Possessions from './Possessions';
@@ -229,7 +230,7 @@ export default function GameHub(props: GameHubProps) {
         } catch (error) { console.error(error); setActiveEvent(null); } finally { setIsLoading(false); }
     }, [props.storyId, character]);
 
-    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>, newEquipment?: Record<string, string | null>, newPendingEvents?: any[], updatedHand?: Record<string, string[]>) => {
+    const handleQualitiesUpdate = useCallback((newQualities: PlayerQualities, newDefinitions?: Record<string, QualityDefinition>, newEquipment?: Record<string, string | null>, newPendingEvents?: any[], updatedHand?: Record<string, string[]>, ended?: CharacterEnding) => {
         setCharacter(prev => {
             if (!prev) return null;
             const updated: CharacterDocument = { ...prev, qualities: { ...newQualities } };
@@ -237,6 +238,7 @@ export default function GameHub(props: GameHubProps) {
             if (newEquipment) updated.equipment = { ...newEquipment };
             if (newPendingEvents) updated.pendingEvents = newPendingEvents;
             if (updatedHand) updated.opportunityHands = updatedHand;
+            if (ended) updated.ended = ended;
             return updated;
         });
     }, []);
@@ -1146,7 +1148,8 @@ export default function GameHub(props: GameHubProps) {
     return ( 
         <div data-theme={props.settings.visualTheme || 'default'} className="theme-wrapper" style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
             <ToastProvider>
-                {isGuestMode && (
+                {character.ended && <EndingScreen character={character} storyId={props.storyId} isGuestMode={isGuestMode} />}
+                {!character.ended && isGuestMode && (
                     <div style={{ background: 'var(--accent-primary)', color: '#fff', padding: '0.5rem', textAlign: 'center', fontSize: '0.9rem', position: 'sticky', top: 0, zIndex: 40 }}>
                         Playing as Guest. Progress saved locally. 
                         <Link href={`/register?callbackUrl=/play/${props.storyId}`} style={{ color: '#fff', fontWeight: 'bold', marginLeft: '10px', textDecoration: 'underline' }}>

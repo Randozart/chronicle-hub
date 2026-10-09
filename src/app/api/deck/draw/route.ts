@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
         if (!character) {
             return NextResponse.json({ error: 'Character not found' }, { status: 404 });
         }
+        if (character.ended) {
+            return NextResponse.json({ error: 'Your part in this is done.', ended: true }, { status: 403 });
+        }
         let targetDeckId = deckId;
         if (!targetDeckId) {
             const location = gameData.locations[character.currentLocationId];
@@ -106,6 +109,10 @@ export async function DELETE(request: NextRequest) {
             character = guestState;
         } else {
             character = await getCharacter(userId, storyId, characterId);
+        }
+
+        if (character.ended) {
+            return NextResponse.json({ error: 'Your part in this is done.', ended: true }, { status: 403 });
         }
 
         if (!character.opportunityHands?.[deckId]) {

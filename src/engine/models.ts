@@ -47,6 +47,10 @@ export interface ResolveOption extends LogicGates {
     pass_quality_change?: string;
     pass_redirect?: string;
     pass_move_to?: string;
+    /** True ending: resolving this option ends the character's story. Game over. */
+    endsCharacter?: boolean;
+    /** Named ending (with endsCharacter) — used for Chronicles and the ending screen. */
+    endingId?: string;
     fail_long?: string;
     fail_meta?: string;    
     fail_quality_change?: string;
@@ -517,6 +521,34 @@ export interface CharacterDocument {
     pendingEvents?: PendingEvent[];
     acknowledgedMessages?: string[];
     dynamicQualities?: Record<string, QualityDefinition>;
+    /** Set when an endsCharacter option resolves — the story is over; play is locked. */
+    ended?: CharacterEnding;
+}
+
+/** A finished story. Referenced by the ending screen and the Chronicle record. */
+export interface CharacterEnding {
+    endingId?: string;
+    storyletId: string;
+    optionId: string;
+    optionName?: string;
+    at: Date;
+}
+
+/** A saved playthrough — the keepsake record of a finished character. */
+export interface ChronicleDocument {
+    chronicleId: string;
+    storyId: string;
+    userId: string;
+    characterId: string;
+    characterName: string;
+    endingId?: string;
+    endingName?: string;
+    epitaph?: string;
+    /** Curated playthrough stats, read from the final qualities. */
+    stats: Record<string, number>;
+    /** Full final quality snapshot — enough to render a memorial sheet later. */
+    qualities: PlayerQualities;
+    at: Date;
 }
 
 export interface UserDocument {

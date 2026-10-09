@@ -13,6 +13,7 @@ export default function Dashboard() {
     const [showCreate, setShowCreate] = useState(false);
     const [activeTab, setActiveTab] = useState<'my' | 'discover'>('my');
     const [platformMsg, setPlatformMsg] = useState<any>(null);
+    const [chronicles, setChronicles] = useState<Array<{ chronicleId: string; characterName: string; endingName?: string; epitaph?: string; stats?: Record<string, number>; at: string }>>([]);
 
     useEffect(() => {
         if (status === 'loading') return;
@@ -34,6 +35,13 @@ export default function Dashboard() {
     useEffect(() => {
         fetch('/api/platform/announcement').then(r => r.json()).then(setPlatformMsg).catch(() => {}); 
     }, []);
+
+    useEffect(() => {
+        if (status !== 'authenticated') return;
+        fetch('/api/chronicles').then(r => r.json()).then(d => {
+            if (d?.success) setChronicles(d.chronicles || []);
+        }).catch(() => {});
+    }, [status]);
 
     const dismissPlatformMsg = async () => {
          if (!platformMsg) return;
@@ -129,6 +137,36 @@ export default function Dashboard() {
                             <div className="dashboard-grid">
                                 {data.playedWorlds.map((w: any) => (
                                     <WorldCard key={w.worldId} w={w} isOwner={false} isAdmin={isSystemAdmin} />
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'my' && chronicles.length > 0 && (
+                        <>
+                            <h2 className="section-title">Your Chronicles</h2>
+                            <div className="dashboard-grid">
+                                {chronicles.map(c => (
+                                    <div key={c.chronicleId} className="empty-state" style={{ textAlign: 'left', padding: '1.25rem' }}>
+                                        <div style={{ color: 'var(--text-highlight)', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                            {c.characterName}
+                                        </div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                                            {c.endingName || 'A finished story'} · {new Date(c.at).toLocaleDateString()}
+                                        </div>
+                                        {c.epitaph && (
+                                            <div style={{ fontStyle: 'italic', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+                                                “{c.epitaph}”
+                                            </div>
+                                        )}
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                            {[
+                                                c.stats?.day ? `${c.stats.day} days` : null,
+                                                c.stats?.cases_closed != null ? `${c.stats.cases_closed} cases closed` : null,
+                                                c.stats?.reputation ? `reputation ${c.stats.reputation}` : null,
+                                            ].filter(Boolean).join(' · ')}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         </>
