@@ -1,26 +1,38 @@
 /**
- * playtest-opening.ts — automated end-to-end playtest of the neon_medium
- * opening chain, driven through the real HTTP API as a guest character.
+ * playtest.ts — generic step-driven playtest harness.
  *
- * Mirrors GameHub's client flow exactly (client-side autofire selection,
- * visible_if hub filtering, option filtering, guestState round-trip) while
- * the server does all mutation via /api/resolve + /api/travel. No save in
- * the database is touched — guest state lives only in this process.
+ * Drives a world through the real HTTP API as a guest character, mirroring
+ * GameHub's client flow (client-side autofire selection, visible_if hub
+ * filtering, option filtering, guestState round-trip) while the server does
+ * all mutation via /api/resolve + /api/travel. No save in the database is
+ * touched — guest state lives only in this process.
+ *
+ * The step chain is WORLD CONTENT and lives in the world's repo — this
+ * runner is mechanism only, with no world ids or defaults baked in.
  *
  * Run (dev server must be up):
- *   npx tsx scripts/playtest-opening.ts
+ *   npx tsx scripts/playtest.ts --steps <world>/tools/<chain>.ts --story <storyId>
  * Options:
- *   --base http://localhost:3000   API base URL
- *   --story neon_medium            story id
+ *   --steps <file>    path to the step-chain module (exports STEPS)  [required]
+ *   --story <id>      story id to playtest                           [required]
+ *   --base <url>      API base URL (default http://localhost:3000)
  */
+
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const args = process.argv.slice(2);
-const argOf = (name: string, dflt: string) => {
+const argOf = (name: string, dflt?: string) => {
     const i = args.indexOf(name);
     return i >= 0 && args[i + 1] ? args[i + 1] : dflt;
 };
+const argReq = (name: string) => {
+    const v = argOf(name);
+    if (!v) throw new Error(`missing ${name}`);
+    return v;
+};
+
 
 type Step =
     | { do: 'af'; expect: string | null; note?: string }
@@ -41,142 +53,10 @@ type Step =
     }
     | { do: 'log'; msg: string | (() => string) };
 
-const STEPS: Step[] = [
-    // --- Prologue: forced autofire chain (epitaph -> mirror form -> wake) ---
-    { do: 'af', expect: 'the_epitaph', note: 'fresh char: epitaph is the only eligible autofire' },
-    { do: 'resolve', storylet: 'the_epitaph', option: 'epitaph_arrive', redirect: 'mirror_q1_sound' },
-    { do: 'af', expect: null, note: 'epitaph retired after intro_epitaph=1' },
-    { do: 'current', expect: 'mirror_q1_sound' },
-    { do: 'options', storylet: 'mirror_q1_sound', include: ['q1_rain', 'q1_voice', 'q1_trains'] },
-    { do: 'resolve', storylet: 'mirror_q1_sound', option: 'q1_rain', redirect: 'mirror_q2_fire' },
-    { do: 'resolve', storylet: 'mirror_q2_fire', option: 'q2_papers', redirect: 'mirror_q3_ritual' },
-    { do: 'resolve', storylet: 'mirror_q3_ritual', option: 'q3_coffee', redirect: 'mirror_q4_type' },
-    { do: 'resolve', storylet: 'mirror_q4_type', option: 'q4_either', redirect: 'mirror_close' },
-    { do: 'resolve', storylet: 'mirror_close', option: 'mirror_close_done', redirect: 'intro_arrival' },
-    // The Frame: the first walk up — stairs, Mei's dead channel, Suite 4B — then the wake.
-    { do: 'resolve', storylet: 'intro_arrival', option: 'intro_arrival_in', redirect: 'intro_wake' },
-    { do: 'current', expect: 'intro_wake' },
-    {
-        do: 'options', storylet: 'intro_wake',
-        include: ['intro_take_recorder'], exclude: ['intro_take_emf', 'intro_take_salt'],
-    },
-    // A1 cleared the take_* redirects: wake resolves into the hub, no forced march.
-    { do: 'resolve', storylet: 'intro_wake', option: 'intro_take_recorder' },
-    {
-        do: 'kit',
-        source: { qid: 'voice_recorder', level: 1, source: 'the thing you never sold' },
-        equipped: { slot: 'hand', itemId: 'voice_recorder' },
-        gate: { card: 'card_appraisal', open: true },
-        render: { storylet: 'use_recorder', option: 'recorder_replay', contains: 'the thing you never sold' },
-        hasOption: { card: 'card_neon_hawker', optionId: 'hawker_buy_umbrella' },
-        note: 'kit: intro grant sourced, auto-equipped to hand, appraisal gate open, use event renders provenance, hawker sells the umbrella',
-    },
-    { do: 'current', expect: null, note: 'no redirect: player lands in the hub' },
-    { do: 'af', expect: null, note: 'no autofire grabs the fresh hub' },
 
-    // --- Hub: what shows (and what must not) ---
-    {
-        do: 'visible',
-        include: ['office_main', 'the_reading_1'],
-        exclude: ['case_marlow_open', 'case_marlow_file', 'life_admin', 'evening_reflection', 'the_reading_2', 'the_reading_3'],
-        note: 'hub after wake: ledger chain + office only',
-    },
-    // Location locks (A4): none of the map opens before the case does.
-    { do: 'travel', to: 'docks', status: 403 },
-    { do: 'travel', to: 'old_station', status: 403 },
-    { do: 'travel', to: 'highrise', status: 403 },
-    { do: 'travel', to: 'rainline', status: 403 },
-    { do: 'travel', to: 'ossuary', status: 403 },
-    { do: 'travel', to: 'inner_world', status: 403 },
-    {
-        do: 'options', storylet: 'office_main',
-        include: ['office_window', 'office_kettle', 'office_reflect_low', 'office_board'],
-        exclude: ['office_reflect_mid', 'office_reflect_deep'],
-    },
-    // Mundanity ladder still closed (kettle x3 -> 6 < 10).
-    { do: 'resolve', storylet: 'office_main', option: 'office_kettle' },
-    { do: 'resolve', storylet: 'office_main', option: 'office_kettle' },
-    { do: 'resolve', storylet: 'office_main', option: 'office_kettle' },
-    { do: 'visible', exclude: ['the_reading_2'], note: 'mundanity 6 < 10: reading_2 stays shut' },
-
-    // --- Ledger -> Marlow appears (A2 chain) ---
-    { do: 'resolve', storylet: 'the_reading_1', option: 'reading_1_read' },
-    {
-        do: 'visible',
-        include: ['case_marlow_open', 'life_admin'],
-        exclude: ['case_marlow_file', 'case_marlow_close', 'evening_reflection'],
-        note: 'reading done: Marlow + rent chains appear, case itself does not',
-    },
-    { do: 'resolve', storylet: 'case_marlow_open', option: 'marlow_accept', redirect: 'office_main' },
-    { do: 'visible', include: ['case_marlow_file'], exclude: ['case_marlow_open'], note: 'accepted: file chain swaps in' },
-
-    // --- Docks leg (unlock: case_marlow >= 1) ---
-    { do: 'resolve', storylet: 'case_marlow_file', option: 'marlow_go_docks', loc: 'docks' },
-    { do: 'af', expect: null, note: 'no autofire at the docks' },
-    {
-        do: 'visible',
-        include: ['docks_hub', 'case_marlow_docks_1'],
-        exclude: ['case_marlow_docks_2'],
-        note: 'manifest step first, witness second',
-    },
-    { do: 'travel', to: 'rainline', status: 403, },
-    { do: 'travel', to: 'old_station', status: 403 },
-    { do: 'resolve', storylet: 'case_marlow_docks_1', option: 'marlow_take_manifest' },
-    { do: 'visible', include: ['case_marlow_docks_2'] },
-    { do: 'resolve', storylet: 'case_marlow_docks_2', option: 'marlow_press_orrin' },
-
-    // --- Old station (unlock: manifest >= 1) ---
-    { do: 'travel', to: 'old_station', status: 200 },
-    { do: 'visible', include: ['case_marlow_station'] },
-    { do: 'resolve', storylet: 'case_marlow_station', option: 'marlow_trace_signature' },
-
-    // --- Highrise (unlock: watchman + signature) ---
-    { do: 'travel', to: 'highrise', status: 200 },
-    { do: 'visible', include: ['case_marlow_confront'] },
-    { do: 'resolve', storylet: 'case_marlow_confront', option: 'marlow_confront_salt', note: 'guaranteed-pass branch (no challenge)' },
-
-    // --- Close at the office: city + evening still sealed until cases_closed ---
-    { do: 'travel', to: 'office', status: 200 },
-    { do: 'visible', include: ['case_marlow_close'], exclude: ['evening_reflection'], note: 'case not closed yet: evening stays deferred' },
-    { do: 'resolve', storylet: 'case_marlow_close', option: 'marlow_close_plain' },
-    {
-        do: 'visible',
-        include: ['evening_reflection'],
-        note: 'cases_closed=1: the morning-mirror payoff finally opens',
-    },
-
-    // --- Deferred payoff, then the year signs before the city opens ---
-    { do: 'resolve', storylet: 'evening_reflection', option: 'ref_sound' },
-    { do: 'visible', exclude: ['evening_reflection'], note: 'mirror_done=1: one shot, no loop' },
-    { do: 'visible', include: ['life_admin'], note: 'the year\'s paperwork arrives (intro + reading_1 done)' },
-    { do: 'travel', to: 'rainline', status: 403, note: 'city sealed until the lease is signed' },
-    { do: 'resolve', storylet: 'life_admin', option: 'life_admin_sign' },
-    {
-        do: 'kit',
-        source: { qid: 'landlord_key', level: 1, source: 'the building management envelope' },
-        equipped: { slot: 'shelf', itemId: null },
-        note: 'kit: rent key sourced; bound item stays unequipped until the player commits the shelf',
-    },
-    { do: 'visible', include: ['the_rounds'], note: 'gig board opens once the year bills (board lives at the office)' },
-    { do: 'travel', to: 'rainline', status: 200 },
-    { do: 'visible', include: ['rainline_hub'], note: 'city hubs open once the year bills' },
-    { do: 'travel', to: 'ossuary', status: 200 },
-    { do: 'travel', to: 'inner_world', status: 403, note: 'inner_world still needs mundanity 30' },
-    { do: 'visible', include: ['day_close'], note: 'night nudge: the clock saturated (slot 3), closing the day is the player\'s call' },
-    { do: 'resolve', storylet: 'day_close', option: 'day_close_accept' },
-    { do: 'visible', include: ['day_renew'], note: 'latch set: dawn is waiting' },
-    { do: 'resolve', storylet: 'day_renew', option: 'day_renew_accept' },
-
-    // --- Final ledger ---
-    {
-        do: 'q',
-        exact: { intro_done: 1, intro_epitaph: 1, reading_1_done: 1, case_marlow: 3, cases_closed: 1, mirror_done: 1, cases_open: 0, rent_set: 1, slot: 0, day: 1, day_latch: 0, rent_due: 1, static_debt: 1, days_worked: 1 },
-        gte: { cash: 70, actions: 1, nerve: 5, meals: 0 },
-        str: { starting_tool: 'recorder' },
-        absent: ['flubbed_cases', 'street_shifted'],
-    },
-    { do: 'log', msg: 'opening chain complete' },
-];
+// The step chain is imported at runtime so each world repo owns its own chain.
+const STEPS_PATH = argReq('--steps');
+const STORY = argReq('--story');
 
 async function main() {
     // Engine imports need env; load .env.local before any engine module.
@@ -194,8 +74,10 @@ async function main() {
     const { findEligibleAutofire } = await import('../src/utils/autofire');
     const clientPromise = (await import('../src/engine/database')).default;
 
+    const stepsMod = await import(pathToFileURL(resolve(STEPS_PATH)).href);
+    const STEPS: Step[] = stepsMod.STEPS;
+
     const BASE = argOf('--base', 'http://localhost:3000');
-    const STORY = argOf('--story', 'neon_medium');
 
     const gameData: any = await loadGameData(STORY);
     if (!gameData) throw new Error(`story not found: ${STORY}`);
