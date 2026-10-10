@@ -52,7 +52,9 @@ const STEPS: Step[] = [
     { do: 'resolve', storylet: 'mirror_q2_fire', option: 'q2_papers', redirect: 'mirror_q3_ritual' },
     { do: 'resolve', storylet: 'mirror_q3_ritual', option: 'q3_coffee', redirect: 'mirror_q4_type' },
     { do: 'resolve', storylet: 'mirror_q4_type', option: 'q4_either', redirect: 'mirror_close' },
-    { do: 'resolve', storylet: 'mirror_close', option: 'mirror_close_done', redirect: 'intro_wake' },
+    { do: 'resolve', storylet: 'mirror_close', option: 'mirror_close_done', redirect: 'intro_arrival' },
+    // The Frame: the first walk up — stairs, Mei's dead channel, Suite 4B — then the wake.
+    { do: 'resolve', storylet: 'intro_arrival', option: 'intro_arrival_in', redirect: 'intro_wake' },
     { do: 'current', expect: 'intro_wake' },
     {
         do: 'options', storylet: 'intro_wake',

@@ -406,6 +406,12 @@ export default function Possessions({
                 count = parseInt(countedMatch[2], 10);
             }
             
+            // A hidden category that is currently locked renders no slots at all —
+            // an empty "Locked" ghost would spoil the reveal (e.g. the frame slot).
+            if (categories?.[cat]?.hidden && (lockedEquipCategories || []).includes(cat)) {
+                return;
+            }
+
             if (isInfinite) {
                 // Determine max index currently used
                 const indices = new Set<number>();
@@ -448,7 +454,7 @@ export default function Possessions({
 
         // Convert map back to array and sort by original definition order
         return Array.from(slotMap.values()).sort((a, b) => a.order - b.order);
-    }, [equipCategories, equipment, categories]);
+    }, [equipCategories, equipment, categories, lockedEquipCategories]);
 
     const handleEquipToggle = async (slot: string, itemId: string | null) => {
         if (isLoading) return;
